@@ -9,6 +9,9 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
 
+  <!-- Konva.js 2D High-Performance Canvas Engine -->
+  <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+
   <!-- JSXGraph Dynamic Geometry Engine -->
   <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css" />
   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.js"></script>
@@ -695,7 +698,8 @@
           </div>
 
           <div class="svg-plane-wrapper">
-            <div id="jxgbox" class="jxgbox" style="width:100%; height:100%; border:none; background:#ffffff;"></div>
+            <div id="konva-container" style="width:100%; height:100%; position:absolute; top:0; left:0; z-index:10; background:#ffffff;"></div>
+            <div id="jxgbox" class="jxgbox" style="width:100%; height:100%; border:none; background:#ffffff; display:none;"></div>
             <svg id="main-svg-plane" viewBox="-300 -200 600 400" xmlns="http://www.w3.org/2000/svg" style="display:none;">
               <defs>
                 <pattern id="grid-pattern" width="30" height="30" patternUnits="userSpaceOnUse">
@@ -1147,107 +1151,89 @@
       if (fill) fill.style.width = '100%';
     }
 
-    function teacherLogout() {
-      state.isTeacherLoggedIn = false;
-      switchView('activity');
-      alert("🔒 교사 대시보드에서 로그아웃되었습니다.");
-    }
+    let konvaStage = null;
+    let konvaLayer = null;
+    let konvaPoints = [];
 
-    function attemptSwitchTab(stepIndex, tabName) {
-      if (!state.isTeacherLoggedIn && stepIndex > state.maxUnlockedStep) {
-        alert(`🔒 이전 단계를 완료해야 ${stepIndex + 1}단계로 진행할 수 있습니다!`);
-        return;
-      }
-
-      state.currentTabIndex = stepIndex;
-      state.currentTab = tabName;
-      
-      document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
-        btn.classList.remove('active');
-        if (idx === stepIndex) btn.classList.add('active');
-      });
-
-      hidePraise();
-      hideHint();
-
-      if (stepIndex === 0) loadSubStep('0-1');
-      else if (stepIndex === 1) loadSubStep('1-1');
-      else if (stepIndex === 2) loadSubStep('2-1');
-      else if (stepIndex === 3) loadSubStep('3-1');
-    }
-
-    function unlockNextStep(newStepIndex) {
-      if (state.isTeacherLoggedIn) return;
-
-      if (newStepIndex > state.maxUnlockedStep && newStepIndex <= 3) {
-        state.maxUnlockedStep = newStepIndex;
-        
-        const tabBtn = document.getElementById(`tab-btn-${newStepIndex}`);
-        if (tabBtn) {
-          tabBtn.classList.remove('locked');
-          tabBtn.querySelector('.lock-icon').innerText = '🔓';
-        }
-
-        if (newStepIndex === 3) {
-          revealHiddenMissionTab();
-        }
-
-        const percent = Math.min(100, Math.round(((newStepIndex + 1) / 4) * 100));
-        document.getElementById('progress-bar-fill').style.width = `${percent}%`;
-      }
-    }
-
-    let jxgBoard = null;
-    let jxgPoints = [];
-    let jxgLines = [];
-
-    function initJSXBoard() {
-      const container = document.getElementById('jxgbox');
+    function initKonvaStage() {
+      const container = document.getElementById('konva-container');
+      const jxgEl = document.getElementById('jxgbox');
       const svgEl = document.getElementById('main-svg-plane');
 
-      if (typeof JXG === 'undefined' || !container) {
-        if (container) container.style.display = 'none';
-        if (svgEl) svgEl.style.display = 'block';
-        return null;
-      }
-
       if (container) container.style.display = 'block';
+      if (jxgEl) jxgEl.style.display = 'none';
       if (svgEl) svgEl.style.display = 'none';
 
-      if (jxgBoard) {
-        try { JXG.JSXGraph.freeBoard(jxgBoard); } catch (e) {}
-        jxgBoard = null;
+      if (typeof Konva === 'undefined' || !container) return null;
+
+      if (konvaStage) {
+        konvaStage.destroy();
+        konvaStage = null;
       }
 
-      jxgPoints = [];
-      jxgLines = [];
+      const width = container.clientWidth || 600;
+      const height = container.clientHeight || 450;
 
-      try {
-        jxgBoard = JXG.JSXGraph.initBoard('jxgbox', {
-          boundingbox: [-10, 6, 10, -6],
-          axis: true,
-          grid: true,
-          keepaspectratio: false,
-          showCopyright: false,
-          showNavigation: false
-        });
+      konvaStage = new Konva.Stage({
+        container: 'konva-container',
+        width: width,
+        height: height
+      });
 
-        setTimeout(() => {
-          if (jxgBoard && container) {
-            const w = container.clientWidth || 600;
-            const h = container.clientHeight || 450;
-            jxgBoard.resizeContainer(w, h);
-            jxgBoard.fullUpdate();
-          }
-        }, 50);
+      konvaLayer = new Konva.Layer();
+      konvaStage.add(konvaLayer);
 
-        return jxgBoard;
-      } catch (err) {
-        console.warn("JSXGraph init fallback to SVG:", err);
-        if (container) container.style.display = 'none';
-        if (svgEl) svgEl.style.display = 'block';
-        return null;
+      const gridGroup = new Konva.Group();
+      const step = 30;
+      const centerX = width / 2;
+      const centerY = height / 2;
+
+      for (let x = 0; x < width; x += step) {
+        gridGroup.add(new Konva.Line({
+          points: [x, 0, x, height],
+          stroke: '#f1f5f9',
+          strokeWidth: 1
+        }));
       }
+      for (let y = 0; y < height; y += step) {
+        gridGroup.add(new Konva.Line({
+          points: [0, y, width, y],
+          stroke: '#f1f5f9',
+          strokeWidth: 1
+        }));
+      }
+      gridGroup.add(new Konva.Line({ points: [0, centerY, width, centerY], stroke: '#94a3b8', strokeWidth: 1.5 }));
+      gridGroup.add(new Konva.Line({ points: [centerX, 0, centerX, height], stroke: '#94a3b8', strokeWidth: 1.5 }));
+
+      konvaLayer.add(gridGroup);
+      konvaLayer.draw();
+
+      konvaPoints = [];
+      return { stage: konvaStage, layer: konvaLayer, centerX, centerY, width, height };
+    }
+
+    function snapVal(val, step = 30) {
+      return Math.round(val / step) * step;
+    }
+
+    function updateKonvaMeasurements(pA, pB, pC) {
+      if (!pA || !pB || !pC) return;
+      const dAB = Math.hypot(pB.x - pA.x, pB.y - pA.y).toFixed(1);
+      const dBC = Math.hypot(pC.x - pB.x, pC.y - pB.y).toFixed(1);
+      const dCA = Math.hypot(pA.x - pC.x, pA.y - pC.y).toFixed(1);
+
+      const vAB = { x: pB.x - pA.x, y: pB.y - pA.y };
+      const vAC = { x: pC.x - pA.x, y: pC.y - pA.y };
+      const dot = vAB.x * vAC.x + vAB.y * vAC.y;
+      const magAB = Math.hypot(vAB.x, vAB.y);
+      const magAC = Math.hypot(vAC.x, vAC.y);
+      const rad = Math.acos(Math.min(Math.max(dot / (magAB * magAC), -1), 1));
+      const deg = (rad * 180 / Math.PI).toFixed(1);
+
+      document.getElementById('val-ab').innerText = `${dAB} px`;
+      document.getElementById('val-bc').innerText = `${dBC} px`;
+      document.getElementById('val-ca').innerText = `${dCA} px`;
+      document.getElementById('val-ang-a').innerText = `${deg}°`;
     }
 
     function loadSubStep(subStepCode) {
@@ -1260,10 +1246,6 @@
       const btnAnim = document.getElementById('btn-rhs-anim');
       if (btnAnim) btnAnim.style.display = 'none';
 
-      const pA_default = { id: 'A', x: 0, y: -70, color: '#4f46e5' };
-      const pB_default = { id: 'B', x: -100, y: 70, color: '#4f46e5' };
-      const pC_default = { id: 'C', x: 100, y: 70, color: '#4f46e5' };
-
       const setMissionUI = (mText, hText) => {
         document.getElementById('mission-text').innerHTML = formatMathText(mText);
         if (hText) showHint(hText);
@@ -1271,26 +1253,46 @@
 
       if (subStepCode === '0-1') {
         setTool('point');
-        const board = initJSXBoard();
+        const konva = initKonvaStage();
         setMissionUI(
-          "<b>[튜토리얼 0-1]</b> 좌측 JSXGraph 좌표평면 위를 클릭하여 <b>3개 이상의 점(📍)</b>을 자유롭게 배치해보세요.",
-          "💡 팁: [📍 점 찍기] 도구가 선택된 상태에서 보드를 3번 클릭하면 점이 생성됩니다."
+          "<b>[튜토리얼 0-1]</b> 좌측 Konva.js 캔버스 위를 클릭하여 <b>3개 이상의 점(📍)</b>을 배치해보세요.",
+          "💡 팁: [📍 점 찍기] 도구가 선택된 상태에서 캔버스를 3번 누르면 스냅과 함께 점이 찍힙니다."
         );
 
-        if (board) {
-          board.on('down', function(e) {
+        if (konva) {
+          konva.stage.on('click tap', function(e) {
             if (state.subStep !== '0-1') return;
-            const coords = board.getUsrCoordsOfMouse(e);
-            const p = board.create('point', [coords[0], coords[1]], {
-              name: 'P' + (jxgPoints.length + 1),
-              snapToGrid: true,
-              size: 5,
-              color: '#0284c7'
-            });
-            jxgPoints.push(p);
+            const pos = konva.stage.getPointerPosition();
+            const sx = snapVal(pos.x);
+            const sy = snapVal(pos.y);
 
-            if (jxgPoints.length >= 3) {
-              showPraise("🎉 축하합니다! JSXGraph 보드 위에 점 3개 찍기에 성공하셨습니다!");
+            const circle = new Konva.Circle({
+              x: sx,
+              y: sy,
+              radius: 7,
+              fill: '#0284c7',
+              stroke: '#ffffff',
+              strokeWidth: 2,
+              hitStrokeWidth: 20
+            });
+
+            const text = new Konva.Text({
+              x: sx - 8,
+              y: sy - 22,
+              text: 'P' + (konvaPoints.length + 1),
+              fontSize: 14,
+              fontStyle: 'bold',
+              fill: '#0f172a'
+            });
+
+            konva.layer.add(circle);
+            konva.layer.add(text);
+            konva.layer.draw();
+
+            konvaPoints.push({ x: sx, y: sy });
+
+            if (konvaPoints.length >= 3) {
+              showPraise("🎉 축하합니다! Konva.js 캔버스 위에 점 3개 찍기에 성공하셨습니다!");
               setTimeout(() => { loadSubStep('0-2'); }, 1400);
             }
           });
@@ -1298,31 +1300,60 @@
       }
       else if (subStepCode === '0-2') {
         setTool('line');
-        const board = initJSXBoard();
+        const konva = initKonvaStage();
         setMissionUI(
           "<b>[튜토리얼 0-2]</b> 생성된 점 3개를 순서대로 클릭하여 <b>삼각형 선분(✏️)</b>을 완성해 보세요.",
-          "💡 팁: 두 점을 연속으로 클릭하면 JSXGraph 선분이 깔끔하게 이어집니다."
+          "💡 팁: 두 점을 연속으로 클릭하면 Konva.js 60fps 선분이 연결됩니다."
         );
 
-        if (board) {
-          const pA = board.create('point', [-4, -2], { name: 'A', size: 5, color: '#4f46e5', snapToGrid: true });
-          const pB = board.create('point', [4, -2], { name: 'B', size: 5, color: '#4f46e5', snapToGrid: true });
-          const pC = board.create('point', [0, 3], { name: 'C', size: 5, color: '#4f46e5', snapToGrid: true });
+        if (konva) {
+          const pointsData = [
+            { id: 'A', x: konva.centerX - 90, y: konva.centerY + 60 },
+            { id: 'B', x: konva.centerX + 90, y: konva.centerY + 60 },
+            { id: 'C', x: konva.centerX, y: konva.centerY - 90 }
+          ];
 
-          let selectedPoint = null;
+          let selectedNode = null;
           let lineCount = 0;
 
-          [pA, pB, pC].forEach(p => {
-            p.on('down', function() {
+          pointsData.forEach(p => {
+            const circle = new Konva.Circle({
+              x: p.x,
+              y: p.y,
+              radius: 8,
+              fill: '#4f46e5',
+              stroke: '#ffffff',
+              strokeWidth: 2,
+              hitStrokeWidth: 24
+            });
+
+            const text = new Konva.Text({
+              x: p.x - 6,
+              y: p.y - 24,
+              text: p.id,
+              fontSize: 15,
+              fontStyle: 'bold',
+              fill: '#0f172a'
+            });
+
+            circle.on('click tap', function() {
               if (state.subStep !== '0-2') return;
-              if (!selectedPoint) {
-                selectedPoint = p;
-                p.setAttribute({ color: '#dc2626' });
-              } else if (selectedPoint !== p) {
-                board.create('segment', [selectedPoint, p], { strokeColor: '#4f46e5', strokeWidth: 3 });
-                selectedPoint.setAttribute({ color: '#4f46e5' });
-                selectedPoint = null;
+              if (!selectedNode) {
+                selectedNode = { p, circle };
+                circle.fill('#dc2626');
+                konva.layer.draw();
+              } else if (selectedNode.p.id !== p.id) {
+                const line = new Konva.Line({
+                  points: [selectedNode.p.x, selectedNode.p.y, p.x, p.y],
+                  stroke: '#4f46e5',
+                  strokeWidth: 3
+                });
+                konva.layer.add(line);
+                line.moveToBottom();
+                selectedNode.circle.fill('#4f46e5');
+                selectedNode = null;
                 lineCount++;
+                konva.layer.draw();
 
                 if (lineCount >= 3) {
                   showPraise("👏 훌륭합니다! 선분 3개를 연결하여 삼각형을 완성하셨습니다!");
@@ -1330,29 +1361,76 @@
                 }
               }
             });
+
+            konva.layer.add(circle);
+            konva.layer.add(text);
           });
+          konva.layer.draw();
         }
       }
       else if (subStepCode === '0-3') {
         setTool('select');
-        const board = initJSXBoard();
+        const konva = initKonvaStage();
         setMissionUI(
           "<b>[튜토리얼 0-3]</b> <b>[🖐️ 이동]</b> 도구로 꼭짓점을 자유롭게 드래그하여 우측 <b>변의 길이 및 각도 실시간 계산</b>을 관찰해보세요.",
-          "💡 팁: 마우스나 손가락으로 꼭짓점 A, B, C를 끌면 JSXGraph 엔진이 60fps로 실시간 수치를 계산합니다."
+          "💡 팁: Konva.js 초고속 2D 캔버스 엔진이 꼭짓점 이동 시 60fps로 수치를 실시간 정밀 계산합니다."
         );
 
-        if (board) {
-          const pA = board.create('point', [0, 3.5], { name: 'A', size: 5, color: '#ec4899', fixed: false });
-          const pB = board.create('point', [-5, -2], { name: 'B', size: 5, color: '#ec4899', fixed: false });
-          const pC = board.create('point', [5, -2], { name: 'C', size: 5, color: '#ec4899', fixed: false });
+        if (konva) {
+          const pA = { id: 'A', x: konva.centerX, y: konva.centerY - 100 };
+          const pB = { id: 'B', x: konva.centerX - 120, y: konva.centerY + 70 };
+          const pC = { id: 'C', x: konva.centerX + 120, y: konva.centerY + 70 };
 
-          board.create('polygon', [pA, pB, pC], { fillColor: 'rgba(236, 72, 153, 0.08)', strokeColor: '#ec4899', strokeWidth: 2.5 });
+          const poly = new Konva.Line({
+            points: [pA.x, pA.y, pB.x, pB.y, pC.x, pC.y],
+            fill: 'rgba(236, 72, 153, 0.08)',
+            stroke: '#ec4899',
+            strokeWidth: 2.5,
+            closed: true
+          });
+          konva.layer.add(poly);
 
-          const update = () => updateJSXMeasurements(pA, pB, pC);
-          pA.on('drag', () => { update(); state.hasDraggedInTutorial = true; });
-          pB.on('drag', () => { update(); state.hasDraggedInTutorial = true; });
-          pC.on('drag', () => { update(); state.hasDraggedInTutorial = true; });
-          update();
+          const makeDraggablePoint = (pObj, color) => {
+            const circle = new Konva.Circle({
+              x: pObj.x,
+              y: pObj.y,
+              radius: 8,
+              fill: color,
+              stroke: '#ffffff',
+              strokeWidth: 2,
+              draggable: true,
+              hitStrokeWidth: 24
+            });
+
+            const text = new Konva.Text({
+              x: pObj.x - 6,
+              y: pObj.y - 24,
+              text: pObj.id,
+              fontSize: 15,
+              fontStyle: 'bold',
+              fill: '#0f172a'
+            });
+
+            circle.on('dragmove', function() {
+              pObj.x = circle.x();
+              pObj.y = circle.y();
+              text.position({ x: circle.x() - 6, y: circle.y() - 24 });
+              poly.points([pA.x, pA.y, pB.x, pB.y, pC.x, pC.y]);
+              updateKonvaMeasurements(pA, pB, pC);
+              konva.layer.batchDraw();
+            });
+
+            konva.layer.add(circle);
+            konva.layer.add(text);
+            return circle;
+          };
+
+          makeDraggablePoint(pA, '#ec4899');
+          makeDraggablePoint(pB, '#ec4899');
+          makeDraggablePoint(pC, '#ec4899');
+
+          updateKonvaMeasurements(pA, pB, pC);
+          konva.layer.draw();
 
           setTimeout(() => {
             showPraise("🎉 실시간 수치 관찰 완료! 튜토리얼을 완수하였습니다.");
@@ -1362,7 +1440,7 @@
       }
       else if (subStepCode === '0-4') {
         setTool('select');
-        showPraise("🏆 축하합니다! JSXGraph 조작 튜토리얼을 완수하셨습니다! [1. 단원 학습]으로 진입합니다.");
+        showPraise("🏆 축하합니다! Konva.js 조작 튜토리얼을 완수하셨습니다! [1. 단원 학습]으로 진입합니다.");
         setMissionUI(
           "<b>[튜토리얼 완수]</b> 상단 <b>[1. 단원 학습 (RHA & RHS 증명)]</b> 탭을 눌러 본 학습을 시작하세요!",
           "💡 팁: 상단 탭의 [1. 단원 학습] 버튼이 해금되었습니다!"
@@ -1372,18 +1450,18 @@
       }
       else if (subStepCode === '1-1') {
         setTool('select');
-        renderRightTriangleConceptDemo();
+        renderKonvaConceptDemo();
         setMissionUI(
           "<b>[1-1단계: RHA 합동 증명] (교과서 151쪽)</b><br>" +
           "∠C = ∠F = 90°인 두 직각삼각형 ABC와 DEF에서 AB = DE, ∠B = ∠E라고 하자.<br>" +
           "△ABC와 △DEF에서<br>" +
           "∠A = 90° - <input type='text' class='proof-blank-input' placeholder='빈칸 ❶' onkeyup=\"checkInlineBlank(this, 'B')\"> = 90° - <input type='text' class='proof-blank-input' placeholder='빈칸 ❷' onkeyup=\"checkInlineBlank(this, 'E')\"> = ∠D",
-          "💡 힌트: 노란색 빈칸 박스를 클릭하여 각 이름을 입력해보세요! (예: ∠B, ∠E)"
+          "💡 힌트: 노란색 빈칸 박스를 클릭하여 각 이름을 타이핑하세요! (예: ∠B, ∠E)"
         );
       }
       else if (subStepCode === '1-2') {
         setTool('select');
-        renderRightTriangleConceptDemo();
+        renderKonvaConceptDemo();
         setMissionUI(
           "<b>[1-2단계: RHA 합동 완성] (교과서 151쪽)</b><br>" +
           "AB = DE, ∠B = ∠E, ∠A = ∠D이므로 대응하는 한 변과 양 끝각이 같다.<br>" +
@@ -1859,127 +1937,118 @@
     }
 
     /**
-     * ★ 1. 단원 학습: JSXGraph dynamic geometry engine 렌더러
+     * ★ 1. 단원 학습: Konva.js 2D High-Performance Canvas Engine 렌더러
      */
-    function renderRightTriangleConceptDemo() {
+    function renderKonvaConceptDemo() {
       const isRHS = (state.subStep === '1-3' || state.subStep === '1-4' || state.subStep === '1-5');
       const isAttached = state.isRHSAttached || state.subStep === '1-4' || state.subStep === '1-5';
 
-      const container = document.getElementById('jxgbox');
-      const svgEl = document.getElementById('main-svg-plane');
+      const konva = initKonvaStage();
+      if (!konva) return;
 
-      const board = initJSXBoard();
+      const { layer, centerX, centerY } = konva;
 
-      // JSXGraph 미로드 또는 초기화 실패 시 SVG 백업 렌더러로 보장!
-      if (!board) {
-        if (container) container.style.display = 'none';
-        if (svgEl) svgEl.style.display = 'block';
+      // 좌측 직각삼각형 △ABC 좌표
+      const pC = { x: centerX - 40, y: centerY + 60 };
+      const pA = { x: centerX - 40, y: centerY - 90 };
+      const pB = { x: centerX - 190, y: centerY + 60 };
 
-        const demoGroup = document.getElementById('svg-concept-demo-group');
-        if (!demoGroup) return;
+      // △ABC 파란색 채우기 폴리곤
+      const polyABC = new Konva.Line({
+        points: [pA.x, pA.y, pB.x, pB.y, pC.x, pC.y],
+        fill: 'rgba(79, 70, 229, 0.08)',
+        stroke: '#1e293b',
+        strokeWidth: 2.5,
+        closed: true
+      });
+      layer.add(polyABC);
 
-        const pC = { x: -20, y: 65 };
-        const pA = { x: -20, y: -70 };
-        const pB = { x: -125, y: 65 };
+      // C 직각 상자 표시 (square right angle marker)
+      const squareC = new Konva.Line({
+        points: [pC.x, pC.y - 14, pC.x - 14, pC.y - 14, pC.x - 14, pC.y],
+        stroke: '#1e293b',
+        strokeWidth: 2
+      });
+      layer.add(squareC);
 
-        const pF = { x: 80, y: 65 };
-        const pD = { x: 80, y: -70 };
-        const pE = { x: 185, y: 65 };
+      // 빗변 AB 사선 (//) 틱 표시
+      const midAB = { x: (pA.x + pB.x)/2, y: (pA.y + pB.y)/2 };
+      layer.add(new Konva.Line({ points: [midAB.x - 5, midAB.y - 5, midAB.x + 5, midAB.y + 5], stroke: '#1e293b', strokeWidth: 2 }));
+      layer.add(new Konva.Line({ points: [midAB.x, midAB.y - 8, midAB.x + 10, midAB.y + 2], stroke: '#1e293b', strokeWidth: 2 }));
 
-        let html = `
-          <text x="-270" y="-155" font-size="13" font-weight="extrabold" fill="#0f172a">
-            ${isRHS ? '📌 [교과서 241쪽] 빗변의 길이가 같고 다른 한 변의 길이가 같은 두 직각삼각형 (RHS)' : '📌 [교과서 151쪽] 빗변의 길이가 같고 한 예각의 크기가 같은 두 직각삼각형 (RHA)'}
-          </text>
-          <polygon points="${pA.x},${pA.y} ${pB.x},${pB.y} ${pC.x},${pC.y}" fill="rgba(79, 70, 229, 0.08)" stroke="#1e293b" stroke-width="2.5" />
-          <path d="M ${pC.x} ${pC.y - 14} L ${pC.x - 14} ${pC.y - 14} L ${pC.x - 14} ${pC.y}" fill="none" stroke="#1e293b" stroke-width="2" />
-          <line x1="-78" y1="-8" x2="-68" y2="2" stroke="#1e293b" stroke-width="2.2"/>
-          <line x1="-73" y1="-13" x2="-63" y2="-3" stroke="#1e293b" stroke-width="2.2"/>
-          ${isRHS ? `<line x1="-20" y1="-7" x2="-10" y2="-7" stroke="#dc2626" stroke-width="2.2"/><line x1="-20" y1="-2" x2="-10" y2="-2" stroke="#dc2626" stroke-width="2.2"/>` : ''}
-          ${!isRHS ? `<circle cx="-100" cy="58" r="3.5" fill="#1e293b"/>` : ''}
-
-          <circle cx="${pA.x}" cy="${pA.y}" r="4" fill="#1e293b" />
-          <circle cx="${pB.x}" cy="${pB.y}" r="4" fill="#1e293b" />
-          <circle cx="${pC.x}" cy="${pC.y}" r="4" fill="#dc2626" />
-          <text x="${pA.x - 5}" y="${pA.y - 10}" font-size="14" font-weight="bold" fill="#0f172a">A</text>
-          <text x="${pB.x - 18}" y="${pB.y + 16}" font-size="14" font-weight="bold" fill="#0f172a">B</text>
-          <text x="${pC.x - 6}" y="${pC.y + 16}" font-size="14" font-weight="bold" fill="#dc2626">C</text>
-
-          <g id="rhs-flip-group" style="transition: transform 2.4s cubic-bezier(0.34, 1.25, 0.64, 1); ${isAttached ? 'transform: translate(-100px, 0px) scaleX(-1);' : 'transform: translate(0px, 0px) scaleX(1);'} transform-origin: 80px 0px;">
-            <polygon points="${pD.x},${pD.y} ${pE.x},${pE.y} ${pF.x},${pF.y}" fill="rgba(2, 132, 199, 0.08)" stroke="#1e293b" stroke-width="2.5" />
-            <path d="M ${pF.x} ${pF.y - 14} L ${pF.x - 14} ${pF.y - 14} L ${pF.x - 14} ${pF.y}" fill="none" stroke="#1e293b" stroke-width="2" />
-            <line x1="128" y1="-8" x2="138" y2="2" stroke="#1e293b" stroke-width="2.2"/>
-            <line x1="133" y1="-13" x2="143" y2="-3" stroke="#1e293b" stroke-width="2.2"/>
-            ${isRHS ? `<line x1="80" y1="-7" x2="90" y2="-7" stroke="#dc2626" stroke-width="2.2"/><line x1="80" y1="-2" x2="90" y2="-2" stroke="#dc2626" stroke-width="2.2"/>` : ''}
-            ${!isRHS ? `<circle cx="160" cy="58" r="3.5" fill="#1e293b"/>` : ''}
-            <circle cx="${pD.x}" cy="${pD.y}" r="4" fill="#1e293b" />
-            <circle cx="${pE.x}" cy="${pE.y}" r="4" fill="#1e293b" />
-            <circle cx="${pF.x}" cy="${pF.y}" r="4" fill="#dc2626" />
-            <text x="${pD.x - 5}" y="${pD.y - 10}" font-size="14" font-weight="bold" fill="#0f172a">D</text>
-            <text x="${pE.x + 6}" y="${pE.y + 16}" font-size="14" font-weight="bold" fill="#0f172a">E</text>
-            <text x="${pF.x + 6}" y="${pF.y + 16}" font-size="14" font-weight="bold" fill="#dc2626">F</text>
-          </g>
-        `;
-
-        if (isAttached) {
-          html += `
-            <polygon points="${pB.x},${pB.y} ${pA.x},${pA.y} 85,65" fill="none" stroke="#ec4899" stroke-width="2.8" stroke-dasharray="5,4" />
-            <line x1="${pB.x}" y1="${pB.y}" x2="85" y2="65" stroke="#059669" stroke-width="2.2" />
-            <text x="-20" y="-80" font-size="14" font-weight="extrabold" fill="#ec4899">A(D)</text>
-            <text x="-20" y="82" font-size="14" font-weight="extrabold" fill="#dc2626">C(F)</text>
-            <text x="88" y="82" font-size="14" font-weight="extrabold" fill="#0f172a">E</text>
-            <text x="-160" y="-105" font-size="13" font-weight="extrabold" fill="#ec4899">
-              ✨ △DEF가 180도 뒤집혀 맞붙어 ∠ACB + ∠DFE = 180° (한 직선 B-C-E) ➔ AB = AE인 이등변삼각형 △ABE 완성!
-            </text>
-          `;
-        }
-
-        demoGroup.innerHTML = html;
-        return;
+      // 변 AC 등호 (=) 틱 표시 (RHS일 때)
+      if (isRHS) {
+        const midAC = { x: (pA.x + pC.x)/2, y: (pA.y + pC.y)/2 };
+        layer.add(new Konva.Line({ points: [midAC.x - 8, midAC.y - 3, midAC.x + 8, midAC.y - 3], stroke: '#dc2626', strokeWidth: 2 }));
+        layer.add(new Konva.Line({ points: [midAC.x - 8, midAC.y + 3, midAC.x + 8, midAC.y + 3], stroke: '#dc2626', strokeWidth: 2 }));
       }
 
-      // JSXGraph 정상 렌더링 모드
-      const pC = board.create('point', [-2, -2], { name: 'C', color: '#dc2626', size: 4, fixed: true });
-      const pA = board.create('point', [-2, 3], { name: 'A', color: '#1e293b', size: 4, fixed: true });
-      const pB = board.create('point', [-7.5, -2], { name: 'B', color: '#1e293b', size: 4, fixed: true });
+      // 점 A, B, C 라벨
+      const addPointLabel = (p, name, color = '#1e293b') => {
+        layer.add(new Konva.Circle({ x: p.x, y: p.y, radius: 5, fill: color }));
+        layer.add(new Konva.Text({ x: p.x - 6, y: p.y > centerY ? p.y + 8 : p.y - 20, text: name, fontSize: 14, fontStyle: 'bold', fill: color }));
+      };
+      addPointLabel(pA, 'A');
+      addPointLabel(pB, 'B');
+      addPointLabel(pC, 'C', '#dc2626');
 
-      board.create('polygon', [pA, pB, pC], { fillColor: 'rgba(79, 70, 229, 0.08)', strokeColor: '#1e293b', strokeWidth: 2.5 });
-      board.create('nonreflexangle', [pB, pC, pA], { radius: 0.5, type: 'square', strokeColor: '#1e293b' });
+      // 우측 직각삼각형 △DEF 좌표 (isAttached일 때 변 AC에 맞붙음)
+      const pF = isAttached ? { x: pC.x, y: pC.y } : { x: centerX + 70, y: centerY + 60 };
+      const pD = isAttached ? { x: pA.x, y: pA.y } : { x: centerX + 70, y: centerY - 90 };
+      const pE = isAttached ? { x: pC.x + 150, y: pC.y } : { x: centerX + 220, y: centerY + 60 };
 
-      const segAB = board.create('segment', [pA, pB], { visible: false });
-      board.create('ticks', [segAB], { numberOfTicks: 2, scale: 0.5, strokeColor: '#1e293b' });
+      const polyDEF = new Konva.Line({
+        points: [pD.x, pD.y, pE.x, pE.y, pF.x, pF.y],
+        fill: 'rgba(2, 132, 199, 0.08)',
+        stroke: '#1e293b',
+        strokeWidth: 2.5,
+        closed: true
+      });
+      layer.add(polyDEF);
+
+      // F 직각 상자 표시
+      const squareF = new Konva.Line({
+        points: isAttached ? [pF.x, pF.y - 14, pF.x + 14, pF.y - 14, pF.x + 14, pF.y] : [pF.x, pF.y - 14, pF.x - 14, pF.y - 14, pF.x - 14, pF.y],
+        stroke: '#1e293b',
+        strokeWidth: 2
+      });
+      layer.add(squareF);
+
+      // 빗변 DE 사선 (//) 틱 표시
+      const midDE = { x: (pD.x + pE.x)/2, y: (pD.y + pE.y)/2 };
+      layer.add(new Konva.Line({ points: [midDE.x - 5, midDE.y - 5, midDE.x + 5, midDE.y + 5], stroke: '#1e293b', strokeWidth: 2 }));
+      layer.add(new Konva.Line({ points: [midDE.x - 10, midDE.y, midDE.x, midDE.y + 10], stroke: '#1e293b', strokeWidth: 2 }));
 
       if (isRHS) {
-        const segAC = board.create('segment', [pA, pC], { visible: false });
-        board.create('ticks', [segAC], { numberOfTicks: 1, scale: 0.5, strokeColor: '#dc2626' });
+        const midDF = { x: (pD.x + pF.x)/2, y: (pD.y + pF.y)/2 };
+        layer.add(new Konva.Line({ points: [midDF.x - 8, midDF.y - 3, midDF.x + 8, midDF.y - 3], stroke: '#dc2626', strokeWidth: 2 }));
+        layer.add(new Konva.Line({ points: [midDF.x - 8, midDF.y + 3, midDF.x + 8, midDF.y + 3], stroke: '#dc2626', strokeWidth: 2 }));
       }
 
-      let pF_pos = isAttached ? [-2, -2] : [3, -2];
-      let pD_pos = isAttached ? [-2, 3] : [3, 3];
-      let pE_pos = isAttached ? [3.5, -2] : [8.5, -2];
-
-      const pF = board.create('point', pF_pos, { name: isAttached ? 'C(F)' : 'F', color: '#dc2626', size: 4, fixed: true });
-      const pD = board.create('point', pD_pos, { name: isAttached ? 'A(D)' : 'D', color: '#1e293b', size: 4, fixed: true });
-      const pE = board.create('point', pE_pos, { name: 'E', color: '#1e293b', size: 4, fixed: true });
-
-      board.create('polygon', [pD, pE, pF], { fillColor: 'rgba(2, 132, 199, 0.08)', strokeColor: '#1e293b', strokeWidth: 2.5 });
-      board.create('nonreflexangle', [pE, pF, pD], { radius: 0.5, type: 'square', strokeColor: '#1e293b' });
-
-      const segDE = board.create('segment', [pD, pE], { visible: false });
-      board.create('ticks', [segDE], { numberOfTicks: 2, scale: 0.5, strokeColor: '#1e293b' });
-
-      if (isRHS) {
-        const segDF = board.create('segment', [pD, pF], { visible: false });
-        board.create('ticks', [segDF], { numberOfTicks: 1, scale: 0.5, strokeColor: '#dc2626' });
-      }
+      addPointLabel(pD, isAttached ? 'A(D)' : 'D');
+      addPointLabel(pE, 'E');
+      addPointLabel(pF, isAttached ? 'C(F)' : 'F', '#dc2626');
 
       if (isAttached) {
-        board.create('polygon', [pB, pA, pE], { fillColor: 'none', strokeColor: '#ec4899', strokeWidth: 2.5, dash: 2 });
+        layer.add(new Konva.Line({
+          points: [pB.x, pB.y, pA.x, pA.y, pE.x, pE.y],
+          stroke: '#ec4899',
+          strokeWidth: 2.5,
+          dash: [5, 4],
+          closed: true
+        }));
       }
+
+      layer.draw();
 
       document.getElementById('val-ab').innerText = `AB = DE (빗변 H)`;
       document.getElementById('val-bc').innerText = isRHS ? `AC = DF (다른 한 변 S)` : `∠B = ∠E (한 예각 A)`;
       document.getElementById('val-ca').innerText = isAttached ? `세 점 B,C,E (180° 일직선)` : `∠C = ∠F = 90°`;
       document.getElementById('val-ang-a').innerText = isAttached ? `AB = AE (이등변삼각형)` : `직각삼각형`;
+    }
+
+    function renderRightTriangleConceptDemo() {
+      renderKonvaConceptDemo();
     }
 
     function renderRightTriangleConceptDemo(container) {
