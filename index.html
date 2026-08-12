@@ -1159,80 +1159,132 @@
       const pB_default = { id: 'B', x: -100, y: 70, color: '#4f46e5' };
       const pC_default = { id: 'C', x: 100, y: 70, color: '#4f46e5' };
 
-      const setMissionUI = (mText, hText, qTitle, opt1Text, opt2Text) => {
+      const setMissionUI = (mText, hText) => {
         document.getElementById('mission-text').innerHTML = formatMathText(mText);
         if (hText) showHint(hText);
-        document.getElementById('question-title').innerHTML = formatMathText(qTitle);
-        document.getElementById('opt-1').innerHTML = formatMathText(opt1Text);
-        document.getElementById('opt-2').innerHTML = formatMathText(opt2Text);
       };
 
       if (subStepCode === '0-1') {
-        state.points = [];
-        state.lines = [];
         setTool('point');
+        const board = initJSXBoard();
         setMissionUI(
-          "<b>[튜토리얼 0-1]</b> 상단의 <b>[📍 점 찍기]</b> 도구를 눌러 좌표평면 모눈 교차점에 <b>점 3개(A, B, C)</b>를 클릭하여 찍어보세요.",
-          "💡 팁: 상단의 [📍 점 찍기] 버튼을 클릭한 상태에서 좌측 모눈 교차점에 마우스를 3번 누르면 점 A, B, C가 만들어집니다.",
-          "❓ 튜토리얼 0-1: 좌표평면에 점 3개를 만드셨나요?",
-          "① 예, 점 3개(A, B, C)를 모두 찍었습니다.",
-          "② 아직 점을 찍지 않았습니다."
+          "<b>[튜토리얼 0-1]</b> 좌측 JSXGraph 좌표평면 위를 클릭하여 <b>3개 이상의 점(📍)</b>을 자유롭게 배치해보세요.",
+          "💡 팁: [📍 점 찍기] 도구가 선택된 상태에서 보드를 3번 클릭하면 점이 생성됩니다."
         );
+
+        if (board) {
+          board.on('down', function(e) {
+            if (state.subStep !== '0-1') return;
+            const coords = board.getUsrCoordsOfMouse(e);
+            const p = board.create('point', [coords[0], coords[1]], {
+              name: 'P' + (jxgPoints.length + 1),
+              snapToGrid: true,
+              size: 5,
+              color: '#0284c7'
+            });
+            jxgPoints.push(p);
+
+            if (jxgPoints.length >= 3) {
+              showPraise("🎉 축하합니다! JSXGraph 보드 위에 점 3개 찍기에 성공하셨습니다!");
+              setTimeout(() => { loadSubStep('0-2'); }, 1400);
+            }
+          });
+        }
       }
       else if (subStepCode === '0-2') {
         setTool('line');
+        const board = initJSXBoard();
         setMissionUI(
-          "<b>[튜토리얼 0-2]</b> 상단의 <b>[✏️ 선분 연결]</b> 도구로 점 A-B, B-C, C-A를 연결하여 <b>삼각형(선분 3개)</b>을 완성하세요.",
-          "💡 팁: [✏️ 선분 연결] 버튼을 누르고 점 A를 클릭한 후 점 B를 누르면 선분이 그려집니다. 세 변을 모두 이어보세요!",
-          "❓ 튜토리얼 0-2: 선분 3개를 연결하여 삼각형을 완성했나요?",
-          "① 예, 점 A-B, B-C, C-A가 모두 연결되었습니다.",
-          "② 아직 선분을 다 잇지 않았습니다."
+          "<b>[튜토리얼 0-2]</b> 생성된 점 3개를 순서대로 클릭하여 <b>삼각형 선분(✏️)</b>을 완성해 보세요.",
+          "💡 팁: 두 점을 연속으로 클릭하면 JSXGraph 선분이 깔끔하게 이어집니다."
         );
+
+        if (board) {
+          const pA = board.create('point', [-4, -2], { name: 'A', size: 5, color: '#4f46e5', snapToGrid: true });
+          const pB = board.create('point', [4, -2], { name: 'B', size: 5, color: '#4f46e5', snapToGrid: true });
+          const pC = board.create('point', [0, 3], { name: 'C', size: 5, color: '#4f46e5', snapToGrid: true });
+
+          let selectedPoint = null;
+          let lineCount = 0;
+
+          [pA, pB, pC].forEach(p => {
+            p.on('down', function() {
+              if (state.subStep !== '0-2') return;
+              if (!selectedPoint) {
+                selectedPoint = p;
+                p.setAttribute({ color: '#dc2626' });
+              } else if (selectedPoint !== p) {
+                board.create('segment', [selectedPoint, p], { strokeColor: '#4f46e5', strokeWidth: 3 });
+                selectedPoint.setAttribute({ color: '#4f46e5' });
+                selectedPoint = null;
+                lineCount++;
+
+                if (lineCount >= 3) {
+                  showPraise("👏 훌륭합니다! 선분 3개를 연결하여 삼각형을 완성하셨습니다!");
+                  setTimeout(() => { loadSubStep('0-3'); }, 1400);
+                }
+              }
+            });
+          });
+        }
       }
       else if (subStepCode === '0-3') {
         setTool('select');
-        state.hasDraggedInTutorial = false;
+        const board = initJSXBoard();
         setMissionUI(
-          "<b>[튜토리얼 0-3]</b> <b>[🖐️ 이동]</b> 도구로 꼭짓점 A, B, C 중 하나를 드래그하여 이동시키고, 우측 <b>실시간 변의 길이 변화</b>를 확인해보세요.",
-          "💡 팁: [🖐️ 이동] 도구로 점 A를 잡고 마우스로 끌어보세요. 실시간으로 변의 길이가 계산됩니다.",
-          "❓ 튜토리얼 0-3: 꼭짓점을 드래그하여 수치 변화를 관찰하셨나요?",
-          "① 예, 꼭짓점이 이동함에 따라 변의 길이가 실시간으로 바뀝니다.",
-          "② 아직 꼭짓점을 드래그하지 않았습니다."
+          "<b>[튜토리얼 0-3]</b> <b>[🖐️ 이동]</b> 도구로 꼭짓점을 자유롭게 드래그하여 우측 <b>변의 길이 및 각도 실시간 계산</b>을 관찰해보세요.",
+          "💡 팁: 마우스나 손가락으로 꼭짓점 A, B, C를 끌면 JSXGraph 엔진이 60fps로 실시간 수치를 계산합니다."
         );
+
+        if (board) {
+          const pA = board.create('point', [0, 3.5], { name: 'A', size: 5, color: '#ec4899', fixed: false });
+          const pB = board.create('point', [-5, -2], { name: 'B', size: 5, color: '#ec4899', fixed: false });
+          const pC = board.create('point', [5, -2], { name: 'C', size: 5, color: '#ec4899', fixed: false });
+
+          board.create('polygon', [pA, pB, pC], { fillColor: 'rgba(236, 72, 153, 0.08)', strokeColor: '#ec4899', strokeWidth: 2.5 });
+
+          const update = () => updateJSXMeasurements(pA, pB, pC);
+          pA.on('drag', () => { update(); state.hasDraggedInTutorial = true; });
+          pB.on('drag', () => { update(); state.hasDraggedInTutorial = true; });
+          pC.on('drag', () => { update(); state.hasDraggedInTutorial = true; });
+          update();
+
+          setTimeout(() => {
+            showPraise("🎉 실시간 수치 관찰 완료! 튜토리얼을 완수하였습니다.");
+            setTimeout(() => { loadSubStep('0-4'); }, 1600);
+          }, 4000);
+        }
       }
       else if (subStepCode === '0-4') {
         setTool('select');
-        showPraise("🎉 축하합니다! 튜토리얼 조작법을 모두 익혔습니다! 이제 [1. 단원 학습]으로 진입합니다.");
+        showPraise("🏆 축하합니다! JSXGraph 조작 튜토리얼을 완수하셨습니다! [1. 단원 학습]으로 진입합니다.");
         setMissionUI(
-          "<b>[튜토리얼 완수]</b> 아래 버튼을 눌러 <b>[1. 단원 학습: 직각삼각형의 RHA & RHS 증명]</b> 단계로 진입하세요!",
-          null,
-          "❓ [1. 단원 학습]으로 이동하시겠습니까?",
-          "① 예, 직각삼각형의 합동 조건 증명 학습으로 진입합니다.",
-          "② 튜토리얼을 더 연습해보겠습니다."
+          "<b>[튜토리얼 완수]</b> 상단 <b>[1. 단원 학습 (RHA & RHS 증명)]</b> 탭을 눌러 본 학습을 시작하세요!",
+          "💡 팁: 상단 탭의 [1. 단원 학습] 버튼이 해금되었습니다!"
         );
+        unlockNextStep(1);
+        attemptSwitchTab(1, 'concept');
       }
       else if (subStepCode === '1-1') {
         setTool('select');
+        renderRightTriangleConceptDemo();
         setMissionUI(
           "<b>[1-1단계: RHA 합동 증명] (교과서 151쪽)</b><br>" +
           "∠C = ∠F = 90°인 두 직각삼각형 ABC와 DEF에서 AB = DE, ∠B = ∠E라고 하자.<br>" +
           "△ABC와 △DEF에서<br>" +
           "∠A = 90° - <input type='text' class='proof-blank-input' placeholder='빈칸 ❶' onkeyup=\"checkInlineBlank(this, 'B')\"> = 90° - <input type='text' class='proof-blank-input' placeholder='빈칸 ❷' onkeyup=\"checkInlineBlank(this, 'E')\"> = ∠D",
-          "💡 힌트: 빈칸 박스를 클릭하여 각 이름을 입력해보세요! (예: ∠B, ∠E)",
-          "❓ <b>[인라인 빈칸 채우기]</b> 위 증명문 속 노란색 빈칸 박스를 클릭하여 정답을 타이핑하세요!",
-          "", ""
+          "💡 힌트: 노란색 빈칸 박스를 클릭하여 각 이름을 입력해보세요! (예: ∠B, ∠E)"
         );
       }
       else if (subStepCode === '1-2') {
         setTool('select');
+        renderRightTriangleConceptDemo();
         setMissionUI(
           "<b>[1-2단계: RHA 합동 완성] (교과서 151쪽)</b><br>" +
           "AB = DE, ∠B = ∠E, ∠A = ∠D이므로 대응하는 한 변과 양 끝각이 같다.<br>" +
           "따라서 △ABC ≡ △DEF ( <input type='text' class='proof-blank-input' placeholder='합동조건' onkeyup=\"checkInlineBlank(this, 'ASA')\"> 합동 ) 이다.<br>" +
           "<b>[결론]</b> 빗변의 길이가 같고 한 예각의 크기가 같은 두 직각삼각형은 서로 합동이다. (<b>RHA 합동</b>)",
-          "💡 힌트: 한 변과 양 끝각이 같을 때 성립하는 합동 조건입니다. (예: ASA)",
-          "❓ <b>[인라인 빈칸 채우기]</b> 증명문 속 노란색 빈칸 박스를 클릭하여 합동 조건을 입력하세요!",
-          "", ""
+          "💡 힌트: 한 변과 양 끝각이 같을 때 성립하는 합동 조건입니다. (예: ASA)"
         );
       }
       else if (subStepCode === '1-3') {
