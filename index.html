@@ -1137,10 +1137,11 @@
           const lblAB = engine.two.makeText('10 cm', offsetX - 62, offsetY - 70);
           lblAB.fill = '#4f46e5'; lblAB.size = 13; lblAB.weight = 800;
 
-          // 각 B = 60° 표시 (호 arc & 라벨) - Two.js ArcSegment 사용으로 빗금 제거!
-          const arcB = engine.two.makeArcSegment(offsetX - 90, offsetY, 0, 24, -Math.PI / 3, 0);
-          arcB.fill = 'rgba(236, 72, 153, 0.15)'; arcB.stroke = '#ec4899'; arcB.linewidth = 1.5;
-          const lblAngB = engine.two.makeText('60°', offsetX - 56, offsetY - 14);
+          // 각 B = 60° 표시 (호 arc & 라벨) - 삼각형 내부에만 딱 맞도록 부채꼴 각도 범위 보정 (-53.13° ~ 0°)
+          const angleB_rad = Math.atan2(-120, 90); // 약 -0.9273 rad (-53.13°)
+          const arcB = engine.two.makeArcSegment(offsetX - 90, offsetY, 0, 26, angleB_rad, 0);
+          arcB.fill = 'rgba(236, 72, 153, 0.18)'; arcB.stroke = '#ec4899'; arcB.linewidth = 1.5;
+          const lblAngB = engine.two.makeText('60°', offsetX - 54, offsetY - 12);
           lblAngB.fill = '#ec4899'; lblAngB.size = 13; lblAngB.weight = 800;
 
           // 삼각형 DEF
@@ -1164,10 +1165,10 @@
           const lblDE = engine.two.makeText('10 cm', offsetDEF - 62, offsetY - 70);
           lblDE.fill = '#0284c7'; lblDE.size = 13; lblDE.weight = 800;
 
-          // 각 E = 60° 표시 (호 arc & 라벨) - Two.js ArcSegment 사용으로 빗금 제거!
-          const arcE = engine.two.makeArcSegment(offsetDEF - 90, offsetY, 0, 24, -Math.PI / 3, 0);
-          arcE.fill = 'rgba(236, 72, 153, 0.15)'; arcE.stroke = '#ec4899'; arcE.linewidth = 1.5;
-          const lblAngE = engine.two.makeText('60°', offsetDEF - 56, offsetY - 14);
+          // 각 E = 60° 표시 (호 arc & 라벨) - 삼각형 내부에만 딱 맞도록 부채꼴 각도 범위 보정 (-53.13° ~ 0°)
+          const arcE = engine.two.makeArcSegment(offsetDEF - 90, offsetY, 0, 26, angleB_rad, 0);
+          arcE.fill = 'rgba(236, 72, 153, 0.18)'; arcE.stroke = '#ec4899'; arcE.linewidth = 1.5;
+          const lblAngE = engine.two.makeText('60°', offsetDEF - 54, offsetY - 12);
           lblAngE.fill = '#ec4899'; lblAngE.size = 13; lblAngE.weight = 800;
 
           engine.two.update();
@@ -1270,24 +1271,64 @@
         if (animBtn) animBtn.style.display = 'none';
 
         if (engine && engine.two) {
-          const oX = engine.centerX - 100;
+          const oX = engine.centerX - 120;
           const oY = engine.centerY + 80;
 
-          // 각의 이등분선 및 점 P
-          const lO = engine.two.makeLine(oX, oY, oX + 220, oY - 140); lO.stroke = '#64748b'; lO.linewidth = 2;
-          const lA = engine.two.makeLine(oX, oY, oX + 220, oY); lA.stroke = '#64748b'; lA.linewidth = 2;
-          const lB = engine.two.makeLine(oX, oY, oX + 40, oY - 180); lB.stroke = '#64748b'; lB.linewidth = 2;
+          // 반직선 1 (수평축, 0 rad)
+          const lRay1 = engine.two.makeLine(oX, oY, oX + 260, oY); lRay1.stroke = '#64748b'; lRay1.linewidth = 2;
+          
+          // 반직선 2 (상단축, 60 deg = PI/3 rad)
+          const ray2_EndX = oX + 260 * Math.cos(Math.PI / 3);
+          const ray2_EndY = oY - 260 * Math.sin(Math.PI / 3);
+          const lRay2 = engine.two.makeLine(oX, oY, ray2_EndX, ray2_EndY); lRay2.stroke = '#64748b'; lRay2.linewidth = 2;
 
-          // P(oX+140, oY-89)
-          const pX = oX + 140, pY = oY - 89;
-          const pA_X = pX, pA_Y = oY; // 수선 A
-          const pB_X = oX + 80, pB_Y = oY - 120; // 수선 B
+          // 각의 이등분선 OP (30 deg = PI/6 rad)
+          const op_len = 160;
+          const pX = oX + op_len * Math.cos(Math.PI / 6); // oX + 138.56
+          const pY = oY - op_len * Math.sin(Math.PI / 6); // oY - 80
+          const lOP = engine.two.makeLine(oX, oY, oX + 260 * Math.cos(Math.PI / 6), oY - 260 * Math.sin(Math.PI / 6));
+          lOP.stroke = '#64748b'; lOP.linewidth = 2;
 
-          engine.two.makeLine(pX, pY, pA_X, pA_Y).stroke = '#ec4899'; // PA
-          engine.two.makeLine(pX, pY, pB_X, pB_Y).stroke = '#ec4899'; // PB
+          // 점 A (수선발 on 반직선 1): (pX, oY) -> PA ⊥ OA
+          const pA_X = pX, pA_Y = oY;
+          
+          // 점 B (수선발 on 반직선 2): (oX + 138.56 * cos(60°), oY - 138.56 * sin(60°)) = (oX + 69.28, oY - 120)
+          const distOB = op_len * Math.cos(Math.PI / 6); // 138.56
+          const pB_X = oX + distOB * Math.cos(Math.PI / 3); // oX + 69.28
+          const pB_Y = oY - distOB * Math.sin(Math.PI / 3); // oY - 120.00
+          
+          // 수선 PA 및 PB 연결
+          const lPA = engine.two.makeLine(pX, pY, pA_X, pA_Y); lPA.stroke = '#ec4899'; lPA.linewidth = 2;
+          const lPB = engine.two.makeLine(pX, pY, pB_X, pB_Y); lPB.stroke = '#ec4899'; lPB.linewidth = 2;
 
+          // 점 A에서의 직각 표시 ┌
+          const rA = engine.two.makePath(pA_X - 12, pA_Y, pA_X - 12, pA_Y - 12, pA_X, pA_Y - 12, false);
+          rA.noFill(); rA.stroke = '#0284c7'; rA.linewidth = 1.5;
+
+          // 점 B에서의 직각 표시 ┌ (반직선 2 60도 회전 수직)
+          const cos60 = Math.cos(Math.PI / 3), sin60 = Math.sin(Math.PI / 3);
+          const bx1 = pB_X - 12 * cos60, by1 = pB_Y + 12 * sin60;
+          const bx2 = bx1 + 12 * sin60, by2 = by1 + 12 * cos60;
+          const bx3 = pB_X + 12 * sin60, by3 = pB_Y + 12 * cos60;
+          const rB = engine.two.makePath(bx1, by1, bx2, by2, bx3, by3, false);
+          rB.noFill(); rB.stroke = '#0284c7'; rB.linewidth = 1.5;
+
+          // OP가 각 O를 이등분함을 나타내는 기호 (각 O 내부 핑크색 이등분 각도 호 2개 & 동그라미 점•)
+          const arcO1 = engine.two.makeArcSegment(oX, oY, 0, 32, -Math.PI / 6, 0);
+          arcO1.fill = 'rgba(236, 72, 153, 0.15)'; arcO1.stroke = '#ec4899'; arcO1.linewidth = 1.5;
+
+          const arcO2 = engine.two.makeArcSegment(oX, oY, 0, 32, -Math.PI / 3, -Math.PI / 6);
+          arcO2.fill = 'rgba(236, 72, 153, 0.15)'; arcO2.stroke = '#ec4899'; arcO2.linewidth = 1.5;
+
+          // 이등분 표시 점 (•) 2개
+          const d1X = oX + 22 * Math.cos(Math.PI / 12), d1Y = oY - 22 * Math.sin(Math.PI / 12);
+          const d2X = oX + 22 * Math.cos(Math.PI * 3 / 12), d2Y = oY - 22 * Math.sin(Math.PI * 3 / 12);
+          engine.two.makeCircle(d1X, d1Y, 2).fill = '#ec4899';
+          engine.two.makeCircle(d2X, d2Y, 2).fill = '#ec4899';
+
+          // 꼭짓점 원 및 라벨 표시
           engine.two.makeCircle(oX, oY, 6).fill = '#0f172a'; engine.two.makeText('O', oX - 16, oY + 12).size = 15;
-          engine.two.makeCircle(pX, pY, 7).fill = '#ec4899'; engine.two.makeText('P', pX + 14, pY - 10).size = 15;
+          engine.two.makeCircle(pX, pY, 7).fill = '#ec4899'; engine.two.makeText('P', pX + 16, pY - 8).size = 15;
           engine.two.makeCircle(pA_X, pA_Y, 6).fill = '#0284c7'; engine.two.makeText('A', pA_X, pA_Y + 18).size = 15;
           engine.two.makeCircle(pB_X, pB_Y, 6).fill = '#0284c7'; engine.two.makeText('B', pB_X - 16, pB_Y - 10).size = 15;
 
@@ -1615,7 +1656,7 @@
         twoInstance.makeCircle(fPointX, fPointY, 6).fill = '#0284c7';
 
         if (progress < 0.95) {
-          twoInstance.makeText('D', dPointX, dPointY - 158).size = 15;
+          twoInstance.makeText('D', dPointX, dPointY - 16).size = 15;
           twoInstance.makeText('E', ePointX - 18 * flipScale, ePointY + 6).size = 15;
           twoInstance.makeText('F', fPointX + 16, fPointY + 6).size = 15;
 
@@ -1623,8 +1664,8 @@
           const lblDE_anim = twoInstance.makeText('10 cm', dPointX - 60 * flipScale, dPointY + 70);
           lblDE_anim.fill = '#0284c7'; lblDE_anim.size = 13; lblDE_anim.weight = 800;
         } else {
-          // 완벽히 합쳐졌을 때 라벨 (D->A, F->C, E)
-          twoInstance.makeText('D', dPointX + 18, dPointY - 158).size = 15;
+          // 완벽히 합쳐졌을 때 라벨 (D->A 점 A 우측에 깔끔히 수평 표시)
+          twoInstance.makeText('D', dPointX + 18, dPointY - 16).size = 15;
           twoInstance.makeText('E', ePointX + 18, ePointY + 6).size = 15;
           twoInstance.makeText('F', fPointX + 16, fPointY + 6).size = 15;
 
