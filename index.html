@@ -661,7 +661,7 @@
       <div class="login-card-container">
         <h2>👋 수학 탐구 로그인</h2>
         <p>학번과 이름을 입력하고 직각삼각형의 합동 탐구를 시작하세요!</p>
-        <form onsubmit="handleLogin(event)">
+        <form onsubmit="return handleLogin(event)">
           <div class="form-group">
             <label for="student-id">학번 (예: 20101)</label>
             <input type="text" id="student-id" class="form-control" placeholder="학번 5자리를 입력하세요" required>
@@ -670,7 +670,7 @@
             <label for="student-name">이름</label>
             <input type="text" id="student-name" class="form-control" placeholder="이름을 입력하세요" required>
           </div>
-          <button class="btn btn-primary" style="margin-top: 8px;">🚀 탐구 시작하기</button>
+          <button type="button" class="btn btn-primary" style="margin-top: 8px; width:100%;" onclick="handleLogin(event)">🚀 탐구 시작하기</button>
         </form>
         <button class="btn btn-secondary" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; margin-top:8px; width:100%; font-weight:700;" onclick="openTestLoginModal()">🧪 테스트 계정 접속 (전체 해금)</button>
         <button class="btn btn-teacher" onclick="openTeacherLoginModal()">🔒 교사 전용 접속</button>
@@ -961,34 +961,46 @@
       if (e && typeof e.preventDefault === 'function') {
         e.preventDefault();
       }
-      const idInput = document.getElementById('student-id').value.trim();
-      const nameInput = document.getElementById('student-name').value.trim();
+      try {
+        const idEl = document.getElementById('student-id');
+        const nameEl = document.getElementById('student-name');
+        
+        const idInput = idEl ? idEl.value.trim() : '';
+        const nameInput = nameEl ? nameEl.value.trim() : '';
 
-      if (!idInput || !nameInput) {
-        alert("✏️ 학번과 이름을 모두 입력해 주세요!");
-        return false;
+        if (!idInput || !nameInput) {
+          alert("✏️ 학번과 이름을 모두 입력해 주세요!");
+          return false;
+        }
+
+        state.studentId = idInput;
+        state.studentName = nameInput;
+        localStorage.setItem('redbook_student_id', idInput);
+        localStorage.setItem('redbook_student_name', nameInput);
+
+        if (idInput === 'test999' || nameInput.includes('테스트')) {
+          activateTeacherMode();
+        } else {
+          state.isTeacherLoggedIn = false;
+        }
+
+        const userInfo = document.getElementById('current-user-info');
+        if (userInfo) userInfo.innerText = `${idInput} ${nameInput}${state.isTeacherLoggedIn ? ' (🔑 전체해금)' : ''}`;
+        
+        const badge = document.getElementById('user-badge');
+        if (badge) badge.style.display = 'flex';
+
+        switchView('activity');
+        setTimeout(() => {
+          loadSubStep('0-1');
+        }, 100);
+
+        syncStudentStateToLocalStorage();
+      } catch (err) {
+        console.error("Login Error:", err);
+        switchView('activity');
+        setTimeout(() => { loadSubStep('0-1'); }, 100);
       }
-
-      state.studentId = idInput;
-      state.studentName = nameInput;
-      localStorage.setItem('redbook_student_id', idInput);
-      localStorage.setItem('redbook_student_name', nameInput);
-
-      if (idInput === 'test999' || nameInput.includes('테스트')) {
-        activateTeacherMode();
-      } else {
-        state.isTeacherLoggedIn = false;
-      }
-
-      document.getElementById('current-user-info').innerText = `${idInput} ${nameInput}${state.isTeacherLoggedIn ? ' (🔑 전체해금)' : ''}`;
-      document.getElementById('user-badge').style.display = 'flex';
-
-      switchView('activity');
-      setTimeout(() => {
-        loadSubStep('0-1');
-      }, 100);
-
-      syncStudentStateToLocalStorage();
       return false;
     }
 
@@ -1000,16 +1012,23 @@
         localStorage.removeItem('redbook_student_id');
         localStorage.removeItem('redbook_student_name');
 
-        document.getElementById('user-badge').style.display = 'none';
+        const badge = document.getElementById('user-badge');
+        if (badge) badge.style.display = 'none';
         switchView('login');
       }
     }
 
     function switchView(viewName) {
       state.currentView = viewName;
-      document.querySelectorAll('.view-panel').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.view-panel').forEach(el => {
+        el.classList.remove('active');
+        el.style.display = 'none';
+      });
       const targetView = document.getElementById(`view-${viewName}`);
-      if (targetView) targetView.classList.add('active');
+      if (targetView) {
+        targetView.classList.add('active');
+        targetView.style.display = 'flex';
+      }
 
       if (viewName === 'teacher') {
         refreshTeacherDashboard();
