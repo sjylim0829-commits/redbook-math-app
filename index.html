@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>중2 수학 5단계 탐구 웹 앱 (SVG 좌표평면)</title>
+  <title>중2 수학 직각삼각형의 합동 조건 (RHA & RHS 증명 탐구)</title>
   <style>
     :root {
       --primary-color: #4f46e5;
@@ -286,9 +286,19 @@
       background: #fbcfe8;
     }
 
+    .btn-anim {
+      background: linear-gradient(135deg, #0284c7, #4f46e5);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+    }
+
+    .btn-anim:hover {
+      transform: scale(1.02);
+    }
+
     .activity-layout {
       display: grid;
-      grid-template-columns: 1fr 420px;
+      grid-template-columns: 1fr 440px;
       width: 100%;
       height: calc(100vh - 120px);
     }
@@ -354,6 +364,12 @@
       height: 100%;
       cursor: crosshair;
       user-select: none;
+    }
+
+    /* SVG Triangle Flip & Attach Transition Animation */
+    .tri-anim-group {
+      transition: transform 1.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s ease;
+      transform-origin: 0px 0px;
     }
 
     .sidebar-section {
@@ -432,6 +448,7 @@
       font-size: 1.02rem;
       font-weight: 700;
       color: var(--text-primary);
+      line-height: 1.5;
     }
 
     .quiz-options-group {
@@ -450,6 +467,7 @@
       text-align: left;
       cursor: pointer;
       transition: all 0.2s ease;
+      line-height: 1.4;
     }
 
     .quiz-opt-btn:hover {
@@ -550,7 +568,7 @@
   <header class="app-header">
     <div class="logo-group">
       <span class="badge-tag">중2 수학</span>
-      <h1 class="app-title">📐 도형의 성질 5단계 탐구 웹 앱</h1>
+      <h1 class="app-title">📐 직각삼각형의 합동 조건 탐구 웹 앱</h1>
     </div>
     <div class="header-actions">
       <div id="user-badge" class="user-badge-box">
@@ -567,7 +585,7 @@
       <span>0. 튜토리얼</span> <span class="lock-icon">🔓</span>
     </button>
     <button id="tab-btn-1" class="tab-btn locked" onclick="attemptSwitchTab(1, 'concept')">
-      <span>1. 단원 학습</span> <span class="lock-icon">🔒</span>
+      <span>1. 단원 학습 (RHA & RHS 증명)</span> <span class="lock-icon">🔒</span>
     </button>
     <button id="tab-btn-2" class="tab-btn locked" onclick="attemptSwitchTab(2, 'summary')">
       <span>2. 정리하기</span> <span class="lock-icon">🔒</span>
@@ -587,7 +605,7 @@
     <section id="view-login" class="view-panel active">
       <div class="login-card-container">
         <h2>👋 수학 탐구 로그인</h2>
-        <p>학번과 이름을 입력하고 탐구를 시작하세요!</p>
+        <p>학번과 이름을 입력하고 직각삼각형의 합동 탐구를 시작하세요!</p>
         <form onsubmit="handleLogin(event)">
           <div class="form-group">
             <label for="student-id">학번 (예: 20101)</label>
@@ -613,6 +631,9 @@
             <button id="tool-select" class="tool-btn active" onclick="setTool('select')">🖐️ 이동</button>
             <button id="tool-point" class="tool-btn" onclick="setTool('point')">📍 점 찍기</button>
             <button id="tool-line" class="tool-btn" onclick="setTool('line')">✏️ 선분 연결</button>
+            <button id="btn-rhs-anim" class="btn btn-anim" style="display:none; margin-left:10px; padding:6px 14px; font-size:0.85rem;" onclick="triggerRHSAttachAnimation()">
+              🎬 이등변삼각형 붙이기 애니메이션
+            </button>
             <button class="tool-btn" style="margin-left: auto;" onclick="resetSVGPlane()">🔄 초기화</button>
           </div>
 
@@ -633,6 +654,8 @@
               <line x1="-300" y1="0" x2="300" y2="0" stroke="#94a3b8" stroke-width="1.5"/>
               <line x1="0" y1="-200" x2="0" y2="200" stroke="#94a3b8" stroke-width="1.5"/>
               
+              <!-- SVG Custom Groups for Concept Demonstration -->
+              <g id="svg-concept-demo-group"></g>
               <g id="svg-shapes-group"></g>
               <g id="svg-lines-group"></g>
               <g id="svg-points-group"></g>
@@ -648,7 +671,7 @@
           <div class="mission-card">
             <div class="mission-title">💡 활동 지시사항</div>
             <div id="mission-text" class="mission-desc">
-              좌측 SVG 좌표평면에서 점과 선분을 조작하여 미션을 수행하세요.
+              좌측 SVG 좌표평면에서 탐구 주제를 시각적으로 확인하고 미션을 진행하세요.
             </div>
           </div>
 
@@ -663,9 +686,9 @@
           </div>
 
           <div class="measure-panel">
-            <div class="measure-row"><span>선분 AB 길이:</span> <span id="val-ab" class="measure-val">-</span></div>
-            <div class="measure-row"><span>선분 BC 길이:</span> <span id="val-bc" class="measure-val">-</span></div>
-            <div class="measure-row"><span>선분 CA 길이:</span> <span id="val-ca" class="measure-val">-</span></div>
+            <div class="measure-row"><span>선분 AB (빗변):</span> <span id="val-ab" class="measure-val">-</span></div>
+            <div class="measure-row"><span>선분 BC (밑변):</span> <span id="val-bc" class="measure-val">-</span></div>
+            <div class="measure-row"><span>선분 CA (높이):</span> <span id="val-ca" class="measure-val">-</span></div>
             <div class="measure-row"><span>각도 ∠A:</span> <span id="val-ang-a" class="measure-val">-</span></div>
           </div>
 
@@ -745,7 +768,7 @@
 
   <script>
     /**
-     * 📐 중2 수학 5단계 대화형 웹 앱 순수 스크립트 엔진 (No-Google-OAuth)
+     * 📐 중2 수학 직각삼각형의 합동 조건 (RHA & RHS 증명 엔진)
      */
     const state = {
       studentId: '',
@@ -764,7 +787,8 @@
       selectedQuizOpt: null,
       hasDraggedInTutorial: false,
       isTeacherLoggedIn: false,
-      teacherPassword: '661227'
+      teacherPassword: '661227',
+      isRHSAttached: false
     };
 
     const GRID_STEP = 30;
@@ -977,7 +1001,7 @@
       hideHint();
 
       if (stepIndex === 0) loadSubStep('0-1');
-      else if (stepIndex === 1) loadSubStep('1-1');
+      else if (stepIndex === 1) loadSubStep('1-1'); // RHA & RHS 단원 학습 시작
       else if (stepIndex === 2) loadSubStep('2-1');
       else if (stepIndex === 3) loadSubStep('3-1');
     }
@@ -1007,9 +1031,13 @@
       state.subStep = subStepCode;
       state.lineStartPoint = null;
       state.selectedQuizOpt = null;
+      state.isRHSAttached = false;
 
       hidePraise();
       hideHint();
+
+      const btnAnim = document.getElementById('btn-rhs-anim');
+      if (btnAnim) btnAnim.style.display = 'none';
 
       const pA_default = { id: 'A', x: 0, y: -90, color: '#4f46e5' };
       const pB_default = { id: 'B', x: -120, y: 90, color: '#4f46e5' };
@@ -1050,28 +1078,86 @@
       }
       else if (subStepCode === '0-4') {
         setTool('select');
-        showPraise("🎉 축하합니다! 튜토리얼의 모든 기본 조작법(점 찍기, 선분 연결, 드래그 이동)을 완벽히 익혔습니다!");
+        showPraise("🎉 축하합니다! 튜토리얼의 모든 기본 조작법을 익혔습니다! 이제 [1. 단원 학습]으로 진입합니다.");
         document.getElementById('mission-text').innerHTML = 
-          "<b>[튜토리얼 완수]</b> 모든 기본 조작 훈련이 끝났습니다. 아래 버튼을 눌러 <b>[1. 단원 학습]</b> 단계로 진입하세요!";
+          "<b>[튜토리얼 완수]</b> 아래 버튼을 눌러 <b>[1. 단원 학습: 직각삼각형의 RHA & RHS 증명]</b> 단계로 진입하세요!";
         
         document.getElementById('question-title').innerText = "❓ [1. 단원 학습]으로 이동하시겠습니까?";
-        document.getElementById('opt-1').innerText = "① 예, [1. 단원 학습] 단계로 넘어가겠습니다.";
+        document.getElementById('opt-1').innerText = "① 예, 직각삼각형의 합동 조건 증명 학습으로 진입합니다.";
         document.getElementById('opt-2').innerText = "② 튜토리얼을 더 연습해보겠습니다.";
       }
+
+      /* ========================================================
+       *  ★ 1. 단원 학습: 중2 직각삼각형의 합동 조건 (RHA & RHS)
+       * ======================================================== */
       else if (subStepCode === '1-1') {
-        state.points = [pA_default, pB_default, pC_default];
-        state.lines = [
-          { p1: pA_default, p2: pB_default },
-          { p1: pB_default, p2: pC_default },
-          { p1: pC_default, p2: pA_default }
-        ];
+        // RHA Step 1: 내각 관계 탐구
         setTool('select');
         document.getElementById('mission-text').innerHTML = 
-          "<b>[1단계 단원 학습]</b> 삼각형의 세 변의 길이 성질을 탐구합니다. 꼭짓점을 자유롭게 이동시켜 <b>세 변의 길이 조건</b>을 관찰하세요.";
-        document.getElementById('question-title').innerText = "❓ 질문 1: 삼각형이 성립하기 위해 가장 긴 변의 길이는 나머지 두 변의 합보다 어떠해야 하나요?";
-        document.getElementById('opt-1').innerText = "① 나머지 두 변의 길이를 합한 것보다 항상 작아야 한다.";
-        document.getElementById('opt-2').innerText = "② 나머지 두 변의 합보다 커도 삼각형이 만들어진다.";
+          "<b>[1-1단계: RHA 합동 증명]</b> 두 직각삼각형 $\\triangle ABC$와 $\\triangle DEF$에서 빗변의 길이($AB=DE$)와 한 예각의 크기($\\angle B=\\angle E$)가 같습니다.<br>삼각형의 세 내각의 합은 $180^\\circ$입니다.";
+        showHint("💡 힌트: $\\angle C = \\angle F = 90^\\circ$이고 $\\angle B = \\angle E$이므로, $\\angle A = 180^\\circ - (90^\\circ + \\angle B) = 180^\\circ - (90^\\circ + \\angle E) = \\angle D$가 됩니다.");
+        
+        document.getElementById('question-title').innerText = "❓ [질문 1] 나머지 한 예각 $\\angle A$와 $\\angle D$의 크기는 서로 어떠한가요?";
+        document.getElementById('opt-1').innerText = "① $\\angle A = \\angle D$로 두 각의 크기는 항상 서로 같다.";
+        document.getElementById('opt-2').innerText = "② $\\angle A$와 $\\angle D$의 크기는 서로 다르다.";
       }
+      else if (subStepCode === '1-2') {
+        // RHA Step 2: ASA 결론
+        setTool('select');
+        document.getElementById('mission-text').innerHTML = 
+          "<b>[1-2단계: RHA 합동 완성]</b> 빗변 $AB=DE$이고 그 양 끝각($\\angle B=\\angle E$, $\\angle A=\\angle D$)이 같아졌으므로 $ASA$ 합동에 의해 두 직각삼각형은 합동이 됩니다.";
+        showHint("💡 힌트: Right angle(직각 R), Hypotenuse(빗변 H), Angle(예각 A)에서 이름을 따온 합동 조건입니다.");
+
+        document.getElementById('question-title').innerText = "❓ [질문 2] 빗변의 길이(H)와 한 예각의 크기(A)가 같은 직각삼각형의 합동 조건 명칭은?";
+        document.getElementById('opt-1').innerText = "① RHA 합동";
+        document.getElementById('opt-2').innerText = "② RHS 합동";
+      }
+      else if (subStepCode === '1-3') {
+        // RHS Step 1: 이등변삼각형 결합 시각화 애니메이션!
+        setTool('select');
+        if (btnAnim) btnAnim.style.display = 'inline-flex';
+
+        document.getElementById('mission-text').innerHTML = 
+          "<b>[1-3단계: RHS 합동 - 이등변삼각형 붙이기 탐구]</b> 두 직각삼각형에서 빗변 $AB=DF$이고 길이가 같은 높이 $AC=DE$를 붙여봅니다.<br>상단의 <b>[🎬 이등변삼각형 붙이기 애니메이션]</b> 버튼을 누르거나 아래 선택지를 골라보세요!";
+        showHint("💡 힌트: 오른쪽 직각삼각형을 뒤집어서 길이가 같은 변 $AC$와 $DE$를 딱 붙이면, 두 빗변의 길이($AB=DF$)가 같은 커다란 삼각형이 만들어집니다!");
+
+        document.getElementById('question-title').innerText = "❓ [질문 3] 두 직각삼각형을 뒤집어 붙여 만든 커다란 삼각형은 어떤 삼각형인가요?";
+        document.getElementById('opt-1').innerText = "① 두 빗변의 길이가 같으므로 '이등변삼각형'이 된다.";
+        document.getElementById('opt-2').innerText = "② 일반 정삼각형이 된다.";
+      }
+      else if (subStepCode === '1-4') {
+        // RHS Step 2: 이등변삼각형 밑각 성질
+        setTool('select');
+        if (btnAnim) btnAnim.style.display = 'inline-flex';
+        state.isRHSAttached = true;
+
+        document.getElementById('mission-text').innerHTML = 
+          "<b>[1-4단계: RHS 합동 - 이등변삼각형 밑각 성질]</b> 결합되어 만들어진 이등변삼각형의 두 밑각의 크기는 서로 같습니다.";
+        showHint("💡 힌트: 이등변삼각형에서 두 변의 길이가 같으면 그에 대응하는 두 밑각의 크기($\\angle B = \\angle F$)도 같습니다!");
+
+        document.getElementById('question-title').innerText = "❓ [질문 4] 이등변삼각형의 두 밑각의 성질에 의해 $\\angle B$의 크기는 $\\angle F$와 어떠한가요?";
+        document.getElementById('opt-1').innerText = "① $\\angle B = \\angle F$로 크기가 서로 같다.";
+        document.getElementById('opt-2').innerText = "② $\\angle B$가 $\\angle F$보다 항상 크다.";
+      }
+      else if (subStepCode === '1-5') {
+        // RHS Step 3: RHS 합동 완성
+        setTool('select');
+        if (btnAnim) btnAnim.style.display = 'inline-flex';
+        state.isRHSAttached = true;
+
+        showPraise("🏆 축하합니다! 빗변(H)과 한 변(S)이 같을 때 이등변삼각형을 이용한 RHS 증명 과정을 완벽히 이해하셨습니다!");
+        document.getElementById('mission-text').innerHTML = 
+          "<b>[1-5단계: RHS 합동 완수]</b> 빗변(H)과 한 예각(A)이 같아졌으므로 방금 배운 RHA 합동에 의해 두 직각삼각형은 완전히 합동이 됩니다.";
+        showHint("💡 힌트: Right angle(직각 R), Hypotenuse(빗변 H), Side(변 S)에서 이름을 딴 RHS 합동 조건입니다.");
+
+        document.getElementById('question-title').innerText = "❓ [질문 5] 빗변의 길이(H)와 다른 한 변의 길이(S)가 같은 직각삼각형의 합동 조건은?";
+        document.getElementById('opt-1').innerText = "① RHS 합동";
+        document.getElementById('opt-2').innerText = "② RHA 합동";
+      }
+
+      /* ========================================================
+       *  2. 정리하기 및 3. 히든 미션
+       * ======================================================== */
       else if (subStepCode === '2-1') {
         state.points = [pA_default, pB_default, pC_default];
         state.lines = [
@@ -1081,10 +1167,10 @@
         ];
         setTool('select');
         document.getElementById('mission-text').innerHTML = 
-          "<b>[2단계 정리하기]</b> 학습한 삼각형의 핵심 성질 퀴즈를 풀고 <b>[3. 히든 미션]</b> 탭을 해금하세요!";
-        document.getElementById('question-title').innerText = "❓ 질문 2: 이등변삼각형에서 두 변의 길이가 같을 때 두 밑각의 크기는 어떠한가요?";
-        document.getElementById('opt-1').innerText = "① 두 밑각의 크기는 항상 서로 같다.";
-        document.getElementById('opt-2').innerText = "② 두 밑각의 크기는 서로 달라진다.";
+          "<b>[2단계 정리하기]</b> 학습한 직각삼각형의 RHA & RHS 합동 조건을 정리하고 퀴즈를 맞혀 <b>[3. 히든 미션]</b> 탭을 해금하세요!";
+        document.getElementById('question-title').innerText = "❓ 종합 질문: 직각삼각형의 빗변의 길이와 한 예각의 크기가 같을 때의 합동 조건은?";
+        document.getElementById('opt-1').innerText = "① RHA 합동";
+        document.getElementById('opt-2').innerText = "② RHS 합동";
       }
       else if (subStepCode === '3-1') {
         state.points = [pA_default, pB_default, pC_default];
@@ -1095,13 +1181,24 @@
         ];
         setTool('select');
         document.getElementById('mission-text').innerHTML = 
-          "<b>[3단계 히든 미션]</b> 둔각삼각형을 만드는 최종 탐구 미션을 완수하세요!";
-        document.getElementById('question-title').innerText = "❓ 히든 질문: 한 내각의 크기가 90°보다 큰 삼각형은 무엇인가요?";
-        document.getElementById('opt-1').innerText = "① 둔각삼각형";
-        document.getElementById('opt-2').innerText = "② 예각삼각형";
+          "<b>[3단계 히든 미션]</b> 둔각삼각형 및 직각삼각형 응용 최종 미션을 완수하세요!";
+        document.getElementById('question-title').innerText = "❓ 히든 질문: 직각삼각형에서 빗변과 다른 한 변의 길이가 같으면 어떤 합동인가요?";
+        document.getElementById('opt-1').innerText = "① RHS 합동";
+        document.getElementById('opt-2').innerText = "② SSS 합동";
       }
 
       renderSVGPlane();
+    }
+
+    function triggerRHSAttachAnimation() {
+      state.isRHSAttached = !state.isRHSAttached;
+      renderSVGPlane();
+
+      if (state.isRHSAttached) {
+        showPraise("🎬 [애니메이션 실행] 오른쪽 직각삼각형이 뒤집혀 붙으면서 두 빗변의 길이가 같은 이등변삼각형이 완성되었습니다!");
+      } else {
+        hidePraise();
+      }
     }
 
     function setTool(toolName) {
@@ -1173,12 +1270,57 @@
         }
         else if (state.subStep === '0-4') {
           if (state.selectedQuizOpt === 1) {
-            alert("🎉 튜토리얼 완수! [1. 단원 학습] 단계가 성공적으로 해금되었습니다!");
+            alert("🎉 튜토리얼 완수! [1. 단원 학습: 직각삼각형의 합동 조건] 단계가 성공적으로 해금되었습니다!");
             unlockNextStep(1);
             attemptSwitchTab(1, 'concept');
           }
         }
       } 
+      else if (state.currentTabIndex === 1) {
+        // 단원 학습 1-1 ~ 1-5 정답 검증
+        if (state.subStep === '1-1') {
+          if (state.selectedQuizOpt === 1) {
+            showPraise("🎉 정답입니다! 세 내각의 합은 180°이므로 나머지 한 예각 ∠A = ∠D로 같습니다!");
+            setTimeout(() => { loadSubStep('1-2'); }, 1400);
+          } else {
+            showHint("💡 힌트: 180° - (90° + 예각)을 생각하면 나머지 한 예각의 크기는 무조건 같습니다!");
+          }
+        }
+        else if (state.subStep === '1-2') {
+          if (state.selectedQuizOpt === 1) {
+            showPraise("👏 정답입니다! 빗변(H)과 한 예각(A)이 같은 이 합동을 'RHA 합동'이라고 부릅니다!");
+            setTimeout(() => { loadSubStep('1-3'); }, 1400);
+          } else {
+            showHint("💡 힌트: 직각(R), 빗변(H), Angle(예각 A)입니다!");
+          }
+        }
+        else if (state.subStep === '1-3') {
+          if (state.selectedQuizOpt === 1) {
+            showPraise("🎉 정답입니다! 높이가 같은 변을 뒤집어 붙이면 두 빗변의 길이가 같은 '이등변삼각형'이 만들어집니다!");
+            triggerRHSAttachAnimation();
+            setTimeout(() => { loadSubStep('1-4'); }, 1600);
+          } else {
+            showHint("💡 힌트: 두 빗변의 길이가 서로 같으므로 두 변의 길이가 같은 이등변삼각형이 됩니다!");
+          }
+        }
+        else if (state.subStep === '1-4') {
+          if (state.selectedQuizOpt === 1) {
+            showPraise("✨ 정답입니다! 이등변삼각형의 성질에 의해 두 밑각 ∠B = ∠F의 크기가 같아집니다!");
+            setTimeout(() => { loadSubStep('1-5'); }, 1400);
+          } else {
+            showHint("💡 힌트: 이등변삼각형의 두 밑각의 크기는 항상 같습니다!");
+          }
+        }
+        else if (state.subStep === '1-5') {
+          if (state.selectedQuizOpt === 1) {
+            showPraise("🏆 축하합니다! 빗변(H)과 한 변(S)이 같은 직각삼각형의 'RHS 합동' 증명을 완전 정복하셨습니다!");
+            unlockNextStep(2);
+            setTimeout(() => { attemptSwitchTab(2, 'summary'); }, 1800);
+          } else {
+            showHint("💡 힌트: 직각(R), 빗변(H), Side(변 S)입니다!");
+          }
+        }
+      }
       else {
         if (state.selectedQuizOpt === 1) {
           showPraise("🎉 정답입니다! 미션을 성공적으로 완수하였습니다.");
@@ -1201,6 +1343,7 @@
     }
 
     function resetSVGPlane() {
+      state.isRHSAttached = false;
       if (state.subStep === '0-1') {
         state.points = [];
         state.lines = [];
@@ -1221,6 +1364,8 @@
     }
 
     function handleSVGMouseDown(e) {
+      if (state.currentTabIndex === 1) return; // 개념 레슨 시에는 데모 고정
+
       const coords = getSVGCoords(e);
       const mx = coords.x;
       const my = coords.y;
@@ -1309,15 +1454,23 @@
     }
 
     function renderSVGPlane() {
+      const demoGroup = document.getElementById('svg-concept-demo-group');
       const linesGroup = document.getElementById('svg-lines-group');
       const pointsGroup = document.getElementById('svg-points-group');
       const labelsGroup = document.getElementById('svg-labels-group');
 
-      if (!linesGroup || !pointsGroup || !labelsGroup) return;
+      if (!demoGroup || !linesGroup || !pointsGroup || !labelsGroup) return;
 
+      demoGroup.innerHTML = '';
       linesGroup.innerHTML = '';
       pointsGroup.innerHTML = '';
       labelsGroup.innerHTML = '';
+
+      // 만약 1. 단원 학습 단계(RHA & RHS 증명 시각화)일 경우 전용 시각화 렌더링
+      if (state.currentTabIndex === 1) {
+        renderRightTriangleConceptDemo(demoGroup);
+        return;
+      }
 
       state.lines.forEach(l => {
         const p1 = typeof l.p1 === 'object' ? l.p1 : state.points.find(p => p.id === l.p1);
@@ -1355,6 +1508,79 @@
       });
 
       updateMeasurePanel();
+    }
+
+    /**
+     * ★ 1. 단원 학습: 직각삼각형 RHA & RHS 시각화 렌더러
+     */
+    function renderRightTriangleConceptDemo(container) {
+      const isRHS = (state.subStep === '1-3' || state.subStep === '1-4' || state.subStep === '1-5');
+
+      // 직각삼각형 1: △ABC (좌측 고정)
+      // C(0, 90), A(0, -90), B(-150, 90) -> 직각 ∠C = 90°
+      const pC = { x: 0, y: 90 };
+      const pA = { x: 0, y: -90 };
+      const pB = { x: -150, y: 90 };
+
+      // 직각삼각형 2: △DEF (우측 배치 ➔ 이등변삼각형 붙이기 애니메이션)
+      // 분리 상태: F(80, 90), D(80, -90), E(230, 90)
+      // 결합 상태(isRHSAttached): F'(0, 90), D'(0, -90), E'(150, 90) ➔ 변 AC/DF가 붙어서 거대한 이등변삼각형 △B-A-E 생성!
+      const isAttached = state.isRHSAttached;
+
+      const pF = isAttached ? { x: 0, y: 90 } : { x: 80, y: 90 };
+      const pD = isAttached ? { x: 0, y: -90 } : { x: 80, y: -90 };
+      const pE = isAttached ? { x: 150, y: 90 } : { x: 230, y: 90 };
+
+      let html = `
+        <!-- △ABC (좌측 직각삼각형) -->
+        <polygon points="${pA.x},${pA.y} ${pB.x},${pB.y} ${pC.x},${pC.y}" fill="rgba(79, 70, 229, 0.12)" stroke="#4f46e5" stroke-width="3" />
+        <!-- 직각 표시 C -->
+        <path d="M 0 75 L -15 75 L -15 90" fill="none" stroke="#dc2626" stroke-width="2" />
+        
+        <circle cx="${pA.x}" cy="${pA.y}" r="6" fill="#4f46e5" />
+        <circle cx="${pB.x}" cy="${pB.y}" r="6" fill="#4f46e5" />
+        <circle cx="${pC.x}" cy="${pC.y}" r="6" fill="#dc2626" />
+        
+        <text x="${pA.x - 5}" y="${pA.y - 14}" font-size="15" font-weight="bold" fill="#0f172a">A</text>
+        <text x="${pB.x - 18}" y="${pB.y + 18}" font-size="15" font-weight="bold" fill="#0f172a">B</text>
+        <text x="${pC.x - 14}" y="${pC.y + 18}" font-size="15" font-weight="bold" fill="#dc2626">C(90°)</text>
+
+        <!-- 빗변 AB 표시 -->
+        <text x="-95" y="-10" font-size="13" font-weight="bold" fill="#0284c7">빗변 H (10cm)</text>
+
+        <!-- △DEF (우측 직각삼각형 - 뒤집혀 붙는 애니메이션 그룹) -->
+        <g class="tri-anim-group" style="${isAttached ? 'transform: translate(0px, 0px);' : ''}">
+          <polygon points="${pD.x},${pD.y} ${pE.x},${pE.y} ${pF.x},${pF.y}" fill="rgba(2, 132, 199, 0.15)" stroke="#0284c7" stroke-width="3" stroke-dasharray="${isAttached ? 'none' : 'none'}" />
+          <!-- 직각 표시 F -->
+          <path d="M ${pF.x} 75 L ${pF.x + (isAttached ? 15 : -15)} 75 L ${pF.x + (isAttached ? 15 : -15)} 90" fill="none" stroke="#dc2626" stroke-width="2" />
+
+          <circle cx="${pD.x}" cy="${pD.y}" r="6" fill="#0284c7" />
+          <circle cx="${pE.x}" cy="${pE.y}" r="6" fill="#0284c7" />
+          <circle cx="${pF.x}" cy="${pF.y}" r="6" fill="#dc2626" />
+
+          <text x="${pD.x + (isAttached ? 6 : -5)}" y="${pD.y - 14}" font-size="15" font-weight="bold" fill="#0f172a">${isAttached ? 'D(A)' : 'D'}</text>
+          <text x="${pE.x + 8}" y="${pE.y + 18}" font-size="15" font-weight="bold" fill="#0f172a">${isAttached ? 'F(E)' : 'E'}</text>
+          <text x="${pF.x + (isAttached ? 5 : -25)}" y="${pF.y + 18}" font-size="15" font-weight="bold" fill="#dc2626">${isAttached ? 'F(C)' : 'F(90°)'}</text>
+
+          <text x="${isAttached ? 65 : 145}" y="-10" font-size="13" font-weight="bold" fill="#0284c7">빗변 H (10cm)</text>
+        </g>
+      `;
+
+      if (isAttached) {
+        // 붙어 완성된 커다란 이등변삼각형 외곽선 하이라이트!
+        html += `
+          <polygon points="${pB.x},${pB.y} ${pA.x},${pA.y} ${pE.x},${pE.y}" fill="none" stroke="#ec4899" stroke-width="4" stroke-dasharray="6,4" />
+          <text x="-15" y="-120" font-size="16" font-weight="extrabold" fill="#ec4899">✨ 두 변(빗변)의 길이가 같은 커다란 이등변삼각형 완결!</text>
+        `;
+      }
+
+      container.innerHTML = html;
+
+      // 우측 측정 판넬 업데이트
+      document.getElementById('val-ab').innerText = `10.0 cm (빗변 H)`;
+      document.getElementById('val-bc').innerText = `8.0 cm`;
+      document.getElementById('val-ca').innerText = `6.0 cm (공통변 S)`;
+      document.getElementById('val-ang-a').innerText = `53.1°`;
     }
 
     function updateMeasurePanel() {
@@ -1428,7 +1654,7 @@
             </div>
             <div style="font-size:0.82rem; color:var(--text-secondary);">
               최종 활동: ${st.updatedAt || '-'}<br>
-              점 개수: ${st.svgPoints ? st.svgPoints.length : 0}개
+              진행 소단계: ${st.subStep || '-'}
             </div>
           </div>
         `;
