@@ -783,11 +783,11 @@
     <div class="modal-body">
       <h3 style="font-size: 1.2rem; color: var(--text-primary); margin-bottom: 6px;">🔒 교사 계정 인증</h3>
       <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 16px;">
-        교사 비밀번호를 입력하여 대시보드 및 모든 단계 해제 권한을 획득하세요.
+        교사 전용 비밀번호 (<b>661227</b>)를 입력하여 모든 단계 락 해제 및 대시보드 권한을 획득하세요.
       </p>
       <div class="form-group">
         <label for="teacher-pw">비밀번호</label>
-        <input type="password" id="teacher-pw" class="form-control" placeholder="비밀번호 입력" required>
+        <input type="password" id="teacher-pw" class="form-control" placeholder="비밀번호 661227 입력" required onkeyup="if(event.key==='Enter') handleTeacherLogin()">
       </div>
       <div style="display: flex; gap: 8px; margin-top: 16px;">
         <button class="btn btn-secondary" style="flex:1;" onclick="closeTeacherLoginModal()">취소</button>
@@ -1058,10 +1058,11 @@
     }
 
     function openTeacherLoginModal() {
-      if (state.isTeacherLoggedIn) {
-        switchView('teacher');
-      } else {
-        document.getElementById('modal-teacher-login').classList.add('active');
+      document.getElementById('modal-teacher-login').classList.add('active');
+      const pwInput = document.getElementById('teacher-pw');
+      if (pwInput) {
+        pwInput.value = '';
+        pwInput.focus();
       }
     }
 
@@ -1070,8 +1071,10 @@
     }
 
     function handleTeacherLogin() {
-      const pw = document.getElementById('teacher-pw').value;
-      if (pw === state.teacherPassword) {
+      const pwEl = document.getElementById('teacher-pw');
+      const pw = pwEl ? pwEl.value.trim() : '';
+
+      if (pw === '661227') {
         activateTeacherMode();
         closeTeacherLoginModal();
         
@@ -1082,46 +1085,14 @@
           localStorage.setItem('redbook_student_name', '교사 관리자');
         }
 
-        document.getElementById('current-user-info').innerText = `${state.studentId} ${state.studentName} (🔑 교사 모드)`;
+        document.getElementById('current-user-info').innerText = `${state.studentId} ${state.studentName} (🔑 교사 전체해금)`;
         document.getElementById('user-badge').style.display = 'flex';
 
         switchView('activity');
-        loadSubStep('0-1');
-        alert("🔓 [교사 인증 성공] 모든 단계(0.튜토리얼 ~ 3.히든미션)의 락이 완전히 해제되었습니다!\n상단 탭을 자유롭게 클릭하여 탐구할 수 있습니다.");
+        setTimeout(() => { loadSubStep('0-1'); }, 80);
+        alert("🔓 [교사 인증 성공] 비밀번호 661227 확인 완료!\n모든 단계(0.튜토리얼 ~ 3.히든미션)의 락이 해제되었습니다.");
       } else {
-        alert("❌ 비밀번호가 일치하지 않습니다.");
-      }
-    }
-
-    function openTestLoginModal() {
-      document.getElementById('modal-test-login').classList.add('active');
-    }
-
-    function closeTestLoginModal() {
-      document.getElementById('modal-test-login').classList.remove('active');
-    }
-
-    function handleTestLogin() {
-      const pw = document.getElementById('test-pw').value;
-      if (pw === '661227') {
-        state.studentId = 'test999';
-        state.studentName = '테스트 학생';
-        localStorage.setItem('redbook_student_id', 'test999');
-        localStorage.setItem('redbook_student_name', '테스트 학생');
-
-        activateTeacherMode();
-
-        document.getElementById('current-user-info').innerText = `test999 테스트 학생 (🧪 테스트 모드 - 전체 해금)`;
-        document.getElementById('user-badge').style.display = 'flex';
-
-        closeTestLoginModal();
-        switchView('activity');
-        setTimeout(() => {
-          loadSubStep('0-1');
-        }, 100);
-        alert("🧪 [테스트 계정 접속 완료] 모든 단계(0.튜토리얼 ~ 3.히든미션)가 100% 해금되었습니다!\n상단 탭을 자유롭게 이동하며 조작해 보세요.");
-      } else {
-        alert("❌ 비밀번호가 일치하지 않습니다.");
+        alert("❌ 비밀번호가 일치하지 않습니다. (비밀번호: 661227)");
       }
     }
 
@@ -1130,25 +1101,55 @@
       if (hiddenTab) {
         hiddenTab.style.display = 'inline-flex';
         hiddenTab.classList.remove('locked');
-        hiddenTab.querySelector('.lock-icon').innerText = '🔓';
+        const lockIcon = hiddenTab.querySelector('.lock-icon');
+        if (lockIcon) lockIcon.innerText = '🔓';
       }
     }
 
-    function activateTeacherMode() {
-      state.isTeacherLoggedIn = true;
-      state.maxUnlockedStep = 3;
+    function unlockNextStep(newStepIndex) {
+      if (newStepIndex > state.maxUnlockedStep) {
+        state.maxUnlockedStep = newStepIndex;
+      }
 
-      revealHiddenMissionTab();
-
-      for (let i = 0; i <= 3; i++) {
+      for (let i = 0; i <= state.maxUnlockedStep; i++) {
         const tabBtn = document.getElementById(`tab-btn-${i}`);
         if (tabBtn) {
           tabBtn.classList.remove('locked');
-          tabBtn.querySelector('.lock-icon').innerText = '🔓';
+          const lockIcon = tabBtn.querySelector('.lock-icon');
+          if (lockIcon) lockIcon.innerText = '🔓';
         }
       }
+
+      if (state.maxUnlockedStep >= 3) {
+        revealHiddenMissionTab();
+      }
+
+      const percent = Math.min(100, Math.round(((state.maxUnlockedStep + 1) / 4) * 100));
       const fill = document.getElementById('progress-bar-fill');
-      if (fill) fill.style.width = '100%';
+      if (fill) fill.style.width = `${percent}%`;
+    }
+
+    function attemptSwitchTab(stepIndex, tabName) {
+      if (!state.isTeacherLoggedIn && stepIndex > state.maxUnlockedStep) {
+        alert(`🔒 이전 학습(튜토리얼)을 완수해야 단원 학습으로 진행할 수 있습니다!`);
+        return;
+      }
+
+      state.currentTabIndex = stepIndex;
+      state.currentTab = tabName;
+      
+      document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
+        btn.classList.remove('active');
+        if (idx === stepIndex) btn.classList.add('active');
+      });
+
+      hidePraise();
+      hideHint();
+
+      if (stepIndex === 0) loadSubStep('0-1');
+      else if (stepIndex === 1) loadSubStep('1-1');
+      else if (stepIndex === 2) loadSubStep('2-1');
+      else if (stepIndex === 3) loadSubStep('3-1');
     }
 
     let konvaStage = null;
