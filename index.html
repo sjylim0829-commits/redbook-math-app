@@ -1502,23 +1502,24 @@
       engine.two.update();
     }
 
-    // RHS 180도 뒤집어 맞붙이기 애니메이션 🎬
+    // RHS 180도 뒤집어 맞붙이기 애니메이션 🎬 (정확한 D, E, F 좌표 및 회전 붙이기)
     function triggerRHSAttachAnimation() {
       if (!twoInstance) return;
       const width = twoInstance.width, height = twoInstance.height;
       const centerX = width / 2, centerY = height / 2;
 
       let progress = 0;
-      const oX = centerX - 100;
-      const oY = centerY + 50;
+      const oX = centerX - 140; // ABC C의 X좌표
+      const oY = centerY + 50;  // C/F/E 하단 Y좌표
+      const dX = centerX + 140; // DEF 초기 F의 X좌표
 
       const animate = () => {
-        progress += 0.03;
+        progress += 0.025;
         if (progress > 1) progress = 1;
 
         twoInstance.clear();
 
-        // 배경 격자
+        // 1. 배경 격자 및 축선
         for (let x = 30; x <= width; x += 30) {
           for (let y = 30; y <= height; y += 30) {
             const dot = twoInstance.makeCircle(x, y, 1.5);
@@ -1528,37 +1529,68 @@
         twoInstance.makeLine(0, centerY, width, centerY).stroke = '#94a3b8';
         twoInstance.makeLine(centerX, 0, centerX, height).stroke = '#94a3b8';
 
-        // ABC (고정)
+        // 2. 좌측 직각삼각형 ABC (고정)
         const triA = twoInstance.makePath(oX, oY - 140, oX - 100, oY, oX, oY, false);
         triA.fill = 'rgba(79, 70, 229, 0.12)'; triA.stroke = '#4f46e5'; triA.linewidth = 2.5;
 
-        twoInstance.makeCircle(oX, oY - 140, 6).fill = '#4f46e5'; twoInstance.makeText('A', oX - 14, oY - 158).size = 16;
-        twoInstance.makeCircle(oX - 100, oY, 6).fill = '#4f46e5'; twoInstance.makeText('B', oX - 118, oY + 12).size = 16;
-        twoInstance.makeCircle(oX, oY, 6).fill = '#4f46e5'; twoInstance.makeText('C(F)', oX, oY + 18).size = 15;
+        twoInstance.makeCircle(oX, oY - 140, 6).fill = '#4f46e5'; // A
+        twoInstance.makeCircle(oX - 100, oY, 6).fill = '#4f46e5';  // B
+        twoInstance.makeCircle(oX, oY, 6).fill = '#4f46e5';       // C
 
-        // DEF (180도 회전하며 oX 변 AC 우측에 붙음!)
-        const startX = centerX + 140;
-        const targetX = oX; // AC 선에 붙음
-        const currentX = startX + (targetX - startX) * progress;
+        twoInstance.makeText('A', oX, oY - 158).size = 15;
+        twoInstance.makeText('B', oX - 118, oY + 6).size = 15;
+        twoInstance.makeText('C', oX - 18, oY + 6).size = 15;
 
-        const flipScale = 1 - 2 * progress; // 1 -> -1 (180도 Flip 효과!)
+        // C 지점 직각 표시
+        const rC = twoInstance.makePath(oX - 14, oY, oX - 14, oY - 14, oX, oY - 14, false);
+        rC.noFill(); rC.stroke = '#4f46e5'; rC.linewidth = 1.5;
 
-        const eX = currentX + 100 * flipScale;
-        const eY = oY;
-        const dPointX = currentX;
+        // 3. 우측 직각삼각형 DEF (180도 회전 이동 애니메이션)
+        // 변 DF(X=currentAxisX)가 oX로 이동하며 180도 뒤집어짐
+        const currentAxisX = dX + (oX - dX) * progress;
+        const flipScale = 1 - 2 * progress; // 1 -> -1 (180도 Flip 효과)
+
+        const dPointX = currentAxisX;
         const dPointY = oY - 140;
 
-        const triD = twoInstance.makePath(dPointX, dPointY, eX, eY, currentX, oY, false);
-        triD.fill = 'rgba(236, 72, 153, 0.15)'; triD.stroke = '#ec4899'; triD.linewidth = 2.5;
+        const fPointX = currentAxisX;
+        const fPointY = oY;
 
-        twoInstance.makeCircle(dPointX, dPointY, 6).fill = '#ec4899'; twoInstance.makeText('D', dPointX + 14, dPointY - 158).size = 16;
-        twoInstance.makeCircle(eX, eY, 6).fill = '#ec4899'; twoInstance.makeText('E', eX + 14, eY + 12).size = 16;
+        const ePointX = currentAxisX - 100 * flipScale;
+        const ePointY = oY;
 
-        // 합쳐진 이등변삼각형 ABE 표시
+        // 삼각형 DEF 그리기
+        const triD = twoInstance.makePath(dPointX, dPointY, ePointX, ePointY, fPointX, fPointY, false);
+        triD.fill = 'rgba(2, 132, 199, 0.12)'; triD.stroke = '#0284c7'; triD.linewidth = 2.5;
+
+        // 꼭짓점 원 및 라벨
+        twoInstance.makeCircle(dPointX, dPointY, 6).fill = '#0284c7';
+        twoInstance.makeCircle(ePointX, ePointY, 6).fill = '#0284c7';
+        twoInstance.makeCircle(fPointX, fPointY, 6).fill = '#0284c7';
+
+        if (progress < 0.95) {
+          twoInstance.makeText('D', dPointX, dPointY - 158).size = 15;
+          twoInstance.makeText('E', ePointX - 18 * flipScale, ePointY + 6).size = 15;
+          twoInstance.makeText('F', fPointX + 16, fPointY + 6).size = 15;
+        } else {
+          // 완벽히 합쳐졌을 때 라벨 (D->A, F->C, E)
+          twoInstance.makeText('D', dPointX + 18, dPointY - 158).size = 15;
+          twoInstance.makeText('E', ePointX + 18, ePointY + 6).size = 15;
+          twoInstance.makeText('F', fPointX + 16, fPointY + 6).size = 15;
+        }
+
+        // F 지점 직각 표시
+        if (progress < 0.95) {
+          const rF = twoInstance.makePath(fPointX - 14 * flipScale, fPointY, fPointX - 14 * flipScale, fPointY - 14, fPointX, fPointY - 14, false);
+          rF.noFill(); rF.stroke = '#0284c7'; rF.linewidth = 1.5;
+        }
+
+        // 4. 합쳐진 이등변삼각형 ABE 및 안내 라벨 (progress >= 0.95)
         if (progress >= 0.95) {
           const bigTri = twoInstance.makePath(oX, oY - 140, oX - 100, oY, oX + 100, oY, false);
           bigTri.fill = 'rgba(5, 150, 105, 0.08)'; bigTri.stroke = '#059669'; bigTri.linewidth = 3;
-          const label = twoInstance.makeText('△ABE (이등변삼각형)', oX, oY + 36);
+          
+          const label = twoInstance.makeText('△ABE (이등변삼각형)', oX, oY + 38);
           label.fill = '#059669'; label.size = 16; label.weight = 800;
         }
 
