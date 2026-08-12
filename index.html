@@ -824,25 +824,18 @@
       if (!str) return '';
       let res = str;
       
-      res = res.replace(/\$\\triangle\s*([A-Za-z]+)\$/g, '△$1');
-      res = res.replace(/\\triangle\s*([A-Za-z]+)/g, '△$1');
-      res = res.replace(/\\triangle/g, '△');
+      // KaTeX 정밀 수학 폰트 연동
+      if (window.katex) {
+        try {
+          res = res.replace(/\$([^$]+)\$/g, (match, mathExpr) => {
+            return katex.renderToString(mathExpr, { throwOnError: false });
+          });
+        } catch (e) {
+          console.warn("KaTeX fallback:", e);
+        }
+      }
 
-      res = res.replace(/\$\\angle\s*([A-Za-z]+)\$/g, '∠$1');
-      res = res.replace(/\\angle\s*([A-Za-z]+)/g, '∠$1');
-      res = res.replace(/\\angle/g, '∠');
-
-      res = res.replace(/\$180\^\\circ\$/g, '180°');
-      res = res.replace(/\$90\^\\circ\$/g, '90°');
-      res = res.replace(/\$\\circ\$/g, '°');
-      res = res.replace(/\\circ/g, '°');
-
-      res = res.replace(/\$\\equiv\$/g, '≡');
-      res = res.replace(/\\equiv/g, '≡');
-      res = res.replace(/\\text\{([^}]+)\}/g, '$1');
-
-      res = res.replace(/\$/g, '');
-
+      res = res.replace(/\\triangle/g, '△').replace(/\\angle/g, '∠').replace(/\\circ/g, '°').replace(/\\equiv/g, '≡');
       return res;
     }
 
@@ -1670,6 +1663,16 @@
       });
 
       state.points.forEach(p => {
+        // 1. 넓은 Hit Test 영역 (r=18 Invisible Touch Area for Pointer Events)
+        const hitArea = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        hitArea.setAttribute('cx', p.x);
+        hitArea.setAttribute('cy', p.y);
+        hitArea.setAttribute('r', '18');
+        hitArea.setAttribute('fill', 'transparent');
+        hitArea.setAttribute('cursor', 'pointer');
+        pointsGroup.appendChild(hitArea);
+
+        // 2. 시각적 점 (r=7)
         const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         circle.setAttribute('cx', p.x);
         circle.setAttribute('cy', p.y);
@@ -1677,6 +1680,7 @@
         circle.setAttribute('fill', (state.lineStartPoint && state.lineStartPoint.id === p.id) ? '#dc2626' : '#0284c7');
         circle.setAttribute('stroke', '#ffffff');
         circle.setAttribute('stroke-width', '2');
+        circle.setAttribute('pointer-events', 'none');
         pointsGroup.appendChild(circle);
 
         const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
