@@ -250,12 +250,19 @@
       background: #ffffff;
     }
 
-    #two-container {
-      width: 100%;
-      height: 100%;
-      position: absolute;
-      top: 0;
-      left: 0;
+    #two-container, #two-container canvas, #two-container svg {
+      cursor: crosshair !important;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    #two-container.tool-select, #two-container.tool-select canvas {
+      cursor: grab !important;
+    }
+
+    #two-container.tool-select.grabbing, #two-container.tool-select.grabbing canvas {
+      cursor: grabbing !important;
     }
 
     .sidebar-section {
@@ -589,6 +596,12 @@
       document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
       const el = document.getElementById(`tool-${toolName}`);
       if (el) el.classList.add('active');
+
+      const container = document.getElementById('two-container');
+      if (container) {
+        if (toolName === 'select') container.classList.add('tool-select');
+        else container.classList.remove('tool-select');
+      }
     }
 
     function showPraise(msg) {
@@ -899,12 +912,19 @@
           let pB = { id: 'B', x: engine.centerX - 100, y: engine.centerY + 60 };
           let pC = { id: 'C', x: engine.centerX + 100, y: engine.centerY + 60 };
 
-          const poly = engine.two.makePath(pA.x, pA.y, pB.x, pB.y, pC.x, pC.y, false);
-          poly.fill = 'rgba(236, 72, 153, 0.08)'; poly.stroke = '#ec4899'; poly.linewidth = 2.5;
+          let poly = null;
+          const redrawPoly = () => {
+            if (poly) poly.remove();
+            poly = engine.two.makePath(pA.x, pA.y, pB.x, pB.y, pC.x, pC.y, false);
+            poly.fill = 'rgba(236, 72, 153, 0.12)';
+            poly.stroke = '#ec4899';
+            poly.linewidth = 2.5;
+          };
+          redrawPoly();
 
-          const cA = engine.two.makeCircle(pA.x, pA.y, 14); cA.fill = '#ec4899'; cA.stroke = '#ffffff'; cA.linewidth = 3;
-          const cB = engine.two.makeCircle(pB.x, pB.y, 14); cB.fill = '#ec4899'; cB.stroke = '#ffffff'; cB.linewidth = 3;
-          const cC = engine.two.makeCircle(pC.x, pC.y, 14); cC.fill = '#ec4899'; cC.stroke = '#ffffff'; cC.linewidth = 3;
+          const cA = engine.two.makeCircle(pA.x, pA.y, 12); cA.fill = '#ec4899'; cA.stroke = '#ffffff'; cA.linewidth = 3;
+          const cB = engine.two.makeCircle(pB.x, pB.y, 12); cB.fill = '#ec4899'; cB.stroke = '#ffffff'; cB.linewidth = 3;
+          const cC = engine.two.makeCircle(pC.x, pC.y, 12); cC.fill = '#ec4899'; cC.stroke = '#ffffff'; cC.linewidth = 3;
 
           const tA = engine.two.makeText('A', pA.x, pA.y - 20); tA.size = 15; tA.weight = 800;
           const tB = engine.two.makeText('B', pB.x - 16, pB.y + 18); tB.size = 15; tB.weight = 800;
@@ -951,13 +971,13 @@
             if (state.subStep !== '0-3' || stepCompleted) return;
             const pos = getPos(evt);
             const pts = [pA, pB, pC];
-            // 넓은 Hit Test 영역 (45px)
             const hit = pts.find(p => Math.hypot(p.x - pos.x, p.y - pos.y) < 45);
             if (hit) {
               activeNode = hit;
               startPos = { x: hit.x, y: hit.y };
               totalMovedDistance = 0;
-              domEl.style.cursor = 'grabbing';
+              const container = document.getElementById('two-container');
+              if (container) container.classList.add('grabbing');
             }
           };
 
@@ -969,9 +989,7 @@
             activeNode.x = snapVal(pos.x);
             activeNode.y = snapVal(pos.y);
 
-            poly.vertices[0].x = pA.x; poly.vertices[0].y = pA.y;
-            poly.vertices[1].x = pB.x; poly.vertices[1].y = pB.y;
-            poly.vertices[2].x = pC.x; poly.vertices[2].y = pC.y;
+            redrawPoly();
 
             cA.translation.set(pA.x, pA.y); tA.translation.set(pA.x, pA.y - 20);
             cB.translation.set(pB.x, pB.y); tB.translation.set(pB.x - 16, pB.y + 18);
@@ -986,7 +1004,9 @@
           };
 
           const onEnd = () => {
-            domEl.style.cursor = 'grab';
+            const container = document.getElementById('two-container');
+            if (container) container.classList.remove('grabbing');
+
             if (activeNode && totalMovedDistance >= 40 && !stepCompleted) {
               stepCompleted = true;
               activeNode = null;
