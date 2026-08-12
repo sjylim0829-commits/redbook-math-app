@@ -3,28 +3,48 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>중2 수학 탐구 웹 애플리케이션 (Redbook Engine)</title>
+  <title>중2 수학 직각삼각형의 합동 조건 탐구 웹 앱 (Two.js Engine)</title>
   
   <!-- KaTeX Math Rendering Library -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
 
-  <!-- Konva.js 2D High-Performance Canvas Engine -->
-  <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+  <!-- Two.js 2D Dynamic Geometry Engine -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/two.js/0.8.10/two.min.js"></script>
 
   <style>
     :root {
       --primary-color: #4f46e5;
+      --primary-hover: #4338ca;
       --secondary-color: #0284c7;
       --accent-color: #ec4899;
+      --success-color: #059669;
+      --warning-color: #d97706;
+      --danger-color: #dc2626;
+
       --bg-main: #f8fafc;
+      --bg-card: #ffffff;
+      --bg-sidebar: #f1f5f9;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
       --border-color: #cbd5e1;
+
       --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font-sans); }
-    html, body { width: 100%; height: 100vh; overflow: hidden; background: var(--bg-main); }
 
+    html, body {
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      background-color: var(--bg-main);
+      color: var(--text-primary);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Navigation Header */
     header.app-header {
       background: #ffffff;
       border-bottom: 1px solid var(--border-color);
@@ -32,119 +52,684 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
       height: 48px;
     }
 
-    .app-title { font-size: 1.1rem; font-weight: 800; color: #0f172a; }
-
-    .main-container {
+    .logo-group {
       display: flex;
-      width: 100%;
-      height: calc(100vh - 48px);
+      align-items: center;
+      gap: 10px;
     }
 
-    .canvas-section {
-      flex: 1;
-      position: relative;
+    .badge-tag {
+      background: linear-gradient(135deg, #4f46e5, #0284c7);
+      color: #ffffff;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 16px;
+      text-transform: uppercase;
+    }
+
+    .app-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      letter-spacing: -0.5px;
+    }
+
+    /* Tab Bar */
+    .tab-bar-container {
       background: #ffffff;
-      border-right: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+      padding: 4px 20px;
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      height: 42px;
+      align-items: center;
     }
 
-    #konva-holder {
+    .tab-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      color: var(--text-secondary);
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      background: var(--primary-color);
+      color: #ffffff;
+      font-weight: 700;
+      border-color: var(--primary-color);
+    }
+
+    .tab-btn.locked {
+      opacity: 0.6;
+      cursor: not-allowed;
+      background: #f1f5f9;
+    }
+
+    /* Main Container */
+    .main-container {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+      height: calc(100vh - 90px);
+    }
+
+    .view-panel {
+      display: none;
       width: 100%;
       height: 100%;
+      flex: 1;
+    }
+
+    .view-panel.active {
+      display: flex;
+    }
+
+    /* View 1: Login View */
+    .login-card-container {
+      margin: auto;
+      width: 100%;
+      max-width: 420px;
+      padding: 32px;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+      text-align: center;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+      text-align: left;
+    }
+
+    .form-group label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #475569;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: var(--primary-color);
+      color: #ffffff;
+      width: 100%;
+    }
+
+    /* View 2: Activity Split View (Left: Two.js Canvas, Right: Instructions & Quiz) */
+    .activity-layout {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .plane-section {
+      background: #ffffff;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border-color);
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .plane-toolbar {
+      background: #f8fafc;
+      padding: 6px 14px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+      height: 42px;
+    }
+
+    .tool-btn {
+      padding: 6px 12px;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .tool-btn.active {
+      background: var(--primary-color);
+      color: #ffffff;
+      border-color: var(--primary-color);
+    }
+
+    .two-plane-wrapper {
+      flex: 1;
+      width: 100%;
+      height: calc(100% - 42px);
+      position: relative;
+      overflow: hidden;
+      background: #ffffff;
+    }
+
+    #two-container {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
     }
 
     .sidebar-section {
-      width: 360px;
-      padding: 20px;
       background: #f8fafc;
+      padding: 14px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 12px;
+      overflow-y: auto;
+      height: 100%;
     }
 
     .card {
       background: #ffffff;
-      border: 1px solid var(--border-color);
       border-radius: 12px;
-      padding: 16px;
+      padding: 12px 14px;
+      border: 1px solid var(--border-color);
     }
 
-    .btn {
-      padding: 10px 16px;
-      background: var(--primary-color);
-      color: #ffffff;
-      border: none;
+    .mission-card {
+      border-left: 4px solid var(--primary-color);
+    }
+
+    .proof-blank-input {
+      display: inline-block;
+      width: 90px;
+      padding: 3px 8px;
+      margin: 2px 4px;
+      background: #fef08a;
+      border: 2px solid #eab308;
       border-radius: 8px;
-      font-weight: 700;
-      cursor: pointer;
+      font-size: 0.88rem;
+      font-weight: 800;
+      color: #854d0e;
+      text-align: center;
+      outline: none;
+    }
+
+    .proof-blank-input.correct {
+      background: #dcfce7 !important;
+      border-color: #22c55e !important;
+      color: #15803d !important;
+    }
+
+    .praise-banner {
+      display: none;
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      border-left: 4px solid var(--success-color);
+      padding: 10px 14px;
+      border-radius: 12px;
+      color: #065f46;
+    }
+
+    /* Modal Overlay */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      width: 100vw; height: 100vh;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(6px);
+      z-index: 99999;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.active {
+      display: flex !important;
+    }
+
+    .modal-body {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 24px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
     }
   </style>
 </head>
 <body>
 
+  <!-- Top Navigation Header -->
   <header class="app-header">
-    <h1 class="app-title">📐 중2 수학 직각삼각형 탐구 (Redbook 초기화 상태)</h1>
-    <div style="font-size:0.85rem; color:#64748b;">AGENTS.md 규칙 적용 준비 완료</div>
+    <div class="logo-group">
+      <span class="badge-tag">중2 수학</span>
+      <h1 class="app-title">📐 직각삼각형의 합동 조건 대화형 탐구 (Two.js Engine)</h1>
+    </div>
+    <div>
+      <span id="current-user-info" style="font-size:0.85rem; font-weight:700; color:#4f46e5; margin-right:8px;">👤 로그인 필요</span>
+      <button class="btn" style="padding:4px 10px; font-size:0.8rem; background:#e0e7ff; color:#4338ca; font-weight:700; margin-right:4px;" onclick="openTeacherLoginModal()">🔒 교사 접속</button>
+      <button class="btn" style="padding:4px 10px; font-size:0.8rem; background:#f1f5f9;" onclick="switchView('login')">로그아웃</button>
+    </div>
   </header>
 
+  <!-- 5-Step Tab Navigation Bar -->
+  <div class="tab-bar-container">
+    <button id="tab-btn-0" class="tab-btn active" onclick="attemptSwitchTab(0, 'tutorial')">
+      <span>0. 튜토리얼</span> <span class="lock-icon">🔓</span>
+    </button>
+    <button id="tab-btn-1" class="tab-btn locked" onclick="attemptSwitchTab(1, 'concept')">
+      <span>1. 단원 학습 (RHA & RHS)</span> <span class="lock-icon">🔒</span>
+    </button>
+    <button id="tab-btn-2" class="tab-btn locked" onclick="attemptSwitchTab(2, 'summary')">
+      <span>2. 정리하기</span> <span class="lock-icon">🔒</span>
+    </button>
+    <button id="tab-btn-3" class="tab-btn locked" style="display:none;" onclick="attemptSwitchTab(3, 'hidden')">
+      <span>3. 히든 미션</span> <span class="lock-icon">🔒</span>
+    </button>
+  </div>
+
   <main class="main-container">
-    <div class="canvas-section">
-      <div id="konva-holder"></div>
-    </div>
 
-    <div class="sidebar-section">
-      <div class="card">
-        <h3 style="font-size:1rem; margin-bottom:8px; color:#4f46e5;">📋 AGENTS.md 적용 상태</h3>
-        <p style="font-size:0.88rem; color:#475569; line-height:1.5;">
-          1. 60fps HTML5 Canvas / Konva.js 엔진 탑재<br>
-          2. Pointer Events & Grid Snapping 준수<br>
-          3. KaTeX 라벨 및 Dynamic Geometry 구속조건 구조 준비 완료
-        </p>
-      </div>
+    <!-- VIEW 1: LOGIN VIEW -->
+    <section id="view-login" class="view-panel active">
+      <div class="login-card-container">
+        <h2 style="font-size:1.4rem; margin-bottom:8px;">👋 수학 탐구 로그인</h2>
+        <p style="font-size:0.88rem; color:#64748b; margin-bottom:18px;">학번과 이름을 입력하고 탐구를 시작하세요!</p>
+        <div class="form-group">
+          <label for="student-id">학번 (예: 20101)</label>
+          <input type="text" id="student-id" class="form-control" placeholder="학번 5자리를 입력하세요" value="20101">
+        </div>
+        <div class="form-group">
+          <label for="student-name">이름</label>
+          <input type="text" id="student-name" class="form-control" placeholder="이름을 입력하세요" value="홍길동">
+        </div>
+        <button id="btn-start-exploration" type="button" class="btn btn-primary" style="margin-top: 8px; width:100%; font-size:1.05rem; padding:12px;" onclick="handleLogin(event)">🚀 탐구 시작하기</button>
 
-      <div class="card">
-        <button class="btn" style="width:100%;" onclick="initEngine()">🔄 캔버스 초기화</button>
+        <div style="margin-top:14px; border-top:1px solid #e2e8f0; padding-top:12px; display:flex; flex-direction:column; gap:8px;">
+          <button type="button" class="btn" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; width:100%; font-weight:700;" onclick="openTestLoginModal()">🧪 테스트 계정 접속 (비밀번호: 661227)</button>
+          <button type="button" class="btn" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; width:100%; font-weight:700;" onclick="openTeacherLoginModal()">🔒 교사 전용 접속 (비밀번호: 661227)</button>
+        </div>
       </div>
-    </div>
+    </section>
+
+    <!-- VIEW 2: ACTIVITY VIEW (Left: Two.js Canvas, Right: Instructions & Questions) -->
+    <section id="view-activity" class="view-panel" style="display:none;">
+      <div class="activity-layout">
+        
+        <!-- Left: Two.js Coordinate Plane -->
+        <div class="plane-section">
+          <div class="plane-toolbar">
+            <button id="tool-select" class="tool-btn active" onclick="setTool('select')">🖐️ 이동</button>
+            <button id="tool-point" class="tool-btn" onclick="setTool('point')">📍 점 찍기</button>
+            <button id="tool-line" class="tool-btn" onclick="setTool('line')">✏️ 선분 연결</button>
+            <button id="btn-rhs-anim" class="btn" style="display:none; margin-left:8px; padding:4px 10px; font-size:0.8rem; background:#ec4899; color:#fff;" onclick="triggerRHSAttachAnimation()">
+              🎬 뒤집어 맞붙이기 애니메이션
+            </button>
+            <button class="tool-btn" style="margin-left: auto;" onclick="loadSubStep(state.subStep)">🔄 초기화</button>
+          </div>
+
+          <div class="two-plane-wrapper">
+            <div id="two-container"></div>
+          </div>
+        </div>
+
+        <!-- Right: Instructions, Hints, Q&A -->
+        <div class="sidebar-section">
+          <div class="card mission-card">
+            <div style="font-weight:800; color:var(--primary-color); margin-bottom:4px;">💡 활동 지시사항</div>
+            <div id="mission-text" style="font-size:0.88rem; line-height:1.6;">
+              좌측 Two.js 좌표평면에서 탐구를 진행하세요!
+            </div>
+          </div>
+
+          <div id="praise-banner" class="praise-banner">
+            <div style="font-size: 1rem; margin-bottom: 2px;">🎉 훌륭합니다! 정답입니다!</div>
+            <div id="praise-text">미션을 완수했습니다.</div>
+          </div>
+
+          <!-- Realtime Measurement Board -->
+          <div class="card" style="font-size:0.82rem;">
+            <div style="font-weight:700; color:#334155; margin-bottom:6px;">📊 실시간 도형 수치 측정</div>
+            <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed #e2e8f0;"><span>선분 AB (빗변):</span> <span id="val-ab" style="font-weight:700; color:#0284c7;">-</span></div>
+            <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed #e2e8f0;"><span>선분 BC (밑변):</span> <span id="val-bc" style="font-weight:700; color:#0284c7;">-</span></div>
+            <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed #e2e8f0;"><span>선분 CA (높이):</span> <span id="val-ca" style="font-weight:700; color:#0284c7;">-</span></div>
+            <div style="display:flex; justify-content:space-between; padding:4px 0;"><span>각도 ∠A:</span> <span id="val-ang-a" style="font-weight:700; color:#0284c7;">-</span></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
   </main>
 
+  <!-- Teacher Login Modal -->
+  <div id="modal-teacher-login" class="modal-overlay">
+    <div class="modal-body">
+      <h3 style="font-size: 1.2rem; color: var(--text-primary); margin-bottom: 6px;">🔒 교사 계정 인증</h3>
+      <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 16px;">
+        교사 전용 비밀번호 (<b>661227</b>)를 입력하여 모든 단계 락 해제 및 권한을 획득하세요.
+      </p>
+      <div class="form-group">
+        <label for="teacher-pw">비밀번호</label>
+        <input type="password" id="teacher-pw" class="form-control" placeholder="비밀번호 661227 입력" required onkeyup="if(event.key==='Enter') handleTeacherLogin()">
+      </div>
+      <div style="display: flex; gap: 8px; margin-top: 16px;">
+        <button class="btn" style="flex:1; background:#cbd5e1;" onclick="closeTeacherLoginModal()">취소</button>
+        <button class="btn btn-primary" style="flex:1;" onclick="handleTeacherLogin()">🔑 인증하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test Student Login Modal -->
+  <div id="modal-test-login" class="modal-overlay">
+    <div class="modal-body">
+      <h3 style="font-size: 1.2rem; color: var(--text-primary); margin-bottom: 6px;">🧪 테스트 계정 인증 (전체 해금)</h3>
+      <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 16px;">
+        비밀번호 (<b>661227</b>)를 입력하시면 모든 단계가 100% 해금된 테스트 계정으로 접속합니다.
+      </p>
+      <div class="form-group">
+        <label for="test-pw">비밀번호</label>
+        <input type="password" id="test-pw" class="form-control" placeholder="비밀번호 661227 입력" required onkeyup="if(event.key==='Enter') handleTestLogin()">
+      </div>
+      <div style="display: flex; gap: 8px; margin-top: 16px;">
+        <button class="btn" style="flex:1; background:#cbd5e1;" onclick="closeTestLoginModal()">취소</button>
+        <button class="btn btn-primary" style="flex:1; background:var(--secondary-color);" onclick="handleTestLogin()">🧪 접속하기</button>
+      </div>
+    </div>
+  </div>
+
   <script>
-    let stage = null;
-    let layer = null;
+    function formatMathText(str) {
+      if (!str) return '';
+      let res = str;
+      if (window.katex) {
+        try {
+          res = res.replace(/\$([^$]+)\$/g, (match, mathExpr) => {
+            return katex.renderToString(mathExpr, { throwOnError: false });
+          });
+        } catch (e) {}
+      }
+      return res.replace(/\\triangle/g, '△').replace(/\\angle/g, '∠').replace(/\\circ/g, '°').replace(/\\equiv/g, '≡');
+    }
 
-    function initEngine() {
-      const container = document.getElementById('konva-holder');
-      if (!container || typeof Konva === 'undefined') return;
+    const state = {
+      subStep: '0-1',
+      tool: 'select',
+      isRHSAttached: false,
+      isTeacherLoggedIn: false,
+      maxUnlockedStep: 0,
+      studentId: '',
+      studentName: ''
+    };
 
-      if (stage) stage.destroy();
+    let twoInstance = null;
+    let twoPoints = [];
+
+    function initTwoEngine() {
+      const container = document.getElementById('two-container');
+      if (typeof Two === 'undefined' || !container) return null;
+
+      container.innerHTML = '';
 
       const width = container.clientWidth || 600;
       const height = container.clientHeight || 450;
 
-      stage = new Konva.Stage({
-        container: 'konva-holder',
+      twoInstance = new Two({
         width: width,
-        height: height
-      });
+        height: height,
+        type: Two.Types.canvas,
+        autostart: true
+      }).appendTo(container);
 
-      layer = new Konva.Layer();
-      stage.add(layer);
-
-      // 모눈 그리드
+      // Draw Grid & Axes
       const step = 30;
+      const centerX = width / 2;
+      const centerY = height / 2;
+
       for (let x = 0; x < width; x += step) {
-        layer.add(new Konva.Line({ points: [x, 0, x, height], stroke: '#f1f5f9', strokeWidth: 1 }));
+        const line = twoInstance.makeLine(x, 0, x, height);
+        line.stroke = '#f1f5f9';
+        line.linewidth = 1;
       }
       for (let y = 0; y < height; y += step) {
-        layer.add(new Konva.Line({ points: [0, y, width, y], stroke: '#f1f5f9', strokeWidth: 1 }));
+        const line = twoInstance.makeLine(0, y, width, y);
+        line.stroke = '#f1f5f9';
+        line.linewidth = 1;
       }
 
-      layer.draw();
+      const axisX = twoInstance.makeLine(0, centerY, width, centerY);
+      axisX.stroke = '#94a3b8';
+      axisX.linewidth = 1.5;
+
+      const axisY = twoInstance.makeLine(centerX, 0, centerX, height);
+      axisY.stroke = '#94a3b8';
+      axisY.linewidth = 1.5;
+
+      twoInstance.update();
+      twoPoints = [];
+
+      return { two: twoInstance, centerX, centerY, width, height };
     }
 
-    document.addEventListener('DOMContentLoaded', initEngine);
+    function snapVal(val, step = 30) { return Math.round(val / step) * step; }
+
+    function setTool(toolName) {
+      state.tool = toolName;
+      document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+      const el = document.getElementById(`tool-${toolName}`);
+      if (el) el.classList.add('active');
+    }
+
+    function showPraise(msg) {
+      const banner = document.getElementById('praise-banner');
+      const textEl = document.getElementById('praise-text');
+      if (banner && textEl) { textEl.innerHTML = formatMathText(msg); banner.style.display = 'block'; }
+    }
+
+    function hidePraise() {
+      const banner = document.getElementById('praise-banner');
+      if (banner) banner.style.display = 'none';
+    }
+
+    function switchView(viewName) {
+      document.querySelectorAll('.view-panel').forEach(el => { el.classList.remove('active'); el.style.display = 'none'; });
+      const targetView = document.getElementById(`view-${viewName}`);
+      if (targetView) { targetView.classList.add('active'); targetView.style.display = 'flex'; }
+    }
+
+    function handleLogin(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const idEl = document.getElementById('student-id');
+      const nameEl = document.getElementById('student-name');
+      let idInput = idEl ? idEl.value.trim() : '';
+      let nameInput = nameEl ? nameEl.value.trim() : '';
+      if (!idInput) idInput = '20101';
+      if (!nameInput) nameInput = '홍길동';
+
+      state.studentId = idInput;
+      state.studentName = nameInput;
+
+      document.getElementById('current-user-info').innerText = `👤 ${idInput} ${nameInput}`;
+      switchView('activity');
+      setTimeout(() => { loadSubStep('0-1'); }, 80);
+      return false;
+    }
+
+    function openTeacherLoginModal() {
+      const modal = document.getElementById('modal-teacher-login');
+      if (modal) { modal.classList.add('active'); modal.style.display = 'flex'; }
+      const pwInput = document.getElementById('teacher-pw');
+      if (pwInput) { pwInput.value = ''; setTimeout(() => pwInput.focus(), 80); }
+    }
+
+    function closeTeacherLoginModal() {
+      const modal = document.getElementById('modal-teacher-login');
+      if (modal) { modal.classList.remove('active'); modal.style.display = 'none'; }
+    }
+
+    function handleTeacherLogin() {
+      const pwEl = document.getElementById('teacher-pw');
+      const pw = pwEl ? pwEl.value.trim() : '';
+      if (pw === '661227') {
+        activateTeacherMode();
+        closeTeacherLoginModal();
+        document.getElementById('current-user-info').innerText = `🔑 교사 관리자 (비밀번호 인증완료 - 전체 해금)`;
+        switchView('activity');
+        setTimeout(() => { loadSubStep('0-1'); }, 80);
+        alert("🔓 [교사 인증 성공] 비밀번호 661227 확인 완료!\n모든 단계(0.튜토리얼 ~ 3.히든미션)의 락이 해제되었습니다.");
+      } else {
+        alert("❌ 비밀번호가 일치하지 않습니다. (비밀번호: 661227)");
+      }
+    }
+
+    function openTestLoginModal() {
+      const modal = document.getElementById('modal-test-login');
+      if (modal) { modal.classList.add('active'); modal.style.display = 'flex'; }
+      const pwInput = document.getElementById('test-pw');
+      if (pwInput) { pwInput.value = ''; setTimeout(() => pwInput.focus(), 80); }
+    }
+
+    function closeTestLoginModal() {
+      const modal = document.getElementById('modal-test-login');
+      if (modal) { modal.classList.remove('active'); modal.style.display = 'none'; }
+    }
+
+    function handleTestLogin() {
+      const pwEl = document.getElementById('test-pw');
+      const pw = pwEl ? pwEl.value.trim() : '';
+      if (pw === '661227') {
+        activateTeacherMode();
+        closeTestLoginModal();
+        document.getElementById('current-user-info').innerText = `🧪 test999 테스트 학생 (전체 해금)`;
+        switchView('activity');
+        setTimeout(() => { loadSubStep('0-1'); }, 80);
+        alert("🧪 [테스트 계정 접속 완료] 비밀번호 661227 확인 완료!\n모든 단계가 100% 해금되었습니다.");
+      } else {
+        alert("❌ 비밀번호가 일치하지 않습니다. (비밀번호: 661227)");
+      }
+    }
+
+    function activateTeacherMode() {
+      state.isTeacherLoggedIn = true;
+      state.maxUnlockedStep = 3;
+
+      const hiddenTab = document.getElementById('tab-btn-3');
+      if (hiddenTab) hiddenTab.style.display = 'inline-flex';
+
+      for (let i = 0; i <= 3; i++) {
+        const tabBtn = document.getElementById(`tab-btn-${i}`);
+        if (tabBtn) {
+          tabBtn.classList.remove('locked');
+          const lockIcon = tabBtn.querySelector('.lock-icon');
+          if (lockIcon) lockIcon.innerText = '🔓';
+        }
+      }
+    }
+
+    function unlockNextStep(newStepIndex) {
+      if (newStepIndex > state.maxUnlockedStep) {
+        state.maxUnlockedStep = newStepIndex;
+      }
+
+      for (let i = 0; i <= state.maxUnlockedStep; i++) {
+        const tabBtn = document.getElementById(`tab-btn-${i}`);
+        if (tabBtn) {
+          tabBtn.classList.remove('locked');
+          const lockIcon = tabBtn.querySelector('.lock-icon');
+          if (lockIcon) lockIcon.innerText = '🔓';
+        }
+      }
+
+      if (state.maxUnlockedStep >= 2) {
+        const hiddenTab = document.getElementById('tab-btn-3');
+        if (hiddenTab) hiddenTab.style.display = 'inline-flex';
+      }
+    }
+
+    function attemptSwitchTab(stepIndex, tabName) {
+      if (!state.isTeacherLoggedIn && stepIndex > state.maxUnlockedStep) {
+        alert(`🔒 이전 활동을 마무리해야 다음 단계로 진행할 수 있습니다!`);
+        return;
+      }
+
+      document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
+        btn.classList.remove('active');
+        if (idx === stepIndex) btn.classList.add('active');
+      });
+
+      hidePraise();
+      if (stepIndex === 0) loadSubStep('0-1');
+      else if (stepIndex === 1) loadSubStep('1-1');
+      else if (stepIndex === 2) loadSubStep('2-1');
+      else if (stepIndex === 3) loadSubStep('3-1');
+    }
+
+    function loadSubStep(subStepCode) {
+      state.subStep = subStepCode;
+      hidePraise();
+      initTwoEngine();
+
+      const setMissionUI = (mText) => {
+        document.getElementById('mission-text').innerHTML = formatMathText(mText);
+      };
+
+      if (subStepCode === '0-1') {
+        setTool('point');
+        setMissionUI("<b>[0. 튜토리얼 0-1]</b> 좌측 Two.js 좌표평면 위에 <b>점 찍기</b> 지시를 기다리고 있습니다.<br>선생님의 세부 지시사항에 따라 탐구를 진행하세요.");
+      } else if (subStepCode === '1-1') {
+        setTool('select');
+        setMissionUI("<b>[1. 단원 학습 1-1]</b> 직각삼각형의 RHA & RHS 증명 탐구가 시작됩니다.");
+      } else if (subStepCode === '2-1') {
+        setTool('select');
+        setMissionUI("<b>[2. 정리하기 2-1]</b> 직각삼각형의 합동 조건 개념 정리 단계입니다.");
+      } else if (subStepCode === '3-1') {
+        setTool('select');
+        setMissionUI("<b>[3. 히든 미션 3-1]</b> 심화 응용 탐구 히든 미션 단계입니다.");
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => { loadSubStep('0-1'); }, 100);
+    });
   </script>
 </body>
 </html>
