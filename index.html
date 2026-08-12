@@ -535,6 +535,14 @@
         autostart: true
       }).appendTo(container);
 
+      const domEl = twoInstance.renderer.domElement;
+      if (domEl) {
+        domEl.style.touchAction = 'none';
+        domEl.style.userSelect = 'none';
+        domEl.style.webkitUserSelect = 'none';
+        domEl.style.cursor = 'grab';
+      }
+
       const step = 30;
       const centerX = width / 2;
       const centerY = height / 2;
@@ -849,7 +857,7 @@
             const clickX = e.clientX - rect.left;
             const clickY = e.clientY - rect.top;
 
-            const hit = points.find(p => Math.hypot(p.x - clickX, p.y - clickY) < 25);
+            const hit = points.find(p => Math.hypot(p.x - clickX, p.y - clickY) < 35);
             if (hit) {
               if (!selected) {
                 selected = hit;
@@ -878,12 +886,12 @@
           domEl.addEventListener('click', handleCanvasClick);
         }
       }
-      // [0. 튜토리얼 0-3: 꼭짓점 이동 🖐️ 및 실시간 수치 관찰 (실제 이동 검증)]
+      // [0. 튜토리얼 0-3: 꼭짓점 이동 🖐️ 및 실시간 수치 관찰 (실제 드래그 이동 완전 검증)]
       else if (subStepCode === '0-3') {
         setTool('select');
         setMissionUI(
-          "<b>[튜토리얼 0-3]</b> <b>[🖐️ 이동]</b> 도구로 꼭짓점 A, B, C 중 하나를 클릭 후 끌어서 <b>도형의 위치와 모양을 직접 변화</b>시켜보세요.",
-          "💡 힌트: 마우스나 터치로 꼭짓점을 누른 채 끌어 옮기면 변의 길이와 각도가 실시간으로 계산됩니다."
+          "<b>[튜토리얼 0-3]</b> <b>[🖐️ 이동]</b> 도구로 꼭짓점 A, B, C 중 하나를 누른 채 끌어서 <b>도형의 위치와 모양을 직접 변화</b>시켜보세요.",
+          "💡 힌트: 꼭짓점을 손가락이나 마우스로 누르고 40px 이상 다른 위치로 끌어 옮기면 완수됩니다!"
         );
 
         if (engine && engine.two) {
@@ -894,13 +902,13 @@
           const poly = engine.two.makePath(pA.x, pA.y, pB.x, pB.y, pC.x, pC.y, false);
           poly.fill = 'rgba(236, 72, 153, 0.08)'; poly.stroke = '#ec4899'; poly.linewidth = 2.5;
 
-          const cA = engine.two.makeCircle(pA.x, pA.y, 10); cA.fill = '#ec4899'; cA.stroke = '#ffffff'; cA.linewidth = 2;
-          const cB = engine.two.makeCircle(pB.x, pB.y, 10); cB.fill = '#ec4899'; cB.stroke = '#ffffff'; cB.linewidth = 2;
-          const cC = engine.two.makeCircle(pC.x, pC.y, 10); cC.fill = '#ec4899'; cC.stroke = '#ffffff'; cC.linewidth = 2;
+          const cA = engine.two.makeCircle(pA.x, pA.y, 14); cA.fill = '#ec4899'; cA.stroke = '#ffffff'; cA.linewidth = 3;
+          const cB = engine.two.makeCircle(pB.x, pB.y, 14); cB.fill = '#ec4899'; cB.stroke = '#ffffff'; cB.linewidth = 3;
+          const cC = engine.two.makeCircle(pC.x, pC.y, 14); cC.fill = '#ec4899'; cC.stroke = '#ffffff'; cC.linewidth = 3;
 
-          const tA = engine.two.makeText('A', pA.x, pA.y - 18); tA.size = 14; tA.weight = 800;
-          const tB = engine.two.makeText('B', pB.x - 14, pB.y + 16); tB.size = 14; tB.weight = 800;
-          const tC = engine.two.makeText('C', pC.x + 14, pC.y + 16); tC.size = 14; tC.weight = 800;
+          const tA = engine.two.makeText('A', pA.x, pA.y - 20); tA.size = 15; tA.weight = 800;
+          const tB = engine.two.makeText('B', pB.x - 16, pB.y + 18); tB.size = 15; tB.weight = 800;
+          const tC = engine.two.makeText('C', pC.x + 16, pC.y + 18); tC.size = 15; tC.weight = 800;
 
           engine.two.update();
 
@@ -925,30 +933,39 @@
 
           const domEl = engine.two.renderer.domElement;
           let activeNode = null;
-          let initialPos = null;
-          let isMovedFarEnough = false;
+          let startPos = null;
+          let totalMovedDistance = 0;
+          let stepCompleted = false;
 
           const getPos = (evt) => {
             const rect = domEl.getBoundingClientRect();
-            const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
-            const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
-            return { x: clientX - rect.left, y: clientY - rect.top };
+            const clientX = evt.touches && evt.touches.length > 0 ? evt.touches[0].clientX : evt.clientX;
+            const clientY = evt.touches && evt.touches.length > 0 ? evt.touches[0].clientY : evt.clientY;
+            return {
+              x: (clientX - rect.left),
+              y: (clientY - rect.top)
+            };
           };
 
-          const onPointerDown = (evt) => {
-            if (state.subStep !== '0-3') return;
+          const onStart = (evt) => {
+            if (state.subStep !== '0-3' || stepCompleted) return;
             const pos = getPos(evt);
             const pts = [pA, pB, pC];
-            const hit = pts.find(p => Math.hypot(p.x - pos.x, p.y - pos.y) < 30);
+            // 넓은 Hit Test 영역 (45px)
+            const hit = pts.find(p => Math.hypot(p.x - pos.x, p.y - pos.y) < 45);
             if (hit) {
               activeNode = hit;
-              initialPos = { x: hit.x, y: hit.y };
+              startPos = { x: hit.x, y: hit.y };
+              totalMovedDistance = 0;
+              domEl.style.cursor = 'grabbing';
             }
           };
 
-          const onPointerMove = (evt) => {
-            if (!activeNode || state.subStep !== '0-3') return;
+          const onMove = (evt) => {
+            if (!activeNode || state.subStep !== '0-3' || stepCompleted) return;
+            if (evt.preventDefault) evt.preventDefault();
             const pos = getPos(evt);
+
             activeNode.x = snapVal(pos.x);
             activeNode.y = snapVal(pos.y);
 
@@ -956,43 +973,45 @@
             poly.vertices[1].x = pB.x; poly.vertices[1].y = pB.y;
             poly.vertices[2].x = pC.x; poly.vertices[2].y = pC.y;
 
-            cA.translation.set(pA.x, pA.y); tA.translation.set(pA.x, pA.y - 18);
-            cB.translation.set(pB.x, pB.y); tB.translation.set(pB.x - 14, pB.y + 16);
-            cC.translation.set(pC.x, pC.y); tC.translation.set(pC.x + 14, pC.y + 16);
+            cA.translation.set(pA.x, pA.y); tA.translation.set(pA.x, pA.y - 20);
+            cB.translation.set(pB.x, pB.y); tB.translation.set(pB.x - 16, pB.y + 18);
+            cC.translation.set(pC.x, pC.y); tC.translation.set(pC.x + 16, pC.y + 18);
 
             engine.two.update();
             updateVals();
 
-            if (initialPos && Math.hypot(pos.x - initialPos.x, pos.y - initialPos.y) > 25) {
-              isMovedFarEnough = true;
+            if (startPos) {
+              totalMovedDistance = Math.hypot(activeNode.x - startPos.x, activeNode.y - startPos.y);
             }
           };
 
-          const onPointerUp = () => {
-            if (activeNode && isMovedFarEnough) {
+          const onEnd = () => {
+            domEl.style.cursor = 'grab';
+            if (activeNode && totalMovedDistance >= 40 && !stepCompleted) {
+              stepCompleted = true;
               activeNode = null;
-              domEl.removeEventListener('mousedown', onPointerDown);
-              domEl.removeEventListener('mousemove', onPointerMove);
-              window.removeEventListener('mouseup', onPointerUp);
-              domEl.removeEventListener('touchstart', onPointerDown);
-              domEl.removeEventListener('touchmove', onPointerMove);
-              window.removeEventListener('touchend', onPointerUp);
+              
+              window.removeEventListener('mousemove', onMove);
+              window.removeEventListener('mouseup', onEnd);
+              window.removeEventListener('touchmove', onMove);
+              window.removeEventListener('touchend', onEnd);
 
               showBigPraiseModal(
                 "🎉 꼭짓점 이동 성공!",
-                "꼭짓점을 이끌어 도형의 위치와 모양을 멋지게 변형시키셨습니다!<br>변의 길이와 각도가 실시간으로 달라지는 것을 확인하셨나요?",
+                "꼭짓점을 이끌어 도형의 위치와 모양을 멋지게 변형시키셨습니다!<br>변의 길이와 각도가 실시간으로 달라지는 것을 관찰하셨습니다.",
                 () => { loadSubStep('0-4'); }
               );
             }
             activeNode = null;
           };
 
-          domEl.addEventListener('mousedown', onPointerDown);
-          domEl.addEventListener('mousemove', onPointerMove);
-          window.addEventListener('mouseup', onPointerUp);
-          domEl.addEventListener('touchstart', onPointerDown);
-          domEl.addEventListener('touchmove', onPointerMove);
-          window.addEventListener('touchend', onPointerUp);
+          domEl.addEventListener('mousedown', onStart);
+          window.addEventListener('mousemove', onMove);
+          window.addEventListener('mouseup', onEnd);
+
+          domEl.addEventListener('touchstart', onStart, { passive: false });
+          window.addEventListener('touchmove', onMove, { passive: false });
+          window.addEventListener('touchend', onEnd);
         }
       }
       // [0. 튜토리얼 0-4: 튜토리얼 완수 & [1. 단원 학습] 해금]
