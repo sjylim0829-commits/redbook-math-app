@@ -1020,57 +1020,139 @@
       requestAnimationFrame(animateLine);
     }
 
+    // 60fps 프레임별 정밀 기하 렌더러 (RHS 세부활동 3)
+    function drawRHS34Canvas(two, progress = 0) {
+      if (!two) return;
+      two.clear(); // 이전 프레임 완전 초기화
+
+      const width = two.width, height = two.height;
+      const step = 30, centerX = width / 2, centerY = height / 2;
+
+      // 1. 배경 모눈종이 렌더링
+      for (let x = step; x <= width; x += step) {
+        for (let y = step; y <= height; y += step) {
+          const dot = two.makeCircle(x, y, 1.5);
+          dot.fill = '#cbd5e1'; dot.noStroke();
+        }
+      }
+      two.makeLine(0, centerY, width, centerY).stroke = '#94a3b8';
+      two.makeLine(centerX, 0, centerX, height).stroke = '#94a3b8';
+
+      const triW = 110; // 밑변 BC, EF
+      const triH = 185; // 높이 AC, DF
+      const oY = height * 0.62;
+      const oX1 = width * 0.38; // C점 X좌표 (좌측 수직선)
+      const oX2 = width * 0.74; // F점 X좌표 (우측 초기 수직선)
+
+      // ------------------------------------------
+      // 1. 좌측 고정 직각삼각형 ABC (인디고 테마)
+      // A(oX1, oY - triH), C(oX1, oY), B(oX1 - triW, oY)
+      // ------------------------------------------
+      const pA = { x: oX1, y: oY - triH };
+      const pC = { x: oX1, y: oY };
+      const pB = { x: oX1 - triW, y: oY };
+
+      const triA = two.makePath(pA.x, pA.y, pB.x, pB.y, pC.x, pC.y, false);
+      triA.fill = 'rgba(79, 70, 229, 0.08)'; triA.stroke = '#4f46e5'; triA.linewidth = 2.5;
+
+      // C 직각 마크
+      drawRightAngleMarker(two, pC.x, pC.y, -14, 0, 0, -14, '#4f46e5');
+
+      // 빗변 AB 2줄 틱 마크 (||) 선명한 빨간색
+      const midAB = { x: (pA.x + pB.x)/2, y: (pA.y + pB.y)/2 };
+      two.makeLine(midAB.x - 6, midAB.y - 4, midAB.x + 2, midAB.y + 6).stroke = '#ef4444';
+      two.makeLine(midAB.x - 2, midAB.y - 7, midAB.x + 6, midAB.y + 3).stroke = '#ef4444';
+
+      // 높이 AC 1줄 틱 마크 (|)
+      const midAC = { x: (pA.x + pC.x)/2, y: (pA.y + pC.y)/2 };
+      two.makeLine(midAC.x - 7, midAC.y, midAC.x + 7, midAC.y).stroke = '#4f46e5';
+
+      // 점 원 포인트 & 라벨 (A, B, C)
+      two.makeCircle(pA.x, pA.y, 6).fill = '#4f46e5';
+      two.makeCircle(pB.x, pB.y, 6).fill = '#4f46e5';
+      two.makeCircle(pC.x, pC.y, 6).fill = '#4f46e5';
+
+      const lblA = two.makeText('A', pA.x, pA.y - 18); lblA.size = 19; lblA.weight = 700; lblA.fill = '#4f46e5';
+      const lblB = two.makeText('B', pB.x - 18, pB.y + 14); lblB.size = 19; lblB.weight = 700; lblB.fill = '#4f46e5';
+      const lblC = two.makeText('C', pC.x + 18, pC.y + 14); lblC.size = 19; lblC.weight = 700; lblC.fill = '#4f46e5';
+
+      // ------------------------------------------
+      // 2. 우측 회전 직각삼각형 DEF (시안/블루 테마)
+      // progress(0 -> 1.0)에 따라 F, D, E 점의 위치를 실시간 삼각함수 호 계산!
+      // ------------------------------------------
+      const currF_X = oX2 + (oX1 - oX2) * progress; // F점 X좌표 (oX2 -> oX1)
+      const pD_curr = { x: currF_X, y: oY - triH };
+      const pF_curr = { x: currF_X, y: oY };
+
+      // E점은 F점을 기준으로 0도에서 180도 Y축 입체 회전!
+      const pE_curr = {
+        x: currF_X - triW * Math.cos(Math.PI * progress),
+        y: oY
+      };
+
+      const triD = two.makePath(pD_curr.x, pD_curr.y, pE_curr.x, pE_curr.y, pF_curr.x, pF_curr.y, false);
+      triD.fill = 'rgba(2, 132, 199, 0.08)'; triD.stroke = '#0284c7'; triD.linewidth = 2.5;
+
+      // F 직각 마크
+      const fMarkDir = (progress > 0.5) ? 14 : -14;
+      drawRightAngleMarker(two, pF_curr.x, pF_curr.y, fMarkDir, 0, 0, -14, '#0284c7');
+
+      // DE 빗변 2줄 틱 마크 (||) 선명한 빨간색
+      const midDE = { x: (pD_curr.x + pE_curr.x)/2, y: (pD_curr.y + pE_curr.y)/2 };
+      two.makeLine(midDE.x - 6, midDE.y - 4, midDE.x + 2, midDE.y + 6).stroke = '#ef4444';
+      two.makeLine(midDE.x - 2, midDE.y - 7, midDE.x + 6, midDE.y + 3).stroke = '#ef4444';
+
+      // DF 수직변 1줄 틱 마크 (|)
+      const midDF = { x: (pD_curr.x + pF_curr.x)/2, y: (pD_curr.y + pF_curr.y)/2 };
+      two.makeLine(midDF.x - 7, midDF.y, midDF.x + 7, midDF.y).stroke = '#0284c7';
+
+      // 점 원 포인트 (D, E, F)
+      two.makeCircle(pD_curr.x, pD_curr.y, 6).fill = '#0284c7';
+      two.makeCircle(pE_curr.x, pE_curr.y, 6).fill = '#0284c7';
+      two.makeCircle(pF_curr.x, pF_curr.y, 6).fill = '#0284c7';
+
+      // 라벨 D, E, F (선생님 요청: D 위의 회전 화살표 ↩️ 완전 삭제!)
+      const lblD_str = (progress >= 0.95) ? 'D (=A)' : 'D';
+      const lblF_str = (progress >= 0.95) ? 'F (=C)' : 'F';
+      const lblD = two.makeText(lblD_str, pD_curr.x, pD_curr.y - 18); lblD.size = 19; lblD.weight = 700; lblD.fill = '#0284c7';
+      const lblE = two.makeText('E', pE_curr.x + (progress > 0.5 ? 18 : -18), pE_curr.y + 14); lblE.size = 19; lblE.weight = 700; lblE.fill = '#0284c7';
+      const lblF = two.makeText(lblF_str, pF_curr.x + 18, pF_curr.y + 14); lblF.size = 19; lblF.weight = 700; lblF.fill = '#0284c7';
+
+      // 회전 완료 시 상단 이등변삼각형 ABE 강조 안내 배너
+      if (progress >= 0.95) {
+        const abeBanner = two.makeText('✨ 이등변삼각형 ABE 완성! (선분 AB = 선분 AE, ∠B = ∠E)', width * 0.5, 42);
+        abeBanner.size = 18; abeBanner.weight = 800; abeBanner.fill = '#ec4899';
+      }
+
+      two.update();
+    }
+
     // RHS 세부활동 3: △DEF 180도 회전 및 선분 DF와 AC 맞붙이기 애니메이션 (선생님 지시사항)
+    let rhsAnimId = null;
     function startRHSRotateAnimation() {
-      if (!twoInstance || !rhsGroupDEF) return;
-
-      const width = twoInstance.width, height = twoInstance.height;
-      const oX1 = width * 0.38; // 좌측 C점 (AC 수직선)
-      const oX2 = width * 0.76; // 우측 F점 (DF 수직선)
-      const targetX = oX1;
-
-      // 애니메이션 재실행을 위해 초기 위치 및 스케일 리셋
-      rhsGroupDEF.scale.set(1, 1);
-      rhsGroupDEF.translation.x = oX2;
-      twoInstance.update();
+      if (!twoInstance) return;
+      if (rhsAnimId) cancelAnimationFrame(rhsAnimId);
 
       let startTime = performance.now();
       const duration = 1800;
 
-      function animateFlip(now) {
+      function animateStep(now) {
         let elapsed = now - startTime;
         let progress = Math.min(elapsed / duration, 1.0);
-        progress = 1 - Math.pow(1 - progress, 3); // Smooth Ease-Out
+        let easeProgress = 1 - Math.pow(1 - progress, 3); // Smooth Ease-Out
 
-        // 180도 Y축 입체 회전 (scaleX: cos(pi * progress) 1 -> 0 -> -1) & X축 좌표 이동 (oX2 -> oX1)
-        const angleRads = Math.PI * progress;
-        const currScaleX = Math.cos(angleRads); 
-        const currX = oX2 + (targetX - oX2) * progress;
-
-        // 회전하는 느낌을 극대화하기 위한 Y축 약간의 3D 펄스 (회전 굴곡)
-        const rotPerspective = 1 + 0.1 * Math.sin(angleRads);
-
-        rhsGroupDEF.scale.set(currScaleX, rotPerspective);
-        rhsGroupDEF.translation.x = currX;
-
-        twoInstance.update();
+        // 60fps 프레임별 정밀 기하 렌더링
+        drawRHS34Canvas(twoInstance, easeProgress);
 
         if (progress < 1.0) {
-          requestAnimationFrame(animateFlip);
+          rhsAnimId = requestAnimationFrame(animateStep);
         } else {
-          rhsGroupDEF.scale.set(-1, 1);
-          rhsGroupDEF.translation.x = targetX;
-
-          // 큰 이등변삼각형 ABE 라벨 및 성질 강조 표시
-          const abeBanner = twoInstance.makeText('✨ 큰 이등변삼각형 ABE 완성! (AB = AE, ∠B = ∠E)', width * 0.5, 40);
-          abeBanner.size = 19; abeBanner.weight = 800; abeBanner.fill = '#ec4899';
-
-          twoInstance.update();
+          rhsAnimId = null;
           state.rhsRotateDrawn = true;
           alert("✨ [180° 회전·이동 연출 완료] △DEF가 180도 회전하며 선분 AC와 DF가 맞아떨어져 큰 이등변삼각형 ABE가 완성되었습니다!\n(선분 AB = 선분 AE 이므로 ∠B = ∠E)");
         }
       }
-      requestAnimationFrame(animateFlip);
+      rhsAnimId = requestAnimationFrame(animateStep);
     }
 
     function loadSubStep(subStepCode) {
@@ -2006,81 +2088,7 @@
         setMissionUI("<b>3. 두 직각삼각형의 빗변의 길이와 다른 한 변의 길이가 각각 같은 경우에도 합동이 되는지 확인해 보자. [6.2 세부활동 3: RHS 회전 애니메이션 & RHA 증명]</b><br>상단 <b>[🎬 △DEF 180° 회전·이동하여 AC와 DF 맞붙이기]</b> 버튼을 누르면 △DEF가 뒤집혀 맞붙는 애니메이션을 볼 수 있습니다.<br>아래 빈칸을 <b>한글과 알파벳(예: 빗변AB=빗변DE, 각C=각F=90도, 각B=각E, RHA)</b>으로 직접 타이핑하세요!");
 
         if (engine && engine.two) {
-          const width = engine.width, height = engine.height;
-          const triW = 100; // 밑변 BC, EF
-          const triH = 175; // 높이 AC, DF
-          const oY = height * 0.62;
-          const oX1 = width * 0.38; // C점 X좌표
-          const oX2 = width * 0.76; // F점 X좌표
-
-          // ------------------------------------
-          // 1. 좌측 △ABC (인디고 테마)
-          // A(oX1, oY - triH), C(oX1, oY), B(oX1 - triW, oY)
-          // ------------------------------------
-          const pA = { x: oX1, y: oY - triH };
-          const pC = { x: oX1, y: oY };
-          const pB = { x: oX1 - triW, y: oY };
-
-          const triA = engine.two.makePath(pA.x, pA.y, pB.x, pB.y, pC.x, pC.y, false);
-          triA.fill = 'rgba(79, 70, 229, 0.08)'; triA.stroke = '#4f46e5'; triA.linewidth = 2.5;
-
-          // C 직각 표시
-          drawRightAngleMarker(engine.two, pC.x, pC.y, -14, 0, 0, -14, '#4f46e5');
-
-          // AB 빗변 2줄 틱 마크 (||) 선명한 빨간색
-          const midAB = { x: (pA.x + pB.x)/2, y: (pA.y + pB.y)/2 };
-          engine.two.makeLine(midAB.x - 6, midAB.y - 4, midAB.x + 2, midAB.y + 6).stroke = '#ef4444';
-          engine.two.makeLine(midAB.x - 2, midAB.y - 7, midAB.x + 6, midAB.y + 3).stroke = '#ef4444';
-
-          // AC 수직변 1줄 틱 마크 (|)
-          const midAC = { x: (pA.x + pC.x)/2, y: (pA.y + pC.y)/2 };
-          engine.two.makeLine(midAC.x - 7, midAC.y, midAC.x + 7, midAC.y).stroke = '#4f46e5';
-
-          // 점 원 포인트 & 라벨
-          engine.two.makeCircle(pA.x, pA.y, 6).fill = '#4f46e5';
-          engine.two.makeCircle(pB.x, pB.y, 6).fill = '#4f46e5';
-          engine.two.makeCircle(pC.x, pC.y, 6).fill = '#4f46e5';
-
-          const lblA = engine.two.makeText('A', pA.x, pA.y - 18); lblA.size = 19; lblA.weight = 700; lblA.fill = '#4f46e5';
-          const lblB = engine.two.makeText('B', pB.x - 18, pB.y + 12); lblB.size = 19; lblB.weight = 700; lblB.fill = '#4f46e5';
-          const lblC = engine.two.makeText('C', pC.x + 18, pC.y + 12); lblC.size = 19; lblC.weight = 700; lblC.fill = '#4f46e5';
-
-          // ------------------------------------
-          // 2. 우측 △DEF (시안/블루 테마)
-          // 기준점(0,0) = F(0,0), D(0, -triH), E(-triW, 0)
-          // ------------------------------------
-          const triD = engine.two.makePath(0, -triH, -triW, 0, 0, 0, false);
-          triD.fill = 'rgba(2, 132, 199, 0.08)'; triD.stroke = '#0284c7'; triD.linewidth = 2.5;
-
-          // F 직각 표시
-          const pathF = engine.two.makePath(-14, 0, -14, -14, 0, -14, false);
-          pathF.noFill(); pathF.stroke = '#0284c7'; pathF.linewidth = 2;
-
-          // DE 빗변 2줄 틱 마크 (||) 선명한 빨간색
-          const midDE = { x: -triW/2, y: -triH/2 };
-          const m1 = engine.two.makeLine(midDE.x - 6, midDE.y - 4, midDE.x + 2, midDE.y + 6); m1.stroke = '#ef4444';
-          const m2 = engine.two.makeLine(midDE.x - 2, midDE.y - 7, midDE.x + 6, midDE.y + 3); m2.stroke = '#ef4444';
-
-          // DF 수직변 1줄 틱 마크 (|)
-          const mDF = engine.two.makeLine(-7, -triH/2, 7, -triH/2); mDF.stroke = '#0284c7';
-
-          // 점 원 포인트
-          const ptD = engine.two.makeCircle(0, -triH, 6); ptD.fill = '#0284c7';
-          const ptE = engine.two.makeCircle(-triW, 0, 6); ptE.fill = '#0284c7';
-          const ptF = engine.two.makeCircle(0, 0, 6); ptF.fill = '#0284c7';
-
-          // 라벨 D, E, F
-          const lblD = engine.two.makeText('D', 0, -triH - 18); lblD.size = 19; lblD.weight = 700; lblD.fill = '#0284c7';
-          const lblE = engine.two.makeText('E', -triW - 18, 12); lblE.size = 19; lblE.weight = 700; lblE.fill = '#0284c7';
-          const lblF = engine.two.makeText('F', 18, 12); lblF.size = 19; lblF.weight = 700; lblF.fill = '#0284c7';
-
-          // 꼭짓점 D 상단 핫핑크 180° 회전 둥근 화살표 (↩️/🔄) 표시
-          const rotIcon = engine.two.makeText('↩️', 6, -triH - 32); rotIcon.size = 22; rotIcon.fill = '#ec4899';
-
-          rhsGroupDEF = engine.two.makeGroup(triD, pathF, m1, m2, mDF, ptD, ptE, ptF, lblD, lblE, lblF, rotIcon);
-          rhsGroupDEF.translation.set(oX2, oY);
-
-          engine.two.update();
+          drawRHS34Canvas(engine.two, 0); // 초기 상태 렌더링 (E는 왼쪽, F는 우측 oX2)
         }
 
         formArea.innerHTML = `
@@ -2171,9 +2179,6 @@
           const lblD2 = engine.two.makeText('D', pD.x, pD.y - 18); lblD2.size = 19; lblD2.weight = 700; lblD2.fill = '#0284c7';
           const lblE2 = engine.two.makeText('E', pE.x - 18, pE.y + 12); lblE2.size = 19; lblE2.weight = 700; lblE2.fill = '#0284c7';
           const lblF2 = engine.two.makeText('F', pF.x + 18, pF.y + 12); lblF2.size = 19; lblF2.weight = 700; lblF2.fill = '#0284c7';
-
-          // 꼭짓점 D 상단 핫핑크 180° 회전 둥근 화살표
-          const rotIcon2 = engine.two.makeText('↩️', pD.x + 6, pD.y - 32); rotIcon2.size = 22; rotIcon2.fill = '#ec4899';
 
           engine.two.update();
         }
