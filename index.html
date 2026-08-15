@@ -504,6 +504,10 @@
               🎬 수선의 발(AD) 연출하기
             </button>
 
+            <button id="btn-rhs-rotate-anim" class="btn" style="display:none; margin-left:8px; padding:4px 12px; font-size:0.82rem; background:#4f46e5; color:#fff; font-weight:800;" onclick="startRHSRotateAnimation()">
+              🎬 △DEF 180° 회전·이동하여 AC와 DF 맞붙이기
+            </button>
+
             <button class="tool-btn" style="margin-left: auto;" onclick="loadSubStep(state.subStep)">🔄 초기화</button>
           </div>
 
@@ -527,10 +531,10 @@
           <!-- Realtime Measurement Board -->
           <div class="card" style="font-size:0.82rem;">
             <div style="font-weight:700; color:#334155; margin-bottom:6px;">📊 실시간 도형 수치 측정</div>
-            <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed #e2e8f0;"><span>선분 OP (빗변):</span> <span id="val-ab" style="font-weight:700; color:#4f46e5;">-</span></div>
-            <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed #e2e8f0;"><span>선분 PA (수선 1):</span> <span id="val-ac" style="font-weight:700; color:#ec4899;">-</span></div>
-            <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed #e2e8f0;"><span>선분 PB (수선 2):</span> <span id="val-bd" style="font-weight:700; color:#ec4899;">-</span></div>
-            <div style="display:flex; justify-content:space-between; padding:4px 0;"><span>내각 ∠POA / ∠POB:</span> <span id="val-cd" style="font-weight:700; color:#0284c7;">-</span></div>
+            <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed #e2e8f0;"><span>빗변 AB / DE:</span> <span id="val-ab" style="font-weight:700; color:#4f46e5;">-</span></div>
+            <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed #e2e8f0;"><span>높이 AC / DF:</span> <span id="val-ac" style="font-weight:700; color:#ec4899;">-</span></div>
+            <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed #e2e8f0;"><span>밑변 BC / EF:</span> <span id="val-bd" style="font-weight:700; color:#0284c7;">-</span></div>
+            <div style="display:flex; justify-content:space-between; padding:4px 0;"><span>내각 ∠C / ∠F:</span> <span id="val-cd" style="font-weight:700; color:#059669;">90°</span></div>
           </div>
         </div>
 
@@ -633,13 +637,17 @@
       studentName: '',
       bisectorDrawn: false,
       midpointDrawn: false,
-      perpendicularDrawn: false
+      perpendicularDrawn: false,
+      rhsRotateDrawn: false
     };
 
     let twoInstance = null;
     let animLineAD = null;
     let animDotD = null;
     let animTextD = null;
+
+    // RHS 애니메이션용 Two.js 노드 참조 객체
+    let rhsGroupDEF = null;
 
     function initTwoEngine() {
       const container = document.getElementById('two-container');
@@ -816,7 +824,8 @@
         { code: '3-1', label: '6.2 세부활동 1 (RHA ASA 증명)' },
         { code: '3-2', label: '6.2 RHA합동 정리 (직접 타이핑)' },
         { code: '3-3', label: '6.2 세부활동 2 (각의 이등분선 RHA 증명)' },
-        { code: '3-4', label: '6.2 RHS 합동' }
+        { code: '3-4', label: '6.2 세부활동 3 (RHS 회전&RHA 증명)' },
+        { code: '3-5', label: '6.2 RHS합동 정리 (직접 타이핑)' }
       ],
       4: [{ code: '4-1', label: '6.3-(1) 외심 위치&성질' }, { code: '4-2', label: '6.3-(2) 외심과 중심각' }],
       5: [{ code: '5-1', label: '6.4-(1) 내심 위치&성질' }, { code: '5-2', label: '6.4-(2) 내심과 넓이' }]
@@ -1011,6 +1020,44 @@
       requestAnimationFrame(animateLine);
     }
 
+    // RHS 세부활동 3: △DEF 180도 회전 및 선분 DF와 AC 맞붙이기 애니메이션 (선생님 지시사항)
+    function startRHSRotateAnimation() {
+      if (!twoInstance || !rhsGroupDEF || state.rhsRotateDrawn) return;
+      const width = twoInstance.width, height = twoInstance.height;
+      const oX1 = width * 0.35, oX2 = width * 0.65;
+
+      const targetX = oX1; // △DEF가 좌측 △ABC의 선분 AC(x = oX1) 위치로 이동하여 맞붙음
+
+      let startTime = performance.now();
+      const duration = 1800;
+
+      function animateFlip(now) {
+        let elapsed = now - startTime;
+        let progress = Math.min(elapsed / duration, 1.0);
+        progress = 1 - Math.pow(1 - progress, 3); // Ease-Out
+
+        // 180도 Y축 Flip (scaleX 1 -> -1) & X축 좌표 이동 (oX2 -> oX1)
+        const currScaleX = 1 - 2 * progress; 
+        const currX = oX2 + (targetX - oX2) * progress;
+
+        rhsGroupDEF.scale.x = currScaleX;
+        rhsGroupDEF.translation.x = currX;
+
+        twoInstance.update();
+
+        if (progress < 1.0) {
+          requestAnimationFrame(animateFlip);
+        } else {
+          rhsGroupDEF.scale.x = -1;
+          rhsGroupDEF.translation.x = targetX;
+          twoInstance.update();
+          state.rhsRotateDrawn = true;
+          alert("✨ [180° 회전·이동 연출 완료] 선분 AC와 선분 DF가 포개어져 큰 이등변삼각형 ABE(또는 ABD)가 완성되었습니다! (∠B = ∠E)");
+        }
+      }
+      requestAnimationFrame(animateFlip);
+    }
+
     function loadSubStep(subStepCode) {
       state.subStep = subStepCode;
 
@@ -1026,9 +1073,11 @@
       const animBtn1 = document.getElementById('btn-bisector-anim');
       const animBtn2 = document.getElementById('btn-midpoint-anim');
       const animBtn3 = document.getElementById('btn-perpendicular-anim');
+      const animBtnRHS = document.getElementById('btn-rhs-rotate-anim');
       if (animBtn1) animBtn1.style.display = 'none';
       if (animBtn2) animBtn2.style.display = 'none';
       if (animBtn3) animBtn3.style.display = 'none';
+      if (animBtnRHS) animBtnRHS.style.display = 'none';
 
       const formArea = document.getElementById('form-work-area');
       formArea.innerHTML = '';
@@ -1816,7 +1865,7 @@
       }
 
       // ==========================================
-      // [6.2-(3) 세부활동 2: 각의 이등분선 성질 RHA 증명 (선생님 지시사항)]
+      // [6.2-(3) 세부활동 2: 각의 이등분선 성질 RHA 증명]
       // ==========================================
       else if (subStepCode === '3-3') {
         setTool('select');
@@ -1892,46 +1941,151 @@
       }
 
       // ==========================================
-      // [6.2-(4) RHS 합동]
+      // [6.2-(4) 세부활동 3: RHS 회전 애니메이션 & RHA 증명 (선생님 지시사항)]
       // ==========================================
       else if (subStepCode === '3-4') {
         setTool('select');
-        setMissionUI("<b>[PDF p.5 그림 3] RHS 합동</b><br>빗변 선분 AB = 선분 DE, 한 변 선분 AC = 선분 DF 일 때 △DEF가 뒤집혀 붙어 이등변삼각형 △ABE가 만들어집니다!");
+        state.rhsRotateDrawn = false;
+        if (animBtnRHS) animBtnRHS.style.display = 'inline-flex';
+
+        setMissionUI("<b>3. 두 직각삼각형의 빗변의 길이와 다른 한 변의 길이가 각각 같은 경우에도 합동이 되는지 확인해 보자. [6.2 세부활동 3: RHS 회전 애니메이션 & RHA 증명]</b><br>상단 <b>[🎬 △DEF 180° 회전·이동하여 AC와 DF 맞붙이기]</b> 버튼을 누르면 △DEF가 뒤집혀 맞붙는 애니메이션을 볼 수 있습니다.<br>아래 빈칸을 <b>한글과 알파벳(예: 빗변AB=빗변DE, 각C=각F=90도, 각B=각E, RHA)</b>으로 직접 타이핑하세요!");
 
         if (engine && engine.two) {
-          const oX = engine.centerX - 120, oY = engine.centerY + 50;
-          const triA = engine.two.makePath(oX, oY - 120, oX - 90, oY, oX, oY, false);
+          const width = engine.width, height = engine.height;
+          const oX1 = width * 0.35, oY = height * 0.55;
+          const oX2 = width * 0.65;
+
+          // 좌측 △ABC (고정)
+          const triA = engine.two.makePath(0, -130, -90, 0, 0, 0, false);
           triA.fill = 'rgba(79, 70, 229, 0.08)'; triA.stroke = '#4f46e5'; triA.linewidth = 2.5;
-          drawRightAngleMarker(engine.two, oX, oY, -14, 0, 0, -14, '#4f46e5');
+          drawRightAngleMarker(engine.two, 0, 0, -14, 0, 0, -14, '#4f46e5');
 
-          const oX2 = engine.centerX + 120;
-          const triD = engine.two.makePath(oX2, oY - 120, oX2 - 90, oY, oX2, oY, false);
+          // 빗변 AB 2줄 틱 마크 (||), 한 변 AC 1줄 틱 마크 (|)
+          const draw2Ticks1 = (p1, p2, strokeColor) => {
+            const midX = (p1.x + p2.x)/2, midY = (p1.y + p2.y)/2;
+            engine.two.makeLine(midX - 5, midY - 3, midX + 3, midY + 5).stroke = strokeColor;
+            engine.two.makeLine(midX - 2, midY - 6, midX + 6, midY + 2).stroke = strokeColor;
+          };
+          draw2Ticks1({x: 0, y: -130}, {x: -90, y: 0}, '#ef4444');
+          engine.two.makeLine(0, -65, 8, -65).stroke = '#4f46e5'; // AC 1줄 마크
+
+          engine.two.makeCircle(0, -130, 6).fill = '#4f46e5'; engine.two.makeText('A', 0, -148).size = 16;
+          engine.two.makeCircle(-90, 0, 6).fill = '#4f46e5'; engine.two.makeText('B', -110, 8).size = 16;
+          engine.two.makeCircle(0, 0, 6).fill = '#4f46e5'; engine.two.makeText('C', 16, 8).size = 16;
+
+          const grpABC = engine.two.makeGroup(triA);
+          grpABC.translation.set(oX1, oY);
+
+          // 우측 △DEF (회전/뒤집힘 그룹 rhsGroupDEF)
+          const triD = engine.two.makePath(0, -130, -90, 0, 0, 0, false);
           triD.fill = 'rgba(2, 132, 199, 0.08)'; triD.stroke = '#0284c7'; triD.linewidth = 2.5;
-          drawRightAngleMarker(engine.two, oX2, oY, -14, 0, 0, -14, '#0284c7');
+          drawRightAngleMarker(engine.two, 0, 0, -14, 0, 0, -14, '#0284c7');
 
-          engine.two.makeCircle(oX, oY - 120, 6).fill = '#4f46e5'; engine.two.makeText('A', oX, oY - 138).size = 15;
-          engine.two.makeCircle(oX - 90, oY, 6).fill = '#4f46e5'; engine.two.makeText('B', oX - 108, oY + 6).size = 15;
-          engine.two.makeCircle(oX, oY, 6).fill = '#4f46e5'; engine.two.makeText('C', oX + 14, oY + 6).size = 15;
+          draw2Ticks1({x: 0, y: -130}, {x: -90, y: 0}, '#ef4444');
+          engine.two.makeLine(0, -65, 8, -65).stroke = '#0284c7'; // DF 1줄 마크
 
-          engine.two.makeCircle(oX2, oY - 120, 6).fill = '#0284c7'; engine.two.makeText('D', oX2, oY - 138).size = 15;
-          engine.two.makeCircle(oX2 - 90, oY, 6).fill = '#0284c7'; engine.two.makeText('E', oX2 - 108, oY + 6).size = 15;
-          engine.two.makeCircle(oX2, oY, 6).fill = '#0284c7'; engine.two.makeText('F', oX2 + 14, oY + 6).size = 15;
+          engine.two.makeCircle(0, -130, 6).fill = '#0284c7'; engine.two.makeText('D', 0, -148).size = 16;
+          engine.two.makeCircle(-90, 0, 6).fill = '#0284c7'; engine.two.makeText('E', -110, 8).size = 16;
+          engine.two.makeCircle(0, 0, 6).fill = '#0284c7'; engine.two.makeText('F', 16, 8).size = 16;
+
+          // D점 상단 회전 화살표 표시
+          const rotArrow = engine.two.makeText('🔄 180°', 0, -170); rotArrow.size = 15; rotArrow.fill = '#ec4899';
+
+          rhsGroupDEF = engine.two.makeGroup(triD);
+          rhsGroupDEF.translation.set(oX2, oY);
 
           engine.two.update();
         }
 
         formArea.innerHTML = `
-          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1;">
-            <div style="font-size:0.9rem; margin-bottom:6px; line-height:1.8;">
-              두 직각삼각형에서 ( 
-              <input type="text" id="p34-q1" class="proof-input-text" style="width:80px;" placeholder="변">
-              )의 길이와 다른 한 ( 
-              <input type="text" id="p34-q2" class="proof-input-text" style="width:70px;" placeholder="변">
-              )의 길이가 각각 같으면 서로 ( 
-              <input type="text" id="p34-q3" class="proof-input-text" style="width:110px;" placeholder="합동조건">
-              ) 이다!
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+            <div style="font-weight:800; color:#1e293b; margin-bottom:10px; font-size:1.05rem; border-bottom:1px solid #e2e8f0; padding-bottom:6px;">
+              [ △ <input type="text" id="p34-t1" class="proof-input-text" style="width:70px;" placeholder="삼각형"> 와 △ <input type="text" id="p34-t2" class="proof-input-text" style="width:70px;" placeholder="삼각형"> 에서 ]
             </div>
-            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px;" onclick="check34Submit()">✅ 제출</button>
+            
+            <div style="font-size:0.9rem; margin-bottom:8px; line-height:1.7;">
+              <b>①</b> <input type="text" id="p34-c1" class="proof-input-text" style="width:190px;" placeholder="조건 ① 입력">
+            </div>
+            <div style="font-size:0.9rem; margin-bottom:8px; line-height:1.7;">
+              <b>②</b> <input type="text" id="p34-c2" class="proof-input-text" style="width:190px;" placeholder="조건 ② 입력">
+            </div>
+            <div style="font-size:0.88rem; margin-bottom:8px; line-height:1.7;">
+              <b>③</b> <input type="text" id="p34-c3" class="proof-input-text" style="width:230px;" placeholder="조건 ③ (이등변 성질) 입력">
+            </div>
+
+            <div style="font-size:0.95rem; margin-top:12px; font-weight:800; color:#4f46e5; background:#f0fdf4; padding:10px; border-radius:8px; border:1px solid #bbf7d0;">
+              이므로 △ <input type="text" id="p34-f1" class="proof-input-text" style="width:65px;" placeholder="삼각형"> ≡ △ <input type="text" id="p34-f2" class="proof-input-text" style="width:65px;" placeholder="삼각형"> 
+              ( <input type="text" id="p34-f3" class="proof-input-text" style="width:75px;" placeholder="합동조건"> 합동 )
+            </div>
+
+            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px; background:#4f46e5;" onclick="check34ActivitySubmit()">✅ 세부활동 3 제출</button>
+          </div>
+        `;
+      }
+
+      // ==========================================
+      // [6.2-(5) RHS 합동 성질 정리 (선생님 지시사항)]
+      // ==========================================
+      else if (subStepCode === '3-5') {
+        setTool('select');
+        setMissionUI("<b>&lt;직각삼각형의 RHS 합동 조건&gt; 정리</b><br>아래 빈칸을 <b>한글(빗변, 변)과 알파벳(RHS)</b>으로 직접 타이핑하여 작성하세요!");
+
+        if (engine && engine.two) {
+          const width = engine.width, height = engine.height;
+          const oX1 = width * 0.35, oY = height * 0.55;
+          const oX2 = width * 0.65;
+
+          const triA = engine.two.makePath(oX1, oY - 130, oX1 - 90, oY, oX1, oY, false);
+          triA.fill = 'rgba(79, 70, 229, 0.08)'; triA.stroke = '#4f46e5'; triA.linewidth = 2.5;
+          drawRightAngleMarker(engine.two, oX1, oY, -14, 0, 0, -14, '#4f46e5');
+
+          const triD = engine.two.makePath(oX2, oY - 130, oX2 - 90, oY, oX2, oY, false);
+          triD.fill = 'rgba(2, 132, 199, 0.08)'; triD.stroke = '#0284c7'; triD.linewidth = 2.5;
+          drawRightAngleMarker(engine.two, oX2, oY, -14, 0, 0, -14, '#0284c7');
+
+          const draw2Ticks = (p1, p2, strokeColor) => {
+            const midX = (p1.x + p2.x)/2, midY = (p1.y + p2.y)/2;
+            engine.two.makeLine(midX - 5, midY - 3, midX + 3, midY + 5).stroke = strokeColor;
+            engine.two.makeLine(midX - 2, midY - 6, midX + 6, midY + 2).stroke = strokeColor;
+          };
+          draw2Ticks({x: oX1, y: oY - 130}, {x: oX1 - 90, y: oY}, '#ef4444');
+          draw2Ticks({x: oX2, y: oY - 130}, {x: oX2 - 90, y: oY}, '#ef4444');
+
+          engine.two.makeLine(oX1, oY - 65, oX1 + 8, oY - 65).stroke = '#4f46e5';
+          engine.two.makeLine(oX2, oY - 65, oX2 + 8, oY - 65).stroke = '#0284c7';
+
+          engine.two.makeText('A', oX1, oY - 148).size = 16;
+          engine.two.makeText('B', oX1 - 110, oY + 8).size = 16;
+          engine.two.makeText('C', oX1 + 16, oY + 8).size = 16;
+
+          engine.two.makeText('D', oX2, oY - 148).size = 16;
+          engine.two.makeText('E', oX2 - 110, oY + 8).size = 16;
+          engine.two.makeText('F', oX2 + 16, oY + 8).size = 16;
+
+          engine.two.update();
+        }
+
+        formArea.innerHTML = `
+          <div class="card" style="background:#ffffff; border:2px solid #a7f3d0; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.08);">
+            <div style="font-weight:800; color:#065f46; margin-bottom:12px; font-size:1.1rem; border-bottom:2px solid #059669; padding-bottom:6px;">
+              &lt;직각삼각형의 RHS 합동 조건&gt;
+            </div>
+            
+            <div style="margin-bottom:14px; line-height:1.8; font-size:0.98rem; font-weight:700;">
+              => 두 직각삼각형에서 ( 
+              <input type="text" id="p35-q1" class="proof-input-text" style="width:90px;" placeholder="답안 입력">
+              )의 길이와 다른 한 ( 
+              <input type="text" id="p35-q2" class="proof-input-text" style="width:90px;" placeholder="답안 입력">
+              )의 길이가 각각 같으면 두 직각삼각형은 합동이 된다!
+            </div>
+
+            <div style="font-size:1.05rem; font-weight:800; color:#059669; background:#ecfdf5; padding:12px; border-radius:10px; border:1px solid #a7f3d0; margin-bottom:14px;">
+              => ➔ ( 
+              <input type="text" id="p35-q3" class="proof-input-text" style="width:90px;" placeholder="합동조건">
+              ) 합동
+            </div>
+
+            <button class="btn btn-primary" style="padding:12px; width:100%; font-weight:800; font-size:1rem; background:#059669;" onclick="check35TypedSubmit()">✅ RHS합동 작성 제출</button>
           </div>
         `;
       }
@@ -2522,7 +2676,7 @@
       }
     }
 
-    // 6.2-(3) 세부활동 2 (각의 이등분선 RHA 증명 타이핑 검증 - 선생님 지시사항)
+    // 6.2-(3) 세부활동 2 (각의 이등분선 RHA 증명 타이핑 검증)
     function check33ActivitySubmit() {
       if (state.isTeacherLoggedIn) {
         showBigPraiseModal("🔓 [교사/테스트 프리패스]", "6.2 세부활동 2 통과!");
@@ -2567,32 +2721,81 @@
       }
     }
 
-    // 6.2-(4) RHS 합동 검증
-    function check34Submit() {
+    // 6.2-(4) 세부활동 3 (RHS 회전 및 RHA 증명 타이핑 검증 - 선생님 지시사항 1)
+    function check34ActivitySubmit() {
+      if (state.isTeacherLoggedIn) {
+        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "6.2 세부활동 3 통과!");
+        renderVerifiedAnswerView(
+          "△ABC ≡ △DEF (RHA 합동 유도)",
+          "① 빗변 AB = 빗변 DE<br>② ∠C = ∠F = 90°<br>③ ∠B = ∠E (이등변삼각형 ABE 성질)<br>이므로 <b>△ABC ≡ △DEF (RHA 합동)</b>",
+          "3-5"
+        );
+        return;
+      }
+
+      const t1 = normTxt(document.getElementById('p34-t1').value);
+      const t2 = normTxt(document.getElementById('p34-t2').value);
+      const c1 = normTxt(document.getElementById('p34-c1').value);
+      const c2 = normTxt(document.getElementById('p34-c2').value);
+      const c3 = normTxt(document.getElementById('p34-c3').value);
+      const f1 = normTxt(document.getElementById('p34-f1').value);
+      const f2 = normTxt(document.getElementById('p34-f2').value);
+      const f3 = normTxt(document.getElementById('p34-f3').value);
+
+      const okT1 = t1.includes('ABC');
+      const okT2 = t2.includes('DEF');
+      const okC1 = c1.includes('AB=DE') || (c1.includes('AB') && c1.includes('DE'));
+      const okC2 = c2.includes('C=F') || (c2.includes('C') && c2.includes('F'));
+      const okC3 = c3.includes('B=E') || (c3.includes('B') && c3.includes('E'));
+      const okF1 = f1.includes('ABC');
+      const okF2 = f2.includes('DEF');
+      const okF3 = f3.includes('RHA');
+
+      if (okT1 && okT2 && okC1 && okC2 && okC3 && okF1 && okF2 && okF3) {
+        showBigPraiseModal(
+          "🎉 정답입니다! 맞붙여 만든 이등변삼각형을 통해 RHA 합동 완벽 증명!",
+          "우측에 정돈된 유니코드 기호 정답이 표시되었습니다. [다음 단계로 진행] 버튼을 누르세요!"
+        );
+        renderVerifiedAnswerView(
+          "△ABC ≡ △DEF (RHA 합동 유도)",
+          "△ABC 와 △DEF 에서<br>① 빗변 AB = 빗변 DE<br>② ∠C = ∠F = 90°<br>③ ∠B = ∠E (이등변삼각형의 성질)<br>이므로 <b>△ABC ≡ △DEF (RHA 합동)</b>",
+          "3-5"
+        );
+      } else {
+        alert("❌ 입력한 각 항목의 타이핑 정답을 다시 확인해 주세요!\n(예: 빗변AB=빗변DE, 각C=각F=90도, 각B=각E, RHA)");
+      }
+    }
+
+    // 6.2-(5) RHS합동 성질 정리 타이핑 검증 (선생님 지시사항 2)
+    function check35TypedSubmit() {
       if (state.isTeacherLoggedIn) {
         unlockNextStep(4);
-        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "RHS 합동 통과!");
+        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "RHS합동 정리 통과!");
         renderVerifiedAnswerView(
-          "직각삼각형 RHS 합동 조건",
-          "두 직각삼각형에서 <b>빗변의 길이</b>와 <b>다른 한 변의 길이</b>가 각각 같으면 서로 <b>RHS 합동</b> 이다!",
+          "직각삼각형의 RHS 합동 조건",
+          "두 직각삼각형에서 <b>빗변</b>의 길이와 다른 한 <b>변</b>의 길이가 각각 같으면 두 직각삼각형은 합동이 된다!<br>➔ <b>RHS 합동</b>",
           "4-1"
         );
         return;
       }
-      const q1 = normTxt(document.getElementById('p34-q1').value);
-      const q2 = normTxt(document.getElementById('p34-q2').value);
-      const q3 = normTxt(document.getElementById('p34-q3').value);
+
+      const q1 = normTxt(document.getElementById('p35-q1').value);
+      const q2 = normTxt(document.getElementById('p35-q2').value);
+      const q3 = normTxt(document.getElementById('p35-q3').value);
 
       if (q1.includes('빗변') && (q2.includes('변') || q2.includes('한변')) && q3.includes('RHS')) {
         unlockNextStep(4);
-        showBigPraiseModal("🎉 RHS 합동 완수!", "우측에 정돈된 RHS 합동 조건이 표시되었습니다. [다음 단계로 진행] 버튼을 누르세요!");
+        showBigPraiseModal(
+          "🎉 정답입니다! RHS 합동 성질 정리 완료!",
+          "우측에 정돈된 RHS 합동 조건 정답이 표시되었습니다. [다음 단계로 진행] 버튼을 누르세요!"
+        );
         renderVerifiedAnswerView(
-          "직각삼각형 RHS 합동 조건",
-          "두 직각삼각형에서 <b>빗변의 길이</b>와 <b>다른 한 변의 길이</b>가 각각 같으면 서로 <b>RHS 합동</b> 이다!<br><br>[6.3 외심] 단원의 자물쇠가 해제되었습니다.",
+          "직각삼각형의 RHS 합동 조건",
+          "두 직각삼각형에서 <b>빗변</b>의 길이와 다른 한 <b>변</b>의 길이가 각각 같으면 두 직각삼각형은 합동이 된다!<br>➔ <b>RHS 합동</b><br><br>[6.3 외심] 단원의 자물쇠가 해제되었습니다.",
           "4-1"
         );
       } else {
-        alert("❌ 입력한 답을 다시 확인해 주세요!\n(예: 빗변, 변, RHS합동)");
+        alert("❌ 빈칸에 들어갈 핵심 용어('빗변', '변', 'RHS')를 정확히 입력해 주세요!");
       }
     }
 
