@@ -339,11 +339,11 @@
     /* 학습지 직접 타이핑 텍스트 상자 (서술형) */
     .proof-input-textarea {
       width: 100%;
-      height: 70px;
+      height: 75px;
       padding: 10px 12px;
       border: 2px solid #059669;
       border-radius: 10px;
-      font-size: 1.05rem;
+      font-size: 1.02rem;
       font-weight: 700;
       color: #065f46;
       background: #f0fdf4;
@@ -355,6 +355,37 @@
     .proof-input-textarea:focus {
       border-color: #047857;
       box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.2);
+    }
+
+    /* 정답 정돈 표기 카드 (Verified Answer View) */
+    .verified-answer-card {
+      background: #f0fdf4;
+      border: 2px solid #059669;
+      border-radius: 12px;
+      padding: 14px;
+      margin-top: 10px;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+
+    .verified-answer-card h4 {
+      color: #065f46;
+      font-size: 1.05rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+      border-bottom: 1px solid #bbf7d0;
+      padding-bottom: 4px;
+    }
+
+    .verified-answer-card p {
+      font-size: 0.92rem;
+      color: #047857;
+      line-height: 1.7;
+      font-weight: 700;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     .modal-overlay {
@@ -549,7 +580,7 @@
       <div style="font-size:3.5rem; margin-bottom:8px;">🎉 🏆 👏</div>
       <h2 id="congrat-title" style="font-size:1.4rem; font-weight:800; color:#065f46; margin-bottom:10px;">훌륭합니다! 미션 완수!</h2>
       <p id="congrat-message" style="font-size:0.95rem; color:#047857; line-height:1.6; margin-bottom:20px;">축하 메시지가 표시됩니다.</p>
-      <button id="btn-congrat-next" class="btn btn-primary" style="background:#059669; font-size:1.05rem; padding:12px; width:100%; font-weight:800;" onclick="closeCongratModal()">🚀 다음 단계로 진행하기</button>
+      <button class="btn btn-primary" style="background:#059669; font-size:1.05rem; padding:12px; width:100%; font-weight:800;" onclick="closeCongratModal()">확인 (우측 정답 및 다음 버튼 확인)</button>
     </div>
   </div>
 
@@ -580,15 +611,6 @@
                .replace(/\$([^$]+)\$/g, '$1')
                .replace(/\\circ/g, '°');
       return res;
-    }
-
-    // 실시간 타이핑 피드백 업데이트 함수
-    function updateTypingFeedback(inputId, feedbackId) {
-      const el = document.getElementById(inputId);
-      const fb = document.getElementById(feedbackId);
-      if (!el || !fb) return;
-      const formatted = convertTextToMathSymbols(el.value);
-      fb.innerText = formatted ? `(기호 표기: ${formatted})` : '';
     }
 
     // 직각 표시(L자 모양)를 만드는 헬퍼 함수
@@ -827,15 +849,12 @@
       loadSubStep(firstSub);
     }
 
-    let congratNextAction = null;
-
-    function showBigPraiseModal(title, message, nextCallback) {
+    function showBigPraiseModal(title, message) {
       const modal = document.getElementById('modal-congratulations');
       const titleEl = document.getElementById('congrat-title');
       const msgEl = document.getElementById('congrat-message');
       if (titleEl) titleEl.innerText = title;
       if (msgEl) msgEl.innerHTML = formatMathText(message);
-      congratNextAction = nextCallback;
 
       if (modal) {
         modal.classList.add('active');
@@ -848,11 +867,6 @@
       if (modal) {
         modal.classList.remove('active');
         modal.style.display = 'none';
-      }
-      if (typeof congratNextAction === 'function') {
-        const action = congratNextAction;
-        congratNextAction = null;
-        action();
       }
     }
 
@@ -1052,7 +1066,8 @@
             ptCount++;
             if (ptCount >= 3) {
               domEl.removeEventListener('click', handleClick);
-              showBigPraiseModal("🎉 점 찍기 성공!", "3개의 점을 정확히 찍으셨습니다!", () => { loadSubStep('0-2'); });
+              showBigPraiseModal("🎉 점 찍기 성공!", "3개의 점을 정확히 찍으셨습니다! 오른쪽의 [다음 단계로 진행] 버튼을 눌러 다음 단계로 넘어가세요.");
+              renderVerifiedAnswerView("📍 튜토리얼 0-1 점 3개 배치 완료", "좌측 좌표평면에 3개의 정수 격자점이 정상적으로 찍혔습니다.", "0-2");
             }
           };
           domEl.addEventListener('click', handleClick);
@@ -1091,7 +1106,8 @@
                 selected = null; lineCount++;
                 if (lineCount >= 3) {
                   domEl.removeEventListener('click', handleClick);
-                  showBigPraiseModal("👏 선분 연결 완성!", "삼각형을 성공적으로 완결하셨습니다!", () => { loadSubStep('0-3'); });
+                  showBigPraiseModal("👏 선분 연결 완성!", "삼각형을 성공적으로 완결하셨습니다! 오른쪽의 [다음 단계로 진행] 버튼을 눌러 넘어가세요.");
+                  renderVerifiedAnswerView("✏️ 튜토리얼 0-2 삼각형 완결", "3개의 점 A, B, C가 3개의 선분으로 완벽하게 연결되었습니다.", "0-3");
                 }
               }
             }
@@ -1156,7 +1172,8 @@
             if (active && moved >= 40 && !done) {
               done = true; active = null;
               unlockNextStep(1);
-              showBigPraiseModal("🏆 튜토리얼 완료!", "도형 조작 탐구를 마쳤습니다! [6.1 세부활동 1] 자물쇠가 해제되었습니다.", () => { loadSubStep('1-1'); });
+              showBigPraiseModal("🏆 튜토리얼 완료!", "도형 조작 탐구를 마쳤습니다! [6.1 세부활동 1] 자물쇠가 해제되었습니다. 우측의 [다음 단계로 진행] 버튼을 누르세요.");
+              renderVerifiedAnswerView("🖐️ 튜토리얼 0-3 꼭짓점 드래그 탐구 완료", "[6.1 이등변삼각형 성질] 단원의 자물쇠가 해제되었습니다.", "1-1");
             }
             active = null;
           };
@@ -1168,14 +1185,14 @@
       }
 
       // ==========================================
-      // [6.1-(1) 이등변삼각형 세부활동 1 (SAS 증명 - 타이핑 서식)]
+      // [6.1-(1) 이등변삼각형 세부활동 1 (SAS 증명 - 노 스포일러 타이핑)]
       // ==========================================
       else if (subStepCode === '1-1') {
         setTool('select');
         state.bisectorDrawn = false;
         if (animBtn1) animBtn1.style.display = 'inline-flex';
 
-        setMissionUI("<b>1. 선분 AB = 선분 AC인 이등변삼각형 ABC에서 어떤 선을 추가하면 합동이 되는 두 삼각형을 만들 수 있을까? (세부활동 1: SAS 합동)</b><br>상단 <b>[🎬 꼭지각 A의 이등분선(AD) 연출하기]</b> 버튼을 누른 후, 아래 빈칸을 <b>한글과 알파벳(예: 선분AB, 각BAD, SAS)</b>으로 입력하세요!");
+        setMissionUI("<b>1. 선분 AB = 선분 AC인 이등변삼각형 ABC에서 어떤 선을 추가하면 합동이 되는 두 삼각형을 만들 수 있을까? (세부활동 1: SAS 합동)</b><br>상단 <b>[🎬 꼭지각 A의 이등분선(AD) 연출하기]</b> 버튼을 누른 후, 아래 빈칸을 <b>한글과 알파벳(예: 선분AB=선분AC)</b>으로 직접 입력하세요!");
 
         if (engine && engine.two) {
           const pA = { x: engine.centerX, y: engine.centerY - 130 };
@@ -1201,38 +1218,38 @@
         formArea.innerHTML = `
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
             <div style="font-weight:800; color:#1e293b; margin-bottom:10px; font-size:1.05rem; border-bottom:1px solid #e2e8f0; padding-bottom:6px;">
-              [ i) △ <input type="text" id="p11-t1" class="proof-input-text" style="width:70px;" placeholder="ABD"> 와 △ <input type="text" id="p11-t2" class="proof-input-text" style="width:70px;" placeholder="ACD"> 에서 ]
+              [ i) △ <input type="text" id="p11-t1" class="proof-input-text" style="width:70px;" placeholder="삼각형"> 와 △ <input type="text" id="p11-t2" class="proof-input-text" style="width:70px;" placeholder="삼각형"> 에서 ]
             </div>
             
             <div style="font-size:0.92rem; margin-bottom:8px; line-height:1.7;">
-              <b>①</b> <input type="text" id="p11-c1" class="proof-input-text" style="width:180px;" placeholder="예: 선분AB=선분AC">
+              <b>①</b> <input type="text" id="p11-c1" class="proof-input-text" style="width:180px;" placeholder="조건 ① 입력">
             </div>
             <div style="font-size:0.92rem; margin-bottom:8px; line-height:1.7;">
-              <b>②</b> <input type="text" id="p11-c2" class="proof-input-text" style="width:180px;" placeholder="예: 각BAD=각CAD">
+              <b>②</b> <input type="text" id="p11-c2" class="proof-input-text" style="width:180px;" placeholder="조건 ② 입력">
             </div>
             <div style="font-size:0.92rem; margin-bottom:8px; line-height:1.7;">
-              <b>③</b> <input type="text" id="p11-c3" class="proof-input-text" style="width:180px;" placeholder="예: 선분AD는 공통">
+              <b>③</b> <input type="text" id="p11-c3" class="proof-input-text" style="width:180px;" placeholder="조건 ③ 입력">
             </div>
 
             <div style="font-size:0.95rem; margin-top:12px; font-weight:800; color:#4f46e5; background:#f0fdf4; padding:10px; border-radius:8px; border:1px solid #bbf7d0;">
-              이므로 △ <input type="text" id="p11-f1" class="proof-input-text" style="width:65px;" placeholder="ABD"> ≡ △ <input type="text" id="p11-f2" class="proof-input-text" style="width:65px;" placeholder="ACD"> 
-              ( <input type="text" id="p11-f3" class="proof-input-text" style="width:65px;" placeholder="SAS"> 합동 )
+              이므로 △ <input type="text" id="p11-f1" class="proof-input-text" style="width:65px;" placeholder="삼각형"> ≡ △ <input type="text" id="p11-f2" class="proof-input-text" style="width:65px;" placeholder="삼각형"> 
+              ( <input type="text" id="p11-f3" class="proof-input-text" style="width:75px;" placeholder="합동조건"> 합동 )
             </div>
 
-            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px;" onclick="check11ActivitySubmit()">✅ 세부활동 1 제출 및 세부활동 2 이동</button>
+            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px;" onclick="check11ActivitySubmit()">✅ 세부활동 1 제출</button>
           </div>
         `;
       }
 
       // ==========================================
-      // [6.1-(1) 이등변삼각형 세부활동 2 (SSS 증명 - 타이핑 서식)]
+      // [6.1-(1) 이등변삼각형 세부활동 2 (SSS 증명 - 노 스포일러 타이핑)]
       // ==========================================
       else if (subStepCode === '1-2') {
         setTool('select');
         state.midpointDrawn = false;
         if (animBtn2) animBtn2.style.display = 'inline-flex';
 
-        setMissionUI("<b>2. 꼭짓점 A에서 선분 BC의 중점 D를 잇는 선분을 그려 세 변의 길이가 각각 같음을 통해 합동임을 확인하기 (세부활동 2: SSS 합동)</b><br>상단 <b>[🎬 중점 D를 잇는 선분(AD) 연출하기]</b> 버튼을 누른 후, 아래 빈칸을 <b>한글과 알파벳(예: 선분BD=선분CD, SSS)</b>으로 직접 타이핑하세요!");
+        setMissionUI("<b>2. 꼭짓점 A에서 선분 BC의 중점 D를 잇는 선분을 그려 세 변의 길이가 각각 같음을 통해 합동임을 확인하기 (세부활동 2: SSS 합동)</b><br>상단 <b>[🎬 중점 D를 잇는 선분(AD) 연출하기]</b> 버튼을 누른 후, 아래 빈칸을 <b>한글과 알파벳</b>으로 직접 타이핑하세요!");
 
         if (engine && engine.two) {
           const pA = { x: engine.centerX, y: engine.centerY - 130 };
@@ -1259,31 +1276,31 @@
         formArea.innerHTML = `
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
             <div style="font-weight:800; color:#1e293b; margin-bottom:10px; font-size:1.05rem; border-bottom:1px solid #e2e8f0; padding-bottom:6px;">
-              [ ii) △ <input type="text" id="p12-t1" class="proof-input-text" style="width:70px;" placeholder="ABD"> 와 △ <input type="text" id="p12-t2" class="proof-input-text" style="width:70px;" placeholder="ACD"> 에서 ]
+              [ ii) △ <input type="text" id="p12-t1" class="proof-input-text" style="width:70px;" placeholder="삼각형"> 와 △ <input type="text" id="p12-t2" class="proof-input-text" style="width:70px;" placeholder="삼각형"> 에서 ]
             </div>
             
             <div style="font-size:0.92rem; margin-bottom:8px; line-height:1.7;">
-              <b>①</b> <input type="text" id="p12-c1" class="proof-input-text" style="width:180px;" placeholder="예: 선분AB=선분AC">
+              <b>①</b> <input type="text" id="p12-c1" class="proof-input-text" style="width:180px;" placeholder="조건 ① 입력">
             </div>
             <div style="font-size:0.92rem; margin-bottom:8px; line-height:1.7;">
-              <b>②</b> <input type="text" id="p12-c2" class="proof-input-text" style="width:180px;" placeholder="예: 선분BD=선분CD">
+              <b>②</b> <input type="text" id="p12-c2" class="proof-input-text" style="width:180px;" placeholder="조건 ② 입력">
             </div>
             <div style="font-size:0.92rem; margin-bottom:8px; line-height:1.7;">
-              <b>③</b> <input type="text" id="p12-c3" class="proof-input-text" style="width:180px;" placeholder="예: 선분AD는 공통">
+              <b>③</b> <input type="text" id="p12-c3" class="proof-input-text" style="width:180px;" placeholder="조건 ③ 입력">
             </div>
 
             <div style="font-size:0.95rem; margin-top:12px; font-weight:800; color:#0284c7; background:#f0f9ff; padding:10px; border-radius:8px; border:1px solid #bae6fd;">
-              이므로 △ <input type="text" id="p12-f1" class="proof-input-text" style="width:65px;" placeholder="ABD"> ≡ △ <input type="text" id="p12-f2" class="proof-input-text" style="width:65px;" placeholder="ACD"> 
-              ( <input type="text" id="p12-f3" class="proof-input-text" style="width:65px;" placeholder="SSS"> 합동 )
+              이므로 △ <input type="text" id="p12-f1" class="proof-input-text" style="width:65px;" placeholder="삼각형"> ≡ △ <input type="text" id="p12-f2" class="proof-input-text" style="width:65px;" placeholder="삼각형"> 
+              ( <input type="text" id="p12-f3" class="proof-input-text" style="width:75px;" placeholder="합동조건"> 합동 )
             </div>
 
-            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px;" onclick="check12ActivitySubmit()">✅ 세부활동 2 제출 및 성질 정리 이동</button>
+            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px;" onclick="check12ActivitySubmit()">✅ 세부활동 2 제출</button>
           </div>
         `;
       }
 
       // ==========================================
-      // [6.1 이등변삼각형 성질 2가지 정리 - 직접 타이핑]
+      // [6.1 이등변삼각형 성질 2가지 정리 - 노 스포일러]
       // ==========================================
       else if (subStepCode === '1-3') {
         setTool('select');
@@ -1410,20 +1427,20 @@
               <textarea id="p13-t2" class="proof-input-textarea" style="background:#ffffff; border-color:#94a3b8; color:#0f172a;" placeholder="답안을 직접 입력하세요."></textarea>
             </div>
 
-            <button class="btn btn-primary" style="padding:12px; width:100%; font-weight:800; font-size:1rem;" onclick="check13TypedSubmit()">✅ 성질 정리 제출 및 6.1-(2) 조건 이동</button>
+            <button class="btn btn-primary" style="padding:12px; width:100%; font-weight:800; font-size:1rem;" onclick="check13TypedSubmit()">✅ 성질 정리 제출</button>
           </div>
         `;
       }
 
       // ==========================================
-      // [6.1-(2) 이등변삼각형 조건 세부활동 1 (수선의 발 & ASA 증명 - 타이핑 서식)]
+      // [6.1-(2) 이등변삼각형 조건 세부활동 1 (수선의 발 & ASA 증명)]
       // ==========================================
       else if (subStepCode === '2-1') {
         setTool('select');
         state.perpendicularDrawn = false;
         if (animBtn3) animBtn3.style.display = 'inline-flex';
 
-        setMissionUI("<b>1. ∠B = ∠C 인 삼각형 ABC에서 어떤 선을 추가하면 합동이 되는 두 삼각형을 만들 수 있을까? [6.1-(2) 세부활동 1]</b><br>상단 <b>[🎬 수선의 발(AD) 연출하기]</b> 버튼을 누른 후, 아래 빈칸을 <b>한글과 알파벳(예: 각BAD=각CAD, ASA)</b>으로 직접 타이핑하세요!");
+        setMissionUI("<b>1. ∠B = ∠C 인 삼각형 ABC에서 어떤 선을 추가하면 합동이 되는 두 삼각형을 만들 수 있을까? [6.1-(2) 세부활동 1]</b><br>상단 <b>[🎬 수선의 발(AD) 연출하기]</b> 버튼을 누른 후, 아래 빈칸을 <b>한글과 알파벳</b>으로 직접 타이핑하세요!");
 
         if (engine && engine.two) {
           const pA = { x: engine.centerX, y: engine.centerY - 130 };
@@ -1447,32 +1464,32 @@
         formArea.innerHTML = `
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
             <div style="font-weight:800; color:#1e293b; margin-bottom:10px; font-size:1.05rem; border-bottom:1px solid #e2e8f0; padding-bottom:6px;">
-              [ i) △ <input type="text" id="p21-t1" class="proof-input-text" style="width:70px;" placeholder="ABD"> 와 △ <input type="text" id="p21-t2" class="proof-input-text" style="width:70px;" placeholder="ACD"> 에서 ]
+              [ i) △ <input type="text" id="p21-t1" class="proof-input-text" style="width:70px;" placeholder="삼각형"> 와 △ <input type="text" id="p21-t2" class="proof-input-text" style="width:70px;" placeholder="삼각형"> 에서 ]
             </div>
             
             <div style="font-size:0.86rem; margin-bottom:8px; line-height:1.7;">
-              <b>①</b> <input type="text" id="p21-c1" class="proof-input-text" style="width:230px;" placeholder="예: 각BAD=180도-(90도+각B)=각CAD">
+              <b>①</b> <input type="text" id="p21-c1" class="proof-input-text" style="width:230px;" placeholder="조건 ① 입력">
             </div>
             <div style="font-size:0.86rem; margin-bottom:8px; line-height:1.7;">
-              <b>②</b> <input type="text" id="p21-c2" class="proof-input-text" style="width:180px;" placeholder="예: 선분AD는 공통">
+              <b>②</b> <input type="text" id="p21-c2" class="proof-input-text" style="width:180px;" placeholder="조건 ② 입력">
             </div>
             <div style="font-size:0.86rem; margin-bottom:8px; line-height:1.7;">
-              <b>③</b> <input type="text" id="p21-c3" class="proof-input-text" style="width:180px;" placeholder="예: 각BDA=각CDA=90도">
+              <b>③</b> <input type="text" id="p21-c3" class="proof-input-text" style="width:180px;" placeholder="조건 ③ 입력">
             </div>
 
             <div style="font-size:0.92rem; margin-top:12px; font-weight:800; color:#059669; background:#ecfdf5; padding:10px; border-radius:8px; border:1px solid #a7f3d0;">
-              이므로 △ <input type="text" id="p21-f1" class="proof-input-text" style="width:65px;" placeholder="ABD"> ≡ △ <input type="text" id="p21-f2" class="proof-input-text" style="width:65px;" placeholder="ACD"> 
-              ( <input type="text" id="p21-f3" class="proof-input-text" style="width:65px;" placeholder="ASA"> 합동 )<br>
+              이므로 △ <input type="text" id="p21-f1" class="proof-input-text" style="width:65px;" placeholder="삼각형"> ≡ △ <input type="text" id="p21-f2" class="proof-input-text" style="width:65px;" placeholder="삼각형"> 
+              ( <input type="text" id="p21-f3" class="proof-input-text" style="width:75px;" placeholder="합동조건"> 합동 )<br>
               따라서 <b>선분 AB = 선분 AC</b> 이다.
             </div>
 
-            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px; background:#059669;" onclick="check21ActivitySubmit()">✅ 세부활동 1 제출 및 이등변 조건 1 이동</button>
+            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px; background:#059669;" onclick="check21ActivitySubmit()">✅ 세부활동 1 제출</button>
           </div>
         `;
       }
 
       // ==========================================
-      // [6.1-(2) 이등변삼각형이 되는 조건 1 - 직접 타이핑]
+      // [6.1-(2) 이등변삼각형이 되는 조건 1 - 노 스포일러]
       // ==========================================
       else if (subStepCode === '2-2') {
         setTool('select');
@@ -1539,17 +1556,17 @@
               * 이때, 크기가 같은 각이 이등변삼각형의 밑각이 된다.
             </div>
 
-            <button class="btn btn-primary" style="padding:12px; width:100%; font-weight:800; font-size:1rem; background:#059669;" onclick="check22TypedSubmit()">✅ 조건 1 작성 제출 및 세부활동 2 이동</button>
+            <button class="btn btn-primary" style="padding:12px; width:100%; font-weight:800; font-size:1rem; background:#059669;" onclick="check22TypedSubmit()">✅ 조건 1 작성 제출</button>
           </div>
         `;
       }
 
       // ==========================================
-      // [6.1-(2) 이등변삼각형 조건 세부활동 2 (수직이등분선 & SAS 증명 - 타이핑 서식)]
+      // [6.1-(2) 세부활동 2 (수직이등분선 & SAS 증명)]
       // ==========================================
       else if (subStepCode === '2-3') {
         setTool('select');
-        setMissionUI("<b>2. 선분 OM이 선분 AB의 수직이등분선일 때, △OAB가 이등변삼각형임을 보여보자. [6.1-(2) 세부활동 2]</b><br>좌측 그림의 수직이등분선 OM을 확인하고 아래 빈칸을 <b>한글과 알파벳(예: 선분AM=선분BM, 각OMA=각OMB, SAS)</b>으로 직접 타이핑하세요!");
+        setMissionUI("<b>2. 선분 OM이 선분 AB의 수직이등분선일 때, △OAB가 이등변삼각형임을 보여보자. [6.1-(2) 세부활동 2]</b><br>좌측 그림의 수직이등분선 OM을 확인하고 아래 빈칸을 <b>한글과 알파벳</b>으로 직접 타이핑하세요!");
 
         if (engine && engine.two) {
           const pA = { x: engine.centerX - 120, y: engine.centerY + 80 };
@@ -1583,32 +1600,32 @@
         formArea.innerHTML = `
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
             <div style="font-weight:800; color:#1e293b; margin-bottom:10px; font-size:1.05rem; border-bottom:1px solid #e2e8f0; padding-bottom:6px;">
-              [ △ <input type="text" id="p23-t1" class="proof-input-text" style="width:70px;" placeholder="OAM"> 와 △ <input type="text" id="p23-t2" class="proof-input-text" style="width:70px;" placeholder="OBM"> 에서 ]
+              [ △ <input type="text" id="p23-t1" class="proof-input-text" style="width:70px;" placeholder="삼각형"> 와 △ <input type="text" id="p23-t2" class="proof-input-text" style="width:70px;" placeholder="삼각형"> 에서 ]
             </div>
             
             <div style="font-size:0.92rem; margin-bottom:8px; line-height:1.7;">
-              <b>①</b> <input type="text" id="p23-c1" class="proof-input-text" style="width:180px;" placeholder="예: 선분AM=선분BM">
+              <b>①</b> <input type="text" id="p23-c1" class="proof-input-text" style="width:180px;" placeholder="조건 ① 입력">
             </div>
             <div style="font-size:0.92rem; margin-bottom:8px; line-height:1.7;">
-              <b>②</b> <input type="text" id="p23-c2" class="proof-input-text" style="width:180px;" placeholder="예: 각OMA=각OMB">
+              <b>②</b> <input type="text" id="p23-c2" class="proof-input-text" style="width:180px;" placeholder="조건 ② 입력">
             </div>
             <div style="font-size:0.92rem; margin-bottom:8px; line-height:1.7;">
-              <b>③</b> <input type="text" id="p23-c3" class="proof-input-text" style="width:180px;" placeholder="예: 선분OM은 공통">
+              <b>③</b> <input type="text" id="p23-c3" class="proof-input-text" style="width:180px;" placeholder="조건 ③ 입력">
             </div>
 
             <div style="font-size:0.95rem; margin-top:12px; font-weight:800; color:#0284c7; background:#f0f9ff; padding:10px; border-radius:8px; border:1px solid #bae6fd;">
-              이므로 △ <input type="text" id="p23-f1" class="proof-input-text" style="width:65px;" placeholder="OAM"> ≡ △ <input type="text" id="p23-f2" class="proof-input-text" style="width:65px;" placeholder="OBM"> 
-              ( <input type="text" id="p23-f3" class="proof-input-text" style="width:65px;" placeholder="SAS"> 합동 )<br>
+              이므로 △ <input type="text" id="p23-f1" class="proof-input-text" style="width:65px;" placeholder="삼각형"> ≡ △ <input type="text" id="p23-f2" class="proof-input-text" style="width:65px;" placeholder="삼각형"> 
+              ( <input type="text" id="p23-f3" class="proof-input-text" style="width:75px;" placeholder="합동조건"> 합동 )<br>
               따라서 <b>선분 OA = 선분 OB</b> 이다.
             </div>
 
-            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px; background:#0284c7;" onclick="check23ActivitySubmit()">✅ 세부활동 2 제출 및 이등변 조건 2 이동</button>
+            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px; background:#0284c7;" onclick="check23ActivitySubmit()">✅ 세부활동 2 제출</button>
           </div>
         `;
       }
 
       // ==========================================
-      // [6.1-(2) 이등변삼각형이 되는 조건 2 - 직접 타이핑]
+      // [6.1-(2) 이등변삼각형이 되는 조건 2 - 노 스포일러]
       // ==========================================
       else if (subStepCode === '2-4') {
         setTool('select');
@@ -1683,13 +1700,13 @@
               * 이때, 수직이등분선 위의 점에서 이등변삼각형의 꼭지각이 만들어진다.
             </div>
 
-            <button class="btn btn-primary" style="padding:12px; width:100%; font-weight:800; font-size:1rem; background:#0284c7;" onclick="check24TypedSubmit()">✅ 조건 2 작성 제출 및 6.2 직각삼각형 이동</button>
+            <button class="btn btn-primary" style="padding:12px; width:100%; font-weight:800; font-size:1rem; background:#0284c7;" onclick="check24TypedSubmit()">✅ 조건 2 작성 제출</button>
           </div>
         `;
       }
 
       // ==========================================
-      // [6.2 직각삼각형의 합동 조건 (PDF p.5~6 - 타이핑 서식)]
+      // [6.2 직각삼각형의 합동 조건 (PDF p.5~6)]
       // ==========================================
       else if (subStepCode === '3-1') {
         setTool('select');
@@ -1721,17 +1738,17 @@
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1;">
             <div style="font-size:0.9rem; margin-bottom:6px; line-height:1.8;">
               △ABC ≡ △DEF ( 
-              <input type="text" id="p31-q1" class="proof-input-text" style="width:110px;" placeholder="예: RHA합동">
+              <input type="text" id="p31-q1" class="proof-input-text" style="width:110px;" placeholder="합동조건">
               )
             </div>
             <div style="font-size:0.9rem; margin-top:6px; font-weight:700; line-height:1.8;">
               => 두 직각삼각형에서 ( 
-              <input type="text" id="p31-q2" class="proof-input-text" style="width:80px;" placeholder="빗변">
+              <input type="text" id="p31-q2" class="proof-input-text" style="width:80px;" placeholder="변 명칭">
               )의 길이와 한 ( 
-              <input type="text" id="p31-q3" class="proof-input-text" style="width:80px;" placeholder="예각">
+              <input type="text" id="p31-q3" class="proof-input-text" style="width:80px;" placeholder="각 명칭">
               )의 크기가 각각 같으면 두 직각삼각형은 합동이다!
             </div>
-            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px;" onclick="check31Submit()">✅ 제출 및 PA=PB 응용으로 이동</button>
+            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px;" onclick="check31Submit()">✅ 제출</button>
           </div>
         `;
       }
@@ -1770,10 +1787,10 @@
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1;">
             <div style="font-size:0.9rem; margin-bottom:6px; line-height:1.8;">
               △AOP ≡ △BOP ( 
-              <input type="text" id="p32-q1" class="proof-input-text" style="width:110px;" placeholder="예: RHA합동">
-              ) ⟹ <input type="text" id="p32-q2" class="proof-input-text" style="width:160px;" placeholder="예: 선분PA=선분PB">
+              <input type="text" id="p32-q1" class="proof-input-text" style="width:110px;" placeholder="합동조건">
+              ) ⟹ <input type="text" id="p32-q2" class="proof-input-text" style="width:160px;" placeholder="결론 선분 관계">
             </div>
-            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px;" onclick="check32Submit()">✅ 제출 및 RHS 합동으로 이동</button>
+            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px;" onclick="check32Submit()">✅ 제출</button>
           </div>
         `;
       }
@@ -1810,20 +1827,20 @@
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1;">
             <div style="font-size:0.9rem; margin-bottom:6px; line-height:1.8;">
               두 직각삼각형에서 ( 
-              <input type="text" id="p33-q1" class="proof-input-text" style="width:80px;" placeholder="빗변">
+              <input type="text" id="p33-q1" class="proof-input-text" style="width:80px;" placeholder="변">
               )의 길이와 다른 한 ( 
               <input type="text" id="p33-q2" class="proof-input-text" style="width:70px;" placeholder="변">
               )의 길이가 각각 같으면 서로 ( 
-              <input type="text" id="p33-q3" class="proof-input-text" style="width:110px;" placeholder="RHS합동">
+              <input type="text" id="p33-q3" class="proof-input-text" style="width:110px;" placeholder="합동조건">
               ) 이다!
             </div>
-            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px;" onclick="check33Submit()">✅ 제출 및 6.3 외심으로 이동</button>
+            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px;" onclick="check33Submit()">✅ 제출</button>
           </div>
         `;
       }
 
       // ==========================================
-      // [6.3 삼각형의 외심 & 성질 (PDF p.7~10 - 타이핑 서식)]
+      // [6.3 삼각형의 외심 & 성질 (PDF p.7~10)]
       // ==========================================
       else if (subStepCode === '4-1') {
         setTool('select');
@@ -1862,20 +1879,20 @@
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1;">
             <div style="font-size:0.9rem; margin-bottom:8px; line-height:1.7;">
               ① 점 O에서부터 세 꼭짓점 A, B, C까지의 거리는 ( 
-              <input type="text" id="p41-q1" class="proof-input-text" style="width:90px;" placeholder="같다">
+              <input type="text" id="p41-q1" class="proof-input-text" style="width:90px;" placeholder="거리 관계">
               ).
             </div>
             <div style="font-size:0.9rem; margin-bottom:8px; line-height:1.7;">
               ② 세 삼각형 △OAB, △OBC, △OCA는 모두 ( 
-              <input type="text" id="p41-q2" class="proof-input-text" style="width:140px;" placeholder="이등변삼각형">
+              <input type="text" id="p41-q2" class="proof-input-text" style="width:140px;" placeholder="삼각형 종류">
               ) 이다.
             </div>
             <div style="font-size:0.9rem; margin-bottom:8px; line-height:1.7;">
               ③ △ABC의 세 ( 
-              <input type="text" id="p41-q3" class="proof-input-text" style="width:140px;" placeholder="수직이등분선">
+              <input type="text" id="p41-q3" class="proof-input-text" style="width:140px;" placeholder="선분의 명칭">
               )은 한 점 O에서 만난다.
             </div>
-            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px;" onclick="check41Submit()">✅ 제출 및 중심각 관계 탐구로 이동</button>
+            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px;" onclick="check41Submit()">✅ 제출</button>
           </div>
         `;
       }
@@ -1915,16 +1932,16 @@
             <div style="font-size:0.9rem; margin-bottom:6px; line-height:1.8;">
               선분 AO 연장선과 선분 BC 교점 D에 대해 외각의 성질에 의하여<br>
               ∠BOC = ∠BOD + ∠COD = 2a + 2b = 2(a + b) = ( 
-              <input type="text" id="p42-q1" class="proof-input-text" style="width:100px;" placeholder="예: 2각A">
+              <input type="text" id="p42-q1" class="proof-input-text" style="width:100px;" placeholder="중심각 표현">
               )
             </div>
-            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px;" onclick="check42Submit()">✅ 제출 및 6.4 내심 탐구 이동</button>
+            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px;" onclick="check42Submit()">✅ 제출</button>
           </div>
         `;
       }
 
       // ==========================================
-      // [6.4 삼각형의 내심 & 넓이 (PDF p.11~14 - 타이핑 서식)]
+      // [6.4 삼각형의 내심 & 넓이 (PDF p.11~14)]
       // ==========================================
       else if (subStepCode === '5-1') {
         setTool('select');
@@ -1960,15 +1977,15 @@
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1;">
             <div style="font-size:0.9rem; margin-bottom:8px; line-height:1.7;">
               ① 점 I에서부터 세 변 선분 AB, 선분 BC, 선분 CA까지의 거리는 ( 
-              <input type="text" id="p51-q1" class="proof-input-text" style="width:90px;" placeholder="같다">
+              <input type="text" id="p51-q1" class="proof-input-text" style="width:90px;" placeholder="거리 관계">
               ).
             </div>
             <div style="font-size:0.9rem; margin-bottom:8px; line-height:1.7;">
               ② 점 I를 정확히 찾기 위해 세 각의 ( 
-              <input type="text" id="p51-q2" class="proof-input-text" style="width:140px;" placeholder="이등분선">
+              <input type="text" id="p51-q2" class="proof-input-text" style="width:140px;" placeholder="선분의 명칭">
               )을 그린다.
             </div>
-            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px;" onclick="check51Submit()">✅ 제출 및 내심 넓이 공식으로 이동</button>
+            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px;" onclick="check51Submit()">✅ 제출</button>
           </div>
         `;
       }
@@ -2008,17 +2025,17 @@
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1;">
             <div style="font-size:0.9rem; margin-bottom:8px; line-height:1.7;">
               △ABC = 1/2 a r + 1/2 b r + 1/2 c r = 1/2 r × ( 
-              <input type="text" id="p52-q1" class="proof-input-text" style="width:110px;" placeholder="a+b+c">
+              <input type="text" id="p52-q1" class="proof-input-text" style="width:110px;" placeholder="둘레 표현">
               )
             </div>
             <div style="font-size:0.9rem; margin-top:6px; font-weight:700; color:#059669; line-height:1.7;">
               => 삼각형의 ( 
               <input type="text" id="p52-q2" class="proof-input-text" style="width:90px;" placeholder="둘레">
               )와 ( 
-              <input type="text" id="p52-q3" class="proof-input-text" style="width:140px;" placeholder="내접원의 반지름">
+              <input type="text" id="p52-q3" class="proof-input-text" style="width:140px;" placeholder="반지름">
               )를 알면 삼각형의 넓이를 구할 수 있다!
             </div>
-            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px;" onclick="check52Submit()">🏆 최종 제출 및 5단원 전체 완수</button>
+            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px;" onclick="check52Submit()">🏆 최종 제출</button>
           </div>
         `;
       }
@@ -2030,10 +2047,34 @@
       return v.trim().replace(/\s+/g, '').toUpperCase();
     }
 
+    // [핵심 1 & 2 & 3] 정답 정돈 표기 카드 생성 및 다음 단계 진행 버튼 렌더링 함수
+    function renderVerifiedAnswerView(titleHtml, contentHtml, nextStepCode) {
+      const formArea = document.getElementById('form-work-area');
+      if (!formArea) return;
+
+      formArea.innerHTML = `
+        <div class="verified-answer-card">
+          <h4>✅ 정답 확인 (수학 기호 정돈 표기)</h4>
+          <div style="font-size:0.95rem; font-weight:800; color:#065f46; margin-bottom:8px;">${titleHtml}</div>
+          <div style="font-size:0.9rem; color:#047857; line-height:1.7; margin-bottom:14px;">
+            ${contentHtml}
+          </div>
+          <button class="btn btn-primary" style="background:#059669; font-size:1rem; padding:12px; width:100%; font-weight:800;" onclick="loadSubStep('${nextStepCode}')">
+            🚀 다음 단계로 진행하기 ➔
+          </button>
+        </div>
+      `;
+    }
+
     // 6.1 세부활동 1 (SAS 증명 타이핑 검증)
     function check11ActivitySubmit() {
       if (state.isTeacherLoggedIn) {
-        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "6.1 세부활동 1 통과!", () => { loadSubStep('1-2'); });
+        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "6.1 세부활동 1 통과!");
+        renderVerifiedAnswerView(
+          "△ABD ≡ △ACD (SAS 합동)",
+          "① 선분 AB = 선분 AC<br>② ∠BAD = ∠CAD<br>③ 선분 AD는 공통<br>이므로 <b>△ABD ≡ △ACD (SAS 합동)</b>",
+          "1-2"
+        );
         return;
       }
       const t1 = normTxt(document.getElementById('p11-t1').value);
@@ -2057,8 +2098,12 @@
       if (okT1 && okT2 && okC1 && okC2 && okC3 && okF1 && okF2 && okF3) {
         showBigPraiseModal(
           "🎉 정답입니다! SAS 합동 완벽 증명!",
-          "① 선분 AB = 선분 AC<br>② ∠BAD = ∠CAD<br>③ 선분 AD는 공통<br>이므로 <b>△ABD ≡ △ACD (SAS 합동)</b> 임을 완벽히 증명하셨습니다!",
-          () => { loadSubStep('1-2'); }
+          "우측에 유니코드 수학 기호로 정돈된 정답이 표시되었습니다. 내용을 확인하신 후 [다음 단계로 진행] 버튼을 누르세요!"
+        );
+        renderVerifiedAnswerView(
+          "△ABD ≡ △ACD (SAS 합동)",
+          "[i] △ABD 와 △ACD 에서<br>① 선분 AB = 선분 AC<br>② ∠BAD = ∠CAD<br>③ 선분 AD는 공통<br>이므로 <b>△ABD ≡ △ACD (SAS 합동)</b>",
+          "1-2"
         );
       } else {
         alert("❌ 입력한 각 항목의 타이핑 정답을 다시 확인해 주세요!\n(예: 선분AB=선분AC, 각BAD=각CAD, 선분AD는 공통, SAS)");
@@ -2068,7 +2113,12 @@
     // 6.1 세부활동 2 (SSS 증명 타이핑 검증)
     function check12ActivitySubmit() {
       if (state.isTeacherLoggedIn) {
-        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "6.1 세부활동 2 통과!", () => { loadSubStep('1-3'); });
+        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "6.1 세부활동 2 통과!");
+        renderVerifiedAnswerView(
+          "△ABD ≡ △ACD (SSS 합동)",
+          "① 선분 AB = 선분 AC<br>② 선분 BD = 선분 CD<br>③ 선분 AD는 공통<br>이므로 <b>△ABD ≡ △ACD (SSS 합동)</b>",
+          "1-3"
+        );
         return;
       }
       const t1 = normTxt(document.getElementById('p12-t1').value);
@@ -2092,8 +2142,12 @@
       if (okT1 && okT2 && okC1 && okC2 && okC3 && okF1 && okF2 && okF3) {
         showBigPraiseModal(
           "🎉 정답입니다! SSS 합동 완벽 증명!",
-          "① 선분 AB = 선분 AC<br>② 선분 BD = 선분 CD<br>③ 선분 AD는 공통<br>이므로 <b>△ABD ≡ △ACD (SSS 합동)</b> 임을 완벽히 증명하셨습니다!",
-          () => { loadSubStep('1-3'); }
+          "우측에 유니코드 수학 기호로 정돈된 정답이 표시되었습니다. 내용을 확인하신 후 [다음 단계로 진행] 버튼을 누르세요!"
+        );
+        renderVerifiedAnswerView(
+          "△ABD ≡ △ACD (SSS 합동)",
+          "[ii] △ABD 와 △ACD 에서<br>① 선분 AB = 선분 AC<br>② 선분 BD = 선분 CD<br>③ 선분 AD는 공통<br>이므로 <b>△ABD ≡ △ACD (SSS 합동)</b>",
+          "1-3"
         );
       } else {
         alert("❌ 입력한 각 항목의 타이핑 정답을 다시 확인해 주세요!\n(예: 선분AB=선분AC, 선분BD=선분CD, 선분AD는 공통, SSS)");
@@ -2104,7 +2158,12 @@
     function check13TypedSubmit() {
       if (state.isTeacherLoggedIn) {
         unlockNextStep(2);
-        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "6.1 성질 정리 통과!", () => { loadSubStep('2-1'); });
+        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "6.1 성질 정리 통과!");
+        renderVerifiedAnswerView(
+          "이등변삼각형의 핵심 성질 2가지",
+          "1. <b>이등변삼각형의 두 밑각의 크기는 같다.</b><br>2. <b>이등변삼각형의 꼭지각의 이등분선은 밑변을 수직이등분한다.</b>",
+          "2-1"
+        );
         return;
       }
 
@@ -2121,8 +2180,12 @@
         unlockNextStep(2);
         showBigPraiseModal(
           "🎉 완벽합니다! 이등변삼각형의 성질 2가지 작성 성공!",
-          "1. <b>이등변삼각형의 두 밑각의 크기는 같다.</b><br>2. <b>이등변삼각형의 꼭지각의 이등분선은 밑변을 수직이등분한다.</b><br><br>두 가지 성질을 완벽하게 서술하셨습니다!",
-          () => { loadSubStep('2-1'); }
+          "우측에 정돈된 이등변삼각형의 2가지 핵심 성질이 표시되었습니다. [다음 단계로 진행] 버튼을 누르세요!"
+        );
+        renderVerifiedAnswerView(
+          "이등변삼각형의 핵심 성질 2가지",
+          "1. <b>이등변삼각형의 두 밑각의 크기는 같다.</b><br>2. <b>이등변삼각형의 꼭지각의 이등분선은 밑변을 수직이등분한다.</b>",
+          "2-1"
         );
       } else {
         let msg = "❌ 작성하신 내용을 다시 확인해 주세요:\n\n";
@@ -2135,7 +2198,12 @@
     // 6.1-(2) 세부활동 1 (수선의 발 ASA 증명 타이핑 검증)
     function check21ActivitySubmit() {
       if (state.isTeacherLoggedIn) {
-        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "6.1-(2) 세부활동 1 통과!", () => { loadSubStep('2-2'); });
+        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "6.1-(2) 세부활동 1 통과!");
+        renderVerifiedAnswerView(
+          "△ABD ≡ △ACD (ASA 합동)",
+          "① ∠BAD = 180° - (90° + ∠B) = 180° - (90° + ∠C) = ∠CAD<br>② 선분 AD는 공통<br>③ ∠BDA = ∠CDA = 90°<br>이므로 <b>△ABD ≡ △ACD (ASA 합동)</b> ⟹ <b>선분 AB = 선분 AC</b>",
+          "2-2"
+        );
         return;
       }
 
@@ -2160,8 +2228,12 @@
       if (okT1 && okT2 && okC1 && okC2 && okC3 && okF1 && okF2 && okF3) {
         showBigPraiseModal(
           "🎉 정답입니다! ASA 합동을 통한 이등변 조건 증명 완수!",
-          "① ∠BAD = 180° - (90° + ∠B) = 180° - (90° + ∠C) = ∠CAD<br>② 선분 AD는 공통<br>③ ∠BDA = ∠CDA = 90°<br>이므로 <b>△ABD ≡ △ACD (ASA 합동)</b> 임을 증명하고, 따라서 <b>선분 AB = 선분 AC</b> 임을 완성하셨습니다!",
-          () => { loadSubStep('2-2'); }
+          "우측에 유니코드 수학 기호로 정돈된 정답이 표시되었습니다. [다음 단계로 진행] 버튼을 누르세요!"
+        );
+        renderVerifiedAnswerView(
+          "△ABD ≡ △ACD (ASA 합동)",
+          "[i] △ABD 와 △ACD 에서<br>① ∠BAD = 180° - (90° + ∠B) = 180° - (90° + ∠C) = ∠CAD<br>② 선분 AD는 공통<br>③ ∠BDA = ∠CDA = 90°<br>이므로 <b>△ABD ≡ △ACD (ASA 합동)</b><br>따라서 <b>선분 AB = 선분 AC</b>",
+          "2-2"
         );
       } else {
         alert("❌ 입력한 각 항목의 타이핑 정답을 다시 확인해 주세요!\n(예: 각BAD=각CAD, 선분AD는 공통, 각BDA=각CDA=90도, ASA)");
@@ -2171,7 +2243,12 @@
     // 6.1-(2) 이등변삼각형이 되는 조건 1 타이핑 검증
     function check22TypedSubmit() {
       if (state.isTeacherLoggedIn) {
-        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "조건 1 작성 통과!", () => { loadSubStep('2-3'); });
+        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "조건 1 작성 통과!");
+        renderVerifiedAnswerView(
+          "이등변삼각형이 되는 조건 1",
+          "<b>( 두 밑각의 크기가 ) 같은 삼각형은 이등변삼각형이다.</b><br><br>* 이때, 크기가 같은 각이 이등변삼각형의 밑각이 된다.",
+          "2-3"
+        );
         return;
       }
 
@@ -2183,8 +2260,12 @@
       if (isValid) {
         showBigPraiseModal(
           "🎉 정답입니다! 이등변삼각형이 되는 조건 1 작성 완성!",
-          "<b>( 두 밑각의 크기가 ) 같은 삼각형은 이등변삼각형이다.</b><br><br>* 이때, 크기가 같은 각이 이등변삼각형의 밑각이 됩니다.<br>조건 1을 완벽히 정리하셨습니다!",
-          () => { loadSubStep('2-3'); }
+          "우측에 정돈된 이등변삼각형 조건 1이 표시되었습니다. [다음 단계로 진행] 버튼을 누르세요!"
+        );
+        renderVerifiedAnswerView(
+          "이등변삼각형이 되는 조건 1",
+          "<b>( 두 밑각의 크기가 ) 같은 삼각형은 이등변삼각형이다.</b><br><br>* 이때, 크기가 같은 각이 이등변삼각형의 밑각이 된다.",
+          "2-3"
         );
       } else {
         alert("❌ 빈칸에 들어갈 핵심 문장('두 밑각의 크기가')을 정확히 입력해 주세요!");
@@ -2194,7 +2275,12 @@
     // 6.1-(2) 세부활동 2 (수직이등분선 SAS 증명 타이핑 검증)
     function check23ActivitySubmit() {
       if (state.isTeacherLoggedIn) {
-        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "6.1-(2) 세부활동 2 통과!", () => { loadSubStep('2-4'); });
+        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "6.1-(2) 세부활동 2 통과!");
+        renderVerifiedAnswerView(
+          "△OAM ≡ △OBM (SAS 합동)",
+          "① 선분 AM = 선분 BM<br>② ∠OMA = ∠OMB = 90°<br>③ 선분 OM은 공통<br>이므로 <b>△OAM ≡ △OBM (SAS 합동)</b> ⟹ <b>선분 OA = 선분 OB</b>",
+          "2-4"
+        );
         return;
       }
 
@@ -2219,8 +2305,12 @@
       if (okT1 && okT2 && okC1 && okC2 && okC3 && okF1 && okF2 && okF3) {
         showBigPraiseModal(
           "🎉 정답입니다! 수직이등분선과 SAS 합동 완벽 증명!",
-          "① 선분 AM = 선분 BM<br>② ∠OMA = ∠OMB = 90°<br>③ 선분 OM은 공통<br>이므로 <b>△OAM ≡ △OBM (SAS 합동)</b> 임을 증명하여 <b>선분 OA = 선분 OB</b> 임을 완성하셨습니다!",
-          () => { loadSubStep('2-4'); }
+          "우측에 유니코드 수학 기호로 정돈된 정답이 표시되었습니다. [다음 단계로 진행] 버튼을 누르세요!"
+        );
+        renderVerifiedAnswerView(
+          "△OAM ≡ △OBM (SAS 합동)",
+          "[ii] △OAM 와 △OBM 에서<br>① 선분 AM = 선분 BM<br>② ∠OMA = ∠OMB = 90°<br>③ 선분 OM은 공통<br>이므로 <b>△OAM ≡ △OBM (SAS 합동)</b><br>따라서 <b>선분 OA = 선분 OB</b>",
+          "2-4"
         );
       } else {
         alert("❌ 입력한 각 항목의 타이핑 정답을 다시 확인해 주세요!\n(예: 선분AM=선분BM, 각OMA=각OMB, 선분OM은 공통, SAS)");
@@ -2231,7 +2321,12 @@
     function check24TypedSubmit() {
       if (state.isTeacherLoggedIn) {
         unlockNextStep(3);
-        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "조건 2 작성 통과!", () => { loadSubStep('3-1'); });
+        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "조건 2 작성 통과!");
+        renderVerifiedAnswerView(
+          "이등변삼각형이 되는 조건 2",
+          "<b>선분의 ( 수직이등분선 ) 위의 점에서 선분의 양 끝을 이어 만든 삼각형은 이등변삼각형이다.</b><br><br>* 이때, 수직이등분선 위의 점에서 이등변삼각형의 꼭지각이 만들어진다.",
+          "3-1"
+        );
         return;
       }
 
@@ -2244,8 +2339,12 @@
         unlockNextStep(3);
         showBigPraiseModal(
           "🎉 정답입니다! 이등변삼각형이 되는 조건 2 작성 완성!",
-          "<b>선분의 ( 수직이등분선 ) 위의 점에서 선분의 양 끝을 이어 만든 삼각형은 이등변삼각형이다.</b><br><br>* 이때, 수직이등분선 위의 점에서 이등변삼각형의 꼭지각이 만들어집니다.<br><br>[6.2 직각삼각형의 합동 조건] 단원이 해금되었습니다.",
-          () => { loadSubStep('3-1'); }
+          "우측에 정돈된 이등변삼각형 조건 2가 표시되었습니다. [다음 단계로 진행] 버튼을 누르세요!"
+        );
+        renderVerifiedAnswerView(
+          "이등변삼각형이 되는 조건 2",
+          "<b>선분의 ( 수직이등분선 ) 위의 점에서 선분의 양 끝을 이어 만든 삼각형은 이등변삼각형이다.</b><br><br>* 이때, 수직이등분선 위의 점에서 이등변삼각형의 꼭지각이 만들어진다.<br><br>[6.2 직각삼각형의 합동 조건] 단원의 자물쇠가 해제되었습니다.",
+          "3-1"
         );
       } else {
         alert("❌ 빈칸에 들어갈 핵심 용어('수직이등분선')를 정확히 입력해 주세요!");
@@ -2255,7 +2354,12 @@
     // 6.2 직각삼각형 RHA 합동 검증
     function check31Submit() {
       if (state.isTeacherLoggedIn) {
-        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "RHA 합동 통과!", () => { loadSubStep('3-2'); });
+        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "RHA 합동 통과!");
+        renderVerifiedAnswerView(
+          "직각삼각형 RHA 합동 조건",
+          "△ABC ≡ △DEF ( <b>RHA 합동</b> )<br>⟹ 두 직각삼각형에서 <b>빗변의 길이</b>와 <b>한 예각의 크기</b>가 각각 같으면 두 직각삼각형은 합동이다!",
+          "3-2"
+        );
         return;
       }
       const q1 = normTxt(document.getElementById('p31-q1').value);
@@ -2263,7 +2367,12 @@
       const q3 = normTxt(document.getElementById('p31-q3').value);
 
       if (q1.includes('RHA') && q2.includes('빗변') && q3.includes('예각')) {
-        showBigPraiseModal("🎉 RHA 합동 완수!", "빗변의 길이와 한 예각의 크기가 같을 때 RHA 합동이 됨을 완성하셨습니다!", () => { loadSubStep('3-2'); });
+        showBigPraiseModal("🎉 RHA 합동 완수!", "우측에 정돈된 RHA 합동 조건 정답이 표시되었습니다. [다음 단계로 진행] 버튼을 누르세요!");
+        renderVerifiedAnswerView(
+          "직각삼각형 RHA 합동 조건",
+          "△ABC ≡ △DEF ( <b>RHA 합동</b> )<br>⟹ 두 직각삼각형에서 <b>빗변의 길이</b>와 <b>한 예각의 크기</b>가 각각 같으면 두 직각삼각형은 합동이다!",
+          "3-2"
+        );
       } else {
         alert("❌ 입력한 답을 다시 확인해 주세요!\n(예: RHA합동, 빗변, 예각)");
       }
@@ -2272,14 +2381,24 @@
     // 6.2 RHA 응용 (PA=PB) 검증
     function check32Submit() {
       if (state.isTeacherLoggedIn) {
-        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "RHA 응용 통과!", () => { loadSubStep('3-3'); });
+        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "RHA 응용 통과!");
+        renderVerifiedAnswerView(
+          "RHA 응용: PA = PB 증명",
+          "△AOP ≡ △BOP ( <b>RHA 합동</b> )<br>⟹ <b>선분 PA = 선분 PB</b>",
+          "3-3"
+        );
         return;
       }
       const q1 = normTxt(document.getElementById('p32-q1').value);
       const q2 = normTxt(document.getElementById('p32-q2').value);
 
       if (q1.includes('RHA') && (q2.includes('PA=PB') || (q2.includes('PA') && q2.includes('PB')))) {
-        showBigPraiseModal("🎉 PA = PB 증명 완수!", "RHA 합동을 이용해 선분 PA = 선분 PB 임을 증명하셨습니다!", () => { loadSubStep('3-3'); });
+        showBigPraiseModal("🎉 PA = PB 증명 완수!", "우측에 정돈된 RHA 응용 증명이 표시되었습니다. [다음 단계로 진행] 버튼을 누르세요!");
+        renderVerifiedAnswerView(
+          "RHA 응용: PA = PB 증명",
+          "△AOP ≡ △BOP ( <b>RHA 합동</b> )<br>⟹ <b>선분 PA = 선분 PB</b>",
+          "3-3"
+        );
       } else {
         alert("❌ 입력한 답을 다시 확인해 주세요!\n(예: RHA합동, 선분PA=선분PB)");
       }
@@ -2289,7 +2408,12 @@
     function check33Submit() {
       if (state.isTeacherLoggedIn) {
         unlockNextStep(4);
-        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "RHS 합동 통과!", () => { loadSubStep('4-1'); });
+        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "RHS 합동 통과!");
+        renderVerifiedAnswerView(
+          "직각삼각형 RHS 합동 조건",
+          "두 직각삼각형에서 <b>빗변의 길이</b>와 <b>다른 한 변의 길이</b>가 각각 같으면 서로 <b>RHS 합동</b> 이다!",
+          "4-1"
+        );
         return;
       }
       const q1 = normTxt(document.getElementById('p33-q1').value);
@@ -2298,7 +2422,12 @@
 
       if (q1.includes('빗변') && (q2.includes('변') || q2.includes('한변')) && q3.includes('RHS')) {
         unlockNextStep(4);
-        showBigPraiseModal("🎉 RHS 합동 완수!", "RHS 합동 조건을 완벽히 완성하셨습니다!", () => { loadSubStep('4-1'); });
+        showBigPraiseModal("🎉 RHS 합동 완수!", "우측에 정돈된 RHS 합동 조건이 표시되었습니다. [다음 단계로 진행] 버튼을 누르세요!");
+        renderVerifiedAnswerView(
+          "직각삼각형 RHS 합동 조건",
+          "두 직각삼각형에서 <b>빗변의 길이</b>와 <b>다른 한 변의 길이</b>가 각각 같으면 서로 <b>RHS 합동</b> 이다!<br><br>[6.3 외심] 단원의 자물쇠가 해제되었습니다.",
+          "4-1"
+        );
       } else {
         alert("❌ 입력한 답을 다시 확인해 주세요!\n(예: 빗변, 변, RHS합동)");
       }
@@ -2307,7 +2436,12 @@
     // 6.3 외심 검증
     function check41Submit() {
       if (state.isTeacherLoggedIn) {
-        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "외심 성질 통과!", () => { loadSubStep('4-2'); });
+        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "외심 성질 통과!");
+        renderVerifiedAnswerView(
+          "삼각형의 외심 O와 성질",
+          "① 점 O에서부터 세 꼭짓점 A, B, C까지의 거리는 <b>같다 (OA = OB = OC)</b>.<br>② 세 삼각형 △OAB, △OBC, △OCA는 모두 <b>이등변삼각형</b>이다.<br>③ △ABC의 세 <b>수직이등분선</b>은 한 점 O에서 만난다.",
+          "4-2"
+        );
         return;
       }
       const q1 = normTxt(document.getElementById('p41-q1').value);
@@ -2315,7 +2449,12 @@
       const q3 = normTxt(document.getElementById('p41-q3').value);
 
       if (q1.includes('같다') && q2.includes('이등변') && q3.includes('수직이등분')) {
-        showBigPraiseModal("🎉 외심 성질 완수!", "외심은 세 변의 수직이등분선의 교점이며 OA=OB=OC 임을 증명하셨습니다!", () => { loadSubStep('4-2'); });
+        showBigPraiseModal("🎉 외심 성질 완수!", "우측에 정돈된 외심 성질 정답이 표시되었습니다. [다음 단계로 진행] 버튼을 누르세요!");
+        renderVerifiedAnswerView(
+          "삼각형의 외심 O와 성질",
+          "① 점 O에서부터 세 꼭짓점 A, B, C까지의 거리는 <b>같다 (OA = OB = OC)</b>.<br>② 세 삼각형 △OAB, △OBC, △OCA는 모두 <b>이등변삼각형</b>이다.<br>③ △ABC의 세 <b>수직이등분선</b>은 한 점 O에서 만난다.",
+          "4-2"
+        );
       } else {
         alert("❌ 입력한 답을 다시 확인해 주세요!\n(예: 같다, 이등변삼각형, 수직이등분선)");
       }
@@ -2325,14 +2464,24 @@
     function check42Submit() {
       if (state.isTeacherLoggedIn) {
         unlockNextStep(5);
-        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "외심 중심각 통과!", () => { loadSubStep('5-1'); });
+        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "외심 중심각 통과!");
+        renderVerifiedAnswerView(
+          "외심과 중심각 관계",
+          "∠BOC = ∠BOD + ∠COD = 2a + 2b = 2(a + b) = <b>2∠A</b>",
+          "5-1"
+        );
         return;
       }
       const q1 = normTxt(document.getElementById('p42-q1').value);
 
       if (q1.includes('2각A') || q1.includes('2*각A') || q1.includes('2A')) {
         unlockNextStep(5);
-        showBigPraiseModal("🎉 외심과 중심각 완수!", "중심각 ∠BOC = 2∠A 임을 완벽히 완성하셨습니다!", () => { loadSubStep('5-1'); });
+        showBigPraiseModal("🎉 외심과 중심각 완수!", "우측에 정돈된 중심각 공식 정답이 표시되었습니다. [다음 단계로 진행] 버튼을 누르세요!");
+        renderVerifiedAnswerView(
+          "외심과 중심각 관계",
+          "∠BOC = ∠BOD + ∠COD = 2a + 2b = 2(a + b) = <b>2∠A</b><br><br>[6.4 내심] 단원의 자물쇠가 해제되었습니다.",
+          "5-1"
+        );
       } else {
         alert("❌ 입력한 답을 다시 확인해 주세요!\n(예: 2각A 또는 2∠A)");
       }
@@ -2341,14 +2490,24 @@
     // 6.4 내심 성질 검증
     function check51Submit() {
       if (state.isTeacherLoggedIn) {
-        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "내심 성질 통과!", () => { loadSubStep('5-2'); });
+        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "내심 성질 통과!");
+        renderVerifiedAnswerView(
+          "삼각형의 내심 I와 성질",
+          "① 점 I에서부터 세 변 선분 AB, 선분 BC, 선분 CA까지의 거리는 <b>같다 (r)</b>.<br>② 점 I를 정확히 찾기 위해 세 내각의 <b>이등분선</b>을 그린다.",
+          "5-2"
+        );
         return;
       }
       const q1 = normTxt(document.getElementById('p51-q1').value);
       const q2 = normTxt(document.getElementById('p51-q2').value);
 
       if (q1.includes('같다') && q2.includes('이등분선')) {
-        showBigPraiseModal("🎉 내심 성질 완수!", "내심은 세 내각의 이등분선의 교점이며 세 변에 이르는 거리(r)가 같음을 완성하셨습니다!", () => { loadSubStep('5-2'); });
+        showBigPraiseModal("🎉 내심 성질 완수!", "우측에 정돈된 내심 성질 정답이 표시되었습니다. [다음 단계로 진행] 버튼을 누르세요!");
+        renderVerifiedAnswerView(
+          "삼각형의 내심 I와 성질",
+          "① 점 I에서부터 세 변 선분 AB, 선분 BC, 선분 CA까지의 거리는 <b>같다 (r)</b>.<br>② 점 I를 정확히 찾기 위해 세 내각의 <b>이등분선</b>을 그린다.",
+          "5-2"
+        );
       } else {
         alert("❌ 입력한 답을 다시 확인해 주세요!\n(예: 같다, 이등분선)");
       }
@@ -2357,7 +2516,12 @@
     // 6.4 내심 넓이 공식 검증
     function check52Submit() {
       if (state.isTeacherLoggedIn) {
-        showBigPraiseModal("🏆 5단원 전체 학습 완수!", "5단원 삼각형의 성질 PDF 학습지 전체를 완수하셨습니다!", () => {});
+        showBigPraiseModal("🏆 5단원 전체 학습 완수!", "5단원 삼각형의 성질 PDF 학습지 전체를 완수하셨습니다!");
+        renderVerifiedAnswerView(
+          "🏆 내심을 이용한 삼각형 넓이 공식",
+          "△ABC = 1/2 a r + 1/2 b r + 1/2 c r = <b>1/2 r (a + b + c)</b><br>⟹ 삼각형의 <b>둘레(a+b+c)</b>와 <b>내접원의 반지름(r)</b>을 알면 넓이를 구할 수 있습니다!",
+          "5-2"
+        );
         return;
       }
       const q1 = normTxt(document.getElementById('p52-q1').value);
@@ -2365,7 +2529,12 @@
       const q3 = normTxt(document.getElementById('p52-q3').value);
 
       if ((q1.includes('A+B+C') || q1.includes('둘레')) && q2.includes('둘레') && q3.includes('반지름')) {
-        showBigPraiseModal("🏆 5단원 전체 학습 완수!", "축하합니다! 내심을 이용한 넓이 공식 1/2 * r * (a+b+c)까지 PDF 학습지 전체를 성공적으로 완수하셨습니다!", () => {});
+        showBigPraiseModal("🏆 5단원 전체 학습 완수!", "축하합니다! 내심을 이용한 넓이 공식까지 전체 완수하셨습니다!");
+        renderVerifiedAnswerView(
+          "🏆 내심을 이용한 삼각형 넓이 공식",
+          "△ABC = 1/2 a r + 1/2 b r + 1/2 c r = <b>1/2 r (a + b + c)</b><br>⟹ 삼각형의 <b>둘레(a+b+c)</b>와 <b>내접원의 반지름(r)</b>을 알면 넓이를 구할 수 있습니다!",
+          "5-2"
+        );
       } else {
         alert("❌ 입력한 답을 다시 확인해 주세요!\n(예: a+b+c, 둘레, 내접원의 반지름)");
       }
