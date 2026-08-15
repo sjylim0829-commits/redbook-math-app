@@ -1,6 +1,6 @@
 /**
- * Redbook Math App - Monday LMS DB Integration SDK
- * Connects directly with Supabase Cloud DB and Google Sheets WebApp Endpoint.
+ * Redbook Math App - 영서중 수학 LMS DB Integration SDK
+ * Connects directly with Supabase Cloud DB Engine.
  */
 
 (function(window) {
@@ -8,7 +8,6 @@
 
   const SUPABASE_URL = 'https://agcmetuneycqzhvshmoe.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_r_0ZhunAe99ftol-JqL5qg_ADZ1BH_X';
-  const GAS_ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbxnxVFfw9oeqks1lrDj_SgrS8ltk7HGdcmfA98BlLxf3f7PdC9M47LETlV6JuAbOJ8E/exec';
 
   const APP_ID = 'redbook_math_2';
   const LOCAL_CACHE_USER_KEY = 'redbook_current_user';
@@ -87,7 +86,7 @@
     },
 
     /**
-     * Authenticate student using LMS DB credentials
+     * Authenticate student using Supabase Cloud DB (Google Sheets fallback disconnected per instruction)
      */
     async loginStudent(studentId, password) {
       const cleanId = String(studentId || '').trim();
@@ -110,7 +109,7 @@
         return { success: true, user: masterUser, message: '선생님 마스터 비밀번호로 인증되었습니다.' };
       }
 
-      // 1. Query Supabase Cloud DB
+      // Query Supabase Cloud DB (Google Sheets disconnected)
       const sb = getSupabase();
       if (sb) {
         try {
@@ -140,25 +139,6 @@
         }
       }
 
-      // 2. Query GAS WebApp fallback
-      try {
-        const res = await fetch(`${GAS_ENDPOINT_URL}?action=verify_student&id=${encodeURIComponent(cleanId)}&pw=${encodeURIComponent(cleanPw)}`);
-        if (res.ok) {
-          const json = await res.json();
-          if (json.success && json.student) {
-            const userObj = {
-              id: String(json.student.id).trim(),
-              name: String(json.student.name).trim(),
-              grade: String(json.student.grade || '2'),
-              classNum: String(json.student.classNum || '1'),
-              role: 'student'
-            };
-            this.setCurrentUser(userObj);
-            return { success: true, user: userObj, message: `환영합니다, ${userObj.name}님!` };
-          }
-        }
-      } catch (e) {}
-
       // Fallback local cache check
       try {
         const cachedStudentsRaw = localStorage.getItem('mathlab_students_cache');
@@ -179,7 +159,7 @@
         }
       } catch (e) {}
 
-      return { success: false, message: '등록되지 않은 학번이거나 비밀번호가 올바르지 않습니다.' };
+      return { success: false, message: '영서중 수학 LMS DB에 등록되지 않은 학번이거나 비밀번호가 올바르지 않습니다.' };
     },
 
     /**
