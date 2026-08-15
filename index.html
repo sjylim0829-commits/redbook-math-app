@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>중2 수학: 6.2 직각삼각형의 합동 [프로젝트 1]</title>
   
+  <!-- Supabase Cloud DB SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Monday LMS Integration SDK -->
+  <script src="js/lms-integration.js"></script>
+
   <!-- KaTeX Math Rendering Library -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
@@ -462,20 +467,22 @@
     <!-- VIEW 1: LOGIN VIEW -->
     <section id="view-login" class="view-panel active">
       <div class="login-card-container">
-        <h2 style="font-size:1.4rem; margin-bottom:8px;">👋 5단원 도형 탐구실 로그인</h2>
-        <p style="font-size:0.88rem; color:#64748b; margin-bottom:18px;">학번과 이름을 입력하고 세부활동 탐구를 시작하세요!</p>
-        <div class="form-group">
-          <label for="student-id">학번 (예: 20101)</label>
-          <input type="text" id="student-id" class="form-control" placeholder="학번 5자리를 입력하세요" value="20101">
-        </div>
-        <div class="form-group">
-          <label for="student-name">이름</label>
-          <input type="text" id="student-name" class="form-control" placeholder="이름을 입력하세요" value="홍길동">
-        </div>
-        <button id="btn-start-exploration" type="button" class="btn btn-primary" style="margin-top: 8px; width:100%; font-size:1.05rem; padding:12px;" onclick="handleLogin(event)">🚀 탐구 시작하기</button>
+        <h2 style="font-size:1.35rem; margin-bottom:6px; color:#1e293b;">🏫 Monday LMS 학생 로그인</h2>
+        <p style="font-size:0.86rem; color:#64748b; margin-bottom:18px;">LMS 회원가입 DB의 학번과 비밀번호를 입력하고 이어서 학습하세요!</p>
+        <form onsubmit="handleLMSLogin(event)">
+          <div class="form-group">
+            <label for="student-id">학번 (예: 20101)</label>
+            <input type="text" id="student-id" class="form-control" placeholder="LMS 가입 학번 5자리" value="20101" required>
+          </div>
+          <div class="form-group">
+            <label for="student-name">비밀번호</label>
+            <input type="password" id="student-name" class="form-control" placeholder="LMS 가입 비밀번호" required>
+          </div>
+          <button id="btn-start-exploration" type="submit" class="btn btn-primary" style="margin-top: 8px; width:100%; font-size:1.05rem; padding:12px; font-weight:800; background:linear-gradient(135deg, #4f46e5, #ec4899);">🔐 Monday LMS 학생 로그인</button>
+        </form>
 
         <div style="margin-top:14px; border-top:1px solid #e2e8f0; padding-top:12px; display:flex; flex-direction:column; gap:8px;">
-          <button type="button" class="btn" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; width:100%; font-weight:700;" onclick="openTestLoginModal()">🧪 테스트 계정 접속</button>
+          <button type="button" class="btn" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; width:100%; font-weight:700;" onclick="openTestLoginModal()">🧪 체험/테스트 계정 접속 (비번: 661227)</button>
           <button type="button" class="btn" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; width:100%; font-weight:700;" onclick="openTeacherLoginModal()">🔒 교사 전용 접속</button>
         </div>
       </div>
@@ -714,22 +721,94 @@
       if (targetView) { targetView.classList.add('active'); targetView.style.display = 'flex'; }
     }
 
-    function handleLogin(e) {
+    async function handleLMSLogin(e) {
       if (e && e.preventDefault) e.preventDefault();
       const idEl = document.getElementById('student-id');
-      const nameEl = document.getElementById('student-name');
-      let idInput = idEl ? idEl.value.trim() : '';
-      let nameInput = nameEl ? nameEl.value.trim() : '';
-      if (!idInput) idInput = '20101';
-      if (!nameInput) nameInput = '홍길동';
+      const pwEl = document.getElementById('student-name');
+      const studentId = idEl ? idEl.value.trim() : '';
+      const password = pwEl ? pwEl.value.trim() : '';
 
-      state.studentId = idInput;
-      state.studentName = nameInput;
+      if (!studentId || !password) {
+        alert("⚠️ 학번과 비밀번호를 모두 입력해 주세요!");
+        return false;
+      }
 
-      document.getElementById('current-user-info').innerText = `👤 ${idInput} ${nameInput}`;
-      switchView('activity');
-      setTimeout(() => { loadSubStep('0-1'); }, 80);
+      const loginBtn = document.getElementById('btn-start-exploration');
+      if (loginBtn) {
+        loginBtn.disabled = true;
+        loginBtn.innerText = "⏳ Monday LMS DB 인증 중...";
+      }
+
+      try {
+        const res = await LMSIntegration.loginStudent(studentId, password);
+        if (res.success) {
+          state.currentUser = res.user;
+          state.studentId = res.user.id;
+          state.studentName = res.user.name;
+          state.isTeacherLoggedIn = (res.user.role === 'teacher' || res.user.id === '661227');
+
+          document.getElementById('current-user-info').innerText = `👤 ${res.user.name} (${res.user.id})`;
+
+          if (state.isTeacherLoggedIn) {
+            activateTeacherMode();
+          }
+
+          // LMS DB에서 진도 데이터 로드 (이어서 하기)
+          const prog = await LMSIntegration.loadStudentProgress(res.user.id);
+          let targetSubStep = '0-1';
+
+          if (prog && prog.lastSubStep) {
+            targetSubStep = prog.lastSubStep;
+            if (Array.isArray(prog.completedSteps)) {
+              prog.completedSteps.forEach(code => {
+                const mainIdx = parseInt(code.split('-')[0]);
+                unlockNextStep(mainIdx);
+              });
+            }
+          }
+
+          switchView('activity');
+          setTimeout(() => { loadSubStep(targetSubStep); }, 80);
+
+          const stepNames = {
+            '0-1': '0. 튜토리얼',
+            '1-1': '6.1 세부활동 1 (SAS 증명)',
+            '1-2': '6.1 세부활동 2 (SSS 증명)',
+            '1-3': '6.1 이등변삼각형 성질 정리',
+            '2-1': '6.1 이등변삼각형이 되는 조건',
+            '2-2': '6.1 수직이등분선 이등변삼각형 정리',
+            '3-1': '6.2 직각삼각형 RHA 증명',
+            '3-2': '6.2 RHA 합동 정리',
+            '3-3': '6.2 각의 이등분선 성질',
+            '3-4': '6.2 직각삼각형 RHS 증명',
+            '3-5': '6.2 RHS 합동 정리',
+            '4-1': '6.3 삼각형의 외심과 성질',
+            '4-2': '6.3 외심과 중심각',
+            '5-1': '6.4 삼각형의 내심과 성질',
+            '5-2': '6.4 내심 넓이 공식'
+          };
+
+          showBigPraiseModal(
+            `🎉 ${res.user.name} 학생 환영합니다!`,
+            `Monday LMS DB 로그인 성공!\n이전 학습 단계 [${stepNames[targetSubStep] || targetSubStep}] 로 이어서 시작합니다.`
+          );
+        } else {
+          alert(`❌ ${res.message}`);
+        }
+      } catch (err) {
+        console.error(err);
+        alert("❌ Monday LMS DB 연결 중 오류가 발생했습니다.");
+      } finally {
+        if (loginBtn) {
+          loginBtn.disabled = false;
+          loginBtn.innerText = "🔐 Monday LMS 학생 로그인";
+        }
+      }
       return false;
+    }
+
+    function handleLogin(e) {
+      return handleLMSLogin(e);
     }
 
     function openTeacherLoginModal() {
@@ -1157,6 +1236,11 @@
 
     function loadSubStep(subStepCode) {
       state.subStep = subStepCode;
+
+      // Monday LMS DB 진도 동기화
+      if (typeof LMSIntegration !== 'undefined') {
+        LMSIntegration.saveStudentProgress(subStepCode);
+      }
 
       const mainTabIdx = parseInt(subStepCode.split('-')[0]);
       updateSubStepPills(mainTabIdx);
