@@ -322,7 +322,7 @@
       background: #fef08a;
       border: 2px solid #eab308;
       border-radius: 8px;
-      font-size: 0.88rem;
+      font-size: 0.9rem;
       font-weight: 800;
       color: #854d0e;
       outline: none;
@@ -518,17 +518,18 @@
   </div>
 
   <script>
+    // 수학 기하 기호 유니코드 변환 함수 (△, ∠, ≡, 선분 등)
     function formatMathText(str) {
       if (!str) return '';
       let res = str;
-      if (window.katex) {
-        try {
-          res = res.replace(/\$([^$]+)\$/g, (match, mathExpr) => {
-            return katex.renderToString(mathExpr, { throwOnError: false });
-          });
-        } catch (e) {}
-      }
-      return res.replace(/\\triangle/g, '△').replace(/\\angle/g, '∠').replace(/\\circ/g, '°').replace(/\\equiv/g, '≡');
+      // LaTeX 문자를 선명하고 깔끔한 유니코드 기하학 기호로 완전 변환
+      res = res.replace(/\\triangle/g, '△')
+               .replace(/\\angle/g, '∠')
+               .replace(/\\equiv/g, '≡')
+               .replace(/\\overline\{([^}]+)\}/g, '선분 $1')
+               .replace(/\$([^$]+)\$/g, '$1')
+               .replace(/\\circ/g, '°');
+      return res;
     }
 
     const state = {
@@ -793,12 +794,11 @@
       animLineAD.stroke = '#ec4899'; animLineAD.linewidth = 3.5; animLineAD.dashes = [5, 5];
 
       let startTime = performance.now();
-      const duration = 1200; // 1.2초 동안 애니메이션
+      const duration = 1200;
 
       function animateLine(now) {
         let elapsed = now - startTime;
         let progress = Math.min(elapsed / duration, 1.0);
-        // Easing out
         progress = 1 - Math.pow(1 - progress, 3);
 
         const currY = pA.y + (pD.y - pA.y) * progress;
@@ -808,13 +808,11 @@
         if (progress < 1.0) {
           requestAnimationFrame(animateLine);
         } else {
-          // 점 D 완성
           animDotD = twoInstance.makeCircle(pD.x, pD.y, 7);
           animDotD.fill = '#ec4899'; animDotD.stroke = '#ffffff'; animDotD.linewidth = 2;
           animTextD = twoInstance.makeText('D (교점)', pD.x, pD.y + 22);
           animTextD.size = 15; animTextD.weight = 800; animTextD.fill = '#ec4899';
 
-          // 각 이등분 점(•) 표시
           twoInstance.makeCircle(pA.x - 14, pA.y + 28, 3.5).fill = '#ec4899';
           twoInstance.makeCircle(pA.x + 14, pA.y + 28, 3.5).fill = '#ec4899';
 
@@ -987,18 +985,16 @@
         state.bisectorDrawn = false;
         if (animBtn) animBtn.style.display = 'inline-flex';
 
-        setMissionUI("<b>1. $\\overline{AB}=\\overline{AC}$인 이등변삼각형 ABC에서 어떤 선을 추가하면 합동이 되는 두 삼각형을 만들 수 있을까?</b><br>상단 <b>[🎬 꼭지각 A의 이등분선(AD) 연출하기]</b> 버튼을 눌러 교점 D가 생기는 과정을 관찰한 후 빈칸을 채워 증명하세요!");
+        setMissionUI("<b>1. 선분 AB = 선분 AC인 이등변삼각형 ABC에서 어떤 선을 추가하면 합동이 되는 두 삼각형을 만들 수 있을까?</b><br>상단 <b>[🎬 꼭지각 A의 이등분선(AD) 연출하기]</b> 버튼을 눌러 교점 D가 생기는 과정을 관찰한 후 빈칸을 채워 증명하세요!");
 
         if (engine && engine.two) {
           const pA = { x: engine.centerX, y: engine.centerY - 130 };
           const pB = { x: engine.centerX - 140, y: engine.centerY + 80 };
           const pC = { x: engine.centerX + 140, y: engine.centerY + 80 };
 
-          // 이등변삼각형 ABC (빨간색 || 틱 마크)
           const tri = engine.two.makePath(pA.x, pA.y, pB.x, pB.y, pC.x, pC.y, false);
           tri.fill = 'rgba(79, 70, 229, 0.08)'; tri.stroke = '#4f46e5'; tri.linewidth = 2.5;
 
-          // AB, AC 동일 변 빨간색 || 틱 마크
           engine.two.makeLine((pA.x+pB.x)/2 - 8, (pA.y+pB.y)/2 - 5, (pA.x+pB.x)/2 + 4, (pA.y+pB.y)/2 + 7).stroke = '#ef4444';
           engine.two.makeLine((pA.x+pB.x)/2 - 4, (pA.y+pB.y)/2 - 8, (pA.x+pB.x)/2 + 8, (pA.y+pB.y)/2 + 4).stroke = '#ef4444';
 
@@ -1014,22 +1010,22 @@
 
         formArea.innerHTML = `
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-            <div style="font-weight:800; color:#1e293b; margin-bottom:10px; font-size:0.95rem; border-bottom:1px solid #e2e8f0; padding-bottom:6px;">
-              [ i) $\\triangle$ <select id="p11-t1" class="proof-select-box"><option value="">-- 선택 --</option><option value="ABD">ABD</option><option value="ABC">ABC</option></select> 와 $\\triangle$ <select id="p11-t2" class="proof-select-box"><option value="">-- 선택 --</option><option value="ACD">ACD</option><option value="BCD">BCD</option></select> 에서 ]
+            <div style="font-weight:800; color:#1e293b; margin-bottom:10px; font-size:1.05rem; border-bottom:1px solid #e2e8f0; padding-bottom:6px;">
+              [ i) △ <select id="p11-t1" class="proof-select-box"><option value="">-- 선택 --</option><option value="ABD">ABD</option><option value="ABC">ABC</option></select> 와 △ <select id="p11-t2" class="proof-select-box"><option value="">-- 선택 --</option><option value="ACD">ACD</option><option value="BCD">BCD</option></select> 에서 ]
             </div>
             
-            <div style="font-size:0.86rem; margin-bottom:8px; line-height:1.7;">
+            <div style="font-size:0.92rem; margin-bottom:8px; line-height:1.7;">
               <b>①</b> <select id="p11-c1" class="proof-select-box"><option value="">-- 선택 --</option><option value="AB=AC">선분 AB = 선분 AC</option><option value="AB=BC">선분 AB = 선분 BC</option></select>
             </div>
-            <div style="font-size:0.86rem; margin-bottom:8px; line-height:1.7;">
+            <div style="font-size:0.92rem; margin-bottom:8px; line-height:1.7;">
               <b>②</b> <select id="p11-c2" class="proof-select-box"><option value="">-- 선택 --</option><option value="BAD=CAD">∠BAD = ∠CAD</option><option value="B=C">∠B = ∠C</option></select>
             </div>
-            <div style="font-size:0.86rem; margin-bottom:8px; line-height:1.7;">
+            <div style="font-size:0.92rem; margin-bottom:8px; line-height:1.7;">
               <b>③</b> <select id="p11-c3" class="proof-select-box"><option value="">-- 선택 --</option><option value="AD공통">선분 AD는 공통</option><option value="BC공통">선분 BC는 공통</option></select>
             </div>
 
-            <div style="font-size:0.88rem; margin-top:12px; font-weight:800; color:#4f46e5; background:#f0fdf4; padding:8px; border-radius:8px; border:1px solid #bbf7d0;">
-              이므로 $\\triangle$ <select id="p11-f1" class="proof-select-box"><option value="">-- 선택 --</option><option value="ABD">ABD</option></select> $\\equiv \\triangle$ <select id="p11-f2" class="proof-select-box"><option value="">-- 선택 --</option><option value="ACD">ACD</option></select> 
+            <div style="font-size:0.95rem; margin-top:12px; font-weight:800; color:#4f46e5; background:#f0fdf4; padding:10px; border-radius:8px; border:1px solid #bbf7d0;">
+              이므로 △ <select id="p11-f1" class="proof-select-box"><option value="">-- 선택 --</option><option value="ABD">ABD</option></select> ≡ △ <select id="p11-f2" class="proof-select-box"><option value="">-- 선택 --</option><option value="ACD">ACD</option></select> 
               ( <select id="p11-f3" class="proof-select-box"><option value="">-- 선택 --</option><option value="SAS">SAS</option><option value="ASA">ASA</option><option value="SSS">SSS</option></select> 합동 )
             </div>
 
@@ -1063,7 +1059,7 @@
       // ==========================================
       else if (subStepCode === '2-1') {
         setTool('select');
-        setMissionUI("<b>[PDF p.3 그림 1] 두 내각이 같은 삼각형</b><br>$\\angle B = \\angle C$ 인 $\\triangle ABC$에서 $\\angle A$의 이등분선 $AD$를 그려 $\\overline{AB}=\\overline{AC}$ 임을 증명하는 그림입니다.");
+        setMissionUI("<b>[PDF p.3 그림 1] 두 내각이 같은 삼각형</b><br>∠B = ∠C 인 △ABC에서 ∠A의 이등분선 AD를 그려 선분 AB = 선분 AC 임을 증명하는 그림입니다.");
 
         if (engine && engine.two) {
           const pA = { x: engine.centerX, y: engine.centerY - 130 };
@@ -1092,13 +1088,13 @@
 
         formArea.innerHTML = `
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1;">
-            <div style="font-size:0.86rem; margin-bottom:6px;">
-              $\\triangle ABD$와 $\\triangle ACD$에서 $\\angle B=\\angle C, \\angle BAD=\\angle CAD, \\overline{AD}$ 공통 이므로<br>
-              $\\triangle ABD \\equiv \\triangle ACD$ ( 
+            <div style="font-size:0.9rem; margin-bottom:6px;">
+              △ABD와 △ACD에서 ∠B = ∠C, ∠BAD = ∠CAD, 선분 AD 공통 이므로<br>
+              △ABD ≡ △ACD ( 
               <select id="p21-q1" class="proof-select-box"><option value="">-- 선택 --</option><option value="ASA">ASA (또는 AAS)</option><option value="SSS">SSS</option></select>
-              합동 ) $\\implies \\overline{AB} = \\overline{AC}$
+              합동 ) ⟹ 선분 AB = 선분 AC
             </div>
-            <div style="font-size:0.86rem; margin-top:6px; font-weight:700; color:#1e293b;">
+            <div style="font-size:0.9rem; margin-top:6px; font-weight:700; color:#1e293b;">
               &lt;이등변삼각형이 되는 조건 1&gt;<br>
               두 ( 
               <select id="p21-q2" class="proof-select-box"><option value="">-- 선택 --</option><option value="내각의 크기가">내각의 크기가</option><option value="변의 길이가">변의 길이가</option></select>
@@ -1110,7 +1106,7 @@
       }
       else if (subStepCode === '2-2') {
         setTool('select');
-        setMissionUI("<b>[PDF p.3 그림 2] 수직이등분선 위의 점</b><br>밑변 선분 $AB$의 수직이등분선 $OM$ 위의 점 $O$에서 만든 $\\triangle OAB$가 이등변삼각형임을 보여주는 그림입니다.");
+        setMissionUI("<b>[PDF p.3 그림 2] 수직이등분선 위의 점</b><br>밑변 선분 AB의 수직이등분선 OM 위의 점 O에서 만든 △OAB가 이등변삼각형임을 보여주는 그림입니다.");
 
         if (engine && engine.two) {
           const pA = { x: engine.centerX - 130, y: engine.centerY + 70 };
@@ -1139,13 +1135,13 @@
 
         formArea.innerHTML = `
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1;">
-            <div style="font-size:0.86rem; margin-bottom:6px;">
-              $\\triangle OMA$와 $\\triangle OMB$에서 $\\overline{AM}=\\overline{BM}, \\angle OMA=\\angle OMB=90^\\circ, \\overline{OM}$ 공통 이므로<br>
-              $\\triangle OMA \\equiv \\triangle OMB$ ( 
+            <div style="font-size:0.9rem; margin-bottom:6px;">
+              △OMA와 △OMB에서 선분 AM = 선분 BM, ∠OMA = ∠OMB = 90°, 선분 OM 공통 이므로<br>
+              △OMA ≡ △OMB ( 
               <select id="p22-q1" class="proof-select-box"><option value="">-- 선택 --</option><option value="SAS">SAS</option><option value="RHS">RHS</option></select>
-              합동 ) $\\implies \\overline{OA} = \\overline{OB}$
+              합동 ) ⟹ 선분 OA = 선분 OB
             </div>
-            <div style="font-size:0.86rem; margin-top:6px; font-weight:700; color:#1e293b;">
+            <div style="font-size:0.9rem; margin-top:6px; font-weight:700; color:#1e293b;">
               &lt;이등변삼각형이 되는 조건 2&gt;<br>
               선분의 ( 
               <select id="p22-q2" class="proof-select-box"><option value="">-- 선택 --</option><option value="수직이등분선">수직이등분선</option><option value="중점">중점</option></select>
@@ -1161,7 +1157,7 @@
       // ==========================================
       else if (subStepCode === '3-1') {
         setTool('select');
-        setMissionUI("<b>[PDF p.5 그림 1] 직각삼각형 RHA 합동</b><br>$\\angle C=\\angle F=90^\\circ, \\overline{AB}=\\overline{DE}, \\angle A=\\angle D$ 조건의 그림입니다.");
+        setMissionUI("<b>[PDF p.5 그림 1] 직각삼각형 RHA 합동</b><br>∠C = ∠F = 90°, 선분 AB = 선분 DE, ∠A = ∠D 조건의 그림입니다.");
 
         if (engine && engine.two) {
           const oX = engine.centerX - 120, oY = engine.centerY + 50;
@@ -1187,12 +1183,12 @@
 
         formArea.innerHTML = `
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1;">
-            <div style="font-size:0.86rem; margin-bottom:6px;">
-              $\\triangle ABC \\equiv \\triangle DEF$ ( 
+            <div style="font-size:0.9rem; margin-bottom:6px;">
+              △ABC ≡ △DEF ( 
               <select id="p31-q1" class="proof-select-box"><option value="">-- 선택 --</option><option value="RHA">RHA (또는 ASA)</option><option value="RHS">RHS</option></select>
               합동 )
             </div>
-            <div style="font-size:0.86rem; margin-top:6px; font-weight:700;">
+            <div style="font-size:0.9rem; margin-top:6px; font-weight:700;">
               => 두 직각삼각형에서 ( 
               <select id="p31-q2" class="proof-select-box"><option value="">-- 선택 --</option><option value="빗변">빗변</option><option value="밑변">밑변</option></select>
               )의 길이와 한 ( 
@@ -1205,7 +1201,7 @@
       }
       else if (subStepCode === '3-2') {
         setTool('select');
-        setMissionUI("<b>[PDF p.5 그림 2] RHA 응용 PA=PB</b><br>각 $O$의 이등분선 위 점 $P$에서 두 변 $OX, OY$에 내린 수선의 발 $A, B$를 그려 $\\overline{PA}=\\overline{PB}$임을 증명하는 그림입니다.");
+        setMissionUI("<b>[PDF p.5 그림 2] RHA 응용 PA=PB</b><br>각 O의 이등분선 위 점 P에서 두 변 OX, OY에 내린 수선의 발 A, B를 그려 선분 PA = 선분 PB 임을 증명하는 그림입니다.");
 
         if (engine && engine.two) {
           const pO = { x: engine.centerX - 130, y: engine.centerY + 50 };
@@ -1236,10 +1232,10 @@
 
         formArea.innerHTML = `
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1;">
-            <div style="font-size:0.86rem; margin-bottom:6px;">
-              $\\triangle AOP \\equiv \\triangle BOP$ ( 
+            <div style="font-size:0.9rem; margin-bottom:6px;">
+              △AOP ≡ △BOP ( 
               <select id="p32-q1" class="proof-select-box"><option value="">-- 선택 --</option><option value="RHA">RHA</option><option value="RHS">RHS</option></select>
-              합동 ) $\\implies \\overline{PA} = \\overline{PB}$
+              합동 ) ⟹ 선분 PA = 선분 PB
             </div>
             <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:8px;" onclick="check32Submit()">✅ 제출 및 RHS 합동으로 이동</button>
           </div>
@@ -1250,7 +1246,7 @@
         const animBtn = document.getElementById('btn-rhs-anim');
         if (animBtn) animBtn.style.display = 'inline-flex';
 
-        setMissionUI("<b>[PDF p.5 그림 3] RHS 합동과 180도 회전 붙이기</b><br>빗변 $\\overline{AB}=\\overline{DE}$, 한 변 $\\overline{AC}=\\overline{DF}$ 일 때 <b>[🎬 180도 회전하여 붙이기]</b> 버튼을 누르면 $\\triangle DEF$가 뒤집혀 붙어 이등변삼각형 $\\triangle ABE$가 만들어집니다!");
+        setMissionUI("<b>[PDF p.5 그림 3] RHS 합동과 180도 회전 붙이기</b><br>빗변 선분 AB = 선분 DE, 한 변 선분 AC = 선분 DF 일 때 <b>[🎬 180도 회전하여 붙이기]</b> 버튼을 누르면 △DEF가 뒤집혀 붙어 이등변삼각형 △ABE가 만들어집니다!");
 
         if (engine && engine.two) {
           const oX = engine.centerX - 120, oY = engine.centerY + 50;
@@ -1276,7 +1272,7 @@
 
         formArea.innerHTML = `
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1;">
-            <div style="font-size:0.86rem; margin-bottom:6px;">
+            <div style="font-size:0.9rem; margin-bottom:6px;">
               두 직각삼각형에서 ( 
               <select id="p33-q1" class="proof-select-box"><option value="">-- 선택 --</option><option value="빗변">빗변</option><option value="높이">높이</option></select>
               )의 길이와 다른 한 ( 
@@ -1295,7 +1291,7 @@
       // ==========================================
       else if (subStepCode === '4-1') {
         setTool('select');
-        setMissionUI("<b>[PDF p.7~8 그림] 삼각형의 외심 $O$와 외접원</b><br>세 변의 수직이등분선의 교점 $O$에서 세 꼭짓점에 이르는 거리 $\\overline{OA}=\\overline{OB}=\\overline{OC}$가 모두 같음을 보여주는 그림입니다.");
+        setMissionUI("<b>[PDF p.7~8 그림] 삼각형의 외심 O와 외접원</b><br>세 변의 수직이등분선의 교점 O에서 세 꼭짓점에 이르는 거리 선분 OA = 선분 OB = 선분 OC가 모두 같음을 보여주는 그림입니다.");
 
         if (engine && engine.two) {
           const oX = engine.centerX, oY = engine.centerY;
@@ -1328,20 +1324,20 @@
 
         formArea.innerHTML = `
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1;">
-            <div style="font-size:0.86rem; margin-bottom:6px;">
-              ① 점 $O$에서부터 세 꼭짓점 $A, B, C$까지의 거리는 ( 
+            <div style="font-size:0.9rem; margin-bottom:6px;">
+              ① 점 O에서부터 세 꼭짓점 A, B, C까지의 거리는 ( 
               <select id="p41-q1" class="proof-select-box"><option value="">-- 선택 --</option><option value="같다">같다</option><option value="다르다">다르다</option></select>
               ).
             </div>
-            <div style="font-size:0.86rem; margin-bottom:6px;">
-              ② 세 삼각형 $\\triangle OAB, \\triangle OBC, \\triangle OCA$는 모두 ( 
+            <div style="font-size:0.9rem; margin-bottom:6px;">
+              ② 세 삼각형 △OAB, △OBC, △OCA는 모두 ( 
               <select id="p41-q2" class="proof-select-box"><option value="">-- 선택 --</option><option value="이등변삼각형">이등변삼각형</option><option value="정삼각형">정삼각형</option></select>
               ) 이다.
             </div>
-            <div style="font-size:0.86rem; margin-bottom:6px;">
-              ③ $\\triangle ABC$의 세 ( 
+            <div style="font-size:0.9rem; margin-bottom:6px;">
+              ③ △ABC의 세 ( 
               <select id="p41-q3" class="proof-select-box"><option value="">-- 선택 --</option><option value="수직이등분선">수직이등분선</option><option value="각의이등분선">각의이등분선</option></select>
-              )은 한 점 $O$에서 만난다.
+              )은 한 점 O에서 만난다.
             </div>
             <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:8px;" onclick="check41Submit()">✅ 제출 및 중심각 관계 탐구로 이동</button>
           </div>
@@ -1349,7 +1345,7 @@
       }
       else if (subStepCode === '4-2') {
         setTool('select');
-        setMissionUI("<b>[PDF p.9~10 그림] 외심과 중심각 관계</b><br>$\\overline{AO}$ 연장선과 $\\overline{BC}$ 교점 $D$를 그려 $\\angle BOD = 2a, \\angle COD = 2b \\implies \\angle BOC = 2\\angle A$ 임을 증명하는 그림입니다.");
+        setMissionUI("<b>[PDF p.9~10 그림] 외심과 중심각 관계</b><br>선분 AO 연장선과 선분 BC 교점 D를 그려 ∠BOD = 2a, ∠COD = 2b ⟹ ∠BOC = 2∠A 임을 증명하는 그림입니다.");
 
         if (engine && engine.two) {
           const oX = engine.centerX, oY = engine.centerY;
@@ -1380,9 +1376,9 @@
 
         formArea.innerHTML = `
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1;">
-            <div style="font-size:0.86rem; margin-bottom:6px;">
-              $\\overline{AO}$ 연장선과 $\\overline{BC}$ 교점 $D$에 대해 외각의 성질에 의하여<br>
-              $\\angle BOC = \\angle BOD + \\angle COD = 2\\angle a + 2\\angle b = 2(\\angle a + \\angle b) = $ ( 
+            <div style="font-size:0.9rem; margin-bottom:6px;">
+              선분 AO 연장선과 선분 BC 교점 D에 대해 외각의 성질에 의하여<br>
+              ∠BOC = ∠BOD + ∠COD = 2∠a + 2∠b = 2(∠a + ∠b) = ( 
               <select id="p42-q1" class="proof-select-box"><option value="">-- 선택 --</option><option value="2∠A">2∠A</option><option value="90°+1/2∠A">90°+1/2∠A</option></select>
               )
             </div>
@@ -1396,7 +1392,7 @@
       // ==========================================
       else if (subStepCode === '5-1') {
         setTool('select');
-        setMissionUI("<b>[PDF p.11~12 그림] 삼각형의 내심 $I$와 내접원</b><br>세 내각의 이등분선의 교점 $I$에서 세 변에 이르는 거리 $ID=IE=IF=r$ (내접원 반지름)가 모두 같음을 보여주는 그림입니다.");
+        setMissionUI("<b>[PDF p.11~12 그림] 삼각형의 내심 I와 내접원</b><br>세 내각의 이등분선의 교점 I에서 세 변에 이르는 거리 ID=IE=IF=r (내접원 반지름)가 모두 같음을 보여주는 그림입니다.");
 
         if (engine && engine.two) {
           const iX = engine.centerX, iY = engine.centerY + 10;
@@ -1426,13 +1422,13 @@
 
         formArea.innerHTML = `
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1;">
-            <div style="font-size:0.86rem; margin-bottom:6px;">
-              ① 점 $I$에서부터 세 변 $\\overline{AB}, \\overline{BC}, \\overline{CA}$까지의 거리는 ( 
+            <div style="font-size:0.9rem; margin-bottom:6px;">
+              ① 점 I에서부터 세 변 선분 AB, 선분 BC, 선분 CA까지의 거리는 ( 
               <select id="p51-q1" class="proof-select-box"><option value="">-- 선택 --</option><option value="같다">같다</option><option value="다르다">다르다</option></select>
               ).
             </div>
-            <div style="font-size:0.86rem; margin-bottom:6px;">
-              ② 점 $I$를 정확히 찾기 위해 세 각의 ( 
+            <div style="font-size:0.9rem; margin-bottom:6px;">
+              ② 점 I를 정확히 찾기 위해 세 각의 ( 
               <select id="p51-q2" class="proof-select-box"><option value="">-- 선택 --</option><option value="이등분선">이등분선</option><option value="수직이등분선">수직이등분선</option></select>
               )을 그린다.
             </div>
@@ -1442,7 +1438,7 @@
       }
       else if (subStepCode === '5-2') {
         setTool('select');
-        setMissionUI("<b>[PDF p.13~14 그림] 내심과 세 삼각형 넓이 분할</b><br>내심 $I$와 꼭짓점을 연결하여 $\\triangle ABC = \\triangle IAB + \\triangle IBC + \\triangle ICA = \\frac{1}{2}r(a+b+c)$ 로 분할하여 넓이를 구하는 그림입니다.");
+        setMissionUI("<b>[PDF p.13~14 그림] 내심과 세 삼각형 넓이 분할</b><br>내심 I와 꼭짓점을 연결하여 △ABC = △IAB + △IBC + △ICA = 1/2 r(a+b+c) 로 분할하여 넓이를 구하는 그림입니다.");
 
         if (engine && engine.two) {
           const iX = engine.centerX, iY = engine.centerY + 10;
@@ -1474,12 +1470,12 @@
 
         formArea.innerHTML = `
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1;">
-            <div style="font-size:0.86rem; margin-bottom:6px;">
-              $\\triangle ABC = \\frac{1}{2} a r + \\frac{1}{2} b r + \\frac{1}{2} c r = \\frac{1}{2} r \\times$ ( 
+            <div style="font-size:0.9rem; margin-bottom:6px;">
+              △ABC = 1/2 a r + 1/2 b r + 1/2 c r = 1/2 r × ( 
               <select id="p52-q1" class="proof-select-box"><option value="">-- 선택 --</option><option value="a+b+c">a + b + c (둘레)</option><option value="abc">a × b × c</option></select>
               )
             </div>
-            <div style="font-size:0.86rem; margin-top:6px; font-weight:700; color:#059669;">
+            <div style="font-size:0.9rem; margin-top:6px; font-weight:700; color:#059669;">
               => 삼각형의 ( 
               <select id="p52-q2" class="proof-select-box"><option value="">-- 선택 --</option><option value="둘레의 길이">둘레의 길이</option><option value="넓이">넓이</option></select>
               )와 ( 
