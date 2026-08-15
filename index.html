@@ -1037,11 +1037,15 @@
         let progress = Math.min(elapsed / duration, 1.0);
         progress = 1 - Math.pow(1 - progress, 3); // Ease-Out
 
-        // 180도 Y축 Flip (scaleX 1 -> -1) & X축 좌표 이동 (oX2 -> oX1)
-        const currScaleX = 1 - 2 * progress; 
+        // 180도 Y축 입체 회전 (scaleX: cos(pi * progress) 1 -> 0 -> -1) & X축 좌표 이동 (oX2 -> oX1)
+        const angleRads = Math.PI * progress;
+        const currScaleX = Math.cos(angleRads); 
         const currX = oX2 + (targetX - oX2) * progress;
 
-        rhsGroupDEF.scale.x = currScaleX;
+        // 회전하는 느낌을 극대화하기 위한 Y축 약간의 3D 펄스 (회전 굴곡)
+        const rotPerspective = 1 + 0.08 * Math.sin(angleRads);
+
+        rhsGroupDEF.scale.set(currScaleX, rotPerspective);
         rhsGroupDEF.translation.x = currX;
 
         twoInstance.update();
@@ -1049,12 +1053,12 @@
         if (progress < 1.0) {
           requestAnimationFrame(animateFlip);
         } else {
-          rhsGroupDEF.scale.x = -1;
+          rhsGroupDEF.scale.set(-1, 1);
           rhsGroupDEF.translation.x = targetX;
 
           // 큰 이등변삼각형 ABE 라벨 및 성질 강조 표시
           const abeBanner = twoInstance.makeText('✨ 큰 이등변삼각형 ABE 완성! (AB = AE, ∠B = ∠E)', width * 0.5, 40);
-          abeBanner.size = 18; abeBanner.weight = 800; abeBanner.fill = '#ec4899';
+          abeBanner.size = 19; abeBanner.weight = 800; abeBanner.fill = '#ec4899';
 
           twoInstance.update();
           state.rhsRotateDrawn = true;
@@ -2071,12 +2075,6 @@
           rhsGroupDEF = engine.two.makeGroup(triD, pathF, m1, m2, mDF, ptD, ptE, ptF, lblD, lblE, lblF, rotIcon);
           rhsGroupDEF.translation.set(oX2, oY);
 
-          // ------------------------------------
-          // 3. 하단 중앙 파란색 아래 화살표 (↓)
-          // ------------------------------------
-          const arrowDown = engine.two.makeText('↓', (oX1 + oX2)/2 - triW/2, oY + 65);
-          arrowDown.size = 34; arrowDown.fill = '#1d4ed8'; arrowDown.weight = 800;
-
           engine.two.update();
         }
 
@@ -2171,10 +2169,6 @@
 
           // 꼭짓점 D 상단 핫핑크 180° 회전 둥근 화살표
           const rotIcon2 = engine.two.makeText('↩️', pD.x + 6, pD.y - 32); rotIcon2.size = 22; rotIcon2.fill = '#ec4899';
-
-          // 하단 중앙 파란색 아래 화살표 (↓)
-          const arrowDown2 = engine.two.makeText('↓', (oX1 + oX2)/2 - triW/2, oY + 65);
-          arrowDown2.size = 34; arrowDown2.fill = '#1d4ed8'; arrowDown2.weight = 800;
 
           engine.two.update();
         }
