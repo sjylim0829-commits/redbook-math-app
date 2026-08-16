@@ -2492,6 +2492,34 @@
           </div>
         `;
       }
+
+      // 학생의 실시간 활동 및 타이핑 자동 저장 (일부만 수행하더라도 Supabase DB에 유실 없이 기록)
+      attachRealtimeInputTracker();
+    }
+
+    // 학생의 실시간 활동 및 입력 자동 저장 트래커 (일부만 수행하더라도 DB에 기록)
+    let realtimeInputDebounceTimer = null;
+    function attachRealtimeInputTracker() {
+      setTimeout(() => {
+        const formArea = document.getElementById('form-work-area');
+        if (!formArea) return;
+        const inputs = formArea.querySelectorAll('input, textarea');
+        inputs.forEach(inp => {
+          inp.addEventListener('input', () => {
+            clearTimeout(realtimeInputDebounceTimer);
+            realtimeInputDebounceTimer = setTimeout(() => {
+              const allAnswers = Array.from(inputs).map(el => el.value.trim()).filter(Boolean).join(' | ');
+              if (allAnswers && typeof LMSIntegration !== 'undefined') {
+                LMSIntegration.saveStudentProgress(state.subStep, {
+                  activityTitle: `6.2 직각삼각형 [작성 중: 단계 ${state.subStep}]`,
+                  answerText: allAnswers,
+                  score: 30
+                });
+              }
+            }, 1000);
+          });
+        });
+      }, 250);
     }
 
     // 헬퍼: 텍스트 정규화 (공백/소문자 통일)
@@ -2516,8 +2544,8 @@
       if (!userInput) return false;
       const clean = userInput.replace(/선분|각|∠|삼각형|△|\s+/gi, '').toUpperCase();
 
-      const pA = partA.replace(/선분|각|∠|삼각형|△|\s+/gi, '').toUpperCase();
-      const pB = partB.replace(/선분|각|∠|삼각형|△|\s+/gi, '').toUpperCase();
+      const pA = partPartText(partA);
+      const pB = partPartText(partB);
 
       const pA_rev = pA.length === 2 ? pA[1] + pA[0] : (pA.length === 3 ? pA[2] + pA[1] + pA[0] : pA);
       const pB_rev = pB.length === 2 ? pB[1] + pB[0] : (pB.length === 3 ? pB[2] + pB[1] + pB[0] : pB);
@@ -2526,6 +2554,10 @@
       const hasB = clean.includes(pB) || clean.includes(pB_rev);
 
       return hasA && hasB;
+    }
+
+    function partPartText(p) {
+      return p.replace(/선분|각|∠|삼각형|△|\s+/gi, '').toUpperCase();
     }
 
     // 정답 정돈 표기 카드 생성 및 다음 단계 진행 버튼 렌더링 함수
@@ -2549,6 +2581,23 @@
 
     // 6.1 세부활동 1 (SAS 증명 타이핑 검증 - 유연한 주관식 채점)
     function check11ActivitySubmit() {
+      const rawT1 = document.getElementById('p11-t1').value;
+      const rawT2 = document.getElementById('p11-t2').value;
+      const rawC1 = document.getElementById('p11-c1').value;
+      const rawC2 = document.getElementById('p11-c2').value;
+      const rawC3 = document.getElementById('p11-c3').value;
+      const rawF1 = document.getElementById('p11-f1').value;
+      const rawF2 = document.getElementById('p11-f2').value;
+      const rawF3 = document.getElementById('p11-f3').value;
+
+      if (typeof LMSIntegration !== 'undefined') {
+        LMSIntegration.saveStudentProgress('1-1', {
+          activityTitle: '6.1 세부활동 1 (SAS 증명)',
+          answerText: `△${rawT1}, △${rawT2} | ${rawC1} | ${rawC2} | ${rawC3} | ${rawF3}`,
+          score: 50
+        });
+      }
+
       if (state.isTeacherLoggedIn) {
         showBigPraiseModal("🔓 [교사/테스트 프리패스]", "6.1 세부활동 1 통과!");
         renderVerifiedAnswerView(
@@ -2558,14 +2607,14 @@
         );
         return;
       }
-      const t1 = normTxt(document.getElementById('p11-t1').value);
-      const t2 = normTxt(document.getElementById('p11-t2').value);
-      const c1 = normTxt(document.getElementById('p11-c1').value);
-      const c2 = normTxt(document.getElementById('p11-c2').value);
-      const c3 = normTxt(document.getElementById('p11-c3').value);
-      const f1 = normTxt(document.getElementById('p11-f1').value);
-      const f2 = normTxt(document.getElementById('p11-f2').value);
-      const f3 = normTxt(document.getElementById('p11-f3').value);
+      const t1 = normTxt(rawT1);
+      const t2 = normTxt(rawT2);
+      const c1 = normTxt(rawC1);
+      const c2 = normTxt(rawC2);
+      const c3 = normTxt(rawC3);
+      const f1 = normTxt(rawF1);
+      const f2 = normTxt(rawF2);
+      const f3 = normTxt(rawF3);
 
       const okT1 = isSameTriangle(t1, 'ABD');
       const okT2 = isSameTriangle(t2, 'ACD');

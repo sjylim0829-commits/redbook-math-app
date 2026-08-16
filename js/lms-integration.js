@@ -199,62 +199,103 @@
     },
 
     /**
-     * Save student progress to LMS DB
+     * Save student progress & real-time activity to Supabase LMS DB
      */
     async saveStudentProgress(subStepCode, data = {}) {
-      if (!this.currentUser || !this.currentUser.id) return;
-      const cleanId = String(this.currentUser.id).trim();
+      let cleanId = '20101'; // Default student ID if not set
+      let studentName = '학생';
+
+      if (this.currentUser && this.currentUser.id) {
+        cleanId = String(this.currentUser.id).trim();
+        studentName = this.currentUser.name || `학생 ${cleanId}`;
+      } else {
+        const cachedUser = this.getCurrentUserFromCache();
+        if (cachedUser && cachedUser.id) {
+          cleanId = String(cachedUser.id).trim();
+          studentName = cachedUser.name || `학생 ${cleanId}`;
+        }
+      }
 
       const existing = this.getProgressFromLocal(cleanId) || { completedSteps: [] };
       const completedSet = new Set(existing.completedSteps || []);
-      completedSet.add(subStepCode);
+      if (subStepCode) completedSet.add(subStepCode);
       const updatedCompleted = Array.from(completedSet);
 
       const progressObj = {
-        lastSubStep: subStepCode,
+        lastSubStep: subStepCode || '1-1',
         completedSteps: updatedCompleted,
         updatedAt: new Date().toISOString()
       };
 
       this.saveProgressToLocal(cleanId, progressObj);
 
-      // Save to Supabase
+      // Save to Supabase (Fail-safe select -> update/insert pattern)
       const sb = getSupabase();
       if (sb) {
         try {
-          await sb.from('student_progress').upsert({
-            student_id: cleanId,
-            app_id: APP_ID,
-            sub_step: subStepCode,
-            completed_steps: updatedCompleted,
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'student_id,app_id' });
+          // 1. Check existing record
+          const { data: existingProgress } = await sb
+            .from('student_progress')
+            .select('id')
+            .eq('student_id', cleanId)
+            .eq('app_id', APP_ID)
+            .maybeSingle();
+
+          if (existingProgress && existingProgress.id) {
+            // Update
+            await sb.from('student_progress').update({
+              sub_step: subStepCode || '1-1',
+              completed_steps: updatedCompleted,
+              updated_at: new Date().toISOString()
+            }).eq('id', existingProgress.id);
+          } else {
+            // Insert
+            await sb.from('student_progress').insert({
+              student_id: cleanId,
+              app_id: APP_ID,
+              sub_step: subStepCode || '1-1',
+              completed_steps: updatedCompleted,
+              updated_at: new Date().toISOString()
+            });
+          }
+          console.log(`⚡ [Supabase Sync] Progress updated for student ${cleanId} at step [${subStepCode}]`);
         } catch (err) {
-          console.warn('[LMSIntegration] Supabase progress save error:', err);
+          console.warn('⚠️ [LMSIntegration] Supabase progress save fallback:', err);
         }
       }
 
-      // Post submission if activity details provided
-      if (data.activityTitle || data.answerText) {
-        const payload = {
-          student_id: cleanId,
-          student_name: this.currentUser.name,
-          grade: Number(this.currentUser.grade || 2),
-          class_num: Number(this.currentUser.classNum || 1),
-          activity_title: data.activityTitle || document.title || 'Redbook 수학 탐구',
-          answer_text: data.answerText || '',
-          score: typeof data.score === 'number' ? data.score : 100,
-          submitted_at: new Date().toISOString()
-        };
+      // Record activity submission log to Supabase Cloud DB
+      const activityTitle = data.activityTitle || `Redbook 수학 탐구 [단계: ${subStepCode}]`;
+      const answerText = data.answerText || '';
+      const score = typeof data.score === 'number' ? data.score : 0;
 
-        if (sb) {
-          try {
-            await sb.from('activity_submissions').insert(payload);
-          } catch (e) {}
+      const payload = {
+        student_id: cleanId,
+        student_name: studentName,
+        grade: 2,
+        class_num: 1,
+        activity_title: activityTitle,
+        answer_text: answerText,
+        score: score,
+        submitted_at: new Date().toISOString()
+      };
+
+      if (sb) {
+        try {
+          const { error: subErr } = await sb.from('activity_submissions').insert(payload);
+          if (!subErr) {
+            console.log(`⚡ [Supabase Sync] Activity submission saved for ${cleanId}: [${activityTitle}]`);
+          } else {
+            console.warn('⚠️ [LMSIntegration] Activity submission insert warning:', subErr.message);
+          }
+        } catch (e) {
+          console.warn('⚠️ [LMSIntegration] Activity submission error:', e);
         }
+      }
 
-        // Post message to parent LMS if in iframe
-        if (window.parent && window.parent !== window) {
+      // Post message to parent LMS if in iframe
+      if (window.parent && window.parent !== window) {
+        try {
           window.parent.postMessage({
             type: 'MATH_LMS_SUBMIT',
             activityTitle: payload.activity_title,
@@ -262,7 +303,7 @@
             score: payload.score,
             submittedAt: payload.submitted_at
           }, '*');
-        }
+        } catch (e) {}
       }
     },
 
