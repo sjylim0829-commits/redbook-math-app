@@ -319,6 +319,36 @@
       try {
         localStorage.setItem(LOCAL_CACHE_PROGRESS_PREFIX + studentId, JSON.stringify(progressObj));
       } catch (e) {}
+    },
+
+    /**
+     * Start silent periodic auto-save (No popups, background DB sync every 15s)
+     */
+    autoSaveIntervalId: null,
+
+    startPeriodicAutoSave(getFormStateFn, intervalMs = 15000) {
+      if (this.autoSaveIntervalId) {
+        clearInterval(this.autoSaveIntervalId);
+      }
+
+      console.log(`⏱️ [LMSIntegration] Silent periodic auto-save started (Interval: ${intervalMs / 1000}s)`);
+
+      this.autoSaveIntervalId = setInterval(() => {
+        try {
+          if (typeof getFormStateFn === 'function') {
+            const info = getFormStateFn();
+            if (info && info.subStep) {
+              this.saveStudentProgress(info.subStep, {
+                activityTitle: `[정기 자동저장] 단계 ${info.subStep}`,
+                answerText: info.answerText || '',
+                score: info.score || 0
+              });
+            }
+          }
+        } catch (e) {
+          console.warn('[LMSIntegration] Auto save tick error:', e);
+        }
+      }, intervalMs);
     }
   };
 
