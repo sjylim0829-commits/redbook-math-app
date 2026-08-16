@@ -2500,6 +2500,34 @@
       return v.trim().replace(/\s+/g, '').toUpperCase();
     }
 
+    // 유연한 삼각형 이름 검증 (순열/순환 알파벳 통일: △ABC == △BCA == △CAB == △BAC == △ACB == △CBA)
+    function isSameTriangle(userInput, targetStr) {
+      if (!userInput || !targetStr) return false;
+      const cleanUser = userInput.replace(/삼각형|△|\\triangle|\s+/gi, '').toUpperCase();
+      const cleanTarget = targetStr.replace(/삼각형|△|\\triangle|\s+/gi, '').toUpperCase();
+
+      if (cleanUser.length !== cleanTarget.length) return false;
+      return cleanUser.split('').sort().join('') === cleanTarget.split('').sort().join('');
+    }
+
+    // 유연한 등식 및 선분/각 성분 판정 (좌우 교환 및 선분/각 알파벳 역순 허용)
+    // 예: "선분AB=선분AC" <-> "AC=AB" <-> "BA=CA" <-> "CA=BA" 모두 동일!
+    function isSameEquation(userInput, partA, partB) {
+      if (!userInput) return false;
+      const clean = userInput.replace(/선분|각|∠|삼각형|△|\s+/gi, '').toUpperCase();
+
+      const pA = partA.replace(/선분|각|∠|삼각형|△|\s+/gi, '').toUpperCase();
+      const pB = partB.replace(/선분|각|∠|삼각형|△|\s+/gi, '').toUpperCase();
+
+      const pA_rev = pA.length === 2 ? pA[1] + pA[0] : (pA.length === 3 ? pA[2] + pA[1] + pA[0] : pA);
+      const pB_rev = pB.length === 2 ? pB[1] + pB[0] : (pB.length === 3 ? pB[2] + pB[1] + pB[0] : pB);
+
+      const hasA = clean.includes(pA) || clean.includes(pA_rev);
+      const hasB = clean.includes(pB) || clean.includes(pB_rev);
+
+      return hasA && hasB;
+    }
+
     // 정답 정돈 표기 카드 생성 및 다음 단계 진행 버튼 렌더링 함수
     function renderVerifiedAnswerView(titleHtml, contentHtml, nextStepCode) {
       const formArea = document.getElementById('form-work-area');
@@ -2519,7 +2547,7 @@
       `;
     }
 
-    // 6.1 세부활동 1 (SAS 증명 타이핑 검증)
+    // 6.1 세부활동 1 (SAS 증명 타이핑 검증 - 유연한 주관식 채점)
     function check11ActivitySubmit() {
       if (state.isTeacherLoggedIn) {
         showBigPraiseModal("🔓 [교사/테스트 프리패스]", "6.1 세부활동 1 통과!");
@@ -2539,13 +2567,13 @@
       const f2 = normTxt(document.getElementById('p11-f2').value);
       const f3 = normTxt(document.getElementById('p11-f3').value);
 
-      const okT1 = t1.includes('ABD');
-      const okT2 = t2.includes('ACD');
-      const okC1 = c1.includes('AB=AC') || (c1.includes('AB') && c1.includes('AC'));
-      const okC2 = c2.includes('BAD=CAD') || (c2.includes('BAD') && c2.includes('CAD'));
-      const okC3 = c3.includes('AD') && c3.includes('공통');
-      const okF1 = f1.includes('ABD');
-      const okF2 = f2.includes('ACD');
+      const okT1 = isSameTriangle(t1, 'ABD');
+      const okT2 = isSameTriangle(t2, 'ACD');
+      const okC1 = isSameEquation(c1, 'AB', 'AC');
+      const okC2 = isSameEquation(c2, 'BAD', 'CAD');
+      const okC3 = (c3.includes('AD') || c3.includes('DA')) && c3.includes('공통');
+      const okF1 = isSameTriangle(f1, 'ABD');
+      const okF2 = isSameTriangle(f2, 'ACD');
       const okF3 = f3.includes('SAS');
 
       if (okT1 && okT2 && okC1 && okC2 && okC3 && okF1 && okF2 && okF3) {
@@ -2563,7 +2591,7 @@
       }
     }
 
-    // 6.1 세부활동 2 (SSS 증명 타이핑 검증)
+    // 6.1 세부활동 2 (SSS 증명 타이핑 검증 - 유연한 주관식 채점)
     function check12ActivitySubmit() {
       if (state.isTeacherLoggedIn) {
         showBigPraiseModal("🔓 [교사/테스트 프리패스]", "6.1 세부활동 2 통과!");
@@ -2583,13 +2611,13 @@
       const f2 = normTxt(document.getElementById('p12-f2').value);
       const f3 = normTxt(document.getElementById('p12-f3').value);
 
-      const okT1 = t1.includes('ABD');
-      const okT2 = t2.includes('ACD');
-      const okC1 = c1.includes('AB=AC') || (c1.includes('AB') && c1.includes('AC'));
-      const okC2 = c2.includes('BD=CD') || (c2.includes('BD') && c2.includes('CD'));
-      const okC3 = c3.includes('AD') && c3.includes('공통');
-      const okF1 = f1.includes('ABD');
-      const okF2 = f2.includes('ACD');
+      const okT1 = isSameTriangle(t1, 'ABD');
+      const okT2 = isSameTriangle(t2, 'ACD');
+      const okC1 = isSameEquation(c1, 'AB', 'AC');
+      const okC2 = isSameEquation(c2, 'BD', 'CD');
+      const okC3 = (c3.includes('AD') || c3.includes('DA')) && c3.includes('공통');
+      const okF1 = isSameTriangle(f1, 'ABD');
+      const okF2 = isSameTriangle(f2, 'ACD');
       const okF3 = f3.includes('SSS');
 
       if (okT1 && okT2 && okC1 && okC2 && okC3 && okF1 && okF2 && okF3) {
@@ -2607,7 +2635,7 @@
       }
     }
 
-    // 6.1 성질 1 & 2 타이핑 입력 검증
+    // 6.1 성질 1 & 2 타이핑 입력 검증 (유연한 주관식 채점)
     function check13TypedSubmit() {
       if (state.isTeacherLoggedIn) {
         unlockNextStep(2);
@@ -2626,8 +2654,8 @@
       const norm1 = raw1.replace(/\s+/g, '');
       const norm2 = raw2.replace(/\s+/g, '');
 
-      const valid1 = norm1.includes("밑각") && (norm1.includes("크기는같다") || norm1.includes("같다"));
-      const valid2 = norm2.includes("꼭지각") && norm2.includes("이등분선") && norm2.includes("밑변") && norm2.includes("수직이등분");
+      const valid1 = norm1.includes("밑각") && (norm1.includes("크기는같다") || norm1.includes("같다") || norm1.includes("동일"));
+      const valid2 = norm2.includes("꼭지각") && norm2.includes("이등분") && norm2.includes("밑변") && (norm2.includes("수직이등분") || (norm2.includes("수직") && norm2.includes("이등분")));
 
       if (valid1 && valid2) {
         unlockNextStep(2);
@@ -2648,7 +2676,7 @@
       }
     }
 
-    // 6.1-(2) 세부활동 1 (수선의 발 ASA 증명 타이핑 검증)
+    // 6.1-(2) 세부활동 1 (수선의 발 ASA 증명 타이핑 검증 - 유연한 주관식 채점)
     function check21ActivitySubmit() {
       if (state.isTeacherLoggedIn) {
         showBigPraiseModal("🔓 [교사/테스트 프리패스]", "6.1-(2) 세부활동 1 통과!");
@@ -2669,13 +2697,13 @@
       const f2 = normTxt(document.getElementById('p21-f2').value);
       const f3 = normTxt(document.getElementById('p21-f3').value);
 
-      const okT1 = t1.includes('ABD');
-      const okT2 = t2.includes('ACD');
-      const okC1 = c1.includes('BAD') && c1.includes('CAD');
-      const okC2 = c2.includes('AD') && c2.includes('공통');
-      const okC3 = c3.includes('BDA') && c3.includes('CDA');
-      const okF1 = f1.includes('ABD');
-      const okF2 = f2.includes('ACD');
+      const okT1 = isSameTriangle(t1, 'ABD');
+      const okT2 = isSameTriangle(t2, 'ACD');
+      const okC1 = isSameEquation(c1, 'BAD', 'CAD');
+      const okC2 = (c2.includes('AD') || c2.includes('DA')) && c2.includes('공통');
+      const okC3 = isSameEquation(c3, 'BDA', 'CDA') || (c3.includes('BDA') && c3.includes('CDA'));
+      const okF1 = isSameTriangle(f1, 'ABD');
+      const okF2 = isSameTriangle(f2, 'ACD');
       const okF3 = f3.includes('ASA');
 
       if (okT1 && okT2 && okC1 && okC2 && okC3 && okF1 && okF2 && okF3) {
@@ -2693,7 +2721,7 @@
       }
     }
 
-    // 6.1-(2) 이등변삼각형이 되는 조건 1 타이핑 검증
+    // 6.1-(2) 이등변삼각형이 되는 조건 1 타이핑 검증 (유연한 주관식 채점)
     function check22TypedSubmit() {
       if (state.isTeacherLoggedIn) {
         showBigPraiseModal("🔓 [교사/테스트 프리패스]", "조건 1 작성 통과!");
@@ -2708,7 +2736,7 @@
       const raw = document.getElementById('p22-typed-input').value || '';
       const norm = raw.replace(/\s+/g, '');
 
-      const isValid = norm.includes("밑각") && (norm.includes("두") || norm.includes("크기"));
+      const isValid = norm.includes("밑각") && (norm.includes("두") || norm.includes("크기") || norm.includes("같은"));
 
       if (isValid) {
         showBigPraiseModal(
@@ -2725,7 +2753,7 @@
       }
     }
 
-    // 6.1-(2) 세부활동 2 (수직이등분선 SAS 증명 타이핑 검증)
+    // 6.1-(2) 세부활동 2 (수직이등분선 SAS 증명 타이핑 검증 - 유연한 주관식 채점)
     function check23ActivitySubmit() {
       if (state.isTeacherLoggedIn) {
         showBigPraiseModal("🔓 [교사/테스트 프리패스]", "6.1-(2) 세부활동 2 통과!");
@@ -2746,13 +2774,13 @@
       const f2 = normTxt(document.getElementById('p23-f2').value);
       const f3 = normTxt(document.getElementById('p23-f3').value);
 
-      const okT1 = t1.includes('OAM');
-      const okT2 = t2.includes('OBM');
-      const okC1 = c1.includes('AM=BM') || (c1.includes('AM') && c1.includes('BM'));
-      const okC2 = c2.includes('OMA=OMB') || (c2.includes('OMA') && c2.includes('OMB'));
-      const okC3 = c3.includes('OM') && c3.includes('공통');
-      const okF1 = f1.includes('OAM');
-      const okF2 = f2.includes('OBM');
+      const okT1 = isSameTriangle(t1, 'OAM');
+      const okT2 = isSameTriangle(t2, 'OBM');
+      const okC1 = isSameEquation(c1, 'AM', 'BM');
+      const okC2 = isSameEquation(c2, 'OMA', 'OMB') || (c2.includes('OMA') && c2.includes('OMB'));
+      const okC3 = (c3.includes('OM') || c3.includes('MO')) && c3.includes('공통');
+      const okF1 = isSameTriangle(f1, 'OAM');
+      const okF2 = isSameTriangle(f2, 'OBM');
       const okF3 = f3.includes('SAS');
 
       if (okT1 && okT2 && okC1 && okC2 && okC3 && okF1 && okF2 && okF3) {
@@ -2770,7 +2798,7 @@
       }
     }
 
-    // 6.1-(2) 이등변삼각형이 되는 조건 2 타이핑 검증
+    // 6.1-(2) 이등변삼각형이 되는 조건 2 타이핑 검증 (유연한 주관식 채점)
     function check24TypedSubmit() {
       if (state.isTeacherLoggedIn) {
         unlockNextStep(3);
@@ -2804,7 +2832,7 @@
       }
     }
 
-    // 6.2-(1) RHA 세부활동 1 ASA 증명 검증
+    // 6.2-(1) RHA 세부활동 1 ASA 증명 검증 (유연한 주관식 채점)
     function check31ActivitySubmit() {
       if (state.isTeacherLoggedIn) {
         showBigPraiseModal("🔓 [교사/테스트 프리패스]", "6.2 세부활동 1 통과!");
@@ -2824,13 +2852,13 @@
       const f2 = normTxt(document.getElementById('p31-f2').value);
       const f3 = normTxt(document.getElementById('p31-f3').value);
 
-      const okT1 = t1.includes('ABC');
-      const okT2 = t2.includes('DEF');
-      const okC1 = c1.includes('A=D') || (c1.includes('A') && c1.includes('D'));
-      const okC2 = c2.includes('AB=DE') || (c2.includes('AB') && c2.includes('DE'));
-      const okC3 = c3.includes('B=E') || c3.includes('180') || (c3.includes('B') && c3.includes('E'));
-      const okF1 = f1.includes('ABC');
-      const okF2 = f2.includes('DEF');
+      const okT1 = isSameTriangle(t1, 'ABC');
+      const okT2 = isSameTriangle(t2, 'DEF');
+      const okC1 = isSameEquation(c1, 'A', 'D') || (c1.includes('A') && c1.includes('D'));
+      const okC2 = isSameEquation(c2, 'AB', 'DE');
+      const okC3 = isSameEquation(c3, 'B', 'E') || c3.includes('180') || (c3.includes('B') && c3.includes('E'));
+      const okF1 = isSameTriangle(f1, 'ABC');
+      const okF2 = isSameTriangle(f2, 'DEF');
       const okF3 = f3.includes('ASA');
 
       if (okT1 && okT2 && okC1 && okC2 && okC3 && okF1 && okF2 && okF3) {
@@ -2848,7 +2876,7 @@
       }
     }
 
-    // 6.2-(2) RHA합동 성질 정리 타이핑 검증
+    // 6.2-(2) RHA합동 성질 정리 타이핑 검증 (유연한 주관식 채점)
     function check32TypedSubmit() {
       if (state.isTeacherLoggedIn) {
         showBigPraiseModal("🔓 [교사/테스트 프리패스]", "RHA합동 정리 통과!");
@@ -2878,7 +2906,7 @@
       }
     }
 
-    // 6.2-(3) 세부활동 2 (각의 이등분선 RHA 증명 타이핑 검증)
+    // 6.2-(3) 세부활동 2 (각의 이등분선 RHA 증명 타이핑 검증 - 유연한 주관식 채점)
     function check33ActivitySubmit() {
       if (state.isTeacherLoggedIn) {
         showBigPraiseModal("🔓 [교사/테스트 프리패스]", "6.2 세부활동 2 통과!");
@@ -2899,13 +2927,13 @@
       const f2 = normTxt(document.getElementById('p33-f2').value);
       const f3 = normTxt(document.getElementById('p33-f3').value);
 
-      const okT1 = t1.includes('PAO');
-      const okT2 = t2.includes('PBO');
-      const okC1 = c1.includes('OP') && c1.includes('공통');
-      const okC2 = c2.includes('PAO') && c2.includes('PBO');
-      const okC3 = c3.includes('POA') && c3.includes('POB');
-      const okF1 = f1.includes('PAO');
-      const okF2 = f2.includes('PBO');
+      const okT1 = isSameTriangle(t1, 'PAO');
+      const okT2 = isSameTriangle(t2, 'PBO');
+      const okC1 = (c1.includes('OP') || c1.includes('PO')) && c1.includes('공통');
+      const okC2 = isSameEquation(c2, 'PAO', 'PBO') || (c2.includes('PAO') && c2.includes('PBO'));
+      const okC3 = isSameEquation(c3, 'POA', 'POB') || (c3.includes('POA') && c3.includes('POB'));
+      const okF1 = isSameTriangle(f1, 'PAO');
+      const okF2 = isSameTriangle(f2, 'PBO');
       const okF3 = f3.includes('RHA');
 
       if (okT1 && okT2 && okC1 && okC2 && okC3 && okF1 && okF2 && okF3) {
@@ -2923,7 +2951,7 @@
       }
     }
 
-    // 6.2-(4) 세부활동 3 (RHS 회전 및 RHA 증명 타이핑 검증 - 선생님 지시사항 1)
+    // 6.2-(4) 세부활동 3 (RHS 회전 및 RHA 증명 타이핑 검증 - 유연한 주관식 채점)
     function check34ActivitySubmit() {
       if (state.isTeacherLoggedIn) {
         showBigPraiseModal("🔓 [교사/테스트 프리패스]", "6.2 세부활동 3 통과!");
@@ -2944,14 +2972,14 @@
       const f2 = normTxt(document.getElementById('p34-f2').value);
       const f3 = normTxt(document.getElementById('p34-f3').value);
 
-      const okT1 = t1.includes('ABC');
-      const okT2 = t2.includes('DEF');
-      const okC1 = c1.includes('AB=DE') || (c1.includes('AB') && c1.includes('DE'));
-      const okC2 = c2.includes('C=F') || (c2.includes('C') && c2.includes('F'));
-      const okC3 = c3.includes('B=E') || (c3.includes('B') && c3.includes('E'));
-      const okF1 = f1.includes('ABC');
-      const okF2 = f2.includes('DEF');
-      const okF3 = f3.includes('RHA');
+      const okT1 = isSameTriangle(t1, 'ABC');
+      const okT2 = isSameTriangle(t2, 'DEF');
+      const okC1 = isSameEquation(c1, 'AB', 'DE');
+      const okC2 = isSameEquation(c2, 'C', 'F') || (c2.includes('C') && c2.includes('F'));
+      const okC3 = isSameEquation(c3, 'B', 'E') || (c3.includes('B') && c3.includes('E'));
+      const okF1 = isSameTriangle(f1, 'ABC');
+      const okF2 = isSameTriangle(f2, 'DEF');
+      const okF3 = f3.includes('RHA') || f3.includes('RHS');
 
       if (okT1 && okT2 && okC1 && okC2 && okC3 && okF1 && okF2 && okF3) {
         showBigPraiseModal(
