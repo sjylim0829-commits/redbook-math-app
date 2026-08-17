@@ -763,9 +763,9 @@
         formArea.innerHTML = `
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1;">
             <div style="font-size:0.9rem; margin-bottom:10px; line-height:1.8;">
-              ① 점 $A$에 대응하는 수: ( <input type="text" id="p02-qa" class="proof-input-text" style="width:90px;" placeholder="수 입력"> )<br>
-              ② 점 $B$에 대응하는 수: ( <input type="text" id="p02-qb" class="proof-input-text" style="width:70px;" placeholder="수 입력"> )<br>
-              ③ 점 $C$에 대응하는 수: ( <input type="text" id="p02-qc" class="proof-input-text" style="width:70px;" placeholder="수 입력"> )
+              ① 점 A에 대응하는 수: ( <input type="text" id="p02-qa" class="proof-input-text" style="width:90px;" placeholder="수 입력"> )<br>
+              ② 점 B에 대응하는 수: ( <input type="text" id="p02-qb" class="proof-input-text" style="width:70px;" placeholder="수 입력"> )<br>
+              ③ 점 C에 대응하는 수: ( <input type="text" id="p02-qc" class="proof-input-text" style="width:70px;" placeholder="수 입력"> )
             </div>
             <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:6px;" onclick="check02Submit()">✅ 제출 및 채점</button>
           </div>
@@ -910,7 +910,7 @@
       }, 250);
     }
 
-    // 되짚어 보기 1번 문제 대응 관계 표 렌더러 (초5~6)
+    // 되짚어 보기 1번 문제 대응 관계 표 렌더러 (초5~6) - 12, 15, 18 빈칸 처리
     function drawTableCanvas(two) {
       if (!two) return;
       two.clear();
@@ -934,7 +934,8 @@
       const lblRow2 = two.makeText('△', startX - 35, cy + 36); lblRow2.size = 24; lblRow2.weight = 800; lblRow2.fill = '#0284c7';
 
       const row1Vals = [1, 2, 3, 4, 5, 6];
-      const row2Vals = ['3', '6', '9', '12', '15', '18'];
+      // 4, 5, 6 아래 셀은 정답 유출을 막기 위해 깨끗한 빈칸으로 표기
+      const row2Vals = ['3', '6', '9', '', '', ''];
 
       row1Vals.forEach((val, idx) => {
         const x = startX + idx * colW + colW / 2;
@@ -943,30 +944,34 @@
       });
 
       row2Vals.forEach((val, idx) => {
-        const x = startX + idx * colW + colW / 2;
-        const t = two.makeText(val, x, cy + 36);
-        t.size = 20; t.weight = 800;
-        t.fill = (idx >= 3) ? '#0284c7' : '#1e293b';
+        if (val) {
+          const x = startX + idx * colW + colW / 2;
+          const t = two.makeText(val, x, cy + 36);
+          t.size = 20; t.weight = 800; t.fill = '#1e293b';
+        }
       });
 
       two.update();
     }
 
-    // 되짚어 보기 2번 문제 수직선 렌더러 (중1 정수와 유리수)
+    // 되짚어 보기 2번 문제 수직선 렌더러 (중1 정수와 유리수 - 점 A 정중앙 수학적 이등분 표기)
     function drawNumberLineCanvas(two) {
       if (!two) return;
       two.clear();
       const width = two.width, height = two.height;
-      const cy = height / 2;
+      const cy = height / 2 + 10;
       const step = 65;
       const cx = width / 2;
 
+      // 수직선 메인 라인
       const line = two.makeLine(50, cy, width - 50, cy);
       line.stroke = '#1e293b'; line.linewidth = 3;
 
+      // 화살표
       const arrL = two.makePath(50, cy, 65, cy - 8, 65, cy + 8, false); arrL.fill = '#1e293b'; arrL.noStroke();
       const arrR = two.makePath(width - 50, cy, width - 65, cy - 8, width - 65, cy + 8, false); arrR.fill = '#1e293b'; arrR.noStroke();
 
+      // -4부터 4까지 눈금 및 라벨
       for (let i = -4; i <= 4; i++) {
         const x = cx + i * step;
         const tick = two.makeLine(x, cy - 8, x, cy + 8);
@@ -977,16 +982,38 @@
         lbl.size = 17; lbl.weight = 800; lbl.fill = (i === 0) ? '#4f46e5' : '#475569';
       }
 
+      // 점 A (-3.5) 좌표 및 이등분 정밀 수학적 시각화 (교과서 원본 준수)
+      const x4 = cx + (-4) * step;
+      const x3 = cx + (-3) * step;
       const ax = cx + (-3.5) * step;
-      two.makeCircle(ax, cy, 8).fill = '#ec4899';
-      const lblA = two.makeText('A', ax, cy - 35); lblA.size = 22; lblA.weight = 800; lblA.fill = '#ec4899';
-      const arc = two.makeCurve(ax - 18, cy - 4, ax, cy - 22, ax + 18, cy - 4, true);
-      arc.stroke = '#ec4899'; arc.linewidth = 1.8; arc.noFill();
 
+      // 1. -4와 -3 사이 정중앙 이등분 틱마크
+      const midTick = two.makeLine(ax, cy - 5, ax, cy + 5);
+      midTick.stroke = '#ec4899'; midTick.linewidth = 2;
+
+      // 2. 점선 아치 2개 ( -4 -> -3.5 / -3.5 -> -3 )
+      const arc1 = two.makeCurve(x4, cy - 4, (x4 + ax) / 2, cy - 26, ax, cy - 4, true);
+      arc1.stroke = '#ec4899'; arc1.linewidth = 1.6; arc1.noFill();
+      if (arc1.dashes) arc1.dashes = [4, 3];
+
+      const arc2 = two.makeCurve(ax, cy - 4, (ax + x3) / 2, cy - 26, x3, cy - 4, true);
+      arc2.stroke = '#ec4899'; arc2.linewidth = 1.6; arc2.noFill();
+      if (arc2.dashes) arc2.dashes = [4, 3];
+
+      // 3. 아치 상단 이등분 동등 수직 표시 틱 ( | | )
+      const t1 = two.makeLine((x4 + ax) / 2, cy - 21, (x4 + ax) / 2, cy - 11); t1.stroke = '#ec4899'; t1.linewidth = 1.5;
+      const t2 = two.makeLine((ax + x3) / 2, cy - 21, (ax + x3) / 2, cy - 11); t2.stroke = '#ec4899'; t2.linewidth = 1.5;
+
+      // 점 A 핑크색 마커 및 라벨
+      two.makeCircle(ax, cy, 8).fill = '#ec4899';
+      const lblA = two.makeText('A', ax, cy - 38); lblA.size = 22; lblA.weight = 800; lblA.fill = '#ec4899';
+
+      // 점 B (0)
       const bx = cx + 0 * step;
       two.makeCircle(bx, cy, 8).fill = '#0284c7';
       const lblB = two.makeText('B', bx, cy - 25); lblB.size = 22; lblB.weight = 800; lblB.fill = '#0284c7';
 
+      // 점 C (2)
       const cx_pt = cx + 2 * step;
       two.makeCircle(cx_pt, cy, 8).fill = '#059669';
       const lblC = two.makeText('C', cx_pt, cy - 25); lblC.size = 22; lblC.weight = 800; lblC.fill = '#059669';
