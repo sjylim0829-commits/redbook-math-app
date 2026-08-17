@@ -787,17 +787,28 @@
         `;
       }
       else if (subStepCode === '1-1') {
-        setMissionUI("<b>[4.1 세부활동 1] 순서쌍과 좌표평면</b><br>점 $P(a, b)$에서 $a$는 $x$좌표, $b$는 $y$좌표입니다. 점 P를 드래그하여 점 $(3, 2)$ 지점에 올려놓아 보세요!");
-        drawCoordinatePlane(engine.two, state.pointP);
+        setMissionUI("<b>[4.1 수직선 위의 점의 좌표]</b><br>수직선 위에서 점 P에 대응하는 수를 점 P의 좌표라고 합니다. 수직선 상의 점 P를 드래그하여 탐구해 보세요.");
+        if (state.pointP) state.pointP.x = 3;
+        drawSubStep11Canvas(engine.two, state.pointP);
 
         formArea.innerHTML = `
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1;">
-            <div style="font-size:0.9rem; margin-bottom:8px; line-height:1.7;">
-              ① 점 $P$의 $x$좌표가 $3$, $y$좌표가 $2$일 때, 기호로 ( 
-              <input type="text" id="p11-q1" class="proof-input-text" style="width:110px;" placeholder="좌표 입력">
+            <div style="font-size:0.92rem; font-weight:800; color:#4f46e5; margin-bottom:10px;">
+              📖 [개념 학습] 수직선 위의 점의 좌표
+            </div>
+            <div style="font-size:0.9rem; margin-bottom:12px; line-height:1.8;">
+              ① 수직선 위에서 점 P에 대응하는 수가 a일 때, a를 점 P의 ( 
+              <input type="text" id="p11-concept" class="proof-input-text" style="width:75px;" placeholder="개념">
+              )라 하고, 기호로 ( 
+              <input type="text" id="p11-symbol" class="proof-input-text" style="width:75px;" placeholder="기호">
               ) 와 같이 나타낸다.
             </div>
-            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:10px;" onclick="check11Submit()">✅ 제출</button>
+            <div style="font-size:0.9rem; margin-bottom:12px; line-height:1.8;">
+              ② 점 A가 수직선의 -2에 위치할 때 기호 표현: ( 
+              <input type="text" id="p11-q2" class="proof-input-text" style="width:85px;" placeholder="기호">
+              )
+            </div>
+            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:6px;" onclick="check11Submit()">✅ 제출 및 채점</button>
           </div>
         `;
       }
@@ -1060,6 +1071,47 @@
       two.update();
     }
 
+    // 4.1 수직선 위의 점의 좌표 렌더러 (60fps 수직선 스냅 렌더러)
+    function drawSubStep11Canvas(two, pointData) {
+      if (!two) return;
+      two.clear();
+      const width = two.width, height = two.height;
+      const cy = height / 2 + 10;
+      const step = 65;
+      const cx = width / 2;
+
+      // 수직선 메인 라인
+      const line = two.makeLine(50, cy, width - 50, cy);
+      line.stroke = '#1e293b'; line.linewidth = 3;
+
+      // 화살표
+      const arrL = two.makePath(50, cy, 65, cy - 8, 65, cy + 8, false); arrL.fill = '#1e293b'; arrL.noStroke();
+      const arrR = two.makePath(width - 50, cy, width - 65, cy - 8, width - 65, cy + 8, false); arrR.fill = '#1e293b'; arrR.noStroke();
+
+      // -4부터 4까지 눈금 및 라벨
+      for (let i = -4; i <= 4; i++) {
+        const x = cx + i * step;
+        const tick = two.makeLine(x, cy - 8, x, cy + 8);
+        tick.stroke = (i === 0) ? '#4f46e5' : '#475569';
+        tick.linewidth = (i === 0) ? 2.5 : 1.5;
+
+        const lbl = two.makeText(String(i), x, cy + 28);
+        lbl.size = 17; lbl.weight = 800; lbl.fill = (i === 0) ? '#4f46e5' : '#475569';
+      }
+
+      // 원점 O(0)
+      const lblO = two.makeText('O', cx, cy - 25); lblO.size = 20; lblO.weight = 800; lblO.fill = '#4f46e5';
+
+      // 이동 점 P
+      const pxVal = pointData ? pointData.x : 3;
+      const px = cx + pxVal * step;
+      two.makeCircle(px, cy, 9).fill = '#ec4899';
+      const lblP = two.makeText(`P(${pxVal})`, px, cy - 28);
+      lblP.size = 22; lblP.weight = 800; lblP.fill = '#ec4899';
+
+      two.update();
+    }
+
     function renderVerifiedAnswerView(titleHtml, contentHtml, nextStepCode) {
       const formArea = document.getElementById('form-work-area');
       if (!formArea) return;
@@ -1087,7 +1139,7 @@
       const rel = normTxt(document.getElementById('p01-rel').value);
 
       const okVals = t4 === '12' && t5 === '15' && t6 === '18';
-      const okRel = rel.includes('3') && (rel.includes('□') || rel.includes('X') || rel.includes('*') || rel.includes('3'));
+      const okRel = rel.includes('3');
 
       if (okVals && okRel) {
         renderVerifiedAnswerView(
@@ -1096,7 +1148,7 @@
           "0-2"
         );
       } else {
-        alert("❌ 표의 빈칸(12, 15, 18)과 대응 관계 식(□ × 3)을 다시 확인해 주세요!");
+        alert("❌ 오답입니다. 표의 빈칸과 대응 관계식을 다시 한번 확인해 보세요!");
       }
     }
 
@@ -1116,7 +1168,7 @@
           "0-3"
         );
       } else {
-        alert("❌ 수직선 위 점 A, B, C에 대응하는 수를 다시 확인해 주세요!\n(예: A = -7/2 또는 -3.5, B = 0, C = 2)");
+        alert("❌ 오답입니다. 수직선 위 점 A, B, C에 대응하는 수를 다시 한번 확인해 보세요!");
       }
     }
 
@@ -1137,15 +1189,28 @@
           "1-1"
         );
       } else {
-        alert("❌ x=2일 때 식의 값 (1) 8, (2) -3, (3) 4 가 맞는지 다시 확인해 주세요!");
+        alert("❌ 오답입니다. x=2를 각 식에 대입하여 다시 한번 계산해 보세요!");
       }
     }
 
     function check11Submit() {
-      const q1 = normTxt(document.getElementById('p11-q1').value);
-      if (q1.includes('P(3,2)') || q1.includes('(3,2)') || (q1.includes('3') && q1.includes('2'))) {
-        renderVerifiedAnswerView("순서쌍과 점의 좌표", "점 P의 좌표 표현: <b>P(3, 2)</b>", "1-2");
-      } else { alert("❌ P(3, 2) 형태로 작성해 주세요."); }
+      const cInput = normTxt(document.getElementById('p11-concept').value);
+      const sInput = normTxt(document.getElementById('p11-symbol').value);
+      const q2Input = normTxt(document.getElementById('p11-q2').value);
+
+      const okConcept = cInput.includes('좌표');
+      const okSymbol = sInput.includes('P(A)') || sInput.includes('(A)') || sInput.includes('P(A');
+      const okQ2 = q2Input.includes('A(-2)') || q2Input.includes('(-2)');
+
+      if (okConcept && okSymbol && okQ2) {
+        renderVerifiedAnswerView(
+          "4.1 수직선 위의 점의 좌표 정답!",
+          "① 수직선 위의 점 P에 대응하는 수 a를 점 P의 <b>좌표</b>라 하고, 기호로 <b>P(a)</b>로 나타낸다.<br>② 점 A가 -2에 위치할 때 기호: <b>A(-2)</b>",
+          "1-2"
+        );
+      } else {
+        alert("❌ 오답입니다. 개념(좌표, P(a))과 기호 표현(A(-2))을 다시 한번 확인하고 입력해 보세요!");
+      }
     }
 
     function check12Submit() {
