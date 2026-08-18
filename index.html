@@ -914,7 +914,11 @@
         { code: '3-4', label: '6.2 세부활동 3 (RHS 회전&RHA 증명)' },
         { code: '3-5', label: '6.2 RHS합동 정리 (직접 타이핑)' }
       ],
-      4: [{ code: '4-1', label: '6.3-(1) 외심 위치&성질' }, { code: '4-2', label: '6.3-(2) 외심과 중심각' }],
+      4: [
+        { code: '4-1', label: '6.3 세부활동 1 (외심 O의 위치 탐구)' },
+        { code: '4-2', label: '6.3 세부활동 2 (수직이등분선 교점 증명)' },
+        { code: '4-3', label: '6.3 세부활동 3 (외심과 중심각)' }
+      ],
       5: [{ code: '5-1', label: '6.4-(1) 내심 위치&성질' }, { code: '5-2', label: '6.4-(2) 내심과 넓이' }]
     };
 
@@ -1365,6 +1369,80 @@
       if (twoInstance) {
         drawCircumcenterIntroCanvas(twoInstance, isCircumHintVisible);
       }
+    }
+
+    // 6.3 외심 세부활동 2 (세 변의 수직이등분선의 교점 증명 캔버스)
+    function drawCircumcenterProofCanvas(two) {
+      if (!two) return;
+      two.clear();
+      const width = two.width, height = two.height;
+      const step = 30, centerX = width / 2, centerY = height / 2;
+
+      // 모눈
+      for (let x = step; x <= width; x += step) {
+        for (let y = step; y <= height; y += step) {
+          const dot = two.makeCircle(x, y, 1.5);
+          dot.fill = '#cbd5e1'; dot.noStroke();
+        }
+      }
+      two.makeLine(0, centerY, width, centerY).stroke = '#94a3b8';
+      two.makeLine(centerX, 0, centerX, height).stroke = '#94a3b8';
+
+      // 삼각형 ABC
+      const pA = { x: centerX - 170, y: centerY + 100 };
+      const pB = { x: centerX + 170, y: centerY + 100 };
+      const pC = { x: centerX + 50, y: centerY - 130 };
+
+      const tri = two.makePath(pA.x, pA.y, pB.x, pB.y, pC.x, pC.y, false);
+      tri.fill = 'rgba(79, 70, 229, 0.04)'; tri.stroke = '#1e293b'; tri.linewidth = 3;
+
+      // 외심 O 위치 계산
+      const d = 2 * (pA.x * (pB.y - pC.y) + pB.x * (pC.y - pA.y) + pC.x * (pA.y - pB.y));
+      const ux = ((pA.x**2 + pA.y**2) * (pB.y - pC.y) + (pB.x**2 + pB.y**2) * (pC.y - pA.y) + (pC.x**2 + pC.y**2) * (pA.y - pB.y)) / d;
+      const uy = ((pA.x**2 + pA.y**2) * (pC.x - pB.x) + (pB.x**2 + pB.y**2) * (pA.x - pC.x) + (pC.x**2 + pC.y**2) * (pB.x - pA.x)) / d;
+      const pO = { x: ux, y: uy };
+
+      // 각 변의 중점 및 수직이등분선
+      const mBC = { x: (pB.x + pC.x)/2, y: (pB.y + pC.y)/2 };
+      const mCA = { x: (pC.x + pA.x)/2, y: (pC.y + pA.y)/2 };
+      const pD = { x: (pA.x + pB.x)/2, y: (pA.y + pB.y)/2 }; // AB의 중점이자 수선의 발 D
+
+      // 수직이등분선들 (O를 지남)
+      const lineBC = two.makeLine(pO.x, pO.y, mBC.x, mBC.y); lineBC.stroke = '#0284c7'; lineBC.linewidth = 2.5;
+      const lineCA = two.makeLine(pO.x, pO.y, mCA.x, mCA.y); lineCA.stroke = '#0284c7'; lineCA.linewidth = 2.5;
+      const lineOD = two.makeLine(pO.x, pO.y, pD.x, pD.y); lineOD.stroke = '#ea580c'; lineOD.linewidth = 2.5;
+
+      // 점 O에서 A, B, C까지의 거리를 나타내는 핑크 점선
+      const lOA = two.makeLine(pO.x, pO.y, pA.x, pA.y); lOA.stroke = '#ec4899'; lOA.linewidth = 2; lOA.dashes = [5, 5];
+      const lOB = two.makeLine(pO.x, pO.y, pB.x, pB.y); lOB.stroke = '#ec4899'; lOB.linewidth = 2; lOB.dashes = [5, 5];
+      const lOC = two.makeLine(pO.x, pO.y, pC.x, pC.y); lOC.stroke = '#ec4899'; lOC.linewidth = 2; lOC.dashes = [5, 5];
+
+      // D점 직각 표시 (수선의 발)
+      drawRightAngleMarker(two, pD.x, pD.y, -12, 0, 0, -12, '#ea580c');
+
+      // AD = BD 같음 틱 마크
+      const midAD = { x: (pA.x + pD.x)/2, y: pA.y };
+      const midBD = { x: (pB.x + pD.x)/2, y: pB.y };
+      two.makeLine(midAD.x - 4, midAD.y - 6, midAD.x - 4, midAD.y + 6).stroke = '#ea580c';
+      two.makeLine(midAD.x + 2, midAD.y - 6, midAD.x + 2, midAD.y + 6).stroke = '#ea580c';
+      two.makeLine(midBD.x - 4, midBD.y - 6, midBD.x - 4, midBD.y + 6).stroke = '#ea580c';
+      two.makeLine(midBD.x + 2, midBD.y - 6, midBD.x + 2, midBD.y + 6).stroke = '#ea580c';
+
+      // 꼭짓점 및 점 표시
+      two.makeCircle(pA.x, pA.y, 6).fill = '#1e293b';
+      two.makeCircle(pB.x, pB.y, 6).fill = '#1e293b';
+      two.makeCircle(pC.x, pC.y, 6).fill = '#1e293b';
+      two.makeCircle(pO.x, pO.y, 7.5).fill = '#0284c7';
+      two.makeCircle(pD.x, pD.y, 6).fill = '#ea580c';
+
+      // 라벨
+      const lblA = two.makeText('A', pA.x - 22, pA.y + 14); lblA.size = 22; lblA.weight = 800; lblA.fill = '#1e293b';
+      const lblB = two.makeText('B', pB.x + 22, pB.y + 14); lblB.size = 22; lblB.weight = 800; lblB.fill = '#1e293b';
+      const lblC = two.makeText('C', pC.x, pC.y - 20); lblC.size = 22; lblC.weight = 800; lblC.fill = '#1e293b';
+      const lblO = two.makeText('O (외심)', pO.x + 24, pO.y + 16); lblO.size = 17; lblO.weight = 800; lblO.fill = '#0284c7';
+      const lblD = two.makeText('D', pD.x, pD.y + 24); lblD.size = 18; lblD.weight = 800; lblD.fill = '#ea580c';
+
+      two.update();
     }
 
     function loadSubStep(subStepCode) {
@@ -2463,7 +2541,46 @@
           </div>
         `;
       }
+      // ==========================================
+      // [6.3-(2) 세부활동 2: 세 변의 수직이등분선 교점 증명 (선생님 캡처 원본)]
+      // ==========================================
       else if (subStepCode === '4-2') {
+        setTool('select');
+        setMissionUI("<b>(4) 한 점에서 만나는지 확인! [6.3 세부활동 2: 세 변의 수직이등분선 교점 증명]</b><br>두 변 BC와 CA의 수직이등분선의 교점 O에서 변 AB에 내린 수선의 발 D를 구하고 △OAD ≡ △OBD (RHS)임을 증명하세요!");
+
+        if (engine && engine.two) {
+          drawCircumcenterProofCanvas(engine.two);
+        }
+
+        formArea.innerHTML = `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+            <div style="font-weight:800; color:#1e293b; margin-bottom:10px; font-size:1.02rem; border-bottom:2px solid #0284c7; padding-bottom:6px;">
+              📐 (4) 세 변의 수직이등분선이 한 점 O에서 만나는 과정 증명
+            </div>
+
+            <div style="font-size:0.88rem; line-height:1.9; color:#334155; margin-bottom:12px;">
+              <b>두 변 BC와 CA의 수직이등분선의 교점을 O라고 할 때,</b><br><br>
+
+              <b>① 점 O는 BC와 CA의 수직이등분선 위에 있으므로</b><br>
+              ( <input type="text" id="p42-1a" class="proof-input-text" style="width:55px;" placeholder="선분"> ) = ( <input type="text" id="p42-1b" class="proof-input-text" style="width:55px;" placeholder="선분"> )<br>
+              ( <input type="text" id="p42-1c" class="proof-input-text" style="width:55px;" placeholder="선분"> ) = ( <input type="text" id="p42-1d" class="proof-input-text" style="width:55px;" placeholder="선분"> )<br>
+              <b>=> 따라서 점 O에서 ( <input type="text" id="p42-1e" class="proof-input-text" style="width:130px;" placeholder="대상 입력"> ) 에 이르는 거리는 모두 같다.</b><br><br>
+
+              <b>② 점 O에서 AB에 내린 수선의 발을 D라고 하면 △ODA와 △OBD에서</b><br>
+              <b>i)</b> <input type="text" id="p42-2i" class="proof-input-text" style="width:210px;" placeholder="조건 i (빗변 OA=OB)"><br>
+              <b>ii)</b> <input type="text" id="p42-2ii" class="proof-input-text" style="width:210px;" placeholder="조건 ii (각 ODA=ODB=90도)"><br>
+              <b>iii)</b> <input type="text" id="p42-2iii" class="proof-input-text" style="width:210px;" placeholder="조건 iii (선분 OD는 공통)"><br>
+              이므로 <b>△OAD ≡ △OBD ( <input type="text" id="p42-2h" class="proof-input-text" style="width:65px;" placeholder="합동"> 합동)</b>이다.<br>
+              <b>=> 선분 AD = 선분 BD 이므로 선분 OD는 선분 AB의 ( <input type="text" id="p42-2bis" class="proof-input-text" style="width:110px;" placeholder="선분의 명칭"> )이다.</b><br><br>
+
+              <b>③ △ABC의 세 ( <input type="text" id="p42-3f" class="proof-input-text" style="width:110px;" placeholder="선분의 명칭"> )은 한 점 O에서 만난다.</b>
+            </div>
+
+            <button class="btn btn-primary" style="padding:11px; width:100%; font-weight:800; font-size:1rem; background:#0284c7;" onclick="check42ActivitySubmit()">✅ 증명 제출 및 채점</button>
+          </div>
+        `;
+      }
+      else if (subStepCode === '4-3') {
         setTool('select');
         setMissionUI("<b>[PDF p.9~10 그림] 외심과 중심각 관계</b><br>선분 AO 연장선과 선분 BC 교점 D를 그려 ∠BOD = 2a, ∠COD = 2b ⟹ ∠BOC = 2∠A 임을 증명하는 그림입니다.");
 
@@ -3210,8 +3327,70 @@
       }
     }
 
-    // 6.3 중심각 검증
-    function check42Submit() {
+    // 6.3-(2) 세부활동 2: 세 변의 수직이등분선 교점 증명 채점 (선생님 캡처 원본 연동)
+    function check42ActivitySubmit() {
+      if (state.isTeacherLoggedIn) {
+        unlockNextStep(5);
+        renderVerifiedAnswerView(
+          "세 변의 수직이등분선의 교점 증명 완수!",
+          "① 점 O는 BC, CA 수직이등분선 위 ⟹ <b>OB = OC, OC = OA</b> (점 O에서 <b>세 꼭짓점 A, B, C</b>까지 거리 동일)<br>" +
+          "② △ODA와 △OBD에서<br>" +
+          "&nbsp;&nbsp;i) <b>선분 OA = 선분 OB</b> (빗변)<br>" +
+          "&nbsp;&nbsp;ii) <b>∠ODA = ∠ODB = 90°</b> (직각)<br>" +
+          "&nbsp;&nbsp;iii) <b>선분 OD는 공통</b><br>" +
+          "&nbsp;&nbsp;이므로 <b>△OAD ≡ △OBD (RHS 합동)</b><br>" +
+          "&nbsp;&nbsp;➔ 선분 AD = 선분 BD 이므로 <b>OD는 AB의 수직이등분선</b>이다.<br>" +
+          "③ 따라서 △ABC의 <b>세 수직이등분선</b>은 한 점 O에서 만난다!",
+          "4-3"
+        );
+        return;
+      }
+
+      const v1a = normTxt(document.getElementById('p42-1a').value);
+      const v1b = normTxt(document.getElementById('p42-1b').value);
+      const v1c = normTxt(document.getElementById('p42-1c').value);
+      const v1d = normTxt(document.getElementById('p42-1d').value);
+      const v1e = normTxt(document.getElementById('p42-1e').value);
+
+      const v2i = normTxt(document.getElementById('p42-2i').value);
+      const v2ii = normTxt(document.getElementById('p42-2ii').value);
+      const v2iii = normTxt(document.getElementById('p42-2iii').value);
+      const v2h = normTxt(document.getElementById('p42-2h').value);
+      const v2bis = normTxt(document.getElementById('p42-2bis').value);
+      const v3f = normTxt(document.getElementById('p42-3f').value);
+
+      const ok1 = (v1a.includes('OB') || v1a.includes('OC') || v1a.includes('OA')) && (v1b.includes('OB') || v1b.includes('OC') || v1b.includes('OA'));
+      const ok1e = v1e.includes('꼭짓점') || v1e.includes('꼭지점') || v1e.includes('A') || v1e.includes('B') || v1e.includes('C') || v1e.includes('거리');
+
+      const ok2i = isSameEquation(v2i, 'OA', 'OB') || (v2i.includes('OA') && v2i.includes('OB'));
+      const ok2ii = v2ii.includes('ODA') || v2ii.includes('ODB') || v2ii.includes('90') || v2ii.includes('직각');
+      const ok2iii = v2iii.includes('OD') && (v2iii.includes('공통') || v2iii.includes('같'));
+      const ok2h = v2h.includes('RHS');
+      const ok2bis = v2bis.includes('수직이등분선') || (v2bis.includes('수직') && v2bis.includes('이등분'));
+
+      const ok3f = v3f.includes('수직이등분선') || (v3f.includes('수직') && v3f.includes('이등분'));
+
+      if (ok1 && ok1e && ok2i && ok2ii && ok2iii && ok2h && ok2bis && ok3f) {
+        unlockNextStep(5);
+        renderVerifiedAnswerView(
+          "세 변의 수직이등분선의 교점 증명 완수!",
+          "① 점 O는 BC, CA 수직이등분선 위 ⟹ <b>OB = OC, OC = OA</b> (점 O에서 <b>세 꼭짓점 A, B, C</b>까지 거리 동일)<br>" +
+          "② △ODA와 △OBD에서<br>" +
+          "&nbsp;&nbsp;i) <b>선분 OA = 선분 OB</b> (빗변)<br>" +
+          "&nbsp;&nbsp;ii) <b>∠ODA = ∠ODB = 90°</b> (직각)<br>" +
+          "&nbsp;&nbsp;iii) <b>선분 OD는 공통</b><br>" +
+          "&nbsp;&nbsp;이므로 <b>△OAD ≡ △OBD (RHS 합동)</b><br>" +
+          "&nbsp;&nbsp;➔ 선분 AD = 선분 BD 이므로 <b>OD는 AB의 수직이등분선</b>이다.<br>" +
+          "③ 따라서 △ABC의 <b>세 수직이등분선</b>은 한 점 O에서 만난다!",
+          "4-3"
+        );
+      } else {
+        showInlineErrorNotice("❌ 작성하신 답을 다시 확인해 보세요!\n① 선분 관계(OB=OC, OC=OA) 및 '세 꼭짓점'\n② 조건 i) OA=OB, ii) 각ODA=ODB=90도, iii) 선분 OD 공통, RHS 합동, 수직이등분선\n③ 세 수직이등분선");
+      }
+    }
+
+    // 6.3-(3) 중심각 검증
+    function check43Submit() {
       if (state.isTeacherLoggedIn) {
         unlockNextStep(5);
         showBigPraiseModal("🔓 [교사/테스트 프리패스]", "외심 중심각 통과!");
