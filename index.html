@@ -917,7 +917,8 @@
       4: [
         { code: '4-1', label: '6.3 세부활동 1 (외심 O의 위치 탐구)' },
         { code: '4-2', label: '6.3 세부활동 2 (수직이등분선 교점 증명)' },
-        { code: '4-3', label: '6.3 세부활동 3 (외심과 중심각)' }
+        { code: '4-3', label: '6.3 세부활동 3 (중심각 2배 증명)' },
+        { code: '4-4', label: '6.3 세부활동 4 (동적 삼각형 드래그 탐구)' }
       ],
       5: [{ code: '5-1', label: '6.4-(1) 내심 위치&성질' }, { code: '5-2', label: '6.4-(2) 내심과 넓이' }]
     };
@@ -1513,6 +1514,160 @@
       const lblD = two.makeText('D', pD.x, pD.y + 24); lblD.size = 18; lblD.weight = 800; lblD.fill = '#ec4899';
 
       two.update();
+    }
+
+    // 6.3 외심 세부활동 4 (동적 삼각형 드래그 & 중심각 2배 탐구 캔버스)
+    let activeCircumDragPoint = null;
+
+    function initCircumDynamicPoints(two) {
+      if (!state.circumTriPoints) {
+        const width = two ? two.width : 800;
+        const height = two ? two.height : 500;
+        const cx = width / 2, cy = height / 2;
+        state.circumTriPoints = {
+          A: { x: cx, y: cy - 140 },
+          B: { x: cx - 180, y: cy + 110 },
+          C: { x: cx + 170, y: cy + 110 }
+        };
+      }
+    }
+
+    function drawCircumcenterDynamicInteractiveCanvas(two) {
+      if (!two) return;
+      initCircumDynamicPoints(two);
+      two.clear();
+
+      const width = two.width, height = two.height;
+      const step = 30, centerX = width / 2, centerY = height / 2;
+
+      // 모눈
+      for (let x = step; x <= width; x += step) {
+        for (let y = step; y <= height; y += step) {
+          const dot = two.makeCircle(x, y, 1.5);
+          dot.fill = '#cbd5e1'; dot.noStroke();
+        }
+      }
+
+      const pA = state.circumTriPoints.A;
+      const pB = state.circumTriPoints.B;
+      const pC = state.circumTriPoints.C;
+
+      // 1. 세 점 A, B, C를 지나는 외접원 중심 O(ux, uy) 및 반지름 R 계산
+      const d = 2 * (pA.x * (pB.y - pC.y) + pB.x * (pC.y - pA.y) + pC.x * (pA.y - pB.y));
+      let ux = centerX, uy = centerY, radius = 100;
+      let isValidCircle = Math.abs(d) > 0.001;
+
+      if (isValidCircle) {
+        ux = ((pA.x**2 + pA.y**2) * (pB.y - pC.y) + (pB.x**2 + pB.y**2) * (pC.y - pA.y) + (pC.x**2 + pC.y**2) * (pA.y - pB.y)) / d;
+        uy = ((pA.x**2 + pA.y**2) * (pC.x - pB.x) + (pB.x**2 + pB.y**2) * (pA.x - pC.x) + (pC.x**2 + pC.y**2) * (pB.x - pA.x)) / d;
+        radius = Math.hypot(ux - pA.x, uy - pA.y);
+      }
+      const pO = { x: ux, y: uy };
+
+      // 2. 외접원 렌더링
+      if (isValidCircle) {
+        const circle = two.makeCircle(ux, uy, radius);
+        circle.fill = 'rgba(2, 132, 199, 0.05)'; circle.stroke = '#0284c7'; circle.linewidth = 2.5; circle.dashes = [6, 6];
+      }
+
+      // 3. 삼각형 ABC 렌더링
+      const tri = two.makePath(pA.x, pA.y, pB.x, pB.y, pC.x, pC.y, false);
+      tri.fill = 'rgba(79, 70, 229, 0.06)'; tri.stroke = '#4f46e5'; tri.linewidth = 3;
+
+      // 4. 중심 O와 꼭짓점 A, B, C 연결 선분
+      if (isValidCircle) {
+        two.makeLine(pO.x, pO.y, pB.x, pB.y).stroke = '#ec4899';
+        two.makeLine(pO.x, pO.y, pC.x, pC.y).stroke = '#ec4899';
+        const lOA = two.makeLine(pO.x, pO.y, pA.x, pA.y);
+        lOA.stroke = '#94a3b8'; lOA.linewidth = 1.5; lOA.dashes = [4, 4];
+      }
+
+      // 5. 내각 ∠A 및 중심각 ∠BOC 각도 계산
+      const vAB = { x: pB.x - pA.x, y: pB.y - pA.y };
+      const vAC = { x: pC.x - pA.x, y: pC.y - pA.y };
+      const lenAB = Math.hypot(vAB.x, vAB.y);
+      const lenAC = Math.hypot(vAC.x, vAC.y);
+      const dotA = vAB.x * vAC.x + vAB.y * vAC.y;
+      const cosA = Math.max(-1, Math.min(1, dotA / (lenAB * lenAC)));
+      let angleA = Math.acos(cosA) * (180 / Math.PI);
+      let angleBOC_display = angleA * 2;
+
+      // 6. 상단 실시간 각도 뱃지 대시보드 렌더링
+      const bgBadge = two.makeRoundedRectangle(centerX, 32, 550, 42, 10);
+      bgBadge.fill = '#ffffff'; bgBadge.stroke = '#0284c7'; bgBadge.linewidth = 2;
+
+      const txtBadge = two.makeText(
+        `내각 ∠A = ${angleA.toFixed(1)}°   |   중심각 ∠BOC = ${angleBOC_display.toFixed(1)}°   (2 × ${angleA.toFixed(1)}°)`,
+        centerX, 32
+      );
+      txtBadge.size = 17; txtBadge.weight = 800; txtBadge.fill = '#0284c7';
+
+      // 7. 점 O 및 꼭짓점 마커 & 라벨
+      if (isValidCircle) {
+        two.makeCircle(pO.x, pO.y, 8).fill = '#ec4899';
+        const lblO = two.makeText('O (외심)', pO.x + 24, pO.y + 16);
+        lblO.size = 17; lblO.weight = 800; lblO.fill = '#ec4899';
+      }
+
+      // 꼭짓점 A, B, C (넓은 Touch Hit Test 시각화 드래그 원)
+      ['A', 'B', 'C'].forEach(ptKey => {
+        const pt = state.circumTriPoints[ptKey];
+        const hitArea = two.makeCircle(pt.x, pt.y, 16);
+        hitArea.fill = 'rgba(79, 70, 229, 0.15)'; hitArea.stroke = '#4f46e5'; hitArea.linewidth = 2;
+        two.makeCircle(pt.x, pt.y, 7).fill = '#4f46e5';
+
+        const lbl = two.makeText(ptKey, pt.x + (ptKey === 'B' ? -20 : ptKey === 'C' ? 20 : 0), pt.y + (ptKey === 'A' ? -22 : 24));
+        lbl.size = 22; lbl.weight = 800; lbl.fill = '#1e293b';
+      });
+
+      two.update();
+    }
+
+    function attachCircumDynamicDragListeners() {
+      const container = document.getElementById('two-container');
+      if (!container) return;
+
+      container.onpointerdown = function(e) {
+        if (state.subStep !== '4-4' || !state.circumTriPoints) return;
+        const rect = container.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        let minDist = 35;
+        activeCircumDragPoint = null;
+        ['A', 'B', 'C'].forEach(k => {
+          const pt = state.circumTriPoints[k];
+          const dist = Math.hypot(pt.x - mx, pt.y - my);
+          if (dist < minDist) {
+            minDist = dist;
+            activeCircumDragPoint = k;
+          }
+        });
+
+        if (activeCircumDragPoint) {
+          try { container.setPointerCapture(e.pointerId); } catch(err){}
+        }
+      };
+
+      container.onpointermove = function(e) {
+        if (!activeCircumDragPoint || state.subStep !== '4-4' || !state.circumTriPoints) return;
+        const rect = container.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        const w = container.clientWidth || 800;
+        const h = container.clientHeight || 500;
+        state.circumTriPoints[activeCircumDragPoint].x = Math.max(25, Math.min(w - 25, mx));
+        state.circumTriPoints[activeCircumDragPoint].y = Math.max(75, Math.min(h - 25, my));
+
+        if (twoInstance) {
+          drawCircumcenterDynamicInteractiveCanvas(twoInstance);
+        }
+      };
+
+      container.onpointerup = container.onpointercancel = function(e) {
+        activeCircumDragPoint = null;
+      };
     }
 
     function loadSubStep(subStepCode) {
@@ -2691,6 +2846,40 @@
       }
 
       // ==========================================
+      // [6.3-(4) 세부활동 4: 동적 삼각형 드래그 & 중심각 2배 탐구 (선생님 요청사항)]
+      // ==========================================
+      else if (subStepCode === '4-4') {
+        setTool('select');
+        setMissionUI("<b>📐 [6.3 세부활동 4] 동적 삼각형 드래그 탐구</b><br>꼭짓점 A, B, C를 자유롭게 드래그해 보세요! 실시간으로 외접원이 그려지며 내각과 중심각의 크기가 변화합니다.<br>어떤 모양의 삼각형에서도 중심각의 크기가 내각의 2배가 되는지 확인하고 아래 질문에 답해보세요.");
+
+        if (engine && engine.two) {
+          drawCircumcenterDynamicInteractiveCanvas(engine.two);
+        }
+        setTimeout(attachCircumDynamicDragListeners, 100);
+
+        formArea.innerHTML = `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+            <div style="font-weight:800; color:#1e293b; margin-bottom:10px; font-size:1.02rem; border-bottom:2px solid #0284c7; padding-bottom:6px;">
+              🔍 동적 삼각형 변형을 통한 외심의 성질 관찰
+            </div>
+
+            <div style="font-size:0.88rem; line-height:1.9; color:#334155; margin-bottom:12px;">
+              <b>(1) 꼭짓점을 드래그하여 삼각형의 모양을 변화시켜도 중심각 ∠BOC의 크기는 항상 내각 ∠A의 크기의 몇 배인가?</b><br>
+              답: ( <input type="text" id="p44-q1" class="proof-input-text" style="width:70px;" placeholder="배수"> ) 배이다.<br><br>
+
+              <b>(2) 삼각형이 둔각삼각형이 될 때 외심 O는 삼각형의 어디에 위치하는가?</b><br>
+              답: 삼각형의 ( <input type="text" id="p44-q2" class="proof-input-text" style="width:100px;" placeholder="위치"> )에 위치한다.<br><br>
+
+              <b>(3) 직각삼각형일 때 외심 O는 어디에 위치하는가?</b><br>
+              답: ( <input type="text" id="p44-q3" class="proof-input-text" style="width:120px;" placeholder="위치 명칭"> )에 위치한다.
+            </div>
+
+            <button class="btn btn-primary" style="padding:11px; width:100%; font-weight:800; font-size:1rem; background:#0284c7;" onclick="check44ActivitySubmit()">✅ 탐구 활동 제출 및 채점</button>
+          </div>
+        `;
+      }
+
+      // ==========================================
       // [6.4 삼각형의 내심 & 넓이 (PDF p.11~14)]
       // ==========================================
       else if (subStepCode === '5-1') {
@@ -3468,8 +3657,8 @@
           "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <b>2a + 2b</b><br>" +
           "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <b>2(a + b)</b><br>" +
           "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <b>2∠A (2배)</b><br><br>" +
-          "🏆 <b>[6.3 외심] 단원의 모든 활동을 완벽하게 수료하셨습니다!</b><br>다음 [6.4 내심] 단원의 자물쇠가 해제되었습니다.",
-          "5-1"
+          "🏆 <b>[6.3 외심] 단원의 중심각 증명 활동을 완료했습니다!</b><br>다음 동적 삼각형 탐구 활동으로 진행하세요.",
+          "4-4"
         );
         return;
       }
@@ -3502,7 +3691,6 @@
       const ok3e = s3e.includes('2각A') || s3e.includes('2A') || s3e.includes('2*각A') || s3e.includes('2*A');
 
       if (okTri && ok1 && ok2 && okBod && okCod && ok3ab && ok3c && ok3e) {
-        unlockNextStep(5);
         renderVerifiedAnswerView(
           "외심과 중심각 ∠BOC = 2∠A 관계 증명 완수!",
           "① △OAB, △OAC는 <b>이등변삼각형</b> ⟹ ∠OAB = ∠OBA = ∠a, ∠OAC = ∠OCA = ∠b<br>" +
@@ -3512,11 +3700,49 @@
           "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <b>2a + 2b</b><br>" +
           "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <b>2(a + b)</b><br>" +
           "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <b>2∠A (2배)</b><br><br>" +
-          "🏆 <b>[6.3 외심] 단원의 모든 활동을 완벽하게 수료하셨습니다!</b><br>다음 [6.4 내심] 단원의 자물쇠가 해제되었습니다.",
-          "5-1"
+          "🏆 <b>[6.3 외심] 단원의 중심각 증명 활동을 완료했습니다!</b><br>다음 동적 삼각형 탐구 활동으로 진행하세요.",
+          "4-4"
         );
       } else {
         showInlineErrorNotice("❌ 작성하신 증명 답을 다시 확인해 보세요!\n① 이등변삼각형, 각 OAB=OBA=a, 각 OAC=OCA=b\n② ∠BOD = 2a, ∠COD = 2b\n③ ∠BOC = ∠BOD + ∠COD = 2a + 2b = 2(a + b) = 2∠A");
+      }
+    }
+
+    // 6.3-(4) 세부활동 4: 동적 삼각형 드래그 & 중심각 2배 탐구 채점
+    function check44ActivitySubmit() {
+      if (state.isTeacherLoggedIn) {
+        unlockNextStep(5);
+        renderVerifiedAnswerView(
+          "동적 삼각형 드래그 탐구 완수!",
+          "① 꼭짓점을 어떻게 드래그해도 중심각 ∠BOC의 크기는 항상 <b>내각 ∠A의 2배</b>입니다.<br>" +
+          "② 둔각삼각형일 때 외심 O의 위치: <b>삼각형의 외부(바깥)</b><br>" +
+          "③ 직각삼각형일 때 외심 O의 위치: <b>빗변의 중점</b><br><br>" +
+          "🏆 <b>[6.3 외심] 단원의 모든 동적 기하 탐구 활동을 수료하셨습니다!</b><br>다음 [6.4 내심] 단원의 자물쇠가 해제되었습니다.",
+          "5-1"
+        );
+        return;
+      }
+
+      const q1 = normTxt(document.getElementById('p44-q1').value);
+      const q2 = normTxt(document.getElementById('p44-q2').value);
+      const q3 = normTxt(document.getElementById('p44-q3').value);
+
+      const ok1 = q1.includes('2') || q1.includes('두') || q1.includes('두배');
+      const ok2 = q2.includes('외부') || q2.includes('바깥') || q2.includes('밖') || q2.includes('외');
+      const ok3 = q3.includes('빗변') || q3.includes('중점');
+
+      if (ok1 && ok2 && ok3) {
+        unlockNextStep(5);
+        renderVerifiedAnswerView(
+          "동적 삼각형 드래그 탐구 완수!",
+          "① 꼭짓점을 어떻게 드래그해도 중심각 ∠BOC의 크기는 항상 <b>내각 ∠A의 2배</b>입니다.<br>" +
+          "② 둔각삼각형일 때 외심 O의 위치: <b>삼각형의 외부(바깥)</b><br>" +
+          "③ 직각삼각형일 때 외심 O의 위치: <b>빗변의 중점</b><br><br>" +
+          "🏆 <b>[6.3 외심] 단원의 모든 동적 기하 탐구 활동을 수료하셨습니다!</b><br>다음 [6.4 내심] 단원의 자물쇠가 해제되었습니다.",
+          "5-1"
+        );
+      } else {
+        showInlineErrorNotice("❌ 관찰 질문 답을 다시 확인해 보세요!\n(1) 2배, (2) 외부(바깥), (3) 빗변의 중점");
       }
     }
 
