@@ -1447,6 +1447,32 @@
     }
 
     // 6.3 외심 세부활동 3 (외심과 중심각 ∠BOC = 2∠A 증명 캔버스)
+    // 각도 표시용 원호(Arc) 헬퍼 함수
+    function drawAngleArc(two, cx, cy, startAngle, endAngle, radius, strokeColor, fillColor = 'none') {
+      if (!two) return null;
+      const steps = 16;
+      let diff = endAngle - startAngle;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+
+      const anchors = [];
+      if (fillColor !== 'none') {
+        anchors.push(new Two.Anchor(cx, cy));
+      }
+      for (let i = 0; i <= steps; i++) {
+        const a = startAngle + (diff * i / steps);
+        const x = cx + radius * Math.cos(a);
+        const y = cy + radius * Math.sin(a);
+        anchors.push(new Two.Anchor(x, y));
+      }
+      const path = two.makePath(anchors, fillColor === 'none');
+      path.fill = fillColor;
+      path.stroke = strokeColor;
+      path.linewidth = 2;
+      return path;
+    }
+
+    // 6.3 외심 세부활동 3 (외심과 중심각 ∠BOC = 2∠A 증명 캔버스)
     function drawCircumcenterAngleProofCanvas(two) {
       if (!two) return;
       two.clear();
@@ -1486,18 +1512,49 @@
       const lineOB = two.makeLine(pO.x, pO.y, pB.x, pB.y); lineOB.stroke = '#0284c7'; lineOB.linewidth = 2.5;
       const lineOC = two.makeLine(pO.x, pO.y, pC.x, pC.y); lineOC.stroke = '#0284c7'; lineOC.linewidth = 2.5;
 
+      // ==========================================
+      // [정밀 각도 원호(Angle Arc) 렌더링]
+      // ==========================================
+      const angAB = Math.atan2(pB.y - pA.y, pB.x - pA.x);
+      const angAC = Math.atan2(pC.y - pA.y, pC.x - pA.x);
+      const angAD = Math.PI / 2; // (x=0, y>0) 아래 방향
+
+      // 1. 꼭짓점 A의 좌측각 a (핑크 원호)
+      drawAngleArc(two, pA.x, pA.y, angAB, angAD, 32, '#ec4899', 'rgba(236, 72, 153, 0.1)');
+
+      // 2. 꼭짓점 A의 우측각 b (파란 원호)
+      drawAngleArc(two, pA.x, pA.y, angAD, angAC, 32, '#0284c7', 'rgba(2, 132, 199, 0.1)');
+
+      // 3. 꼭짓점 B의 이등변 밑각 a (핑크 원호)
+      const angBO = Math.atan2(pO.y - pB.y, pO.x - pB.x);
+      const angBA = Math.atan2(pA.y - pB.y, pA.x - pB.x);
+      drawAngleArc(two, pB.x, pB.y, angBO, angBA, 36, '#ec4899', 'rgba(236, 72, 153, 0.1)');
+
+      // 4. 꼭짓점 C의 이등변 밑각 b (파란 원호)
+      const angCA = Math.atan2(pA.y - pC.y, pA.x - pC.x);
+      const angCO = Math.atan2(pO.y - pC.y, pO.x - pC.x);
+      drawAngleArc(two, pC.x, pC.y, angCA, angCO, 36, '#0284c7', 'rgba(2, 132, 199, 0.1)');
+
+      // 5. 외심 O의 좌측 중심각 2a (핑크 부채꼴 원호)
+      const angOB = Math.atan2(pB.y - pO.y, pB.x - pO.x);
+      drawAngleArc(two, pO.x, pO.y, angAD, angOB, 30, '#ec4899', 'rgba(236, 72, 153, 0.18)');
+
+      // 6. 외심 O의 우측 중심각 2b (파란 부채꼴 원호)
+      const angOC = Math.atan2(pC.y - pO.y, pC.x - pO.x);
+      drawAngleArc(two, pO.x, pO.y, angOC, angAD, 30, '#0284c7', 'rgba(2, 132, 199, 0.18)');
+
       // 각도 라벨 표시
       // ∠OAB = ∠OBA = a (핑크색)
-      const lblOAB = two.makeText('a', pA.x - 24, pA.y + 40); lblOAB.size = 18; lblOAB.weight = 800; lblOAB.fill = '#ec4899';
-      const lblOBA = two.makeText('a', pB.x + 45, pB.y - 25); lblOBA.size = 18; lblOBA.weight = 800; lblOBA.fill = '#ec4899';
+      const lblOAB = two.makeText('a', pA.x - 16, pA.y + 44); lblOAB.size = 18; lblOAB.weight = 800; lblOAB.fill = '#ec4899';
+      const lblOBA = two.makeText('a', pB.x + 48, pB.y - 20); lblOBA.size = 18; lblOBA.weight = 800; lblOBA.fill = '#ec4899';
 
       // ∠OAC = ∠OCA = b (파란색)
-      const lblOAC = two.makeText('b', pA.x + 24, pA.y + 40); lblOAC.size = 18; lblOAC.weight = 800; lblOAC.fill = '#0284c7';
-      const lblOCA = two.makeText('b', pC.x - 45, pC.y - 25); lblOCA.size = 18; lblOCA.weight = 800; lblOCA.fill = '#0284c7';
+      const lblOAC = two.makeText('b', pA.x + 16, pA.y + 44); lblOAC.size = 18; lblOAC.weight = 800; lblOAC.fill = '#0284c7';
+      const lblOCA = two.makeText('b', pC.x - 48, pC.y - 20); lblOCA.size = 18; lblOCA.weight = 800; lblOCA.fill = '#0284c7';
 
       // ∠BOD = 2a, ∠COD = 2b
-      const lblBOD = two.makeText('2a', pO.x - 25, pO.y + 35); lblBOD.size = 17; lblBOD.weight = 800; lblBOD.fill = '#ec4899';
-      const lblCOD = two.makeText('2b', pO.x + 25, pO.y + 35); lblCOD.size = 17; lblCOD.weight = 800; lblCOD.fill = '#0284c7';
+      const lblBOD = two.makeText('2a', pO.x - 22, pO.y + 45); lblBOD.size = 17; lblBOD.weight = 800; lblBOD.fill = '#ec4899';
+      const lblCOD = two.makeText('2b', pO.x + 22, pO.y + 45); lblCOD.size = 17; lblCOD.weight = 800; lblCOD.fill = '#0284c7';
 
       // 꼭짓점 마커
       two.makeCircle(pA.x, pA.y, 6).fill = '#1e293b';
