@@ -1244,6 +1244,129 @@
       rhsAnimId = requestAnimationFrame(animateStep);
     }
 
+    // 6.3 외심 4-1 캔버스 렌더러 (자유 스케치 & 힌트 외접원/외심 O)
+    let isCircumHintVisible = false;
+    let freehandLines = [];
+    let isDrawingTablet = false;
+    let currentLine = null;
+
+    function drawCircumcenterIntroCanvas(two, showHint = false) {
+      if (!two) return;
+      two.clear();
+      const width = two.width, height = two.height;
+      const step = 30, centerX = width / 2, centerY = height / 2;
+
+      // 1. 모눈 배경
+      for (let x = step; x <= width; x += step) {
+        for (let y = step; y <= height; y += step) {
+          const dot = two.makeCircle(x, y, 1.5);
+          dot.fill = '#cbd5e1'; dot.noStroke();
+        }
+      }
+      two.makeLine(0, centerY, width, centerY).stroke = '#94a3b8';
+      two.makeLine(centerX, 0, centerX, height).stroke = '#94a3b8';
+
+      // 2. 교과서 원본 삼각형 ABC (A: 좌하단, B: 우하단, C: 상단)
+      const pA = { x: centerX - 160, y: centerY + 90 };
+      const pB = { x: centerX + 160, y: centerY + 90 };
+      const pC = { x: centerX + 60, y: centerY - 130 };
+
+      const tri = two.makePath(pA.x, pA.y, pB.x, pB.y, pC.x, pC.y, false);
+      tri.fill = 'rgba(79, 70, 229, 0.04)'; tri.stroke = '#1e293b'; tri.linewidth = 3;
+
+      two.makeCircle(pA.x, pA.y, 6).fill = '#1e293b';
+      two.makeCircle(pB.x, pB.y, 6).fill = '#1e293b';
+      two.makeCircle(pC.x, pC.y, 6).fill = '#1e293b';
+
+      const lblA = two.makeText('A', pA.x - 22, pA.y + 14); lblA.size = 22; lblA.weight = 800; lblA.fill = '#1e293b';
+      const lblB = two.makeText('B', pB.x + 22, pB.y + 14); lblB.size = 22; lblB.weight = 800; lblB.fill = '#1e293b';
+      const lblC = two.makeText('C', pC.x, pC.y - 20); lblC.size = 22; lblC.weight = 800; lblC.fill = '#1e293b';
+
+      // 3. 힌트 확인 버튼 활성화 시: 외접원 & 중심 O & 거리 선분 OA, OB, OC 표출
+      if (showHint) {
+        const d = 2 * (pA.x * (pB.y - pC.y) + pB.x * (pC.y - pA.y) + pC.x * (pA.y - pB.y));
+        const ux = ((pA.x**2 + pA.y**2) * (pB.y - pC.y) + (pB.x**2 + pB.y**2) * (pC.y - pA.y) + (pC.x**2 + pC.y**2) * (pA.y - pB.y)) / d;
+        const uy = ((pA.x**2 + pA.y**2) * (pC.x - pB.x) + (pB.x**2 + pB.y**2) * (pA.x - pC.x) + (pC.x**2 + pC.y**2) * (pB.x - pA.x)) / d;
+        const radius = Math.hypot(ux - pA.x, uy - pA.y);
+
+        const circle = two.makeCircle(ux, uy, radius);
+        circle.fill = 'rgba(2, 132, 199, 0.06)'; circle.stroke = '#0284c7'; circle.linewidth = 2.5; circle.dashes = [6, 6];
+
+        two.makeLine(ux, uy, pA.x, pA.y).stroke = '#ec4899';
+        two.makeLine(ux, uy, pB.x, pB.y).stroke = '#ec4899';
+        two.makeLine(ux, uy, pC.x, pC.y).stroke = '#ec4899';
+
+        two.makeCircle(ux, uy, 7.5).fill = '#0284c7';
+        const lblO = two.makeText('O (외심)', ux + 26, uy + 16);
+        lblO.size = 17; lblO.weight = 800; lblO.fill = '#0284c7';
+
+        const mOA = { x: (ux + pA.x)/2, y: (uy + pA.y)/2 };
+        const mOB = { x: (ux + pB.x)/2, y: (uy + pB.y)/2 };
+        const mOC = { x: (ux + pC.x)/2, y: (uy + pC.y)/2 };
+        two.makeLine(mOA.x - 4, mOA.y - 4, mOA.x + 4, mOA.y + 4).stroke = '#ec4899';
+        two.makeLine(mOB.x - 4, mOB.y - 4, mOB.x + 4, mOB.y + 4).stroke = '#ec4899';
+        two.makeLine(mOC.x - 4, mOC.y - 4, mOC.x + 4, mOC.y + 4).stroke = '#ec4899';
+      }
+
+      // 4. 학생 태블릿 자유 스케치 드로잉 렌더링
+      freehandLines.forEach(linePoints => {
+        if (linePoints.length > 1) {
+          const path = two.makeCurve(linePoints.map(pt => new Two.Anchor(pt.x, pt.y)), true);
+          path.noFill(); path.stroke = '#ea580c'; path.linewidth = 3;
+        }
+      });
+
+      two.update();
+    }
+
+    function attachTabletFreehandListeners() {
+      const container = document.getElementById('two-container');
+      if (!container) return;
+
+      container.onpointerdown = function(e) {
+        if (state.subStep !== '4-1') return;
+        isDrawingTablet = true;
+        const rect = container.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        currentLine = [{ x: mx, y: my }];
+        freehandLines.push(currentLine);
+        try { container.setPointerCapture(e.pointerId); } catch(err){}
+      };
+
+      container.onpointermove = function(e) {
+        if (!isDrawingTablet || state.subStep !== '4-1' || !currentLine) return;
+        const rect = container.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        currentLine.push({ x: mx, y: my });
+        if (twoInstance) {
+          drawCircumcenterIntroCanvas(twoInstance, isCircumHintVisible);
+        }
+      };
+
+      container.onpointerup = container.onpointercancel = function(e) {
+        if (isDrawingTablet) {
+          isDrawingTablet = false;
+          currentLine = null;
+        }
+      };
+    }
+
+    function toggleCircumHint() {
+      isCircumHintVisible = !isCircumHintVisible;
+      if (twoInstance) {
+        drawCircumcenterIntroCanvas(twoInstance, isCircumHintVisible);
+      }
+    }
+
+    function clearTabletDrawing() {
+      freehandLines = [];
+      if (twoInstance) {
+        drawCircumcenterIntroCanvas(twoInstance, isCircumHintVisible);
+      }
+    }
+
     function loadSubStep(subStepCode) {
       state.subStep = subStepCode;
 
@@ -2179,44 +2302,49 @@
         state.rhsRotateDrawn = false;
         if (animBtnRHS) animBtnRHS.style.display = 'inline-flex';
 
-        setMissionUI("<b>3. 두 직각삼각형의 빗변의 길이와 다른 한 변의 길이가 각각 같은 경우에도 합동이 되는지 확인해 보자. [6.2 세부활동 3: RHS 회전 애니메이션 & RHA 증명]</b><br>상단 <b>[🎬 △DEF 180° 회전·이동하여 AC와 DF 맞붙이기]</b> 버튼을 누르면 △DEF가 뒤집혀 맞붙는 애니메이션을 볼 수 있습니다.<br>아래 빈칸을 <b>한글과 알파벳(예: 빗변AB=빗변DE, 각C=각F=90도, 각B=각E, RHA)</b>으로 직접 타이핑하세요!");
+        setMissionUI("<b>3. 두 직각삼각형의 빗변의 길이와 다른 한 변의 길이가 각각 같은 경우에도 합동이 되는지 확인해 보자. [6.2 세부활동 3: RHS 회전 애니메이션 & RHA 증명]</b><br>상단 <b>[🎬 △DEF 180° 회전·이동하여 AC와 DF 맞붙이기]</b> 버튼을 누르면 △DEF가 뒤집혀 맞붙는 애니메이션을 볼 수 있습니다.<br>아래 빈칸을 <b>한글과 알파벳(예: 빗변AB=빗변DE, 각C=각F=90도, 각B=각E      // ==========================================
+      // [6.3-(1) 세부활동 1: 외심 O의 위치 탐구 & 수직이등분선 (교과서 활동지 원본)]
+      // ==========================================
+      else if (subStepCode === '4-1') {
+        setTool('select');
+        isCircumHintVisible = false;
+        setMissionUI("<b>1. 삼각형 ABC의 세 꼭짓점을 지나는 원을 그리려고 한다. 그 원의 중심을 O라고 한다면 O를 어떻게 찾을 수 있을까? [6.3 외심의 위치 탐구]</b><br>캔버스 위에 태블릿 펜/마우스로 원의 중심 O 위치를 자유롭게 스케치해 보세요!<br>하단 <b>[💡 힌트 확인]</b> 버튼을 누르면 정밀한 외접원과 외심 O, 반지름 선분이 표시됩니다.");
 
         if (engine && engine.two) {
-          drawRHS34Canvas(engine.two, 0); // 초기 상태 렌더링 (E는 왼쪽, F는 우측 oX2)
+          drawCircumcenterIntroCanvas(engine.two, false);
         }
+        setTimeout(attachTabletFreehandListeners, 100);
 
         formArea.innerHTML = `
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-            <div style="font-weight:800; color:#1e293b; margin-bottom:10px; font-size:1.05rem; border-bottom:1px solid #e2e8f0; padding-bottom:6px;">
-              [ △ <input type="text" id="p34-t1" class="proof-input-text" style="width:70px;" placeholder="삼각형"> 와 △ <input type="text" id="p34-t2" class="proof-input-text" style="width:70px;" placeholder="삼각형"> 에서 ]
-            </div>
-            
-            <div style="font-size:0.9rem; margin-bottom:8px; line-height:1.7;">
-              <b>①</b> <input type="text" id="p34-c1" class="proof-input-text" style="width:190px;" placeholder="조건 ① 입력">
-            </div>
-            <div style="font-size:0.9rem; margin-bottom:8px; line-height:1.7;">
-              <b>②</b> <input type="text" id="p34-c2" class="proof-input-text" style="width:190px;" placeholder="조건 ② 입력">
-            </div>
-            <div style="font-size:0.88rem; margin-bottom:8px; line-height:1.7;">
-              <b>③</b> <input type="text" id="p34-c3" class="proof-input-text" style="width:230px;" placeholder="조건 ③ (이등변 성질) 입력">
+            <div style="font-weight:800; color:#1e293b; margin-bottom:10px; font-size:1.02rem; border-bottom:2px solid #0284c7; padding-bottom:6px;">
+              📐 O의 위치를 대략적으로 찍어보고, 만족하는 성질을 찾아보자.
             </div>
 
-            <div style="font-size:0.95rem; margin-top:12px; font-weight:800; color:#4f46e5; background:#f0fdf4; padding:10px; border-radius:8px; border:1px solid #bbf7d0;">
-              이므로 △ <input type="text" id="p34-f1" class="proof-input-text" style="width:65px;" placeholder="삼각형"> ≡ △ <input type="text" id="p34-f2" class="proof-input-text" style="width:65px;" placeholder="삼각형"> 
-              ( <input type="text" id="p34-f3" class="proof-input-text" style="width:75px;" placeholder="합동조건"> 합동 )
+            <div style="font-size:0.88rem; margin-bottom:12px; line-height:2.0;">
+              <b>(1) 점 O에서부터 점 A, B, C 까지의 거리는 어떠한가?</b><br>
+              답: ( <input type="text" id="p41-q1" class="proof-input-text" style="width:110px;" placeholder="거리의 특징"> )<br><br>
+
+              <b>(2) 세 삼각형 △OAB, △OBC, △OCA는 모두 어떤 삼각형인가?</b><br>
+              답: ( <input type="text" id="p41-q2" class="proof-input-text" style="width:130px;" placeholder="도형 종류"> )이다.<br><br>
+
+              <b>(3) 따라서 점 O를 정확히 찾기 위해서는 △OAB, △OBC, △OCA가 어떤 삼각형이 되도록 해야 할까?</b><br>
+              답: ( <input type="text" id="p41-q3" class="proof-input-text" style="width:130px;" placeholder="도형 종류"> )이 되도록 하는 점 O의 위치를 찾으면 된다!<br><br>
+
+              <div style="background:#eff6ff; padding:10px; border-radius:8px; border:1px solid #bfdbfe; color:#1e3a8a; font-weight:700;">
+                => 결론: 세 변의 ( <input type="text" id="p41-q4" class="proof-input-text" style="width:120px;" placeholder="핵심 선"> )을 그리자!
+              </div>
             </div>
 
-            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px; background:#4f46e5;" onclick="check34ActivitySubmit()">✅ 세부활동 3 제출</button>
+            <div style="display:flex; gap:8px; margin-bottom:12px;">
+              <button class="btn" style="flex:1; background:#0284c7; color:#fff; font-weight:800; padding:10px;" onclick="toggleCircumHint()">💡 힌트 확인 (외접원 & 점 O)</button>
+              <button class="btn" style="flex:1; background:#64748b; color:#fff; font-weight:800; padding:10px;" onclick="clearTabletDrawing()">🧹 펜 스케치 지우기</button>
+            </div>
+
+            <button class="btn btn-primary" style="padding:11px; width:100%; font-weight:800; font-size:1rem; background:#0284c7;" onclick="check41ActivitySubmit()">✅ 탐구 제출 및 채점</button>
           </div>
         `;
-      }
-
-      // ==========================================
-      // [6.2-(5) RHS 합동 성질 정리 (선생님 지시사항)]
-      // ==========================================
-      else if (subStepCode === '3-5') {
-        setTool('select');
-        setMissionUI("<b>&lt;직각삼각형의 RHS 합동 조건&gt; 정리</b><br>아래 빈칸을 <b>한글(빗변, 변)과 알파벳(RHS)</b>으로 직접 타이핑하여 작성하세요!");
+      } 타이핑하여 작성하세요!");
 
         if (engine && engine.two) {
           const width = engine.width, height = engine.height;
@@ -2303,59 +2431,45 @@
       }
 
       // ==========================================
-      // [6.3 삼각형의 외심 & 성질 (PDF p.7~10)]
+      // [6.3-(1) 세부활동 1: 외심 O의 위치 탐구 & 수직이등분선 (교과서 활동지 원본)]
       // ==========================================
       else if (subStepCode === '4-1') {
         setTool('select');
-        setMissionUI("<b>[PDF p.7~8 그림] 삼각형의 외심 O와 외접원</b><br>세 변의 수직이등분선의 교점 O에서 세 꼭짓점에 이르는 거리 선분 OA = 선분 OB = 선분 OC가 모두 같음을 보여주는 그림입니다.");
+        isCircumHintVisible = false;
+        setMissionUI("<b>1. 삼각형 ABC의 세 꼭짓점을 지나는 원을 그리려고 한다. 그 원의 중심을 O라고 한다면 O를 어떻게 찾을 수 있을까? [6.3 외심의 위치 탐구]</b><br>캔버스 위에 태블릿 펜/마우스로 원의 중심 O 위치를 자유롭게 스케치해 보세요!<br>하단 <b>[💡 힌트 확인]</b> 버튼을 누르면 정밀한 외접원과 외심 O, 반지름 선분이 표시됩니다.");
 
         if (engine && engine.two) {
-          const oX = engine.centerX, oY = engine.centerY;
-          const radius = 130;
-
-          const circle = engine.two.makeCircle(oX, oY, radius);
-          circle.fill = 'rgba(2, 132, 199, 0.05)'; circle.stroke = '#0284c7'; circle.linewidth = 2; circle.dashes = [5, 5];
-
-          const pA = { x: oX + radius * Math.cos(-Math.PI/2), y: oY + radius * Math.sin(-Math.PI/2) };
-          const pB = { x: oX + radius * Math.cos(Math.PI * 0.75), y: oY + radius * Math.sin(Math.PI * 0.75) };
-          const pC = { x: oX + radius * Math.cos(Math.PI * 0.25), y: oY + radius * Math.sin(Math.PI * 0.25) };
-
-          const tri = engine.two.makePath(pA.x, pA.y, pB.x, pB.y, pC.x, pC.y, false);
-          tri.fill = 'rgba(79, 70, 229, 0.08)'; tri.stroke = '#4f46e5'; tri.linewidth = 2.5;
-
-          engine.two.makeLine(oX, oY, pA.x, pA.y).stroke = '#ec4899';
-          engine.two.makeLine(oX, oY, pB.x, pB.y).stroke = '#ec4899';
-          engine.two.makeLine(oX, oY, pC.x, pC.y).stroke = '#ec4899';
-
-          const pD = { x: (pA.x + pB.x)/2, y: (pA.y + pB.y)/2 };
-          engine.two.makeLine(oX, oY, pD.x, pD.y).stroke = '#059669';
-
-          engine.two.makeCircle(oX, oY, 7).fill = '#ec4899'; engine.two.makeText('O (외심)', oX + 22, oY + 16).size = 15;
-          engine.two.makeCircle(pA.x, pA.y, 6).fill = '#4f46e5'; engine.two.makeText('A', pA.x, pA.y - 16).size = 15;
-          engine.two.makeCircle(pB.x, pB.y, 6).fill = '#4f46e5'; engine.two.makeText('B', pB.x - 16, pB.y + 16).size = 15;
-          engine.two.makeCircle(pC.x, pC.y, 6).fill = '#4f46e5'; engine.two.makeText('C', pC.x + 16, pC.y + 16).size = 15;
-
-          engine.two.update();
+          drawCircumcenterIntroCanvas(engine.two, false);
         }
+        setTimeout(attachTabletFreehandListeners, 100);
 
         formArea.innerHTML = `
-          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1;">
-            <div style="font-size:0.9rem; margin-bottom:8px; line-height:1.7;">
-              ① 점 O에서부터 세 꼭짓점 A, B, C까지의 거리는 ( 
-              <input type="text" id="p41-q1" class="proof-input-text" style="width:90px;" placeholder="거리 관계">
-              ).
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+            <div style="font-weight:800; color:#1e293b; margin-bottom:10px; font-size:1.02rem; border-bottom:2px solid #0284c7; padding-bottom:6px;">
+              📐 O의 위치를 대략적으로 찍어보고, 만족하는 성질을 찾아보자.
             </div>
-            <div style="font-size:0.9rem; margin-bottom:8px; line-height:1.7;">
-              ② 세 삼각형 △OAB, △OBC, △OCA는 모두 ( 
-              <input type="text" id="p41-q2" class="proof-input-text" style="width:140px;" placeholder="삼각형 종류">
-              ) 이다.
+
+            <div style="font-size:0.88rem; margin-bottom:12px; line-height:2.0;">
+              <b>(1) 점 O에서부터 점 A, B, C 까지의 거리는 어떠한가?</b><br>
+              답: ( <input type="text" id="p41-q1" class="proof-input-text" style="width:110px;" placeholder="거리의 특징"> )<br><br>
+
+              <b>(2) 세 삼각형 △OAB, △OBC, △OCA는 모두 어떤 삼각형인가?</b><br>
+              답: ( <input type="text" id="p41-q2" class="proof-input-text" style="width:130px;" placeholder="도형 종류"> )이다.<br><br>
+
+              <b>(3) 따라서 점 O를 정확히 찾기 위해서는 △OAB, △OBC, △OCA가 어떤 삼각형이 되도록 해야 할까?</b><br>
+              답: ( <input type="text" id="p41-q3" class="proof-input-text" style="width:130px;" placeholder="도형 종류"> )이 되도록 하는 점 O의 위치를 찾으면 된다!<br><br>
+
+              <div style="background:#eff6ff; padding:10px; border-radius:8px; border:1px solid #bfdbfe; color:#1e3a8a; font-weight:700;">
+                => 결론: 세 변의 ( <input type="text" id="p41-q4" class="proof-input-text" style="width:120px;" placeholder="핵심 선"> )을 그리자!
+              </div>
             </div>
-            <div style="font-size:0.9rem; margin-bottom:8px; line-height:1.7;">
-              ③ △ABC의 세 ( 
-              <input type="text" id="p41-q3" class="proof-input-text" style="width:140px;" placeholder="선분의 명칭">
-              )은 한 점 O에서 만난다.
+
+            <div style="display:flex; gap:8px; margin-bottom:12px;">
+              <button class="btn" style="flex:1; background:#0284c7; color:#fff; font-weight:800; padding:10px;" onclick="toggleCircumHint()">💡 힌트 확인 (외접원 & 점 O)</button>
+              <button class="btn" style="flex:1; background:#64748b; color:#fff; font-weight:800; padding:10px;" onclick="clearTabletDrawing()">🧹 펜 스케치 지우기</button>
             </div>
-            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px;" onclick="check41Submit()">✅ 제출</button>
+
+            <button class="btn btn-primary" style="padding:11px; width:100%; font-weight:800; font-size:1rem; background:#0284c7;" onclick="check41ActivitySubmit()">✅ 탐구 제출 및 채점</button>
           </div>
         `;
       }
@@ -3062,30 +3176,47 @@
       }
     }
 
-    // 6.3 외심 검증
-    function check41Submit() {
+    // 6.3-(1) 세부활동 1: 외심 O의 위치 및 수직이등분선 채점 (교과서 활동지 원본 연동)
+    function check41ActivitySubmit() {
       if (state.isTeacherLoggedIn) {
-        showBigPraiseModal("🔓 [교사/테스트 프리패스]", "외심 성질 통과!");
+        unlockNextStep(5);
         renderVerifiedAnswerView(
-          "삼각형의 외심 O와 성질",
-          "① 점 O에서부터 세 꼭짓점 A, B, C까지의 거리는 <b>같다 (OA = OB = OC)</b>.<br>② 세 삼각형 △OAB, △OBC, △OCA는 모두 <b>이등변삼각형</b>이다.<br>③ △ABC의 세 <b>수직이등분선</b>은 한 점 O에서 만난다.",
+          "삼각형의 외심 O와 세 변의 수직이등분선 탐구 완수!",
+          "① 점 O에서 세 꼭짓점 A, B, C까지의 거리: <b>모두 같다 (선분 OA = 선분 OB = 선분 OC)</b><br>" +
+          "② 세 삼각형 △OAB, △OBC, △OCA: 모두 <b>이등변삼각형</b>이다.<br>" +
+          "③ 따라서 점 O의 위치: △OAB, △OBC, △OCA가 <b>이등변삼각형</b>이 되도록 함!<br>" +
+          "<b>=> 결론: 삼각형 세 변의 (수직이등분선)의 교점이 바로 외심 O이다!</b>",
           "4-2"
         );
         return;
       }
-      const q1 = normTxt(document.getElementById('p41-q1').value);
-      const q2 = normTxt(document.getElementById('p41-q2').value);
-      const q3 = normTxt(document.getElementById('p41-q3').value);
+      const rawQ1 = document.getElementById('p41-q1').value;
+      const rawQ2 = document.getElementById('p41-q2').value;
+      const rawQ3 = document.getElementById('p41-q3').value;
+      const rawQ4 = document.getElementById('p41-q4').value;
 
-      if (q1.includes('같다') && q2.includes('이등변') && q3.includes('수직이등분')) {
-        showBigPraiseModal("🎉 외심 성질 완수!", "우측에 정돈된 외심 성질 정답이 표시되었습니다. [다음 단계로 진행] 버튼을 누르세요!");
+      const q1 = normTxt(rawQ1);
+      const q2 = normTxt(rawQ2);
+      const q3 = normTxt(rawQ3);
+      const q4 = normTxt(rawQ4);
+
+      const ok1 = q1.includes('같다') || q1.includes('같') || q1.includes('동일');
+      const ok2 = q2.includes('이등변');
+      const ok3 = q3.includes('이등변');
+      const ok4 = q4.includes('수직이등분선') || (q4.includes('수직') && q4.includes('이등분'));
+
+      if (ok1 && ok2 && ok3 && ok4) {
+        unlockNextStep(5);
         renderVerifiedAnswerView(
-          "삼각형의 외심 O와 성질",
-          "① 점 O에서부터 세 꼭짓점 A, B, C까지의 거리는 <b>같다 (OA = OB = OC)</b>.<br>② 세 삼각형 △OAB, △OBC, △OCA는 모두 <b>이등변삼각형</b>이다.<br>③ △ABC의 세 <b>수직이등분선</b>은 한 점 O에서 만난다.",
+          "삼각형의 외심 O와 세 변의 수직이등분선 탐구 완수!",
+          "① 점 O에서 세 꼭짓점 A, B, C까지의 거리: <b>모두 같다 (선분 OA = 선분 OB = 선분 OC)</b><br>" +
+          "② 세 삼각형 △OAB, △OBC, △OCA: 모두 <b>이등변삼각형</b>이다.<br>" +
+          "③ 따라서 점 O의 위치: △OAB, △OBC, △OCA가 <b>이등변삼각형</b>이 되도록 함!<br>" +
+          "<b>=> 결론: 삼각형 세 변의 (수직이등분선)의 교점이 바로 외심 O이다!</b>",
           "4-2"
         );
       } else {
-        showInlineErrorNotice("❌ 입력한 답을 다시 확인해 주세요!\n(예: 같다, 이등변삼각형, 수직이등분선)");
+        showInlineErrorNotice("❌ 작성하신 답을 다시 확인해 주세요!\n(1) 모두 같다, (2) 이등변삼각형, (3) 이등변삼각형, (4) 수직이등분선");
       }
     }
 
