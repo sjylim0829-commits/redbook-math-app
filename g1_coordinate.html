@@ -12,7 +12,8 @@
 
   <!-- KaTeX Math Rendering Library -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
 
   <!-- Two.js 2D Dynamic Geometry Engine -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/two.js/0.8.10/two.min.js"></script>
@@ -656,6 +657,42 @@
       });
     }
 
+    function renderMathInPage(targetElement = null) {
+      const el = targetElement || document.body;
+      if (window.renderMathInElement) {
+        try {
+          window.renderMathInElement(el, {
+            delimiters: [
+              { left: "$$", right: "$$", display: true },
+              { left: "\\[", right: "\\]", display: true },
+              { left: "$", right: "$", display: false },
+              { left: "\\(", right: "\\)", display: false }
+            ],
+            ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code", "input"],
+            throwOnError: false
+          });
+        } catch(e) {
+          console.warn('KaTeX auto-render error:', e);
+        }
+      } else if (window.katex) {
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+        const textNodes = [];
+        while (walker.nextNode()) textNodes.push(walker.currentNode);
+        textNodes.forEach(node => {
+          if (node.nodeValue && node.nodeValue.includes('$') && node.parentNode) {
+            const pTag = node.parentNode.tagName;
+            if (pTag !== 'SCRIPT' && pTag !== 'STYLE' && pTag !== 'INPUT' && pTag !== 'TEXTAREA' && !node.parentNode.classList.contains('katex')) {
+              const span = document.createElement('span');
+              span.innerHTML = formatMathText(node.nodeValue);
+              if (span.innerHTML !== node.nodeValue) {
+                node.parentNode.replaceChild(span, node);
+              }
+            }
+          }
+        });
+      }
+    }
+
     // 60fps Dynamic Plane Renderer (좌표평면 모눈 렌더러)
     function drawCoordinatePlane(two, pointData = null, options = {}) {
       if (!two) return;
@@ -810,7 +847,7 @@
             <div style="font-size:0.88rem; color:#334155; margin-bottom:10px; line-height:1.7;">
               건물의 위치를 수직선 위에 나타내어 봄으로써, <b>점의 위치를 수로 어떻게 나타낼 수 있을지</b> 본인의 생각을 자유롭게 작성해 보세요.
             </div>
-            <textarea id="p11-thought" class="form-control" style="height:85px; font-size:0.9rem; margin-bottom:12px; resize:none;" placeholder="자유롭게 본인의 생각을 적어보세요. (예: 기준점 학교(0)를 중심으로 동쪽은 양수(+), 서쪽은 음수(-)로 나타낸다.)"></textarea>
+            <textarea id="p11-thought" class="form-control" style="height:85px; font-size:0.9rem; margin-bottom:12px; resize:none;" placeholder="자유롭게 본인의 생각을 적어보세요."></textarea>
 
             <div style="font-size:0.92rem; font-weight:800; color:#4f46e5; margin-bottom:8px; border-top:1px dashed #cbd5e1; padding-top:10px;">
               ✏️ [생각열기 질문 2] 수직선에서 각 점의 좌표를 기호로 나타내시오:
@@ -840,7 +877,7 @@
               📖 [개념 정립] 수직선과 좌표
             </div>
             <div style="font-size:0.88rem; color:#334155; margin-bottom:12px; line-height:1.7;">
-              ① 수직선 위의 한 점에 대응하는 수를 그 점의 ( <input type="text" id="p12-concept" class="proof-input-text" style="width:75px;" placeholder="개념"> )라 하고, 수 a가 점 P의 좌표일 때 기호로 ( <input type="text" id="p12-symbol" class="proof-input-text" style="width:75px;" placeholder="기호"> )와 같이 나타낸다.
+              ① 수직선 위의 한 점에 대응하는 수를 그 점의 ( <input type="text" id="p12-concept" class="proof-input-text" style="width:75px;" placeholder="용어 입력"> )라 하고, 수 a가 점 P의 좌표일 때 기호로 ( <input type="text" id="p12-symbol" class="proof-input-text" style="width:75px;" placeholder="기호 입력"> )와 같이 나타낸다.
             </div>
             <div style="font-size:0.88rem; font-weight:800; color:#0284c7; margin-bottom:12px; background:#e0f2fe; padding:12px; border-radius:12px; border:1px solid #bae6fd; line-height:1.6;">
               🖐️ <b>[실시간 동적 점 드래그 실습]</b><br>
@@ -861,12 +898,12 @@
               ✏️ [문제 1] 수직선 위의 세 점 A, B, C의 좌표
             </div>
             <div style="font-size:0.88rem; color:#334155; margin-bottom:12px; line-height:1.7;">
-              다음 수직선 위의 세 점 A, B, C의 좌표를 각각 기호(예: A(-5))로 나타내시오.
+              다음 수직선 위의 세 점 A, B, C의 좌표를 각각 기호로 나타내시오.
             </div>
             <div style="font-size:0.88rem; margin-bottom:14px; line-height:2.2;">
-              • 점 A의 좌표 기호: <input type="text" id="p13-a" class="proof-input-text" style="width:130px;" placeholder="예: A(-5)"><br>
-              • 점 B의 좌표 기호: <input type="text" id="p13-b" class="proof-input-text" style="width:130px;" placeholder="예: B(1)"><br>
-              • 점 C의 좌표 기호: <input type="text" id="p13-c" class="proof-input-text" style="width:130px;" placeholder="예: C(4)">
+              • 점 A의 좌표 기호: <input type="text" id="p13-a" class="proof-input-text" style="width:130px;" placeholder="좌표 기호 입력"><br>
+              • 점 B의 좌표 기호: <input type="text" id="p13-b" class="proof-input-text" style="width:130px;" placeholder="좌표 기호 입력"><br>
+              • 점 C의 좌표 기호: <input type="text" id="p13-c" class="proof-input-text" style="width:130px;" placeholder="좌표 기호 입력">
             </div>
             <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800;" onclick="check13Submit()">✅ 제출 및 채점</button>
           </div>
@@ -891,7 +928,7 @@
             </div>
             <div style="font-size:0.88rem; color:#1e293b; margin-bottom:14px; line-height:1.8; background:#fef2f2; padding:10px; border-radius:8px; border-left:4px solid #ef4444;">
               ② 순서쌍은 순서를 생각한 것이므로 <b>(132, 37)</b>과 <b>(37, 132)</b>는 서로 ( 
-              <input type="text" id="p14-diff" class="proof-input-text" style="width:90px;" placeholder="같다/다르다">
+              <input type="text" id="p14-diff" class="proof-input-text" style="width:90px;" placeholder="입력">
               ).
             </div>
             <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800;" onclick="check14Submit()">✅ 제출 및 채점</button>
@@ -911,11 +948,11 @@
               두 수직선이 점 O에서 수직으로 만날 때, 각 개념을 아래 빈칸에 직접 작성하세요!
             </div>
             <div style="font-size:0.88rem; margin-bottom:12px; line-height:2.0;">
-              ① 가로의 수직선: ( <input type="text" id="p15-x" class="proof-input-text" style="width:75px;" placeholder="개념"> )<br>
-              ② 세로의 수직선: ( <input type="text" id="p15-y" class="proof-input-text" style="width:75px;" placeholder="개념"> )<br>
-              ③ 이 두 축을 통틀어: ( <input type="text" id="p15-axes" class="proof-input-text" style="width:85px;" placeholder="개념"> )<br>
-              ④ 두 좌표축이 만나는 점 O: ( <input type="text" id="p15-origin" class="proof-input-text" style="width:75px;" placeholder="개념"> )<br>
-              ⑤ 좌표축이 주어진 평면: ( <input type="text" id="p15-plane" class="proof-input-text" style="width:90px;" placeholder="개념"> )
+              ① 가로의 수직선: ( <input type="text" id="p15-x" class="proof-input-text" style="width:75px;" placeholder="용어 입력"> )<br>
+              ② 세로의 수직선: ( <input type="text" id="p15-y" class="proof-input-text" style="width:75px;" placeholder="용어 입력"> )<br>
+              ③ 이 두 축을 통틀어: ( <input type="text" id="p15-axes" class="proof-input-text" style="width:85px;" placeholder="용어 입력"> )<br>
+              ④ 두 좌표축이 만나는 점 O: ( <input type="text" id="p15-origin" class="proof-input-text" style="width:75px;" placeholder="용어 입력"> )<br>
+              ⑤ 좌표축이 주어진 평면: ( <input type="text" id="p15-plane" class="proof-input-text" style="width:90px;" placeholder="용어 입력"> )
             </div>
             
             <div style="font-size:0.84rem; color:#0369a1; background:#e0f2fe; padding:10px; border-radius:8px; border:1px solid #bae6fd; margin-bottom:12px; line-height:1.6;">
@@ -940,11 +977,11 @@
               점 P에서 x축, y축에 각각 수선을 그어 만나는 점 대응 수 a, b로 순서쌍 (a, b)를 정합니다. 아래 빈칸을 타이핑하세요!
             </div>
             <div style="font-size:0.88rem; margin-bottom:12px; line-height:2.0;">
-              ① a를 점 P의 ( <input type="text" id="p16-x" class="proof-input-text" style="width:75px;" placeholder="개념"> )라고 한다.<br>
-              ② b를 점 P의 ( <input type="text" id="p16-y" class="proof-input-text" style="width:75px;" placeholder="개념"> )라고 한다.<br>
-              ③ 좌표평면에서 원점 O의 좌표: ( <input type="text" id="p16-origin" class="proof-input-text" style="width:75px;" placeholder="(0,0)"> )<br>
-              ④ 반드시 x좌표를 y좌표 ( <input type="text" id="p16-front" class="proof-input-text" style="width:65px;" placeholder="위치"> )에 써야 한다.<br>
-              ⑤ x축 -4, y축 2에 수선을 그은 점 P 기호: ( <input type="text" id="p16-p" class="proof-input-text" style="width:105px;" placeholder="예: P(-4, 2)"> )
+              ① a를 점 P의 ( <input type="text" id="p16-x" class="proof-input-text" style="width:75px;" placeholder="용어 입력"> )라고 한다.<br>
+              ② b를 점 P의 ( <input type="text" id="p16-y" class="proof-input-text" style="width:75px;" placeholder="용어 입력"> )라고 한다.<br>
+              ③ 좌표평면에서 원점 O의 좌표: ( <input type="text" id="p16-origin" class="proof-input-text" style="width:75px;" placeholder="순서쌍 입력"> )<br>
+              ④ 반드시 x좌표를 y좌표 ( <input type="text" id="p16-front" class="proof-input-text" style="width:65px;" placeholder="위치 입력"> )에 써야 한다.<br>
+              ⑤ x축 -4, y축 2에 수선을 그은 점 P 기호: ( <input type="text" id="p16-p" class="proof-input-text" style="width:105px;" placeholder="좌표 기호 입력"> )
             </div>
             
             <div style="font-size:0.84rem; color:#1e3a8a; background:#eff6ff; padding:10px; border-radius:8px; border:1px solid #bfdbfe; margin-bottom:12px; line-height:1.6;">
@@ -980,9 +1017,9 @@
             
             <div style="font-size:0.88rem; margin-bottom:10px; line-height:2.0;">
               <b>(1) 세 점 A, B, C의 좌표를 각각 기호로 나타내시오.</b><br>
-              • 점 A: <input type="text" id="p17-a" class="proof-input-text" style="width:120px;" placeholder="예: A(-3, 3)"><br>
-              • 점 B: <input type="text" id="p17-b" class="proof-input-text" style="width:120px;" placeholder="예: B(1, 0)"><br>
-              • 점 C: <input type="text" id="p17-c" class="proof-input-text" style="width:120px;" placeholder="예: C(3, -2)">
+              • 점 A: <input type="text" id="p17-a" class="proof-input-text" style="width:120px;" placeholder="좌표 기호 입력"><br>
+              • 점 B: <input type="text" id="p17-b" class="proof-input-text" style="width:120px;" placeholder="좌표 기호 입력"><br>
+              • 점 C: <input type="text" id="p17-c" class="proof-input-text" style="width:120px;" placeholder="좌표 기호 입력">
             </div>
 
             <div style="font-size:0.84rem; color:#0369a1; background:#e0f2fe; padding:10px; border-radius:8px; border:1px solid #bae6fd; margin-bottom:12px; line-height:1.6;">
@@ -1010,12 +1047,12 @@
               📖 1. 사분면의 뜻과 명칭 (직접 입력)
             </div>
             <div style="font-size:0.88rem; line-height:1.9; color:#334155; margin-bottom:14px;">
-              • <b>사분면(四分面)</b>이란 ( <input type="text" id="p21-meaning" class="proof-input-text" style="width:130px;" placeholder="한글 뜻"> )이라는 뜻이다.<br>
+              • <b>사분면(四分面)</b>이란 ( <input type="text" id="p21-meaning" class="proof-input-text" style="width:130px;" placeholder="뜻 입력"> )이라는 뜻이다.<br>
               • 좌표평면은 좌표축에 의하여 네 부분으로 나누어진다. 이때 네 부분을 각각<br>
-              &nbsp;&nbsp;➔ ( <input type="text" id="p21-q1-name" class="proof-input-text" style="width:90px;" placeholder="제1사분면"> ),
-              ( <input type="text" id="p21-q2-name" class="proof-input-text" style="width:90px;" placeholder="제2사분면"> ),
-              ( <input type="text" id="p21-q3-name" class="proof-input-text" style="width:90px;" placeholder="제3사분면"> ),
-              ( <input type="text" id="p21-q4-name" class="proof-input-text" style="width:90px;" placeholder="제4사분면"> )
+              &nbsp;&nbsp;➔ ( <input type="text" id="p21-q1-name" class="proof-input-text" style="width:90px;" placeholder="명칭 입력"> ),
+              ( <input type="text" id="p21-q2-name" class="proof-input-text" style="width:90px;" placeholder="명칭 입력"> ),
+              ( <input type="text" id="p21-q3-name" class="proof-input-text" style="width:90px;" placeholder="명칭 입력"> ),
+              ( <input type="text" id="p21-q4-name" class="proof-input-text" style="width:90px;" placeholder="명칭 입력"> )
               이라고 한다.
             </div>
 
@@ -1037,17 +1074,17 @@
                 <tbody>
                   <tr>
                     <td style="border:1px solid #cbd5e1; padding:8px 4px; font-weight:700; background:#f8fafc;">x좌표의 부호</td>
-                    <td style="border:1px solid #cbd5e1; padding:6px 2px;"><input type="text" id="p21-sign-x1" class="proof-input-text" style="width:50px; text-align:center; font-size:1.05rem;" placeholder="+/-"></td>
-                    <td style="border:1px solid #cbd5e1; padding:6px 2px;"><input type="text" id="p21-sign-x2" class="proof-input-text" style="width:50px; text-align:center; font-size:1.05rem;" placeholder="+/-"></td>
-                    <td style="border:1px solid #cbd5e1; padding:6px 2px;"><input type="text" id="p21-sign-x3" class="proof-input-text" style="width:50px; text-align:center; font-size:1.05rem;" placeholder="+/-"></td>
-                    <td style="border:1px solid #cbd5e1; padding:6px 2px;"><input type="text" id="p21-sign-x4" class="proof-input-text" style="width:50px; text-align:center; font-size:1.05rem;" placeholder="+/-"></td>
+                    <td style="border:1px solid #cbd5e1; padding:6px 2px;"><input type="text" id="p21-sign-x1" class="proof-input-text" style="width:50px; text-align:center; font-size:1.05rem;" placeholder="부호 (+/-)"></td>
+                    <td style="border:1px solid #cbd5e1; padding:6px 2px;"><input type="text" id="p21-sign-x2" class="proof-input-text" style="width:50px; text-align:center; font-size:1.05rem;" placeholder="부호 (+/-)"></td>
+                    <td style="border:1px solid #cbd5e1; padding:6px 2px;"><input type="text" id="p21-sign-x3" class="proof-input-text" style="width:50px; text-align:center; font-size:1.05rem;" placeholder="부호 (+/-)"></td>
+                    <td style="border:1px solid #cbd5e1; padding:6px 2px;"><input type="text" id="p21-sign-x4" class="proof-input-text" style="width:50px; text-align:center; font-size:1.05rem;" placeholder="부호 (+/-)"></td>
                   </tr>
                   <tr>
                     <td style="border:1px solid #cbd5e1; padding:8px 4px; font-weight:700; background:#f8fafc;">y좌표의 부호</td>
-                    <td style="border:1px solid #cbd5e1; padding:6px 2px;"><input type="text" id="p21-sign-y1" class="proof-input-text" style="width:50px; text-align:center; font-size:1.05rem;" placeholder="+/-"></td>
-                    <td style="border:1px solid #cbd5e1; padding:6px 2px;"><input type="text" id="p21-sign-y2" class="proof-input-text" style="width:50px; text-align:center; font-size:1.05rem;" placeholder="+/-"></td>
-                    <td style="border:1px solid #cbd5e1; padding:6px 2px;"><input type="text" id="p21-sign-y3" class="proof-input-text" style="width:50px; text-align:center; font-size:1.05rem;" placeholder="+/-"></td>
-                    <td style="border:1px solid #cbd5e1; padding:6px 2px;"><input type="text" id="p21-sign-y4" class="proof-input-text" style="width:50px; text-align:center; font-size:1.05rem;" placeholder="+/-"></td>
+                    <td style="border:1px solid #cbd5e1; padding:6px 2px;"><input type="text" id="p21-sign-y1" class="proof-input-text" style="width:50px; text-align:center; font-size:1.05rem;" placeholder="부호 (+/-)"></td>
+                    <td style="border:1px solid #cbd5e1; padding:6px 2px;"><input type="text" id="p21-sign-y2" class="proof-input-text" style="width:50px; text-align:center; font-size:1.05rem;" placeholder="부호 (+/-)"></td>
+                    <td style="border:1px solid #cbd5e1; padding:6px 2px;"><input type="text" id="p21-sign-y3" class="proof-input-text" style="width:50px; text-align:center; font-size:1.05rem;" placeholder="부호 (+/-)"></td>
+                    <td style="border:1px solid #cbd5e1; padding:6px 2px;"><input type="text" id="p21-sign-y4" class="proof-input-text" style="width:50px; text-align:center; font-size:1.05rem;" placeholder="부호 (+/-)"></td>
                   </tr>
                 </tbody>
               </table>
@@ -1058,7 +1095,7 @@
               <div style="font-weight:800; color:#b91c1c; margin-bottom:4px; font-size:0.92rem;">
                 ⚠️ [참고 & 오개념 바로잡기]
               </div>
-              • 원점을 포함한 ( <input type="text" id="p21-mis-axes" class="proof-input-text" style="width:80px;" placeholder="좌표축"> ) 위의 점은 어느 ( <input type="text" id="p21-mis-quad" class="proof-input-text" style="width:80px;" placeholder="사분면"> )에도 ( <input type="text" id="p21-mis-belong" class="proof-input-text" style="width:130px;" placeholder="속하지 않는다"> ).
+              • 원점을 포함한 ( <input type="text" id="p21-mis-axes" class="proof-input-text" style="width:80px;" placeholder="용어 입력"> ) 위의 점은 어느 ( <input type="text" id="p21-mis-quad" class="proof-input-text" style="width:80px;" placeholder="용어 입력"> )에도 ( <input type="text" id="p21-mis-belong" class="proof-input-text" style="width:130px;" placeholder="설명 입력"> ).
             </div>
 
             <button class="btn btn-primary" style="padding:12px; width:100%; font-weight:800; font-size:1rem; background:#4f46e5;" onclick="check21ActivitySubmit()">✅ 4.2 사분면 탐구 제출 및 채점</button>
@@ -1066,7 +1103,7 @@
         `;
       }
       else if (subStepCode === '2-2') {
-        setMissionUI("<b>[4.2 세부활동 2] 문제 3번 & 생각 나누기 (교과서 p.127)</b><br>좌측 캔버스에서 점 A, B, C, D의 사분면 위치를 확인하고, 우측 문제와 생각 나누기 의견을 작성하세요!");
+        setMissionUI("<b>[4.2 세부활동 2] 문제 3번 & 생각 나누기 (교과서 p.127)</b><br>좌측 좌표평면을 참고하여 점 A, B, C, D의 사분면을 판단하고, 생각 나누기 의견을 작성하세요!");
         
         if (engine && engine.two) {
           drawProblem3QuadrantCanvas(engine.two);
@@ -1081,18 +1118,18 @@
             <div style="font-size:0.9rem; line-height:2.2; color:#334155; margin-bottom:16px;">
               <div style="display:flex; flex-wrap:wrap; gap:12px;">
                 <div style="flex:1; min-width:180px; background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0;">
-                  (1) $A(-2, 1)$ ➔ 제( <input type="text" id="p22-q1" class="proof-input-text" style="width:50px; text-align:center; font-weight:800;" placeholder="사분면"> )사분면
+                  (1) $A(-2, 1)$ ➔ 제( <input type="text" id="p22-q1" class="proof-input-text" style="width:50px; text-align:center; font-weight:800;" placeholder="입력"> )사분면
                 </div>
                 <div style="flex:1; min-width:180px; background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0;">
-                  (2) $B(4, 3)$ ➔ 제( <input type="text" id="p22-q2" class="proof-input-text" style="width:50px; text-align:center; font-weight:800;" placeholder="사분면"> )사분면
+                  (2) $B(4, 3)$ ➔ 제( <input type="text" id="p22-q2" class="proof-input-text" style="width:50px; text-align:center; font-weight:800;" placeholder="입력"> )사분면
                 </div>
               </div>
               <div style="display:flex; flex-wrap:wrap; gap:12px; margin-top:10px;">
                 <div style="flex:1; min-width:180px; background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0;">
-                  (3) $C\\left(\\frac{3}{2}, -2\\right)$ ➔ 제( <input type="text" id="p22-q3" class="proof-input-text" style="width:50px; text-align:center; font-weight:800;" placeholder="사분면"> )사분면
+                  (3) $C\\left(\\frac{3}{2}, -2\\right)$ ➔ 제( <input type="text" id="p22-q3" class="proof-input-text" style="width:50px; text-align:center; font-weight:800;" placeholder="입력"> )사분면
                 </div>
                 <div style="flex:1; min-width:180px; background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0;">
-                  (4) $D(-1.5, -3.1)$ ➔ 제( <input type="text" id="p22-q4" class="proof-input-text" style="width:50px; text-align:center; font-weight:800;" placeholder="사분면"> )사분면
+                  (4) $D(-1.5, -3.1)$ ➔ 제( <input type="text" id="p22-q4" class="proof-input-text" style="width:50px; text-align:center; font-weight:800;" placeholder="입력"> )사분면
                 </div>
               </div>
             </div>
@@ -1106,7 +1143,7 @@
               <p style="font-size:0.86rem; color:#1e3a8a; line-height:1.6; margin-bottom:8px;">
                 우리 생활 주변에서 <b>좌표처럼 위치를 나타내는 예</b>를 찾아보고, 좌표처럼 나타내었을 때 <b>편리한 점</b>을 자유롭게 적어 보세요.
               </p>
-              <textarea id="p22-thought" rows="3" style="width:100%; padding:10px; border-radius:8px; border:1px solid #93c5fd; font-size:0.88rem; font-family:inherit; resize:vertical; outline:none; background:#ffffff;" placeholder="예: 영화관이나 비행기 좌석표(행, 열 번호), 바둑판/체스판 좌표, 스마트폰 지도 검색 등... 좌표로 위치를 나타내면 원하는 장소를 정확하고 빠르게 찾을 수 있어서 편리하다."></textarea>
+              <textarea id="p22-thought" rows="3" style="width:100%; padding:10px; border-radius:8px; border:1px solid #93c5fd; font-size:0.88rem; font-family:inherit; resize:vertical; outline:none; background:#ffffff;" placeholder="좌표처럼 위치를 나타내는 예와 편리한 점을 자유롭게 적어 보세요."></textarea>
               <div style="font-size:0.78rem; color:#6b7280; margin-top:4px;">
                 💡 <i>생각 나누기는 정답/오답 채점 없이 본인의 생각이 영서중 수학 LMS DB에 기록됩니다.</i>
               </div>
@@ -1127,8 +1164,8 @@
               <input type="range" id="slope-slider" min="-5" max="5" step="1" value="${state.slopeA}" style="width:100%; margin-top:6px;" oninput="updateSlope(this.value)">
             </div>
             <div style="font-size:0.88rem; line-height:1.7;">
-              ① $a>0$일 때 그래프는 제( <input type="text" id="p41-q1" class="proof-input-text" style="width:80px;" placeholder="1, 3"> )사분면을 지난다.<br>
-              ② $a<0$일 때 그래프는 제( <input type="text" id="p41-q2" class="proof-input-text" style="width:80px;" placeholder="2, 4"> )사분면을 지난다.
+              ① $a>0$일 때 그래프는 제( <input type="text" id="p41-q1" class="proof-input-text" style="width:80px;" placeholder="사분면 입력"> )사분면을 지난다.<br>
+              ② $a<0$일 때 그래프는 제( <input type="text" id="p41-q2" class="proof-input-text" style="width:80px;" placeholder="사분면 입력"> )사분면을 지난다.
             </div>
             <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:12px;" onclick="check41Submit()">✅ 제출</button>
           </div>
@@ -1146,6 +1183,8 @@
       }
 
       attachRealtimeInputTracker();
+      renderMathInPage(formArea);
+      renderMathInPage(document.getElementById('mission-text'));
     }
 
     function updateSlope(val) {
@@ -2111,36 +2150,10 @@
       const lblQ3 = two.makeText('제3사분면 (-, -)', cx - 2.8 * step, cy + 2.8 * step); lblQ3.size = 15; lblQ3.weight = 800; lblQ3.fill = 'rgba(21, 128, 61, 0.6)';
       const lblQ4 = two.makeText('제4사분면 (+, -)', cx + 2.8 * step, cy + 2.8 * step); lblQ4.size = 15; lblQ4.weight = 800; lblQ4.fill = 'rgba(3, 105, 161, 0.6)';
 
-      // 4. 문제 3번 4개 점 정보 및 점선 투영
-      const points = [
-        { name: 'A', x: -2, y: 1, label: 'A(-2, 1)', color: '#7e22ce', q: '제2사분면' },
-        { name: 'B', x: 4, y: 3, label: 'B(4, 3)', color: '#c2410c', q: '제1사분면' },
-        { name: 'C', x: 1.5, y: -2, label: 'C(3/2, -2)', color: '#0284c7', q: '제4사분면' },
-        { name: 'D', x: -1.5, y: -3.1, label: 'D(-1.5, -3.1)', color: '#15803d', q: '제3사분면' }
-      ];
-
-      points.forEach(pt => {
-        const px = cx + pt.x * step;
-        const py = cy - pt.y * step;
-
-        // 점선 가이드
-        const gX = two.makeLine(px, py, px, cy); gX.stroke = pt.color; gX.linewidth = 1.5; gX.dashes = [3, 3];
-        const gY = two.makeLine(px, py, cx, py); gY.stroke = pt.color; gY.linewidth = 1.5; gY.dashes = [3, 3];
-
-        // 점 원 마커
-        two.makeCircle(px, py, 7.5).fill = pt.color;
-
-        // 점 라벨
-        const offsetX = pt.x >= 0 ? 18 : -18;
-        const offsetY = pt.y >= 0 ? -16 : 18;
-        const tLabel = two.makeText(pt.label, px + offsetX, py + offsetY);
-        tLabel.size = 16; tLabel.weight = 800; tLabel.fill = pt.color;
-      });
-
-      // 5. 상단 안내 헤더 뱃지
+      // 4. 상단 안내 헤더 뱃지 (사전 정답 노출 방지: 좌표평면과 사분면 구조를 보고 문제 3번을 해결하도록 유도)
       const headerBox = two.makeRoundedRectangle(cx, 30, Math.min(width - 40, 560), 38, 10);
       headerBox.fill = '#eef2ff'; headerBox.stroke = '#c7d2fe'; headerBox.linewidth = 2;
-      const headerTxt = two.makeText('📍 점 A, B, C, D의 좌표를 보고 각 점이 속한 사분면을 찾아보세요!', cx, 30);
+      const headerTxt = two.makeText('📍 좌표평면과 부호 (+, -)를 참고하여 각 점이 속한 사분면을 찾아보세요!', cx, 30);
       headerTxt.size = 15; headerTxt.weight = 800; headerTxt.fill = '#4f46e5';
 
       two.update();
@@ -2181,6 +2194,7 @@
           </button>
         </div>
       `;
+      renderMathInPage(formArea);
     }
 
     function normTxt(v) { return v ? v.trim().replace(/\s+/g, '').toUpperCase() : ''; }
