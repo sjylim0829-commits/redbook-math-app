@@ -436,12 +436,24 @@
           <div class="plane-toolbar">
             <button id="tool-select" class="tool-btn active" onclick="setTool('select')">🖐️ 선택/점 드래그</button>
             <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()">🔄 화면 초기화</button>
+            
+            <!-- Drawing Toolbar (Active on 2-7 or when needed) -->
+            <div id="drawing-toolbar-group" style="display:none; align-items:center; gap:6px; margin-left:8px; padding-left:8px; border-left:1px solid #cbd5e1;">
+              <span style="font-size:0.78rem; font-weight:800; color:#475569;">✏️ 펜 드로잉:</span>
+              <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#4f46e5; color:#fff;" onclick="setPenColor('#4f46e5')">파랑</button>
+              <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#e11d48; color:#fff;" onclick="setPenColor('#e11d48')">빨강</button>
+              <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#1e293b; color:#fff;" onclick="setPenColor('#1e293b')">검정</button>
+              <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#f1f5f9; color:#475569;" onclick="setEraserMode()">🧹 지우개</button>
+              <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fee2e2; color:#dc2626;" onclick="clearFreehandDrawing()">🗑️ 드로잉 삭제</button>
+            </div>
+
             <span id="coord-display" style="margin-left:auto; font-size:0.82rem; font-weight:800; color:#0284c7; background:#e0f2fe; padding:4px 10px; border-radius:10px;">
               📍 현재 선택 점: O(0, 0)
             </span>
           </div>
-          <div class="two-plane-wrapper">
+          <div class="two-plane-wrapper" style="position:relative;">
             <div id="two-container" class="tool-select"></div>
+            <canvas id="freehand-drawing-canvas" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:auto; touch-action:none; z-index:10; cursor:crosshair;"></canvas>
           </div>
         </div>
 
@@ -470,11 +482,22 @@
       tool: 'select',
       unlockedTabs: [0],
       pointP: { x: 3, y: 2, label: 'P' },
+      pointsSC2: {
+        A: { x: 1, y: 0 },
+        B: { x: 0, y: 1 },
+        C: { x: -1, y: 0 },
+        D: { x: 0, y: -1 }
+      },
       slopeA: 2,
       curvedA: 6
     };
 
     let twoInstance = null;
+    let drawingCtx = null;
+    let isDrawingNow = false;
+    let currentPenColor = '#4f46e5';
+    let currentPenSize = 3;
+    let isEraserMode = false;
 
     function initTwoEngine() {
       const container = document.getElementById('two-container');
@@ -491,7 +514,78 @@
         autostart: true
       }).appendTo(container);
 
+      // 드로잉 캔버스 크기 동기화
+      const drawCanvas = document.getElementById('freehand-drawing-canvas');
+      if (drawCanvas) {
+        drawCanvas.width = width;
+        drawCanvas.height = height;
+        initFreehandDrawingCanvas();
+      }
+
       return { two: twoInstance, centerX: width / 2, centerY: height / 2, width, height };
+    }
+
+    function initFreehandDrawingCanvas() {
+      const canvas = document.getElementById('freehand-drawing-canvas');
+      if (!canvas) return;
+      drawingCtx = canvas.getContext('2d');
+      drawingCtx.lineCap = 'round';
+      drawingCtx.lineJoin = 'round';
+
+      const getPos = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: (e.clientX - rect.left) * (canvas.width / rect.width),
+          y: (e.clientY - rect.top) * (canvas.height / rect.height)
+        };
+      };
+
+      canvas.onpointerdown = (e) => {
+        isDrawingNow = true;
+        try { canvas.setPointerCapture(e.pointerId); } catch(err){}
+        const pos = getPos(e);
+        drawingCtx.beginPath();
+        drawingCtx.moveTo(pos.x, pos.y);
+      };
+
+      canvas.onpointermove = (e) => {
+        if (!isDrawingNow) return;
+        const pos = getPos(e);
+        if (isEraserMode) {
+          drawingCtx.globalCompositeOperation = 'destination-out';
+          drawingCtx.lineWidth = 24;
+        } else {
+          drawingCtx.globalCompositeOperation = 'source-over';
+          drawingCtx.strokeStyle = currentPenColor;
+          drawingCtx.lineWidth = currentPenSize;
+        }
+        drawingCtx.lineTo(pos.x, pos.y);
+        drawingCtx.stroke();
+      };
+
+      canvas.onpointerup = canvas.onpointercancel = (e) => {
+        if (isDrawingNow) {
+          isDrawingNow = false;
+          drawingCtx.closePath();
+        }
+      };
+    }
+
+    function clearFreehandDrawing() {
+      const canvas = document.getElementById('freehand-drawing-canvas');
+      if (canvas && drawingCtx) {
+        drawingCtx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+
+    function setPenColor(color) {
+      isEraserMode = false;
+      currentPenColor = color;
+      currentPenSize = 3;
+    }
+
+    function setEraserMode() {
+      isEraserMode = true;
     }
 
     function snapVal(val, step = 30) { return Math.round(val / step) * step; }
@@ -633,7 +727,11 @@
         2: [
           { code: '2-1', label: '1. 사분면의 위치와 부호 (탐구)' },
           { code: '2-2', label: '2. 문제 3 & 생각 나누기' },
-          { code: '2-3', label: '3. 사분면 정리' }
+          { code: '2-3', label: '3. 스스로 확인하기 1' },
+          { code: '2-4', label: '4. 스스로 확인하기 2 (점 드래그)' },
+          { code: '2-5', label: '5. 스스로 확인하기 3' },
+          { code: '2-6', label: '6. 스스로 확인하기 4' },
+          { code: '2-7', label: '7. 스스로 확인하기 5 (넓이&드로잉)' }
         ],
         3: [{ code: '3-1', label: '4.3 세부활동 1 (상황과 그래프)' }, { code: '3-2', label: '4.3 그래프 해석 정리' }],
         4: [{ code: '4-1', label: '4.4 세부활동 1 (y=ax 직선)' }, { code: '4-2', label: '4.4 정비례 정리' }],
@@ -1150,6 +1248,228 @@
             </div>
 
             <button class="btn btn-primary" style="padding:12px; width:100%; font-weight:800; font-size:1rem; background:#0284c7;" onclick="check22Submit()">✅ 문제 3 제출 및 생각 나누기 저장</button>
+          </div>
+        `;
+      }
+      else if (subStepCode === '2-3') {
+        setMissionUI("<b>[스스로 확인하기 1] 수직선 위의 점의 좌표 (교과서 p.128)</b><br>좌측 수직선 위의 네 점 A, B, C, D의 위치를 확인하고 각각의 좌표를 기호로 나타내시오.");
+        const group = document.getElementById('drawing-toolbar-group');
+        if (group) group.style.display = 'none';
+        const drawCanvas = document.getElementById('freehand-drawing-canvas');
+        if (drawCanvas) drawCanvas.style.display = 'none';
+
+        if (engine && engine.two) {
+          drawSelfCheck1NumberLineCanvas(engine.two);
+        }
+
+        formArea.innerHTML = `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding:16px;">
+            <div style="font-weight:800; color:#1e293b; margin-bottom:10px; font-size:1.02rem; border-bottom:2px solid #4f46e5; padding-bottom:6px;">
+              📝 문제 1. 다음 수직선 위의 네 점 A, B, C, D의 좌표를 각각 기호로 나타내시오.
+            </div>
+            <div style="font-size:0.88rem; color:#475569; margin-bottom:14px; line-height:1.6;">
+              왼쪽 수직선을 관찰하고 각 점의 좌표 기호를 정확히 작성하세요.
+            </div>
+
+            <div style="font-size:0.92rem; line-height:2.4; color:#1e293b; margin-bottom:16px;">
+              • 점 A의 좌표 기호: <input type="text" id="sc1-a" class="proof-input-text" style="width:140px;" placeholder="좌표 기호 입력"><br>
+              • 점 B의 좌표 기호: <input type="text" id="sc1-b" class="proof-input-text" style="width:140px;" placeholder="좌표 기호 입력"><br>
+              • 점 C의 좌표 기호: <input type="text" id="sc1-c" class="proof-input-text" style="width:140px;" placeholder="좌표 기호 입력"><br>
+              • 점 D의 좌표 기호: <input type="text" id="sc1-d" class="proof-input-text" style="width:140px;" placeholder="좌표 기호 입력">
+            </div>
+
+            <button class="btn btn-primary" style="padding:12px; width:100%; font-weight:800; font-size:1rem; background:linear-gradient(135deg, #4f46e5, #0284c7);" onclick="checkSelfCheck1Submit()">
+              ✅ 스스로 확인하기 1번 제출 및 채점
+            </button>
+          </div>
+        `;
+      }
+      else if (subStepCode === '2-4') {
+        setMissionUI("<b>[스스로 확인하기 2] 좌표평면 위에 점 나타내기 (교과서 p.128)</b><br>좌측 좌표평면의 점 A, B, C, D를 마우스/터치로 드래그하여 각 번호의 목표 좌표에 정확히 위치시키세요!");
+        const group = document.getElementById('drawing-toolbar-group');
+        if (group) group.style.display = 'none';
+        const drawCanvas = document.getElementById('freehand-drawing-canvas');
+        if (drawCanvas) drawCanvas.style.display = 'none';
+
+        if (!state.pointsSC2) {
+          state.pointsSC2 = {
+            A: { x: 1, y: 0 },
+            B: { x: 0, y: 1 },
+            C: { x: -1, y: 0 },
+            D: { x: 0, y: -1 }
+          };
+        }
+        if (engine && engine.two) {
+          drawSelfCheck2Canvas(engine.two, state.pointsSC2);
+        }
+        setTimeout(attachSelfCheck2DragListeners, 100);
+
+        formArea.innerHTML = `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding:16px;">
+            <div style="font-weight:800; color:#1e293b; margin-bottom:10px; font-size:1.02rem; border-bottom:2px solid #0284c7; padding-bottom:6px;">
+              📝 문제 2. 다음 점을 오른쪽 좌표평면 위에 나타내시오.
+            </div>
+            <div style="font-size:0.88rem; color:#475569; margin-bottom:12px; line-height:1.6;">
+              왼쪽 캔버스의 점들을 잡고 드래그하여 아래 4개의 목표 좌표에 정확히 올려놓으세요.
+            </div>
+
+            <div style="font-size:0.9rem; line-height:2.2; color:#1e293b; margin-bottom:16px;">
+              <div style="background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                <span>(1) 목표: <b>$A(3, 1)$</b></span>
+                <span id="sc2-stat-a" style="font-weight:800; color:#4f46e5; background:#e0e7ff; padding:2px 8px; border-radius:6px; font-size:0.84rem;">A(${state.pointsSC2.A.x}, ${state.pointsSC2.A.y})</span>
+              </div>
+              <div style="background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                <span>(2) 목표: <b>$B(0, -2)$</b></span>
+                <span id="sc2-stat-b" style="font-weight:800; color:#0284c7; background:#e0f2fe; padding:2px 8px; border-radius:6px; font-size:0.84rem;">B(${state.pointsSC2.B.x}, ${state.pointsSC2.B.y})</span>
+              </div>
+              <div style="background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                <span>(3) 목표: <b>$C(-3, -3)$</b></span>
+                <span id="sc2-stat-c" style="font-weight:800; color:#059669; background:#dcfce7; padding:2px 8px; border-radius:6px; font-size:0.84rem;">C(${state.pointsSC2.C.x}, ${state.pointsSC2.C.y})</span>
+              </div>
+              <div style="background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                <span>(4) 목표: <b>$D(-4, 2)$</b></span>
+                <span id="sc2-stat-d" style="font-weight:800; color:#9333ea; background:#f3e8ff; padding:2px 8px; border-radius:6px; font-size:0.84rem;">D(${state.pointsSC2.D.x}, ${state.pointsSC2.D.y})</span>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" style="padding:12px; width:100%; font-weight:800; font-size:1rem; background:linear-gradient(135deg, #0284c7, #4f46e5);" onclick="checkSelfCheck2Submit()">
+              🎯 점 위치 배치 확인 및 제출
+            </button>
+          </div>
+        `;
+      }
+      else if (subStepCode === '2-5') {
+        setMissionUI("<b>[스스로 확인하기 3] 좌표평면의 설명 판단 (교과서 p.128)</b><br>다음 보기 중에서 좌표평면에 대한 설명으로 옳은 것을 모두 고르시오.");
+        const group = document.getElementById('drawing-toolbar-group');
+        if (group) group.style.display = 'none';
+        const drawCanvas = document.getElementById('freehand-drawing-canvas');
+        if (drawCanvas) drawCanvas.style.display = 'none';
+
+        if (engine && engine.two) {
+          drawProblem3QuadrantCanvas(engine.two);
+        }
+
+        formArea.innerHTML = `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding:16px;">
+            <div style="font-weight:800; color:#1e293b; margin-bottom:10px; font-size:1.02rem; border-bottom:2px solid #059669; padding-bottom:6px;">
+              📝 문제 3. 다음 보기 중에서 좌표평면에 대한 설명으로 옳은 것을 모두 고르시오.
+            </div>
+
+            <!-- 보기 상자 -->
+            <div style="background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:10px; padding:12px 14px; margin-bottom:14px; font-size:0.9rem; line-height:1.9; color:#334155;">
+              <div style="font-weight:800; color:#475569; margin-bottom:6px;">[ 보 기 ]</div>
+              <div><b>ㄱ.</b> 점 $(1, -2)$는 제2사분면 위의 점이다.</div>
+              <div><b>ㄴ.</b> $y$축 위의 점은 $y$좌표가 $0$이다.</div>
+              <div><b>ㄷ.</b> 좌표축 위의 점은 어느 사분면에도 속하지 않는다.</div>
+              <div><b>ㄹ.</b> 점 $(a, b)$가 제2사분면 위의 점이면 점 $(b, a)$는 제4사분면 위의 점이다.</div>
+            </div>
+
+            <!-- 정답 체크 선택 영역 -->
+            <div style="background:#eff6ff; border:1.5px solid #bfdbfe; border-radius:10px; padding:12px 14px; margin-bottom:16px;">
+              <div style="font-weight:800; color:#1e40af; margin-bottom:8px; font-size:0.92rem;">
+                선택 답안 (옳은 보기를 모두 체크하세요):
+              </div>
+              <div style="display:flex; flex-wrap:wrap; gap:16px; font-size:0.95rem; font-weight:700; color:#1e293b;">
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;"><input type="checkbox" id="sc3-opt-1" value="ㄱ" style="transform:scale(1.2);"> ㄱ</label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;"><input type="checkbox" id="sc3-opt-2" value="ㄴ" style="transform:scale(1.2);"> ㄴ</label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;"><input type="checkbox" id="sc3-opt-3" value="ㄷ" style="transform:scale(1.2);"> ㄷ</label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;"><input type="checkbox" id="sc3-opt-4" value="ㄹ" style="transform:scale(1.2);"> ㄹ</label>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" style="padding:12px; width:100%; font-weight:800; font-size:1rem; background:linear-gradient(135deg, #059669, #0284c7);" onclick="checkSelfCheck3Submit()">
+              ✅ 보기 선택 제출 및 채점
+            </button>
+          </div>
+        `;
+      }
+      else if (subStepCode === '2-6') {
+        setMissionUI("<b>[스스로 확인하기 4] 부호 조건과 사분면 판단 (교과서 p.128)</b><br>$ab < 0, a > b$일 때, 각 점이 제몇 사분면 위의 점인지 부호를 추론하여 구하시오.");
+        const group = document.getElementById('drawing-toolbar-group');
+        if (group) group.style.display = 'none';
+        const drawCanvas = document.getElementById('freehand-drawing-canvas');
+        if (drawCanvas) drawCanvas.style.display = 'none';
+
+        if (engine && engine.two) {
+          drawProblem3QuadrantCanvas(engine.two);
+        }
+
+        formArea.innerHTML = `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding:16px;">
+            <div style="font-weight:800; color:#1e293b; margin-bottom:10px; font-size:1.02rem; border-bottom:2px solid #9333ea; padding-bottom:6px;">
+              📝 문제 4. $ab < 0, a > b$일 때, 다음 점은 제몇 사분면 위의 점인지 말하시오.
+            </div>
+            <div style="font-size:0.88rem; color:#475569; margin-bottom:12px; line-height:1.6;">
+              $ab < 0$과 $a > b$ 조건을 통해 $a$와 $b$의 부호를 먼저 판단한 뒤 각 사분면을 구하세요.
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:10px; font-size:0.9rem; line-height:2.0; color:#1e293b; margin-bottom:16px;">
+              <div style="background:#f8fafc; padding:10px 14px; border-radius:8px; border:1px solid #e2e8f0;">
+                (1) $A(b, a)$ ➔ 제( <input type="text" id="sc4-q1" class="proof-input-text" style="width:55px; text-align:center; font-weight:800;" placeholder="입력"> )사분면
+              </div>
+              <div style="background:#f8fafc; padding:10px 14px; border-radius:8px; border:1px solid #e2e8f0;">
+                (2) $B(-a, b)$ ➔ 제( <input type="text" id="sc4-q2" class="proof-input-text" style="width:55px; text-align:center; font-weight:800;" placeholder="입력"> )사분면
+              </div>
+              <div style="background:#f8fafc; padding:10px 14px; border-radius:8px; border:1px solid #e2e8f0;">
+                (3) $C(a, -b)$ ➔ 제( <input type="text" id="sc4-q3" class="proof-input-text" style="width:55px; text-align:center; font-weight:800;" placeholder="입력"> )사분면
+              </div>
+              <div style="background:#f8fafc; padding:10px 14px; border-radius:8px; border:1px solid #e2e8f0;">
+                (4) $D\\left(-ab, \\frac{a}{b}\\right)$ ➔ 제( <input type="text" id="sc4-q4" class="proof-input-text" style="width:55px; text-align:center; font-weight:800;" placeholder="입력"> )사분면
+              </div>
+            </div>
+
+            <button class="btn btn-primary" style="padding:12px; width:100%; font-weight:800; font-size:1rem; background:linear-gradient(135deg, #9333ea, #4f46e5);" onclick="checkSelfCheck4Submit()">
+              ✅ 사분면 판별 제출 및 채점
+            </button>
+          </div>
+        `;
+      }
+      else if (subStepCode === '2-7') {
+        setMissionUI("<b>[스스로 확인하기 5] 좌표축 위의 점과 삼각형의 넓이 (교과서 p.128)</b><br>태블릿 펜 또는 마우스로 좌측 좌표평면에 직접 보조선을 드로잉하며 점 A, B와 $\\triangle OAB$의 넓이를 구하세요!");
+        
+        // 펜 드로잉 툴바 및 캔버스 활성화
+        const group = document.getElementById('drawing-toolbar-group');
+        if (group) group.style.display = 'flex';
+        const drawCanvas = document.getElementById('freehand-drawing-canvas');
+        if (drawCanvas) {
+          drawCanvas.style.display = 'block';
+          clearFreehandDrawing();
+        }
+
+        if (engine && engine.two) {
+          drawSelfCheck5CoordinateCanvas(engine.two);
+        }
+
+        formArea.innerHTML = `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding:16px;">
+            <div style="font-weight:800; color:#1e293b; margin-bottom:10px; font-size:1.02rem; border-bottom:2px solid #16a34a; padding-bottom:6px;">
+              📝 문제 5. 좌표평면 위의 두 점 $A(a-1, a+3)$, $B(-b+1, b+3)$은 각각 $x$축, $y$축 위의 점이다.
+            </div>
+            <div style="font-size:0.88rem; color:#334155; margin-bottom:14px; line-height:1.7;">
+              이때 원점 $O$와 두 점 $A, B$를 꼭짓점으로 하는 <b>삼각형 $OAB$의 넓이</b>를 구하시오.
+            </div>
+
+            <!-- 풀이 단계 단계별 안내 -->
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:14px; font-size:0.88rem; line-height:2.0; color:#1e293b;">
+              <div style="font-weight:800; color:#15803d; margin-bottom:4px;">1단계: 점 A의 좌표 구하기 ($x$축 위의 점)</div>
+              • $a+3 = 0$ 이므로 $a = ($ <input type="text" id="sc5-a" class="proof-input-text" style="width:60px;" placeholder="수 입력"> $)$<br>
+              • 점 $A$의 좌표 기호: <input type="text" id="sc5-pt-a" class="proof-input-text" style="width:130px;" placeholder="좌표 기호 입력"><br>
+
+              <div style="font-weight:800; color:#15803d; margin-top:8px; margin-bottom:4px;">2단계: 점 B의 좌표 구하기 ($y$축 위의 점)</div>
+              • $-b+1 = 0$ 이므로 $b = ($ <input type="text" id="sc5-b" class="proof-input-text" style="width:60px;" placeholder="수 입력"> $)$<br>
+              • 점 $B$의 좌표 기호: <input type="text" id="sc5-pt-b" class="proof-input-text" style="width:130px;" placeholder="좌표 기호 입력"><br>
+
+              <div style="font-weight:800; color:#15803d; margin-top:8px; margin-bottom:4px;">3단계: 삼각형 OAB의 넓이</div>
+              • 삼각형 $OAB$의 넓이 = ( <input type="text" id="sc5-area" class="proof-input-text" style="width:80px; font-weight:800; text-align:center;" placeholder="넓이 입력"> )
+            </div>
+
+            <div style="font-size:0.82rem; color:#15803d; background:#f0fdf4; padding:8px 12px; border-radius:8px; border:1px solid #bbf7d0; margin-bottom:14px;">
+              🎨 <b>[태블릿 펜 팁]</b> 상단 파랑/빨강 펜으로 좌측 좌표평면에 점 $A, B$를 찍고 삼각형 $OAB$를 그려보세요!
+            </div>
+
+            <button class="btn btn-primary" style="padding:12px; width:100%; font-weight:800; font-size:1rem; background:linear-gradient(135deg, #16a34a, #0284c7);" onclick="checkSelfCheck5Submit()">
+              🏆 4.2 사분면 단원 최종 제출 및 완수
+            </button>
           </div>
         `;
       }
@@ -2159,21 +2479,294 @@
       two.update();
     }
 
+    // -------------------------------------------------------------
+    // [스스로 확인하기 1번] 수직선 위 네 점 A, B, C, D 캔버스 렌더러
+    // -------------------------------------------------------------
+    function drawSelfCheck1NumberLineCanvas(two) {
+      if (!two) return;
+      two.clear();
+      const width = two.width, height = two.height;
+      const cx = width / 2, cy = height / 2 + 10;
+      const step = 65; // 여유 있는 눈금 간격 (3등분 가시성 극대화)
+
+      // 수직선 메인 축
+      const minVal = -3.6, maxVal = 4.6;
+      const startX = cx + minVal * step, endX = cx + maxVal * step;
+      const line = two.makeLine(startX, cy, endX, cy);
+      line.stroke = '#1e293b'; line.linewidth = 2.5;
+
+      // 양 끝 화살표
+      const arrL = two.makePath(startX, cy, startX + 10, cy - 5, startX + 10, cy + 5, false);
+      arrL.fill = '#1e293b'; arrL.noStroke();
+      const arrR = two.makePath(endX, cy, endX - 10, cy - 5, endX - 10, cy + 5, false);
+      arrR.fill = '#1e293b'; arrR.noStroke();
+
+      // -3부터 4까지의 기본 정수 눈금과 숫자 라벨
+      for (let n = -3; n <= 4; n++) {
+        const px = cx + n * step;
+        const tick = two.makeLine(px, cy - 8, px, cy + 8);
+        tick.stroke = '#1e293b'; tick.linewidth = (n === 0) ? 2.5 : 1.5;
+        const txt = two.makeText(String(n), px, cy + 24);
+        txt.size = 15; txt.weight = (n === 0) ? 800 : 700; txt.fill = '#1e293b';
+      }
+
+      // -2와 -1 사이의 3등분 분할점 (B: -5/3 = -1과 2/3 지점)
+      const tri1_x = cx + (-2 + 1/3) * step; // -5/3 (-1.666...)
+      const tri2_x = cx + (-2 + 2/3) * step; // -4/3 (-1.333...)
+
+      const tickTri1 = two.makeLine(tri1_x, cy - 5, tri1_x, cy + 5);
+      tickTri1.stroke = '#64748b'; tickTri1.linewidth = 1.2;
+      const tickTri2 = two.makeLine(tri2_x, cy - 5, tri2_x, cy + 5);
+      tickTri2.stroke = '#64748b'; tickTri2.linewidth = 1.2;
+
+      // 교과서 그림의 3등분 호(Arc) 및 등분 표시 (||)
+      const arc1_mid = (cx - 2 * step + tri1_x) / 2;
+      const arc2_mid = (tri1_x + tri2_x) / 2;
+      const arc3_mid = (tri2_x + cx - 1 * step) / 2;
+
+      [arc1_mid, arc2_mid, arc3_mid].forEach(mx => {
+        const arc = two.makeCurve(mx - 9, cy, mx, cy - 10, mx + 9, cy, true);
+        arc.stroke = '#94a3b8'; arc.linewidth = 1.2; arc.noFill();
+        const d1 = two.makeLine(mx - 2, cy - 13, mx - 1, cy - 7); d1.stroke = '#94a3b8';
+        const d2 = two.makeLine(mx + 1, cy - 13, mx + 2, cy - 7); d2.stroke = '#94a3b8';
+      });
+
+      // 네 점 A(-3), B(-5/3), C(2), D(4) 강조
+      const points = [
+        { name: 'A', px: cx - 3 * step, color: '#dc2626' },
+        { name: 'B', px: tri1_x, color: '#4f46e5' },
+        { name: 'C', px: cx + 2 * step, color: '#0284c7' },
+        { name: 'D', px: cx + 4 * step, color: '#059669' }
+      ];
+
+      points.forEach(pt => {
+        const aura = two.makeCircle(pt.px, cy, 14);
+        aura.fill = 'rgba(79, 70, 229, 0.1)'; aura.stroke = pt.color; aura.linewidth = 1.2;
+        const dot = two.makeCircle(pt.px, cy, 6);
+        dot.fill = pt.color; dot.stroke = '#ffffff'; dot.linewidth = 2;
+        const lbl = two.makeText(pt.name, pt.px, cy - 20);
+        lbl.size = 18; lbl.weight = 800; lbl.fill = pt.color;
+      });
+
+      // 상단 헤더 뱃지
+      const banner = two.makeRoundedRectangle(cx, 30, Math.min(width - 40, 560), 38, 10);
+      banner.fill = '#f8fafc'; banner.stroke = '#cbd5e1'; banner.linewidth = 1.5;
+      const bannerTxt = two.makeText('📍 수직선 위의 네 점 A, B, C, D의 위치를 관찰하세요.', cx, 30);
+      bannerTxt.size = 15; bannerTxt.weight = 800; bannerTxt.fill = '#1e293b';
+
+      two.update();
+    }
+
+    // -------------------------------------------------------------
+    // [스스로 확인하기 2번] 좌표평면 위 4개 점 동적 드래그 배치 캔버스
+    // -------------------------------------------------------------
+    function drawSelfCheck2Canvas(two, pointsData) {
+      if (!two) return;
+      two.clear();
+      const width = two.width, height = two.height;
+      const cx = width / 2, cy = height / 2 + 10;
+      const step = 40;
+      const maxGrid = 5;
+      const gridSpan = maxGrid * step;
+
+      // 1. 격자선
+      for (let i = -maxGrid; i <= maxGrid; i++) {
+        const gx = cx + i * step;
+        const gy = cy - i * step;
+        const vLine = two.makeLine(gx, cy - gridSpan, gx, cy + gridSpan);
+        vLine.stroke = (i === 0) ? '#1e293b' : '#e2e8f0';
+        vLine.linewidth = (i === 0) ? 2.5 : 1;
+        const hLine = two.makeLine(cx - gridSpan, gy, cx + gridSpan, gy);
+        hLine.stroke = (i === 0) ? '#1e293b' : '#e2e8f0';
+        hLine.linewidth = (i === 0) ? 2.5 : 1;
+      }
+
+      // 2. 좌표축 및 라벨
+      const arrX = two.makePath(cx + (maxGrid + 0.3) * step, cy, cx + (maxGrid + 0.3) * step - 10, cy - 5, cx + (maxGrid + 0.3) * step - 10, cy + 5, false);
+      arrX.fill = '#1e293b'; arrX.noStroke();
+      const arrY = two.makePath(cx, cy - (maxGrid + 0.3) * step, cx - 5, cy - (maxGrid + 0.3) * step + 10, cx + 5, cy - (maxGrid + 0.3) * step + 10, false);
+      arrY.fill = '#1e293b'; arrY.noStroke();
+
+      const lblX = two.makeText('x', cx + (maxGrid + 0.5) * step, cy + 12); lblX.size = 18; lblX.weight = 800; lblX.style = 'italic';
+      const lblY = two.makeText('y', cx - 14, cy - (maxGrid + 0.5) * step); lblY.size = 18; lblY.weight = 800; lblY.style = 'italic';
+      const lblO = two.makeText('O', cx - 14, cy + 14); lblO.size = 17; lblO.weight = 800; lblO.fill = '#1e293b';
+
+      [-4, -2, 2, 4].forEach(n => {
+        const nx = cx + n * step, ny = cy - n * step;
+        const txtX = two.makeText(String(n), nx, cy + 18); txtX.size = 13; txtX.weight = 700; txtX.fill = '#475569';
+        const txtY = two.makeText(String(n), cx + 16, ny + 4); txtY.size = 13; txtY.weight = 700; txtY.fill = '#475569';
+      });
+
+      // 3. 4개 드래그 점 렌더링
+      const pts = pointsData || state.pointsSC2;
+      const colors = { A: '#4f46e5', B: '#0284c7', C: '#059669', D: '#9333ea' };
+
+      ['A', 'B', 'C', 'D'].forEach(key => {
+        const pt = pts[key];
+        const px = cx + pt.x * step;
+        const py = cy - pt.y * step;
+
+        // 축에 수선 점선 가이드
+        const gX = two.makeLine(px, py, px, cy); gX.stroke = colors[key]; gX.linewidth = 1.2; gX.dashes = [3, 3];
+        const gY = two.makeLine(px, py, cx, py); gY.stroke = colors[key]; gY.linewidth = 1.2; gY.dashes = [3, 3];
+
+        // 점 아우라 및 본체
+        const aura = two.makeCircle(px, py, 16);
+        aura.fill = 'rgba(79, 70, 229, 0.15)'; aura.stroke = colors[key]; aura.linewidth = 1.5;
+        const dot = two.makeCircle(px, py, 7.5);
+        dot.fill = colors[key]; dot.stroke = '#ffffff'; dot.linewidth = 2;
+
+        const lbl = two.makeText(`${key}(${pt.x}, ${pt.y})`, px + 20, py - 16);
+        lbl.size = 14; lbl.weight = 800; lbl.fill = colors[key];
+      });
+
+      // 4. 상단 헤더 안내
+      const banner = two.makeRoundedRectangle(cx, 30, Math.min(width - 40, 560), 38, 10);
+      banner.fill = '#eef2ff'; banner.stroke = '#c7d2fe'; banner.linewidth = 2;
+      const bannerTxt = two.makeText('📍 점 A, B, C, D를 마우스/터치로 잡고 목표 좌표로 드래그하세요!', cx, 30);
+      bannerTxt.size = 14; bannerTxt.weight = 800; bannerTxt.fill = '#4f46e5';
+
+      two.update();
+    }
+
+    let activeDragSC2Key = null;
+    function attachSelfCheck2DragListeners() {
+      const container = document.getElementById('two-container');
+      if (!container) return;
+
+      const getCoordsFromPx = (mx, my) => {
+        const width = container.clientWidth || 800;
+        const height = container.clientHeight || 500;
+        const cx = width / 2, cy = height / 2 + 10;
+        const step = 40;
+        let rx = Math.round((mx - cx) / step);
+        let ry = Math.round((cy - my) / step);
+        if (rx < -5) rx = -5; if (rx > 5) rx = 5;
+        if (ry < -5) ry = -5; if (ry > 5) ry = 5;
+        return { x: rx, y: ry };
+      };
+
+      container.onpointerdown = function(e) {
+        if (state.subStep !== '2-4' || !state.pointsSC2) return;
+        const rect = container.getBoundingClientRect();
+        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+        const cx = (container.clientWidth || 800) / 2, cy = (container.clientHeight || 500) / 2 + 10;
+        const step = 40;
+
+        activeDragSC2Key = null;
+        for (const key of ['A', 'B', 'C', 'D']) {
+          const pt = state.pointsSC2[key];
+          const px = cx + pt.x * step;
+          const py = cy - pt.y * step;
+          if (Math.hypot(mx - px, my - py) < 32) {
+            activeDragSC2Key = key;
+            try { container.setPointerCapture(e.pointerId); } catch(err){}
+            container.classList.add('grabbing');
+            break;
+          }
+        }
+      };
+
+      container.onpointermove = function(e) {
+        if (!activeDragSC2Key || state.subStep !== '2-4' || !state.pointsSC2) return;
+        const rect = container.getBoundingClientRect();
+        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+        const newCoords = getCoordsFromPx(mx, my);
+
+        const pt = state.pointsSC2[activeDragSC2Key];
+        if (pt.x !== newCoords.x || pt.y !== newCoords.y) {
+          pt.x = newCoords.x;
+          pt.y = newCoords.y;
+          if (twoInstance) {
+            drawSelfCheck2Canvas(twoInstance, state.pointsSC2);
+          }
+          const disp = document.getElementById(`sc2-stat-${activeDragSC2Key.toLowerCase()}`);
+          if (disp) disp.innerText = `${activeDragSC2Key}(${pt.x}, ${pt.y})`;
+        }
+      };
+
+      container.onpointerup = container.onpointercancel = function(e) {
+        if (activeDragSC2Key) {
+          activeDragSC2Key = null;
+          container.classList.remove('grabbing');
+        }
+      };
+    }
+
+    // -------------------------------------------------------------
+    // [스스로 확인하기 5번] 좌표평면 펜 드로잉 지원 캔버스 렌더러
+    // -------------------------------------------------------------
+    function drawSelfCheck5CoordinateCanvas(two) {
+      if (!two) return;
+      two.clear();
+      const width = two.width, height = two.height;
+      const cx = width / 2, cy = height / 2 + 10;
+      const step = 38;
+      const maxGrid = 5;
+      const gridSpan = maxGrid * step;
+
+      // 1. 격자선
+      for (let i = -maxGrid; i <= maxGrid; i++) {
+        const gx = cx + i * step;
+        const gy = cy - i * step;
+        const vLine = two.makeLine(gx, cy - gridSpan, gx, cy + gridSpan);
+        vLine.stroke = (i === 0) ? '#1e293b' : '#e2e8f0';
+        vLine.linewidth = (i === 0) ? 2.5 : 1;
+        const hLine = two.makeLine(cx - gridSpan, gy, cx + gridSpan, gy);
+        hLine.stroke = (i === 0) ? '#1e293b' : '#e2e8f0';
+        hLine.linewidth = (i === 0) ? 2.5 : 1;
+      }
+
+      // 2. 좌표축
+      const arrX = two.makePath(cx + (maxGrid + 0.3) * step, cy, cx + (maxGrid + 0.3) * step - 10, cy - 5, cx + (maxGrid + 0.3) * step - 10, cy + 5, false);
+      arrX.fill = '#1e293b'; arrX.noStroke();
+      const arrY = two.makePath(cx, cy - (maxGrid + 0.3) * step, cx - 5, cy - (maxGrid + 0.3) * step + 10, cx + 5, cy - (maxGrid + 0.3) * step + 10, false);
+      arrY.fill = '#1e293b'; arrY.noStroke();
+
+      const lblX = two.makeText('x', cx + (maxGrid + 0.5) * step, cy + 12); lblX.size = 18; lblX.weight = 800; lblX.style = 'italic';
+      const lblY = two.makeText('y', cx - 14, cy - (maxGrid + 0.5) * step); lblY.size = 18; lblY.weight = 800; lblY.style = 'italic';
+      const lblO = two.makeText('O', cx - 14, cy + 14); lblO.size = 17; lblO.weight = 800; lblO.fill = '#1e293b';
+
+      [-4, -2, 2, 4].forEach(n => {
+        const nx = cx + n * step, ny = cy - n * step;
+        const txtX = two.makeText(String(n), nx, cy + 18); txtX.size = 13; txtX.weight = 700; txtX.fill = '#475569';
+        const txtY = two.makeText(String(n), cx + 16, ny + 4); txtY.size = 13; txtY.weight = 700; txtY.fill = '#475569';
+      });
+
+      // 3. 상단 헤더 뱃지
+      const banner = two.makeRoundedRectangle(cx, 30, Math.min(width - 40, 560), 38, 10);
+      banner.fill = '#f0fdf4'; banner.stroke = '#86efac'; banner.linewidth = 2;
+      const bannerTxt = two.makeText('🎨 상단 펜/지우개 도구를 이용해 캔버스에 직접 보조선과 삼각형 OAB를 그려보세요!', cx, 30);
+      bannerTxt.size = 13.5; bannerTxt.weight = 800; bannerTxt.fill = '#15803d';
+
+      two.update();
+    }
+
     
-    // 브라우저 팝업창을 띄우지 않고 퀴즈 카드 내부에 오답 메시지를 부드럽게 표출하는 인라인 헬퍼
-    function showInlineErrorNotice(msg) {
+    // 브라우저 팝업창을 띄우지 않고 퀴즈 카드 내부에 오답 메시지 및 교육적 힌트를 부드럽게 표출하는 인라인 헬퍼
+    function showInlineErrorNotice(msg, hintMsg = '') {
       let errBox = document.getElementById('inline-error-notice');
       const formArea = document.getElementById('form-work-area');
       if (!errBox && formArea) {
         errBox = document.createElement('div');
         errBox.id = 'inline-error-notice';
-        errBox.style.cssText = 'background:#fef2f2; border:1px solid #fca5a5; color:#991b1b; padding:10px 12px; border-radius:8px; font-size:0.86rem; margin-top:10px; line-height:1.5; font-weight:700; transition:all 0.3s ease;';
+        errBox.style.cssText = 'background:#fef2f2; border:1.5px solid #fca5a5; color:#991b1b; padding:12px 14px; border-radius:10px; font-size:0.88rem; margin-top:12px; line-height:1.6; font-weight:600; transition:all 0.3s ease; box-shadow:0 2px 8px rgba(239, 68, 68, 0.08);';
         const card = formArea.querySelector('.card') || formArea;
         card.appendChild(errBox);
       }
       if (errBox) {
         errBox.style.display = 'block';
-        errBox.innerHTML = String(msg).replace(/\n/g, '<br>');
+        let html = `<div>${String(msg).replace(/\n/g, '<br>')}</div>`;
+        if (hintMsg) {
+          html += `
+            <div style="margin-top:10px; padding:10px 12px; background:#fff7ed; border-radius:8px; border:1px dashed #fdba74; color:#9a3412; font-size:0.86rem; font-weight:600; line-height:1.7;">
+              <div style="font-weight:800; color:#c2410c; margin-bottom:4px; font-size:0.9rem;">💡 [생각해 볼 힌트]</div>
+              ${String(hintMsg).replace(/\n/g, '<br>')}
+            </div>
+          `;
+        }
+        errBox.innerHTML = html;
+        renderMathInPage(errBox);
         errBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
     }
@@ -2585,7 +3178,6 @@
       const thought = (document.getElementById('p22-thought').value || '').trim();
 
       if (state.isTeacherLoggedIn) {
-        unlockNextStep(3);
         renderVerifiedAnswerView(
           "문제 3번 및 생각 나누기 완수!",
           "• <b>(1) $A(-2, 1)$</b>: <b>제2사분면</b> (-, +)<br>" +
@@ -2593,8 +3185,8 @@
           "• <b>(3) $C\\left(\\frac{3}{2}, -2\\right)$</b>: <b>제4사분면</b> (+, -)<br>" +
           "• <b>(4) $D(-1.5, -3.1)$</b>: <b>제3사분면</b> (-, -)<br><br>" +
           "🗣️ <b>[학생의 생각 나누기 의견]</b><br>" + (thought ? `\"${thought}\"` : "<i>(작성된 의견 없음)</i>") + "<br><br>" +
-          "🏆 <b>[4.2 사분면] 단원 학습을 성공적으로 완수했습니다!</b><br>다음 [4.3 그래프의 해석] 단원의 자물쇠가 해제되었습니다.",
-          "3-1"
+          "다음 <b>[스스로 확인하기 1번]</b> 문제로 이동합니다!",
+          "2-3"
         );
         return;
       }
@@ -2605,8 +3197,6 @@
       const ok4 = q4.includes('3') || q4 === '제3' || q4 === '제3사분면';
 
       if (ok1 && ok2 && ok3 && ok4) {
-        unlockNextStep(3);
-
         // LMS DB에 생각 나누기 의견 함께 저장
         if (typeof LMSIntegration !== 'undefined' && thought) {
           LMSIntegration.saveStudentProgress('2-2', {
@@ -2623,8 +3213,8 @@
           "• <b>(3) $C\\left(\\frac{3}{2}, -2\\right)$</b>: <b>제4사분면</b> (+, -)<br>" +
           "• <b>(4) $D(-1.5, -3.1)$</b>: <b>제3사분면</b> (-, -)<br><br>" +
           "🗣️ <b>[학생의 생각 나누기 의견]</b><br>" + (thought ? `\"${thought}\"` : "<i>(의견 작성 완료)</i>") + "<br><br>" +
-          "🏆 <b>[4.2 사분면] 단원 학습을 성공적으로 완수했습니다!</b><br>다음 [4.3 그래프의 해석] 단원의 자물쇠가 해제되었습니다.",
-          "3-1"
+          "다음 <b>[스스로 확인하기 1번]</b> 문제로 진행합니다!",
+          "2-3"
         );
       } else {
         let errs = [];
@@ -2632,7 +3222,201 @@
         if (!ok2) errs.push("(2) B(4, 3)");
         if (!ok3) errs.push("(3) C(3/2, -2)");
         if (!ok4) errs.push("(4) D(-1.5, -3.1)");
-        showInlineErrorNotice("❌ 문제 3번 중 오답이 있습니다. 각 점의 사분면 번호를 다시 확인해 보세요!\n오답 항목: " + errs.join(", "));
+        showInlineErrorNotice(
+          "❌ 문제 3번 중 오답이 있습니다. 각 점의 사분면 번호를 다시 확인해 보세요!\n오답 항목: " + errs.join(", "),
+          "• 점의 좌표 $(x, y)$에서 $x$좌표와 $y$좌표의 부호를 확인하세요.<br>• $(+, +)$는 제1사분면, $(-, +)$는 제2사분면, $(-, -)$는 제3사분면, $(+, -)$는 제4사분면입니다."
+        );
+      }
+    }
+
+    // -------------------------------------------------------------
+    // [스스로 확인하기 1번 채점]
+    // -------------------------------------------------------------
+    function checkSelfCheck1Submit() {
+      const aInp = normTxt(document.getElementById('sc1-a').value);
+      const bInp = normTxt(document.getElementById('sc1-b').value);
+      const cInp = normTxt(document.getElementById('sc1-c').value);
+      const dInp = normTxt(document.getElementById('sc1-d').value);
+
+      const okA = aInp.includes('-3');
+      const okB = bInp.includes('-5/3') || bInp.includes('-5분의3') || bInp.includes('-1과2/3') || bInp.includes('-1.6');
+      const okC = cInp.includes('2') && !cInp.includes('-2');
+      const okD = dInp.includes('4') && !dInp.includes('-4');
+
+      if (okA && okB && okC && okD) {
+        renderVerifiedAnswerView(
+          "스스로 확인하기 1번 정답 완수!",
+          "• 점 A: <b>A(-3)</b><br>" +
+          "• 점 B: <b>B\\left(-\\frac{5}{3}\\right)</b><br>" +
+          "• 점 C: <b>C(2)</b><br>" +
+          "• 점 D: <b>D(4)</b><br><br>" +
+          "다음 <b>[스스로 확인하기 2번 (점 드래그)]</b> 문제로 진행합니다!",
+          "2-4"
+        );
+      } else {
+        let errs = [];
+        if (!okA) errs.push("점 A");
+        if (!okB) errs.push("점 B");
+        if (!okC) errs.push("점 C");
+        if (!okD) errs.push("점 D");
+
+        showInlineErrorNotice(
+          "❌ 오답이 있습니다. 수직선 위의 점의 위치를 다시 확인해 보세요!\n오답 항목: " + errs.join(", "),
+          "• 점 A, C, D는 수직선 위의 정수 눈금 위치를 확인해 보세요.<br>• 점 B는 $-2$와 $-1$ 사이의 구간이 $3$등분되어 있습니다. $-1$에서 왼쪽으로 $\\frac{2}{3}$만큼 떨어진 위치, 즉 $-1 - \\frac{2}{3} = -\\frac{5}{3}$의 분수 형태로 나타내어 보세요."
+        );
+      }
+    }
+
+    // -------------------------------------------------------------
+    // [스스로 확인하기 2번 채점]
+    // -------------------------------------------------------------
+    function checkSelfCheck2Submit() {
+      if (!state.pointsSC2) return;
+      const ptA = state.pointsSC2.A;
+      const ptB = state.pointsSC2.B;
+      const ptC = state.pointsSC2.C;
+      const ptD = state.pointsSC2.D;
+
+      const okA = (ptA.x === 3 && ptA.y === 1);
+      const okB = (ptB.x === 0 && ptB.y === -2);
+      const okC = (ptC.x === -3 && ptC.y === -3);
+      const okD = (ptD.x === -4 && ptD.y === 2);
+
+      if (okA && okB && okC && okD) {
+        renderVerifiedAnswerView(
+          "스스로 확인하기 2번 정답 완수!",
+          "4개의 점이 좌표평면 상의 목표 위치에 완벽히 배치되었습니다!<br>" +
+          "• $A(3, 1)$ ➔ 제1사분면<br>" +
+          "• $B(0, -2)$ ➔ $y$축 위의 점<br>" +
+          "• $C(-3, -3)$ ➔ 제3사분면<br>" +
+          "• $D(-4, 2)$ ➔ 제2사분면<br><br>" +
+          "다음 <b>[스스로 확인하기 3번 (보기 선택)]</b> 문제로 진행합니다!",
+          "2-5"
+        );
+      } else {
+        let errs = [];
+        if (!okA) errs.push(`점 A (현재: (${ptA.x}, ${ptA.y}) / 목표: (3, 1))`);
+        if (!okB) errs.push(`점 B (현재: (${ptB.x}, ${ptB.y}) / 목표: (0, -2))`);
+        if (!okC) errs.push(`점 C (현재: (${ptC.x}, ${ptC.y}) / 목표: (-3, -3))`);
+        if (!okD) errs.push(`점 D (현재: (${ptD.x}, ${ptD.y}) / 목표: (-4, 2))`);
+
+        showInlineErrorNotice(
+          "❌ 아직 목표 위치에 놓이지 않은 점이 있습니다. 왼쪽 캔버스의 점들을 다시 드래그해 보세요!\n" + errs.join("\n"),
+          "• 순서쌍 $(x, y)$에서 첫 번째 수는 $x$축(가로), 두 번째 수는 $y$축(세로) 위치를 의미합니다.<br>• 특히 $B(0, -2)$는 $x$좌표가 $0$이므로 원점에서 좌우 이동 없이 $y$축 선상 아래로 $2$칸 내려간 위치입니다."
+        );
+      }
+    }
+
+    // -------------------------------------------------------------
+    // [스스로 확인하기 3번 채점]
+    // -------------------------------------------------------------
+    function checkSelfCheck3Submit() {
+      const opt1 = document.getElementById('sc3-opt-1').checked; // ㄱ (거짓)
+      const opt2 = document.getElementById('sc3-opt-2').checked; // ㄴ (거짓)
+      const opt3 = document.getElementById('sc3-opt-3').checked; // ㄷ (참)
+      const opt4 = document.getElementById('sc3-opt-4').checked; // ㄹ (참)
+
+      const isCorrect = (!opt1 && !opt2 && opt3 && opt4);
+
+      if (isCorrect) {
+        renderVerifiedAnswerView(
+          "스스로 확인하기 3번 정답 완수!",
+          "• 옳은 설명: <b>ㄷ, ㄹ</b><br><br>" +
+          "<b>[상세 해설]</b><br>" +
+          "• <b>ㄱ. (거짓)</b> 점 $(1, -2)$는 $x>0, y<0$이므로 <b>제4사분면</b> 위의 점입니다.<br>" +
+          "• <b>ㄴ. (거짓)</b> $y$축 위의 점은 <b>$x$좌표가 $0$</b>입니다.<br>" +
+          "• <b>ㄷ. (참)</b> 원점과 좌표축($x$축, $y$축) 위의 점은 어느 사분면에도 속하지 않습니다.<br>" +
+          "• <b>ㄹ. (참)</b> 점 $(a, b)$가 제2사분면 위의 점이면 $a<0, b>0$입니다. 따라서 $(b, a)$는 $(+, -)$이므로 <b>제4사분면</b> 위의 점이 맞습니다.<br><br>" +
+          "다음 <b>[스스로 확인하기 4번 (부호와 사분면)]</b> 문제로 진행합니다!",
+          "2-6"
+        );
+      } else {
+        showInlineErrorNotice(
+          "❌ 선택하신 보기를 다시 한번 검토해 보세요!",
+          "• ㄱ: 점 $(1, -2)$는 $x>0, y<0$이므로 몇 사분면인지 다시 확인해 보세요.<br>• ㄴ: $y$축 위의 점은 원점에서 좌우로 움직이지 않았으므로 어느 좌표가 $0$일까요?<br>• ㄷ: 원점 및 좌표축 위의 점이 사분면에 속하는지 개념을 되짚어 보세요.<br>• ㄹ: 제2사분면 위의 점 $(a, b)$이면 $a<0, b>0$입니다. 이때 $(b, a)$의 $x$좌표, $y$좌표 부호를 각각 따져보세요."
+        );
+      }
+    }
+
+    // -------------------------------------------------------------
+    // [스스로 확인하기 4번 채점]
+    // -------------------------------------------------------------
+    function checkSelfCheck4Submit() {
+      const q1 = normTxt(document.getElementById('sc4-q1').value);
+      const q2 = normTxt(document.getElementById('sc4-q2').value);
+      const q3 = normTxt(document.getElementById('sc4-q3').value);
+      const q4 = normTxt(document.getElementById('sc4-q4').value);
+
+      const ok1 = q1.includes('2') || q1 === '제2' || q1 === '제2사분면';
+      const ok2 = q2.includes('3') || q2 === '제3' || q2 === '제3사분면';
+      const ok3 = q3.includes('1') || q3 === '제1' || q3 === '제1사분면';
+      const ok4 = q4.includes('4') || q4 === '제4' || q4 === '제4사분면';
+
+      if (ok1 && ok2 && ok3 && ok4) {
+        renderVerifiedAnswerView(
+          "스스로 확인하기 4번 정답 완수!",
+          "<b>[해설]</b> $ab < 0, a > b$ 이므로 $a > 0 (+), b < 0 (-)$ 입니다.<br><br>" +
+          "• (1) $A(b, a)$: $(-, +) \\implies$ <b>제2사분면</b><br>" +
+          "• (2) $B(-a, b)$: $(-, -) \\implies$ <b>제3사분면</b><br>" +
+          "• (3) $C(a, -b)$: $(+, +) \\implies$ <b>제1사분면</b><br>" +
+          "• (4) $D\\left(-ab, \\frac{a}{b}\\right)$: $(+, -) \\implies$ <b>제4사분면</b><br><br>" +
+          "다음 <b>[스스로 확인하기 5번 (삼각형 넓이 & 드로잉)]</b> 최종 문제로 진행합니다!",
+          "2-7"
+        );
+      } else {
+        let errs = [];
+        if (!ok1) errs.push("(1) A(b, a)");
+        if (!ok2) errs.push("(2) B(-a, b)");
+        if (!ok3) errs.push("(3) C(a, -b)");
+        if (!ok4) errs.push("(4) D(-ab, a/b)");
+
+        showInlineErrorNotice(
+          "❌ 오답이 있습니다. 각 점의 부호를 다시 확인해 보세요!\n오답 항목: " + errs.join(", "),
+          "• $ab < 0$은 두 수 $a, b$의 부호가 서로 다르다는 의미입니다.<br>• $a > b$이므로 $a$는 양수($a > 0$), $b$는 음수($b < 0$)입니다.<br>• 각 점의 $x$좌표와 $y$좌표의 부호($+, -$)를 결정한 후 사분면 번호를 적어보세요."
+        );
+      }
+    }
+
+    // -------------------------------------------------------------
+    // [스스로 확인하기 5번 채점]
+    // -------------------------------------------------------------
+    function checkSelfCheck5Submit() {
+      const valA = normTxt(document.getElementById('sc5-a').value);
+      const ptA = normTxt(document.getElementById('sc5-pt-a').value);
+      const valB = normTxt(document.getElementById('sc5-b').value);
+      const ptB = normTxt(document.getElementById('sc5-pt-b').value);
+      const area = normTxt(document.getElementById('sc5-area').value);
+
+      const okA = valA === '-3';
+      const okPtA = ptA.includes('-4') && ptA.includes('0');
+      const okB = valB === '1';
+      const okPtB = ptB.includes('0') && ptB.includes('4') && !ptB.includes('-4');
+      const okArea = area === '8';
+
+      if (okA && okPtA && okB && okPtB && okArea) {
+        unlockNextStep(3);
+
+        renderVerifiedAnswerView(
+          "🏆 [4.2 사분면] 스스로 확인하기 전 문제 완벽 완수!",
+          "<b>[문제 5단계 완벽 풀이 과정]</b><br>" +
+          "1. 점 $A(a-1, a+3)$이 $x$축 위의 점이므로 $a+3=0 \\implies a = -3$<br>" +
+          "&nbsp;&nbsp;➔ 점 $A$의 좌표: <b>A(-4, 0)</b> (길이 $OA = 4$)<br><br>" +
+          "2. 점 $B(-b+1, b+3)$이 $y$축 위의 점이므로 $-b+1=0 \\implies b = 1$<br>" +
+          "&nbsp;&nbsp;➔ 점 $B$의 좌표: <b>B(0, 4)</b> (길이 $OB = 4$)<br><br>" +
+          "3. 삼각형 $OAB$의 넓이 = $\\frac{1}{2} \\times OA \\times OB = \\frac{1}{2} \\times 4 \\times 4 =$ <b>8</b><br><br>" +
+          "🎉 축하합니다! <b>[4.2 사분면]</b> 단원의 모든 활동을 완수하여 다음 <b>[4.3 그래프의 해석]</b> 단원이 해제되었습니다!",
+          "3-1"
+        );
+      } else {
+        let errs = [];
+        if (!okA || !okPtA) errs.push("1단계: a의 값 또는 점 A의 좌표");
+        if (!okB || !okPtB) errs.push("2단계: b의 값 또는 점 B의 좌표");
+        if (!okArea) errs.push("3단계: 삼각형 OAB의 넓이");
+
+        showInlineErrorNotice(
+          "❌ 오답이 있습니다. 단계를 다시 한번 점검해 보세요!\n오답 항목: " + errs.join(", "),
+          "• $x$축 위의 점은 $y$좌표가 $0$입니다 ($a+3 = 0$).<br>• $y$축 위의 점은 $x$좌표가 $0$입니다 ($-b+1 = 0$).<br>• 구한 $a, b$를 대입하여 두 점 $A(-4, 0)$, $B(0, 4)$를 구한 뒤, 밑변 $OA=4$, 높이 $OB=4$인 직각삼각형의 넓이($\\frac{1}{2} \\times 4 \\times 4$)를 계산해 보세요."
+        );
       }
     }
 
@@ -2652,6 +3436,20 @@
     }
 
     function resetCanvasView() {
+      if (state.subStep === '2-7') {
+        clearFreehandDrawing();
+        if (twoInstance) drawSelfCheck5CoordinateCanvas(twoInstance);
+        return;
+      }
+      if (state.subStep === '2-4') {
+        state.pointsSC2 = { A: { x: 1, y: 0 }, B: { x: 0, y: 1 }, C: { x: -1, y: 0 }, D: { x: 0, y: -1 } };
+        if (twoInstance) drawSelfCheck2Canvas(twoInstance, state.pointsSC2);
+        ['a', 'b', 'c', 'd'].forEach(k => {
+          const el = document.getElementById(`sc2-stat-${k}`);
+          if (el) el.innerText = `${k.toUpperCase()}(${state.pointsSC2[k.toUpperCase()].x}, ${state.pointsSC2[k.toUpperCase()].y})`;
+        });
+        return;
+      }
       state.pointP = { x: 3, y: 2, label: 'P' };
       if (twoInstance) drawCoordinatePlane(twoInstance, state.pointP);
     }
