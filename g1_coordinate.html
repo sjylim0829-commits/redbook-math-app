@@ -719,15 +719,24 @@
           </div>
         </div>
 
-        <div style="padding:8px 16px; background:#ffffff; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; font-size:0.82rem;">
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-weight:700; color:#475569;">🔍 학생 필터:</span>
-            <button class="btn filter-btn active" style="padding:2px 8px; font-size:0.75rem; background:#4f46e5; color:#fff;" onclick="filterStudents('all', this)">전체 (25명)</button>
-            <button class="btn filter-btn" style="padding:2px 8px; font-size:0.75rem; background:#f1f5f9;" onclick="filterStudents('active', this)">활동 중</button>
-            <button class="btn filter-btn" style="padding:2px 8px; font-size:0.75rem; background:#f1f5f9;" onclick="filterStudents('submitted', this)">제출 완료</button>
-            <button class="btn filter-btn" style="padding:2px 8px; font-size:0.75rem; background:#f1f5f9;" onclick="filterStudents('stuck', this)">지체/도움 필요</button>
+        <div style="padding:8px 16px; background:#ffffff; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; font-size:0.82rem;">
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <span style="font-weight:800; color:#1e293b; display:flex; align-items:center; gap:4px;">🏫 학급(반) 선택:</span>
+            <button class="btn class-filter-btn active" style="padding:3px 10px; font-size:0.75rem; background:#4f46e5; color:#fff; font-weight:800;" onclick="selectClassFilter('1', this)">1반</button>
+            <button class="btn class-filter-btn" style="padding:3px 10px; font-size:0.75rem; background:#f1f5f9; color:#334155; font-weight:700;" onclick="selectClassFilter('2', this)">2반</button>
+            <button class="btn class-filter-btn" style="padding:3px 10px; font-size:0.75rem; background:#f1f5f9; color:#334155; font-weight:700;" onclick="selectClassFilter('3', this)">3반</button>
+            <button class="btn class-filter-btn" style="padding:3px 10px; font-size:0.75rem; background:#f1f5f9; color:#334155; font-weight:700;" onclick="selectClassFilter('4', this)">4반</button>
+            <button class="btn class-filter-btn" style="padding:3px 10px; font-size:0.75rem; background:#f1f5f9; color:#334155; font-weight:700;" onclick="selectClassFilter('all', this)">전체 반</button>
+
+            <span style="margin:0 6px; color:#cbd5e1;">|</span>
+
+            <span style="font-weight:700; color:#475569;">🔍 상태 필터:</span>
+            <button class="btn status-filter-btn active" style="padding:3px 8px; font-size:0.75rem; background:#4f46e5; color:#fff; font-weight:700;" onclick="filterStudents('all', this)">전체 상태</button>
+            <button class="btn status-filter-btn" style="padding:3px 8px; font-size:0.75rem; background:#f1f5f9;" onclick="filterStudents('active', this)">🟢 활동 중</button>
+            <button class="btn status-filter-btn" style="padding:3px 8px; font-size:0.75rem; background:#f1f5f9;" onclick="filterStudents('submitted', this)">🔵 제출 완료</button>
+            <button class="btn status-filter-btn" style="padding:3px 8px; font-size:0.75rem; background:#f1f5f9;" onclick="filterStudents('stuck', this)">🔴 도움 필요</button>
           </div>
-          <span style="color:#64748b; font-size:0.78rem;">💡 각 학생 타일을 클릭하면 <b>실시간 캔버스 및 작성 답안이 확대</b>됩니다.</span>
+          <span style="color:#64748b; font-size:0.78rem;">💡 각 학생 타일을 클릭하면 <b>실제 학생 활동 캔버스와 작성 답안</b>이 고해상도로 확대됩니다.</span>
         </div>
 
         <!-- 5x5 Grid (25 학생 타일) -->
@@ -1107,36 +1116,53 @@
     // -------------------------------------------------------------
     // 교사용 실시간 5x5 학생 모니터링 관제 엔진 (중1 수학)
     // -------------------------------------------------------------
+    // 학생 학번의 세 번째 숫자로 반을 판정 (예: 10311 -> 3반, 10105 -> 1반)
+    function getStudentClassNumberG1(id) {
+      if (!id || id.length < 3) return 1;
+      const digit3 = parseInt(id.charAt(2), 10);
+      return isNaN(digit3) ? 1 : digit3;
+    }
+
+    const FIRST_NAMES = ['김수학', '이영서', '박좌표', '최순서', '정도형', '강평면', '조원점', '윤그래프', '장사분', '임축선', '한수리', '오격자', '서단서', '신비례', '권함수', '황대응', '안유리', '송정수', '전수직', '홍기호', '유개념', '고탐구', '문식값', '양비교', '배완성'];
+    const SAMPLE_STEPS_G1 = ['2-8', '2-8', '2-7', '2-6', '2-8', '2-5', '2-4', '2-8', '2-3', '2-8', '2-7', '2-2', '2-8', '2-1', '1-7', '1-6', '1-5', '1-4', '1-3', '1-2', '1-1', '0-3', '0-2', '0-1', '2-8'];
+    const SAMPLE_STATUS_G1 = ['active', 'active', 'submitted', 'active', 'stuck', 'submitted', 'active', 'active', 'submitted', 'active', 'active', 'submitted', 'stuck', 'active', 'submitted', 'active', 'submitted', 'active', 'submitted', 'active', 'submitted', 'submitted', 'submitted', 'submitted', 'active'];
+
+    function createClassMockG1(classNum) {
+      const roster = [];
+      for (let i = 1; i <= 25; i++) {
+        const numStr = (i < 10 ? '0' : '') + i;
+        const sId = `10${classNum}${numStr}`; // 3번째 숫자가 classNum (예: 10311 -> 3반 11번)
+        const name = FIRST_NAMES[i - 1] || `학생${i}`;
+        const step = SAMPLE_STEPS_G1[i - 1] || '2-8';
+        const status = SAMPLE_STATUS_G1[i - 1] || 'active';
+        const score = status === 'submitted' ? 100 : (status === 'stuck' ? 65 : 85);
+        const lastActive = status === 'active' ? `${(i * 3) % 20 + 2}초 전` : (status === 'stuck' ? '2분 전' : '1분 전');
+
+        roster.push({
+          id: sId,
+          name: name,
+          classNum: classNum,
+          step: step,
+          status: status,
+          score: score,
+          lastActive: lastActive,
+          point: { x: (i % 5) - 2, y: ((i * 2) % 7) - 3 },
+          ans: step === '2-8' ? '보물 위치 (-2, -3) 탐구 및 축 드로잉 진행 중' : (step === '2-7' ? 'A(-4,0), B(0,4) 삼각형 넓이 = 8' : '세부 탐구 답안 작성 완료')
+        });
+      }
+      return roster;
+    }
+
     const G1_STUDENTS_MOCK = [
-      { id: '10101', name: '김수학', step: '2-8', status: 'active', score: 100, lastActive: '방금 전', point: { x: -2, y: -3 }, ans: '보물 위치 (-2, -3) 탐구 중 | x축=A, y축=B' },
-      { id: '10102', name: '이영서', step: '2-8', status: 'active', score: 95, lastActive: '5초 전', point: { x: -3, y: -2 }, ans: 'A(-4,0), B(0,-3) 좌표축 분석 완료' },
-      { id: '10103', name: '박좌표', step: '2-7', status: 'submitted', score: 100, lastActive: '12초 전', point: { x: -4, y: 4 }, ans: 'A(-4, 0), B(0, 4), 넓이 = 8' },
-      { id: '10104', name: '최순서', step: '2-6', status: 'active', score: 85, lastActive: '20초 전', point: { x: 3, y: -2 }, ans: 'a>0, b<0 -> 제4사분면' },
-      { id: '10105', name: '정도형', step: '2-8', status: 'stuck', score: 70, lastActive: '1분 전', point: { x: 1, y: 1 }, ans: '보물 좌표를 찾는 중입니다...' },
-      { id: '10106', name: '강평면', step: '2-5', status: 'submitted', score: 90, lastActive: '30초 전', point: { x: 0, y: 0 }, ans: 'ㄷ, ㄹ 보기 선택 완료' },
-      { id: '10107', name: '조원점', step: '2-4', status: 'active', score: 80, lastActive: '15초 전', point: { x: 3, y: 1 }, ans: 'A(3,1), B(0,-2), C(-3,-3), D(-4,2)' },
-      { id: '10108', name: '윤그래프', step: '2-8', status: 'active', score: 95, lastActive: '8초 전', point: { x: -2, y: -3 }, ans: '보물 위치 핀 지정 완료' },
-      { id: '10109', name: '장사분', step: '2-3', status: 'submitted', score: 100, lastActive: '45초 전', point: { x: -3, y: 0 }, ans: 'A(-3), B(-5/3), C(2), D(4)' },
-      { id: '10110', name: '임축선', step: '2-8', status: 'active', score: 90, lastActive: '3초 전', point: { x: -2, y: -3 }, ans: '펜으로 x축, y축 드로잉 완료' },
-      { id: '10111', name: '한수리', step: '2-7', status: 'active', score: 85, lastActive: '25초 전', point: { x: -4, y: 4 }, ans: 'a = -3, b = 1, 넓이 = 8' },
-      { id: '10112', name: '오격자', step: '2-2', status: 'submitted', score: 90, lastActive: '1분 전', point: { x: 2, y: 3 }, ans: 'A(2,3) 제1, B(-3,2) 제2사분면' },
-      { id: '10113', name: '서단서', step: '2-8', status: 'stuck', score: 65, lastActive: '2분 전', point: { x: 0, y: -3 }, ans: '점 B 위치에서 막힘' },
-      { id: '10114', name: '신비례', step: '2-1', status: 'active', score: 75, lastActive: '40초 전', point: { x: 3, y: 2 }, ans: '제1사분면 (+,+), 제2사분면 (-,+)' },
-      { id: '10115', name: '권함수', step: '1-7', status: 'submitted', score: 85, lastActive: '1분 전', point: { x: 4, y: 2 }, ans: 'A(4,2), B(-2,3), C(-3,-2)' },
-      { id: '10116', name: '황대응', step: '1-6', status: 'active', score: 80, lastActive: '35초 전', point: { x: 2, y: 3 }, ans: 'x좌표: 2, y좌표: 3, P(2,3)' },
-      { id: '10117', name: '안유리', step: '1-5', status: 'submitted', score: 90, lastActive: '50초 전', point: { x: 0, y: 0 }, ans: 'x축, y축, 좌표축, 원점, 좌표평면' },
-      { id: '10118', name: '송정수', step: '1-4', status: 'active', score: 85, lastActive: '18초 전', point: { x: 1, y: 2 }, ans: '순서쌍 개념 정리 완료' },
-      { id: '10119', name: '전수직', step: '1-3', status: 'submitted', score: 95, lastActive: '1분 전', point: { x: 1, y: 0 }, ans: 'A(-5), B(1), C(4)' },
-      { id: '10120', name: '홍기호', step: '1-2', status: 'active', score: 80, lastActive: '22초 전', point: { x: 2, y: 0 }, ans: '좌표, P(2) 이동 실습' },
-      { id: '10121', name: '유개념', step: '1-1', status: 'submitted', score: 90, lastActive: '1분 전', point: { x: 0, y: 0 }, ans: 'A(-3.5), B(-2), O(0), C(1), D(3)' },
-      { id: '10122', name: '고탐구', step: '0-3', status: 'submitted', score: 100, lastActive: '2분 전', point: { x: 0, y: 0 }, ans: '식의 값 = 12' },
-      { id: '10123', name: '문식값', step: '0-2', status: 'submitted', score: 100, lastActive: '2분 전', point: { x: 0, y: 0 }, ans: 'A(-2), B(1/2), C(3)' },
-      { id: '10124', name: '양비교', step: '0-1', status: 'submitted', score: 100, lastActive: '3분 전', point: { x: 0, y: 0 }, ans: '12, 15, 18, △ = □ × 3' },
-      { id: '10125', name: '배완성', step: '2-8', status: 'active', score: 100, lastActive: '2초 전', point: { x: -2, y: -3 }, ans: '보물 (-2, -3) 발견 및 축 확인' }
+      ...createClassMockG1(1),
+      ...createClassMockG1(2),
+      ...createClassMockG1(3),
+      ...createClassMockG1(4)
     ];
 
     let currentZoomStudent = null;
     let teacherDashboardTimer = null;
+    let currentClassFilter = '1'; // 기본 1반 (10101~10125)
     let currentStudentFilter = 'all';
 
     const SUBSTEP_TITLES = {
@@ -1166,6 +1192,21 @@
       '5-2': '4.5 반비례 정리'
     };
 
+    function selectClassFilter(classNum, btn) {
+      currentClassFilter = classNum;
+      document.querySelectorAll('.class-filter-btn').forEach(b => {
+        b.classList.remove('active');
+        b.style.background = '#f1f5f9';
+        b.style.color = '#334155';
+      });
+      if (btn) {
+        btn.classList.add('active');
+        btn.style.background = '#4f46e5';
+        btn.style.color = '#ffffff';
+      }
+      render5x5StudentGridG1();
+    }
+
     function enterTeacherDashboard() {
       const topBar = document.getElementById('main-tab-bar');
       const subBar = document.getElementById('substep-bar');
@@ -1173,16 +1214,15 @@
       if (subBar) subBar.style.display = 'none';
 
       switchView('teacher-dashboard');
-      render5x5StudentGridG1(currentStudentFilter);
+      render5x5StudentGridG1();
 
       if (teacherDashboardTimer) clearInterval(teacherDashboardTimer);
       teacherDashboardTimer = setInterval(() => {
-        // 실시간 랜덤 활동 시뮬레이션
         const randIdx = Math.floor(Math.random() * G1_STUDENTS_MOCK.length);
         if (G1_STUDENTS_MOCK[randIdx].status === 'active') {
           G1_STUDENTS_MOCK[randIdx].lastActive = '방금 전';
         }
-        render5x5StudentGridG1(currentStudentFilter, false);
+        render5x5StudentGridG1(false);
       }, 5000);
     }
 
@@ -1199,7 +1239,7 @@
 
     function filterStudents(filterType, btn) {
       currentStudentFilter = filterType;
-      document.querySelectorAll('.filter-btn').forEach(b => {
+      document.querySelectorAll('.status-filter-btn').forEach(b => {
         b.classList.remove('active');
         b.style.background = '#f1f5f9';
         b.style.color = '#334155';
@@ -1209,30 +1249,36 @@
         btn.style.background = '#4f46e5';
         btn.style.color = '#ffffff';
       }
-      render5x5StudentGridG1(filterType);
+      render5x5StudentGridG1();
     }
 
     function refreshTeacherDashboard() {
-      render5x5StudentGridG1(currentStudentFilter);
+      render5x5StudentGridG1();
     }
 
-    function render5x5StudentGridG1(filter = 'all', reanimate = true) {
+    function render5x5StudentGridG1(reanimate = true) {
       const container = document.getElementById('teacher-5x5-grid-container');
       if (!container) return;
 
-      // 현재 로그인한 사용자 데이터가 있으면 10101번에 실시간 동기화
+      // 현재 로그인한 실제 학생 데이터 동기화
       if (state.studentId && state.subStep) {
-        const myStudent = G1_STUDENTS_MOCK.find(s => s.id === state.studentId || s.id === '10101');
+        const myStudent = G1_STUDENTS_MOCK.find(s => s.id === state.studentId);
         if (myStudent) {
           myStudent.step = state.subStep;
           myStudent.lastActive = '방금 전';
-          myStudent.score = state.completedSubSteps.length * 15;
+          myStudent.score = Math.min(100, (state.completedSubSteps.length + 1) * 15);
           myStudent.status = 'active';
         }
       }
 
+      // 반(Class) 필터링 대상 학생들 추출
+      const classFiltered = G1_STUDENTS_MOCK.filter(s => {
+        if (currentClassFilter === 'all') return true;
+        return getStudentClassNumberG1(s.id).toString() === currentClassFilter;
+      });
+
       let activeCnt = 0, submittedCnt = 0, stuckCnt = 0;
-      G1_STUDENTS_MOCK.forEach(s => {
+      classFiltered.forEach(s => {
         if (s.status === 'active') activeCnt++;
         else if (s.status === 'submitted') submittedCnt++;
         else if (s.status === 'stuck') stuckCnt++;
@@ -1247,8 +1293,8 @@
 
       container.innerHTML = '';
 
-      G1_STUDENTS_MOCK.forEach((student, idx) => {
-        if (filter !== 'all' && student.status !== filter) return;
+      classFiltered.forEach(student => {
+        if (currentStudentFilter !== 'all' && student.status !== currentStudentFilter) return;
 
         const card = document.createElement('div');
         card.className = 'student-card';
@@ -1260,12 +1306,13 @@
         else if (student.status === 'stuck') { statusText = '🔴 지체/도움'; statusClass = 'status-stuck'; }
 
         const stepTitle = SUBSTEP_TITLES[student.step] || `[단원 ${student.step}]`;
+        const classBadge = `${getStudentClassNumberG1(student.id)}반`;
 
         card.innerHTML = `
           <div class="student-card-header">
             <div class="student-card-name">
               <span>👤 ${student.name}</span>
-              <span style="font-size:0.72rem; color:#64748b; font-weight:600;">(${student.id})</span>
+              <span style="font-size:0.72rem; color:#4f46e5; font-weight:700;">(${student.id} · ${classBadge})</span>
             </div>
             <span class="student-card-badge ${statusClass}">${statusText}</span>
           </div>
@@ -1301,7 +1348,8 @@
       const ansEl = document.getElementById('zoom-student-answers');
       const canvasContainer = document.getElementById('zoom-canvas-container');
 
-      if (titleEl) titleEl.innerText = `👤 ${student.name} (${student.id}) - 실시간 화면 확대`;
+      const classNum = getStudentClassNumberG1(student.id);
+      if (titleEl) titleEl.innerText = `👤 ${student.name} (${student.id} · ${classNum}반) - 실시간 화면 확대`;
       
       let statusText = '🟢 실시간 활동 중';
       let statusClass = 'status-active';
@@ -1318,7 +1366,7 @@
 
       if (infoEl) {
         infoEl.innerHTML = `
-          • <b>학번 / 성명</b>: ${student.id} / ${student.name}<br>
+          • <b>학급 / 학번 / 성명</b>: <b>1학년 ${classNum}반</b> / ${student.id} / <b>${student.name}</b><br>
           • <b>현재 수행 단원</b>: <span style="color:#4f46e5; font-weight:800;">${stepName}</span><br>
           • <b>학습 성취도/진도</b>: <b>${student.score}점 (진도율: ${Math.min(100, Math.round(student.score * 1.1))}%)</b><br>
           • <b>최근 인터랙션 시간</b>: ${student.lastActive}
@@ -1332,26 +1380,17 @@
             <span style="color:#0369a1; font-weight:700;">${student.ans}</span>
           </div>
           <div style="font-size:0.78rem; color:#64748b;">
-            • 좌표 및 마커 상태: <b>(${student.point.x}, ${student.point.y})</b><br>
+            • 좌표/마커 탐구 상태: <b>(${student.point ? student.point.x : 0}, ${student.point ? student.point.y : 0})</b><br>
             • 오답 시도 횟수: <b>${student.status === 'stuck' ? '3회' : '0회'}</b>
           </div>
         `;
       }
 
-      // 확대 캔버스 재현
+      // 학생의 실제 활동 화면과 100% 동일한 캔버스 재현
       if (canvasContainer) {
         canvasContainer.innerHTML = '';
-        const zTwo = new Two({ width: 440, height: 360, type: Two.Types.canvas, autostart: true }).appendTo(canvasContainer);
-
-        if (student.step === '2-8') {
-          // 보물지도 캔버스 재현
-          drawZoomTreasureMap(zTwo, student.point);
-        } else if (student.step === '2-7') {
-          drawZoomSelfCheck5(zTwo);
-        } else {
-          // 일반 좌표평면 캔버스 재현
-          drawZoomCoordinatePlane(zTwo, student.point);
-        }
+        const zTwo = new Two({ width: 500, height: 360, type: Two.Types.canvas, autostart: true }).appendTo(canvasContainer);
+        drawStudentLiveStepCanvasG1(zTwo, student);
       }
 
       if (modal) modal.style.display = 'flex';
@@ -1363,77 +1402,67 @@
       currentZoomStudent = null;
     }
 
-    function drawZoomCoordinatePlane(two, pointData) {
+    // -------------------------------------------------------------
+    // 학생의 현재 단계(subStep)에 따른 실제 활동 캔버스 100% 동일 렌더러 (중1 수학)
+    // -------------------------------------------------------------
+    function drawStudentLiveStepCanvasG1(two, student) {
       if (!two) return;
       two.clear();
-      const cx = two.width / 2, cy = two.height / 2;
-      const step = 28;
+      const code = student.step || '0-1';
 
-      for (let x = 0; x <= two.width; x += step) {
-        const l = two.makeLine(x, 0, x, two.height);
-        l.stroke = (x === cx) ? '#0f172a' : '#e2e8f0';
-        l.linewidth = (x === cx) ? 2 : 1;
+      if (code === '0-1') {
+        drawTableCanvas(two);
+      } else if (code === '0-2') {
+        drawNumberLineCanvas(two);
+      } else if (code === '0-3') {
+        drawAlgebraicCanvas(two);
+      } else if (code === '1-1') {
+        drawThinkingOpenRoadCanvas(two);
+      } else if (code === '1-2') {
+        drawInteractiveCoordinateCanvas(two, student.point || { x: 2, label: 'P' });
+      } else if (code === '1-3') {
+        drawProblem1NumberLineCanvas(two);
+      } else if (code === '1-4') {
+        drawOrderedPairCanvas(two);
+      } else if (code === '1-5') {
+        drawCoordinateAxesConceptCanvas(two);
+      } else if (code === '1-6') {
+        drawPointCoordinateInteractiveCanvas(two, student.point || { x: 2, y: 3, label: 'P' });
+      } else if (code === '1-7') {
+        drawProblem2CoordinateCanvas(two);
+      } else if (code === '2-1') {
+        drawQuadrantInteractiveCanvas(two, student.point || { x: 3, y: 2, label: 'P' });
+      } else if (code === '2-2') {
+        drawProblem3Canvas(two);
+      } else if (code === '2-3') {
+        drawSelfCheck1Canvas(two);
+      } else if (code === '2-4') {
+        drawSelfCheck2Canvas(two, student.pointsSC2 || {
+          A: { x: 3, y: 1 },
+          B: { x: 0, y: -2 },
+          C: { x: -3, y: -3 },
+          D: { x: -4, y: 2 }
+        });
+      } else if (code === '2-5') {
+        drawSelfCheck3Canvas(two);
+      } else if (code === '2-6') {
+        drawSelfCheck4Canvas(two);
+      } else if (code === '2-7') {
+        drawSelfCheck5Canvas(two);
+      } else if (code === '2-8') {
+        drawTreasureMapCanvas(two, {
+          treasurePos: student.point || { x: -2, y: -3 },
+          showAnswerAxes: false
+        });
+      } else if (code.startsWith('3-')) {
+        drawGraphInterpretationCanvas(two);
+      } else if (code.startsWith('4-')) {
+        drawCoordinatePlane(two, null, { directSlope: student.slope || 2 });
+      } else if (code.startsWith('5-')) {
+        drawInverseCurveCanvas(two, student.curvedA || 6);
+      } else {
+        drawCoordinatePlane(two, student.point);
       }
-      for (let y = 0; y <= two.height; y += step) {
-        const l = two.makeLine(0, y, two.width, y);
-        l.stroke = (y === cy) ? '#0f172a' : '#e2e8f0';
-        l.linewidth = (y === cy) ? 2 : 1;
-      }
-
-      const px = cx + (pointData ? pointData.x : 2) * step;
-      const py = cy - (pointData ? pointData.y : 3) * step;
-      const circle = two.makeCircle(px, py, 7); circle.fill = '#4f46e5'; circle.stroke = '#fff'; circle.linewidth = 2;
-      const lbl = two.makeText(`P(${pointData ? pointData.x : 2}, ${pointData ? pointData.y : 3})`, px + 24, py - 12);
-      lbl.size = 14; lbl.weight = 800; lbl.fill = '#4f46e5';
-
-      two.update();
-    }
-
-    function drawZoomTreasureMap(two, pointData) {
-      if (!two) return;
-      two.clear();
-      const cx = two.width / 2, cy = two.height / 2 + 10;
-      const step = 26;
-
-      const beach = two.makeRoundedRectangle(cx, cy, 320, 260, 40);
-      beach.fill = '#fef08a'; beach.stroke = '#facc15'; beach.linewidth = 2;
-      const green = two.makeRoundedRectangle(cx, cy, 280, 220, 30);
-      green.fill = '#86efac'; green.stroke = '#4ade80'; green.linewidth = 2;
-
-      for (let i = -5; i <= 5; i++) {
-        const v = two.makeLine(cx + i * step, cy - 120, cx + i * step, cy + 120);
-        v.stroke = 'rgba(71,85,105,0.3)'; v.dashes = [2,2];
-        const h = two.makeLine(cx - 140, cy + i * step, cx + 140, cy + i * step);
-        h.stroke = 'rgba(71,85,105,0.3)'; h.dashes = [2,2];
-      }
-
-      const tx = cx + (pointData ? pointData.x : -2) * step;
-      const ty = cy - (pointData ? pointData.y : -3) * step;
-      const tDot = two.makeCircle(tx, ty, 8); tDot.fill = '#f59e0b'; tDot.stroke = '#fff'; tDot.linewidth = 2;
-      const tLbl = two.makeText(`💎 보물 (${pointData ? pointData.x : -2}, ${pointData ? pointData.y : -3})`, tx + 24, ty - 14);
-      tLbl.size = 13; tLbl.weight = 800; tLbl.fill = '#b45309';
-
-      two.update();
-    }
-
-    function drawZoomSelfCheck5(two) {
-      if (!two) return;
-      two.clear();
-      const cx = two.width / 2, cy = two.height / 2;
-      const step = 30;
-
-      for (let i = -4; i <= 4; i++) {
-        const v = two.makeLine(cx + i * step, cy - 120, cx + i * step, cy + 120);
-        v.stroke = (i === 0) ? '#1e293b' : '#e2e8f0';
-        const h = two.makeLine(cx - 120, cy + i * step, cx + 120, cy + i * step);
-        h.stroke = (i === 0) ? '#1e293b' : '#e2e8f0';
-      }
-
-      // 삼각형 OAB
-      const pA = { x: cx - 4 * step, y: cy };
-      const pB = { x: cx, y: cy - 4 * step };
-      const tri = two.makePath(cx, cy, pA.x, pA.y, pB.x, pB.y, true);
-      tri.fill = 'rgba(79, 70, 229, 0.2)'; tri.stroke = '#4f46e5'; tri.linewidth = 2;
 
       two.update();
     }
@@ -1448,7 +1477,7 @@
 
       alert(`✅ [교사 원격 지원]\n${currentZoomStudent.name} (${currentZoomStudent.id}) 학생의 [${prevStep}] 단계를 원격 통과 처리하였습니다!`);
       closeStudentZoomModal();
-      render5x5StudentGridG1(currentStudentFilter);
+      render5x5StudentGridG1();
     }
 
     function sendRemoteHintToSelectedStudent() {
