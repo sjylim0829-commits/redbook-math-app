@@ -434,16 +434,16 @@
         <!-- Left Plane Section (60fps Canvas) -->
         <div class="plane-section">
           <div class="plane-toolbar">
-            <button id="tool-select" class="tool-btn active" onclick="setTool('select')">🖐️ 선택/점 드래그</button>
+            <button id="tool-select" class="tool-btn active" onclick="setTool('select')">🖐️ 보물 위치 지정 / 점 드래그</button>
             <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()">🔄 화면 초기화</button>
             
-            <!-- Drawing Toolbar (Active on 2-7 or when needed) -->
+            <!-- Drawing Toolbar (Active on 2-7, 2-8 or when needed) -->
             <div id="drawing-toolbar-group" style="display:none; align-items:center; gap:6px; margin-left:8px; padding-left:8px; border-left:1px solid #cbd5e1;">
               <span style="font-size:0.78rem; font-weight:800; color:#475569;">✏️ 펜 드로잉:</span>
-              <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#4f46e5; color:#fff;" onclick="setPenColor('#4f46e5')">파랑</button>
-              <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#e11d48; color:#fff;" onclick="setPenColor('#e11d48')">빨강</button>
-              <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#1e293b; color:#fff;" onclick="setPenColor('#1e293b')">검정</button>
-              <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#f1f5f9; color:#475569;" onclick="setEraserMode()">🧹 지우개</button>
+              <button id="btn-pen-blue" class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#4f46e5; color:#fff;" onclick="setPenColor('#4f46e5')">파랑</button>
+              <button id="btn-pen-red" class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#e11d48; color:#fff;" onclick="setPenColor('#e11d48')">빨강</button>
+              <button id="btn-pen-black" class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#1e293b; color:#fff;" onclick="setPenColor('#1e293b')">검정</button>
+              <button id="btn-pen-eraser" class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#f1f5f9; color:#475569;" onclick="setEraserMode()">🧹 지우개</button>
               <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fee2e2; color:#dc2626;" onclick="clearFreehandDrawing()">🗑️ 드로잉 삭제</button>
             </div>
 
@@ -547,9 +547,28 @@
       };
 
       canvas.onpointerdown = (e) => {
+        const pos = getPos(e);
+
+        if (state.subStep === '2-8' && state.tool === 'select') {
+          // 보물 위치 찍기 모드
+          const width = canvas.width, height = canvas.height;
+          const cx = width / 2, cy = height / 2 + 10;
+          const step = 36;
+          let gx = Math.round((pos.x - cx) / step);
+          let gy = Math.round((cy - pos.y) / step);
+          if (gx < -6) gx = -6; if (gx > 6) gx = 6;
+          if (gy < -5) gy = -5; if (gy > 5) gy = 5;
+
+          if (!state.treasureMap) state.treasureMap = {};
+          state.treasureMap.treasurePos = { x: gx, y: gy };
+          if (twoInstance) drawTreasureMapCanvas(twoInstance);
+          const disp = document.getElementById('treasure-pos-display');
+          if (disp) disp.innerText = `점 (${gx}, ${gy})`;
+          return;
+        }
+
         isDrawingNow = true;
         try { canvas.setPointerCapture(e.pointerId); } catch(err){}
-        const pos = getPos(e);
         drawingCtx.beginPath();
         drawingCtx.moveTo(pos.x, pos.y);
       };
@@ -588,16 +607,30 @@
       isEraserMode = false;
       currentPenColor = color;
       currentPenSize = 3;
+      state.tool = 'pen';
+      document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+      const btnId = (color === '#4f46e5') ? 'btn-pen-blue' : (color === '#e11d48' ? 'btn-pen-red' : 'btn-pen-black');
+      const el = document.getElementById(btnId);
+      if (el) el.classList.add('active');
     }
 
     function setEraserMode() {
       isEraserMode = true;
+      state.tool = 'eraser';
+      document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+      const el = document.getElementById('btn-pen-eraser');
+      if (el) el.classList.add('active');
+    }
+
+    function setTreasurePinMode() {
+      setTool('select');
     }
 
     function snapVal(val, step = 30) { return Math.round(val / step) * step; }
 
     function setTool(toolName) {
       state.tool = toolName;
+      isEraserMode = false;
       document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
       const el = document.getElementById(`tool-${toolName}`);
       if (el) el.classList.add('active');
@@ -1481,14 +1514,14 @@
         `;
       }
       else if (subStepCode === '2-8') {
-        setMissionUI("<b>[4.2 생각 넓히기] 보물지도에서 보물의 위치 찾기 (지도서 p.162)</b><br>보물지도의 단서를 바탕으로 좌표축을 찾아 보물이 묻혀 있는 위치를 캔버스에서 점으로 찍어 보세요!");
+        setMissionUI("<b>[4.2 생각 넓히기] 보물지도에서 보물의 위치 찾기 (지도서 p.162)</b><br>상단 <b>펜 도구</b>로 지도 위에 직접 좌표축을 그어보고, <b>[보물 위치 지정]</b>으로 보물이 묻혀 있는 위치를 점으로 찍어 보세요!");
         const group = document.getElementById('drawing-toolbar-group');
-        if (group) group.style.display = 'none';
+        if (group) group.style.display = 'flex';
         const drawCanvas = document.getElementById('freehand-drawing-canvas');
-        if (drawCanvas) drawCanvas.style.display = 'none';
+        if (drawCanvas) drawCanvas.style.display = 'block';
 
         if (!state.treasureMap) {
-          state.treasureMap = { treasurePos: null, userAxisX_Y: null, userAxisY_X: null, showAnswerAxes: false };
+          state.treasureMap = { treasurePos: null, showAnswerAxes: false };
         } else {
           state.treasureMap.showAnswerAxes = false;
         }
@@ -1496,11 +1529,11 @@
         if (engine && engine.two) {
           drawTreasureMapCanvas(engine.two);
         }
-        setTimeout(attachTreasureMapListeners, 100);
+        setTool('select');
 
         const currentPosTxt = state.treasureMap.treasurePos 
           ? `점 (${state.treasureMap.treasurePos.x}, ${state.treasureMap.treasurePos.y})`
-          : '미지정 (캔버스를 클릭하세요)';
+          : '미지정 (캔버스를 터치하세요)';
 
         formArea.innerHTML = `
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding:16px;">
@@ -1517,41 +1550,30 @@
               ③ 모눈 한 칸의 길이를 1이라고 하면 보물은 <b>점 $(-2, -3)$의 위치</b>에 있다네!
             </div>
 
-            <!-- 좌표축 직접 설정 지원 도구 -->
-            <div style="background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
-              <div style="font-weight:800; color:#334155; font-size:0.92rem; margin-bottom:8px;">
-                🛠️ 1. 좌표축 직접 그리기/선택 (탐구 지원)
+            <!-- 직접 펜 드로잉 안내 -->
+            <div style="background:#f0fdf4; border:1.5px solid #86efac; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
+              <div style="font-weight:800; color:#15803d; font-size:0.92rem; margin-bottom:6px;">
+                ✏️ 1. 좌표축 직접 그리기 탐구 (상단 펜 툴바 사용)
               </div>
-              <div style="display:flex; flex-direction:column; gap:10px; font-size:0.86rem;">
-                <div>
-                  <span style="font-weight:700; color:#475569;">가로축 ($x$축) 선택:</span>
-                  <div style="display:flex; gap:6px; margin-top:4px; flex-wrap:wrap;">
-                    <button class="btn" id="btn-axis-x-a" style="padding:5px 10px; font-size:0.82rem; background:#e0e7ff; color:#4338ca; border:1px solid #c7d2fe; font-weight:700;" onclick="setUserAxisX(0)">점 A를 지나는 가로선</button>
-                    <button class="btn" id="btn-axis-x-b" style="padding:5px 10px; font-size:0.82rem; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; font-weight:700;" onclick="setUserAxisX(-3)">점 B를 지나는 가로선</button>
-                    <button class="btn" style="padding:5px 8px; font-size:0.82rem; background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5;" onclick="setUserAxisX(null)">초기화</button>
-                  </div>
-                </div>
-                <div>
-                  <span style="font-weight:700; color:#475569;">세로축 ($y$축) 선택:</span>
-                  <div style="display:flex; gap:6px; margin-top:4px; flex-wrap:wrap;">
-                    <button class="btn" id="btn-axis-y-b" style="padding:5px 10px; font-size:0.82rem; background:#e0e7ff; color:#4338ca; border:1px solid #c7d2fe; font-weight:700;" onclick="setUserAxisY(0)">점 B를 지나는 세로선</button>
-                    <button class="btn" id="btn-axis-y-a" style="padding:5px 10px; font-size:0.82rem; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; font-weight:700;" onclick="setUserAxisY(-4)">점 A를 지나는 세로선</button>
-                    <button class="btn" style="padding:5px 8px; font-size:0.82rem; background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5;" onclick="setUserAxisY(null)">초기화</button>
-                  </div>
-                </div>
+              <div style="font-size:0.86rem; color:#166534; line-height:1.6;">
+                • <b>상단 파랑/빨강/검정 펜</b>을 선택하여 점 A, B를 지나는 $x$축과 $y$축을 지도 위에 직접 그어보세요.<br>
+                • 점 C의 $x$좌표와 점 D의 $y$좌표 부호가 달라지는 올바른 좌표축과 원점 $O$를 찾아보세요.
               </div>
             </div>
 
             <!-- 보물 위치 찾기 및 상태 표시 -->
             <div style="background:#eff6ff; border:1.5px solid #bfdbfe; border-radius:10px; padding:12px 14px; margin-bottom:16px;">
-              <div style="font-weight:800; color:#1e40af; font-size:0.92rem; margin-bottom:6px;">
-                💎 2. 보물의 위치 지정 (좌측 캔버스 클릭 또는 드래그)
+              <div style="font-weight:800; color:#1e40af; font-size:0.92rem; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+                <span>💎 2. 보물의 위치 찍기</span>
+                <button class="btn" style="padding:4px 10px; font-size:0.8rem; background:#3b82f6; color:#ffffff; font-weight:700; border-radius:6px;" onclick="setTreasurePinMode()">
+                  🖐️ 보물 찍기 모드
+                </button>
               </div>
               <div style="font-size:0.86rem; color:#1e3a8a; line-height:1.6; margin-bottom:10px;">
-                좌측 보물지도에서 보물이 묻혀 있는 위치를 클릭하거나 보물 마커를 이동시키세요.
+                상단 <b>[🖐️ 보물 위치 지정]</b> 버튼을 누른 후, 원점 $O$를 기준으로 점 <b>$(-2, -3)$</b>의 위치를 지도에서 터치하세요.
               </div>
               <div style="display:flex; justify-content:space-between; align-items:center; background:#ffffff; padding:8px 12px; border-radius:8px; border:1px solid #93c5fd;">
-                <span style="font-size:0.88rem; font-weight:700; color:#334155;">📍 현재 보물 마커 위치:</span>
+                <span style="font-size:0.88rem; font-weight:700; color:#334155;">📍 현재 찍은 보물 위치:</span>
                 <span id="treasure-pos-display" style="font-size:0.95rem; font-weight:800; color:#d97706; background:#fef3c7; padding:3px 10px; border-radius:8px; border:1px solid #fcd34d;">
                   ${currentPosTxt}
                 </span>
@@ -2859,34 +2881,38 @@
         wave.stroke = 'rgba(56, 189, 248, 0.6)'; wave.linewidth = 1.5; wave.noFill();
       });
 
-      // 2. 보물섬 실루엣 지형 (Island Polygon & Coast)
-      const islandPath = [
-        new Two.Anchor(cx - 5.4 * step, cy - 1.5 * step),
-        new Two.Anchor(cx - 4.8 * step, cy - 3.5 * step),
-        new Two.Anchor(cx - 2.5 * step, cy - 4.5 * step),
-        new Two.Anchor(cx + 0.5 * step, cy - 4.8 * step),
-        new Two.Anchor(cx + 3.8 * step, cy - 3.8 * step),
-        new Two.Anchor(cx + 5.2 * step, cy - 1.8 * step),
-        new Two.Anchor(cx + 5.5 * step, cy + 1.5 * step),
-        new Two.Anchor(cx + 4.2 * step, cy + 3.8 * step),
-        new Two.Anchor(cx + 1.8 * step, cy + 4.5 * step),
-        new Two.Anchor(cx - 0.5 * step, cy + 4.2 * step),
-        new Two.Anchor(cx - 2.5 * step, cy + 4.6 * step),
-        new Two.Anchor(cx - 4.5 * step, cy + 3.5 * step),
-        new Two.Anchor(cx - 5.5 * step, cy + 1.0 * step)
+      // 2. 보물섬 실루엣 지형 (Island Polygon & Coast - Centered at (cx, cy))
+      const islandRelPts = [
+        new Two.Anchor(-5.2 * step, -1.5 * step),
+        new Two.Anchor(-4.6 * step, -3.4 * step),
+        new Two.Anchor(-2.4 * step, -4.2 * step),
+        new Two.Anchor(0.6 * step, -4.4 * step),
+        new Two.Anchor(3.5 * step, -3.5 * step),
+        new Two.Anchor(5.0 * step, -1.5 * step),
+        new Two.Anchor(5.2 * step, 1.5 * step),
+        new Two.Anchor(3.8 * step, 3.6 * step),
+        new Two.Anchor(1.6 * step, 4.2 * step),
+        new Two.Anchor(-0.6 * step, 3.8 * step),
+        new Two.Anchor(-2.4 * step, 4.3 * step),
+        new Two.Anchor(-4.3 * step, 3.2 * step),
+        new Two.Anchor(-5.2 * step, 0.8 * step)
       ];
 
       // 해변 모래사장 외곽
-      const beach = two.makePath(islandPath, true);
-      beach.fill = '#fef08a'; beach.stroke = '#facc15'; beach.linewidth = 4;
+      const beach = new Two.Path(islandRelPts, true, false);
+      beach.translation.set(cx, cy);
+      beach.fill = '#fde047'; beach.stroke = '#eab308'; beach.linewidth = 4;
+      two.add(beach);
 
       // 섬 본체 녹지
-      const innerIslandPath = islandPath.map(pt => new Two.Anchor(cx + (pt.x - cx) * 0.92, cy + (pt.y - cy) * 0.92));
-      const island = two.makePath(innerIslandPath, true);
-      island.fill = '#86efac'; island.stroke = '#4ade80'; island.linewidth = 2;
+      const innerIslandPts = islandRelPts.map(pt => new Two.Anchor(pt.x * 0.94, pt.y * 0.94));
+      const island = new Two.Path(innerIslandPts, true, false);
+      island.translation.set(cx, cy);
+      island.fill = '#86efac'; island.stroke = '#22c55e'; island.linewidth = 2;
+      two.add(island);
 
       // 3. 섬 내부 지형 장식 (산, 호수, 숲)
-      // 호수 (중앙 및 북서쪽)
+      // 호수 (중앙 및 동쪽)
       const lake1 = two.makeEllipse(cx - 1.2 * step, cy - 1.5 * step, 28, 16);
       lake1.fill = '#7dd3fc'; lake1.stroke = '#38bdf8'; lake1.linewidth = 1.5;
       const lake2 = two.makeEllipse(cx + 2.2 * step, cy - 0.8 * step, 22, 14);
@@ -2914,36 +2940,7 @@
         hLine.stroke = 'rgba(71, 85, 105, 0.35)'; hLine.linewidth = 1; hLine.dashes = [2, 2];
       }
 
-      // 5. 학생이 직접 그린/선택한 후보 좌표축 (User Candidate Axes)
-      if (state.treasureMap) {
-        // 후보 x축 (가로선)
-        if (state.treasureMap.userAxisX_Y !== null) {
-          const uy = cy - state.treasureMap.userAxisX_Y * step;
-          const uXAxis = two.makeLine(cx - (maxGridX + 0.3) * step, uy, cx + (maxGridX + 0.3) * step, uy);
-          uXAxis.stroke = '#4f46e5'; uXAxis.linewidth = 2.5; uXAxis.dashes = [4, 3];
-          const uXLbl = two.makeText('지정한 가로축 (x축 후보)', cx + (maxGridX - 1.2) * step, uy - 10);
-          uXLbl.size = 12; uXLbl.weight = 800; uXLbl.fill = '#4f46e5';
-        }
-        // 후보 y축 (세로선)
-        if (state.treasureMap.userAxisY_X !== null) {
-          const ux = cx + state.treasureMap.userAxisY_X * step;
-          const uYAxis = two.makeLine(ux, cy - (maxGridY + 0.3) * step, ux, cy + (maxGridY + 0.3) * step);
-          uYAxis.stroke = '#4f46e5'; uYAxis.linewidth = 2.5; uYAxis.dashes = [4, 3];
-          const uYLbl = two.makeText('지정한 세로축 (y축 후보)', ux + 10, cy - (maxGridY - 0.6) * step);
-          uYLbl.size = 12; uYLbl.weight = 800; uYLbl.fill = '#4f46e5';
-        }
-        // 두 후보 축이 모두 있으면 후보 원점 O' 표시
-        if (state.treasureMap.userAxisX_Y !== null && state.treasureMap.userAxisY_X !== null) {
-          const ox = cx + state.treasureMap.userAxisY_X * step;
-          const oy = cy - state.treasureMap.userAxisX_Y * step;
-          const oDot = two.makeCircle(ox, oy, 6);
-          oDot.fill = '#4f46e5'; oDot.stroke = '#ffffff'; oDot.linewidth = 2;
-          const oLbl = two.makeText("O'", ox - 12, oy - 12);
-          oLbl.size = 15; oLbl.weight = 800; oLbl.fill = '#4f46e5';
-        }
-      }
-
-      // 6. [정답/힌트 공개 모드] 정확한 좌표축 및 원점 O 표시 (요구사항 5)
+      // 5. [정답/힌트 공개 모드] 정확한 좌표축 및 원점 O 표시 (요구사항 5)
       if (state.treasureMap && state.treasureMap.showAnswerAxes) {
         // 정확한 x축: 점 A를 지나는 가로선 (y=0)
         const ansXAxis = two.makeLine(cx - (maxGridX + 0.4) * step, cy, cx + (maxGridX + 0.4) * step, cy);
@@ -2966,7 +2963,7 @@
         lblO.size = 14; lblO.weight = 800; lblO.fill = '#dc2626';
       }
 
-      // 7. 네 점 A, B, C, D 위치 (정확한 상대 격자 위치 배치)
+      // 6. 네 점 A, B, C, D 위치 (정확한 상대 격자 위치 배치)
       // A: (-4, 0), B: (0, -3), C: (1, 1), D: (-3, -1)
       const mapPoints = [
         { name: 'A', gx: -4, gy: 0, color: '#dc2626' },
@@ -2992,7 +2989,7 @@
         lbl.size = 15; lbl.weight = 800; lbl.fill = pt.color;
       });
 
-      // 8. 학생이 지정한 보물의 위치 (Treasure Chest Marker)
+      // 7. 학생이 지정한 보물의 위치 (Treasure Chest Marker)
       if (state.treasureMap && state.treasureMap.treasurePos) {
         const tx = cx + state.treasureMap.treasurePos.x * step;
         const ty = cy - state.treasureMap.treasurePos.y * step;
@@ -3009,86 +3006,13 @@
         tLbl.size = 14; tLbl.weight = 800; tLbl.fill = '#b45309';
       }
 
-      // 9. 상단 헤더 배너
+      // 8. 상단 헤더 배너
       const banner = two.makeRoundedRectangle(cx, 28, Math.min(width - 40, 560), 36, 10);
       banner.fill = '#fffbeb'; banner.stroke = '#fcd34d'; banner.linewidth = 2;
-      const bannerTxt = two.makeText('🗺️ 캔버스의 모눈 격자를 클릭하여 보물의 위치를 찾아보세요!', cx, 28);
-      bannerTxt.size = 14; bannerTxt.weight = 800; bannerTxt.fill = '#b45309';
+      const bannerTxt = two.makeText('🗺️ 상단 펜으로 좌표축을 직접 그리고, [보물 위치 지정]으로 보물을 찾아보세요!', cx, 28);
+      bannerTxt.size = 13.5; bannerTxt.weight = 800; bannerTxt.fill = '#b45309';
 
       two.update();
-    }
-
-    // -------------------------------------------------------------
-    // [생각 넓히기] 보물지도 클릭 및 드래그 이벤트 리스너
-    // -------------------------------------------------------------
-    let isTreasureDragging = false;
-    function attachTreasureMapListeners() {
-      const container = document.getElementById('two-container');
-      if (!container) return;
-
-      const getGridFromPx = (mx, my) => {
-        const width = container.clientWidth || 800;
-        const height = container.clientHeight || 500;
-        const cx = width / 2, cy = height / 2 + 10;
-        const step = 36;
-        let gx = Math.round((mx - cx) / step);
-        let gy = Math.round((cy - my) / step);
-        if (gx < -6) gx = -6; if (gx > 6) gx = 6;
-        if (gy < -5) gy = -5; if (gy > 5) gy = 5;
-        return { x: gx, y: gy };
-      };
-
-      container.onpointerdown = function(e) {
-        if (state.subStep !== '2-8') return;
-        const rect = container.getBoundingClientRect();
-        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-        const grid = getGridFromPx(mx, my);
-
-        isTreasureDragging = true;
-        try { container.setPointerCapture(e.pointerId); } catch(err){}
-        container.classList.add('grabbing');
-
-        if (!state.treasureMap) state.treasureMap = {};
-        state.treasureMap.treasurePos = { x: grid.x, y: grid.y };
-
-        if (twoInstance) drawTreasureMapCanvas(twoInstance);
-
-        const disp = document.getElementById('treasure-pos-display');
-        if (disp) disp.innerText = `점 (${grid.x}, ${grid.y})`;
-      };
-
-      container.onpointermove = function(e) {
-        if (!isTreasureDragging || state.subStep !== '2-8') return;
-        const rect = container.getBoundingClientRect();
-        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-        const grid = getGridFromPx(mx, my);
-
-        if (!state.treasureMap.treasurePos || state.treasureMap.treasurePos.x !== grid.x || state.treasureMap.treasurePos.y !== grid.y) {
-          state.treasureMap.treasurePos = { x: grid.x, y: grid.y };
-          if (twoInstance) drawTreasureMapCanvas(twoInstance);
-          const disp = document.getElementById('treasure-pos-display');
-          if (disp) disp.innerText = `점 (${grid.x}, ${grid.y})`;
-        }
-      };
-
-      container.onpointerup = container.onpointercancel = function(e) {
-        if (isTreasureDragging) {
-          isTreasureDragging = false;
-          container.classList.remove('grabbing');
-        }
-      };
-    }
-
-    function setUserAxisX(yVal) {
-      if (!state.treasureMap) state.treasureMap = {};
-      state.treasureMap.userAxisX_Y = yVal;
-      if (twoInstance) drawTreasureMapCanvas(twoInstance);
-    }
-
-    function setUserAxisY(xVal) {
-      if (!state.treasureMap) state.treasureMap = {};
-      state.treasureMap.userAxisY_X = xVal;
-      if (twoInstance) drawTreasureMapCanvas(twoInstance);
     }
 
     
