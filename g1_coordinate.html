@@ -153,6 +153,20 @@
       border-color: var(--secondary-color);
     }
 
+    .substep-pill.locked-pill {
+      background: #f8fafc;
+      color: #94a3b8;
+      border: 1px dashed #cbd5e1;
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .substep-pill.completed:not(.active) {
+      background: #f0fdf4;
+      color: #166534;
+      border-color: #86efac;
+    }
+
     /* Main Container */
     .main-container {
       flex: 1;
@@ -380,10 +394,11 @@
       <span class="badge-tag">중1 수학</span>
       <h1 class="app-title">📐 4. 좌표평면과 그래프</h1>
     </div>
-    <div>
-      <span id="current-user-info" style="font-size:0.85rem; font-weight:700; color:#4f46e5; margin-right:8px;">👤 로그인 필요</span>
-      <button class="btn" style="padding:4px 10px; font-size:0.78rem; background:#f1f5f9; border:1px solid #cbd5e1;" onclick="openTeacherLoginModal()">🔑 교사 접속</button>
-      <button class="btn" style="padding:4px 10px; font-size:0.78rem; background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; margin-left:4px;" onclick="switchView('login')">로그아웃</button>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <span id="current-user-info" style="font-size:0.85rem; font-weight:700; color:#4f46e5; margin-right:4px;">👤 로그인 필요</span>
+      <button class="btn" style="padding:4px 8px; font-size:0.78rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 페이지를 통과합니다">🔑 교사 패스 (Pass)</button>
+      <button class="btn" style="padding:4px 8px; font-size:0.78rem; background:#f1f5f9; border:1px solid #cbd5e1;" onclick="openTeacherLoginModal()">🔑 교사 접속</button>
+      <button class="btn" style="padding:4px 8px; font-size:0.78rem; background:#fee2e2; color:#dc2626; border:1px solid #fca5a5;" onclick="switchView('login')">로그아웃</button>
     </div>
   </header>
 
@@ -400,7 +415,7 @@
   <!-- Sub-Step Navigation Pills -->
   <div id="substep-bar" class="substep-bar">
     <span style="font-size:0.78rem; font-weight:700; color:#64748b;">📑 세부 탐구 활동:</span>
-    <div id="substep-pills-container" style="display:flex; gap:6px;"></div>
+    <div id="substep-pills-container" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
   </div>
 
   <!-- Main Container -->
@@ -436,6 +451,7 @@
           <div class="plane-toolbar">
             <button id="tool-select" class="tool-btn active" onclick="setTool('select')">🖐️ 보물 위치 지정 / 점 드래그</button>
             <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()">🔄 화면 초기화</button>
+            <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
             
             <!-- Drawing Toolbar (Active on 2-7, 2-8 or when needed) -->
             <div id="drawing-toolbar-group" style="display:none; align-items:center; gap:6px; margin-left:8px; padding-left:8px; border-left:1px solid #cbd5e1;">
@@ -472,6 +488,32 @@
     </section>
   </main>
 
+  <!-- Secure Password Modal for Teacher Login, Test Login, and Teacher Override Pass -->
+  <div id="secure-password-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.65); backdrop-filter:blur(4px); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:#ffffff; border-radius:16px; width:90%; max-width:400px; padding:24px; box-shadow:0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04); border:1.5px solid #e2e8f0;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1.5px solid #f1f5f9; padding-bottom:10px;">
+        <h3 id="secure-modal-title" style="margin:0; font-size:1.15rem; color:#1e293b; font-weight:800; display:flex; align-items:center; gap:8px;">
+          <span>🔑</span> <span id="secure-modal-title-text">교사 비밀번호 인증</span>
+        </h3>
+        <button type="button" onclick="closeSecurePasswordModal()" style="background:none; border:none; font-size:1.4rem; color:#94a3b8; cursor:pointer; line-height:1;">&times;</button>
+      </div>
+      <p id="secure-modal-desc" style="font-size:0.86rem; color:#64748b; line-height:1.5; margin-bottom:16px;">
+        보안 인증을 위해 비밀번호를 입력해 주세요. (화면에 번호가 노출되지 않습니다)
+      </p>
+      <form id="secure-password-form" onsubmit="handleSecurePasswordSubmit(event)">
+        <div class="form-group" style="margin-bottom:16px;">
+          <label for="secure-modal-input" style="font-size:0.85rem; font-weight:700; color:#334155; margin-bottom:6px; display:block;">비밀번호</label>
+          <input type="password" id="secure-modal-input" class="form-control" placeholder="비밀번호 입력 (••••••)" style="letter-spacing:3px; font-size:1.1rem;" autocomplete="off" required>
+        </div>
+        <div id="secure-modal-error" style="display:none; color:#dc2626; font-size:0.82rem; font-weight:700; margin-bottom:12px; background:#fef2f2; padding:8px 10px; border-radius:6px; border:1px solid #fca5a5;"></div>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn" style="flex:1; background:#f1f5f9; color:#475569; font-weight:700;" onclick="closeSecurePasswordModal()">취소</button>
+          <button type="submit" id="secure-modal-submit-btn" class="btn btn-primary" style="flex:2; font-weight:800;">확인 및 인증</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
     const state = {
       studentId: '10101',
@@ -481,6 +523,8 @@
       subStep: '0-1',
       tool: 'select',
       unlockedTabs: [0],
+      unlockedSubSteps: ['0-1'],
+      completedSubSteps: [],
       pointP: { x: 3, y: 2, label: 'P' },
       pointsSC2: {
         A: { x: 1, y: 0 },
@@ -642,6 +686,146 @@
       if (targetView) { targetView.classList.add('active'); targetView.style.display = 'flex'; }
     }
 
+    let currentSecureModalAction = 'teacher_login';
+
+    function openSecurePasswordModal(actionType, title, desc) {
+      currentSecureModalAction = actionType;
+      const modal = document.getElementById('secure-password-modal');
+      const titleEl = document.getElementById('secure-modal-title-text');
+      const descEl = document.getElementById('secure-modal-desc');
+      const inputEl = document.getElementById('secure-modal-input');
+      const errEl = document.getElementById('secure-modal-error');
+
+      if (titleEl) titleEl.innerText = title;
+      if (descEl) descEl.innerText = desc;
+      if (inputEl) { inputEl.value = ''; inputEl.type = 'password'; }
+      if (errEl) { errEl.style.display = 'none'; errEl.innerText = ''; }
+
+      if (modal) {
+        modal.style.display = 'flex';
+        setTimeout(() => { if (inputEl) inputEl.focus(); }, 80);
+      }
+    }
+
+    function closeSecurePasswordModal() {
+      const modal = document.getElementById('secure-password-modal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    function openTeacherLoginModal() {
+      openSecurePasswordModal(
+        'teacher_login',
+        '교사 계정 보안 접속',
+        '교사 전용 비밀번호를 입력해 주세요. (화면에 번호가 노출되지 않습니다)'
+      );
+    }
+
+    function openTestLoginModal() {
+      openSecurePasswordModal(
+        'test_login',
+        '체험 / 테스트 계정 접속',
+        '체험/테스트 전용 비밀번호를 입력해 주세요. (화면에 번호가 노출되지 않습니다)'
+      );
+    }
+
+    function openTeacherPassModal() {
+      if (state.isTeacherLoggedIn) {
+        if (confirm(`🔑 교사 권한으로 현재 [${state.subStep}] 페이지를 즉시 통과하시겠습니까?`)) {
+          passCurrentSubStep();
+        }
+        return;
+      }
+      openSecurePasswordModal(
+        'teacher_pass',
+        '교사 인증 패스 (Pass)',
+        `현재 [${state.subStep}] 페이지를 학생 대신 통과 처리하려면 교사 비밀번호를 입력해 주세요.`
+      );
+    }
+
+    function handleSecurePasswordSubmit(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const inputEl = document.getElementById('secure-modal-input');
+      const errEl = document.getElementById('secure-modal-error');
+      const pw = inputEl ? inputEl.value.trim() : '';
+
+      const isTeacherPw = (pw === '661227' || pw === 'teacher1234');
+
+      if (!isTeacherPw) {
+        if (errEl) {
+          errEl.style.display = 'block';
+          errEl.innerText = '❌ 비밀번호가 올바르지 않습니다. 다시 입력해 주세요.';
+        }
+        if (inputEl) { inputEl.value = ''; inputEl.focus(); }
+        return false;
+      }
+
+      closeSecurePasswordModal();
+
+      const ALL_SUBSTEPS = [
+        '0-1', '0-2', '0-3',
+        '1-1', '1-2', '1-3', '1-4', '1-5', '1-6', '1-7',
+        '2-1', '2-2', '2-3', '2-4', '2-5', '2-6', '2-7', '2-8',
+        '3-1', '3-2',
+        '4-1', '4-2',
+        '5-1', '5-2'
+      ];
+
+      if (currentSecureModalAction === 'teacher_login' || currentSecureModalAction === 'test_login') {
+        state.isTeacherLoggedIn = true;
+        for (let i = 0; i <= 5; i++) unlockNextStep(i);
+        state.unlockedSubSteps = [...ALL_SUBSTEPS];
+        document.getElementById('current-user-info').innerText = (currentSecureModalAction === 'teacher_login') 
+          ? '🔑 선생님 접속 (전체해금)' 
+          : '🧪 체험/테스트 접속 (전체해금)';
+        switchView('activity');
+        setTimeout(() => { loadSubStep(state.subStep || '0-1'); }, 80);
+      } else if (currentSecureModalAction === 'teacher_pass') {
+        passCurrentSubStep();
+      }
+
+      return false;
+    }
+
+    function passCurrentSubStep() {
+      const ALL_SUBSTEPS = [
+        '0-1', '0-2', '0-3',
+        '1-1', '1-2', '1-3', '1-4', '1-5', '1-6', '1-7',
+        '2-1', '2-2', '2-3', '2-4', '2-5', '2-6', '2-7', '2-8',
+        '3-1', '3-2',
+        '4-1', '4-2',
+        '5-1', '5-2'
+      ];
+
+      const curIdx = ALL_SUBSTEPS.indexOf(state.subStep);
+      const nextCode = (curIdx >= 0 && curIdx < ALL_SUBSTEPS.length - 1) ? ALL_SUBSTEPS[curIdx + 1] : state.subStep;
+
+      if (!state.completedSubSteps.includes(state.subStep)) {
+        state.completedSubSteps.push(state.subStep);
+      }
+      if (!state.unlockedSubSteps.includes(nextCode)) {
+        state.unlockedSubSteps.push(nextCode);
+      }
+
+      const nextMainTab = parseInt(nextCode.split('-')[0]);
+      for (let i = 0; i <= nextMainTab; i++) {
+        unlockNextStep(i - 1);
+      }
+
+      if (typeof LMSIntegration !== 'undefined') {
+        LMSIntegration.saveStudentProgress(state.subStep, {
+          activityTitle: `[교사 패스] ${state.subStep}`,
+          answerText: '교사 인증을 통해 해당 단계를 통과하였습니다.',
+          score: 100
+        });
+      }
+
+      renderVerifiedAnswerView(
+        "🔑 교사 인증 패스 (Pass) 완료",
+        `교사 권한으로 <b>[${state.subStep}]</b> 페이지가 통과 처리되었습니다.<br>다음 단계인 <b>[${nextCode}]</b> 로 즉시 이동합니다.`,
+        nextCode
+      );
+    }
+
     async function handleLMSLogin(e) {
       if (e && e.preventDefault) e.preventDefault();
       const idEl = document.getElementById('student-id');
@@ -673,9 +857,11 @@
           if (prog && prog.lastSubStep) {
             targetSubStep = prog.lastSubStep;
             if (Array.isArray(prog.completedSteps)) {
+              state.completedSubSteps = [...prog.completedSteps];
               prog.completedSteps.forEach(code => {
+                if (!state.unlockedSubSteps.includes(code)) state.unlockedSubSteps.push(code);
                 const mainIdx = parseInt(code.split('-')[0]);
-                unlockNextStep(mainIdx);
+                for (let i = 0; i <= mainIdx; i++) unlockNextStep(i - 1);
               });
             }
           }
@@ -706,20 +892,9 @@
       return false;
     }
 
-    function openTestLoginModal() {
-      const pw = prompt("🔑 체험/테스트 비밀번호를 입력해 주세요:");
-      if (pw === '661227') {
-        state.isTeacherLoggedIn = true;
-        for (let i = 0; i <= 5; i++) unlockNextStep(i);
-        document.getElementById('current-user-info').innerText = `🔑 체험/선생님 접속 (전체해금)`;
-        switchView('activity');
-        setTimeout(() => { loadSubStep('0-1'); }, 80);
-      }
-    }
-
     function unlockNextStep(tabIndex) {
       const nextIdx = tabIndex + 1;
-      if (nextIdx <= 5 && !state.unlockedTabs.includes(nextIdx)) {
+      if (nextIdx >= 0 && nextIdx <= 5 && !state.unlockedTabs.includes(nextIdx)) {
         state.unlockedTabs.push(nextIdx);
         const tabBtn = document.getElementById(`tab-${nextIdx}`);
         if (tabBtn) {
@@ -732,7 +907,7 @@
 
     function switchMainTab(idx) {
       if (!state.unlockedTabs.includes(idx) && !state.isTeacherLoggedIn) {
-        alert("🔒 이전 단원의 되짚어 보기/탐구 문제를 모두 맞추셔야 해제됩니다!");
+        alert("🔒 이전 단원의 세부활동 및 탐구 문제를 모두 맞추셔야 해제됩니다!\n(교사 패스 버튼을 이용하시면 즉시 통과 가능합니다)");
         return;
       }
       state.currentMainTab = idx;
@@ -741,11 +916,28 @@
       });
 
       const defaultSub = { 0: '0-1', 1: '1-1', 2: '2-1', 3: '3-1', 4: '4-1', 5: '5-1' };
-      loadSubStep(defaultSub[idx] || '0-1');
+      const pillsConfigForTab = {
+        0: ['0-1', '0-2', '0-3'],
+        1: ['1-1', '1-2', '1-3', '1-4', '1-5', '1-6', '1-7'],
+        2: ['2-1', '2-2', '2-3', '2-4', '2-5', '2-6', '2-7', '2-8'],
+        3: ['3-1', '3-2'],
+        4: ['4-1', '4-2'],
+        5: ['5-1', '5-2']
+      };
+      const tabCodes = pillsConfigForTab[idx] || [defaultSub[idx] || '0-1'];
+      let targetSub = tabCodes[0];
+      for (let k = tabCodes.length - 1; k >= 0; k--) {
+        if (state.isTeacherLoggedIn || state.unlockedSubSteps.includes(tabCodes[k])) {
+          targetSub = tabCodes[k];
+          break;
+        }
+      }
+      loadSubStep(targetSub);
     }
 
     function updateSubStepPills(mainIdx) {
       const container = document.getElementById('substep-pills-container');
+      if (!container) return;
       container.innerHTML = '';
 
       const pillsConfig = {
@@ -781,9 +973,27 @@
       const pills = pillsConfig[mainIdx] || [];
       pills.forEach(p => {
         const btn = document.createElement('button');
-        btn.className = `substep-pill ${state.subStep === p.code ? 'active' : ''}`;
-        btn.innerText = p.label;
-        btn.onclick = () => loadSubStep(p.code);
+        const isUnlocked = state.isTeacherLoggedIn || (state.unlockedSubSteps && state.unlockedSubSteps.includes(p.code));
+        const isActive = (state.subStep === p.code);
+        const isCompleted = (state.completedSubSteps && state.completedSubSteps.includes(p.code));
+
+        let extraClass = '';
+        if (isActive) extraClass += ' active';
+        if (!isUnlocked) extraClass += ' locked-pill';
+        if (isCompleted) extraClass += ' completed';
+
+        btn.className = `substep-pill ${extraClass}`;
+        
+        let prefix = isCompleted ? '✅ ' : (isUnlocked ? '' : '🔒 ');
+        btn.innerText = `${prefix}${p.label}`;
+        
+        if (isUnlocked) {
+          btn.onclick = () => loadSubStep(p.code);
+        } else {
+          btn.onclick = () => {
+            alert("🔒 이전 세부활동을 먼저 완료하셔야 진행할 수 있습니다!\n(교사 패스 버튼을 이용하시면 즉시 통과 가능합니다)");
+          };
+        }
         container.appendChild(btn);
       });
     }
@@ -901,11 +1111,31 @@
     function loadSubStep(subStepCode) {
       state.subStep = subStepCode;
 
+      if (!state.unlockedSubSteps.includes(subStepCode)) {
+        state.unlockedSubSteps.push(subStepCode);
+      }
+
       if (typeof LMSIntegration !== 'undefined') {
         LMSIntegration.saveStudentProgress(subStepCode);
       }
 
       const mainTabIdx = parseInt(subStepCode.split('-')[0]);
+      state.currentMainTab = mainTabIdx;
+
+      // Automatically unlock main tabs up to mainTabIdx
+      for (let i = 0; i <= mainTabIdx; i++) {
+        unlockNextStep(i - 1);
+      }
+
+      // Synchronize top main tab active buttons
+      document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+        if (i === mainTabIdx) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+
       updateSubStepPills(mainTabIdx);
 
       const engine = initTwoEngine();
@@ -3045,6 +3275,19 @@
     }
 
     function renderVerifiedAnswerView(titleHtml, contentHtml, nextStepCode) {
+      if (!state.completedSubSteps.includes(state.subStep)) {
+        state.completedSubSteps.push(state.subStep);
+      }
+      if (nextStepCode && !state.unlockedSubSteps.includes(nextStepCode)) {
+        state.unlockedSubSteps.push(nextStepCode);
+      }
+      if (nextStepCode) {
+        const nextMainTab = parseInt(nextStepCode.split('-')[0]);
+        for (let i = 0; i <= nextMainTab; i++) {
+          unlockNextStep(i - 1);
+        }
+      }
+
       const formArea = document.getElementById('form-work-area');
       if (!formArea) return;
 
