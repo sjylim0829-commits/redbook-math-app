@@ -629,7 +629,11 @@
           { code: '1-6', label: '6. 점의 좌표 (x좌표, y좌표, P(a,b))' },
           { code: '1-7', label: '7. 문제 2 (좌표평면 위 점의 좌표)' }
         ],
-        2: [{ code: '2-1', label: '4.2 세부활동 1 (사분면 부호)' }, { code: '2-2', label: '4.2 세부활동 2 (축 위의 점)' }, { code: '2-3', label: '4.2 사분면 정리' }],
+        2: [
+          { code: '2-1', label: '1. 사분면의 위치와 부호 (동적 점 이동 탐구)' },
+          { code: '2-2', label: '2. 축 위의 점과 좌표' },
+          { code: '2-3', label: '3. 사분면 정리' }
+        ],
         3: [{ code: '3-1', label: '4.3 세부활동 1 (상황과 그래프)' }, { code: '3-2', label: '4.3 그래프 해석 정리' }],
         4: [{ code: '4-1', label: '4.4 세부활동 1 (y=ax 직선)' }, { code: '4-2', label: '4.4 정비례 정리' }],
         5: [{ code: '5-1', label: '4.5 세부활동 1 (y=a/x 쌍곡선)' }, { code: '5-2', label: '4.5 반비례 정리' }]
@@ -991,26 +995,73 @@
         `;
       }
       else if (subStepCode === '2-1') {
-        setMissionUI("<b>[4.2 세부활동 1] 사분면의 위치와 부호</b><br>좌표평면은 두 좌표축에 의해 4개의 부분으로 나누어집니다. 각 사분면의 부호를 탐구하세요.");
-        drawCoordinatePlane(engine.two, state.pointP, { showQuadrants: true });
+        setMissionUI("<b>[4.2 세부활동 1] 사분면의 뜻과 부호 (교과서 p.126~127)</b><br>좌측 캔버스의 점 P를 자유롭게 드래그하며 각 사분면에서의 부호 변화를 관찰하고, 아래 빈칸과 부호 표를 완성하세요!");
+        
+        state.pointP = state.pointP || { x: 3, y: 2 };
+        if (engine && engine.two) {
+          drawQuadrantInteractiveCanvas(engine.two, state.pointP);
+        }
+        setTimeout(attachQuadrantDragListeners, 100);
 
         formArea.innerHTML = `
-          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1;">
-            <div style="font-size:0.9rem; margin-bottom:8px; line-height:1.7;">
-              ① $x>0, y>0$ 인 제( 
-              <input type="text" id="p21-q1" class="proof-input-text" style="width:60px;" placeholder="1">
-              )사분면<br>
-              ② $x<0, y>0$ 인 제( 
-              <input type="text" id="p21-q2" class="proof-input-text" style="width:60px;" placeholder="2">
-              )사분면<br>
-              ③ $x<0, y<0$ 인 제( 
-              <input type="text" id="p21-q3" class="proof-input-text" style="width:60px;" placeholder="3">
-              )사분면<br>
-              ④ $x>0, y<0$ 인 제( 
-              <input type="text" id="p21-q4" class="proof-input-text" style="width:60px;" placeholder="4">
-              )사분면
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding:16px;">
+            <!-- Section 1: 사분면의 뜻과 명칭 -->
+            <div style="font-weight:800; color:#1e293b; margin-bottom:8px; font-size:1.02rem; border-bottom:2px solid #4f46e5; padding-bottom:5px;">
+              📖 1. 사분면의 뜻과 명칭 (직접 입력)
             </div>
-            <button class="btn btn-primary" style="padding:10px; width:100%; font-weight:800; margin-top:10px;" onclick="check21Submit()">✅ 제출</button>
+            <div style="font-size:0.88rem; line-height:1.9; color:#334155; margin-bottom:14px;">
+              • <b>사분면(四分面)</b>이란 ( <input type="text" id="p21-meaning" class="proof-input-text" style="width:130px;" placeholder="한글 뜻"> )이라는 뜻이다.<br>
+              • 좌표평면은 좌표축에 의하여 네 부분으로 나누어진다. 이때 네 부분을 각각<br>
+              &nbsp;&nbsp;➔ ( <input type="text" id="p21-q1-name" class="proof-input-text" style="width:90px;" placeholder="제1사분면"> ),
+              ( <input type="text" id="p21-q2-name" class="proof-input-text" style="width:90px;" placeholder="제2사분면"> ),
+              ( <input type="text" id="p21-q3-name" class="proof-input-text" style="width:90px;" placeholder="제3사분면"> ),
+              ( <input type="text" id="p21-q4-name" class="proof-input-text" style="width:90px;" placeholder="제4사분면"> )
+              이라고 한다.
+            </div>
+
+            <!-- Section 2: 사분면 별 좌표의 부호 표 -->
+            <div style="font-weight:800; color:#1e293b; margin-bottom:8px; font-size:1.02rem; border-bottom:2px solid #0284c7; padding-bottom:5px;">
+              📊 2. 각 사분면 위 점의 x좌표와 y좌표 부호 (+ 또는 - 입력)
+            </div>
+            <div style="overflow-x:auto; margin-bottom:14px;">
+              <table style="width:100%; border-collapse:collapse; text-align:center; font-size:0.88rem;">
+                <thead>
+                  <tr style="background:#e0f2fe; color:#0369a1; font-weight:800;">
+                    <th style="border:1px solid #93c5fd; padding:8px 4px;">구분</th>
+                    <th style="border:1px solid #93c5fd; padding:8px 4px;">제1사분면</th>
+                    <th style="border:1px solid #93c5fd; padding:8px 4px;">제2사분면</th>
+                    <th style="border:1px solid #93c5fd; padding:8px 4px;">제3사분면</th>
+                    <th style="border:1px solid #93c5fd; padding:8px 4px;">제4사분면</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="border:1px solid #cbd5e1; padding:8px 4px; font-weight:700; background:#f8fafc;">x좌표의 부호</td>
+                    <td style="border:1px solid #cbd5e1; padding:6px 2px;"><input type="text" id="p21-sign-x1" class="proof-input-text" style="width:50px; text-align:center; font-size:1.05rem;" placeholder="+/-"></td>
+                    <td style="border:1px solid #cbd5e1; padding:6px 2px;"><input type="text" id="p21-sign-x2" class="proof-input-text" style="width:50px; text-align:center; font-size:1.05rem;" placeholder="+/-"></td>
+                    <td style="border:1px solid #cbd5e1; padding:6px 2px;"><input type="text" id="p21-sign-x3" class="proof-input-text" style="width:50px; text-align:center; font-size:1.05rem;" placeholder="+/-"></td>
+                    <td style="border:1px solid #cbd5e1; padding:6px 2px;"><input type="text" id="p21-sign-x4" class="proof-input-text" style="width:50px; text-align:center; font-size:1.05rem;" placeholder="+/-"></td>
+                  </tr>
+                  <tr>
+                    <td style="border:1px solid #cbd5e1; padding:8px 4px; font-weight:700; background:#f8fafc;">y좌표의 부호</td>
+                    <td style="border:1px solid #cbd5e1; padding:6px 2px;"><input type="text" id="p21-sign-y1" class="proof-input-text" style="width:50px; text-align:center; font-size:1.05rem;" placeholder="+/-"></td>
+                    <td style="border:1px solid #cbd5e1; padding:6px 2px;"><input type="text" id="p21-sign-y2" class="proof-input-text" style="width:50px; text-align:center; font-size:1.05rem;" placeholder="+/-"></td>
+                    <td style="border:1px solid #cbd5e1; padding:6px 2px;"><input type="text" id="p21-sign-y3" class="proof-input-text" style="width:50px; text-align:center; font-size:1.05rem;" placeholder="+/-"></td>
+                    <td style="border:1px solid #cbd5e1; padding:6px 2px;"><input type="text" id="p21-sign-y4" class="proof-input-text" style="width:50px; text-align:center; font-size:1.05rem;" placeholder="+/-"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Section 3: 참고 & 오개념 바로잡기 -->
+            <div style="background:#fef2f2; border:1.5px solid #f87171; border-radius:8px; padding:10px 12px; margin-bottom:14px; font-size:0.86rem; line-height:1.8; color:#991b1b;">
+              <div style="font-weight:800; color:#b91c1c; margin-bottom:4px; font-size:0.92rem;">
+                ⚠️ [참고 & 오개념 바로잡기]
+              </div>
+              • 원점을 포함한 ( <input type="text" id="p21-mis-axes" class="proof-input-text" style="width:80px;" placeholder="좌표축"> ) 위의 점은 어느 ( <input type="text" id="p21-mis-quad" class="proof-input-text" style="width:80px;" placeholder="사분면"> )에도 ( <input type="text" id="p21-mis-belong" class="proof-input-text" style="width:130px;" placeholder="속하지 않는다"> ).
+            </div>
+
+            <button class="btn btn-primary" style="padding:12px; width:100%; font-weight:800; font-size:1rem; background:#4f46e5;" onclick="check21ActivitySubmit()">✅ 4.2 사분면 탐구 제출 및 채점</button>
           </div>
         `;
       }
@@ -1741,6 +1792,210 @@
       };
     }
 
+    // 4.2 사분면 세부활동 1: 사분면과 부호 동적 캔버스 (점 P 자유 드래그 & 사분면 실시간 판별)
+    function drawQuadrantInteractiveCanvas(two, pointData) {
+      if (!two) return;
+      two.clear();
+      const width = two.width, height = two.height;
+      const cx = width / 2;
+      const cy = height / 2 + 10;
+      const step = 40;
+      const maxGrid = 5;
+      const gridSpan = maxGrid * step;
+
+      // 1. 4개 사분면 영역 배경색 렌더링 (교과서 원본 색상 매칭)
+      // 제1사분면 (x>0, y>0): 연주황/오렌지
+      const q1Bg = two.makeRectangle(cx + gridSpan / 2, cy - gridSpan / 2, gridSpan, gridSpan);
+      q1Bg.fill = 'rgba(254, 215, 170, 0.40)'; q1Bg.noStroke();
+
+      // 제2사분면 (x<0, y>0): 연보라/퍼플
+      const q2Bg = two.makeRectangle(cx - gridSpan / 2, cy - gridSpan / 2, gridSpan, gridSpan);
+      q2Bg.fill = 'rgba(233, 213, 255, 0.40)'; q2Bg.noStroke();
+
+      // 제3사분면 (x<0, y<0): 연초록/그린
+      const q3Bg = two.makeRectangle(cx - gridSpan / 2, cy + gridSpan / 2, gridSpan, gridSpan);
+      q3Bg.fill = 'rgba(187, 247, 208, 0.40)'; q3Bg.noStroke();
+
+      // 제4사분면 (x>0, y<0): 연하늘/블루
+      const q4Bg = two.makeRectangle(cx + gridSpan / 2, cy + gridSpan / 2, gridSpan, gridSpan);
+      q4Bg.fill = 'rgba(186, 230, 253, 0.40)'; q4Bg.noStroke();
+
+      // 2. 배경 격자선 렌더링
+      for (let i = -maxGrid; i <= maxGrid; i++) {
+        const gx = cx + i * step;
+        const gy = cy - i * step;
+        const vLine = two.makeLine(gx, cy - gridSpan, gx, cy + gridSpan);
+        vLine.stroke = '#cbd5e1'; vLine.linewidth = 1;
+        const hLine = two.makeLine(cx - gridSpan, gy, cx + gridSpan, gy);
+        hLine.stroke = '#cbd5e1'; hLine.linewidth = 1;
+      }
+
+      // 3. 메인 좌표축 (x축, y축)
+      const xAxis = two.makeLine(cx - (maxGrid + 0.3) * step, cy, cx + (maxGrid + 0.3) * step, cy);
+      xAxis.stroke = '#1e293b'; xAxis.linewidth = 2.5;
+      const arrX = two.makePath(cx + (maxGrid + 0.3) * step, cy, cx + (maxGrid + 0.3) * step - 10, cy - 5, cx + (maxGrid + 0.3) * step - 10, cy + 5, false);
+      arrX.fill = '#1e293b'; arrX.noStroke();
+
+      const yAxis = two.makeLine(cx, cy + (maxGrid + 0.3) * step, cx, cy - (maxGrid + 0.3) * step);
+      yAxis.stroke = '#1e293b'; yAxis.linewidth = 2.5;
+      const arrY = two.makePath(cx, cy - (maxGrid + 0.3) * step, cx - 5, cy - (maxGrid + 0.3) * step + 10, cx + 5, cy - (maxGrid + 0.3) * step + 10, false);
+      arrY.fill = '#1e293b'; arrY.noStroke();
+
+      // 축 라벨 x, y, O
+      const lblX = two.makeText('x', cx + (maxGrid + 0.5) * step, cy + 12); lblX.size = 18; lblX.weight = 800; lblX.style = 'italic';
+      const lblY = two.makeText('y', cx - 14, cy - (maxGrid + 0.5) * step); lblY.size = 18; lblY.weight = 800; lblY.style = 'italic';
+      const lblO = two.makeText('O', cx - 14, cy + 14); lblO.size = 17; lblO.weight = 800; lblO.fill = '#1e293b';
+
+      // 축 눈금 수치 라벨 (-4, -2, 2, 4)
+      [-4, -2, 2, 4].forEach(n => {
+        const nx = cx + n * step;
+        const ny = cy - n * step;
+        const txtX = two.makeText(String(n), nx, cy + 18); txtX.size = 13; txtX.weight = 700; txtX.fill = '#475569';
+        const txtY = two.makeText(String(n), cx + 16, ny + 4); txtY.size = 13; txtY.weight = 700; txtY.fill = '#475569';
+      });
+
+      // 4. 각 사분면 명칭 및 부호 표시 (교과서 그림 완벽 재현)
+      // 제1사분면 (우상단)
+      const q1Badge = two.makeRoundedRectangle(cx + 2.8 * step, cy - 2.8 * step, 100, 48, 8);
+      q1Badge.fill = 'rgba(255, 255, 255, 0.85)'; q1Badge.stroke = '#ea580c'; q1Badge.linewidth = 1.5;
+      const tQ1 = two.makeText('제1사분면', cx + 2.8 * step, cy - 3.2 * step); tQ1.size = 15; tQ1.weight = 800; tQ1.fill = '#c2410c';
+      const sQ1 = two.makeText('(+, +)', cx + 2.8 * step, cy - 2.4 * step); sQ1.size = 14; sQ1.weight = 800; sQ1.fill = '#ea580c';
+
+      // 제2사분면 (좌상단)
+      const q2Badge = two.makeRoundedRectangle(cx - 2.8 * step, cy - 2.8 * step, 100, 48, 8);
+      q2Badge.fill = 'rgba(255, 255, 255, 0.85)'; q2Badge.stroke = '#9333ea'; q2Badge.linewidth = 1.5;
+      const tQ2 = two.makeText('제2사분면', cx - 2.8 * step, cy - 3.2 * step); tQ2.size = 15; tQ2.weight = 800; tQ2.fill = '#7e22ce';
+      const sQ2 = two.makeText('(-, +)', cx - 2.8 * step, cy - 2.4 * step); sQ2.size = 14; sQ2.weight = 800; sQ2.fill = '#9333ea';
+
+      // 제3사분면 (좌하단)
+      const q3Badge = two.makeRoundedRectangle(cx - 2.8 * step, cy + 2.8 * step, 100, 48, 8);
+      q3Badge.fill = 'rgba(255, 255, 255, 0.85)'; q3Badge.stroke = '#16a34a'; q3Badge.linewidth = 1.5;
+      const tQ3 = two.makeText('제3사분면', cx - 2.8 * step, cy + 2.4 * step); tQ3.size = 15; tQ3.weight = 800; tQ3.fill = '#15803d';
+      const sQ3 = two.makeText('(-, -)', cx - 2.8 * step, cy + 3.2 * step); sQ3.size = 14; sQ3.weight = 800; sQ3.fill = '#16a34a';
+
+      // 제4사분면 (우하단)
+      const q4Badge = two.makeRoundedRectangle(cx + 2.8 * step, cy + 2.8 * step, 100, 48, 8);
+      q4Badge.fill = 'rgba(255, 255, 255, 0.85)'; q4Badge.stroke = '#0284c7'; q4Badge.linewidth = 1.5;
+      const tQ4 = two.makeText('제4사분면', cx + 2.8 * step, cy + 2.4 * step); tQ4.size = 15; tQ4.weight = 800; tQ4.fill = '#0369a1';
+      const sQ4 = two.makeText('(+, -)', cx + 2.8 * step, cy + 3.2 * step); sQ4.size = 14; sQ4.weight = 800; sQ4.fill = '#0284c7';
+
+      // 5. 학생 조작 점 P(x, y) 렌더링
+      const pt = pointData || { x: 3, y: 2 };
+      const px = cx + pt.x * step;
+      const py = cy - pt.y * step;
+
+      // 점선 가이드 라인 (수선의 발)
+      const guideX = two.makeLine(px, py, px, cy);
+      guideX.stroke = '#4f46e5'; guideX.linewidth = 1.5; guideX.dashes = [4, 4];
+      const guideY = two.makeLine(px, py, cx, py);
+      guideY.stroke = '#4f46e5'; guideY.linewidth = 1.5; guideY.dashes = [4, 4];
+
+      // 점 P 터치 히트 영역 및 마커
+      const aura = two.makeCircle(px, py, 16);
+      aura.fill = 'rgba(79, 70, 229, 0.15)'; aura.stroke = '#4f46e5'; aura.linewidth = 1.5;
+      const pDot = two.makeCircle(px, py, 7.5);
+      pDot.fill = '#4f46e5';
+
+      const pLabel = two.makeText(`P(${pt.x}, ${pt.y})`, px + 18, py - 16);
+      pLabel.size = 16; pLabel.weight = 800; pLabel.fill = '#1e293b';
+
+      // 6. 상단 실시간 사분면 및 부호 상태 뱃지
+      let statusText = '';
+      let badgeColor = '#4f46e5';
+      let badgeBg = '#eef2ff';
+      let badgeBorder = '#c7d2fe';
+
+      if (pt.x > 0 && pt.y > 0) {
+        statusText = `📍 점 P(${pt.x}, ${pt.y}) ➜ 제1사분면 (x좌표: +, y좌표: +)`;
+        badgeColor = '#c2410c'; badgeBg = '#fff7ed'; badgeBorder = '#fed7aa';
+      } else if (pt.x < 0 && pt.y > 0) {
+        statusText = `📍 점 P(${pt.x}, ${pt.y}) ➜ 제2사분면 (x좌표: -, y좌표: +)`;
+        badgeColor = '#7e22ce'; badgeBg = '#faf5ff'; badgeBorder = '#e9d5ff';
+      } else if (pt.x < 0 && pt.y < 0) {
+        statusText = `📍 점 P(${pt.x}, ${pt.y}) ➜ 제3사분면 (x좌표: -, y좌표: -)`;
+        badgeColor = '#15803d'; badgeBg = '#f0fdf4'; badgeBorder = '#bbf7d0';
+      } else if (pt.x > 0 && pt.y < 0) {
+        statusText = `📍 점 P(${pt.x}, ${pt.y}) ➜ 제4사분면 (x좌표: +, y좌표: -)`;
+        badgeColor = '#0369a1'; badgeBg = '#f0f9ff'; badgeBorder = '#bae6fd';
+      } else if (pt.x === 0 && pt.y === 0) {
+        statusText = `📍 점 P(0, 0) ➜ 원점 (어느 사분면에도 속하지 않음!)`;
+        badgeColor = '#b91c1c'; badgeBg = '#fef2f2'; badgeBorder = '#fecaca';
+      } else if (pt.y === 0) {
+        statusText = `📍 점 P(${pt.x}, 0) ➜ x축 위의 점 (어느 사분면에도 속하지 않음!)`;
+        badgeColor = '#b91c1c'; badgeBg = '#fef2f2'; badgeBorder = '#fecaca';
+      } else if (pt.x === 0) {
+        statusText = `📍 점 P(0, ${pt.y}) ➜ y축 위의 점 (어느 사분면에도 속하지 않음!)`;
+        badgeColor = '#b91c1c'; badgeBg = '#fef2f2'; badgeBorder = '#fecaca';
+      }
+
+      const topBadge = two.makeRoundedRectangle(cx, 30, Math.min(width - 40, 560), 38, 10);
+      topBadge.fill = badgeBg; topBadge.stroke = badgeBorder; topBadge.linewidth = 2;
+      const topTxt = two.makeText(statusText, cx, 30);
+      topTxt.size = 15; topTxt.weight = 800; topTxt.fill = badgeColor;
+
+      two.update();
+    }
+
+    let isQuadrantPointDragging = false;
+    function attachQuadrantDragListeners() {
+      const container = document.getElementById('two-container');
+      if (!container) return;
+
+      const getCoordsFromPx = (mx, my) => {
+        const width = container.clientWidth || 800;
+        const height = container.clientHeight || 500;
+        const cx = width / 2;
+        const cy = height / 2 + 10;
+        const step = 40;
+        let rx = Math.round((mx - cx) / step);
+        let ry = Math.round((cy - my) / step);
+        if (rx < -5) rx = -5; if (rx > 5) rx = 5;
+        if (ry < -5) ry = -5; if (ry > 5) ry = 5;
+        return { x: rx, y: ry };
+      };
+
+      container.onpointerdown = function(e) {
+        if (state.subStep !== '2-1' || !state.pointP) return;
+        const rect = container.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        const cx = (container.clientWidth || 800) / 2;
+        const cy = (container.clientHeight || 500) / 2 + 10;
+        const step = 40;
+        const px = cx + state.pointP.x * step;
+        const py = cy - state.pointP.y * step;
+
+        if (Math.hypot(mx - px, my - py) < 35) {
+          isQuadrantPointDragging = true;
+          try { container.setPointerCapture(e.pointerId); } catch(err){}
+          container.classList.add('grabbing');
+        }
+      };
+
+      container.onpointermove = function(e) {
+        if (!isQuadrantPointDragging || state.subStep !== '2-1' || !state.pointP) return;
+        const rect = container.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        const newCoords = getCoordsFromPx(mx, my);
+
+        if (state.pointP.x !== newCoords.x || state.pointP.y !== newCoords.y) {
+          state.pointP.x = newCoords.x;
+          state.pointP.y = newCoords.y;
+          if (twoInstance) {
+            drawQuadrantInteractiveCanvas(twoInstance, state.pointP);
+          }
+        }
+      };
+
+      container.onpointerup = container.onpointercancel = function(e) {
+        if (isQuadrantPointDragging) {
+          isQuadrantPointDragging = false;
+          container.classList.remove('grabbing');
+        }
+      };
+    }
+
     
     // 브라우저 팝업창을 띄우지 않고 퀴즈 카드 내부에 오답 메시지를 부드럽게 표출하는 인라인 헬퍼
     function showInlineErrorNotice(msg) {
@@ -2076,16 +2331,87 @@
       );
     }
 
-    function check21Submit() {
-      const q1 = normTxt(document.getElementById('p21-q1').value);
-      const q2 = normTxt(document.getElementById('p21-q2').value);
-      const q3 = normTxt(document.getElementById('p21-q3').value);
-      const q4 = normTxt(document.getElementById('p21-q4').value);
-      if (q1.includes('1') && q2.includes('2') && q3.includes('3') && q4.includes('4')) {
-        unlockNextStep(3);
-        renderVerifiedAnswerView("사분면의 위치와 부호", "제1사분면(+,+), 제2사분면(-,+), 제3사분면(-,-), 제4사분면(+,-)", "3-1");
-      } else { showInlineErrorNotice("❌ 사분면 번호를 정확히 입력해 주세요."); }
+    function check21ActivitySubmit() {
+      if (state.isTeacherLoggedIn) {
+        unlockNextStep(2);
+        renderVerifiedAnswerView(
+          "사분면의 뜻과 부호 탐구 완수!",
+          "• <b>사분면(四分面)</b>: '네 개로 나뉜 면'<br>" +
+          "• <b>네 부분의 명칭</b>: 제1사분면, 제2사분면, 제3사분면, 제4사분면<br>" +
+          "• <b>사분면 별 부호</b>:<br>" +
+          "&nbsp;&nbsp;- 제1사분면: $(+, +)$<br>" +
+          "&nbsp;&nbsp;- 제2사분면: $(-, +)$<br>" +
+          "&nbsp;&nbsp;- 제3사분면: $(-, -)$<br>" +
+          "&nbsp;&nbsp;- 제4사분면: $(+, -)$<br>" +
+          "• <b>⚠️ [오개념 바로잡기]</b>: 원점을 포함한 <b>좌표축 위의 점은 어느 사분면에도 속하지 않는다!</b>",
+          "2-2"
+        );
+        return;
+      }
+
+      const meaning = normTxt(document.getElementById('p21-meaning').value);
+      const q1n = normTxt(document.getElementById('p21-q1-name').value);
+      const q2n = normTxt(document.getElementById('p21-q2-name').value);
+      const q3n = normTxt(document.getElementById('p21-q3-name').value);
+      const q4n = normTxt(document.getElementById('p21-q4-name').value);
+
+      const x1 = normTxt(document.getElementById('p21-sign-x1').value);
+      const x2 = normTxt(document.getElementById('p21-sign-x2').value);
+      const x3 = normTxt(document.getElementById('p21-sign-x3').value);
+      const x4 = normTxt(document.getElementById('p21-sign-x4').value);
+
+      const y1 = normTxt(document.getElementById('p21-sign-y1').value);
+      const y2 = normTxt(document.getElementById('p21-sign-y2').value);
+      const y3 = normTxt(document.getElementById('p21-sign-y3').value);
+      const y4 = normTxt(document.getElementById('p21-sign-y4').value);
+
+      const misAxes = normTxt(document.getElementById('p21-mis-axes').value);
+      const misQuad = normTxt(document.getElementById('p21-mis-quad').value);
+      const misBelong = normTxt(document.getElementById('p21-mis-belong').value);
+
+      // 1. 사분면의 뜻 & 명칭 검증
+      const okMeaning = meaning.includes('네') || meaning.includes('4') || meaning.includes('나뉜') || meaning.includes('나눈') || meaning.includes('네개');
+      const okNames = (q1n.includes('1') || q1n.includes('제1')) &&
+                      (q2n.includes('2') || q2n.includes('제2')) &&
+                      (q3n.includes('3') || q3n.includes('제3')) &&
+                      (q4n.includes('4') || q4n.includes('제4'));
+
+      // 2. 부호 표 검증
+      const isPlus = (v) => v === '+' || v.includes('양') || v === 'PLUS';
+      const isMinus = (v) => v === '-' || v.includes('음') || v === 'MINUS';
+
+      const okSigns = isPlus(x1) && isMinus(x2) && isMinus(x3) && isPlus(x4) &&
+                      isPlus(y1) && isPlus(y2) && isMinus(y3) && isMinus(y4);
+
+      // 3. 오개념 바로잡기 검증
+      const okMis = (misAxes.includes('좌표축') || misAxes.includes('축')) &&
+                    misQuad.includes('사분면') &&
+                    (misBelong.includes('속하지') || misBelong.includes('속하') || misBelong.includes('포함') || misBelong.includes('안') || misBelong.includes('아니'));
+
+      if (okMeaning && okNames && okSigns && okMis) {
+        unlockNextStep(2);
+        renderVerifiedAnswerView(
+          "사분면의 뜻과 부호 탐구 완수!",
+          "• <b>사분면(四分面)</b>: '네 개로 나뉜 면'<br>" +
+          "• <b>네 부분의 명칭</b>: <b>제1사분면, 제2사분면, 제3사분면, 제4사분면</b><br>" +
+          "• <b>사분면 별 부호</b>:<br>" +
+          "&nbsp;&nbsp;- 제1사분면: <b>(+, +)</b><br>" +
+          "&nbsp;&nbsp;- 제2사분면: <b>(-, +)</b><br>" +
+          "&nbsp;&nbsp;- 제3사분면: <b>(-, -)</b><br>" +
+          "&nbsp;&nbsp;- 제4사분면: <b>(+, -)</b><br>" +
+          "• <b>⚠️ [오개념 바로잡기]</b>: 원점을 포함한 <b>좌표축 위의 점은 어느 사분면에도 속하지 않는다!</b>",
+          "2-2"
+        );
+      } else {
+        let errDetails = [];
+        if (!okMeaning || !okNames) errDetails.push("① 사분면의 뜻('네 개로 나뉜 면')과 네 사분면의 명칭(제1사분면~제4사분면)");
+        if (!okSigns) errDetails.push("② 표 안의 x좌표, y좌표 부호 (+ 또는 -)");
+        if (!okMis) errDetails.push("③ 오개념 바로잡기 빈칸(좌표축, 사분면, 속하지 않는다)");
+
+        showInlineErrorNotice("❌ 작성하신 답안을 다시 확인해 보세요!\n" + errDetails.join("\n"));
+      }
     }
+    const check21Submit = check21ActivitySubmit;
 
     function check41Submit() {
       const q1 = normTxt(document.getElementById('p41-q1').value);
