@@ -607,7 +607,12 @@
           state.treasureMap.treasurePos = { x: gx, y: gy };
           if (twoInstance) drawTreasureMapCanvas(twoInstance);
           const disp = document.getElementById('treasure-pos-display');
-          if (disp) disp.innerText = `점 (${gx}, ${gy})`;
+          if (disp) {
+            disp.innerText = '💎 위치 지정 완료 (지도 위 표시됨)';
+            disp.style.background = '#dcfce7';
+            disp.style.color = '#15803d';
+            disp.style.borderColor = '#86efac';
+          }
           return;
         }
 
@@ -1137,6 +1142,15 @@
       });
 
       updateSubStepPills(mainTabIdx);
+
+      const coordDisp = document.getElementById('coord-display');
+      if (coordDisp) {
+        if (subStepCode === '2-8') {
+          coordDisp.style.display = 'none';
+        } else {
+          coordDisp.style.display = 'inline-block';
+        }
+      }
 
       const engine = initTwoEngine();
 
@@ -1762,8 +1776,8 @@
         setTool('select');
 
         const currentPosTxt = state.treasureMap.treasurePos 
-          ? `점 (${state.treasureMap.treasurePos.x}, ${state.treasureMap.treasurePos.y})`
-          : '미지정 (캔버스를 터치하세요)';
+          ? '💎 위치 지정 완료 (지도 위 표시됨)'
+          : '미지정 (지도를 터치하여 지정하세요)';
 
         formArea.innerHTML = `
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding:16px;">
@@ -1803,8 +1817,8 @@
                 상단 <b>[🖐️ 보물 위치 지정]</b> 버튼을 누른 후, 원점 $O$를 기준으로 점 <b>$(-2, -3)$</b>의 위치를 지도에서 터치하세요.
               </div>
               <div style="display:flex; justify-content:space-between; align-items:center; background:#ffffff; padding:8px 12px; border-radius:8px; border:1px solid #93c5fd;">
-                <span style="font-size:0.88rem; font-weight:700; color:#334155;">📍 현재 찍은 보물 위치:</span>
-                <span id="treasure-pos-display" style="font-size:0.95rem; font-weight:800; color:#d97706; background:#fef3c7; padding:3px 10px; border-radius:8px; border:1px solid #fcd34d;">
+                <span style="font-size:0.88rem; font-weight:700; color:#334155;">📍 보물 위치 지정 상태:</span>
+                <span id="treasure-pos-display" style="font-size:0.88rem; font-weight:800; color:${state.treasureMap.treasurePos ? '#15803d' : '#d97706'}; background:${state.treasureMap.treasurePos ? '#dcfce7' : '#fef3c7'}; padding:4px 10px; border-radius:8px; border:1px solid ${state.treasureMap.treasurePos ? '#86efac' : '#fcd34d'};">
                   ${currentPosTxt}
                 </span>
               </div>
@@ -3231,9 +3245,13 @@
         const tDot = two.makeCircle(tx, ty, 8);
         tDot.fill = '#f59e0b'; tDot.stroke = '#ffffff'; tDot.linewidth = 2.5;
 
-        // 보물 라벨 뱃지
-        const tLbl = two.makeText(`💎 보물 (${state.treasureMap.treasurePos.x}, ${state.treasureMap.treasurePos.y})`, tx + 34, ty - 18);
-        tLbl.size = 14; tLbl.weight = 800; tLbl.fill = '#b45309';
+        // 보물 라벨 뱃지 (탐구 중에는 좌표 숫자를 노출하지 않고 핀 표시만 유지)
+        let pinText = '💎 내가 찍은 보물 위치';
+        if (state.treasureMap && state.treasureMap.showAnswerAxes && (state.treasureMap.treasurePos.x === -2 && state.treasureMap.treasurePos.y === -3)) {
+          pinText = '💎 보물 (-2, -3)';
+        }
+        const tLbl = two.makeText(pinText, tx + 24, ty - 16);
+        tLbl.size = 13.5; tLbl.weight = 800; tLbl.fill = '#b45309';
       }
 
       // 8. 상단 헤더 배너
@@ -3969,7 +3987,7 @@
         if (twoInstance) drawTreasureMapCanvas(twoInstance);
 
         showInlineErrorNotice(
-          `❌ 지정하신 위치 (${pos.x}, ${pos.y})는 보물의 위치가 아닙니다. 좌측 지도에 표시된 [정확한 좌표축(빨간색 선)]을 참고하여 보물의 위치를 다시 찾아보세요!`,
+          "❌ 지정하신 위치는 보물이 묻혀 있는 위치가 아닙니다. 좌측 지도에 표시된 [정확한 좌표축(빨간색 선)]과 원점 $O(0,0)$을 참고하여 보물의 위치 $(-2, -3)$를 다시 찾아보세요!",
           "• [조건 1] 점 A, B가 어느 사분면에도 속하지 않으려면 각각 좌표축($x$축, $y$축) 위에 있어야 합니다.<br>" +
           "• [조건 2] $x$축이 점 A를 지나고, $y$축이 점 B를 지날 때 점 C의 $x$좌표는 $+1$(양수), 점 D의 $y$좌표는 $-1$(음수)로 부호가 다릅니다!<br>" +
           "• 두 축의 교점 $O(0, 0)$을 기준으로 점 $(-2, -3)$의 위치(원점에서 왼쪽 2칸, 아래로 3칸)에 보물 마커를 놓아보세요!"
@@ -3997,7 +4015,12 @@
         state.treasureMap = { treasurePos: null, userAxisX_Y: null, userAxisY_X: null, showAnswerAxes: false };
         if (twoInstance) drawTreasureMapCanvas(twoInstance);
         const disp = document.getElementById('treasure-pos-display');
-        if (disp) disp.innerText = '미지정 (캔버스를 클릭하세요)';
+        if (disp) {
+          disp.innerText = '미지정 (지도를 터치하여 지정하세요)';
+          disp.style.background = '#fef3c7';
+          disp.style.color = '#d97706';
+          disp.style.borderColor = '#fcd34d';
+        }
         return;
       }
       if (state.subStep === '2-7') {
