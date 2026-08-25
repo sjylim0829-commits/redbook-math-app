@@ -96,14 +96,15 @@
         return { success: false, message: '학번과 비밀번호를 모두 입력해 주세요.' };
       }
 
-      // Master/Teacher test password check
-      if (cleanPw === '661227') {
+      // Master/Teacher test password check (950420)
+      if (cleanPw === '950420' || cleanPw === '661227') {
+        const isMasterId = (cleanId === '950420' || cleanId === '661227');
         const masterUser = {
           id: cleanId,
-          name: cleanId === '661227' ? '임종윤 선생님' : `학생 ${cleanId}`,
+          name: isMasterId ? '임종윤 선생님' : `학생 ${cleanId}`,
           grade: '2',
           classNum: '1',
-          role: cleanId === '661227' ? 'teacher' : 'student'
+          role: isMasterId ? 'teacher' : 'student'
         };
         this.setCurrentUser(masterUser);
         return { success: true, user: masterUser, message: '선생님 마스터 비밀번호로 인증되었습니다.' };
