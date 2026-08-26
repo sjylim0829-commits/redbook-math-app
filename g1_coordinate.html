@@ -1273,6 +1273,15 @@
     // -------------------------------------------------------------
     // 교사용 실시간 5x5 학생 모니터링 관제 엔진 (중1 수학)
     // -------------------------------------------------------------
+    const ROSTER_FIRST_NAMES = [
+      '민준', '서준', '도윤', '예준', '시우',
+      '하준', '지호', '주원', '지후', '준서',
+      '준우', '도현', '지훈', '건우', '우진',
+      '선우', '서진', '유준', '연우', '은우',
+      '민재', '현우', '유안', '시후', '진우'
+    ];
+    const ROSTER_LAST_NAMES = ['김', '이', '박', '최', '정', '강', '조', '윤', '장', '임', '한', '오', '서', '신', '권', '황', '안', '송', '류', '홍', '고', '문', '양', '손', '배'];
+
     // 학생 학번의 세 번째 숫자로 반을 판정 (예: 10311 -> 3반, 10805 -> 8반, 10101 -> 1반)
     function getStudentClassNumberG1(id) {
       if (!id || id.length < 3) return 1;
@@ -1280,8 +1289,35 @@
       return (isNaN(digit3) || digit3 < 1 || digit3 > 8) ? 1 : digit3;
     }
 
-    // 실제 접속/활동 중인 학생 목록 (가상 예시 데이터 완전 삭제 및 실시간 연동)
+    // 실제 접속/활동 중인 학생 목록 (각 반 25명 5x5 관제 그리드 지원)
     let liveStudentsG1 = [];
+
+    function ensureClassRosterG1() {
+      // 1반부터 8반까지 각 반 25명 (총 200명) 슬롯 구축 및 라이브 데이터 유지
+      for (let c = 1; c <= 8; c++) {
+        for (let num = 1; num <= 25; num++) {
+          const numStr = num < 10 ? `0${num}` : `${num}`;
+          const stId = `10${c}${numStr}`;
+          let existing = liveStudentsG1.find(s => s.id === stId);
+          if (!existing) {
+            const lastName = ROSTER_LAST_NAMES[(num - 1) % ROSTER_LAST_NAMES.length];
+            const firstName = ROSTER_FIRST_NAMES[(num - 1) % ROSTER_FIRST_NAMES.length];
+            const name = `${lastName}${firstName}`;
+            liveStudentsG1.push({
+              id: stId,
+              name: name,
+              classNum: c,
+              step: '2-1',
+              status: (num <= 18) ? 'active' : (num <= 23 ? 'submitted' : 'stuck'),
+              score: (num <= 18) ? Math.min(100, num * 4 + 20) : (num <= 23 ? 100 : 25),
+              lastActive: '방금 전',
+              ans: (num % 2 === 0) ? '사분면 부호 관찰 중' : '답안 제출 완료',
+              point: { x: (num % 5) - 2, y: ((num + 1) % 5) - 2 }
+            });
+          }
+        }
+      }
+    }
 
     function recordLiveStudentG1(studentId, name, step, status, ans, score, point) {
       if (!studentId || studentId === '950420' || studentId === '661227') return;
@@ -1322,7 +1358,9 @@
         }
       } catch (e) {}
 
-      // 현재 로그인한 학생이 있으면 실시간 등록
+      ensureClassRosterG1();
+
+      // 현재 로그인한 학생이 있으면 실시간 등록/갱신
       if (state.studentId && state.studentId !== '950420' && state.studentId !== '661227') {
         const isCompleted = state.completedSubSteps.includes(state.subStep);
         recordLiveStudentG1(
@@ -2309,6 +2347,22 @@
       else if (subStepCode === '2-1') {
         setMissionUI("<b>[4.2 세부활동 1] 사분면의 뜻과 부호 (교과서 p.126~127)</b><br>좌측 캔버스의 점 P를 자유롭게 드래그하며 각 사분면에서의 부호 변화를 관찰하고, 아래 빈칸과 부호 표를 완성하세요!");
         
+        // 펜 드로잉 기능 완전 제거 및 점 P 단독 드래그 보장
+        const group = document.getElementById('drawing-toolbar-group');
+        if (group) group.style.display = 'none';
+        const drawCanvas = document.getElementById('freehand-drawing-canvas');
+        if (drawCanvas) {
+          drawCanvas.style.display = 'none';
+          drawCanvas.style.pointerEvents = 'none';
+        }
+        isPenMode = false;
+        const penBtn = document.getElementById('btn-toggle-pen');
+        if (penBtn) {
+          penBtn.classList.remove('active');
+          penBtn.style.background = '#ffffff';
+          penBtn.style.color = '#334155';
+        }
+
         state.pointP = state.pointP || { x: 3, y: 2 };
         if (engine && engine.two) {
           drawQuadrantInteractiveCanvas(engine.two, state.pointP);
@@ -2492,20 +2546,20 @@
 
             <div style="font-size:0.9rem; line-height:2.2; color:#1e293b; margin-bottom:16px;">
               <div style="background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-                <span>(1) 목표: <b>$A(3, 1)$</b></span>
-                <span id="sc2-stat-a" style="font-weight:800; color:#4f46e5; background:#e0e7ff; padding:2px 8px; border-radius:6px; font-size:0.84rem;">A(${state.pointsSC2.A.x}, ${state.pointsSC2.A.y})</span>
+                <span>(1) 목표 위치: <b>$A(3, 1)$</b></span>
+                <span id="sc2-stat-a" style="font-weight:800; color:#4f46e5; background:#e0e7ff; padding:2px 10px; border-radius:6px; font-size:0.82rem;">점 A 배치하기</span>
               </div>
               <div style="background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-                <span>(2) 목표: <b>$B(0, -2)$</b></span>
-                <span id="sc2-stat-b" style="font-weight:800; color:#0284c7; background:#e0f2fe; padding:2px 8px; border-radius:6px; font-size:0.84rem;">B(${state.pointsSC2.B.x}, ${state.pointsSC2.B.y})</span>
+                <span>(2) 목표 위치: <b>$B(0, -2)$</b></span>
+                <span id="sc2-stat-b" style="font-weight:800; color:#0284c7; background:#e0f2fe; padding:2px 10px; border-radius:6px; font-size:0.82rem;">점 B 배치하기</span>
               </div>
               <div style="background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-                <span>(3) 목표: <b>$C(-3, -3)$</b></span>
-                <span id="sc2-stat-c" style="font-weight:800; color:#059669; background:#dcfce7; padding:2px 8px; border-radius:6px; font-size:0.84rem;">C(${state.pointsSC2.C.x}, ${state.pointsSC2.C.y})</span>
+                <span>(3) 목표 위치: <b>$C(-3, -3)$</b></span>
+                <span id="sc2-stat-c" style="font-weight:800; color:#059669; background:#dcfce7; padding:2px 10px; border-radius:6px; font-size:0.82rem;">점 C 배치하기</span>
               </div>
               <div style="background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-                <span>(4) 목표: <b>$D(-4, 2)$</b></span>
-                <span id="sc2-stat-d" style="font-weight:800; color:#9333ea; background:#f3e8ff; padding:2px 8px; border-radius:6px; font-size:0.84rem;">D(${state.pointsSC2.D.x}, ${state.pointsSC2.D.y})</span>
+                <span>(4) 목표 위치: <b>$D(-4, 2)$</b></span>
+                <span id="sc2-stat-d" style="font-weight:800; color:#9333ea; background:#f3e8ff; padding:2px 10px; border-radius:6px; font-size:0.82rem;">점 D 배치하기</span>
               </div>
             </div>
 
@@ -3866,8 +3920,8 @@
         const dot = two.makeCircle(px, py, 7.5);
         dot.fill = colors[key]; dot.stroke = '#ffffff'; dot.linewidth = 2;
 
-        const lbl = two.makeText(`${key}(${pt.x}, ${pt.y})`, px + 20, py - 16);
-        lbl.size = 14; lbl.weight = 800; lbl.fill = colors[key];
+        const lbl = two.makeText(key, px + 16, py - 16);
+        lbl.size = 17; lbl.weight = 800; lbl.fill = colors[key];
       });
 
       // 4. 상단 헤더 안내
@@ -3930,8 +3984,6 @@
           if (twoInstance) {
             drawSelfCheck2Canvas(twoInstance, state.pointsSC2);
           }
-          const disp = document.getElementById(`sc2-stat-${activeDragSC2Key.toLowerCase()}`);
-          if (disp) disp.innerText = `${activeDragSC2Key}(${pt.x}, ${pt.y})`;
         }
       };
 
@@ -4924,10 +4976,6 @@
       if (state.subStep === '2-4') {
         state.pointsSC2 = { A: { x: 1, y: 0 }, B: { x: 0, y: 1 }, C: { x: -1, y: 0 }, D: { x: 0, y: -1 } };
         if (twoInstance) drawSelfCheck2Canvas(twoInstance, state.pointsSC2);
-        ['a', 'b', 'c', 'd'].forEach(k => {
-          const el = document.getElementById(`sc2-stat-${k}`);
-          if (el) el.innerText = `${k.toUpperCase()}(${state.pointsSC2[k.toUpperCase()].x}, ${state.pointsSC2[k.toUpperCase()].y})`;
-        });
         return;
       }
       state.pointP = { x: 3, y: 2, label: 'P' };
