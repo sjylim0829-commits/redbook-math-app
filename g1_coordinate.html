@@ -1180,18 +1180,33 @@
       closeUnlockBoundaryModal();
     }
 
-    function applyGlobalUnlockStepG1(targetSubStepCode) {
+    function applyGlobalUnlockStepG1(targetSubStepCode, showAlert = true) {
       const targetIdx = ALL_G1_SUBSTEPS.indexOf(targetSubStepCode);
       if (targetIdx < 0) return;
 
-      const unlockList = ALL_G1_SUBSTEPS.slice(0, targetIdx + 1);
-      unlockList.forEach(code => {
-        if (!state.unlockedSubSteps.includes(code)) state.unlockedSubSteps.push(code);
+      // 선택한 세부활동 단계까지만 해금하고, 그 이후의 모든 페이지는 잠금(🔒) 처리
+      state.unlockedSubSteps = ALL_G1_SUBSTEPS.slice(0, targetIdx + 1);
+      state.completedSubSteps = (state.completedSubSteps || []).filter(code => {
+        return ALL_G1_SUBSTEPS.indexOf(code) < targetIdx;
       });
 
       const maxTabIdx = parseInt(targetSubStepCode.split('-')[0]);
-      for (let i = 0; i <= maxTabIdx; i++) {
-        unlockNextStep(i - 1);
+      state.unlockedTabs = [];
+      const titles = ['0. 되짚어 보기', '4.1 순서쌍과 좌표', '4.2 사분면', '4.3 그래프의 해석', '4.4 정비례 그래프', '4.5 반비례 그래프'];
+      for (let i = 0; i <= 5; i++) {
+        const tabBtn = document.getElementById(`tab-${i}`);
+        if (i <= maxTabIdx) {
+          state.unlockedTabs.push(i);
+          if (tabBtn) {
+            tabBtn.classList.remove('locked');
+            tabBtn.innerText = `${titles[i]} 🔓`;
+          }
+        } else {
+          if (tabBtn) {
+            tabBtn.classList.add('locked');
+            tabBtn.innerText = `${titles[i]} 🔒`;
+          }
+        }
       }
 
       localStorage.setItem('redbook_g1_global_unlock_step', targetSubStepCode);
@@ -1201,27 +1216,21 @@
       const title = SUBSTEP_TITLES[targetSubStepCode] || targetSubStepCode;
       const currentDisp = document.getElementById('current-unlock-boundary-display-g1');
       if (currentDisp) {
-        currentDisp.innerText = `🔓 [${targetSubStepCode}] ${title} 까지 해금됨`;
+        currentDisp.innerText = `🔓 [${targetSubStepCode}] ${title} 까지 해금 (이후 페이지 잠김)`;
       }
 
-      alert(`✅ [학생 해금 범위 설정 완료]\n학생 페이지가 [${targetSubStepCode} - ${title}] 단계까지 즉시 해금 설정되었습니다!\n(학생들이 로그인하거나 탐구 활동 시 이 해금 범위가 자동으로 적용됩니다)`);
+      if (ALL_G1_SUBSTEPS.indexOf(state.subStep) > targetIdx) {
+        loadSubStep(targetSubStepCode);
+      }
+
+      if (showAlert) {
+        alert(`✅ [학생 해금 범위 설정 완료]\n[${targetSubStepCode} - ${title}] 단계까지 해금되었으며,\n그 이후의 모든 페이지는 잠금(🔒) 처리되었습니다.\n(해당 활동을 완료해야 순차적으로 다음 페이지가 해금됩니다)`);
+      }
     }
 
     function checkAndApplyGlobalUnlockG1() {
-      const savedStep = localStorage.getItem('redbook_g1_global_unlock_step');
-      if (!savedStep) return;
-
-      const targetIdx = ALL_G1_SUBSTEPS.indexOf(savedStep);
-      if (targetIdx >= 0) {
-        const unlockList = ALL_G1_SUBSTEPS.slice(0, targetIdx + 1);
-        unlockList.forEach(code => {
-          if (!state.unlockedSubSteps.includes(code)) state.unlockedSubSteps.push(code);
-        });
-        const maxTabIdx = parseInt(savedStep.split('-')[0]);
-        for (let i = 0; i <= maxTabIdx; i++) {
-          unlockNextStep(i - 1);
-        }
-      }
+      const savedStep = localStorage.getItem('redbook_g1_global_unlock_step') || '0-1';
+      applyGlobalUnlockStepG1(savedStep, false);
     }
 
     function handleSecurePasswordSubmit(e) {
@@ -1230,7 +1239,7 @@
       const errEl = document.getElementById('secure-modal-error');
       const pw = inputEl ? inputEl.value.trim() : '';
 
-      const isTeacherPw = (pw === '950420' || pw === '661227' || pw === 'teacher1234');
+      const isTeacherPw = (pw === '950420');
 
       if (!isTeacherPw) {
         if (errEl) {
@@ -1243,26 +1252,23 @@
 
       closeSecurePasswordModal();
 
-      const ALL_SUBSTEPS = ALL_G1_SUBSTEPS;
-
       const unlockBtn = document.getElementById('btn-header-unlock-boundary');
       if (unlockBtn) unlockBtn.style.display = 'inline-flex';
 
       if (currentSecureModalAction === 'teacher_login' || currentSecureModalAction === 'test_login') {
         state.isTeacherLoggedIn = true;
-        for (let i = 0; i <= 5; i++) unlockNextStep(i);
-        state.unlockedSubSteps = [...ALL_SUBSTEPS];
+        const savedStep = localStorage.getItem('redbook_g1_global_unlock_step') || '0-1';
+        applyGlobalUnlockStepG1(savedStep, false);
+
         document.getElementById('current-user-info').innerText = (currentSecureModalAction === 'teacher_login') 
-          ? '🔑 선생님 접속 (전체해금)' 
-          : '🧪 체험/테스트 접속 (전체해금)';
+          ? '🔑 선생님 접속' 
+          : '🧪 체험/테스트 접속';
         switchView('activity');
-        setTimeout(() => { loadSubStep(state.subStep || '0-1'); }, 80);
+        setTimeout(() => { loadSubStep(savedStep); }, 80);
       } else if (currentSecureModalAction === 'teacher_pass') {
         passCurrentSubStep();
       } else if (currentSecureModalAction === 'teacher_dashboard') {
         state.isTeacherLoggedIn = true;
-        for (let i = 0; i <= 5; i++) unlockNextStep(i);
-        state.unlockedSubSteps = [...ALL_SUBSTEPS];
         document.getElementById('current-user-info').innerText = '📊 교사 모니터링 관제 중';
         enterTeacherDashboard();
       }
@@ -1320,7 +1326,7 @@
     }
 
     function recordLiveStudentG1(studentId, name, step, status, ans, score, point) {
-      if (!studentId || studentId === '950420' || studentId === '661227') return;
+      if (!studentId || studentId === '950420') return;
       const classNum = getStudentClassNumberG1(studentId);
       let student = liveStudentsG1.find(s => s.id === studentId);
       if (!student) {
@@ -1361,7 +1367,7 @@
       ensureClassRosterG1();
 
       // 현재 로그인한 학생이 있으면 실시간 등록/갱신
-      if (state.studentId && state.studentId !== '950420' && state.studentId !== '661227') {
+      if (state.studentId && state.studentId !== '950420') {
         const isCompleted = state.completedSubSteps.includes(state.subStep);
         recordLiveStudentG1(
           state.studentId,
@@ -1771,7 +1777,7 @@
           state.currentUser = res.user;
           state.studentId = res.user.id;
           state.studentName = res.user.name;
-          state.isTeacherLoggedIn = (res.user.role === 'teacher' || res.user.id === '950420' || res.user.id === '661227');
+          state.isTeacherLoggedIn = (res.user.role === 'teacher' || res.user.id === '950420');
 
           document.getElementById('current-user-info').innerText = `👤 ${res.user.name} (${res.user.id})`;
 
@@ -1830,8 +1836,8 @@
     }
 
     function switchMainTab(idx) {
-      if (!state.unlockedTabs.includes(idx) && !state.isTeacherLoggedIn) {
-        alert("🔒 이전 단원의 세부활동 및 탐구 문제를 모두 맞추셔야 해제됩니다!\n(교사 패스 버튼을 이용하시면 즉시 통과 가능합니다)");
+      if (!state.unlockedTabs.includes(idx)) {
+        alert("🔒 이전 단원의 세부활동 및 탐구 문제를 모두 맞추셔야 해제됩니다!\n(활동을 완료해야 다음 페이지가 해금됩니다)");
         return;
       }
       state.currentMainTab = idx;
@@ -1851,7 +1857,7 @@
       const tabCodes = pillsConfigForTab[idx] || [defaultSub[idx] || '0-1'];
       let targetSub = tabCodes[0];
       for (let k = tabCodes.length - 1; k >= 0; k--) {
-        if (state.isTeacherLoggedIn || state.unlockedSubSteps.includes(tabCodes[k])) {
+        if (state.unlockedSubSteps && state.unlockedSubSteps.includes(tabCodes[k])) {
           targetSub = tabCodes[k];
           break;
         }
@@ -1897,7 +1903,7 @@
       const pills = pillsConfig[mainIdx] || [];
       pills.forEach(p => {
         const btn = document.createElement('button');
-        const isUnlocked = state.isTeacherLoggedIn || (state.unlockedSubSteps && state.unlockedSubSteps.includes(p.code));
+        const isUnlocked = (state.unlockedSubSteps && state.unlockedSubSteps.includes(p.code));
         const isActive = (state.subStep === p.code);
         const isCompleted = (state.completedSubSteps && state.completedSubSteps.includes(p.code));
 
@@ -1915,7 +1921,7 @@
           btn.onclick = () => loadSubStep(p.code);
         } else {
           btn.onclick = () => {
-            alert("🔒 이전 세부활동을 먼저 완료하셔야 진행할 수 있습니다!\n(교사 패스 버튼을 이용하시면 즉시 통과 가능합니다)");
+            alert("🔒 이전 세부활동을 먼저 완료하셔야 진행할 수 있습니다!\n(활동을 완료해야 다음 페이지가 해금됩니다)");
           };
         }
         container.appendChild(btn);
@@ -2033,13 +2039,13 @@
     }
 
     function loadSubStep(subStepCode) {
+      if (!state.unlockedSubSteps || !state.unlockedSubSteps.includes(subStepCode)) {
+        alert("🔒 해당 페이지는 아직 잠겨 있습니다. 이전 활동을 완료해 주세요!");
+        return;
+      }
       state.subStep = subStepCode;
 
-      if (!state.unlockedSubSteps.includes(subStepCode)) {
-        state.unlockedSubSteps.push(subStepCode);
-      }
-
-      if (state.studentId && state.studentId !== '950420' && state.studentId !== '661227') {
+      if (state.studentId && state.studentId !== '950420') {
         recordLiveStudentG1(
           state.studentId,
           state.studentName,

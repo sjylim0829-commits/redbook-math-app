@@ -97,8 +97,8 @@
       }
 
       // Master/Teacher test password check (950420)
-      if (cleanPw === '950420' || cleanPw === '661227') {
-        const isMasterId = (cleanId === '950420' || cleanId === '661227');
+      if (cleanPw === '950420') {
+        const isMasterId = (cleanId === '950420');
         const masterUser = {
           id: cleanId,
           name: isMasterId ? '임종윤 선생님' : `학생 ${cleanId}`,
