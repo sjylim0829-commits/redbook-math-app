@@ -290,6 +290,72 @@
       } catch (e) {}
     },
 
+    async saveGlobalUnlockStep(stepCode) {
+      const cleanStep = String(stepCode || '0-1').trim();
+      try {
+        localStorage.setItem('redbook_g1_global_unlock_step', cleanStep);
+      } catch (e) {}
+
+      const sb = getSupabase();
+      if (sb) {
+        try {
+          const configId = 'teacher_global_config_g1';
+          const { data: existing } = await sb
+            .from('student_progress')
+            .select('id')
+            .eq('student_id', configId)
+            .eq('app_id', APP_ID)
+            .maybeSingle();
+
+          if (existing && existing.id) {
+            await sb.from('student_progress').update({
+              sub_step: cleanStep,
+              updated_at: new Date().toISOString()
+            }).eq('id', existing.id);
+          } else {
+            await sb.from('student_progress').insert({
+              student_id: configId,
+              app_id: APP_ID,
+              sub_step: cleanStep,
+              completed_steps: [cleanStep],
+              updated_at: new Date().toISOString()
+            });
+          }
+        } catch (err) {
+          console.warn('[LMSIntegration-G1] saveGlobalUnlockStep error:', err);
+        }
+      }
+    },
+
+    async loadGlobalUnlockStep() {
+      let savedStep = '0-1';
+      try {
+        savedStep = localStorage.getItem('redbook_g1_global_unlock_step') || '0-1';
+      } catch (e) {}
+
+      const sb = getSupabase();
+      if (sb) {
+        try {
+          const configId = 'teacher_global_config_g1';
+          const { data, error } = await sb
+            .from('student_progress')
+            .select('sub_step')
+            .eq('student_id', configId)
+            .eq('app_id', APP_ID)
+            .maybeSingle();
+
+          if (!error && data && data.sub_step) {
+            const cloudStep = String(data.sub_step).trim();
+            try { localStorage.setItem('redbook_g1_global_unlock_step', cloudStep); } catch (e) {}
+            return cloudStep;
+          }
+        } catch (err) {
+          console.warn('[LMSIntegration-G1] loadGlobalUnlockStep error:', err);
+        }
+      }
+      return savedStep;
+    },
+
     autoSaveIntervalId: null,
 
     startPeriodicAutoSave(getFormStateFn, intervalMs = 15000) {

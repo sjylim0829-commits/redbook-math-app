@@ -1210,6 +1210,9 @@
       }
 
       localStorage.setItem('redbook_g1_global_unlock_step', targetSubStepCode);
+      if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveGlobalUnlockStep) {
+        LMSIntegration.saveGlobalUnlockStep(targetSubStepCode);
+      }
 
       updateSubStepPills(state.currentMainTab);
 
@@ -1228,8 +1231,13 @@
       }
     }
 
-    function checkAndApplyGlobalUnlockG1() {
-      const savedStep = localStorage.getItem('redbook_g1_global_unlock_step') || '0-1';
+    async function checkAndApplyGlobalUnlockG1() {
+      let savedStep = '0-1';
+      if (typeof LMSIntegration !== 'undefined' && LMSIntegration.loadGlobalUnlockStep) {
+        savedStep = await LMSIntegration.loadGlobalUnlockStep();
+      } else {
+        savedStep = localStorage.getItem('redbook_g1_global_unlock_step') || '0-1';
+      }
       applyGlobalUnlockStepG1(savedStep, false);
     }
 
@@ -1781,19 +1789,28 @@
 
           document.getElementById('current-user-info').innerText = `👤 ${res.user.name} (${res.user.id})`;
 
+          let globalStep = '0-1';
+          if (typeof LMSIntegration !== 'undefined' && LMSIntegration.loadGlobalUnlockStep) {
+            globalStep = await LMSIntegration.loadGlobalUnlockStep();
+          } else {
+            globalStep = localStorage.getItem('redbook_g1_global_unlock_step') || '0-1';
+          }
+          applyGlobalUnlockStepG1(globalStep, false);
+
           const prog = await LMSIntegration.loadStudentProgress(res.user.id);
           let targetSubStep = '0-1';
 
           if (prog && prog.lastSubStep) {
-            targetSubStep = prog.lastSubStep;
-            if (Array.isArray(prog.completedSteps)) {
-              state.completedSubSteps = [...prog.completedSteps];
-              prog.completedSteps.forEach(code => {
-                if (!state.unlockedSubSteps.includes(code)) state.unlockedSubSteps.push(code);
-                const mainIdx = parseInt(code.split('-')[0]);
-                for (let i = 0; i <= mainIdx; i++) unlockNextStep(i - 1);
-              });
+            if (state.unlockedSubSteps.includes(prog.lastSubStep)) {
+              targetSubStep = prog.lastSubStep;
+            } else {
+              targetSubStep = state.unlockedSubSteps[state.unlockedSubSteps.length - 1] || '0-1';
             }
+            if (Array.isArray(prog.completedSteps)) {
+              state.completedSubSteps = prog.completedSteps.filter(code => state.unlockedSubSteps.includes(code));
+            }
+          } else {
+            targetSubStep = state.unlockedSubSteps[0] || '0-1';
           }
 
           switchView('activity');
@@ -4988,8 +5005,8 @@
       if (twoInstance) drawCoordinatePlane(twoInstance, state.pointP);
     }
 
-    window.onload = function() {
-      checkAndApplyGlobalUnlockG1();
+    window.onload = async function() {
+      await checkAndApplyGlobalUnlockG1();
       switchView('login');
     };
   </script>
