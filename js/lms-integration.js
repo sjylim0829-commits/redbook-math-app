@@ -328,34 +328,33 @@
         localStorage.setItem('redbook_g2_global_unlock_step', cleanStep);
       } catch (e) {}
 
-      const sb = getSupabase();
-      if (sb) {
+      // Cloud DB Sync (api.restful-api.dev live shared store)
+      try {
+        const CLOUD_CONFIG_URL = 'https://api.restful-api.dev/objects/ff8081819ff5b11001a041dff6792f8d';
+        let currentData = { g1: '0-1', g2: '0-1' };
         try {
-          const configId = 'teacher_global_config_g2';
-          const { data: existing } = await sb
-            .from('student_progress')
-            .select('id')
-            .eq('student_id', configId)
-            .eq('app_id', APP_ID)
-            .maybeSingle();
-
-          if (existing && existing.id) {
-            await sb.from('student_progress').update({
-              sub_step: cleanStep,
-              updated_at: new Date().toISOString()
-            }).eq('id', existing.id);
-          } else {
-            await sb.from('student_progress').insert({
-              student_id: configId,
-              app_id: APP_ID,
-              sub_step: cleanStep,
-              completed_steps: [cleanStep],
-              updated_at: new Date().toISOString()
-            });
+          const getRes = await fetch(CLOUD_CONFIG_URL);
+          if (getRes.ok) {
+            const json = await getRes.json();
+            if (json && json.data) currentData = json.data;
           }
-        } catch (err) {
-          console.warn('[LMSIntegration] saveGlobalUnlockStep error:', err);
-        }
+        } catch (e) {}
+
+        currentData.g2 = cleanStep;
+        currentData.updatedAt = Date.now();
+        currentData.updatedBy = (this.currentUser && this.currentUser.name) ? this.currentUser.name : 'teacher_admin';
+
+        await fetch(CLOUD_CONFIG_URL, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: 'redbook_unlock_config',
+            data: currentData
+          })
+        });
+        console.log('🌐 [LMS Cloud DB] Grade 2 unlock step saved to cloud:', cleanStep);
+      } catch (err) {
+        console.warn('[LMS Cloud DB] Save error:', err);
       }
     },
 
@@ -365,27 +364,40 @@
         savedStep = localStorage.getItem('redbook_g2_global_unlock_step') || '0-1';
       } catch (e) {}
 
-      const sb = getSupabase();
-      if (sb) {
-        try {
-          const configId = 'teacher_global_config_g2';
-          const { data, error } = await sb
-            .from('student_progress')
-            .select('sub_step')
-            .eq('student_id', configId)
-            .eq('app_id', APP_ID)
-            .maybeSingle();
-
-          if (!error && data && data.sub_step) {
-            const cloudStep = String(data.sub_step).trim();
+      // Query live Cloud DB
+      try {
+        const CLOUD_CONFIG_URL = 'https://api.restful-api.dev/objects/ff8081819ff5b11001a041dff6792f8d';
+        const res = await fetch(CLOUD_CONFIG_URL);
+        if (res.ok) {
+          const json = await res.json();
+          if (json && json.data && json.data.g2) {
+            const cloudStep = String(json.data.g2).trim();
             try { localStorage.setItem('redbook_g2_global_unlock_step', cloudStep); } catch (e) {}
             return cloudStep;
           }
-        } catch (err) {
-          console.warn('[LMSIntegration] loadGlobalUnlockStep error:', err);
         }
+      } catch (err) {
+        console.warn('[LMS Cloud DB] Load error:', err);
       }
       return savedStep;
+    },
+
+    lastKnownUnlockStep: null,
+    unlockSyncIntervalId: null,
+
+    startUnlockBoundarySync(onUpdateCallback, intervalMs = 5000) {
+      if (this.unlockSyncIntervalId) clearInterval(this.unlockSyncIntervalId);
+      this.unlockSyncIntervalId = setInterval(async () => {
+        try {
+          const latestStep = await this.loadGlobalUnlockStep();
+          if (latestStep && latestStep !== this.lastKnownUnlockStep) {
+            this.lastKnownUnlockStep = latestStep;
+            if (typeof onUpdateCallback === 'function') {
+              onUpdateCallback(latestStep);
+            }
+          }
+        } catch (e) {}
+      }, intervalMs);
     },
 
     /**
@@ -420,4 +432,5 @@
   };
 
   window.LMSIntegration = LMSIntegration;
+  window.LMSIntegrationG2 = LMSIntegration;
 })(window);
