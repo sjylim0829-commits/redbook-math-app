@@ -153,37 +153,43 @@
       return { success: false, message: '영서중 수학 LMS DB에 등록되지 않은 학번이거나 비밀번호가 올바르지 않습니다.' };
     },
 
+    /**
+     * Load student's saved progress from LMS Cloud DB (cross-device)
+     */
     async loadStudentProgress(studentId) {
       if (!studentId) return null;
       const cleanId = String(studentId).trim();
 
-      const sb = getSupabase();
-      if (sb) {
-        try {
-          const { data, error } = await sb
-            .from('student_progress')
-            .select('*')
-            .eq('student_id', cleanId)
-            .eq('app_id', APP_ID)
-            .maybeSingle();
-
-          if (!error && data) {
+      // 1. Try Cloud DB (Cross-device shared store)
+      try {
+        const CLOUD_STUDENTS_PROGRESS_URL = 'https://api.restful-api.dev/objects/ff8081819ff5b11001a04706669e41aa';
+        const key = `${cleanId}_g1`;
+        const res = await fetch(CLOUD_STUDENTS_PROGRESS_URL);
+        if (res.ok) {
+          const json = await res.json();
+          if (json && json.data && json.data.records && json.data.records[key]) {
+            const rec = json.data.records[key];
             const progressObj = {
-              lastSubStep: data.sub_step || data.lastSubStep || '1-1',
-              completedSteps: Array.isArray(data.completed_steps) ? data.completed_steps : [],
-              updatedAt: data.updated_at || ''
+              lastSubStep: rec.lastSubStep || '0-1',
+              completedSteps: Array.isArray(rec.completedSteps) ? rec.completedSteps : [],
+              updatedAt: rec.updatedAt || ''
             };
             this.saveProgressToLocal(cleanId, progressObj);
+            console.log(`🌐 [LMS Cloud DB] Loaded G1 student progress for ${key}:`, progressObj);
             return progressObj;
           }
-        } catch (err) {
-          console.warn('[LMSIntegration-G1] Supabase load progress error:', err);
         }
+      } catch (err) {
+        console.warn('[LMS Cloud DB] Error loading G1 student progress:', err);
       }
 
+      // 2. Fallback to Local Storage
       return this.getProgressFromLocal(cleanId);
     },
 
+    /**
+     * Save student progress & real-time activity to LMS Cloud DB (cross-device)
+     */
     async saveStudentProgress(subStepCode, data = {}) {
       let cleanId = '10101';
       let studentName = '학생';
@@ -205,41 +211,46 @@
       const updatedCompleted = Array.from(completedSet);
 
       const progressObj = {
-        lastSubStep: subStepCode || '1-1',
+        lastSubStep: subStepCode || '0-1',
         completedSteps: updatedCompleted,
         updatedAt: new Date().toISOString()
       };
 
+      // 1. Save to local cache
       this.saveProgressToLocal(cleanId, progressObj);
 
-      const sb = getSupabase();
-      if (sb) {
+      // 2. Save to Cloud DB for cross-device synchronization
+      try {
+        const CLOUD_STUDENTS_PROGRESS_URL = 'https://api.restful-api.dev/objects/ff8081819ff5b11001a04706669e41aa';
+        const key = `${cleanId}_g1`;
+        let records = {};
         try {
-          const { data: existingProgress } = await sb
-            .from('student_progress')
-            .select('id')
-            .eq('student_id', cleanId)
-            .eq('app_id', APP_ID)
-            .maybeSingle();
-
-          if (existingProgress && existingProgress.id) {
-            await sb.from('student_progress').update({
-              sub_step: subStepCode || '1-1',
-              completed_steps: updatedCompleted,
-              updated_at: new Date().toISOString()
-            }).eq('id', existingProgress.id);
-          } else {
-            await sb.from('student_progress').insert({
-              student_id: cleanId,
-              app_id: APP_ID,
-              sub_step: subStepCode || '1-1',
-              completed_steps: updatedCompleted,
-              updated_at: new Date().toISOString()
-            });
+          const getRes = await fetch(CLOUD_STUDENTS_PROGRESS_URL);
+          if (getRes.ok) {
+            const json = await getRes.json();
+            if (json && json.data && json.data.records) records = json.data.records;
           }
-        } catch (err) {
-          console.warn('⚠️ [LMSIntegration-G1] Supabase progress save fallback:', err);
-        }
+        } catch (e) {}
+
+        records[key] = {
+          studentId: cleanId,
+          studentName: studentName,
+          lastSubStep: subStepCode || '0-1',
+          completedSteps: updatedCompleted,
+          updatedAt: new Date().toISOString()
+        };
+
+        await fetch(CLOUD_STUDENTS_PROGRESS_URL, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: 'redbook_students_progress_cloud_store_v1',
+            data: { records, updatedAt: Date.now() }
+          })
+        });
+        console.log(`🌐 [LMS Cloud DB] Saved G1 progress for ${key}:`, records[key]);
+      } catch (err) {
+        console.warn('[LMS Cloud DB] Save error:', err);
       }
 
       const activityTitle = data.activityTitle || `중1 좌표평면 탐구 [단계: ${subStepCode}]`;
@@ -257,6 +268,7 @@
         submitted_at: new Date().toISOString()
       };
 
+      const sb = getSupabase();
       if (sb) {
         try {
           await sb.from('activity_submissions').insert(payload);
@@ -394,4 +406,4 @@
 
   window.LMSIntegration = LMSIntegration;
   window.LMSIntegrationG1 = LMSIntegration;
-})(window);
+})(typeof window !== 'undefined' ? window : globalThis);
