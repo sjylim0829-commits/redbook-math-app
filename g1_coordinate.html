@@ -1194,19 +1194,25 @@
       const targetIdx = ALL_G1_SUBSTEPS.indexOf(targetSubStepCode);
       if (targetIdx < 0) return;
 
-      // 선택한 세부활동 단계까지만 해금하고, 그 이후의 모든 페이지는 잠금(🔒) 처리
-      state.unlockedSubSteps = ALL_G1_SUBSTEPS.slice(0, targetIdx + 1);
-      state.completedSubSteps = (state.completedSubSteps || []).filter(code => {
-        return ALL_G1_SUBSTEPS.indexOf(code) < targetIdx;
-      });
+      const presetUnlocked = ALL_G1_SUBSTEPS.slice(0, targetIdx + 1);
+      if (showAlert || state.isTeacherLoggedIn) {
+        state.unlockedSubSteps = presetUnlocked;
+        state.completedSubSteps = (state.completedSubSteps || []).filter(code => {
+          return ALL_G1_SUBSTEPS.indexOf(code) < targetIdx;
+        });
+      } else {
+        presetUnlocked.forEach(code => {
+          if (!state.unlockedSubSteps.includes(code)) state.unlockedSubSteps.push(code);
+        });
+      }
 
       const maxTabIdx = parseInt(targetSubStepCode.split('-')[0]);
-      state.unlockedTabs = [];
+      if (!state.unlockedTabs) state.unlockedTabs = [];
       const titles = ['0. 되짚어 보기', '4.1 순서쌍과 좌표', '4.2 사분면', '4.3 그래프의 해석', '4.4 정비례 그래프', '4.5 반비례 그래프'];
       for (let i = 0; i <= 5; i++) {
         const tabBtn = document.getElementById(`tab-${i}`);
-        if (i <= maxTabIdx) {
-          state.unlockedTabs.push(i);
+        if (i <= maxTabIdx || state.unlockedTabs.includes(i)) {
+          if (!state.unlockedTabs.includes(i)) state.unlockedTabs.push(i);
           if (tabBtn) {
             tabBtn.classList.remove('locked');
             tabBtn.innerText = `${titles[i]} 🔓`;
@@ -1224,7 +1230,7 @@
         LMSIntegration.saveGlobalUnlockStep(targetSubStepCode);
       }
 
-      updateSubStepPills(state.currentMainTab);
+      updateSubStepPills(state.currentMainTab !== undefined ? state.currentMainTab : 0);
 
       const title = SUBSTEP_TITLES[targetSubStepCode] || targetSubStepCode;
       const currentDisp = document.getElementById('current-unlock-boundary-display-g1');
@@ -1232,7 +1238,7 @@
         currentDisp.innerText = `🔓 [${targetSubStepCode}] ${title} 까지 해금 (이후 페이지 잠김)`;
       }
 
-      if (ALL_G1_SUBSTEPS.indexOf(state.subStep) > targetIdx) {
+      if (showAlert && ALL_G1_SUBSTEPS.indexOf(state.subStep) > targetIdx) {
         loadSubStep(targetSubStepCode);
       }
 
@@ -1828,18 +1834,30 @@
           let targetSubStep = '0-1';
 
           if (prog && prog.lastSubStep) {
-            if (state.unlockedSubSteps.includes(prog.lastSubStep)) {
-              targetSubStep = prog.lastSubStep;
-            } else {
-              targetSubStep = state.unlockedSubSteps[state.unlockedSubSteps.length - 1] || '0-1';
+            targetSubStep = prog.lastSubStep;
+            // 학생이 완료했거나 진행했던 모든 단계를 unlockedSubSteps 및 completedSubSteps에 온전히 복원
+            const maxIdx = ALL_G1_SUBSTEPS.indexOf(prog.lastSubStep);
+            if (maxIdx >= 0) {
+              ALL_G1_SUBSTEPS.slice(0, maxIdx + 1).forEach(code => {
+                if (!state.unlockedSubSteps.includes(code)) state.unlockedSubSteps.push(code);
+              });
             }
             if (Array.isArray(prog.completedSteps)) {
-              state.completedSubSteps = prog.completedSteps.filter(code => state.unlockedSubSteps.includes(code));
+              prog.completedSteps.forEach(code => {
+                if (!state.completedSubSteps.includes(code)) state.completedSubSteps.push(code);
+                if (!state.unlockedSubSteps.includes(code)) state.unlockedSubSteps.push(code);
+              });
+            }
+            // 학생 진도에 해당하는 탭들 모두 해금
+            const maxTabIdx = parseInt(targetSubStep.split('-')[0]);
+            for (let i = 0; i <= maxTabIdx; i++) {
+              unlockNextStep(i - 1);
             }
           } else {
             targetSubStep = state.unlockedSubSteps[0] || '0-1';
           }
 
+          updateSubStepPills(parseInt(targetSubStep.split('-')[0]) || 0);
           switchView('activity');
           setTimeout(() => { loadSubStep(targetSubStep); }, 80);
 
