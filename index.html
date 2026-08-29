@@ -656,9 +656,8 @@
     <div style="display:flex; align-items:center; gap:6px;">
       <span id="current-user-info" style="font-size:0.85rem; font-weight:700; color:#4f46e5; margin-right:4px;">👤 로그인 필요</span>
       <button id="btn-header-unlock-boundary-g2" class="btn" style="padding:4px 9px; font-size:0.78rem; background:linear-gradient(135deg, #10b981, #059669); color:#fff; font-weight:800; border:none; box-shadow:0 2px 6px rgba(16, 185, 129, 0.3); display:none;" onclick="openUnlockBoundaryModalG2()" title="학생들이 학습할 수 있는 최대 단원/단계 해금 범위 설정">🔓 학생 해금 범위 설정</button>
-      <button class="btn" style="padding:4px 9px; font-size:0.78rem; background:linear-gradient(135deg, #6366f1, #8b5cf6); color:#fff; font-weight:800; border:none; box-shadow:0 2px 6px rgba(99, 102, 241, 0.3);" onclick="openTeacherDashboardModal()" title="25명 학생 5x5 실시간 모니터링">📊 교사 5x5 모니터링</button>
+      <button id="btn-header-teacher-dashboard-g2" class="btn" style="padding:4px 9px; font-size:0.78rem; background:linear-gradient(135deg, #6366f1, #8b5cf6); color:#fff; font-weight:800; border:none; box-shadow:0 2px 6px rgba(99, 102, 241, 0.3); display:none;" onclick="openTeacherDashboardModal()" title="25명 학생 5x5 실시간 모니터링">📊 교사 5x5 모니터링</button>
       <button class="btn" style="padding:4px 8px; font-size:0.78rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 페이지를 통과합니다">🔑 교사 패스 (Pass)</button>
-      <button class="btn" style="padding:4px 8px; font-size:0.78rem; background:#f1f5f9; border:1px solid #cbd5e1;" onclick="openTeacherLoginModal()">🔒 교사 접속</button>
       <button class="btn" style="padding:4px 8px; font-size:0.78rem; background:#fee2e2; color:#dc2626; border:1px solid #fca5a5;" onclick="switchView('login')">로그아웃</button>
     </div>
   </header>
@@ -711,7 +710,7 @@
         </form>
 
         <div style="margin-top:14px; border-top:1px solid #e2e8f0; padding-top:12px; display:flex; flex-direction:column; gap:8px;">
-          <button type="button" class="btn" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; width:100%; font-weight:700;" onclick="openTestLoginModal()">🧪 체험/테스트 계정 접속</button>
+          <button type="button" class="btn" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; width:100%; font-weight:700;" onclick="openTestLoginModal()">🔑 교사 계정 접속</button>
           <button type="button" class="btn" style="background:#eef2ff; color:#4338ca; border:1.5px solid #c7d2fe; width:100%; font-weight:800;" onclick="openTeacherDashboardModal()">📊 교사 5x5 실시간 모니터링 관제실</button>
         </div>
       </div>
@@ -1082,6 +1081,13 @@
     }
 
     function switchView(viewName) {
+      if (viewName === 'login') {
+        deactivateTeacherMode();
+        state.currentUser = null;
+        state.studentId = null;
+        const userInfo = document.getElementById('current-user-info');
+        if (userInfo) userInfo.innerText = '👤 로그인 필요';
+      }
       document.querySelectorAll('.view-panel').forEach(el => { el.classList.remove('active'); el.style.display = 'none'; });
       const targetView = document.getElementById(`view-${viewName}`);
       if (targetView) { targetView.classList.add('active'); targetView.style.display = 'flex'; }
@@ -1111,12 +1117,14 @@
           state.currentUser = res.user;
           state.studentId = res.user.id;
           state.studentName = res.user.name;
-          state.isTeacherLoggedIn = (res.user.role === 'teacher' || res.user.id === '950420');
+          state.isTeacherLoggedIn = (res.user.role === 'teacher' || res.user.id === '260523');
 
           document.getElementById('current-user-info').innerText = `👤 ${res.user.name} (${res.user.id})`;
 
           if (state.isTeacherLoggedIn) {
             activateTeacherMode();
+          } else {
+            deactivateTeacherMode();
           }
 
           let globalStep = '0-1';
@@ -1233,8 +1241,8 @@
     function openTestLoginModal() {
       openSecurePasswordModal(
         'test_login',
-        '체험 / 테스트 계정 접속',
-        '체험/테스트 전용 비밀번호를 입력해 주세요.'
+        '교사 계정 접속',
+        '교사 전용 비밀번호를 입력해 주세요.'
       );
     }
 
@@ -1415,7 +1423,7 @@
       const errEl = document.getElementById('secure-modal-error');
       const pw = inputEl ? inputEl.value.trim() : '';
 
-      const isTeacherPw = (pw === '950420');
+      const isTeacherPw = (pw === '260523');
 
       if (!isTeacherPw) {
         if (errEl) {
@@ -1428,8 +1436,7 @@
 
       closeSecurePasswordModal();
 
-      const unlockBtn = document.getElementById('btn-header-unlock-boundary-g2');
-      if (unlockBtn) unlockBtn.style.display = 'inline-flex';
+      activateTeacherMode();
 
       if (currentSecureModalAction === 'teacher_login' || currentSecureModalAction === 'test_login') {
         state.isTeacherLoggedIn = true;
@@ -1443,7 +1450,7 @@
 
         document.getElementById('current-user-info').innerText = (currentSecureModalAction === 'teacher_login') 
           ? '🔑 교사 관리자' 
-          : '🧪 체험/테스트 접속';
+          : '🔑 교사 관리자';
         switchView('activity');
         setTimeout(() => { loadSubStep(savedStep); }, 80);
       } else if (currentSecureModalAction === 'teacher_pass') {
@@ -1526,7 +1533,7 @@
     }
 
     function recordLiveStudentG2(studentId, name, step, status, ans, score) {
-      if (!studentId || studentId === '950420') return;
+      if (!studentId || studentId === '260523') return;
       const classNum = getStudentClassNumberG2(studentId);
       let student = liveStudentsG2.find(s => s.id === studentId);
       if (!student) {
@@ -1565,7 +1572,7 @@
       ensureClassRosterG2();
 
       // 현재 로그인한 학생이 있으면 실시간 등록/갱신
-      if (state.studentId && state.studentId !== '950420') {
+      if (state.studentId && state.studentId !== '260523') {
         const isCompleted = state.completedSubSteps && state.completedSubSteps.includes(state.subStep);
         recordLiveStudentG2(
           state.studentId,
@@ -2064,7 +2071,17 @@
     function activateTeacherMode() {
       state.isTeacherLoggedIn = true;
       const unlockBtn = document.getElementById('btn-header-unlock-boundary-g2');
+      const dashBtn = document.getElementById('btn-header-teacher-dashboard-g2');
       if (unlockBtn) unlockBtn.style.display = 'inline-flex';
+      if (dashBtn) dashBtn.style.display = 'inline-flex';
+    }
+
+    function deactivateTeacherMode() {
+      state.isTeacherLoggedIn = false;
+      const unlockBtn = document.getElementById('btn-header-unlock-boundary-g2');
+      const dashBtn = document.getElementById('btn-header-teacher-dashboard-g2');
+      if (unlockBtn) unlockBtn.style.display = 'none';
+      if (dashBtn) dashBtn.style.display = 'none';
     }
 
     function unlockNextStep(newStepIndex) {
@@ -2950,7 +2967,7 @@
       }
       state.subStep = subStepCode;
 
-      if (state.studentId && state.studentId !== '950420') {
+      if (state.studentId && state.studentId !== '260523') {
         recordLiveStudentG2(
           state.studentId,
           state.studentName,

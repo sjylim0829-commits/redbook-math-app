@@ -96,9 +96,9 @@
         return { success: false, message: '학번과 비밀번호를 모두 입력해 주세요.' };
       }
 
-      // Master/Teacher test password check (950420)
-      if (cleanPw === '950420') {
-        const isMasterId = (cleanId === '950420');
+      // Master/Teacher test password check (260523)
+      if (cleanPw === '260523') {
+        const isMasterId = (cleanId === '260523');
         const masterUser = {
           id: cleanId,
           name: isMasterId ? '임종윤 선생님' : `학생 ${cleanId}`,
