@@ -570,6 +570,7 @@
       text-overflow: ellipsis;
       display: -webkit-box;
       -webkit-line-clamp: 2;
+      line-clamp: 2;
       -webkit-box-orient: vertical;
     }
 
@@ -1140,25 +1141,21 @@
           let targetSubStep = '0-1';
 
           if (prog && prog.lastSubStep) {
-            targetSubStep = prog.lastSubStep;
-            // 학생이 완료했거나 진행했던 모든 단계를 unlockedSubSteps 및 completedSubSteps에 온전히 복원
-            const maxIdx = ALL_G2_SUBSTEPS.indexOf(prog.lastSubStep);
-            if (maxIdx >= 0) {
-              ALL_G2_SUBSTEPS.slice(0, maxIdx + 1).forEach(code => {
-                if (!state.unlockedSubSteps.includes(code)) state.unlockedSubSteps.push(code);
-              });
-            }
+            const globalIdx = ALL_G2_SUBSTEPS.indexOf(globalStep);
+            const progIdx = ALL_G2_SUBSTEPS.indexOf(prog.lastSubStep);
+            const effectiveIdx = (globalIdx >= 0 && progIdx >= 0) ? Math.min(progIdx, globalIdx) : (progIdx >= 0 ? progIdx : 0);
+            targetSubStep = ALL_G2_SUBSTEPS[effectiveIdx] || globalStep || '0-1';
+
             if (Array.isArray(prog.completedSteps)) {
               prog.completedSteps.forEach(code => {
-                if (!state.completedSubSteps.includes(code)) state.completedSubSteps.push(code);
-                if (!state.unlockedSubSteps.includes(code)) state.unlockedSubSteps.push(code);
+                const cIdx = ALL_G2_SUBSTEPS.indexOf(code);
+                if (cIdx >= 0 && (globalIdx < 0 || cIdx <= globalIdx)) {
+                  if (!state.completedSubSteps.includes(code)) state.completedSubSteps.push(code);
+                }
               });
             }
-            // 탭 잠금 해제 반영
-            const maxTabIdx = parseInt(targetSubStep.split('-')[0]);
-            unlockNextStep(maxTabIdx);
           } else {
-            targetSubStep = state.unlockedSubSteps[0] || '0-1';
+            targetSubStep = globalStep || (state.unlockedSubSteps[state.unlockedSubSteps.length - 1]) || '0-1';
           }
 
           updateSubStepPills(parseInt(targetSubStep.split('-')[0]) || 0);
@@ -1358,13 +1355,19 @@
     function setUnlockBoundaryPresetG2(stepCode) {
       const select = document.getElementById('select-unlock-substep-g2');
       if (select) select.value = stepCode;
-      applyGlobalUnlockStepG2(stepCode);
+      applyGlobalUnlockStepG2(stepCode, true);
+      if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveGlobalUnlockStep) {
+        LMSIntegration.saveGlobalUnlockStep(stepCode);
+      }
     }
 
     function confirmApplyUnlockBoundaryG2() {
       const select = document.getElementById('select-unlock-substep-g2');
       const stepCode = select ? select.value : '0-1';
-      applyGlobalUnlockStepG2(stepCode);
+      applyGlobalUnlockStepG2(stepCode, true);
+      if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveGlobalUnlockStep) {
+        LMSIntegration.saveGlobalUnlockStep(stepCode);
+      }
       closeUnlockBoundaryModalG2();
     }
 
@@ -1373,27 +1376,19 @@
       if (targetIdx < 0) return;
 
       const presetUnlocked = ALL_G2_SUBSTEPS.slice(0, targetIdx + 1);
-      if (showAlert || state.isTeacherLoggedIn) {
-        state.unlockedSubSteps = presetUnlocked;
-        state.completedSubSteps = (state.completedSubSteps || []).filter(code => {
-          return ALL_G2_SUBSTEPS.indexOf(code) < targetIdx;
-        });
-      } else {
-        presetUnlocked.forEach(code => {
-          if (!state.unlockedSubSteps.includes(code)) state.unlockedSubSteps.push(code);
-        });
-      }
+      state.unlockedSubSteps = presetUnlocked;
+      state.completedSubSteps = (state.completedSubSteps || []).filter(code => {
+        return ALL_G2_SUBSTEPS.indexOf(code) < targetIdx;
+      });
 
       const maxTabIdx = parseInt(targetSubStepCode.split('-')[0]);
-      if (state.maxUnlockedStep === undefined || maxTabIdx > state.maxUnlockedStep || showAlert || state.isTeacherLoggedIn) {
-        state.maxUnlockedStep = Math.max(state.maxUnlockedStep || 0, maxTabIdx);
-      }
+      state.maxUnlockedStep = maxTabIdx;
 
       for (let i = 0; i <= 5; i++) {
         const tabBtn = document.getElementById(`tab-btn-${i}`);
         if (tabBtn) {
           const lockIcon = tabBtn.querySelector('.lock-icon');
-          if (i <= state.maxUnlockedStep) {
+          if (i <= maxTabIdx) {
             tabBtn.classList.remove('locked');
             if (lockIcon) lockIcon.innerText = '🔓';
           } else {
@@ -1404,9 +1399,6 @@
       }
 
       localStorage.setItem('redbook_g2_global_unlock_step', targetSubStepCode);
-      if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveGlobalUnlockStep) {
-        LMSIntegration.saveGlobalUnlockStep(targetSubStepCode);
-      }
 
       updateSubStepPills(state.currentStep !== undefined ? state.currentStep : 0);
 
@@ -1416,7 +1408,7 @@
         currentDisp.innerText = `🔓 [${targetSubStepCode}] ${title} 까지 해금 (이후 페이지 잠김)`;
       }
 
-      if (showAlert && ALL_G2_SUBSTEPS.indexOf(state.subStep) > targetIdx) {
+      if (ALL_G2_SUBSTEPS.indexOf(state.subStep) > targetIdx) {
         loadSubStep(targetSubStepCode);
       }
 
@@ -5138,9 +5130,48 @@
       }
     }
 
+    async function startDirectExplorationG2() {
+      let globalStep = '0-1';
+      if (typeof LMSIntegration !== 'undefined' && LMSIntegration.loadGlobalUnlockStep) {
+        globalStep = await LMSIntegration.loadGlobalUnlockStep();
+      } else {
+        globalStep = localStorage.getItem('redbook_g2_global_unlock_step') || '0-1';
+      }
+      applyGlobalUnlockStepG2(globalStep, false);
+      state.studentId = '20101';
+      state.studentName = '학생';
+      document.getElementById('current-user-info').innerText = '👤 학생 (자율 탐구)';
+      switchView('activity');
+      setTimeout(() => { loadSubStep(globalStep); }, 80);
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
       await checkAndApplyGlobalUnlockG2();
-      switchView('login');
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const isAutoTeacher = (urlParams.get('mode') === 'teacher_dashboard' || localStorage.getItem('redbook_open_teacher_on_load_g2') === 'true');
+      const isStartDirect = (urlParams.get('start') === 'true' || urlParams.get('mode') === 'student');
+
+      if (isAutoTeacher) {
+        localStorage.removeItem('redbook_open_teacher_on_load_g2');
+        activateTeacherMode();
+        state.isTeacherLoggedIn = true;
+        document.getElementById('current-user-info').innerText = '📊 교사 모니터링 관제 중';
+        enterTeacherDashboard();
+      } else if (isStartDirect) {
+        let globalStep = localStorage.getItem('redbook_g2_global_unlock_step') || '0-1';
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.loadGlobalUnlockStep) {
+          globalStep = await LMSIntegration.loadGlobalUnlockStep();
+        }
+        applyGlobalUnlockStepG2(globalStep, false);
+        state.studentId = '20101';
+        state.studentName = '학생';
+        document.getElementById('current-user-info').innerText = '👤 학생 (자율 탐구)';
+        switchView('activity');
+        setTimeout(() => { loadSubStep(globalStep); }, 80);
+      } else {
+        switchView('login');
+      }
 
       // 실시간 클라우드 DB 해금 범위 연동 (교사가 변경 시 학생 화면에 즉시 동기화)
       if (typeof LMSIntegration !== 'undefined' && LMSIntegration.startUnlockBoundarySync) {

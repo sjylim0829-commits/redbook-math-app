@@ -364,7 +364,7 @@
 
         <div class="card-actions">
           <a href="g1_coordinate.html" class="btn btn-sky">🚀 학생 탐구 학습 시작</a>
-          <a href="g1_coordinate.html" onclick="localStorage.setItem('redbook_open_teacher_on_load', 'true');" class="btn" style="background:#f8fafc;">📊 1학년 5x5 관제실</a>
+          <a href="g1_coordinate.html?mode=teacher_dashboard" onclick="localStorage.setItem('redbook_open_teacher_on_load', 'true');" class="btn" style="background:#f8fafc;">📊 1학년 5x5 관제실</a>
         </div>
       </div>
 
@@ -391,7 +391,7 @@
 
         <div class="card-actions">
           <a href="g2_geometry.html" class="btn btn-primary">🚀 학생 탐구 학습 시작</a>
-          <a href="g2_geometry.html" onclick="localStorage.setItem('redbook_open_teacher_on_load_g2', 'true');" class="btn" style="background:#f8fafc;">📊 2학년 5x5 관제실</a>
+          <a href="g2_geometry.html?mode=teacher_dashboard" onclick="localStorage.setItem('redbook_open_teacher_on_load_g2', 'true');" class="btn" style="background:#f8fafc;">📊 2학년 5x5 관제실</a>
         </div>
       </div>
 
@@ -570,14 +570,25 @@
     }
 
     async function setUnlockPreset(grade, stepCode) {
-      if (grade === 'g1' || grade === 'all') {
-        localStorage.setItem('redbook_g1_global_unlock_step', stepCode);
+      if (grade === 'all') {
+        const handler = (typeof LMSIntegrationG1 !== 'undefined' && LMSIntegrationG1.saveGlobalUnlockBatch)
+          ? LMSIntegrationG1
+          : (typeof LMSIntegrationG2 !== 'undefined' ? LMSIntegrationG2 : null);
+        if (handler && handler.saveGlobalUnlockBatch) {
+          await handler.saveGlobalUnlockBatch({ g1: stepCode, g2: stepCode });
+        } else {
+          if (typeof LMSIntegrationG1 !== 'undefined' && LMSIntegrationG1.saveGlobalUnlockStep) {
+            await LMSIntegrationG1.saveGlobalUnlockStep(stepCode);
+          }
+          if (typeof LMSIntegrationG2 !== 'undefined' && LMSIntegrationG2.saveGlobalUnlockStep) {
+            await LMSIntegrationG2.saveGlobalUnlockStep(stepCode);
+          }
+        }
+      } else if (grade === 'g1') {
         if (typeof LMSIntegrationG1 !== 'undefined' && LMSIntegrationG1.saveGlobalUnlockStep) {
           await LMSIntegrationG1.saveGlobalUnlockStep(stepCode);
         }
-      }
-      if (grade === 'g2' || grade === 'all') {
-        localStorage.setItem('redbook_g2_global_unlock_step', stepCode);
+      } else if (grade === 'g2') {
         if (typeof LMSIntegrationG2 !== 'undefined' && LMSIntegrationG2.saveGlobalUnlockStep) {
           await LMSIntegrationG2.saveGlobalUnlockStep(stepCode);
         }
