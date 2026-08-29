@@ -621,7 +621,7 @@
     <button id="tab-0" class="tab-btn active" onclick="switchMainTab(0)">0. 되짚어 보기 🔓</button>
     <button id="tab-1" class="tab-btn" onclick="switchMainTab(1)">4.1 순서쌍과 좌표 🔒</button>
     <button id="tab-2" class="tab-btn" onclick="switchMainTab(2)">4.2 사분면 🔒</button>
-    <button id="tab-3" class="tab-btn" onclick="switchMainTab(3)">4.3 그래프의 해석 🔒</button>
+    <button id="tab-3" class="tab-btn" onclick="switchMainTab(3)">4.3 그래프 🔒</button>
     <button id="tab-4" class="tab-btn" onclick="switchMainTab(4)">4.4 정비례 그래프 🔒</button>
     <button id="tab-5" class="tab-btn" onclick="switchMainTab(5)">4.5 반비례 그래프 🔒</button>
   </nav>
@@ -676,6 +676,18 @@
               <button id="btn-paper-3" class="tool-btn active" style="padding:3px 8px; font-size:0.75rem;" onclick="setBulletinPaperCount(3)">3장</button>
               <button id="btn-paper-4" class="tool-btn" style="padding:3px 8px; font-size:0.75rem;" onclick="setBulletinPaperCount(4)">4장</button>
               <button id="btn-paper-5" class="tool-btn" style="padding:3px 8px; font-size:0.75rem;" onclick="setBulletinPaperCount(5)">5장</button>
+            </div>
+
+            <!-- Graph 3-2 Point Toolbar (Active on 3-2) -->
+            <div id="graph-points-toolbar-group" style="display:none; align-items:center; gap:5px; margin-left:8px; padding-left:8px; border-left:1px solid #cbd5e1;">
+              <span style="font-size:0.78rem; font-weight:800; color:#475569;">📍 순서쌍 점:</span>
+              <button id="btn-pt-1" class="tool-btn" style="padding:3px 7px; font-size:0.75rem;" onclick="toggleGraphPoint(1, 2)">(1,2)</button>
+              <button id="btn-pt-2" class="tool-btn" style="padding:3px 7px; font-size:0.75rem;" onclick="toggleGraphPoint(2, 3)">(2,3)</button>
+              <button id="btn-pt-3" class="tool-btn" style="padding:3px 7px; font-size:0.75rem;" onclick="toggleGraphPoint(3, 4)">(3,4)</button>
+              <button id="btn-pt-4" class="tool-btn" style="padding:3px 7px; font-size:0.75rem;" onclick="toggleGraphPoint(4, 5)">(4,5)</button>
+              <button id="btn-pt-5" class="tool-btn" style="padding:3px 7px; font-size:0.75rem;" onclick="toggleGraphPoint(5, 6)">(5,6)</button>
+              <button class="tool-btn" style="padding:3px 8px; font-size:0.75rem; background:#4f46e5; color:#fff;" onclick="plotAllGraphPoints()">✨ 전체 찍기</button>
+              <button class="tool-btn" style="padding:3px 8px; font-size:0.75rem; background:#fee2e2; color:#dc2626;" onclick="clearGraphPoints()">🗑️ 점 초기화</button>
             </div>
 
             <!-- Drawing Toolbar (Active on 2-7, 2-8 or when needed) -->
@@ -808,7 +820,7 @@
           <button type="button" class="btn" style="padding:8px 10px; font-size:0.8rem; background:#f8fafc; border:1px solid #cbd5e1; font-weight:700; text-align:left;" onclick="setUnlockBoundaryPresetG1('0-3')">0. 되짚어보기까지 (0-3)</button>
           <button type="button" class="btn" style="padding:8px 10px; font-size:0.8rem; background:#f8fafc; border:1px solid #cbd5e1; font-weight:700; text-align:left;" onclick="setUnlockBoundaryPresetG1('1-7')">4.1 순서쌍과 좌표까지 (1-7)</button>
           <button type="button" class="btn" style="padding:8px 10px; font-size:0.8rem; background:#f8fafc; border:1px solid #cbd5e1; font-weight:700; text-align:left;" onclick="setUnlockBoundaryPresetG1('2-8')">4.2 사분면까지 (2-8)</button>
-          <button type="button" class="btn" style="padding:8px 10px; font-size:0.8rem; background:#f8fafc; border:1px solid #cbd5e1; font-weight:700; text-align:left;" onclick="setUnlockBoundaryPresetG1('3-2')">4.3 그래프의 해석까지 (3-2)</button>
+          <button type="button" class="btn" style="padding:8px 10px; font-size:0.8rem; background:#f8fafc; border:1px solid #cbd5e1; font-weight:700; text-align:left;" onclick="setUnlockBoundaryPresetG1('3-2')">4.3 그래프까지 (3-2)</button>
           <button type="button" class="btn" style="padding:8px 10px; font-size:0.8rem; background:#f8fafc; border:1px solid #cbd5e1; font-weight:700; text-align:left;" onclick="setUnlockBoundaryPresetG1('4-2')">4.4 정비례 그래프까지 (4-2)</button>
           <button type="button" class="btn" style="padding:8px 10px; font-size:0.8rem; background:#ecfdf5; border:1.5px solid #10b981; color:#065f46; font-weight:800; text-align:left;" onclick="setUnlockBoundaryPresetG1('5-2')">🌟 전체 해금 (5-2 반비례)</button>
         </div>
@@ -904,6 +916,8 @@
       slopeA: 2,
       curvedA: 6,
       bulletinPaperCount: 3,
+      graphPlottedPoints: [],
+      graphCanvasTransform: null,
       treasureMap: {
         treasurePos: null,
         userAxisX_Y: null,
@@ -1220,7 +1234,7 @@
 
       const maxTabIdx = parseInt(targetSubStepCode.split('-')[0]);
       state.unlockedTabs = [];
-      const titles = ['0. 되짚어 보기', '4.1 순서쌍과 좌표', '4.2 사분면', '4.3 그래프의 해석', '4.4 정비례 그래프', '4.5 반비례 그래프'];
+      const titles = ['0. 되짚어 보기', '4.1 순서쌍과 좌표', '4.2 사분면', '4.3 그래프', '4.4 정비례 그래프', '4.5 반비례 그래프'];
       for (let i = 0; i <= 5; i++) {
         const tabBtn = document.getElementById(`tab-${i}`);
         if (i <= maxTabIdx) {
@@ -1457,7 +1471,7 @@
       '2-7': '4.2 7. 스스로 확인하기 5 (넓이&드로잉)',
       '2-8': '4.2 8. 생각 넓히기 (보물지도)',
       '3-1': '4.3 1. 생각열기 (자석과 안내문)',
-      '3-2': '4.3 2. 그래프의 이해와 해석',
+      '3-2': '4.3 2. 그래프의 뜻과 점 찍기',
       '4-1': '4.4 세부활동 1 (y=ax 직선)',
       '4-2': '4.4 정비례 정리',
       '5-1': '4.5 세부활동 1 (y=a/x 쌍곡선)',
@@ -1735,6 +1749,8 @@
         });
       } else if (code === '3-1') {
         drawBulletinBoardCanvas(two, student.bulletinCount || 3);
+      } else if (code === '3-2') {
+        drawGraphConceptPointsCanvas(two);
       } else if (code.startsWith('3-')) {
         drawGraphInterpretationCanvas(two);
       } else if (code.startsWith('4-')) {
@@ -1912,7 +1928,7 @@
         const tabBtn = document.getElementById(`tab-${nextIdx}`);
         if (tabBtn) {
           tabBtn.classList.remove('locked');
-          const titles = ['0. 되짚어 보기', '4.1 순서쌍과 좌표', '4.2 사분면', '4.3 그래프의 해석', '4.4 정비례 그래프', '4.5 반비례 그래프'];
+          const titles = ['0. 되짚어 보기', '4.1 순서쌍과 좌표', '4.2 사분면', '4.3 그래프', '4.4 정비례 그래프', '4.5 반비례 그래프'];
           tabBtn.innerText = `${titles[nextIdx]} 🔓`;
         }
       }
@@ -1978,7 +1994,7 @@
           { code: '2-7', label: '7. 스스로 확인하기 5 (넓이&드로잉)' },
           { code: '2-8', label: '8. 생각 넓히기 (보물지도)' }
         ],
-        3: [{ code: '3-1', label: '1. 생각열기 (자석과 안내문)' }, { code: '3-2', label: '2. 그래프의 이해와 해석' }],
+        3: [{ code: '3-1', label: '1. 생각열기 (자석과 안내문)' }, { code: '3-2', label: '2. 그래프의 뜻과 점 찍기' }],
         4: [{ code: '4-1', label: '4.4 세부활동 1 (y=ax 직선)' }, { code: '4-2', label: '4.4 정비례 정리' }],
         5: [{ code: '5-1', label: '4.5 세부활동 1 (y=a/x 쌍곡선)' }, { code: '5-2', label: '4.5 반비례 정리' }]
       };
@@ -2170,6 +2186,9 @@
         } else if (subStepCode === '3-1') {
           coordDisp.style.display = 'inline-block';
           coordDisp.innerText = '📋 게시판 안내문 & 자석 탐구';
+        } else if (subStepCode === '3-2') {
+          coordDisp.style.display = 'inline-block';
+          coordDisp.innerText = '📈 좌표평면 위 순서쌍 점 찍기';
         } else {
           coordDisp.style.display = 'inline-block';
         }
@@ -2179,9 +2198,13 @@
       if (bulletinGroup) {
         bulletinGroup.style.display = (subStepCode === '3-1') ? 'flex' : 'none';
       }
+      const graphGroup = document.getElementById('graph-points-toolbar-group');
+      if (graphGroup) {
+        graphGroup.style.display = (subStepCode === '3-2') ? 'flex' : 'none';
+      }
       const toolSelect = document.getElementById('tool-select');
       if (toolSelect) {
-        toolSelect.style.display = (subStepCode === '3-1') ? 'none' : 'inline-block';
+        toolSelect.style.display = (subStepCode === '3-1' || subStepCode === '3-2') ? 'none' : 'inline-block';
       }
 
       const engine = initTwoEngine();
@@ -2968,6 +2991,107 @@
 
             <button class="btn btn-primary" style="padding:12px; width:100%; font-weight:800; font-size:1rem; background:linear-gradient(135deg, #0284c7, #4f46e5);" onclick="check31Submit()">
               🚀 정답 확인 및 제출하기 ➔
+            </button>
+          </div>
+        `;
+      }
+      else if (subStepCode === '3-2') {
+        setMissionUI("<b>[4.3 세부활동 2] 그래프의 뜻과 순서쌍의 점 표현</b><br>생각열기 표의 순서쌍 $(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)$을 좌측 좌표평면에 점으로 나타내고 그래프의 뜻을 알아봅시다.");
+        if (!state.graphPlottedPoints) state.graphPlottedPoints = [];
+        drawGraphConceptPointsCanvas(engine.two);
+
+        const container = document.getElementById('two-container');
+        if (container) {
+          container.onclick = function(e) {
+            handleGraphCanvasClick(e);
+          };
+        }
+
+        formArea.innerHTML = `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding:16px;">
+            <!-- 상단 타이틀 배너 -->
+            <div style="font-weight:800; color:#1e293b; margin-bottom:12px; font-size:1.05rem; border-bottom:2px solid #0284c7; padding-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+              <span style="display:flex; align-items:center; gap:6px;">
+                <span style="background:linear-gradient(135deg, #0284c7, #4f46e5); color:#fff; font-size:0.8rem; padding:2px 8px; border-radius:6px;">세부활동 2</span>
+                <span>📈 순서쌍의 점 표현과 그래프</span>
+              </span>
+              <span style="background:#e0f2fe; color:#0369a1; font-size:0.75rem; padding:2px 8px; border-radius:10px; border:1px solid #bae6fd; font-weight:700;">교과서 p.165</span>
+            </div>
+
+            <!-- [활동 1] 생각열기 표와 순서쌍 구하기 -->
+            <div style="background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
+              <div style="font-weight:800; color:#4f46e5; font-size:0.93rem; margin-bottom:8px;">
+                📊 [활동 1] 생각열기의 표에서 순서쌍 $(x, y)$ 구하기
+              </div>
+              <div style="overflow-x:auto; margin-bottom:10px;">
+                <table style="width:100%; border-collapse:collapse; text-align:center; font-size:0.88rem; background:#ffffff; border:2px solid #cbd5e1; border-radius:8px;">
+                  <thead>
+                    <tr style="background:#f1f5f9; border-bottom:2px solid #cbd5e1;">
+                      <th style="padding:6px 8px; border-right:1px solid #cbd5e1; font-weight:800; color:#475569; width:24%;">$x$ (장)</th>
+                      <th style="padding:6px 8px; border-right:1px solid #cbd5e1;">1</th>
+                      <th style="padding:6px 8px; border-right:1px solid #cbd5e1;">2</th>
+                      <th style="padding:6px 8px; border-right:1px solid #cbd5e1;">3</th>
+                      <th style="padding:6px 8px; border-right:1px solid #cbd5e1;">4</th>
+                      <th style="padding:6px 8px;">5</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style="padding:8px 8px; border-right:1px solid #cbd5e1; font-weight:800; color:#475569; background:#f8fafc;">$y$ (개)</td>
+                      <td style="padding:6px 8px; border-right:1px solid #cbd5e1; font-weight:800; color:#0284c7;">2</td>
+                      <td style="padding:6px 8px; border-right:1px solid #cbd5e1; font-weight:800; color:#0284c7;">3</td>
+                      <td style="padding:6px 8px; border-right:1px solid #cbd5e1; font-weight:800; color:#0284c7;">4</td>
+                      <td style="padding:6px 8px; border-right:1px solid #cbd5e1; font-weight:800; color:#0284c7;">5</td>
+                      <td style="padding:6px 8px; font-weight:800; color:#0284c7;">6</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p style="font-size:0.9rem; color:#334155; line-height:1.7; margin:0;">
+                <b>생각열기</b>의 표에서 순서쌍 $(x, y)$를 구하면<br>
+                <span style="font-weight:800; color:#0284c7; font-size:0.98rem; display:block; padding:4px 0;">
+                  (1, 2), (2, 3), (3, 4), (4, 5), (5, 6)
+                </span>
+                이고, 이 순서쌍을 좌표로 하는 점들을 좌측 좌표평면 위에 나타내면 그림과 같습니다.
+              </p>
+            </div>
+
+            <!-- [활동 2] 좌표평면에 5개의 점 찍기 인터랙션 -->
+            <div style="background:#eff6ff; border:1.5px solid #bfdbfe; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
+              <div style="font-weight:800; color:#1e40af; font-size:0.93rem; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                <span>📍 [활동 2] 좌표평면에 점 찍고 확인하기</span>
+                <span id="graph-plotted-count" style="font-weight:800; font-size:0.85rem; color:#e11d48; background:#ffe4e6; padding:2px 8px; border-radius:10px; border:1px solid #fecdd3;">
+                  ${state.graphPlottedPoints.length}개 / 5개
+                </span>
+              </div>
+              <div style="font-size:0.86rem; color:#1e3a8a; line-height:1.6; margin-bottom:10px;">
+                좌측 캔버스의 모눈 교차점을 직접 클릭하거나, 아래 버튼을 눌러 5개의 점을 좌표평면에 찍어보세요:
+              </div>
+              <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+                <button type="button" class="tool-btn ${state.graphPlottedPoints.includes('1,2') ? 'active' : ''}" style="padding:5px 9px; font-size:0.8rem;" onclick="toggleGraphPoint(1, 2)">① (1, 2)</button>
+                <button type="button" class="tool-btn ${state.graphPlottedPoints.includes('2,3') ? 'active' : ''}" style="padding:5px 9px; font-size:0.8rem;" onclick="toggleGraphPoint(2, 3)">② (2, 3)</button>
+                <button type="button" class="tool-btn ${state.graphPlottedPoints.includes('3,4') ? 'active' : ''}" style="padding:5px 9px; font-size:0.8rem;" onclick="toggleGraphPoint(3, 4)">③ (3, 4)</button>
+                <button type="button" class="tool-btn ${state.graphPlottedPoints.includes('4,5') ? 'active' : ''}" style="padding:5px 9px; font-size:0.8rem;" onclick="toggleGraphPoint(4, 5)">④ (4, 5)</button>
+                <button type="button" class="tool-btn ${state.graphPlottedPoints.includes('5,6') ? 'active' : ''}" style="padding:5px 9px; font-size:0.8rem;" onclick="toggleGraphPoint(5, 6)">⑤ (5, 6)</button>
+                <button type="button" class="tool-btn" style="padding:5px 10px; font-size:0.8rem; background:#4f46e5; color:#fff; font-weight:800;" onclick="plotAllGraphPoints()">✨ 5개 점 전체 찍기</button>
+              </div>
+            </div>
+
+            <!-- [활동 3] 핵심 개념: 그래프의 정의 (용어 직접 입력) -->
+            <div style="background:#fefce8; border:1.5px solid #fef08a; border-radius:10px; padding:12px 14px; margin-bottom:16px; font-size:0.92rem; color:#713f12; line-height:2.0;">
+              <div style="font-weight:800; color:#854d0e; font-size:0.98rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                <span>📖 [개념 정리] 그래프 (Graph)의 정의</span>
+              </div>
+              <div style="margin-bottom:8px;">
+                이와 같이 서로 관계가 있는 두 변수 $x, y$의 순서쌍 $(x, y)$를 좌표로 하는 점을 좌표평면 위에 모두 나타낸 것을 ( <input type="text" id="p32-graph-term" class="proof-input-text" style="width:85px; text-align:center; font-weight:800; color:#854d0e;" placeholder="용어 입력"> )(이)라고 합니다.
+              </div>
+              <div style="font-size:0.85rem; color:#92400e; font-weight:600; background:#fef9c3; padding:6px 10px; border-radius:6px; border:1px dashed #facc15;">
+                💡 이때 그래프는 상황과 데이터에 따라 <b>점, 직선, 곡선</b> 등으로 나타날 수 있습니다.
+              </div>
+            </div>
+
+            <button class="btn btn-primary" style="padding:13px; width:100%; font-weight:800; font-size:1.02rem; background:linear-gradient(135deg, #0284c7, #4f46e5);" onclick="check32Submit()">
+              🚀 정답 확인 및 4.3 단원 완료 ➔
             </button>
           </div>
         `;
@@ -4551,6 +4675,134 @@
       two.update();
     }
 
+    // -------------------------------------------------------------
+    // [4.3 세부활동 2] 그래프의 개념과 순서쌍 점 찍기 캔버스 렌더러
+    // -------------------------------------------------------------
+    function drawGraphConceptPointsCanvas(two) {
+      if (!two) return;
+      two.clear();
+      const width = two.width, height = two.height;
+      const cx = width / 2;
+      const cy = height / 2;
+
+      // Coordinate origin position (bottom-left area of grid)
+      const step = Math.min(46, Math.max(34, (width - 140) / 9));
+      const originX = cx - 3 * step;
+      const originY = cy + 3.2 * step;
+
+      const maxX = 6;
+      const maxY = 7;
+
+      // 1. Grid Lines
+      for (let i = 0; i <= maxX + 1; i++) {
+        const gx = originX + i * step;
+        const line = two.makeLine(gx, originY - (maxY + 0.5) * step, gx, originY + 0.6 * step);
+        line.stroke = (i === 0) ? '#1e293b' : '#e2e8f0';
+        line.linewidth = (i === 0) ? 2.5 : 1;
+      }
+      for (let j = 0; j <= maxY + 1; j++) {
+        const gy = originY - j * step;
+        const line = two.makeLine(originX - 0.6 * step, gy, originX + (maxX + 0.5) * step, gy);
+        line.stroke = (j === 0) ? '#1e293b' : '#e2e8f0';
+        line.linewidth = (j === 0) ? 2.5 : 1;
+      }
+
+      // 2. Axes (x축, y축)
+      const xAxis = two.makeLine(originX - 0.8 * step, originY, originX + (maxX + 0.8) * step, originY);
+      xAxis.stroke = '#1e293b'; xAxis.linewidth = 2.5;
+
+      const arrX = two.makePath(
+        originX + (maxX + 0.8) * step, originY,
+        originX + (maxX + 0.8) * step - 8, originY - 4,
+        originX + (maxX + 0.8) * step - 8, originY + 4,
+        false
+      );
+      arrX.fill = '#1e293b'; arrX.noStroke();
+
+      const lblX = two.makeText('x (장)', originX + (maxX + 0.8) * step + 22, originY + 16);
+      lblX.size = 14; lblX.weight = 800; lblX.fill = '#1e293b';
+
+      const yAxis = two.makeLine(originX, originY + 0.8 * step, originX, originY - (maxY + 0.8) * step);
+      yAxis.stroke = '#1e293b'; yAxis.linewidth = 2.5;
+
+      const arrY = two.makePath(
+        originX, originY - (maxY + 0.8) * step,
+        originX - 4, originY - (maxY + 0.8) * step + 8,
+        originX + 4, originY - (maxY + 0.8) * step + 8,
+        false
+      );
+      arrY.fill = '#1e293b'; arrY.noStroke();
+
+      const lblY = two.makeText('y (개)', originX - 22, originY - (maxY + 0.8) * step - 8);
+      lblY.size = 14; lblY.weight = 800; lblY.fill = '#1e293b';
+
+      // Origin 'O'
+      const lblO = two.makeText('O', originX - 14, originY + 14);
+      lblO.size = 15; lblO.weight = 800; lblO.fill = '#1e293b';
+
+      // Axis Ticks
+      for (let i = 1; i <= maxX; i++) {
+        const tx = originX + i * step;
+        const tVal = two.makeText(String(i), tx, originY + 15);
+        tVal.size = 12.5; tVal.weight = (i % 2 === 0 || i === 5) ? 800 : 600;
+        tVal.fill = (i % 2 === 0) ? '#1e293b' : '#64748b';
+      }
+      for (let j = 1; j <= maxY; j++) {
+        const ty = originY - j * step;
+        const tVal = two.makeText(String(j), originX - 14, ty + 1);
+        tVal.size = 12.5; tVal.weight = (j % 2 === 0) ? 800 : 600;
+        tVal.fill = (j % 2 === 0) ? '#1e293b' : '#64748b';
+      }
+
+      // 3. Target Point Slots & Plotted Points
+      const targetPoints = [
+        { x: 1, y: 2 },
+        { x: 2, y: 3 },
+        { x: 3, y: 4 },
+        { x: 4, y: 5 },
+        { x: 5, y: 6 }
+      ];
+
+      targetPoints.forEach(pt => {
+        const px = originX + pt.x * step;
+        const py = originY - pt.y * step;
+        const ring = two.makeCircle(px, py, 9);
+        ring.fill = 'transparent'; ring.stroke = '#cbd5e1'; ring.linewidth = 1.5;
+      });
+
+      const plottedList = state.graphPlottedPoints || [];
+      plottedList.forEach(key => {
+        const parts = key.split(',').map(Number);
+        const gx = parts[0], gy = parts[1];
+        if (isNaN(gx) || isNaN(gy)) return;
+
+        const px = originX + gx * step;
+        const py = originY - gy * step;
+
+        const aura = two.makeCircle(px, py, 14);
+        aura.fill = 'rgba(239, 68, 68, 0.25)'; aura.stroke = '#f87171'; aura.linewidth = 1.5;
+
+        const dot = two.makeCircle(px, py, 6.5);
+        dot.fill = '#ef4444'; dot.stroke = '#ffffff'; dot.linewidth = 2;
+
+        const hl = two.makeCircle(px - 1.5, py - 1.5, 1.5);
+        hl.fill = '#ffffff'; hl.noStroke();
+
+        const lbl = two.makeText(`(${gx}, ${gy})`, px + 24, py - 12);
+        lbl.size = 12; lbl.weight = 800; lbl.fill = '#dc2626';
+      });
+
+      // 4. Header Badge
+      const topBadge = two.makeRoundedRectangle(cx, 26, Math.min(width - 40, 520), 32, 8);
+      topBadge.fill = '#f0fdf4'; topBadge.stroke = '#86efac'; topBadge.linewidth = 1.5;
+      const topTxt = two.makeText('📍 모눈을 클릭하거나 우측 버튼을 눌러 5개의 점을 좌표평면에 찍어보세요!', cx, 26);
+      topTxt.size = 13; topTxt.weight = 800; topTxt.fill = '#15803d';
+
+      two.update();
+
+      state.graphCanvasTransform = { originX, originY, step };
+    }
+
     
     // 브라우저 팝업창을 띄우지 않고 퀴즈 카드 내부에 오답 메시지 및 교육적 힌트를 부드럽게 표출하는 인라인 헬퍼
     function showInlineErrorNotice(msg, hintMsg = '') {
@@ -5266,7 +5518,7 @@
           "&nbsp;&nbsp;➔ $C$의 $x$좌표는 <b>$+1 > 0$ (양수)</b>, $D$의 $y$좌표는 <b>$-1 < 0$ (음수)</b>가 되어 부호가 서로 다릅니다! (조건 완벽 일치)<br><br>" +
           "2. <b>보물의 위치</b>:<br>" +
           "• 원점 $O(0, 0)$에서 $x$축 방향으로 $-2$, $y$축 방향으로 $-3$ 이동한 위치 ➔ <b>(-2, -3)</b> (점 $B$에서 왼쪽으로 2칸 떨어진 위치)<br><br>" +
-          "🏆 <b>[4.2 사분면] 대단원의 모든 탐구와 생각 넓히기를 완벽히 마스터했습니다!</b><br>다음 <b>[4.3 그래프의 해석]</b> 단원의 자물쇠가 해제되었습니다!",
+          "🏆 <b>[4.2 사분면] 대단원의 모든 탐구와 생각 넓히기를 완벽히 마스터했습니다!</b><br>다음 <b>[4.3 그래프]</b> 단원의 자물쇠가 해제되었습니다!",
           "3-1"
         );
       } else {
@@ -5375,6 +5627,143 @@
       }
     }
 
+    // -------------------------------------------------------------
+    // [4.3 세부활동 2 그래프의 개념 및 점 찍기 인터랙션 & 채점]
+    // -------------------------------------------------------------
+    function toggleGraphPoint(x, y) {
+      if (!state.graphPlottedPoints) state.graphPlottedPoints = [];
+      const key = `${x},${y}`;
+      const idx = state.graphPlottedPoints.indexOf(key);
+      if (idx >= 0) {
+        state.graphPlottedPoints.splice(idx, 1);
+      } else {
+        state.graphPlottedPoints.push(key);
+      }
+
+      // Sync button states
+      const ptBtnMap = {
+        '1,2': 'btn-pt-1',
+        '2,3': 'btn-pt-2',
+        '3,4': 'btn-pt-3',
+        '4,5': 'btn-pt-4',
+        '5,6': 'btn-pt-5'
+      };
+      for (const [k, btnId] of Object.entries(ptBtnMap)) {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+          if (state.graphPlottedPoints.includes(k)) {
+            btn.classList.add('active');
+          } else {
+            btn.classList.remove('active');
+          }
+        }
+      }
+
+      updateGraphPlottedCounter();
+      if (twoInstance) drawGraphConceptPointsCanvas(twoInstance);
+    }
+
+    function plotAllGraphPoints() {
+      state.graphPlottedPoints = ['1,2', '2,3', '3,4', '4,5', '5,6'];
+      for (let i = 1; i <= 5; i++) {
+        const btn = document.getElementById(`btn-pt-${i}`);
+        if (btn) btn.classList.add('active');
+      }
+      updateGraphPlottedCounter();
+      if (twoInstance) drawGraphConceptPointsCanvas(twoInstance);
+    }
+
+    function clearGraphPoints() {
+      state.graphPlottedPoints = [];
+      for (let i = 1; i <= 5; i++) {
+        const btn = document.getElementById(`btn-pt-${i}`);
+        if (btn) btn.classList.remove('active');
+      }
+      updateGraphPlottedCounter();
+      if (twoInstance) drawGraphConceptPointsCanvas(twoInstance);
+    }
+
+    function updateGraphPlottedCounter() {
+      const countEl = document.getElementById('graph-plotted-count');
+      if (countEl) {
+        const len = (state.graphPlottedPoints || []).length;
+        countEl.innerText = `${len}개 / 5개`;
+        if (len >= 5) {
+          countEl.style.color = '#15803d';
+          countEl.style.background = '#dcfce7';
+          countEl.style.borderColor = '#86efac';
+        } else {
+          countEl.style.color = '#e11d48';
+          countEl.style.background = '#ffe4e6';
+          countEl.style.borderColor = '#fecdd3';
+        }
+      }
+    }
+
+    function handleGraphCanvasClick(e) {
+      if (state.subStep !== '3-2' || !state.graphCanvasTransform) return;
+      const container = document.getElementById('two-container');
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      const { originX, originY, step } = state.graphCanvasTransform;
+      const gx = Math.round((clickX - originX) / step);
+      const gy = Math.round((originY - clickY) / step);
+
+      if (gx >= 0 && gx <= 6 && gy >= 0 && gy <= 7) {
+        toggleGraphPoint(gx, gy);
+      }
+    }
+
+    function check32Submit() {
+      const graphTerm = normTxt(document.getElementById('p32-graph-term') ? document.getElementById('p32-graph-term').value : '');
+      const isTermCorrect = (graphTerm === '그래프' || graphTerm.includes('그래프'));
+
+      const requiredPoints = ['1,2', '2,3', '3,4', '4,5', '5,6'];
+      const currentPoints = state.graphPlottedPoints || [];
+      const hasAllPoints = requiredPoints.every(pt => currentPoints.includes(pt));
+
+      if (isTermCorrect && (hasAllPoints || currentPoints.length >= 5)) {
+        unlockNextStep(4);
+
+        if (typeof LMSIntegration !== 'undefined') {
+          LMSIntegration.saveStudentProgress('3-2', {
+            activityTitle: '4.3 세부활동 2 (그래프의 정의와 점 찍기)',
+            answerText: `[좌표평면 5개 점 완료] (1,2),(2,3),(3,4),(4,5),(5,6) | [개념] ${graphTerm}`,
+            score: 100
+          });
+        }
+
+        renderVerifiedAnswerView(
+          "🎉 [4.3 그래프] 대단원 학습 완료!",
+          "<b>[그래프의 정의와 순서쌍 표현 완벽 정리]</b><br><br>" +
+          "1. <b>순서쌍과 좌표평면의 점</b>:<br>" +
+          "• 생각열기 표에서 구한 순서쌍 $(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)$을 좌표평면에 점으로 나타내면 일정한 규칙(직선 모양)으로 점들이 배열됩니다.<br><br>" +
+          "2. <b>그래프(Graph)의 정의</b>:<br>" +
+          "• 서로 관계가 있는 두 변수 $x, y$의 순서쌍 $(x, y)$를 좌표로 하는 점을 좌표평면 위에 모두 나타낸 것을 <b>그래프</b>라고 합니다.<br>" +
+          "• 그래프는 상황과 데이터에 따라 <b>점, 직선, 곡선</b> 등으로 다양하게 나타납니다.<br><br>" +
+          "🏆 <b>[4.3 그래프] 대단원의 모든 탐구를 성공적으로 마스터했습니다!</b><br>" +
+          "다음 <b>[4.4 정비례 그래프]</b> 단원이 해금되었습니다!",
+          "4-1"
+        );
+      } else {
+        let hintMsg = "❌ 입력 및 탐구 내용을 다시 확인해 주세요!\n\n";
+        if (!hasAllPoints && currentPoints.length < 5) {
+          hintMsg += "• [점 찍기]: 좌측 좌표평면에 순서쌍 (1, 2), (2, 3), (3, 4), (4, 5), (5, 6)의 5개 점을 모두 찍어보세요. (상단 '전체 찍기' 버튼으로도 가능)\n";
+        }
+        if (!isTermCorrect) {
+          hintMsg += "• [개념 정리]: 두 변수의 순서쌍을 좌표평면 위에 모두 나타낸 것을 무엇이라고 부르는지 적어보세요. (초성 힌트: ㄱㄹㅍ)";
+        }
+        showInlineErrorNotice(
+          hintMsg,
+          "• 서로 관계가 있는 두 변수 $x, y$의 순서쌍 $(x, y)$를 좌표로 하는 점을 좌표평면 위에 점으로 나타낸 것을 <b>그래프</b>라고 합니다.<br>" +
+          "• 좌측 좌표평면의 $(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)$ 점을 모두 찍고 용어를 완성해 보세요!"
+        );
+      }
+    }
+
     function check41Submit() {
       const q1 = normTxt(document.getElementById('p41-q1').value);
       const q2 = normTxt(document.getElementById('p41-q2').value);
@@ -5393,6 +5782,10 @@
     function resetCanvasView() {
       if (state.subStep === '3-1') {
         setBulletinPaperCount(3);
+        return;
+      }
+      if (state.subStep === '3-2') {
+        clearGraphPoints();
         return;
       }
       if (state.subStep === '2-8') {
