@@ -1158,9 +1158,15 @@
             targetSubStep = globalStep || (state.unlockedSubSteps[state.unlockedSubSteps.length - 1]) || '0-1';
           }
 
-          updateSubStepPills(parseInt(targetSubStep.split('-')[0]) || 0);
+          const targetTabIdx = parseInt(targetSubStep.split('-')[0]) || 0;
+          state.currentStep = targetTabIdx;
+          document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
+            btn.classList.remove('active');
+            if (idx === targetTabIdx) btn.classList.add('active');
+          });
+          updateSubStepPills(targetTabIdx);
           switchView('activity');
-          setTimeout(() => { loadSubStep(targetSubStep); }, 80);
+          setTimeout(() => { loadSubStep(targetSubStep); }, 50);
 
           const stepNames = {
             '0-1': '0. 튜토리얼',
@@ -1400,7 +1406,17 @@
 
       localStorage.setItem('redbook_g2_global_unlock_step', targetSubStepCode);
 
-      updateSubStepPills(state.currentStep !== undefined ? state.currentStep : 0);
+      if (!state.unlockedSubSteps.includes(state.subStep) || !state.hasUserNavigatedManually) {
+        state.currentStep = maxTabIdx;
+        state.subStep = targetSubStepCode;
+      }
+
+      document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
+        btn.classList.remove('active');
+        if (idx === state.currentStep) btn.classList.add('active');
+      });
+
+      updateSubStepPills(state.currentStep !== undefined ? state.currentStep : maxTabIdx);
 
       const title = G2_SUBSTEP_LABELS[targetSubStepCode] || targetSubStepCode;
       const currentDisp = document.getElementById('current-unlock-boundary-display-g2');
@@ -1408,9 +1424,7 @@
         currentDisp.innerText = `🔓 [${targetSubStepCode}] ${title} 까지 해금 (이후 페이지 잠김)`;
       }
 
-      if (ALL_G2_SUBSTEPS.indexOf(state.subStep) > targetIdx) {
-        loadSubStep(targetSubStepCode);
-      }
+      loadSubStep(state.subStep);
 
       if (showAlert) {
         alert(`✅ [학생 해금 범위 설정 완료]\n[${targetSubStepCode} - ${title}] 단계까지 해금되었으며,\n그 이후의 모든 페이지는 잠금(🔒) 처리되었습니다.\n(해당 활동을 완료해야 순차적으로 다음 페이지가 해금됩니다)`);

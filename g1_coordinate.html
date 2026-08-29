@@ -1228,7 +1228,20 @@
 
       localStorage.setItem('redbook_g1_global_unlock_step', targetSubStepCode);
 
-      updateSubStepPills(state.currentMainTab !== undefined ? state.currentMainTab : 0);
+      if (!state.unlockedSubSteps.includes(state.subStep) || !state.hasUserNavigatedManually) {
+        state.currentMainTab = maxTabIdx;
+        state.subStep = targetSubStepCode;
+      }
+
+      document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+        if (i === state.currentMainTab) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+
+      updateSubStepPills(state.currentMainTab !== undefined ? state.currentMainTab : maxTabIdx);
 
       const title = SUBSTEP_TITLES[targetSubStepCode] || targetSubStepCode;
       const currentDisp = document.getElementById('current-unlock-boundary-display-g1');
@@ -1236,9 +1249,7 @@
         currentDisp.innerText = `🔓 [${targetSubStepCode}] ${title} 까지 해금 (이후 페이지 잠김)`;
       }
 
-      if (ALL_G1_SUBSTEPS.indexOf(state.subStep) > targetIdx) {
-        loadSubStep(targetSubStepCode);
-      }
+      loadSubStep(state.subStep);
 
       if (showAlert) {
         alert(`✅ [학생 해금 범위 설정 완료]\n[${targetSubStepCode} - ${title}] 단계까지 해금되었으며,\n그 이후의 모든 페이지는 잠금(🔒) 처리되었습니다.\n(해당 활동을 완료해야 순차적으로 다음 페이지가 해금됩니다)`);
@@ -1849,9 +1860,14 @@
             targetSubStep = globalStep || (state.unlockedSubSteps[state.unlockedSubSteps.length - 1]) || '0-1';
           }
 
-          updateSubStepPills(parseInt(targetSubStep.split('-')[0]) || 0);
+          const targetTabIdx = parseInt(targetSubStep.split('-')[0]) || 0;
+          state.currentMainTab = targetTabIdx;
+          document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+            if (i === targetTabIdx) btn.classList.add('active'); else btn.classList.remove('active');
+          });
+          updateSubStepPills(targetTabIdx);
           switchView('activity');
-          setTimeout(() => { loadSubStep(targetSubStep); }, 80);
+          setTimeout(() => { loadSubStep(targetSubStep); }, 50);
 
           if (typeof LMSIntegration !== 'undefined' && LMSIntegration.startPeriodicAutoSave) {
             LMSIntegration.startPeriodicAutoSave(() => {
