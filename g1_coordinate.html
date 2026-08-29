@@ -2248,6 +2248,31 @@
         }
       }
 
+      // 툴바 및 펜 드로잉 캔버스 가시성/활성화 중앙 제어 (2-7, 2-8에서만 노출)
+      const needsPenDrawing = (subStepCode === '2-7' || subStepCode === '2-8');
+      const drawingGroup = document.getElementById('drawing-toolbar-group');
+      if (drawingGroup) {
+        drawingGroup.style.display = needsPenDrawing ? 'flex' : 'none';
+      }
+      const drawCanvas = document.getElementById('freehand-drawing-canvas');
+      if (drawCanvas) {
+        drawCanvas.style.display = needsPenDrawing ? 'block' : 'none';
+        drawCanvas.style.pointerEvents = needsPenDrawing ? 'auto' : 'none';
+        if (!needsPenDrawing) {
+          clearFreehandDrawing();
+        }
+      }
+      if (!needsPenDrawing) {
+        isPenMode = false;
+        state.tool = 'select';
+        const penBtn = document.getElementById('btn-toggle-pen');
+        if (penBtn) {
+          penBtn.classList.remove('active');
+          penBtn.style.background = '#ffffff';
+          penBtn.style.color = '#334155';
+        }
+      }
+
       const bulletinGroup = document.getElementById('bulletin-toolbar-group');
       if (bulletinGroup) {
         bulletinGroup.style.display = (subStepCode === '3-1') ? 'flex' : 'none';
@@ -2266,7 +2291,12 @@
       }
       const toolSelect = document.getElementById('tool-select');
       if (toolSelect) {
-        toolSelect.style.display = (['3-1', '3-2', '3-3', '3-4', '3-5', '3-6'].includes(subStepCode)) ? 'none' : 'inline-block';
+        toolSelect.style.display = (['3-1', '3-2', '3-3', '3-4', '3-5', '3-6', '2-7', '2-8'].includes(subStepCode)) ? 'none' : 'inline-block';
+      }
+
+      const container = document.getElementById('two-container');
+      if (container) {
+        container.onclick = null;
       }
 
       const engine = initTwoEngine();
@@ -3218,6 +3248,8 @@
             </button>
           </div>
         `;
+
+        setRideRunCount(state.rideRunCount);
       }
       else if (subStepCode === '3-4') {
         setMissionUI("<b>[4.3 세부활동 4] 예제 1 (놀이기구 대기 인원과 그래프)</b><br>4인용 놀이기구를 $x$회 운행한 후 대기자 수 $y$명의 표를 완성하고, 순서쌍을 좌측 좌표평면에 점으로 나타내어 그래프를 완성하세요!");
@@ -3386,6 +3418,8 @@
             </button>
           </div>
         `;
+
+        setSpringWeightCount(state.springWeightCount);
       }
       else if (subStepCode === '3-6') {
         setMissionUI("<b>[4.3 세부활동 6] 문제 1 (용수철의 길이와 추)</b><br>추 $x$개를 매단 용수철의 길이 $y\\text{ cm}$의 표를 완성하고, 순서쌍을 좌측 좌표평면에 점으로 나타내어 그래프를 완성하세요!");
@@ -5441,7 +5475,7 @@
       if (!two) return;
       two.clear();
       const width = two.width, height = two.height;
-      const cx = width / 2 - 20;
+      const cx = width / 2 - 35;
 
       weightCount = Math.max(0, Math.min(6, Number(weightCount) || 0));
 
@@ -5457,45 +5491,48 @@
 
       // 2. Ceiling & Top Mount
       const ceilingY = 56;
-      const ceiling = two.makeRoundedRectangle(cx, ceilingY - 6, 180, 12, 4);
+      const ceiling = two.makeRoundedRectangle(cx, ceilingY - 6, 160, 12, 4);
       ceiling.fill = '#334155'; ceiling.noStroke();
 
       const topHook = two.makeCircle(cx, ceilingY + 4, 6);
       topHook.fill = '#64748b'; topHook.stroke = '#334155'; topHook.linewidth = 2;
 
       // 3. Spring Physics Coordinates
+      // Base length 4cm: 60px. Each 2cm per weight: 26px.
       const springTopY = ceilingY + 8;
-      const basePx = 70; // 4cm
-      const stretchPx = weightCount * 30; // 2cm per weight
+      const basePx = 60; // 4cm
+      const stretchPx = weightCount * 26; // 2cm per 100g weight
       const totalSpringLengthPx = basePx + stretchPx;
       const springBottomY = springTopY + totalSpringLengthPx;
 
-      // Draw Coiled Spring
+      // Draw Coiled Spring (Open polyline with round join)
       const coils = 12;
       const coilPoints = [];
       coilPoints.push(cx, springTopY);
-      coilPoints.push(cx, springTopY + 8);
-      const activeCoilH = totalSpringLengthPx - 16;
+      coilPoints.push(cx, springTopY + 6);
+      const activeCoilH = Math.max(20, totalSpringLengthPx - 16);
       for (let i = 0; i <= coils; i++) {
         const cyPos = springTopY + 8 + (i / coils) * activeCoilH;
         const cxPos = (i % 2 === 0) ? (cx - 16) : (cx + 16);
         coilPoints.push(cxPos, cyPos);
       }
-      coilPoints.push(cx, springBottomY - 8);
+      coilPoints.push(cx, springBottomY - 6);
       coilPoints.push(cx, springBottomY);
 
-      const springPath = two.makeCurve(coilPoints, true);
+      const springPath = two.makePath(...coilPoints, true);
       springPath.stroke = '#475569';
-      springPath.linewidth = 4;
+      springPath.linewidth = 3.5;
       springPath.noFill();
+      springPath.cap = 'round';
+      springPath.join = 'round';
 
       // Bottom Hook
       const bottomHook = two.makeCircle(cx, springBottomY + 4, 5);
       bottomHook.fill = '#64748b'; bottomHook.stroke = '#334155'; bottomHook.linewidth = 2;
 
       // 4. Hanging Weights
-      const weightH = 18;
-      const weightW = 54;
+      const weightH = 16;
+      const weightW = 52;
       const stackStartY = springBottomY + 12;
 
       for (let w = 0; w < weightCount; w++) {
@@ -5511,16 +5548,17 @@
       }
 
       // 5. Calibrated Ruler on Right of Spring
-      const rulerX = cx + 80;
+      const rulerX = cx + 75;
       const rulerTopY = springTopY;
-      const rulerH = basePx + 6 * 30 + 30; // up to 18cm
+      const pxPer2Cm = 26; // 13px per cm
+      const rulerH = basePx + 6 * pxPer2Cm + 20; // up to 18cm
 
-      const rulerBg = two.makeRoundedRectangle(rulerX + 16, rulerTopY + rulerH / 2, 40, rulerH, 6);
+      const rulerBg = two.makeRoundedRectangle(rulerX + 18, rulerTopY + rulerH / 2, 42, rulerH, 6);
       rulerBg.fill = '#fef9c3'; rulerBg.stroke = '#ca8a04'; rulerBg.linewidth = 1.5;
 
-      // Ruler Markings: 0 to 18 cm (each 2cm = 30px)
+      // Ruler Markings: 0 to 18 cm (each 2cm = 26px)
       for (let cm = 0; cm <= 18; cm += 2) {
-        const ry = rulerTopY + (cm / 2) * 30;
+        const ry = rulerTopY + (cm / 2) * pxPer2Cm;
         const tick = two.makeLine(rulerX, ry, rulerX + 10, ry);
         tick.stroke = (cm % 4 === 0) ? '#1e293b' : '#64748b';
         tick.linewidth = (cm % 4 === 0) ? 2 : 1;
@@ -5532,22 +5570,22 @@
       rulerUnit.size = 10; rulerUnit.weight = 800; rulerUnit.fill = '#713f12';
 
       // Red Indicator Line for Original 4cm
-      const orig4cmY = rulerTopY + 2 * 30;
-      const origLine = two.makeLine(cx - 30, orig4cmY, rulerX + 34, orig4cmY);
+      const orig4cmY = rulerTopY + 2 * pxPer2Cm;
+      const origLine = two.makeLine(cx - 30, orig4cmY, rulerX + 38, orig4cmY);
       origLine.stroke = '#f87171'; origLine.linewidth = 1.5;
       origLine.dashes = [4, 4];
 
       // Green Dynamic Indicator Line for Current Spring Length
       const currY = springBottomY;
-      const currLine = two.makeLine(cx - 30, currY, rulerX + 34, currY);
+      const currLine = two.makeLine(cx - 30, currY, rulerX + 38, currY);
       currLine.stroke = '#0284c7'; currLine.linewidth = 2;
 
       // Left Dimension Brackets
-      const bX = cx - 45;
+      const bX = cx - 40;
       // 1) Original Length (4cm)
       const b1 = two.makeLine(bX, rulerTopY, bX, orig4cmY);
       b1.stroke = '#e11d48'; b1.linewidth = 2;
-      const lbl4 = two.makeText('원래 길이 4cm', bX - 42, rulerTopY + 30);
+      const lbl4 = two.makeText('원래 길이 4cm', bX - 42, rulerTopY + 26);
       lbl4.size = 9.5; lbl4.weight = 800; lbl4.fill = '#e11d48';
 
       // 2) Stretched Length (2x cm) if weightCount > 0
@@ -5559,8 +5597,8 @@
       }
 
       // 6. Bottom Status Dashboard
-      const dashY = height - 42;
-      const dashBg = two.makeRoundedRectangle(width / 2, dashY, Math.min(width - 40, 520), 40, 10);
+      const dashY = height - 38;
+      const dashBg = two.makeRoundedRectangle(width / 2, dashY, Math.min(width - 40, 520), 38, 10);
       dashBg.fill = '#1e293b'; dashBg.noStroke();
 
       const statTxt = two.makeText(
