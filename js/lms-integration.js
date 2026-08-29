@@ -361,7 +361,27 @@
         localStorage.setItem('redbook_g2_global_unlock_step', cleanStep);
       } catch (e) {}
 
-      // 1. Cloud DB Sync (api.restful-api.dev live shared store)
+      // 1. Primary: Supabase DB Dedicated Unlock Record
+      const sb = getSupabase();
+      if (sb) {
+        try {
+          await sb.from('activity_submissions').insert({
+            student_id: 'SYS_UNLOCK_G2',
+            student_name: '교사 관리자',
+            grade: 2,
+            class_num: 0,
+            activity_title: 'SYS_UNLOCK_G2',
+            answer_text: cleanStep,
+            score: 100,
+            submitted_at: new Date().toISOString()
+          });
+          console.log('🏛️ [Supabase DB] Grade 2 unlock step saved to primary DB:', cleanStep);
+        } catch (e) {
+          console.warn('[Supabase DB] Save error:', e);
+        }
+      }
+
+      // 2. Secondary Cloud DB Sync (api.restful-api.dev live shared store)
       try {
         let currentData = { g1: '0-1', g2: '0-1' };
         try {
@@ -395,26 +415,8 @@
             })
           });
         }
-        console.log('🌐 [LMS Cloud DB] Grade 2 unlock step saved to cloud:', cleanStep);
       } catch (err) {
         console.warn('[LMS Cloud DB] Save error:', err);
-      }
-
-      // 2. Supabase Dual Backup for Teacher Unlock Setting
-      const sb = getSupabase();
-      if (sb) {
-        try {
-          await sb.from('activity_submissions').insert({
-            student_id: 'SYSTEM_GLOBAL_UNLOCK_G2',
-            student_name: '교사 관리자',
-            grade: 2,
-            class_num: 1,
-            activity_title: `GLOBAL_UNLOCK_STEP:${cleanStep}`,
-            answer_text: JSON.stringify({ step: cleanStep, updatedAt: Date.now() }),
-            score: 100,
-            submitted_at: new Date().toISOString()
-          });
-        } catch (e) {}
       }
     },
 
@@ -430,7 +432,41 @@
         try { localStorage.setItem('redbook_g2_global_unlock_step', g2Step); } catch (e) {}
       }
 
-      // Cloud DB Atomic Update
+      // 1. Primary: Supabase DB Batch Save
+      const sb = getSupabase();
+      if (sb) {
+        if (g1Step) {
+          try {
+            await sb.from('activity_submissions').insert({
+              student_id: 'SYS_UNLOCK_G1',
+              student_name: '교사 관리자',
+              grade: 1,
+              class_num: 0,
+              activity_title: 'SYS_UNLOCK_G1',
+              answer_text: g1Step,
+              score: 100,
+              submitted_at: new Date().toISOString()
+            });
+          } catch (e) {}
+        }
+        if (g2Step) {
+          try {
+            await sb.from('activity_submissions').insert({
+              student_id: 'SYS_UNLOCK_G2',
+              student_name: '교사 관리자',
+              grade: 2,
+              class_num: 0,
+              activity_title: 'SYS_UNLOCK_G2',
+              answer_text: g2Step,
+              score: 100,
+              submitted_at: new Date().toISOString()
+            });
+          } catch (e) {}
+        }
+        console.log('🏛️ [Supabase DB] Batch unlock steps saved to primary DB:', { g1: g1Step, g2: g2Step });
+      }
+
+      // 2. Secondary: Cloud DB Atomic Update
       try {
         let currentData = { g1: '0-1', g2: '0-1' };
         try {
@@ -454,42 +490,8 @@
             data: currentData
           })
         });
-        console.log('🌐 [LMS Cloud DB] Batch unlock steps saved:', currentData);
       } catch (err) {
         console.warn('[LMS Cloud DB] Batch save error:', err);
-      }
-
-      // Supabase Backups
-      const sb = getSupabase();
-      if (sb) {
-        if (g1Step) {
-          try {
-            await sb.from('activity_submissions').insert({
-              student_id: 'SYSTEM_GLOBAL_UNLOCK_G1',
-              student_name: '교사 관리자',
-              grade: 1,
-              class_num: 1,
-              activity_title: `GLOBAL_UNLOCK_STEP:${g1Step}`,
-              answer_text: JSON.stringify({ step: g1Step, updatedAt: Date.now() }),
-              score: 100,
-              submitted_at: new Date().toISOString()
-            });
-          } catch (e) {}
-        }
-        if (g2Step) {
-          try {
-            await sb.from('activity_submissions').insert({
-              student_id: 'SYSTEM_GLOBAL_UNLOCK_G2',
-              student_name: '교사 관리자',
-              grade: 2,
-              class_num: 1,
-              activity_title: `GLOBAL_UNLOCK_STEP:${g2Step}`,
-              answer_text: JSON.stringify({ step: g2Step, updatedAt: Date.now() }),
-              score: 100,
-              submitted_at: new Date().toISOString()
-            });
-          } catch (e) {}
-        }
       }
     },
 
@@ -499,7 +501,30 @@
         savedStep = localStorage.getItem('redbook_g2_global_unlock_step') || '0-1';
       } catch (e) {}
 
-      // 1. Query live Cloud DB
+      // 1. Primary Priority: Supabase DB Dedicated Unlock Record
+      const sb = getSupabase();
+      if (sb) {
+        try {
+          const { data, error } = await sb
+            .from('activity_submissions')
+            .select('*')
+            .eq('student_id', 'SYS_UNLOCK_G2')
+            .order('id', { ascending: false })
+            .limit(1);
+
+          if (!error && Array.isArray(data) && data.length > 0 && data[0].answer_text) {
+            const dbStep = String(data[0].answer_text).trim();
+            if (dbStep) {
+              try { localStorage.setItem('redbook_g2_global_unlock_step', dbStep); } catch (e) {}
+              return dbStep;
+            }
+          }
+        } catch (e) {
+          console.warn('[Supabase DB] Load unlock step error:', e);
+        }
+      }
+
+      // 2. Secondary Fallback: Query live Cloud DB
       try {
         const res = await fetch(CLOUD_CONFIG_URL);
         if (res.ok) {
@@ -512,28 +537,6 @@
         }
       } catch (err) {
         console.warn('[LMS Cloud DB] Load error:', err);
-      }
-
-      // 2. Query Supabase Backup
-      const sb = getSupabase();
-      if (sb) {
-        try {
-          const { data, error } = await sb
-            .from('activity_submissions')
-            .select('*')
-            .eq('student_id', 'SYSTEM_GLOBAL_UNLOCK_G2')
-            .order('submitted_at', { ascending: false })
-            .limit(1);
-
-          if (!error && Array.isArray(data) && data.length > 0 && data[0].activity_title) {
-            const match = String(data[0].activity_title).match(/GLOBAL_UNLOCK_STEP:\s*([0-9]-[0-9])/);
-            if (match && match[1]) {
-              const cloudStep = match[1];
-              try { localStorage.setItem('redbook_g2_global_unlock_step', cloudStep); } catch (e) {}
-              return cloudStep;
-            }
-          }
-        } catch (e) {}
       }
 
       return savedStep;
