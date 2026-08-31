@@ -92,8 +92,8 @@
         return { success: false, message: '학번과 비밀번호를 모두 입력해 주세요.' };
       }
 
-      if (cleanPw === '260523') {
-        const isMasterId = (cleanId === '260523');
+      if (cleanPw === '260523' || cleanPw === '260831') {
+        const isMasterId = (cleanId === '260523' || cleanId === '260831');
         const masterUser = {
           id: cleanId,
           name: isMasterId ? '임종윤 선생님' : `학생 ${cleanId}`,
