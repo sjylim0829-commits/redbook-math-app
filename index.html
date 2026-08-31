@@ -744,7 +744,7 @@
               🎬 △DEF 180° 회전·이동하여 AC와 DF 맞붙이기
             </button>
 
-            <button class="tool-btn" style="margin-left: auto;" onclick="loadSubStep(state.subStep)">🔄 초기화</button>
+            <button class="tool-btn" style="margin-left: auto;" onclick="resetCurrentStep()">🔄 초기화</button>
           </div>
 
           <div class="two-plane-wrapper">
@@ -1011,8 +1011,63 @@
       bisectorDrawn: false,
       midpointDrawn: false,
       perpendicularDrawn: false,
-      rhsRotateDrawn: false
+      rhsRotateDrawn: false,
+      savedFormInputs: {},
+      verifiedViewData: {}
     };
+
+    function saveCurrentFormInputs(subStepCode) {
+      const code = subStepCode || state.subStep;
+      if (!code) return;
+      if (!state.savedFormInputs) state.savedFormInputs = {};
+      if (!state.savedFormInputs[code]) state.savedFormInputs[code] = {};
+
+      const formArea = document.getElementById('form-work-area');
+      if (!formArea) return;
+
+      const elements = formArea.querySelectorAll('input, textarea, select');
+      elements.forEach((el, idx) => {
+        const key = el.id || el.name || `field_${idx}`;
+        if (el.type === 'checkbox' || el.type === 'radio') {
+          state.savedFormInputs[code][key] = { checked: el.checked, value: el.value };
+        } else {
+          state.savedFormInputs[code][key] = el.value;
+        }
+      });
+    }
+
+    function restoreFormInputs(subStepCode) {
+      const code = subStepCode || state.subStep;
+      if (!code || !state.savedFormInputs || !state.savedFormInputs[code]) return;
+
+      const formArea = document.getElementById('form-work-area');
+      if (!formArea) return;
+
+      const saved = state.savedFormInputs[code];
+      const elements = formArea.querySelectorAll('input, textarea, select');
+      elements.forEach((el, idx) => {
+        const key = el.id || el.name || `field_${idx}`;
+        if (saved[key] !== undefined) {
+          if (el.type === 'checkbox' || el.type === 'radio') {
+            if (typeof saved[key] === 'object' && saved[key] !== null) {
+              el.checked = saved[key].checked;
+            } else {
+              el.checked = (el.value === saved[key] || saved[key] === true);
+            }
+          } else {
+            el.value = saved[key];
+          }
+        }
+      });
+    }
+
+    function resetCurrentStep() {
+      if (state.subStep) {
+        if (state.savedFormInputs) delete state.savedFormInputs[state.subStep];
+        if (state.verifiedViewData) delete state.verifiedViewData[state.subStep];
+        loadSubStep(state.subStep);
+      }
+    }
 
     let twoInstance = null;
     let animLineAD = null;
@@ -2989,6 +3044,10 @@
         alert("🔒 해당 페이지는 아직 잠겨 있습니다. 이전 세부 활동을 완료해 주세요!");
         return;
       }
+
+      if (state.subStep && state.subStep !== subStepCode) {
+        saveCurrentFormInputs(state.subStep);
+      }
       state.subStep = subStepCode;
 
       if (state.studentId && state.studentId !== '260523') {
@@ -4308,7 +4367,8 @@
         `;
       }
 
-      // 학생의 실시간 활동 및 타이핑 자동 저장 (일부만 수행하더라도 Supabase DB에 유실 없이 기록)
+      // 작성 중이던 답안 자동 복원 및 실시간 트래커 연동
+      restoreFormInputs(subStepCode);
       attachRealtimeInputTracker();
     }
 
@@ -4395,9 +4455,12 @@
       }
     }
 
-    function renderVerifiedAnswerView(titleHtml, contentHtml, nextStepCode) {
+    function renderVerifiedAnswerView(titleHtml, contentHtml, nextStepCode, isRestore = false) {
       if (!state.completedSubSteps) state.completedSubSteps = [];
       if (!state.unlockedSubSteps) state.unlockedSubSteps = ['0-1'];
+      if (!state.verifiedViewData) state.verifiedViewData = {};
+
+      state.verifiedViewData[state.subStep] = { titleHtml, contentHtml, nextStepCode };
 
       if (!state.completedSubSteps.includes(state.subStep)) {
         state.completedSubSteps.push(state.subStep);
@@ -4412,8 +4475,10 @@
 
       updateSubStepPills(state.currentStep !== undefined ? state.currentStep : 0);
 
-      // 정답 제출 성공 시 축하 팝업 모달 표출
-      showBigPraiseModal("🎉 🏆 정답 완수!", titleHtml);
+      // 정답 제출 성공 시 축하 팝업 모달 표출 (화면 복원/리사이즈 시에는 생략)
+      if (!isRestore) {
+        showBigPraiseModal("🎉 🏆 정답 완수!", titleHtml);
+      }
 
       const formArea = document.getElementById('form-work-area');
       if (!formArea) return;
@@ -5195,14 +5260,36 @@
         }, 5000);
       }
 
-      // 태블릿 회전 및 윈도우 리사이즈 시 1:1 캔버스 자동 동기화
+      // 실시간 입력값 자동 저장 (이벤트 위임)
+      document.addEventListener('input', (e) => {
+        if (e.target && e.target.closest('#form-work-area')) {
+          saveCurrentFormInputs();
+        }
+      });
+      document.addEventListener('change', (e) => {
+        if (e.target && e.target.closest('#form-work-area')) {
+          saveCurrentFormInputs();
+        }
+      });
+
+      // 태블릿 회전 및 윈도우 리사이즈 / 큰 화면 모드 전환 시 1:1 캔버스 자동 동기화 & 답안 보존
       let resizeTimer = null;
       window.addEventListener('resize', () => {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => {
           const actView = document.getElementById('view-activity');
           if (actView && (actView.classList.contains('active') || actView.style.display !== 'none')) {
-            if (state.subStep) loadSubStep(state.subStep);
+            if (state.subStep) {
+              saveCurrentFormInputs(state.subStep);
+              const isVerified = (state.verifiedViewData && state.verifiedViewData[state.subStep]);
+              loadSubStep(state.subStep);
+              if (isVerified) {
+                const v = state.verifiedViewData[state.subStep];
+                renderVerifiedAnswerView(v.titleHtml, v.contentHtml, v.nextStepCode, true);
+              } else {
+                restoreFormInputs(state.subStep);
+              }
+            }
           }
         }, 150);
       });
