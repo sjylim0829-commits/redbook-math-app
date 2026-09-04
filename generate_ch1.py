@@ -1,0 +1,2242 @@
+import os
+
+html_content = r'''<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>중1 수학: 1. 소인수분해</title>
+  
+  <!-- Supabase Cloud DB SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- 영서중 수학 LMS Integration SDK (중1용) -->
+  <script src="js/lms-integration-g1.js"></script>
+
+  <!-- KaTeX Math Rendering Library -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+  <!-- Two.js 2D Dynamic Geometry Engine -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/two.js/0.8.10/two.min.js"></script>
+
+  <style>
+    :root {
+      --primary-color: #6366f1;
+      --primary-hover: #4f46e5;
+      --secondary-color: #8b5cf6;
+      --accent-color: #ec4899;
+      --success-color: #059669;
+      --warning-color: #d97706;
+
+      --bg-main: #f8fafc;
+      --bg-card: #ffffff;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --border-color: #cbd5e1;
+
+      --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font-sans); }
+
+    html, body {
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      background-color: var(--bg-main);
+      color: var(--text-primary);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Header */
+    header.app-header {
+      background: #ffffff;
+      border-bottom: 1px solid var(--border-color);
+      padding: 8px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+      height: 48px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    }
+
+    .logo-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge-tag {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #ffffff;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 16px;
+      text-transform: uppercase;
+    }
+
+    .app-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      letter-spacing: -0.5px;
+    }
+
+    /* Tab Navigation Bar */
+    .tab-bar-container {
+      background: #ffffff;
+      border-bottom: 1px solid var(--border-color);
+      padding: 4px 16px;
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      height: 42px;
+      align-items: center;
+    }
+
+    .tab-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 12px;
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      background: var(--primary-color);
+      color: #ffffff;
+      font-weight: 700;
+      border-color: var(--primary-color);
+    }
+
+    .tab-btn.locked {
+      opacity: 0.6;
+      cursor: not-allowed;
+      background: #f1f5f9;
+    }
+
+    /* Sub-Step Navigation Pills */
+    .substep-bar {
+      background: #f1f5f9;
+      border-bottom: 1px solid var(--border-color);
+      padding: 4px 16px;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      height: 36px;
+      overflow-x: auto;
+    }
+
+    .substep-pill {
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+
+    .substep-pill.active {
+      background: #4f46e5;
+      color: #ffffff;
+      border-color: #4f46e5;
+    }
+
+    .substep-pill.locked-pill {
+      opacity: 0.55;
+      cursor: not-allowed;
+      background: #e2e8f0;
+    }
+
+    .substep-pill.completed:not(.active) {
+      background: #ecfdf5;
+      color: #059669;
+      border-color: #a7f3d0;
+    }
+
+    /* Main Container */
+    .main-container {
+      flex: 1;
+      height: calc(100vh - 126px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .view-panel {
+      display: none;
+      width: 100%;
+      height: 100%;
+    }
+
+    .view-panel.active {
+      display: flex;
+    }
+
+    /* Login View */
+    .login-card-container {
+      margin: auto;
+      width: 100%;
+      max-width: 420px;
+      background: #ffffff;
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+      padding: 32px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Activity Layout (Split-View) */
+    .activity-layout {
+      display: flex;
+      width: 100%;
+      height: 100%;
+    }
+
+    .plane-section {
+      flex: 1.25;
+      height: 100%;
+      background: #ffffff;
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .plane-toolbar {
+      height: 44px;
+      border-bottom: 1px solid var(--border-color);
+      background: #f8fafc;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tool-btn {
+      padding: 4px 10px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: #ffffff;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s ease;
+    }
+
+    .tool-btn:hover { background: #f1f5f9; }
+    .tool-btn.active {
+      background: #6366f1;
+      color: #ffffff;
+      border-color: #6366f1;
+    }
+
+    .two-plane-wrapper {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      background: #ffffff;
+    }
+
+    #two-container {
+      width: 100%;
+      height: 100%;
+    }
+
+    .sidebar-section {
+      flex: 0.95;
+      height: 100%;
+      background: #f8fafc;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      padding: 16px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+    }
+
+    .mission-card {
+      border-left: 4px solid var(--primary-color);
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      font-size: 0.88rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-control:focus { border-color: var(--primary-color); }
+
+    .proof-input-text {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1.5px solid #94a3b8;
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #0f172a;
+      text-align: center;
+      background: #ffffff;
+      outline: none;
+      transition: all 0.2s;
+    }
+    .proof-input-text:focus {
+      border-color: #6366f1;
+      background: #eff6ff;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+
+    .btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.86rem;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: var(--primary-color);
+      color: #ffffff;
+    }
+    .btn-primary:hover { background: var(--primary-hover); }
+
+    .verified-answer-card {
+      background: #ecfdf5;
+      border: 1.5px solid #10b981;
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .verified-answer-card h4 {
+      color: #047857;
+      font-size: 0.96rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .proof-error-notice {
+      background: #fee2e2;
+      border: 1px solid #ef4444;
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #991b1b;
+      font-size: 0.86rem;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: none;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-card {
+      background: #ffffff;
+      border-radius: 16px;
+      width: 90%;
+      max-width: 480px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    .modal-header {
+      padding: 14px 20px;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-body { padding: 20px; }
+    .modal-footer {
+      padding: 12px 20px;
+      background: #f8fafc;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header class="app-header">
+    <div class="logo-group">
+      <span class="badge-tag">중1 수학 1단원</span>
+      <h1 class="app-title">🔢 1. 소인수분해</h1>
+    </div>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <span id="current-user-info" style="font-size:0.85rem; font-weight:700; color:#4f46e5; margin-right:4px;">👤 로그인 필요</span>
+      <button id="btn-header-unlock-boundary" class="btn" style="padding:4px 9px; font-size:0.78rem; background:linear-gradient(135deg, #10b981, #059669); color:#fff; font-weight:800; display:none;" onclick="openUnlockBoundaryModal()">🔓 학생 해금 범위 설정</button>
+      <button id="btn-header-teacher-dashboard" class="btn" style="padding:4px 9px; font-size:0.78rem; background:linear-gradient(135deg, #6366f1, #8b5cf6); color:#fff; font-weight:800; display:none;" onclick="openTeacherDashboardModal()">📊 교사 5x5 모니터링</button>
+      <button class="btn" style="padding:4px 8px; font-size:0.78rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 활동 통과">🔑 교사 패스 (Pass)</button>
+      <button class="btn" style="padding:4px 8px; font-size:0.78rem; background:#fee2e2; color:#dc2626; border:1px solid #fca5a5;" onclick="switchView('login')">로그아웃</button>
+    </div>
+  </header>
+
+  <!-- Tab Navigation Bar (소단원 탭 단추) -->
+  <nav id="main-tab-bar" class="tab-bar-container">
+    <button id="tab-0" class="tab-btn active" onclick="switchMainTab(0)">0. 되짚어 보기 🔓</button>
+    <button id="tab-1" class="tab-btn" onclick="switchMainTab(1)">1.1 소수와 합성수 🔒</button>
+    <button id="tab-2" class="tab-btn" onclick="switchMainTab(2)">1.2 소인수분해 🔒</button>
+    <button id="tab-3" class="tab-btn" onclick="switchMainTab(3)">1.3 최대공약수 🔒</button>
+    <button id="tab-4" class="tab-btn" onclick="switchMainTab(4)">1.4 최소공배수 🔒</button>
+    <button id="tab-5" class="tab-btn" onclick="switchMainTab(5)">1.5 스스로 마무리하기 🔒</button>
+  </nav>
+
+  <!-- Sub-Step Navigation Pills -->
+  <div id="substep-bar" class="substep-bar">
+    <span style="font-size:0.78rem; font-weight:700; color:#64748b;">📑 세부 탐구 활동:</span>
+    <div id="substep-pills-container" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+  </div>
+
+  <!-- Main Container -->
+  <main class="main-container">
+    <!-- VIEW 1: LOGIN VIEW -->
+    <section id="view-login" class="view-panel active">
+      <div class="login-card-container">
+        <h2 style="font-size:1.35rem; margin-bottom:6px; color:#1e293b;">🏫 영서중 수학 LMS 학생 로그인</h2>
+        <p style="font-size:0.86rem; color:#64748b; margin-bottom:18px;">학번과 비밀번호를 입력하고 1단원 소인수분해 탐구를 시작하세요!</p>
+        <form onsubmit="handleLMSLogin(event)">
+          <div style="margin-bottom:12px;">
+            <label style="font-size:0.82rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">학번 (예: 10101)</label>
+            <input type="text" id="student-id" class="form-control" value="10101" required>
+          </div>
+          <div style="margin-bottom:14px;">
+            <label style="font-size:0.82rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">비밀번호</label>
+            <input type="password" id="student-name" class="form-control" placeholder="LMS 가입 비밀번호" required>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%; padding:12px; font-weight:800; font-size:1rem; background:linear-gradient(135deg, #6366f1, #4f46e5);">
+            🔐 영서중 수학 LMS 학생 로그인
+          </button>
+        </form>
+        <div style="margin-top:14px; border-top:1px solid #e2e8f0; padding-top:12px; display:flex; flex-direction:column; gap:8px;">
+          <button type="button" class="btn" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-weight:700;" onclick="openTestLoginModal()">🔑 교사 계정 접속</button>
+          <button type="button" class="btn" style="background:#eef2ff; color:#4338ca; border:1.5px solid #c7d2fe; font-weight:800;" onclick="openTeacherDashboardModal()">📊 교사 5x5 실시간 모니터링 관제실</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 2: ACTIVITY EXPLORATION VIEW -->
+    <section id="view-activity" class="view-panel">
+      <div class="activity-layout">
+        <!-- Left Plane Section (Two.js Canvas) -->
+        <div class="plane-section">
+          <div class="plane-toolbar">
+            <button id="tool-select" class="tool-btn active" onclick="setTool('select')">🖐️ 탐구 조작 도구</button>
+            <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()">🔄 화면 초기화</button>
+            
+            <!-- Sieve Toolbar Group (Active on 1-3) -->
+            <div id="sieve-toolbar-group" style="display:none; align-items:center; gap:5px; margin-left:8px; padding-left:8px; border-left:1px solid #cbd5e1;">
+              <button class="tool-btn" style="padding:3px 8px; font-size:0.75rem; background:#fee2e2; color:#dc2626;" onclick="sieveStep(1)">1 지우기</button>
+              <button class="tool-btn" style="padding:3px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e;" onclick="sieveStep(2)">2 배수 지우기</button>
+              <button class="tool-btn" style="padding:3px 8px; font-size:0.75rem; background:#dcfce7; color:#15803d;" onclick="sieveStep(3)">3 배수 지우기</button>
+              <button class="tool-btn" style="padding:3px 8px; font-size:0.75rem; background:#e0f2fe; color:#0369a1;" onclick="sieveStep(5)">5 배수 지우기</button>
+              <button class="tool-btn" style="padding:3px 8px; font-size:0.75rem; background:#f3e8ff; color:#7e22ce;" onclick="sieveStep(7)">7 배수 지우기</button>
+            </div>
+
+            <!-- Freehand Drawing Group (Active on 5-1 or when needed) -->
+            <div id="drawing-toolbar-group" style="display:none; align-items:center; gap:6px; margin-left:8px; padding-left:8px; border-left:1px solid #cbd5e1;">
+              <button class="tool-btn" style="padding:3px 8px; font-size:0.75rem; background:#4f46e5; color:#fff;" onclick="setPenColor('#4f46e5')">파랑</button>
+              <button class="tool-btn" style="padding:3px 8px; font-size:0.75rem; background:#e11d48; color:#fff;" onclick="setPenColor('#e11d48')">빨강</button>
+              <button class="tool-btn" style="padding:3px 8px; font-size:0.75rem; background:#fee2e2; color:#dc2626;" onclick="clearFreehandDrawing()">🗑️ 드로잉 삭제</button>
+            </div>
+
+            <span id="coord-display" style="margin-left:auto; font-size:0.82rem; font-weight:800; color:#4f46e5; background:#eef2ff; padding:4px 10px; border-radius:10px;">
+              🔢 소인수분해 대화형 탐구실
+            </span>
+          </div>
+
+          <div class="two-plane-wrapper" style="position:relative;">
+            <div id="two-container"></div>
+            <canvas id="freehand-drawing-canvas" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:auto; touch-action:none; z-index:10; cursor:crosshair;"></canvas>
+          </div>
+        </div>
+
+        <!-- Right Sidebar Section -->
+        <div class="sidebar-section">
+          <div class="card mission-card">
+            <h3 style="font-size:0.95rem; font-weight:800; color:var(--primary-color); margin-bottom:6px;">🎯 오늘의 수학 탐구 미션</h3>
+            <div id="mission-text" style="font-size:0.88rem; color:var(--text-secondary); line-height:1.6;">
+              단계를 선택하여 소인수분해 동적 탐구를 시작하세요!
+            </div>
+          </div>
+
+          <div id="form-work-area" style="display:flex; flex-direction:column; gap:12px;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: TEACHER 5X5 DASHBOARD -->
+    <section id="view-teacher-dashboard" class="view-panel" style="display:none; flex-direction:column;">
+      <div style="padding:16px; background:#ffffff; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-size:1.15rem; font-weight:800; color:#1e293b;">📊 교사용 실시간 5x5 모니터링 관제실</span>
+          <span style="font-size:0.82rem; font-weight:700; color:#4f46e5; background:#eef2ff; padding:3px 10px; border-radius:12px;">중1 수학: 1. 소인수분해</span>
+        </div>
+        <div>
+          <button class="btn" style="padding:6px 12px; font-size:0.82rem; background:#4f46e5; color:#fff; font-weight:800;" onclick="returnToStudentView()">🚪 학생 탐구 화면</button>
+        </div>
+      </div>
+      <div id="teacher-grid-container" style="flex:1; padding:16px; overflow-y:auto; display:grid; grid-template-columns:repeat(5, 1fr); gap:12px;"></div>
+    </section>
+  </main>
+
+  <!-- Modals -->
+  <div id="secure-password-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="secure-modal-title" style="font-size:1rem; font-weight:800; color:#1e293b;">🔑 교사 인증</h3>
+        <button class="btn" onclick="closeSecurePasswordModal()" style="background:none; color:#64748b; font-size:1.2rem; cursor:pointer;">✕</button>
+      </div>
+      <div class="modal-body">
+        <p id="secure-modal-desc" style="font-size:0.86rem; color:#64748b; margin-bottom:12px;">보안 인증 비밀번호를 입력해 주세요.</p>
+        <input type="password" id="secure-password-input" class="form-control" placeholder="비밀번호" onkeydown="if(event.key==='Enter') verifySecurePassword()">
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeSecurePasswordModal()" style="background:#f1f5f9; color:#475569;">취소</button>
+        <button class="btn btn-primary" onclick="verifySecurePassword()">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="unlock-boundary-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 style="font-size:1rem; font-weight:800; color:#1e293b;">🔓 학생 해금 범위 설정</h3>
+        <button class="btn" onclick="closeUnlockBoundaryModal()" style="background:none; color:#64748b; font-size:1.2rem; cursor:pointer;">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.86rem; color:#64748b; margin-bottom:12px;">학생들이 학습할 수 있는 최대 단원/단계를 지정합니다.</p>
+        <select id="select-unlock-substep-ch1" class="form-control" style="font-size:0.9rem;"></select>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeUnlockBoundaryModal()" style="background:#f1f5f9; color:#475569;">취소</button>
+        <button class="btn btn-primary" onclick="applyGlobalUnlockStepCh1()">적용하기</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const state = {
+      studentId: '10101',
+      studentName: '학생',
+      isTeacherLoggedIn: false,
+      currentMainTab: 0,
+      subStep: '0-1',
+      tool: 'select',
+      unlockedTabs: [0],
+      unlockedSubSteps: ['0-1'],
+      completedSubSteps: [],
+      sieveState: {}, // 1 to 50: 'active', 'prime', 'eliminated'
+      factorTreeNumber: 60,
+      factorTreeStep: 0,
+      savedFormInputs: {},
+      verifiedViewData: {}
+    };
+
+    const ALL_CH1_SUBSTEPS = [
+      '0-1', '0-2', '0-3',
+      '1-1', '1-2', '1-3', '1-4', '1-5',
+      '2-1', '2-2', '2-3', '2-4',
+      '3-1', '3-2', '3-3',
+      '4-1', '4-2', '4-3',
+      '5-1'
+    ];
+
+    const SUBSTEP_TITLES = {
+      '0-1': '0. 되짚어보기 1 (약수와 배수)',
+      '0-2': '0. 되짚어보기 2 (최대공약수)',
+      '0-3': '0. 되짚어보기 3 (최소공배수)',
+      '1-1': '1.1 생각열기 (약수의 개수)',
+      '1-2': '1.1 소수와 합성수의 뜻',
+      '1-3': '1.1 에라토스테네스의 체',
+      '1-4': '1.1 거듭제곱과 밑, 지수',
+      '1-5': '1.1 스스로 확인하기 1',
+      '2-1': '1.2 생각열기 (초콜릿과 곱 분해)',
+      '2-2': '1.2 인수와 소인수',
+      '2-3': '1.2 소인수분해 트리 캔버스',
+      '2-4': '1.2 문제 & 제곱수 만들기',
+      '3-1': '1.3 생각열기 (타일과 공약수)',
+      '3-2': '1.3 서로소의 뜻과 판정',
+      '3-3': '1.3 소인수분해와 최대공약수',
+      '4-1': '1.4 생각열기 (동시 출발 버스)',
+      '4-2': '1.4 소인수분해와 최소공배수',
+      '4-3': '1.4 실생활 활용 & 생각 넓히기',
+      '5-1': '1.5 스스로 마무리하기 (총정리)'
+    };
+
+    function saveCurrentFormInputs(subStepCode) {
+      const code = subStepCode || state.subStep;
+      if (!code) return;
+      if (!state.savedFormInputs) state.savedFormInputs = {};
+      if (!state.savedFormInputs[code]) state.savedFormInputs[code] = {};
+      const formArea = document.getElementById('form-work-area');
+      if (!formArea) return;
+      const elements = formArea.querySelectorAll('input, textarea, select');
+      elements.forEach((el, idx) => {
+        const key = el.id || el.name || `field_${idx}`;
+        if (el.type === 'checkbox' || el.type === 'radio') {
+          state.savedFormInputs[code][key] = { checked: el.checked, value: el.value };
+        } else {
+          state.savedFormInputs[code][key] = el.value;
+        }
+      });
+    }
+
+    function restoreFormInputs(subStepCode) {
+      const code = subStepCode || state.subStep;
+      if (!code || !state.savedFormInputs || !state.savedFormInputs[code]) return;
+      const formArea = document.getElementById('form-work-area');
+      if (!formArea) return;
+      const saved = state.savedFormInputs[code];
+      const elements = formArea.querySelectorAll('input, textarea, select');
+      elements.forEach((el, idx) => {
+        const key = el.id || el.name || `field_${idx}`;
+        if (saved[key] !== undefined) {
+          if (el.type === 'checkbox' || el.type === 'radio') {
+            if (typeof saved[key] === 'object' && saved[key] !== null) {
+              el.checked = saved[key].checked;
+            } else {
+              el.checked = (el.value === saved[key] || saved[key] === true);
+            }
+          } else {
+            el.value = saved[key];
+          }
+        }
+      });
+    }
+
+    let twoInstance = null;
+
+    function initTwoEngine() {
+      const container = document.getElementById('two-container');
+      if (!container) return null;
+      container.innerHTML = '';
+      const width = container.clientWidth || 800;
+      const height = container.clientHeight || 500;
+      twoInstance = new Two({
+        width: width,
+        height: height,
+        type: Two.Types.canvas,
+        autostart: true
+      }).appendTo(container);
+      return { two: twoInstance, width, height, cx: width / 2, cy: height / 2 };
+    }
+
+    function formatMathText(txt) {
+      if (typeof katex === 'undefined') return txt;
+      return txt.replace(/\$(.*?)\$/g, (match, math) => {
+        try { return katex.renderToString(math, { throwOnError: false }); } catch (e) { return math; }
+      });
+    }
+
+    function renderMathInPage(targetElement = null) {
+      const el = targetElement || document.body;
+      if (window.renderMathInElement) {
+        try {
+          window.renderMathInElement(el, {
+            delimiters: [
+              { left: "$$", right: "$$", display: true },
+              { left: "\\[", right: "\\]", display: true },
+              { left: "$", right: "$", display: false },
+              { left: "\\(", right: "\\)", display: false }
+            ],
+            ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code", "input"],
+            throwOnError: false
+          });
+        } catch(e) {}
+      }
+    }
+
+    function switchView(viewName) {
+      document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+      const target = document.getElementById(`view-${viewName}`);
+      if (target) target.classList.add('active');
+    }
+
+    function handleLMSLogin(e) {
+      e.preventDefault();
+      const idInput = document.getElementById('student-id');
+      const nameInput = document.getElementById('student-name');
+      state.studentId = idInput ? idInput.value.trim() : '10101';
+      state.studentName = nameInput ? nameInput.value.trim() : '학생';
+      
+      const userDisp = document.getElementById('current-user-info');
+      if (userDisp) userDisp.innerText = `👤 ${state.studentId} ${state.studentName}`;
+      
+      switchView('activity');
+      loadSubStep(state.subStep || '0-1');
+    }
+
+    function switchMainTab(tabIdx) {
+      if (!state.unlockedTabs.includes(tabIdx) && !state.isTeacherLoggedIn) {
+        alert("🔒 이전 단원을 먼저 완료하셔야 진행할 수 있습니다!");
+        return;
+      }
+      state.currentMainTab = tabIdx;
+      document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+        if (i === tabIdx) btn.classList.add('active');
+        else btn.classList.remove('active');
+      });
+      updateSubStepPills(tabIdx);
+
+      // 해당 탭의 첫 번째 해금된 서브스텝 자동 로드
+      const prefix = `${tabIdx}-`;
+      const firstSub = ALL_CH1_SUBSTEPS.find(code => code.startsWith(prefix) && (state.unlockedSubSteps.includes(code) || state.isTeacherLoggedIn));
+      if (firstSub) loadSubStep(firstSub);
+    }
+
+    function updateSubStepPills(mainIdx) {
+      const container = document.getElementById('substep-pills-container');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const pillsConfig = {
+        0: [
+          { code: '0-1', label: '1. 약수와 배수' },
+          { code: '0-2', label: '2. 최대공약수' },
+          { code: '0-3', label: '3. 최소공배수' }
+        ],
+        1: [
+          { code: '1-1', label: '1. 생각열기 (약수의 개수)' },
+          { code: '1-2', label: '2. 소수와 합성수의 뜻' },
+          { code: '1-3', label: '3. 에라토스테네스의 체' },
+          { code: '1-4', label: '4. 거듭제곱과 밑, 지수' },
+          { code: '1-5', label: '5. 스스로 확인하기 1' }
+        ],
+        2: [
+          { code: '2-1', label: '1. 생각열기 (초콜릿 조각)' },
+          { code: '2-2', label: '2. 인수와 소인수' },
+          { code: '2-3', label: '3. 소인수분해 트리' },
+          { code: '2-4', label: '4. 문제 & 제곱수 만들기' }
+        ],
+        3: [
+          { code: '3-1', label: '1. 생각열기 (타일 붙이기)' },
+          { code: '3-2', label: '2. 서로소의 뜻과 판정' },
+          { code: '3-3', label: '3. 최대공약수 구하기' }
+        ],
+        4: [
+          { code: '4-1', label: '1. 생각열기 (동시 출발 버스)' },
+          { code: '4-2', label: '2. 최소공배수 구하기' },
+          { code: '4-3', label: '3. 실생활 활용 & 생각 넓히기' }
+        ],
+        5: [
+          { code: '5-1', label: '1. 스스로 마무리하기' }
+        ]
+      };
+
+      const pills = pillsConfig[mainIdx] || [];
+      pills.forEach(p => {
+        const btn = document.createElement('button');
+        const isUnlocked = state.unlockedSubSteps.includes(p.code) || state.isTeacherLoggedIn;
+        const isActive = (state.subStep === p.code);
+        const isCompleted = state.completedSubSteps.includes(p.code);
+
+        let extraClass = '';
+        if (isActive) extraClass += ' active';
+        if (!isUnlocked) extraClass += ' locked-pill';
+        if (isCompleted) extraClass += ' completed';
+
+        btn.className = `substep-pill ${extraClass}`;
+        let prefix = isCompleted ? '✅ ' : (isUnlocked ? '' : '🔒 ');
+        btn.innerText = `${prefix}${p.label}`;
+
+        if (isUnlocked) {
+          btn.onclick = () => loadSubStep(p.code);
+        } else {
+          btn.onclick = () => alert("🔒 이전 세부활동을 먼저 완료하셔야 진행할 수 있습니다!");
+        }
+        container.appendChild(btn);
+      });
+    }
+
+    function loadSubStep(subStepCode) {
+      if (!state.unlockedSubSteps.includes(subStepCode) && !state.isTeacherLoggedIn) {
+        alert("🔒 해당 페이지는 아직 잠겨 있습니다!");
+        return;
+      }
+
+      if (state.subStep && state.subStep !== subStepCode) {
+        saveCurrentFormInputs(state.subStep);
+      }
+      state.subStep = subStepCode;
+
+      const mainTabIdx = parseInt(subStepCode.split('-')[0]);
+      state.currentMainTab = mainTabIdx;
+
+      document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+        if (i === mainTabIdx) btn.classList.add('active');
+        else btn.classList.remove('active');
+      });
+      updateSubStepPills(mainTabIdx);
+
+      // 툴바 가시성 제어
+      const sieveToolbar = document.getElementById('sieve-toolbar-group');
+      if (sieveToolbar) sieveToolbar.style.display = (subStepCode === '1-3') ? 'flex' : 'none';
+
+      const engine = initTwoEngine();
+      const setMissionUI = (mText) => {
+        document.getElementById('mission-text').innerHTML = formatMathText(mText);
+      };
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = '';
+
+      // --- SUBSTEP 0-1: 되짚어보기 1 (약수와 배수) ---
+      if (subStepCode === '0-1') {
+        setMissionUI("<b>[되짚어보기 1] 약수와 배수 (초5~6)</b><br>자연수 12의 약수를 모두 구하고, 4의 배수를 작은 것부터 차례대로 구하시오.");
+        drawReviewFactorsCanvas(engine.two);
+
+        formArea.innerHTML = `
+          <div class="card">
+            <div style="font-size:0.92rem; font-weight:700; color:#1e293b; margin-bottom:10px;">
+              [1] 12의 약수를 작은 수부터 차례대로 쓰시오.
+            </div>
+            <div style="font-size:0.88rem; line-height:2.0; margin-bottom:14px;">
+              12의 약수: 1, ( <input type="text" id="p01-a" class="proof-input-text" style="width:50px;"> ), 
+              3, ( <input type="text" id="p01-b" class="proof-input-text" style="width:50px;"> ), 
+              ( <input type="text" id="p01-c" class="proof-input-text" style="width:50px;"> ), 12
+            </div>
+            <div style="font-size:0.92rem; font-weight:700; color:#1e293b; margin-bottom:10px;">
+              [2] 4의 배수 중 작은 수부터 3개를 쓰시오.
+            </div>
+            <div style="font-size:0.88rem; line-height:2.0; margin-bottom:14px;">
+              4, ( <input type="text" id="p01-d" class="proof-input-text" style="width:50px;"> ), ( <input type="text" id="p01-e" class="proof-input-text" style="width:50px;"> )
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check01Submit()">✅ 제출 및 채점</button>
+          </div>
+        `;
+      }
+      // --- SUBSTEP 0-2: 되짚어보기 2 (최대공약수) ---
+      else if (subStepCode === '0-2') {
+        setMissionUI("<b>[되짚어보기 2] 공약수와 최대공약수 (초5~6)</b><br>12와 18의 공약수를 모두 구하고, 최대공약수를 구하시오.");
+        drawReviewGcdCanvas(engine.two);
+
+        formArea.innerHTML = `
+          <div class="card">
+            <div style="font-size:0.92rem; font-weight:700; color:#1e293b; margin-bottom:10px;">
+              [1] 12와 18의 공약수를 작은 수부터 쓰시오.
+            </div>
+            <div style="font-size:0.88rem; line-height:2.0; margin-bottom:14px;">
+              1, ( <input type="text" id="p02-c1" class="proof-input-text" style="width:50px;"> ), 
+              ( <input type="text" id="p02-c2" class="proof-input-text" style="width:50px;"> ), 
+              ( <input type="text" id="p02-c3" class="proof-input-text" style="width:50px;"> )
+            </div>
+            <div style="font-size:0.92rem; font-weight:700; color:#1e293b; margin-bottom:10px;">
+              [2] 12와 18의 최대공약수를 구하시오.
+            </div>
+            <div style="font-size:0.9rem; line-height:2.0; margin-bottom:14px;">
+              최대공약수 = ( <input type="text" id="p02-gcd" class="proof-input-text" style="width:60px;"> )
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check02Submit()">✅ 제출 및 채점</button>
+          </div>
+        `;
+      }
+      // --- SUBSTEP 0-3: 되짚어보기 3 (최소공배수) ---
+      else if (subStepCode === '0-3') {
+        setMissionUI("<b>[되짚어보기 3] 공배수와 최소공배수 (초5~6)</b><br>6과 8의 공배수를 작은 것부터 2개 구하고, 최소공배수를 구하시오.");
+        drawReviewLcmCanvas(engine.two);
+
+        formArea.innerHTML = `
+          <div class="card">
+            <div style="font-size:0.92rem; font-weight:700; color:#1e293b; margin-bottom:10px;">
+              [1] 6과 8의 공배수를 작은 것부터 2개 쓰시오.
+            </div>
+            <div style="font-size:0.88rem; line-height:2.0; margin-bottom:14px;">
+              ( <input type="text" id="p03-m1" class="proof-input-text" style="width:60px;"> ), 
+              ( <input type="text" id="p03-m2" class="proof-input-text" style="width:60px;"> )
+            </div>
+            <div style="font-size:0.92rem; font-weight:700; color:#1e293b; margin-bottom:10px;">
+              [2] 6과 8의 최소공배수를 구하시오.
+            </div>
+            <div style="font-size:0.9rem; line-height:2.0; margin-bottom:14px;">
+              최소공배수 = ( <input type="text" id="p03-lcm" class="proof-input-text" style="width:60px;"> )
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800; background:linear-gradient(135deg, #059669, #4f46e5);" onclick="check03Submit()">
+              🏆 되짚어 보기 최종 제출 (1.1 소수와 합성수 해금)
+            </button>
+          </div>
+        `;
+      }
+      // --- SUBSTEP 1-1: 1.1 생각열기 (약수의 개수) ---
+      else if (subStepCode === '1-1') {
+        setMissionUI("<b>[1.1 생각열기] 자연수의 분류와 약수의 개수 (교과서 p.8)</b><br>2, 3, 4, 5, 6의 약수의 개수를 구하여 표를 완성하고, 약수가 2개뿐인 수의 특징을 탐구해 봅시다.");
+        drawThinkingOpenNumbersCanvas(engine.two);
+
+        formArea.innerHTML = `
+          <div class="card">
+            <div style="font-size:0.92rem; font-weight:800; color:#4f46e5; margin-bottom:10px;">
+              📊 [활동 1] 다음 자연수의 약수의 개수를 구하시오:
+            </div>
+            <div style="font-size:0.88rem; line-height:2.0; margin-bottom:12px;">
+              • 2의 약수의 개수: ( <input type="text" id="p11-c2" class="proof-input-text" style="width:50px;"> )개<br>
+              • 3의 약수의 개수: ( <input type="text" id="p11-c3" class="proof-input-text" style="width:50px;"> )개<br>
+              • 4의 약수의 개수: ( <input type="text" id="p11-c4" class="proof-input-text" style="width:50px;"> )개<br>
+              • 5의 약수의 개수: ( <input type="text" id="p11-c5" class="proof-input-text" style="width:50px;"> )개<br>
+              • 6의 약수의 개수: ( <input type="text" id="p11-c6" class="proof-input-text" style="width:50px;"> )개
+            </div>
+            <div style="font-size:0.92rem; font-weight:800; color:#4f46e5; margin-bottom:8px; border-top:1px dashed #cbd5e1; padding-top:10px;">
+              💡 [질문 2] 약수가 2개뿐인 수를 모두 골라 쓰시오:
+            </div>
+            <div style="font-size:0.88rem; margin-bottom:14px;">
+              약수가 2개인 수: ( <input type="text" id="p11-two-factors" class="proof-input-text" style="width:140px;" placeholder="예: 2, 3, 5"> )
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:11px; font-weight:800;" onclick="check11Submit()">
+              🚀 제출 후 [소수와 합성수의 뜻] 탐구로 진행 ➔
+            </button>
+          </div>
+        `;
+      }
+      // --- SUBSTEP 1-2: 1.1 소수와 합성수의 뜻 ---
+      else if (subStepCode === '1-2') {
+        setMissionUI("<b>[1.1 개념학습] 소수와 합성수의 뜻 (교과서 p.8~9)</b><br>1보다 큰 자연수를 약수의 개수에 따라 소수와 합성수로 분류하는 핵심 개념을 학습하고 빈칸을 채워보세요.");
+        drawPrimeCompositeConceptCanvas(engine.two);
+
+        formArea.innerHTML = `
+          <div class="card">
+            <div style="font-size:0.92rem; font-weight:800; color:#4f46e5; margin-bottom:10px;">
+              📖 [개념 정립] 소수(Prime Number)와 합성수(Composite Number)
+            </div>
+            <div style="font-size:0.88rem; line-height:1.9; color:#334155; margin-bottom:12px;">
+              ① 1보다 큰 자연수 중에서 1과 자기 자신만을 약수로 가지는 수를 ( <input type="text" id="p12-prime" class="proof-input-text" style="width:80px;" placeholder="용어 입력"> )(이)라고 한다. 즉, 약수가 ( <input type="text" id="p12-cnt2" class="proof-input-text" style="width:50px;" placeholder="숫자"> )개뿐이다.<br>
+              ② 1보다 큰 자연수 중에서 소수가 아닌 수를 ( <input type="text" id="p12-composite" class="proof-input-text" style="width:80px;" placeholder="용어 입력"> )(이)라고 한다. 즉, 약수가 ( <input type="text" id="p12-cnt3" class="proof-input-text" style="width:60px;" placeholder="몇 개 이상"> )개 이상이다.
+            </div>
+
+            <div style="background:#fef2f2; border:1.5px solid #f87171; border-radius:8px; padding:10px 12px; margin-bottom:14px; font-size:0.86rem; line-height:1.8; color:#991b1b;">
+              <div style="font-weight:800; color:#b91c1c; margin-bottom:4px;">⚠️ [오개념 바로잡기 & 주의사항]</div>
+              • 자연수 <b>1</b>은 소수인가요 합성수인가요? ➔ 1은 소수도 아니고 합성수도 ( <input type="text" id="p12-one" class="proof-input-text" style="width:80px;" placeholder="아니다"> ).<br>
+              • 소수 중 유일한 짝수는 ( <input type="text" id="p12-even" class="proof-input-text" style="width:50px;" placeholder="수"> )이며, 가장 작은 소수이다.
+            </div>
+
+            <button class="btn btn-primary" style="width:100%; padding:11px; font-weight:800;" onclick="check12Submit()">✅ 제출 및 채점</button>
+          </div>
+        `;
+      }
+      // --- SUBSTEP 1-3: 1.1 에라토스테네스의 체 ---
+      else if (subStepCode === '1-3') {
+        setMissionUI("<b>[1.1 탐구활동] 에라토스테네스의 체 (교과서 p.10)</b><br>1부터 50까지의 자연수 격자판에서 상단 도구를 이용해 배수들을 차례대로 지우고, 50 이하의 소수 15개를 모두 찾아보세요!");
+        initSieveState();
+        drawSieveCanvas(engine.two);
+
+        formArea.innerHTML = `
+          <div class="card">
+            <div style="font-size:0.92rem; font-weight:800; color:#4f46e5; margin-bottom:10px;">
+              🔢 50 이하의 소수 모두 찾기 (에라토스테네스의 체)
+            </div>
+            <div style="font-size:0.86rem; color:#475569; line-height:1.7; margin-bottom:12px;">
+              상단 툴바의 <b>[1 지우기] ➔ [2 배수 지우기] ➔ [3 배수 지우기] ➔ [5 배수 지우기] ➔ [7 배수 지우기]</b>를 차례대로 클릭하세요.<br>
+              (격자판의 숫자를 직접 클릭하여 지우거나 되돌릴 수도 있습니다!)
+            </div>
+            <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:10px 12px; margin-bottom:14px;">
+              <div style="font-size:0.88rem; font-weight:800; color:#1e40af; margin-bottom:6px;">
+                📝 50 이하의 소수는 총 몇 개인가요?
+              </div>
+              <div style="font-size:0.9rem; line-height:1.8;">
+                총 ( <input type="text" id="p13-count" class="proof-input-text" style="width:60px;" placeholder="개수"> )개
+              </div>
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:11px; font-weight:800;" onclick="check13Submit()">
+              🎯 소수 판별 확인 및 제출
+            </button>
+          </div>
+        `;
+      }
+      // --- SUBSTEP 1-4: 1.1 거듭제곱과 밑, 지수 ---
+      else if (subStepCode === '1-4') {
+        setMissionUI("<b>[1.1 개념학습] 거듭제곱과 밑, 지수 (교과서 p.10~11)</b><br>같은 수를 여러 번 곱할 때 간단히 나타내는 거듭제곱의 표기법과 밑, 지수의 개념을 탐구해 보세요.");
+        drawPowerConceptCanvas(engine.two);
+
+        formArea.innerHTML = `
+          <div class="card">
+            <div style="font-size:0.92rem; font-weight:800; color:#4f46e5; margin-bottom:10px;">
+              📖 거듭제곱(Power), 밑(Base), 지수(Exponent)
+            </div>
+            <div style="font-size:0.88rem; line-height:2.0; margin-bottom:12px;">
+              ① $2 \\times 2 \\times 2$를 거듭제곱으로 나타내면 $2$의 ( <input type="text" id="p14-cube" class="proof-input-text" style="width:70px;" placeholder="세제곱"> )이라 읽고, $2^3$으로 쓴다.<br>
+              ② $2^3$에서 거듭하여 곱한 수 2를 ( <input type="text" id="p14-base" class="proof-input-text" style="width:60px;" placeholder="용어"> )(이)라 한다.<br>
+              ③ 곱한 횟수 3을 거듭제곱의 ( <input type="text" id="p14-exp" class="proof-input-text" style="width:60px;" placeholder="용어"> )(이)라 한다.<br>
+              ④ $3 \\times 3 \\times 5 \\times 5 \\times 5$를 거듭제곱으로 나타내면: 
+              $3^($ <input type="text" id="p14-exp1" class="proof-input-text" style="width:40px;"> $) \\times 5^($ <input type="text" id="p14-exp2" class="proof-input-text" style="width:40px;"> $)$
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check14Submit()">✅ 제출 및 채점</button>
+          </div>
+        `;
+      }
+      // --- SUBSTEP 1-5: 1.1 스스로 확인하기 1 ---
+      else if (subStepCode === '1-5') {
+        setMissionUI("<b>[1.1 스스로 확인하기] 소수, 합성수 및 거듭제곱 (교과서 p.12)</b><br>소수와 합성수를 정확하게 구분하고, 거듭제곱 표현을 완성하시오.");
+        drawReviewFactorsCanvas(engine.two);
+
+        formArea.innerHTML = `
+          <div class="card">
+            <div style="font-size:0.92rem; font-weight:800; color:#4f46e5; margin-bottom:10px;">
+              [문제 1] 다음 수를 소수와 합성수로 구분하시오: 13, 15, 20, 23, 29
+            </div>
+            <div style="font-size:0.88rem; line-height:2.2; margin-bottom:14px;">
+              • <b>소수</b>를 모두 쓰시오: ( <input type="text" id="p15-primes" class="proof-input-text" style="width:140px;" placeholder="예: 13, 23, 29"> )<br>
+              • <b>합성수</b>를 모두 쓰시오: ( <input type="text" id="p15-comps" class="proof-input-text" style="width:140px;" placeholder="예: 15, 20"> )
+            </div>
+            <div style="font-size:0.92rem; font-weight:800; color:#4f46e5; margin-bottom:10px; border-top:1px dashed #cbd5e1; padding-top:10px;">
+              [문제 2] 다음을 거듭제곱으로 나타내시오:
+            </div>
+            <div style="font-size:0.88rem; line-height:2.2; margin-bottom:14px;">
+              (1) $5 \\times 5 \\times 5 \\times 5 = 5^($ <input type="text" id="p15-p1" class="proof-input-text" style="width:50px;"> $)$<br>
+              (2) $2 \\times 3 \\times 3 \\times 5 = 2 \\times 3^($ <input type="text" id="p15-p2" class="proof-input-text" style="width:50px;"> $) \\times 5$
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:11px; font-weight:800; background:linear-gradient(135deg, #4f46e5, #059669);" onclick="check15Submit()">
+              🏆 1.1 소수와 합성수 완수 (1.2 소인수분해 해금)
+            </button>
+          </div>
+        `;
+      }
+      // --- SUBSTEP 2-1: 1.2 생각열기 (초콜릿 조각) ---
+      else if (subStepCode === '2-1') {
+        setMissionUI("<b>[1.2 생각열기] 직사각형 초콜릿과 곱 분해 (교과서 p.13)</b><br>12개의 초콜릿 조각을 직사각형 모양으로 배열하는 방법을 통해 12를 자연수의 곱으로 분해해 봅시다.");
+        drawChocolateCanvas(engine.two);
+
+        formArea.innerHTML = `
+          <div class="card">
+            <div style="font-size:0.92rem; font-weight:800; color:#4f46e5; margin-bottom:10px;">
+              🍫 12개의 정사각형 조각으로 직사각형 만들기
+            </div>
+            <div style="font-size:0.88rem; line-height:2.0; margin-bottom:12px;">
+              12를 두 자연수의 곱으로 나타내는 방법:<br>
+              • $12 = 1 \\times 12$<br>
+              • $12 = 2 \\times ($ <input type="text" id="p21-f1" class="proof-input-text" style="width:50px;"> $)$<br>
+              • $12 = 3 \\times ($ <input type="text" id="p21-f2" class="proof-input-text" style="width:50px;"> $)$
+            </div>
+            <div style="font-size:0.88rem; color:#334155; margin-bottom:14px; background:#f8fafc; padding:10px; border-radius:8px;">
+              이때 12의 약수인 1, 2, 3, 4, 6, 12를 12의 <b>인수(Factor)</b>라고 합니다.
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check21Submit()">✅ 제출 및 다음 활동 ➔</button>
+          </div>
+        `;
+      }
+      // --- SUBSTEP 2-2: 1.2 인수와 소인수 ---
+      else if (subStepCode === '2-2') {
+        setMissionUI("<b>[1.2 개념학습] 인수와 소인수 (교과서 p.13)</b><br>자연수의 약수를 인수라 하고, 인수 중에서 소수인 것을 '소인수'라고 합니다.");
+        drawReviewFactorsCanvas(engine.two);
+
+        formArea.innerHTML = `
+          <div class="card">
+            <div style="font-size:0.92rem; font-weight:800; color:#4f46e5; margin-bottom:10px;">
+              📖 인수(Factor)와 소인수(Prime Factor)
+            </div>
+            <div style="font-size:0.88rem; line-height:2.0; margin-bottom:14px;">
+              ① 자연수 $a, b, c$에 대하여 $a = b \\times c$일 때, $b$와 $c$를 $a$의 ( <input type="text" id="p22-term1" class="proof-input-text" style="width:70px;" placeholder="용어"> )(이)라 한다.<br>
+              ② 인수 중에서 소수인 것을 그 수의 ( <input type="text" id="p22-term2" class="proof-input-text" style="width:80px;" placeholder="용어"> )(이)라고 한다.<br>
+              ③ 12의 인수는 1, 2, 3, 4, 6, 12이다. 이 중에서 <b>소인수</b>는 ( <input type="text" id="p22-primes" class="proof-input-text" style="width:80px;" placeholder="예: 2, 3"> )이다.
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check22Submit()">✅ 제출 및 채점</button>
+          </div>
+        `;
+      }
+      // --- SUBSTEP 2-3: 1.2 소인수분해 트리 캔버스 ---
+      else if (subStepCode === '2-3') {
+        setMissionUI("<b>[1.2 탐구활동] 소인수분해 수형도(Tree) 캔버스 (교과서 p.14)</b><br>자연수 60을 소수들만의 곱으로 끝까지 분해하는 나뭇가지 수형도를 시뮬레이션해 보세요!");
+        drawFactorTreeCanvas(engine.two, 60);
+
+        formArea.innerHTML = `
+          <div class="card">
+            <div style="font-size:0.92rem; font-weight:800; color:#4f46e5; margin-bottom:10px;">
+              🌳 60의 소인수분해 완성하기
+            </div>
+            <div style="font-size:0.88rem; line-height:2.2; margin-bottom:14px;">
+              60을 소인수들의 곱으로 나타내면 다음과 같습니다:<br>
+              $60 = 2 \\times 2 \\times 3 \\times 5 = 2^($ <input type="text" id="p23-e1" class="proof-input-text" style="width:40px;"> $) \\times 3 \\times 5$<br>
+              • 60의 소인수를 모두 쓰시오: ( <input type="text" id="p23-factors" class="proof-input-text" style="width:110px;" placeholder="예: 2, 3, 5"> )
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:11px; font-weight:800;" onclick="check23Submit()">✅ 제출 및 채점</button>
+          </div>
+        `;
+      }
+      // --- SUBSTEP 2-4: 1.2 문제 & 제곱수 만들기 ---
+      else if (subStepCode === '2-4') {
+        setMissionUI("<b>[1.2 문제] 소인수분해와 제곱수 만들기 (교과서 p.15~16)</b><br>소인수분해를 이용하여 주어진 수를 분석하고, 어떤 수의 제곱이 되도록 하는 가장 작은 자연수를 탐구하시오.");
+        drawSquareMakeCanvas(engine.two);
+
+        formArea.innerHTML = `
+          <div class="card">
+            <div style="font-size:0.92rem; font-weight:800; color:#4f46e5; margin-bottom:10px;">
+              [문제 1] 72를 소인수분해하시오:
+            </div>
+            <div style="font-size:0.88rem; line-height:2.0; margin-bottom:14px;">
+              $72 = 2^($ <input type="text" id="p24-e1" class="proof-input-text" style="width:45px;"> $) \\times 3^($ <input type="text" id="p24-e2" class="proof-input-text" style="width:45px;"> $)$
+            </div>
+            <div style="font-size:0.92rem; font-weight:800; color:#4f46e5; margin-bottom:10px; border-top:1px dashed #cbd5e1; padding-top:10px;">
+              [문제 2] 18에 가장 작은 자연수를 곱하여 어떤 자연수의 제곱이 되게 하려고 한다.
+            </div>
+            <div style="font-size:0.88rem; line-height:2.0; margin-bottom:14px;">
+              • $18 = 2 \\times 3^2$ 이므로, 모든 소인수의 지수가 짝수가 되려면 곱해야 하는 가장 작은 자연수는 ( <input type="text" id="p24-sq" class="proof-input-text" style="width:60px;" placeholder="수 입력"> )이다.
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:11px; font-weight:800; background:linear-gradient(135deg, #4f46e5, #059669);" onclick="check24Submit()">
+              🏆 1.2 소인수분해 완수 (1.3 최대공약수 해금)
+            </button>
+          </div>
+        `;
+      }
+      // --- SUBSTEP 3-1: 1.3 생각열기 (타일 붙이기) ---
+      else if (subStepCode === '3-1') {
+        setMissionUI("<b>[1.3 생각열기] 벽면 타일 붙이기와 공약수 (교과서 p.17)</b><br>가로 $24\\text{cm}$, 세로 $18\\text{cm}$인 직사각형 벽을 남김없이 빈틈없이 채울 수 있는 가장 큰 정사각형 타일 한 변의 길이를 탐구해 봅시다.");
+        drawTileCanvas(engine.two, 24, 18);
+
+        formArea.innerHTML = `
+          <div class="card">
+            <div style="font-size:0.92rem; font-weight:800; color:#4f46e5; margin-bottom:10px;">
+              🧱 타일 한 변의 길이 탐구
+            </div>
+            <div style="font-size:0.88rem; line-height:2.0; margin-bottom:14px;">
+              • 타일의 한 변의 길이는 24와 18의 ( <input type="text" id="p31-term" class="proof-input-text" style="width:80px;" placeholder="용어 입력"> )이어야 한다.<br>
+              • 가장 큰 정사각형 타일의 한 변의 길이는 24와 18의 ( <input type="text" id="p31-gcd-term" class="proof-input-text" style="width:90px;" placeholder="용어 입력"> )인 ( <input type="text" id="p31-ans" class="proof-input-text" style="width:50px;" placeholder="숫자"> )$\text{cm}$이다.
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check31Submit()">✅ 제출 및 다음 단계 ➔</button>
+          </div>
+        `;
+      }
+      // --- SUBSTEP 3-2: 1.3 서로소의 뜻과 판정 ---
+      else if (subStepCode === '3-2') {
+        setMissionUI("<b>[1.3 개념학습] 서로소(Coprime)의 뜻 (교과서 p.18)</b><br>최대공약수가 1인 두 자연수의 관계를 '서로소'라고 합니다.");
+        drawReviewGcdCanvas(engine.two);
+
+        formArea.innerHTML = `
+          <div class="card">
+            <div style="font-size:0.92rem; font-weight:800; color:#4f46e5; margin-bottom:10px;">
+              📖 서로소의 뜻과 판정
+            </div>
+            <div style="font-size:0.88rem; line-height:2.0; margin-bottom:14px;">
+              ① 최대공약수가 ( <input type="text" id="p32-val1" class="proof-input-text" style="width:40px;"> )인 두 자연수를 <b>서로소</b>라고 한다.<br>
+              ② 4와 9의 공약수는 1뿐이므로 두 수는 서로소( <input type="text" id="p32-ox" class="proof-input-text" style="width:50px;" placeholder="이다/아니다"> ).<br>
+              ③ 6과 15의 최대공약수는 ( <input type="text" id="p32-gcd6" class="proof-input-text" style="width:40px;"> )이므로 두 수는 서로소가 ( <input type="text" id="p32-ox2" class="proof-input-text" style="width:60px;" placeholder="아니다"> ).
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check32Submit()">✅ 제출 및 채점</button>
+          </div>
+        `;
+      }
+      // --- SUBSTEP 3-3: 1.3 소인수분해와 최대공약수 ---
+      else if (subStepCode === '3-3') {
+        setMissionUI("<b>[1.3 개념&문제] 소인수분해를 이용한 최대공약수 구하기 (교과서 p.18~19)</b><br>두 수의 소인수분해 결과를 비교하여 공통인 소인수 중 거듭제곱의 지수가 작거나 같은 것을 택해 최대공약수를 구하세요.");
+        drawVennGcdCanvas(engine.two);
+
+        formArea.innerHTML = `
+          <div class="card">
+            <div style="font-size:0.92rem; font-weight:800; color:#4f46e5; margin-bottom:10px;">
+              [문제] $2^3 \\times 3^2 \\times 5$와 $2^2 \\times 3^3$의 최대공약수를 구하시오.
+            </div>
+            <div style="font-size:0.88rem; line-height:2.2; margin-bottom:14px;">
+              • 공통인 소인수 2의 거듭제곱 중 지수가 작거나 같은 것: $2^($ <input type="text" id="p33-e1" class="proof-input-text" style="width:40px;"> $)$<br>
+              • 공통인 소인수 3의 거듭제곱 중 지수가 작거나 같은 것: $3^($ <input type="text" id="p33-e2" class="proof-input-text" style="width:40px;"> $)$<br>
+              • 최대공약수 = $2^2 \\times 3^2 = ($ <input type="text" id="p33-ans" class="proof-input-text" style="width:70px;" placeholder="수 입력"> )
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:11px; font-weight:800; background:linear-gradient(135deg, #4f46e5, #059669);" onclick="check33Submit()">
+              🏆 1.3 최대공약수 완수 (1.4 최소공배수 해금)
+            </button>
+          </div>
+        `;
+      }
+      // --- SUBSTEP 4-1: 1.4 생각열기 (동시 출발 버스) ---
+      else if (subStepCode === '4-1') {
+        setMissionUI("<b>[1.4 생각열기] 버스의 동시 출발과 공배수 (교과서 p.20)</b><br>배차 간격이 12분인 시내버스와 15분인 좌석버스가 오전 8시에 동시 출발할 때, 처음으로 다시 동시에 출발하는 시각을 탐구해 봅시다.");
+        drawBusCanvas(engine.two);
+
+        formArea.innerHTML = `
+          <div class="card">
+            <div style="font-size:0.92rem; font-weight:800; color:#4f46e5; margin-bottom:10px;">
+              �� 두 버스의 출발 시각 규칙
+            </div>
+            <div style="font-size:0.88rem; line-height:2.0; margin-bottom:14px;">
+              • 시내버스의 출발 간격: 12의 배수 (12분, 24분, 36분, 48분, 60분 ...)<br>
+              • 좌석버스의 출발 간격: 15의 배수 (15분, 30분, 45분, 60분 ...)<br>
+              • 두 버스가 처음으로 다시 동시 출발하는 시간은 12와 15의 <b>최소공배수</b>인 ( <input type="text" id="p41-min" class="proof-input-text" style="width:60px;"> )분 후이다.<br>
+              • 따라서 다시 동시에 출발하는 시각은 오전 ( <input type="text" id="p41-time" class="proof-input-text" style="width:50px;"> )시이다.
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check41Submit()">✅ 제출 및 다음 단계 ➔</button>
+          </div>
+        `;
+      }
+      // --- SUBSTEP 4-2: 1.4 소인수분해와 최소공배수 ---
+      else if (subStepCode === '4-2') {
+        setMissionUI("<b>[1.4 개념&문제] 소인수분해를 이용한 최소공배수 구하기 (교과서 p.21~22)</b><br>공통인 소인수 중 지수가 크거나 같은 것과 공통이 아닌 소인수를 모두 곱해 최소공배수를 구하세요.");
+        drawVennLcmCanvas(engine.two);
+
+        formArea.innerHTML = `
+          <div class="card">
+            <div style="font-size:0.92rem; font-weight:800; color:#4f46e5; margin-bottom:10px;">
+              [문제] $2^2 \\times 3$과 $2 \\times 3^2 \\times 5$의 최소공배수를 구하시오.
+            </div>
+            <div style="font-size:0.88rem; line-height:2.2; margin-bottom:14px;">
+              • 소인수 2 중 지수가 크거나 같은 것: $2^($ <input type="text" id="p42-e1" class="proof-input-text" style="width:40px;"> $)$<br>
+              • 소인수 3 중 지수가 크거나 같은 것: $3^($ <input type="text" id="p42-e2" class="proof-input-text" style="width:40px;"> $)$<br>
+              • 공통이 아닌 소인수: ( <input type="text" id="p42-f3" class="proof-input-text" style="width:40px;"> )<br>
+              • 최소공배수 = $2^2 \\times 3^2 \\times 5 = ($ <input type="text" id="p42-ans" class="proof-input-text" style="width:70px;" placeholder="수 입력"> )
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:11px; font-weight:800;" onclick="check42Submit()">✅ 제출 및 채점</button>
+          </div>
+        `;
+      }
+      // --- SUBSTEP 4-3: 1.4 실생활 활용 & 생각 넓히기 ---
+      else if (subStepCode === '4-3') {
+        setMissionUI("<b>[1.4 생각 넓히기] 톱니바퀴의 회전과 최소공배수 (교과서 p.23)</b><br>톱니의 개수가 각각 24개, 36개인 두 톱니바퀴 A, B가 맞물려 돌아갈 때, 처음으로 다시 같은 톱니에서 맞물리기 위한 조건을 탐구하시오.");
+        drawGearCanvas(engine.two);
+
+        formArea.innerHTML = `
+          <div class="card">
+            <div style="font-size:0.92rem; font-weight:800; color:#4f46e5; margin-bottom:10px;">
+              ⚙️ 맞물려 돌아가는 두 톱니바퀴 A, B
+            </div>
+            <div style="font-size:0.88rem; line-height:2.2; margin-bottom:14px;">
+              • 맞물려 돌아간 총 톱니의 수는 24와 36의 <b>최소공배수</b>인 ( <input type="text" id="p43-lcm" class="proof-input-text" style="width:60px;"> )개이다.<br>
+              • 톱니바퀴 A는 ( <input type="text" id="p43-turnA" class="proof-input-text" style="width:45px;"> )바퀴 회전해야 하고,<br>
+              • 톱니바퀴 B는 ( <input type="text" id="p43-turnB" class="proof-input-text" style="width:45px;"> )바퀴 회전해야 한다.
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:11px; font-weight:800; background:linear-gradient(135deg, #4f46e5, #059669);" onclick="check43Submit()">
+              🏆 1.4 최소공배수 완수 (1.5 스스로 마무리하기 해금)
+            </button>
+          </div>
+        `;
+      }
+      // --- SUBSTEP 5-1: 1.5 스스로 마무리하기 ---
+      else if (subStepCode === '5-1') {
+        setMissionUI("<b>[1.5 스스로 마무리하기] 1단원 소인수분해 총정리 형성평가 (교과서 p.24~26)</b><br>소인수분해 대단원 전체의 핵심 개념을 점검하는 최종 테스트입니다!");
+        drawTrophyCanvas(engine.two);
+
+        formArea.innerHTML = `
+          <div class="card">
+            <div style="font-size:0.92rem; font-weight:800; color:#4f46e5; margin-bottom:10px;">
+              [문제 1] 10 이하의 소수를 모두 쓰시오:
+            </div>
+            <div style="font-size:0.88rem; line-height:2.0; margin-bottom:12px;">
+              ( <input type="text" id="p51-q1" class="proof-input-text" style="width:140px;" placeholder="예: 2, 3, 5, 7"> )
+            </div>
+            <div style="font-size:0.92rem; font-weight:800; color:#4f46e5; margin-bottom:10px; border-top:1px dashed #cbd5e1; padding-top:10px;">
+              [문제 2] 180을 소인수분해하시오:
+            </div>
+            <div style="font-size:0.88rem; line-height:2.0; margin-bottom:12px;">
+              $180 = 2^($ <input type="text" id="p51-q2a" class="proof-input-text" style="width:40px;"> $) \\times 3^($ <input type="text" id="p51-q2b" class="proof-input-text" style="width:40px;"> $) \\times ($ <input type="text" id="p51-q2c" class="proof-input-text" style="width:40px;"> $)$
+            </div>
+            <div style="font-size:0.92rem; font-weight:800; color:#4f46e5; margin-bottom:10px; border-top:1px dashed #cbd5e1; padding-top:10px;">
+              [문제 3] 28과 42의 최대공약수와 최소공배수를 구하시오:
+            </div>
+            <div style="font-size:0.88rem; line-height:2.0; margin-bottom:14px;">
+              • 최대공약수 = ( <input type="text" id="p51-q3g" class="proof-input-text" style="width:60px;"> )<br>
+              • 최소공배수 = ( <input type="text" id="p51-q3l" class="proof-input-text" style="width:60px;"> )
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:13px; font-weight:800; font-size:1.02rem; background:linear-gradient(135deg, #10b981, #4f46e5);" onclick="check51Submit()">
+              🎓 1단원 소인수분해 최종 완료 및 인증서 획득!
+            </button>
+          </div>
+        `;
+      }
+
+      restoreFormInputs(subStepCode);
+      attachRealtimeInputTracker();
+      renderMathInPage(formArea);
+      renderMathInPage(document.getElementById('mission-text'));
+    }
+
+    // --- TWO.JS CANVAS RENDERERS ---
+    function drawReviewFactorsCanvas(two) {
+      if (!two) return; two.clear();
+      const cx = two.width / 2, cy = two.height / 2;
+      const rect = two.makeRoundedRectangle(cx, cy, 460, 220, 16);
+      rect.fill = '#f8fafc'; rect.stroke = '#6366f1'; rect.linewidth = 2;
+
+      const title = two.makeText('12의 약수 모형 (직사각형 배열)', cx, cy - 75);
+      title.size = 17; title.weight = 800; title.fill = '#4f46e5';
+
+      // Draw blocks: 1x12, 2x6, 3x4
+      const b1 = two.makeRectangle(cx - 130, cy + 10, 120, 30);
+      b1.fill = '#e0e7ff'; b1.stroke = '#6366f1'; b1.linewidth = 1.5;
+      const t1 = two.makeText('1 × 12', cx - 130, cy + 10); t1.size = 14; t1.weight = 700; t1.fill = '#4338ca';
+
+      const b2 = two.makeRectangle(cx, cy + 10, 80, 50);
+      b2.fill = '#dbeafe'; b2.stroke = '#0284c7'; b2.linewidth = 1.5;
+      const t2 = two.makeText('2 × 6', cx, cy + 10); t2.size = 14; t2.weight = 700; t2.fill = '#0369a1';
+
+      const b3 = two.makeRectangle(cx + 120, cy + 10, 70, 60);
+      b3.fill = '#dcfce7'; b3.stroke = '#16a34a'; b3.linewidth = 1.5;
+      const t3 = two.makeText('3 × 4', cx + 120, cy + 10); t3.size = 14; t3.weight = 700; t3.fill = '#15803d';
+
+      const tip = two.makeText('12 = 1 × 12 = 2 × 6 = 3 × 4', cx, cy + 75);
+      tip.size = 16; tip.weight = 800; tip.fill = '#1e293b';
+      two.update();
+    }
+
+    function drawReviewGcdCanvas(two) {
+      if (!two) return; two.clear();
+      const cx = two.width / 2, cy = two.height / 2;
+      // Venn diagram
+      const c1 = two.makeCircle(cx - 65, cy, 95);
+      c1.fill = 'rgba(99, 102, 241, 0.15)'; c1.stroke = '#6366f1'; c1.linewidth = 2;
+      const c2 = two.makeCircle(cx + 65, cy, 95);
+      c2.fill = 'rgba(14, 165, 233, 0.15)'; c2.stroke = '#0284c7'; c2.linewidth = 2;
+
+      const lbl1 = two.makeText('12의 약수', cx - 105, cy - 65); lbl1.size = 15; lbl1.weight = 800; lbl1.fill = '#4f46e5';
+      const lbl2 = two.makeText('18의 약수', cx + 105, cy - 65); lbl2.size = 15; lbl2.weight = 800; lbl2.fill = '#0284c7';
+
+      // Left only: 4, 12
+      const tL = two.makeText('4, 12', cx - 100, cy + 10); tL.size = 16; tL.weight = 700; tL.fill = '#4f46e5';
+      // Center intersection (common): 1, 2, 3, 6
+      const tC = two.makeText('1, 2,\n3, 6', cx, cy); tC.size = 16; tC.weight = 800; tC.fill = '#b91c1c';
+      // Right only: 9, 18
+      const tR = two.makeText('9, 18', cx + 100, cy + 10); tR.size = 16; tR.weight = 700; tR.fill = '#0284c7';
+
+      const res = two.makeText('공약수 중 가장 큰 수 ➔ 최대공약수 = 6', cx, cy + 125);
+      res.size = 15; res.weight = 800; res.fill = '#0f172a';
+      two.update();
+    }
+
+    function drawReviewLcmCanvas(two) {
+      if (!two) return; two.clear();
+      const cx = two.width / 2, cy = two.height / 2;
+      const rect = two.makeRoundedRectangle(cx, cy, 500, 200, 14);
+      rect.fill = '#f8fafc'; rect.stroke = '#059669'; rect.linewidth = 2;
+
+      const t1 = two.makeText('6의 배수: 6, 12, 18, 24, 30, 36, 42, 48, ...', cx, cy - 45);
+      t1.size = 15; t1.weight = 700; t1.fill = '#1e293b';
+
+      const t2 = two.makeText('8의 배수: 8, 16, 24, 32, 40, 48, ...', cx, cy);
+      t2.size = 15; t2.weight = 700; t2.fill = '#1e293b';
+
+      const t3 = two.makeText('공배수: 24, 48, ...  ➔  최소공배수: 24', cx, cy + 50);
+      t3.size = 17; t3.weight = 800; t3.fill = '#059669';
+      two.update();
+    }
+
+    function drawThinkingOpenNumbersCanvas(two) {
+      if (!two) return; two.clear();
+      const cx = two.width / 2, cy = two.height / 2;
+      const nums = [2, 3, 4, 5, 6];
+      const step = 85;
+      const startX = cx - (nums.length - 1) * step / 2;
+
+      nums.forEach((n, idx) => {
+        const x = startX + idx * step;
+        const box = two.makeRoundedRectangle(x, cy - 20, 65, 65, 12);
+        box.fill = (n === 2 || n === 3 || n === 5) ? '#e0e7ff' : '#f1f5f9';
+        box.stroke = (n === 2 || n === 3 || n === 5) ? '#4f46e5' : '#94a3b8';
+        box.linewidth = 2;
+
+        const txt = two.makeText(String(n), x, cy - 20);
+        txt.size = 26; txt.weight = 900;
+        txt.fill = (n === 2 || n === 3 || n === 5) ? '#4f46e5' : '#475569';
+
+        let subTxt = '';
+        if (n === 2) subTxt = '1, 2 (2개)';
+        else if (n === 3) subTxt = '1, 3 (2개)';
+        else if (n === 4) subTxt = '1, 2, 4 (3개)';
+        else if (n === 5) subTxt = '1, 5 (2개)';
+        else if (n === 6) subTxt = '1, 2, 3, 6 (4개)';
+
+        const st = two.makeText(subTxt, x, cy + 35);
+        st.size = 12; st.weight = 700; st.fill = '#334155';
+      });
+
+      const note = two.makeText('★ 2, 3, 5는 약수가 1과 자기 자신 2개뿐인 수!', cx, cy + 85);
+      note.size = 15; note.weight = 800; note.fill = '#ec4899';
+      two.update();
+    }
+
+    function drawPrimeCompositeConceptCanvas(two) {
+      if (!two) return; two.clear();
+      const cx = two.width / 2, cy = two.height / 2;
+      // 3 Categories: 1, Prime, Composite
+      const w = 140, h = 180;
+      // Box 1: 1
+      const b1 = two.makeRoundedRectangle(cx - 170, cy, w, h, 14);
+      b1.fill = '#f1f5f9'; b1.stroke = '#94a3b8'; b1.linewidth = 2;
+      const t1 = two.makeText('1', cx - 170, cy - 45); t1.size = 28; t1.weight = 900; t1.fill = '#64748b';
+      const s1 = two.makeText('약수: 1개\n(1뿐임)\n\n소수도 아니고\n합성수도 아님', cx - 170, cy + 15);
+      s1.size = 13; s1.weight = 700; s1.fill = '#475569';
+
+      // Box 2: 소수
+      const b2 = two.makeRoundedRectangle(cx, cy, w, h, 14);
+      b2.fill = '#e0e7ff'; b2.stroke = '#4f46e5'; b2.linewidth = 2.5;
+      const t2 = two.makeText('소수', cx, cy - 45); t2.size = 24; t2.weight = 900; t2.fill = '#4f46e5';
+      const s2 = two.makeText('약수: 2개\n(1과 자기자신)\n\n2, 3, 5, 7, 11\n13, 17, 19 ...', cx, cy + 15);
+      s2.size = 13; s2.weight = 700; s2.fill = '#3730a3';
+
+      // Box 3: 합성수
+      const b3 = two.makeRoundedRectangle(cx + 170, cy, w, h, 14);
+      b3.fill = '#dcfce7'; b3.stroke = '#16a34a'; b3.linewidth = 2;
+      const t3 = two.makeText('합성수', cx + 170, cy - 45); t3.size = 24; t3.weight = 900; t3.fill = '#15803d';
+      const s3 = two.makeText('약수: 3개 이상\n(소수가 아님)\n\n4, 6, 8, 9, 10\n12, 14, 15 ...', cx + 170, cy + 15);
+      s3.size = 13; s3.weight = 700; s3.fill = '#166534';
+
+      two.update();
+    }
+
+    function initSieveState() {
+      if (Object.keys(state.sieveState).length === 0) {
+        for (let i = 1; i <= 50; i++) state.sieveState[i] = 'active';
+      }
+    }
+
+    function sieveStep(num) {
+      initSieveState();
+      if (num === 1) {
+        state.sieveState[1] = 'eliminated';
+      } else {
+        // Mark prime
+        state.sieveState[num] = 'prime';
+        // Eliminate multiples
+        for (let m = num * 2; m <= 50; m += num) {
+          state.sieveState[m] = 'eliminated';
+        }
+      }
+      if (twoInstance) drawSieveCanvas(twoInstance);
+    }
+
+    function drawSieveCanvas(two) {
+      if (!two) return; two.clear();
+      initSieveState();
+      const cx = two.width / 2, cy = two.height / 2;
+      const cols = 10;
+      const cellSize = 38;
+      const startX = cx - (cols * cellSize) / 2 + cellSize / 2;
+      const startY = cy - (5 * cellSize) / 2 + cellSize / 2;
+
+      for (let i = 1; i <= 50; i++) {
+        const col = (i - 1) % cols;
+        const row = Math.floor((i - 1) / cols);
+        const x = startX + col * cellSize;
+        const y = startY + row * cellSize;
+
+        const cell = two.makeRoundedRectangle(x, y, cellSize - 4, cellSize - 4, 6);
+        const st = state.sieveState[i] || 'active';
+
+        if (st === 'eliminated') {
+          cell.fill = '#f1f5f9'; cell.stroke = '#cbd5e1'; cell.linewidth = 1;
+        } else if (st === 'prime') {
+          cell.fill = '#e0e7ff'; cell.stroke = '#4f46e5'; cell.linewidth = 2;
+        } else {
+          cell.fill = '#ffffff'; cell.stroke = '#94a3b8'; cell.linewidth = 1;
+        }
+
+        const txt = two.makeText(String(i), x, y);
+        txt.size = 14; txt.weight = 800;
+        if (st === 'eliminated') {
+          txt.fill = '#94a3b8';
+          // Draw strike line
+          const slash = two.makeLine(x - 10, y + 10, x + 10, y - 10);
+          slash.stroke = '#ef4444'; slash.linewidth = 1.5;
+        } else if (st === 'prime') {
+          txt.fill = '#4338ca';
+        } else {
+          txt.fill = '#1e293b';
+        }
+      }
+      two.update();
+    }
+
+    function drawPowerConceptCanvas(two) {
+      if (!two) return; two.clear();
+      const cx = two.width / 2, cy = two.height / 2;
+      const rect = two.makeRoundedRectangle(cx, cy, 460, 200, 16);
+      rect.fill = '#ffffff'; rect.stroke = '#6366f1'; rect.linewidth = 2.5;
+
+      const expr = two.makeText('2 × 2 × 2 = 2³', cx, cy - 35);
+      expr.size = 28; expr.weight = 900; expr.fill = '#1e293b';
+
+      const baseLabel = two.makeText('밑 (Base): 2 (곱하는 수)', cx - 90, cy + 35);
+      baseLabel.size = 16; baseLabel.weight = 800; baseLabel.fill = '#0284c7';
+
+      const expLabel = two.makeText('지수 (Exponent): 3 (곱한 횟수)', cx + 90, cy + 35);
+      expLabel.size = 16; expLabel.weight = 800; expLabel.fill = '#ec4899';
+
+      two.update();
+    }
+
+    function drawChocolateCanvas(two) {
+      if (!two) return; two.clear();
+      const cx = two.width / 2, cy = two.height / 2;
+      // 3 chocolate bars
+      const g1 = two.makeGroup();
+      for (let i = 0; i < 12; i++) {
+        const c = two.makeRectangle(cx - 180 + i * 20, cy - 50, 18, 18);
+        c.fill = '#78350f'; c.stroke = '#451a03';
+      }
+      const t1 = two.makeText('1 × 12 = 12', cx - 70, cy - 25); t1.size = 14; t1.weight = 700; t1.fill = '#78350f';
+
+      for (let r = 0; r < 2; r++) {
+        for (let c = 0; c < 6; c++) {
+          const b = two.makeRectangle(cx - 140 + c * 20, cy + 15 + r * 20, 18, 18);
+          b.fill = '#78350f'; b.stroke = '#451a03';
+        }
+      }
+      const t2 = two.makeText('2 × 6 = 12', cx - 90, cy + 55); t2.size = 14; t2.weight = 700; t2.fill = '#78350f';
+
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 4; c++) {
+          const b = two.makeRectangle(cx + 80 + c * 20, cy + 5 + r * 20, 18, 18);
+          b.fill = '#78350f'; b.stroke = '#451a03';
+        }
+      }
+      const t3 = two.makeText('3 × 4 = 12', cx + 110, cy + 55); t3.size = 14; t3.weight = 700; t3.fill = '#78350f';
+      two.update();
+    }
+
+    function drawFactorTreeCanvas(two, num = 60) {
+      if (!two) return; two.clear();
+      const cx = two.width / 2, cy = two.height / 2 - 20;
+
+      // Top: 60
+      const nodeRoot = two.makeCircle(cx, cy - 80, 24);
+      nodeRoot.fill = '#e0e7ff'; nodeRoot.stroke = '#4f46e5'; nodeRoot.linewidth = 2;
+      const tRoot = two.makeText('60', cx, cy - 80); tRoot.size = 16; tRoot.weight = 800; tRoot.fill = '#4338ca';
+
+      // Level 1: 2 and 30
+      two.makeLine(cx, cy - 56, cx - 80, cy - 20).stroke = '#94a3b8';
+      two.makeLine(cx, cy - 56, cx + 80, cy - 20).stroke = '#94a3b8';
+
+      const n1 = two.makeCircle(cx - 80, cy, 22); n1.fill = '#dcfce7'; n1.stroke = '#16a34a'; n1.linewidth = 2;
+      two.makeText('2', cx - 80, cy).size = 16;
+
+      const n2 = two.makeCircle(cx + 80, cy, 22); n2.fill = '#f1f5f9'; n2.stroke = '#64748b'; n2.linewidth = 2;
+      two.makeText('30', cx + 80, cy).size = 16;
+
+      // Level 2: 30 -> 2 and 15
+      two.makeLine(cx + 80, cy + 22, cx + 30, cy + 60).stroke = '#94a3b8';
+      two.makeLine(cx + 80, cy + 22, cx + 130, cy + 60).stroke = '#94a3b8';
+
+      const n3 = two.makeCircle(cx + 30, cy + 80, 22); n3.fill = '#dcfce7'; n3.stroke = '#16a34a'; n3.linewidth = 2;
+      two.makeText('2', cx + 30, cy + 80).size = 16;
+
+      const n4 = two.makeCircle(cx + 130, cy + 80, 22); n4.fill = '#f1f5f9'; n4.stroke = '#64748b'; n4.linewidth = 2;
+      two.makeText('15', cx + 130, cy + 80).size = 16;
+
+      // Level 3: 15 -> 3 and 5
+      two.makeLine(cx + 130, cy + 102, cx + 90, cy + 130).stroke = '#94a3b8';
+      two.makeLine(cx + 130, cy + 102, cx + 170, cy + 130).stroke = '#94a3b8';
+
+      const n5 = two.makeCircle(cx + 90, cy + 150, 22); n5.fill = '#dcfce7'; n5.stroke = '#16a34a'; n5.linewidth = 2;
+      two.makeText('3', cx + 90, cy + 150).size = 16;
+
+      const n6 = two.makeCircle(cx + 170, cy + 150, 22); n6.fill = '#dcfce7'; n6.stroke = '#16a34a'; n6.linewidth = 2;
+      two.makeText('5', cx + 170, cy + 150).size = 16;
+
+      const res = two.makeText('60 = 2² × 3 × 5 (녹색 원 = 소인수)', cx - 60, cy + 150);
+      res.size = 15; res.weight = 800; res.fill = '#15803d';
+
+      two.update();
+    }
+
+    function drawSquareMakeCanvas(two) {
+      if (!two) return; two.clear();
+      const cx = two.width / 2, cy = two.height / 2;
+      const rect = two.makeRoundedRectangle(cx, cy, 480, 180, 14);
+      rect.fill = '#f8fafc'; rect.stroke = '#ec4899'; rect.linewidth = 2;
+
+      const t1 = two.makeText('제곱수 만들기 탐구: 18 = 2¹ × 3²', cx, cy - 40);
+      t1.size = 18; t1.weight = 800; t1.fill = '#1e293b';
+
+      const t2 = two.makeText('어떤 수의 제곱이 되려면 모든 소인수의 지수가 짝수!', cx, cy + 5);
+      t2.size = 15; t2.weight = 700; t2.fill = '#475569';
+
+      const t3 = two.makeText('2의 지수가 1(홀수)이므로 2를 한 번 더 곱해준다 ➔ 18 × 2 = 36 = 6²', cx, cy + 50);
+      t3.size = 15; t3.weight = 800; t3.fill = '#ec4899';
+      two.update();
+    }
+
+    function drawTileCanvas(two, w = 24, h = 18) {
+      if (!two) return; two.clear();
+      const cx = two.width / 2, cy = two.height / 2;
+      const scale = 10;
+      const r = two.makeRectangle(cx, cy, w * scale, h * scale);
+      r.fill = '#f1f5f9'; r.stroke = '#1e293b'; r.linewidth = 2;
+
+      // Tiles of 6x6
+      const tw = 6 * scale;
+      for (let x = cx - (w*scale)/2; x < cx + (w*scale)/2; x += tw) {
+        for (let y = cy - (h*scale)/2; y < cy + (h*scale)/2; y += tw) {
+          const tile = two.makeRectangle(x + tw/2, y + tw/2, tw - 2, tw - 2);
+          tile.fill = '#dbeafe'; tile.stroke = '#0284c7'; tile.linewidth = 1.5;
+        }
+      }
+
+      const l1 = two.makeText('가로 24cm (6cm 타일 4개)', cx, cy - (h*scale)/2 - 16);
+      l1.size = 14; l1.weight = 800; l1.fill = '#0369a1';
+      const l2 = two.makeText('세로 18cm (6cm 타일 3개)', cx - (w*scale)/2 - 60, cy);
+      l2.size = 14; l2.weight = 800; l2.fill = '#0369a1';
+      two.update();
+    }
+
+    function drawVennGcdCanvas(two) {
+      if (!two) return; two.clear();
+      const cx = two.width / 2, cy = two.height / 2;
+      const c1 = two.makeCircle(cx - 70, cy, 100);
+      c1.fill = 'rgba(99, 102, 241, 0.15)'; c1.stroke = '#4f46e5'; c1.linewidth = 2;
+      const c2 = two.makeCircle(cx + 70, cy, 100);
+      c2.fill = 'rgba(236, 72, 153, 0.15)'; c2.stroke = '#ec4899'; c2.linewidth = 2;
+
+      two.makeText('A (2³ × 3² × 5)', cx - 110, cy - 70).size = 14;
+      two.makeText('B (2² × 3³)', cx + 110, cy - 70).size = 14;
+
+      two.makeText('2, 5', cx - 110, cy).size = 16;
+      two.makeText('교집합 (공통)\n2², 3²', cx, cy).size = 16;
+      two.makeText('3', cx + 110, cy).size = 16;
+
+      const res = two.makeText('최대공약수 = 공통 소인수 중 지수가 작거나 같은 것 ➔ 2² × 3² = 36', cx, cy + 125);
+      res.size = 15; res.weight = 800; res.fill = '#4f46e5';
+      two.update();
+    }
+
+    function drawBusCanvas(two) {
+      if (!two) return; two.clear();
+      const cx = two.width / 2, cy = two.height / 2;
+      const lineA = two.makeLine(cx - 180, cy - 30, cx + 180, cy - 30);
+      lineA.stroke = '#0284c7'; lineA.linewidth = 3;
+      two.makeText('시내버스 (12분 주기): 0, 12, 24, 36, 48, 60분', cx, cy - 50).size = 15;
+
+      const lineB = two.makeLine(cx - 180, cy + 30, cx + 180, cy + 30);
+      lineB.stroke = '#d97706'; lineB.linewidth = 3;
+      two.makeText('좌석버스 (15분 주기): 0, 15, 30, 45, 60분', cx, cy + 10).size = 15;
+
+      const match = two.makeText('★ 60분(1시간) 후 처음으로 다시 동시 출발!', cx, cy + 70);
+      match.size = 16; match.weight = 800; match.fill = '#dc2626';
+      two.update();
+    }
+
+    function drawVennLcmCanvas(two) {
+      if (!two) return; two.clear();
+      const cx = two.width / 2, cy = two.height / 2;
+      const rect = two.makeRoundedRectangle(cx, cy, 480, 180, 14);
+      rect.fill = '#f8fafc'; rect.stroke = '#059669'; rect.linewidth = 2;
+
+      const t1 = two.makeText('2² × 3  과  2 × 3² × 5 의 최소공배수', cx, cy - 40);
+      t1.size = 17; t1.weight = 800; t1.fill = '#1e293b';
+
+      const t2 = two.makeText('• 지수가 크거나 같은 것: 2², 3²', cx, cy);
+      t2.size = 15; t2.weight = 700; t2.fill = '#059669';
+
+      const t3 = two.makeText('• 공통이 아닌 소인수도 곱하기: 5 ➔ 2² × 3² × 5 = 180', cx, cy + 40);
+      t3.size = 15; t3.weight = 800; t3.fill = '#059669';
+      two.update();
+    }
+
+    function drawGearCanvas(two) {
+      if (!two) return; two.clear();
+      const cx = two.width / 2, cy = two.height / 2;
+      const g1 = two.makeCircle(cx - 80, cy, 60);
+      g1.fill = '#e0f2fe'; g1.stroke = '#0284c7'; g1.linewidth = 2;
+      two.makeText('A (24개)', cx - 80, cy).size = 16;
+
+      const g2 = two.makeCircle(cx + 80, cy, 80);
+      g2.fill = '#fef3c7'; g2.stroke = '#d97706'; g2.linewidth = 2;
+      two.makeText('B (36개)', cx + 80, cy).size = 16;
+
+      two.makeText('맞물린 톱니수 = 24와 36의 최소공배수 = 72개\nA: 72 ÷ 24 = 3바퀴 / B: 72 ÷ 36 = 2바퀴', cx, cy + 110).size = 14;
+      two.update();
+    }
+
+    function drawTrophyCanvas(two) {
+      if (!two) return; two.clear();
+      const cx = two.width / 2, cy = two.height / 2;
+      const trophy = two.makeText('🏆', cx, cy - 30);
+      trophy.size = 64;
+      const t = two.makeText('1단원 소인수분해 완주를 축하합니다!', cx, cy + 45);
+      t.size = 20; t.weight = 800; t.fill = '#1e293b';
+      two.update();
+    }
+
+    // --- CHECK & SUBMISSION LOGIC ---
+    function normTxt(v) { return v ? v.trim().replace(/\s+/g, '').toUpperCase() : ''; }
+
+    function showInlineErrorNotice(msg, hintMsg = null) {
+      const formArea = document.getElementById('form-work-area');
+      if (!formArea) return;
+      let errBox = formArea.querySelector('.proof-error-notice');
+      if (!errBox) {
+        errBox = document.createElement('div');
+        errBox.className = 'proof-error-notice';
+        const card = formArea.querySelector('.card') || formArea;
+        card.appendChild(errBox);
+      }
+      let html = `<div>${String(msg).replace(/\n/g, '<br>')}</div>`;
+      if (hintMsg) {
+        html += `<div style="margin-top:8px; padding:8px; background:#fff7ed; border-radius:6px; color:#c2410c; font-size:0.84rem;">💡 <b>[힌트]</b> ${hintMsg}</div>`;
+      }
+      errBox.innerHTML = html;
+      errBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function renderVerifiedAnswerView(titleHtml, contentHtml, nextStepCode) {
+      if (!state.completedSubSteps.includes(state.subStep)) state.completedSubSteps.push(state.subStep);
+      if (nextStepCode && !state.unlockedSubSteps.includes(nextStepCode)) state.unlockedSubSteps.push(nextStepCode);
+
+      if (nextStepCode) {
+        const nextMain = parseInt(nextStepCode.split('-')[0]);
+        if (!state.unlockedTabs.includes(nextMain)) state.unlockedTabs.push(nextMain);
+      }
+
+      const formArea = document.getElementById('form-work-area');
+      if (!formArea) return;
+      formArea.innerHTML = `
+        <div class="verified-answer-card">
+          <h4>✅ 정답 확인 및 개념 완수!</h4>
+          <div style="font-size:0.95rem; font-weight:800; color:#065f46; margin-bottom:8px;">${titleHtml}</div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.7; margin-bottom:14px;">${contentHtml}</div>
+          <button class="btn btn-primary" style="background:#059669; font-size:1rem; padding:12px; width:100%; font-weight:800;" onclick="loadSubStep('${nextStepCode}')">
+            🚀 다음 단계로 진행하기 ➔
+          </button>
+        </div>
+      `;
+      renderMathInPage(formArea);
+    }
+
+    function check01Submit() {
+      const a = normTxt(document.getElementById('p01-a').value);
+      const b = normTxt(document.getElementById('p01-b').value);
+      const c = normTxt(document.getElementById('p01-c').value);
+      const d = normTxt(document.getElementById('p01-d').value);
+      const e = normTxt(document.getElementById('p01-e').value);
+
+      if (a === '2' && b === '4' && c === '6' && d === '8' && e === '12') {
+        renderVerifiedAnswerView(
+          "되짚어보기 1 (약수와 배수) 완수!",
+          "• 12의 약수: 1, <b>2</b>, 3, <b>4</b>, <b>6</b>, 12<br>• 4의 배수: 4, <b>8</b>, <b>12</b>",
+          "0-2"
+        );
+      } else {
+        showInlineErrorNotice("❌ 오답입니다. 12의 약수와 4의 배수를 다시 확인해 보세요!", "12를 나누어떨어지게 하는 수(2, 4, 6)와 4에 2, 3을 곱한 수를 입력합니다.");
+      }
+    }
+
+    function check02Submit() {
+      const c1 = normTxt(document.getElementById('p02-c1').value);
+      const c2 = normTxt(document.getElementById('p02-c2').value);
+      const c3 = normTxt(document.getElementById('p02-c3').value);
+      const gcd = normTxt(document.getElementById('p02-gcd').value);
+
+      if (c1 === '2' && c2 === '3' && c3 === '6' && gcd === '6') {
+        renderVerifiedAnswerView(
+          "되짚어보기 2 (공약수와 최대공약수) 완수!",
+          "• 12와 18의 공약수: 1, <b>2</b>, <b>3</b>, <b>6</b><br>• 최대공약수: <b>6</b>",
+          "0-3"
+        );
+      } else {
+        showInlineErrorNotice("❌ 오답입니다. 공약수(1, 2, 3, 6)와 최대공약수(6)를 정확히 입력해 보세요!");
+      }
+    }
+
+    function check03Submit() {
+      const m1 = normTxt(document.getElementById('p03-m1').value);
+      const m2 = normTxt(document.getElementById('p03-m2').value);
+      const lcm = normTxt(document.getElementById('p03-lcm').value);
+
+      if (m1 === '24' && m2 === '48' && lcm === '24') {
+        renderVerifiedAnswerView(
+          "🏆 되짚어보기 최종 완료! [1.1 소수와 합성수] 해금!",
+          "• 6과 8의 공배수: <b>24</b>, <b>48</b><br>• 최소공배수: <b>24</b>",
+          "1-1"
+        );
+      } else {
+        showInlineErrorNotice("❌ 오답입니다. 공배수(24, 48)와 최소공배수(24)를 확인하세요!");
+      }
+    }
+
+    function check11Submit() {
+      const c2 = normTxt(document.getElementById('p11-c2').value);
+      const c3 = normTxt(document.getElementById('p11-c3').value);
+      const c4 = normTxt(document.getElementById('p11-c4').value);
+      const c5 = normTxt(document.getElementById('p11-c5').value);
+      const c6 = normTxt(document.getElementById('p11-c6').value);
+      const tf = normTxt(document.getElementById('p11-two-factors').value);
+
+      const okCounts = (c2 === '2' && c3 === '2' && c4 === '3' && c5 === '2' && c6 === '4');
+      const okTf = (tf.includes('2') && tf.includes('3') && tf.includes('5') && !tf.includes('4') && !tf.includes('6'));
+
+      if (okCounts && okTf) {
+        renderVerifiedAnswerView(
+          "1.1 생각열기 완수!",
+          "• 약수의 개수: 2(2개), 3(2개), 4(3개), 5(2개), 6(4개)<br>• 약수가 2개뿐인 수: <b>2, 3, 5</b>",
+          "1-2"
+        );
+      } else {
+        showInlineErrorNotice("❌ 약수의 개수 또는 약수가 2개인 수 목록을 다시 확인해 보세요!");
+      }
+    }
+
+    function check12Submit() {
+      const p = normTxt(document.getElementById('p12-prime').value);
+      const c2 = normTxt(document.getElementById('p12-cnt2').value);
+      const c = normTxt(document.getElementById('p12-composite').value);
+      const c3 = normTxt(document.getElementById('p12-cnt3').value);
+      const one = normTxt(document.getElementById('p12-one').value);
+      const ev = normTxt(document.getElementById('p12-even').value);
+
+      const okP = p.includes('소수');
+      const okC2 = c2 === '2';
+      const okC = c.includes('합성수');
+      const okC3 = c3.includes('3');
+      const okOne = one.includes('아니') || one.includes('NO');
+      const okEv = ev === '2';
+
+      if (okP && okC2 && okC && okC3 && okOne && okEv) {
+        renderVerifiedAnswerView(
+          "소수와 합성수의 정의 정복!",
+          "• 약수가 2개뿐인 수: <b>소수</b><br>• 약수가 3개 이상인 수: <b>합성수</b><br>• 1은 소수도 아니고 합성수도 <b>아니다</b>.<br>• 유일한 짝수 소수는 <b>2</b>!",
+          "1-3"
+        );
+      } else {
+        showInlineErrorNotice("❌ 오답입니다. 소수, 합성수 개념 및 1의 성질, 짝수 소수(2)를 다시 확인해 보세요!");
+      }
+    }
+
+    function check13Submit() {
+      const cnt = normTxt(document.getElementById('p13-count').value);
+      if (cnt === '15') {
+        renderVerifiedAnswerView(
+          "에라토스테네스의 체 소수 탐구 완수!",
+          "• 50 이하의 소수(15개): <b>2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47</b>",
+          "1-4"
+        );
+      } else {
+        showInlineErrorNotice("❌ 50 이하의 소수는 총 15개입니다! 격자판에서 지워지지 않고 남은 소수의 개수를 세어보세요.");
+      }
+    }
+
+    function check14Submit() {
+      const cube = normTxt(document.getElementById('p14-cube').value);
+      const base = normTxt(document.getElementById('p14-base').value);
+      const exp = normTxt(document.getElementById('p14-exp').value);
+      const e1 = normTxt(document.getElementById('p14-exp1').value);
+      const e2 = normTxt(document.getElementById('p14-exp2').value);
+
+      const okCube = cube.includes('세제곱') || cube === '3';
+      const okBase = base.includes('밑');
+      const okExp = exp.includes('지수');
+      const okE1 = e1 === '2';
+      const okE2 = e2 === '3';
+
+      if (okCube && okBase && okExp && okE1 && okE2) {
+        renderVerifiedAnswerView(
+          "거듭제곱과 밑, 지수 완수!",
+          "• $2 \\times 2 \\times 2 = <b>2^3</b>$<br>• 곱하는 수: <b>밑</b> / 곱한 횟수: <b>지수</b><br>• $3 \\times 3 \\times 5 \\times 5 \\times 5 = <b>3^2 \\times 5^3</b>$",
+          "1-5"
+        );
+      } else {
+        showInlineErrorNotice("❌ 밑, 지수 용어 및 거듭제곱 지수 숫자를 다시 확인해 보세요!");
+      }
+    }
+
+    function check15Submit() {
+      const pr = normTxt(document.getElementById('p15-primes').value);
+      const cp = normTxt(document.getElementById('p15-comps').value);
+      const p1 = normTxt(document.getElementById('p15-p1').value);
+      const p2 = normTxt(document.getElementById('p15-p2').value);
+
+      const okPr = (pr.includes('13') && pr.includes('23') && pr.includes('29') && !pr.includes('15') && !pr.includes('20'));
+      const okCp = (cp.includes('15') && cp.includes('20') && !cp.includes('13') && !cp.includes('23'));
+      const okP1 = p1 === '4';
+      const okP2 = p2 === '2';
+
+      if (okPr && okCp && okP1 && okP2) {
+        renderVerifiedAnswerView(
+          "🏆 1.1 소수와 합성수 대단원 통과! [1.2 소인수분해] 해금!",
+          "• 소수: <b>13, 23, 29</b><br>• 합성수: <b>15, 20</b><br>• 거듭제곱: $5^4$, $2 \\times 3^2 \\times 5$",
+          "2-1"
+        );
+      } else {
+        showInlineErrorNotice("❌ 소수/합성수 구분 또는 거듭제곱 지수를 다시 확인해 보세요!");
+      }
+    }
+
+    function check21Submit() {
+      const f1 = normTxt(document.getElementById('p21-f1').value);
+      const f2 = normTxt(document.getElementById('p21-f2').value);
+      if (f1 === '6' && f2 === '4') {
+        renderVerifiedAnswerView(
+          "1.2 생각열기 완수!",
+          "• $12 = 2 \\times <b>6</b> = 3 \\times <b>4</b>$",
+          "2-2"
+        );
+      } else {
+        showInlineErrorNotice("❌ 12를 2와 3의 곱으로 나타낼 때 짝이 되는 수를 입력하세요.");
+      }
+    }
+
+    function check22Submit() {
+      const t1 = normTxt(document.getElementById('p22-term1').value);
+      const t2 = normTxt(document.getElementById('p22-term2').value);
+      const pr = normTxt(document.getElementById('p22-primes').value);
+
+      const okT1 = t1.includes('인수');
+      const okT2 = t2.includes('소인수');
+      const okPr = pr.includes('2') && pr.includes('3') && !pr.includes('4') && !pr.includes('6');
+
+      if (okT1 && okT2 && okPr) {
+        renderVerifiedAnswerView(
+          "인수와 소인수 개념 완수!",
+          "• 약수 = <b>인수</b> / 소수인 인수 = <b>소인수</b><br>• 12의 소인수: <b>2, 3</b>",
+          "2-3"
+        );
+      } else {
+        showInlineErrorNotice("❌ 인수, 소인수 용어 및 12의 소인수(2, 3)를 정확히 입력하세요!");
+      }
+    }
+
+    function check23Submit() {
+      const e1 = normTxt(document.getElementById('p23-e1').value);
+      const f = normTxt(document.getElementById('p23-factors').value);
+
+      const okE1 = e1 === '2';
+      const okF = f.includes('2') && f.includes('3') && f.includes('5');
+
+      if (okE1 && okF) {
+        renderVerifiedAnswerView(
+          "60의 소인수분해 완수!",
+          "• $60 = <b>2^2 \\times 3 \\times 5</b>$<br>• 60의 소인수: <b>2, 3, 5</b>",
+          "2-4"
+        );
+      } else {
+        showInlineErrorNotice("❌ 60의 소인수분해 지수(2)와 소인수(2, 3, 5)를 확인하세요!");
+      }
+    }
+
+    function check24Submit() {
+      const e1 = normTxt(document.getElementById('p24-e1').value);
+      const e2 = normTxt(document.getElementById('p24-e2').value);
+      const sq = normTxt(document.getElementById('p24-sq').value);
+
+      const okE = (e1 === '3' && e2 === '2');
+      const okSq = (sq === '2');
+
+      if (okE && okSq) {
+        renderVerifiedAnswerView(
+          "🏆 1.2 소인수분해 통과! [1.3 최대공약수] 해금!",
+          "• $72 = <b>2^3 \\times 3^2</b>$<br>• 18을 제곱수로 만들기 위해 곱해야 하는 수: <b>2</b> ($18 \\times 2 = 36 = 6^2$)",
+          "3-1"
+        );
+      } else {
+        showInlineErrorNotice("❌ 72의 소인수분해 지수($2^3 \\times 3^2$)와 곱할 수(2)를 확인하세요!");
+      }
+    }
+
+    function check31Submit() {
+      const t = normTxt(document.getElementById('p31-term').value);
+      const gt = normTxt(document.getElementById('p31-gcd-term').value);
+      const ans = normTxt(document.getElementById('p31-ans').value);
+
+      const okT = t.includes('공약수');
+      const okGt = gt.includes('최대공약수');
+      const okAns = ans === '6';
+
+      if (okT && okGt && okAns) {
+        renderVerifiedAnswerView(
+          "1.3 생각열기 완수!",
+          "• 타일 한 변의 길이: 24와 18의 <b>공약수</b><br>• 가장 큰 타일의 한 변: 24와 18의 <b>최대공약수 (6cm)</b>",
+          "3-2"
+        );
+      } else {
+        showInlineErrorNotice("❌ 공약수, 최대공약수 개념 및 타일의 최대 한 변 길이(6)를 확인하세요!");
+      }
+    }
+
+    function check32Submit() {
+      const v1 = normTxt(document.getElementById('p32-val1').value);
+      const ox = normTxt(document.getElementById('p32-ox').value);
+      const gcd6 = normTxt(document.getElementById('p32-gcd6').value);
+      const ox2 = normTxt(document.getElementById('p32-ox2').value);
+
+      const okV1 = v1 === '1';
+      const okOx = ox.includes('이다') || ox.includes('맞') || ox.includes('O');
+      const okGcd6 = gcd6 === '3';
+      const okOx2 = ox2.includes('아니') || ox2.includes('X');
+
+      if (okV1 && okOx && okGcd6 && okOx2) {
+        renderVerifiedAnswerView(
+          "서로소의 정의 정복!",
+          "• 최대공약수가 <b>1</b>인 두 자연수 = <b>서로소</b><br>• 4와 9는 서로소 <b>맞음</b> / 6과 15는 공약수 3이 있으므로 서로소 <b>아님</b>",
+          "3-3"
+        );
+      } else {
+        showInlineErrorNotice("❌ 서로소의 조건(최대공약수 1)과 두 수의 판정을 다시 확인하세요!");
+      }
+    }
+
+    function check33Submit() {
+      const e1 = normTxt(document.getElementById('p33-e1').value);
+      const e2 = normTxt(document.getElementById('p33-e2').value);
+      const ans = normTxt(document.getElementById('p33-ans').value);
+
+      if (e1 === '2' && e2 === '2' && ans === '36') {
+        renderVerifiedAnswerView(
+          "🏆 1.3 최대공약수 완수! [1.4 최소공배수] 해금!",
+          "• 공통 소인수 중 지수가 작거나 같은 것 선택: $2^2 \\times 3^2$<br>• 최대공약수 = <b>36</b>",
+          "4-1"
+        );
+      } else {
+        showInlineErrorNotice("❌ 최대공약수의 지수($2^2, 3^2$)와 계산값(36)을 확인해 보세요!");
+      }
+    }
+
+    function check41Submit() {
+      const min = normTxt(document.getElementById('p41-min').value);
+      const time = normTxt(document.getElementById('p41-time').value);
+
+      if (min === '60' && (time === '9' || time === '09')) {
+        renderVerifiedAnswerView(
+          "1.4 생각열기 완수!",
+          "• 처음으로 다시 동시 출발하는 시간: 12와 15의 최소공배수 = <b>60분 후</b><br>• 다시 동시 출발 시각: 오전 <b>9시</b>",
+          "4-2"
+        );
+      } else {
+        showInlineErrorNotice("❌ 12와 15의 최소공배수(60분)와 8시 기준 60분 후의 시각(9시)을 확인하세요!");
+      }
+    }
+
+    function check42Submit() {
+      const e1 = normTxt(document.getElementById('p42-e1').value);
+      const e2 = normTxt(document.getElementById('p42-e2').value);
+      const f3 = normTxt(document.getElementById('p42-f3').value);
+      const ans = normTxt(document.getElementById('p42-ans').value);
+
+      if (e1 === '2' && e2 === '2' && f3 === '5' && ans === '180') {
+        renderVerifiedAnswerView(
+          "최소공배수 소인수분해 완수!",
+          "• 공통 소인수 중 지수가 크거나 같은 것: $2^2, 3^2$<br>• 공통이 아닌 소인수: $5$<br>• 최소공배수 = $2^2 \\times 3^2 \\times 5 = <b>180</b>$",
+          "4-3"
+        );
+      } else {
+        showInlineErrorNotice("❌ 최소공배수 소인수 지수와 계산값(180)을 확인하세요!");
+      }
+    }
+
+    function check43Submit() {
+      const lcm = normTxt(document.getElementById('p43-lcm').value);
+      const tA = normTxt(document.getElementById('p43-turnA').value);
+      const tB = normTxt(document.getElementById('p43-turnB').value);
+
+      if (lcm === '72' && tA === '3' && tB === '2') {
+        renderVerifiedAnswerView(
+          "🏆 1.4 최소공배수 완수! [1.5 스스로 마무리하기] 해금!",
+          "• 맞물린 톱니수 = 24와 36의 최소공배수 = <b>72개</b><br>• A의 회전수: $72 \\div 24 = <b>3</b>$바퀴 / B의 회전수: $72 \\div 36 = <b>2</b>$바퀴",
+          "5-1"
+        );
+      } else {
+        showInlineErrorNotice("❌ 24와 36의 최소공배수(72)와 회전수(3, 2)를 확인하세요!");
+      }
+    }
+
+    function check51Submit() {
+      const q1 = normTxt(document.getElementById('p51-q1').value);
+      const q2a = normTxt(document.getElementById('p51-q2a').value);
+      const q2b = normTxt(document.getElementById('p51-q2b').value);
+      const q2c = normTxt(document.getElementById('p51-q2c').value);
+      const q3g = normTxt(document.getElementById('p51-q3g').value);
+      const q3l = normTxt(document.getElementById('p51-q3l').value);
+
+      const ok1 = q1.includes('2') && q1.includes('3') && q1.includes('5') && q1.includes('7');
+      const ok2 = (q2a === '2' && q2b === '2' && q2c === '5');
+      const ok3 = (q3g === '14' && q3l === '84');
+
+      if (ok1 && ok2 && ok3) {
+        renderVerifiedAnswerView(
+          "🎉 1단원 소인수분해 전체 마스터 달성!",
+          "• 10 이하의 소수: <b>2, 3, 5, 7</b><br>• $180 = <b>2^2 \\times 3^2 \\times 5</b>$<br>• 28과 42의 최대공약수 = <b>14</b>, 최소공배수 = <b>84</b><br><br><b>축하합니다! 1단원 소인수분해의 모든 탐구를 완수하였습니다.</b>",
+          "5-1"
+        );
+      } else {
+        showInlineErrorNotice("❌ 형성평가 문항 중 오답이 있습니다. 다시 확인하고 제출해 보세요!");
+      }
+    }
+
+    // --- TEACHER AUTH & PASS ---
+    function openTeacherPassModal() {
+      openSecurePasswordModal('teacher_pass', '교사 패스 (Pass)', '현재 단원을 통과하기 위한 교사 비밀번호를 입력하세요.');
+    }
+
+    function openTestLoginModal() {
+      openSecurePasswordModal('teacher_login', '교사 계정 보안 접속', '교사 전용 마스터 비밀번호를 입력하세요.');
+    }
+
+    let currentSecureAction = null;
+    function openSecurePasswordModal(action, title, desc) {
+      currentSecureAction = action;
+      document.getElementById('secure-modal-title').innerText = title;
+      document.getElementById('secure-modal-desc').innerText = desc;
+      const inp = document.getElementById('secure-password-input');
+      inp.value = '';
+      document.getElementById('secure-password-modal').style.display = 'flex';
+      setTimeout(() => inp.focus(), 100);
+    }
+
+    function closeSecurePasswordModal() {
+      document.getElementById('secure-password-modal').style.display = 'none';
+      currentSecureAction = null;
+    }
+
+    function verifySecurePassword() {
+      const pwd = document.getElementById('secure-password-input').value.trim();
+      if (pwd === '260523' || pwd === '260831') {
+        closeSecurePasswordModal();
+        if (currentSecureAction === 'teacher_login') {
+          state.isTeacherLoggedIn = true;
+          state.unlockedTabs = [0, 1, 2, 3, 4, 5];
+          state.unlockedSubSteps = ALL_CH1_SUBSTEPS;
+          document.getElementById('btn-header-unlock-boundary').style.display = 'inline-block';
+          document.getElementById('btn-header-teacher-dashboard').style.display = 'inline-block';
+          document.getElementById('current-user-info').innerText = '👨‍🏫 교사 관리자 모드';
+          switchView('activity');
+          loadSubStep(state.subStep || '0-1');
+        } else if (currentSecureAction === 'teacher_pass') {
+          const currentIdx = ALL_CH1_SUBSTEPS.indexOf(state.subStep);
+          if (currentIdx !== -1 && currentIdx < ALL_CH1_SUBSTEPS.length - 1) {
+            const nextSub = ALL_CH1_SUBSTEPS[currentIdx + 1];
+            state.completedSubSteps.push(state.subStep);
+            state.unlockedSubSteps.push(nextSub);
+            loadSubStep(nextSub);
+          } else {
+            alert("이미 마지막 활동입니다!");
+          }
+        }
+      } else {
+        alert("❌ 비밀번호가 올바르지 않습니다.");
+      }
+    }
+
+    function openUnlockBoundaryModal() {
+      const modal = document.getElementById('unlock-boundary-modal');
+      const select = document.getElementById('select-unlock-substep-ch1');
+      if (select) {
+        select.innerHTML = '';
+        ALL_CH1_SUBSTEPS.forEach(code => {
+          const opt = document.createElement('option');
+          opt.value = code;
+          opt.innerText = `[${code}] ${SUBSTEP_TITLES[code] || code}`;
+          select.appendChild(opt);
+        });
+      }
+      if (modal) modal.style.display = 'flex';
+    }
+
+    function closeUnlockBoundaryModal() {
+      document.getElementById('unlock-boundary-modal').style.display = 'none';
+    }
+
+    function applyGlobalUnlockStepCh1() {
+      const select = document.getElementById('select-unlock-substep-ch1');
+      if (!select) return;
+      const target = select.value;
+      const targetIdx = ALL_CH1_SUBSTEPS.indexOf(target);
+      if (targetIdx !== -1) {
+        state.unlockedSubSteps = ALL_CH1_SUBSTEPS.slice(0, targetIdx + 1);
+        const maxTab = parseInt(target.split('-')[0]);
+        for (let t = 0; t <= maxTab; t++) {
+          if (!state.unlockedTabs.includes(t)) state.unlockedTabs.push(t);
+        }
+        updateSubStepPills(state.currentMainTab);
+        alert(`🔓 [${target}] 까지 학생 해금 범위가 설정되었습니다.`);
+      }
+      closeUnlockBoundaryModal();
+    }
+
+    function openTeacherDashboardModal() {
+      switchView('teacher-dashboard');
+      renderTeacherGrid();
+    }
+
+    function returnToStudentView() {
+      switchView('activity');
+    }
+
+    function renderTeacherGrid() {
+      const container = document.getElementById('teacher-grid-container');
+      if (!container) return;
+      container.innerHTML = '';
+      for (let i = 1; i <= 25; i++) {
+        const id = `101${String(i).padStart(2, '0')}`;
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.style.padding = '10px';
+        card.style.fontSize = '0.8rem';
+        card.innerHTML = `
+          <div style="font-weight:800; color:#1e293b; margin-bottom:4px;">👤 ${id} 학생</div>
+          <div style="color:#64748b;">단계: ${state.subStep}</div>
+          <div style="color:#059669; font-weight:700; margin-top:4px;">🟢 학습 활동 중</div>
+        `;
+        container.appendChild(card);
+      }
+    }
+
+    function setTool(toolName) {
+      state.tool = toolName;
+    }
+
+    function resetCanvasView() {
+      if (twoInstance) loadSubStep(state.subStep);
+    }
+
+    let debounceTimer = null;
+    function attachRealtimeInputTracker() {
+      setTimeout(() => {
+        const formArea = document.getElementById('form-work-area');
+        if (!formArea) return;
+        const inputs = formArea.querySelectorAll('input, textarea');
+        inputs.forEach(inp => {
+          inp.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+              if (typeof LMSIntegration !== 'undefined') {
+                LMSIntegration.saveStudentProgress(state.subStep, {
+                  activityTitle: `1. 소인수분해 [단계 ${state.subStep}]`,
+                  answerText: inp.value
+                });
+              }
+            }, 1000);
+          });
+        });
+      }, 200);
+    }
+
+    // Auto-init on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      switchMainTab(0);
+      loadSubStep('0-1');
+    });
+  </script>
+</body>
+</html>
+'''
+
+with open('/home/ubuntu/workspace/Redbook/g1_ch1_factors.html', 'w', encoding='utf-8') as f:
+    f.write(html_content)
+
+print("g1_ch1_factors.html successfully created! File size:", os.path.getsize('/home/ubuntu/workspace/Redbook/g1_ch1_factors.html'))
