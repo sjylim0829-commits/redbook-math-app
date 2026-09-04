@@ -5,5 +5,7 @@
 - 커밋 메시지는 작업 내용을 명확하게 설명하는 형태(예: `feat: 중1 좌표평면 교사 비밀번호 260831 추가`, `fix: ...`)로 작성합니다.
 
 ## 2. 📐 수학 웹 애플리케이션 개발 규칙
-- 상세 규칙은 [`.agents/rules/math_webpage_guidelines.md`](file:///.agents/rules/math_webpage_guidelines.md)를 준수합니다.
+- 기본 개발 표준 및 가이드라인: [`.agents/rules/math_webpage_guidelines.md`](file:///.agents/rules/math_webpage_guidelines.md)
+- 교과서 기반 대화형 웹페이지 자동 제작 규칙: [`.agents/rules/textbook_to_interactive_web_rules.md`](file:///.agents/rules/textbook_to_interactive_web_rules.md)
+  - 교과서 지면 제공 시 1:1 서브스텝 매핑, 좌표평면/캔버스 렌더링 규격, 빈칸 뚫기 원칙, 동적 점 드래그/스마트 스냅, 정규화 채점(`normTxt`) 등 상세 규칙 준수.
 - 교사 마스터 비밀번호(`260523`, `260831`) 및 관리자 인증 로직은 페이지 상에 노출되지 않도록 철저히 관리합니다.
