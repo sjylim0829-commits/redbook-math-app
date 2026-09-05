@@ -1044,6 +1044,8 @@ ${tabButtonsHtml}  </nav>
         const w = container.clientWidth || 600;
         const h = container.clientHeight || 500;
         twoInstance = new Two({ width: w, height: h, type: Two.Types.canvas }).appendTo(container);
+        window.twoInstance = twoInstance;
+        window.two = twoInstance;
         setupFreehandDrawing();
         window.addEventListener('resize', () => {
           if (twoInstance) {

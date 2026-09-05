@@ -63,32 +63,69 @@ async function runSubagentEvaluationCh3() {
         };
       };
 
-      // Mock Two.js 2D engine for headless test environment
+      // Mock Two.js 2D engine for headless test environment with shape & render tracking
       class MockTwo {
         constructor(opts = {}) {
           this.width = opts.width || 600;
           this.height = opts.height || 500;
+          this.shapes = [];
+          this.updateCount = 0;
         }
         appendTo(elem) {
           this.domElement = window.document.createElement('div');
           elem.appendChild(this.domElement);
           return this;
         }
-        clear() {}
-        update() {}
+        clear() {
+          this.shapes = [];
+        }
+        update() {
+          this.updateCount = (this.updateCount || 0) + 1;
+        }
         makeGroup() {
-          return {
-            add: () => {},
+          const grp = {
+            shapes: [],
+            add: (...items) => {
+              grp.shapes.push(...items);
+              this.shapes.push(...items);
+            },
             translation: { set: () => {} },
             rotation: 0,
             scale: 1
           };
+          this.shapes.push(grp);
+          return grp;
         }
-        makeLine() { return { stroke: '', linewidth: 1 }; }
-        makeCircle() { return { fill: '', stroke: '', linewidth: 1 }; }
-        makeRectangle() { return { fill: '', stroke: '', linewidth: 1 }; }
-        makeText() { return { fill: '', size: 12, weight: 700 }; }
-        makePolygon() { return { fill: '', stroke: '', rotation: 0 }; }
+        makeLine() {
+          const s = { type: 'line', stroke: '', linewidth: 1 };
+          this.shapes.push(s);
+          return s;
+        }
+        makeCircle() {
+          const s = { type: 'circle', fill: '', stroke: '', linewidth: 1 };
+          this.shapes.push(s);
+          return s;
+        }
+        makeRectangle() {
+          const s = { type: 'rect', fill: '', stroke: '', linewidth: 1 };
+          this.shapes.push(s);
+          return s;
+        }
+        makeRoundedRectangle() {
+          const s = { type: 'roundrect', fill: '', stroke: '', linewidth: 1 };
+          this.shapes.push(s);
+          return s;
+        }
+        makeText() {
+          const s = { type: 'text', fill: '', size: 12, weight: 700 };
+          this.shapes.push(s);
+          return s;
+        }
+        makePolygon() {
+          const s = { type: 'poly', fill: '', stroke: '', rotation: 0 };
+          this.shapes.push(s);
+          return s;
+        }
       }
       MockTwo.Types = { canvas: 'canvas' };
       window.Two = MockTwo;
@@ -241,9 +278,24 @@ async function runSubagentEvaluationCh3() {
     recordCheck('INTENT-03', '4대 모달 시스템', false, err.message);
   }
 
+  function inspectCanvasRender() {
+    const simCtrl = document.getElementById('interactive-sim-controller');
+    const isCtrlVisible = simCtrl && simCtrl.style.display !== 'none' && simCtrl.innerHTML.trim().length > 20;
+    const hasButtons = simCtrl && simCtrl.querySelectorAll('button, input').length > 0;
+    const twoInst = window.twoInstance;
+    const hasShapes = twoInst && twoInst.shapes && twoInst.shapes.length > 0;
+    return {
+      ok: isCtrlVisible && hasButtons && hasShapes,
+      isCtrlVisible,
+      hasButtons,
+      shapeCount: (twoInst && twoInst.shapes) ? twoInst.shapes.length : 0
+    };
+  }
+
   // --- 4. [INTENT-04] 0-1 초등 미지수 수평 저울 ---
   try {
     window.loadSubStep('0-1');
+    const cvs = inspectCanvasRender();
     const midInput = document.getElementById('p01-mid');
     const boxInput = document.getElementById('p01-box');
     if (midInput && boxInput && typeof window.check01Submit === 'function') {
@@ -251,9 +303,10 @@ async function runSubagentEvaluationCh3() {
       boxInput.value = '5';
       window.check01Submit();
       const verified = document.querySelector('.verified-answer-card');
-      const pass01 = !!verified;
-      recordCheck('INTENT-04', '0-1 초등 미지수 수평 저울', pass01,
-        pass01 ? '3 × □ = 15 ➔ □ = 5 채점 및 정답뷰 렌더링 성공' : '0-1 채점 또는 화면 전환 실패');
+      const pass01 = !!verified && cvs.ok;
+      recordCheck('INTENT-04', '0-1 초등 미지수 수평 저울 및 캔버스 가시성', pass01,
+        pass01 ? `좌측 수평 저울 정상 렌더링(도형 ${cvs.shapeCount}개, 버튼 완비) & 3 × □ = 15 ➔ □ = 5 채점 성공` :
+        (!cvs.ok ? `좌측 시뮬레이터 조작판 또는 Two.js 캔버스 누락 (빈 화면 결함! 컨트롤러: ${cvs.isCtrlVisible}, 도형수: ${cvs.shapeCount})` : '0-1 채점 실패'));
     } else {
       recordCheck('INTENT-04', '0-1 초등 미지수 수평 저울', false, '0-1 폼 요소 미발견');
     }
@@ -264,6 +317,7 @@ async function runSubagentEvaluationCh3() {
   // --- 5. [INTENT-05] 1-1 아이스크림 구매 영수증 시뮬레이터 ---
   try {
     window.loadSubStep('1-1');
+    const cvs = inspectCanvasRender();
     const iceInput = document.getElementById('p11-ice');
     const orderInput = document.getElementById('p11-order');
     if (iceInput && orderInput && typeof window.check11Submit === 'function') {
@@ -271,9 +325,10 @@ async function runSubagentEvaluationCh3() {
       orderInput.value = '3500a + 5000b';
       window.check11Submit();
       const verified = document.querySelector('.verified-answer-card');
-      const pass11 = !!verified;
-      recordCheck('INTENT-05', '1-1 아이스크림 구매 영수증 시뮬레이터', pass11,
-        pass11 ? '문자 식(3500x, 3500a+5000b) 채점 및 영수증 연동 성공' : '1-1 채점 실패');
+      const pass11 = !!verified && cvs.ok;
+      recordCheck('INTENT-05', '1-1 아이스크림 구매 영수증 시뮬레이터 및 캔버스 가시성', pass11,
+        pass11 ? `좌측 영수증 시뮬레이터(도형 ${cvs.shapeCount}개) & 문자식(3500x, 3500a+5000b) 채점 성공` :
+        (!cvs.ok ? '좌측 시뮬레이터 조작판 또는 Two.js 캔버스 누락 (빈 화면 결함!)' : '1-1 채점 실패'));
     } else {
       recordCheck('INTENT-05', '1-1 아이스크림 구매 영수증 시뮬레이터', false, '1-1 폼 미발견');
     }
@@ -284,6 +339,7 @@ async function runSubagentEvaluationCh3() {
   // --- 6. [INTENT-06] 1-3 400쪽 독서 진행 게이지와 대입 ---
   try {
     window.loadSubStep('1-3');
+    const cvs = inspectCanvasRender();
     const exprInput = document.getElementById('p13-expr');
     const valInput = document.getElementById('p13-val');
     if (exprInput && valInput && typeof window.check13Submit === 'function') {
@@ -291,9 +347,10 @@ async function runSubagentEvaluationCh3() {
       valInput.value = '350';
       window.check13Submit();
       const verified = document.querySelector('.verified-answer-card');
-      const pass13 = !!verified;
-      recordCheck('INTENT-06', '1-3 400쪽 독서 진행 게이지와 대입', pass13,
-        pass13 ? '식의 값(400 - 10x, x=5 대입 350쪽) 채점 및 게이지 성공' : '1-3 채점 실패');
+      const pass13 = !!verified && cvs.ok;
+      recordCheck('INTENT-06', '1-3 400쪽 독서 진행 게이지와 대입 및 캔버스 가시성', pass13,
+        pass13 ? `좌측 독서 게이지(도형 ${cvs.shapeCount}개) & 식의 값(400 - 10x, x=5 대입 350쪽) 채점 성공` :
+        (!cvs.ok ? '좌측 시뮬레이터 조작판 또는 Two.js 캔버스 누락 (빈 화면 결함!)' : '1-3 채점 실패'));
     } else {
       recordCheck('INTENT-06', '1-3 400쪽 독서 진행 게이지와 대입', false, '1-3 폼 미발견');
     }
@@ -304,6 +361,7 @@ async function runSubagentEvaluationCh3() {
   // --- 7. [INTENT-07] 2-1 다항식 구조 카드 분해기 ---
   try {
     window.loadSubStep('2-1');
+    const cvs = inspectCanvasRender();
     const coefInput = document.getElementById('p21-coef');
     const constInput = document.getElementById('p21-const');
     const degInput = document.getElementById('p21-deg');
@@ -315,9 +373,10 @@ async function runSubagentEvaluationCh3() {
       linInput.value = '예';
       window.check21Submit();
       const verified = document.querySelector('.verified-answer-card');
-      const pass21 = !!verified;
-      recordCheck('INTENT-07', '2-1 다항식 구조 카드 분해기', pass21,
-        pass21 ? '계수(5), 상수항(-7), 차수(2), 일차식 판별 채점 성공' : '2-1 채점 실패');
+      const pass21 = !!verified && cvs.ok;
+      recordCheck('INTENT-07', '2-1 다항식 구조 카드 분해기 및 캔버스 가시성', pass21,
+        pass21 ? `좌측 다항식 해부도(도형 ${cvs.shapeCount}개) & 계수(5), 상수항(-7), 차수(2), 일차식 판별 채점 성공` :
+        (!cvs.ok ? '좌측 시뮬레이터 조작판 또는 Two.js 캔버스 누락 (빈 화면 결함!)' : '2-1 채점 실패'));
     } else {
       recordCheck('INTENT-07', '2-1 다항식 구조 카드 분해기', false, '2-1 폼 미발견');
     }
@@ -328,6 +387,7 @@ async function runSubagentEvaluationCh3() {
   // --- 8. [INTENT-08] 2-2 직사각형 면적 모델과 분배법칙 ---
   try {
     window.loadSubStep('2-2');
+    const cvs = inspectCanvasRender();
     const q1Input = document.getElementById('p22-q1');
     const q2Input = document.getElementById('p22-q2');
     const q3Input = document.getElementById('p22-q3');
@@ -337,9 +397,10 @@ async function runSubagentEvaluationCh3() {
       q3Input.value = '2x - 3';
       window.check22Submit();
       const verified = document.querySelector('.verified-answer-card');
-      const pass22 = !!verified;
-      recordCheck('INTENT-08', '2-2 직사각형 면적 모델과 분배법칙', pass22,
-        pass22 ? '분배법칙(6x, -8x+12, 2x-3) 채점 및 면적 모델 연동 성공' : '2-2 채점 실패');
+      const pass22 = !!verified && cvs.ok;
+      recordCheck('INTENT-08', '2-2 직사각형 면적 모델과 분배법칙 및 캔버스 가시성', pass22,
+        pass22 ? `좌측 직사각형 면적 모델(도형 ${cvs.shapeCount}개) & 분배법칙(6x, -8x+12, 2x-3) 채점 성공` :
+        (!cvs.ok ? '좌측 시뮬레이터 조작판 또는 Two.js 캔버스 누락 (빈 화면 결함!)' : '2-2 채점 실패'));
     } else {
       recordCheck('INTENT-08', '2-2 직사각형 면적 모델과 분배법칙', false, '2-2 폼 미발견');
     }
@@ -350,6 +411,7 @@ async function runSubagentEvaluationCh3() {
   // --- 9. [INTENT-09] 2-3 동류항 대수 막대 타일 모으기 ---
   try {
     window.loadSubStep('2-3');
+    const cvs = inspectCanvasRender();
     const likeInput = document.getElementById('p23-like');
     const sumInput = document.getElementById('p23-sum');
     if (likeInput && sumInput && typeof window.check23Submit === 'function') {
@@ -357,9 +419,10 @@ async function runSubagentEvaluationCh3() {
       sumInput.value = '6x - 2';
       window.check23Submit();
       const verified = document.querySelector('.verified-answer-card');
-      const pass23 = !!verified;
-      recordCheck('INTENT-09', '2-3 동류항 대수 막대 타일 모으기', pass23,
-        pass23 ? '동류항 판별(3x) 및 합(6x-2) 타일 모으기 성공' : '2-3 채점 실패');
+      const pass23 = !!verified && cvs.ok;
+      recordCheck('INTENT-09', '2-3 동류항 대수 막대 타일 모으기 및 캔버스 가시성', pass23,
+        pass23 ? `좌측 대수 타일(도형 ${cvs.shapeCount}개) & 동류항 판별(3x) 및 합(6x-2) 타일 모으기 성공` :
+        (!cvs.ok ? '좌측 시뮬레이터 조작판 또는 Two.js 캔버스 누락 (빈 화면 결함!)' : '2-3 채점 실패'));
     } else {
       recordCheck('INTENT-09', '2-3 동류항 대수 막대 타일 모으기', false, '2-3 폼 미발견');
     }
@@ -370,6 +433,7 @@ async function runSubagentEvaluationCh3() {
   // --- 10. [INTENT-10] 3-1 방정식 vs 항등식 판별 저울 ---
   try {
     window.loadSubStep('3-1');
+    const cvs = inspectCanvasRender();
     const eq1Input = document.getElementById('p31-eq1');
     const eq2Input = document.getElementById('p31-eq2');
     if (eq1Input && eq2Input && typeof window.check31Submit === 'function') {
@@ -377,9 +441,10 @@ async function runSubagentEvaluationCh3() {
       eq2Input.value = '항등식';
       window.check31Submit();
       const verified = document.querySelector('.verified-answer-card');
-      const pass31 = !!verified;
-      recordCheck('INTENT-10', '3-1 방정식 vs 항등식 판별 저울', pass31,
-        pass31 ? '방정식과 항등식 판별 저울 시뮬레이터 성공' : '3-1 채점 실패');
+      const pass31 = !!verified && cvs.ok;
+      recordCheck('INTENT-10', '3-1 방정식 vs 항등식 판별 저울 및 캔버스 가시성', pass31,
+        pass31 ? `좌측 항등식/방정식 저울(도형 ${cvs.shapeCount}개) & 판별 채점 성공` :
+        (!cvs.ok ? '좌측 시뮬레이터 조작판 또는 Two.js 캔버스 누락 (빈 화면 결함!)' : '3-1 채점 실패'));
     } else {
       recordCheck('INTENT-10', '3-1 방정식 vs 항등식 판별 저울', false, '3-1 폼 미발견');
     }
@@ -390,6 +455,7 @@ async function runSubagentEvaluationCh3() {
   // --- 11. [INTENT-11] 3-3 등식의 성질 양팔 저울 실험실 ---
   try {
     window.loadSubStep('3-3');
+    const cvs = inspectCanvasRender();
     const addInput = document.getElementById('p33-add');
     const divInput = document.getElementById('p33-div');
     if (addInput && divInput && typeof window.check33Submit === 'function') {
@@ -397,9 +463,10 @@ async function runSubagentEvaluationCh3() {
       divInput.value = '2';
       window.check33Submit();
       const verified = document.querySelector('.verified-answer-card');
-      const pass33 = !!verified;
-      recordCheck('INTENT-11', '3-3 등식의 성질 양팔 저울 실험실', pass33,
-        pass33 ? '등식의 성질 4가지 연산(+3, ÷2) 채점 성공' : '3-3 채점 실패');
+      const pass33 = !!verified && cvs.ok;
+      recordCheck('INTENT-11', '3-3 등식의 성질 양팔 저울 실험실 및 캔버스 가시성', pass33,
+        pass33 ? `좌측 등식의 성질 저울(도형 ${cvs.shapeCount}개) & 연산(+3, ÷2) 채점 성공` :
+        (!cvs.ok ? '좌측 시뮬레이터 조작판 또는 Two.js 캔버스 누락 (빈 화면 결함!)' : '3-3 채점 실패'));
     } else {
       recordCheck('INTENT-11', '3-3 등식의 성질 양팔 저울 실험실', false, '3-3 폼 미발견');
     }
@@ -410,6 +477,7 @@ async function runSubagentEvaluationCh3() {
   // --- 12. [INTENT-12] 4-1 이항(移項) 애니메이션 시뮬레이터 ---
   try {
     window.loadSubStep('4-1');
+    const cvs = inspectCanvasRender();
     const eqInput = document.getElementById('p41-eq');
     const propInput = document.getElementById('p41-prop');
     if (eqInput && propInput && typeof window.check41Submit === 'function') {
@@ -417,9 +485,10 @@ async function runSubagentEvaluationCh3() {
       propInput.value = '부호가 반대로 바뀐다';
       window.check41Submit();
       const verified = document.querySelector('.verified-answer-card');
-      const pass41 = !!verified;
-      recordCheck('INTENT-12', '4-1 이항(移項) 애니메이션 시뮬레이터', pass41,
-        pass41 ? '이항 후 식(3x = 5) 및 부호 반전 원리 채점 성공' : '4-1 채점 실패');
+      const pass41 = !!verified && cvs.ok;
+      recordCheck('INTENT-12', '4-1 이항(移項) 애니메이션 시뮬레이터 및 캔버스 가시성', pass41,
+        pass41 ? `좌측 이항 브릿지(도형 ${cvs.shapeCount}개) & 이항 후 식(3x = 5) 채점 성공` :
+        (!cvs.ok ? '좌측 시뮬레이터 조작판 또는 Two.js 캔버스 누락 (빈 화면 결함!)' : '4-1 채점 실패'));
     } else {
       recordCheck('INTENT-12', '4-1 이항(移項) 애니메이션 시뮬레이터', false, '4-1 폼 미발견');
     }
@@ -430,6 +499,7 @@ async function runSubagentEvaluationCh3() {
   // --- 13. [INTENT-13] 5-2 생각한 수 맞추기 수학 마술사 ---
   try {
     window.loadSubStep('5-2');
+    const cvs = inspectCanvasRender();
     const resInput = document.getElementById('p52-res');
     const reasonInput = document.getElementById('p52-reason');
     if (resInput && reasonInput && typeof window.check52Submit === 'function') {
@@ -437,9 +507,10 @@ async function runSubagentEvaluationCh3() {
       reasonInput.value = '미지수 x가 소거되기 때문';
       window.check52Submit();
       const verified = document.querySelector('.verified-answer-card');
-      const pass52 = !!verified;
-      recordCheck('INTENT-13', '5-2 생각한 수 맞추기 수학 마술사', pass52,
-        pass52 ? '최종 마술 결과(1) 및 x 소거 대수 원리 채점 성공' : '5-2 채점 실패');
+      const pass52 = !!verified && cvs.ok;
+      recordCheck('INTENT-13', '5-2 생각한 수 맞추기 수학 마술사 및 캔버스 가시성', pass52,
+        pass52 ? `좌측 마술사 시뮬레이터(도형 ${cvs.shapeCount}개) & 최종 마술 결과(1) 채점 성공` :
+        (!cvs.ok ? '좌측 시뮬레이터 조작판 또는 Two.js 캔버스 누락 (빈 화면 결함!)' : '5-2 채점 실패'));
     } else {
       recordCheck('INTENT-13', '5-2 생각한 수 맞추기 수학 마술사', false, '5-2 폼 미발견');
     }
@@ -459,7 +530,7 @@ async function runSubagentEvaluationCh3() {
       const checks = [
         {
           name: 'Two.js 인터랙티브 그래픽 엔진 탑재 및 캔버스 렌더러',
-          ok: htmlContent.includes('two.min.js') && htmlContent.includes('drawSubstepCanvas')
+          ok: htmlContent.includes('two.min.js') && htmlContent.includes('setupSubstepSimulator') && htmlContent.includes('interactive-sim-controller')
         },
         {
           name: '4대 모달 및 교사 관제 시스템 (단원맵, 목표, 교사비번, 해금범위)',
@@ -473,7 +544,7 @@ async function runSubagentEvaluationCh3() {
         },
         {
           name: '교과서 1:1 서브스텝 구현 밀도 (10대 인터랙티브 실험실 완비)',
-          ok: ['simBoxScale', 'simIcecreamReceipt', 'simBookGauge', 'simPolyStructure', 'simRectAreaDist', 'simLikeTermTiles', 'simEquationVsIdentity', 'simPropertiesOfEquality', 'simTransposition', 'simMathMagic'].every(fn => htmlContent.includes(fn))
+          ok: ['renderBoxScaleCanvas', 'renderReceiptCanvas', 'renderBookGaugeCanvas', 'renderPolyStructureCanvas', 'renderRectDistCanvas', 'renderLikeTermTilesCanvas', 'renderEqVsIdentityCanvas', 'renderPropertiesCanvas', 'renderTranspositionCanvas', 'renderMathMagicCanvas'].every(fn => htmlContent.includes(fn))
         },
         {
           name: 'LMS DB 통합 및 실시간 자동 저장 시스템',
@@ -578,6 +649,35 @@ async function runSubagentEvaluationCh3() {
     }
   } catch (e) {
     recordCheck('INTENT-15', '정답 미노출 원칙 검사', false, e.message);
+  }
+
+  // --- 16. [INTENT-16] 19개 전 서브스텝 좌측 시뮬레이터 조작판 & Two.js 캔버스 전수 무결성 감사 (Zero Blank Screen Audit) ---
+  try {
+    const allSteps = ['0-1', '0-2', '0-3', '1-1', '1-2', '1-3', '1-4', '2-1', '2-2', '2-3', '2-4', '3-1', '3-2', '3-3', '3-4', '4-1', '4-2', '4-3', '5-1', '5-2'];
+    const blankSteps = [];
+
+    allSteps.forEach(st => {
+      window.loadSubStep(st);
+      const simCtrl = document.getElementById('interactive-sim-controller');
+      const twoInst = window.twoInstance;
+      const isVisible = simCtrl && simCtrl.style.display !== 'none' && simCtrl.innerHTML.trim().length > 0;
+      const hasShapes = twoInst && twoInst.shapes && twoInst.shapes.length > 0;
+      if (!isVisible || !hasShapes) {
+        blankSteps.push(`${st} (컨트롤러: ${isVisible}, 도형수: ${twoInst ? twoInst.shapes.length : 0})`);
+      }
+    });
+
+    const isZeroBlankPassed = (blankSteps.length === 0);
+    const blankDetails = isZeroBlankPassed
+      ? `19개 전 서브스텝 전수 감사 완료: 빈 화면(Blank Screen) 0건, 전 서브스텝 시뮬레이터 및 Two.js 렌더링 100% 정상 가동 확인`
+      : `빈 화면 결함 발견 (${blankSteps.length}개 단계): ${blankSteps.join(', ')}`;
+    recordCheck('INTENT-16', '전 서브스텝 좌측 시뮬레이터 & 캔버스 가시성 전수 감사 (Zero Blank Canvas)', isZeroBlankPassed, blankDetails);
+    if (!isZeroBlankPassed) {
+      isLoginCriticalPassed = false; // Zero tolerance for blank screens!
+    }
+  } catch (err) {
+    recordCheck('INTENT-16', '전 서브스텝 캔버스 가시성 전수 감사', false, err.message);
+    isLoginCriticalPassed = false;
   }
 
   // --- 계산 및 리포트 작성 ---
