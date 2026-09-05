@@ -695,6 +695,7 @@ ${tabButtonsHtml}  </nav>
         } catch(e) {}
       },
       pop() { this.playTone(600, 0.08, 'triangle', 0.12); },
+      click() { this.playTone(800, 0.04, 'sine', 0.08); },
       success() {
         this.playTone(523.25, 0.1, 'sine');
         setTimeout(() => this.playTone(659.25, 0.1, 'sine'), 80);
@@ -706,6 +707,7 @@ ${tabButtonsHtml}  </nav>
         setTimeout(() => this.playTone(880, 0.2, 'triangle'), 100);
       }
     };
+    window.SoundFX = SoundFX;
 
     // Text Normalization Engine
     function normTxt(v) {
@@ -734,6 +736,7 @@ ${tabButtonsHtml}  </nav>
       savedFormInputs: {},
       verifiedViewData: {}
     };
+    window.state = state;
 
     let twoInstance = null;
     let currentMonitoringClass = 1;
@@ -1033,6 +1036,9 @@ ${tabButtonsHtml}  </nav>
     function initTwoEngine() {
       const container = document.getElementById('two-container');
       if (!container) return null;
+      if (typeof Two === 'undefined') {
+        return null;
+      }
       if (!twoInstance) {
         container.innerHTML = '<canvas id="freehand-drawing-canvas"></canvas>';
         const w = container.clientWidth || 600;
@@ -1232,6 +1238,11 @@ ${validationHandlersJs}
         attachRealtimeInputTracker();
       }
     }
+    window.loadSubStep = loadSubStep;
+    window.switchMainTab = switchMainTab;
+    window.switchView = switchView;
+    window.handleLMSLogin = handleLMSLogin;
+    window.submitCurrentStep = submitCurrentStep;
 
     // --- TEACHER MODAL CONTROLS & AUTH ---
     let currentSecureModalAction = 'teacher_login';
