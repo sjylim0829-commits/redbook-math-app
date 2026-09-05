@@ -1242,7 +1242,6 @@ ${validationHandlersJs}
     window.switchMainTab = switchMainTab;
     window.switchView = switchView;
     window.handleLMSLogin = handleLMSLogin;
-    window.submitCurrentStep = submitCurrentStep;
 
     // --- TEACHER MODAL CONTROLS & AUTH ---
     let currentSecureModalAction = 'teacher_login';
@@ -1358,6 +1357,13 @@ ${validationHandlersJs}
 
       return false;
     }
+    window.openSecurePasswordModal = openSecurePasswordModal;
+    window.closeSecurePasswordModal = closeSecurePasswordModal;
+    window.openTeacherLoginModal = openTeacherLoginModal;
+    window.openTestLoginModal = openTestLoginModal;
+    window.openTeacherPassModal = openTeacherPassModal;
+    window.openTeacherDashboardModal = openTeacherDashboardModal;
+    window.handleSecurePasswordSubmit = handleSecurePasswordSubmit;
 
     function passCurrentSubStep() {
       const curIdx = ALL_SUBSTEPS.indexOf(state.subStep);

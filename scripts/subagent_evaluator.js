@@ -146,6 +146,43 @@ async function runSubagentEvaluation() {
       const teacherPassed = (window.state && window.state.isTeacherLoggedIn === true && window.state.unlockedSubSteps.length >= 18);
       recordCheck('INTENT-01-C', '교사 마스터 비밀번호(260523) 전체 해금', teacherPassed, teacherPassed ? `교사 인증 성공, 전체 ${window.state.unlockedSubSteps.length}개 서브스텝 프리패스` : '교사 마스터 바이패스 실패');
       if (!teacherPassed) isLoginCriticalPassed = false;
+
+      // Test Teacher Login Button & Modal Popup (openTestLoginModal) [Mandatory Critical Item]
+      const teacherModalBtn = document.querySelector('button[onclick*="openTestLoginModal"]') ||
+                             Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('교사 계정 접속'));
+      const secureModal = document.getElementById('secure-password-modal');
+      const secureInput = document.getElementById('secure-modal-input');
+
+      if (!teacherModalBtn) {
+        recordCheck('INTENT-01-D', '교사 계정 접속 버튼 존재', false, '교사 계정 접속 버튼 누락');
+        isLoginCriticalPassed = false;
+      } else if (!secureModal || !secureInput) {
+        recordCheck('INTENT-01-D', '교사 보안 모달 요소 존재', false, 'secure-password-modal 또는 secure-modal-input 누락');
+        isLoginCriticalPassed = false;
+      } else {
+        // Reset teacher state to verify clean login via modal
+        window.state.isTeacherLoggedIn = false;
+        window.state.unlockedSubSteps = ['0-1'];
+        secureModal.style.display = 'none';
+
+        // 1. Click button
+        teacherModalBtn.click();
+        const isModalDisplayed = (secureModal.style.display === 'flex');
+
+        // 2. Fill password in modal and submit
+        secureInput.value = '260523';
+        window.handleSecurePasswordSubmit({ preventDefault: () => {} });
+
+        const isModalClosed = (secureModal.style.display === 'none');
+        const isTeacherAuthViaModal = (window.state && window.state.isTeacherLoggedIn === true && window.state.unlockedSubSteps.length >= 18);
+
+        const modalFlowPassed = isModalDisplayed && isModalClosed && isTeacherAuthViaModal;
+        recordCheck('INTENT-01-D', '교사 계정 접속 버튼 및 모달 인증 (필수 항목)', modalFlowPassed,
+          modalFlowPassed ? '버튼 클릭 시 모달(display:flex) 정상 팝업 ➔ 비밀번호 인증 ➔ 모달 닫힘 및 전체 해금 성공'
+                          : `모달 팝업 실패 (팝업: ${isModalDisplayed}, 닫힘: ${isModalClosed}, 교사인증: ${isTeacherAuthViaModal})`
+        );
+        if (!modalFlowPassed) isLoginCriticalPassed = false;
+      }
     }
   } catch (err) {
     recordCheck('INTENT-01', '로그인 모듈 실행', false, '런타임 에러: ' + err.message);
@@ -342,6 +379,59 @@ async function runSubagentEvaluation() {
     recordCheck('INTENT-13', '채점 및 정답 뷰 전환', false, err.message);
   }
 
+  // --- 14. [INTENT-14] 중1 좌표평면(g1_coordinate.html) 대비 질적 완성도 상시 벤치마크 ---
+  try {
+    const coordHtmlPath = path.join(__dirname, '../g1_coordinate.html');
+    let qualitativePassed = false;
+    let qualDetails = '';
+
+    if (!fs.existsSync(coordHtmlPath)) {
+      recordCheck('INTENT-14', '기준 페이지 g1_coordinate.html 존재', false, 'g1_coordinate.html 파일 없음');
+    } else {
+      // 7 Qualitative Dimensions
+      const checks = [
+        {
+          name: 'Two.js 인터랙티브 캔버스 및 동적 컨트롤러',
+          ok: htmlContent.includes('Two.Types') && htmlContent.includes('interactive-sim-controller') && htmlContent.includes('setupSubstepSimulator')
+        },
+        {
+          name: '4대 필수 모달 시스템 (보안/해금/관제/확대)',
+          ok: ['secure-password-modal', 'unlock-boundary-modal', 'teacher-dashboard-modal', 'student-zoom-modal'].every(id => htmlContent.includes(id))
+        },
+        {
+          name: '교사 5x5 실시간 모니터링 관제실 구조 (대시보드 및 학생 그리드)',
+          ok: (htmlContent.includes('view-teacher-dashboard') || htmlContent.includes('teacher-dashboard-modal')) &&
+              (htmlContent.includes('teacher-grid-wrapper') || htmlContent.includes('teacher-grid-container')) &&
+              (htmlContent.includes('switchMonitoringClass') || htmlContent.includes('selectMonitoringClass'))
+        },
+        {
+          name: '교과서 1:1 서브스텝 구현 밀도 (10대 인터랙티브 실험실 완비)',
+          ok: ['moveRobot', 'setPointP12', 'setAbsPos', 'setCompare', 'addChip', 'stepArrow', 'setMultSim', 'setThermCities'].every(fn => htmlContent.includes(fn))
+        },
+        {
+          name: 'LMS DB 통합 및 실시간 자동 저장 시스템',
+          ok: htmlContent.includes('lms-integration-g1.js') && htmlContent.includes('handleLMSLogin') && htmlContent.includes('startPeriodicAutoSave')
+        },
+        {
+          name: '수학 정답 정규화 및 피드백 UX (노란색 빈칸 & 정답 카드)',
+          ok: htmlContent.includes('normTxt') && htmlContent.includes('#fef08a') && htmlContent.includes('renderVerifiedAnswerView')
+        },
+        {
+          name: 'Web Audio API 5종 사운드 시스템 (pop/click/success/error/unlock)',
+          ok: ['pop', 'click', 'success', 'error', 'unlock'].every(m => htmlContent.includes(m))
+        }
+      ];
+
+      const passedDimCount = checks.filter(c => c.ok).length;
+      const qualitativeParityScore = Math.round((passedDimCount / checks.length) * 100);
+      qualitativePassed = (qualitativeParityScore >= 90);
+      qualDetails = `좌표평면 대비 질적 일치도 ${qualitativeParityScore}% (${passedDimCount}/${checks.length}개 핵심 규격 완비)`;
+      recordCheck('INTENT-14', '중1 좌표평면(g1_coordinate.html) 대비 질적 완성도 벤치마크', qualitativePassed, qualDetails);
+    }
+  } catch (err) {
+    recordCheck('INTENT-14', '좌표평면 질적 비교 벤치마크', false, err.message);
+  }
+
   // --- 계산 및 리포트 작성 ---
   const totalItems = results.length;
   const passedItems = results.filter(r => r.isPassed).length;
@@ -353,7 +443,7 @@ async function runSubagentEvaluation() {
 
   if (!isLoginCriticalPassed) {
     verdict = 'REJECT';
-    rejectReason = '❌ [치명적 실패] 학생 로그인 또는 교사 마스터 비밀번호 바이패스가 실패하여 완성도와 무관하게 즉시 반려합니다.';
+    rejectReason = '❌ [치명적 실패] 학생 로그인, 교사 마스터 비밀번호 바이패스, 또는 교사 계정 접속 버튼 모달 인증이 실패하여 완성도와 무관하게 즉시 반려합니다.';
   } else if (scorePercent < 90) {
     verdict = 'REJECT';
     rejectReason = `❌ [미달] 설계 명세서 달성도(${scorePercent}%)가 합격 기준(90%)에 미달하여 반려합니다.`;
