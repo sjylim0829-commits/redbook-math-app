@@ -666,12 +666,35 @@
       if (target) target.classList.add('active');
     }
 
-    function handleLMSLogin(e) {
+        function showLoginError(msg) {
+      let errBox = document.getElementById('login-error-notice');
+      if (!errBox) {
+        const loginCard = document.querySelector('.login-card-container');
+        if (loginCard) {
+          errBox = document.createElement('div');
+          errBox.id = 'login-error-notice';
+          errBox.style.cssText = 'color:#dc2626; font-size:0.88rem; font-weight:700; margin-top:12px; background:#fef2f2; padding:10px 14px; border-radius:8px; border:1.5px solid #fca5a5; line-height:1.5;';
+          const formEl = loginCard.querySelector('form');
+          if (formEl) formEl.insertAdjacentElement('afterend', errBox);
+          else loginCard.appendChild(errBox);
+        }
+      }
+      if (errBox) {
+        errBox.style.display = 'block';
+        errBox.innerText = msg;
+      }
+      alert(msg);
+    }
+
+    async function handleLMSLogin(e) {
       if (e && e.preventDefault) e.preventDefault();
       const idInput = document.getElementById('student-id');
-      const pwInput = document.getElementById('student-name');
+      const nameInput = document.getElementById('student-name');
       const studentId = idInput ? idInput.value.trim() : '';
-      const password = pwInput ? pwInput.value.trim() : '';
+      const password = nameInput ? nameInput.value.trim() : '';
+
+      const errBox = document.getElementById('login-error-notice');
+      if (errBox) errBox.style.display = 'none';
 
       const isTeacher = (password === '260523' || password === '260831' || studentId === '260523' || studentId === '260831');
       if (isTeacher) {
@@ -702,9 +725,56 @@
         switchView('activity');
         updateSubStepPills(0);
         loadSubStep('0-1');
-        alert('🔓 [교사 보안 인증 성공]\n임종윤 선생님 환영합니다! 교사 관리자 모드로 로그인되었습니다. 상단 🔓 학생 해금 범위 설정을 사용하실 수 있습니다.');
+        alert('🔓 [교사 보안 인증 성공]
+임종윤 선생님 환영합니다! 교사 관리자 모드로 로그인되었습니다. 상단 🔓 학생 해금 범위 설정을 사용하실 수 있습니다.');
         return false;
       }
+
+      if (!studentId || !password) {
+        showLoginError('⚠️ 학번과 비밀번호를 모두 입력해 주세요!');
+        return false;
+      }
+
+      const loginBtn = e.target ? e.target.querySelector('button[type="submit"]') : null;
+      const origText = loginBtn ? loginBtn.innerText : '';
+      if (loginBtn) { loginBtn.disabled = true; loginBtn.innerText = '⏳ 영서중 수학 LMS DB 인증 중...'; }
+
+      try {
+        const res = await LMSIntegration.loginStudent(studentId, password);
+        if (res && res.success) {
+          state.currentUser = res.user;
+          state.studentId = res.user.id;
+          state.studentName = res.user.name;
+          state.isTeacherLoggedIn = false;
+
+          const userDisp = document.getElementById('current-user-info');
+          if (userDisp) {
+            userDisp.innerText = `👤 ${res.user.name} (${res.user.id})`;
+            userDisp.style.color = '#4f46e5';
+          }
+
+          let targetSubStep = '0-1';
+          if (LMSIntegration.loadStudentProgress) {
+            const prog = await LMSIntegration.loadStudentProgress(res.user.id);
+            if (prog && prog.lastSubStep) targetSubStep = prog.lastSubStep;
+          }
+
+          const targetTabIdx = parseInt(targetSubStep.split('-')[0]) || 0;
+          switchView('activity');
+          updateSubStepPills(targetTabIdx);
+          loadSubStep(targetSubStep);
+        } else {
+          showLoginError(`❌ ${res ? res.message : '학번 또는 비밀번호가 일치하지 않습니다.'}`);
+        }
+      } catch (err) {
+        console.error(err);
+        showLoginError('❌ 영서중 수학 LMS DB 연결 중 오류가 발생했습니다.');
+      } finally {
+        if (loginBtn) { loginBtn.disabled = false; loginBtn.innerText = origText || '🔐 영서중 수학 LMS 학생 로그인'; }
+      }
+
+      return false;
+    }
 
       state.studentId = studentId || '10101';
       state.studentName = password || '학생';
@@ -1466,30 +1536,48 @@
       setTimeout(() => inp.focus(), 100);
     }
     function closeSecurePasswordModal() { document.getElementById('secure-password-modal').style.display = 'none'; }
-    function verifySecurePassword() {
+        function verifySecurePassword() {
       const pwd = document.getElementById('secure-password-input').value.trim();
       if (pwd === '260523' || pwd === '260831') {
         closeSecurePasswordModal();
-        if (currentSecureAction === 'teacher_login') {
+        if (currentSecureAction === 'teacher_login' || currentSecureAction === 'test_login') {
           state.isTeacherLoggedIn = true;
+          state.isMaster = true;
+          state.studentId = '260523';
+          state.studentName = '임종윤 선생님';
           state.unlockedTabs = [0, 1, 2, 3, 4, 5];
           state.unlockedSubSteps = ALL_CH2_SUBSTEPS;
-          document.getElementById('btn-header-unlock-boundary').style.display = 'inline-block';
-          document.getElementById('btn-header-teacher-dashboard').style.display = 'inline-block';
-          document.getElementById('current-user-info').innerText = '👨‍🏫 교사 관리자 모드';
+          document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+          });
+          const unlockBtn = document.getElementById('btn-header-unlock-boundary');
+          const dashBtn = document.getElementById('btn-header-teacher-dashboard');
+          if (unlockBtn) unlockBtn.style.display = 'inline-block';
+          if (dashBtn) dashBtn.style.display = 'inline-block';
+          const info = document.getElementById('current-user-info');
+          if (info) { info.innerText = '👨‍🏫 임종윤 선생님 (교사 관리자)'; info.style.color = '#059669'; }
           switchView('activity');
-          loadSubStep(state.subStep || '0-1');
+          updateSubStepPills(0);
+          loadSubStep('0-1');
+          alert('🔓 [교사 보안 인증 성공]
+임종윤 선생님 환영합니다! 교사 관리자 모드로 로그인되었습니다. 상단 🔓 학생 해금 범위 설정을 사용하실 수 있습니다.');
         } else if (currentSecureAction === 'teacher_pass') {
-          const curIdx = ALL_CH2_SUBSTEPS.indexOf(state.subStep);
-          if (curIdx !== -1 && curIdx < ALL_CH2_SUBSTEPS.length - 1) {
-            const nextSub = ALL_CH2_SUBSTEPS[curIdx + 1];
+          const currentIdx = ALL_CH2_SUBSTEPS.indexOf(state.subStep);
+          if (currentIdx !== -1 && currentIdx < ALL_CH2_SUBSTEPS.length - 1) {
+            const nextSub = ALL_CH2_SUBSTEPS[currentIdx + 1];
             state.completedSubSteps.push(state.subStep);
             state.unlockedSubSteps.push(nextSub);
             loadSubStep(nextSub);
+          } else {
+            alert('이미 마지막 활동입니다!');
           }
         }
-      } else alert("❌ 비밀번호가 올바르지 않습니다.");
+      } else {
+        alert('❌ 비밀번호가 올바르지 않습니다.');
+      }
     }
+
     function openUnlockBoundaryModal() {
       const modal = document.getElementById('unlock-boundary-modal');
       const select = document.getElementById('select-unlock-substep-ch2');

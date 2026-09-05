@@ -825,12 +825,35 @@
       if (target) target.classList.add('active');
     }
 
-    function handleLMSLogin(e) {
+        function showLoginError(msg) {
+      let errBox = document.getElementById('login-error-notice');
+      if (!errBox) {
+        const loginCard = document.querySelector('.login-card-container');
+        if (loginCard) {
+          errBox = document.createElement('div');
+          errBox.id = 'login-error-notice';
+          errBox.style.cssText = 'color:#dc2626; font-size:0.88rem; font-weight:700; margin-top:12px; background:#fef2f2; padding:10px 14px; border-radius:8px; border:1.5px solid #fca5a5; line-height:1.5;';
+          const formEl = loginCard.querySelector('form');
+          if (formEl) formEl.insertAdjacentElement('afterend', errBox);
+          else loginCard.appendChild(errBox);
+        }
+      }
+      if (errBox) {
+        errBox.style.display = 'block';
+        errBox.innerText = msg;
+      }
+      alert(msg);
+    }
+
+    async function handleLMSLogin(e) {
       if (e && e.preventDefault) e.preventDefault();
       const idInput = document.getElementById('student-id');
       const nameInput = document.getElementById('student-name');
       const studentId = idInput ? idInput.value.trim() : '';
       const password = nameInput ? nameInput.value.trim() : '';
+
+      const errBox = document.getElementById('login-error-notice');
+      if (errBox) errBox.style.display = 'none';
 
       // 교사 마스터 비밀번호(260523, 260831) 감지
       const isTeacher = (password === '260523' || password === '260831' || studentId === '260523' || studentId === '260831');
@@ -853,10 +876,59 @@
 
         updateTabLocks(true);
         switchView('activity');
-        loadSubStep('0-1');
-        alert('🔓 [교사 보안 인증 성공]\n임종윤 선생님 환영합니다! 교사 관리자 모드로 로그인되었습니다. 상단 🔓 학생 해금 범위 설정을 사용하실 수 있습니다.');
+        switchMainTab(0);
+        alert('🔓 [교사 보안 인증 성공]
+임종윤 선생님 환영합니다! 교사 관리자 모드로 로그인되었습니다. 상단 🔓 학생 해금 범위 설정을 사용하실 수 있습니다.');
         return false;
       }
+
+      if (!studentId || !password) {
+        showLoginError('⚠️ 학번과 비밀번호를 모두 입력해 주세요!');
+        return false;
+      }
+
+      const loginBtn = e.target ? e.target.querySelector('button[type="submit"]') : null;
+      const origText = loginBtn ? loginBtn.innerText : '';
+      if (loginBtn) { loginBtn.disabled = true; loginBtn.innerText = '⏳ 영서중 수학 LMS DB 인증 중...'; }
+
+      try {
+        const res = await LMSIntegration.loginStudent(studentId, password);
+        if (res && res.success) {
+          state.currentUser = res.user;
+          state.studentId = res.user.id;
+          state.studentName = res.user.name;
+          state.isTeacherLoggedIn = false;
+
+          const userDisp = document.getElementById('current-user-info');
+          if (userDisp) {
+            userDisp.innerText = `👤 ${res.user.name} (${res.user.id})`;
+            userDisp.style.color = '#4f46e5';
+          }
+
+          updateTabLocks(false);
+          switchView('activity');
+
+          let targetSubStep = '0-1';
+          if (LMSIntegration.loadStudentProgress) {
+            const prog = await LMSIntegration.loadStudentProgress(res.user.id);
+            if (prog && prog.lastSubStep) targetSubStep = prog.lastSubStep;
+          }
+
+          const targetTabIdx = parseInt(targetSubStep.split('-')[0]) || 0;
+          switchMainTab(targetTabIdx);
+          if (typeof loadSubStep === 'function') loadSubStep(targetSubStep);
+        } else {
+          showLoginError(`❌ ${res ? res.message : '학번 또는 비밀번호가 일치하지 않습니다.'}`);
+        }
+      } catch (err) {
+        console.error(err);
+        showLoginError('❌ 영서중 수학 LMS DB 연결 중 오류가 발생했습니다.');
+      } finally {
+        if (loginBtn) { loginBtn.disabled = false; loginBtn.innerText = origText || '🔐 영서중 수학 LMS 학생 로그인'; }
+      }
+
+      return false;
+    }
 
       state.studentId = studentId || '10101';
       state.studentName = password || '학생';
@@ -1197,25 +1269,27 @@
       if (m) m.style.display = 'none';
     }
 
-    function verifySecurePassword() {
+        function verifySecurePassword() {
       const inp = document.getElementById('secure-password-input');
       const pw = inp ? inp.value.trim() : '';
       if (pw === '260523' || pw === '260831') {
         closeSecurePasswordModal();
         state.isMaster = true;
         state.isTeacherLoggedIn = true;
+        state.studentId = '260523';
+        state.studentName = '임종윤 선생님';
         const info = document.getElementById('current-user-info');
-        if (info) { info.innerText = '👨‍🏫 교사 관리자 모드'; info.style.color = '#059669'; }
-        const btnLogin = document.getElementById('btn-header-teacher-login');
-        if (btnLogin) btnLogin.style.display = 'none';
+        if (info) { info.innerText = '👨‍🏫 임종윤 선생님 (교사 관리자)'; info.style.color = '#059669'; }
         const btnUnlock = document.getElementById('btn-header-unlock-boundary');
         if (btnUnlock) btnUnlock.style.display = 'inline-block';
         const btnDash = document.getElementById('btn-header-teacher-dashboard');
         if (btnDash) btnDash.style.display = 'inline-block';
 
-        // Unlock all tabs for teacher
         updateTabLocks(true);
-        alert('🔓 [교사 보안 인증 성공]\n교사 관리자로 로그인되었습니다. 학생 진도 해금 범위 설정 및 5x5 관제실이 활성화되었습니다.');
+        switchView('activity');
+        switchMainTab(0);
+        alert('🔓 [교사 보안 인증 성공]
+임종윤 선생님 환영합니다! 교사 관리자로 로그인되었습니다. 학생 진도 해금 범위 설정 및 5x5 관제실이 활성화되었습니다.');
       } else {
         alert('❌ 비밀번호가 올바르지 않습니다.');
         if (inp) { inp.value = ''; inp.focus(); }
