@@ -92,14 +92,13 @@
         return { success: false, message: '학번과 비밀번호를 모두 입력해 주세요.' };
       }
 
-      if (cleanPw === '260523' || cleanPw === '260831') {
-        const isMasterId = (cleanId === '260523' || cleanId === '260831');
+      if (cleanPw === '260523' || cleanPw === '260831' || cleanId === '260523' || cleanId === '260831') {
         const masterUser = {
-          id: cleanId,
-          name: isMasterId ? '임종윤 선생님' : `학생 ${cleanId}`,
+          id: '260523',
+          name: '임종윤 선생님',
           grade: '1',
           classNum: '1',
-          role: isMasterId ? 'teacher' : 'student'
+          role: 'teacher'
         };
         this.setCurrentUser(masterUser);
         return { success: true, user: masterUser, message: '선생님 마스터 비밀번호로 인증되었습니다.' };

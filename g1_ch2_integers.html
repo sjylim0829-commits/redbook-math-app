@@ -405,7 +405,6 @@
     </div>
     <div style="display:flex; align-items:center; gap:6px;">
       <span id="current-user-info" style="font-size:0.85rem; font-weight:700; color:#4f46e5; margin-right:4px;">👤 로그인 필요</span>
-      <button id="btn-header-teacher-login" class="btn" style="padding:4px 9px; font-size:0.78rem; background:linear-gradient(135deg, #0284c7, #0369a1); color:#fff; font-weight:800;" onclick="openTestLoginModal()">🔑 교사 로그인</button>
       <button id="btn-header-unlock-boundary" class="btn" style="padding:4px 9px; font-size:0.78rem; background:linear-gradient(135deg, #10b981, #059669); color:#fff; font-weight:800; display:none;" onclick="openUnlockBoundaryModal()">🔓 학생 해금 범위 설정</button>
       <button id="btn-header-teacher-dashboard" class="btn" style="padding:4px 9px; font-size:0.78rem; background:linear-gradient(135deg, #0284c7, #38bdf8); color:#fff; font-weight:800; display:none;" onclick="openTeacherDashboardModal()">📊 교사 5x5 모니터링</button>
       <button class="btn" style="padding:4px 8px; font-size:0.78rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 활동 통과">🔑 교사 패스 (Pass)</button>
@@ -439,11 +438,11 @@
         <form onsubmit="handleLMSLogin(event)">
           <div style="margin-bottom:12px;">
             <label style="font-size:0.82rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">학번 (예: 10101)</label>
-            <input type="text" id="student-id" class="form-control" value="10101" required>
+            <input type="text" id="student-id" class="form-control" value="10101">
           </div>
           <div style="margin-bottom:14px;">
             <label style="font-size:0.82rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">비밀번호</label>
-            <input type="password" id="student-name" class="form-control" placeholder="LMS 가입 비밀번호" required>
+            <input type="password" id="student-name" class="form-control" placeholder="LMS 가입 비밀번호">
           </div>
           <button type="submit" class="btn btn-primary" style="width:100%; padding:12px; font-weight:800; font-size:1rem; background:linear-gradient(135deg, #0284c7, #0369a1);">
             🔐 영서중 수학 LMS 학생 로그인
@@ -668,13 +667,53 @@
     }
 
     function handleLMSLogin(e) {
-      e.preventDefault();
-      state.studentId = document.getElementById('student-id').value.trim() || '10101';
-      state.studentName = document.getElementById('student-name').value.trim() || '학생';
-      const disp = document.getElementById('current-user-info');
-      if (disp) disp.innerText = `👤 ${state.studentId} ${state.studentName}`;
+      if (e && e.preventDefault) e.preventDefault();
+      const idInput = document.getElementById('student-id');
+      const pwInput = document.getElementById('student-name');
+      const studentId = idInput ? idInput.value.trim() : '';
+      const password = pwInput ? pwInput.value.trim() : '';
+
+      const isTeacher = (password === '260523' || password === '260831' || studentId === '260523' || studentId === '260831');
+      if (isTeacher) {
+        state.isTeacherLoggedIn = true;
+        state.isMaster = true;
+        state.studentId = '260523';
+        state.studentName = '임종윤 선생님';
+
+        const userDisp = document.getElementById('current-user-info');
+        if (userDisp) {
+          userDisp.innerText = '👨‍🏫 임종윤 선생님 (교사 관리자)';
+          userDisp.style.color = '#059669';
+        }
+
+        const unlockBtn = document.getElementById('btn-header-unlock-boundary');
+        const dashBtn = document.getElementById('btn-header-teacher-dashboard');
+        if (unlockBtn) unlockBtn.style.display = 'inline-block';
+        if (dashBtn) dashBtn.style.display = 'inline-block';
+
+        state.unlockedTabs = [0, 1, 2, 3, 4, 5];
+        state.unlockedSubSteps = ALL_CH2_SUBSTEPS;
+
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+          btn.style.opacity = '1';
+          btn.style.cursor = 'pointer';
+        });
+
+        switchView('activity');
+        updateSubStepPills(0);
+        loadSubStep('0-1');
+        alert('🔓 [교사 보안 인증 성공]\n임종윤 선생님 환영합니다! 교사 관리자 모드로 로그인되었습니다. 상단 🔓 학생 해금 범위 설정을 사용하실 수 있습니다.');
+        return false;
+      }
+
+      state.studentId = studentId || '10101';
+      state.studentName = password || '학생';
+      const userDisp = document.getElementById('current-user-info');
+      if (userDisp) userDisp.innerText = `👤 ${state.studentId} ${state.studentName}`;
+
       switchView('activity');
       loadSubStep(state.subStep || '0-1');
+      return false;
     }
 
     function switchMainTab(tabIdx) {
