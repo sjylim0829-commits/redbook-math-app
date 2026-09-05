@@ -432,6 +432,89 @@ async function runSubagentEvaluation() {
     recordCheck('INTENT-14', '좌표평면 질적 비교 벤치마크', false, err.message);
   }
 
+  // --- 15. 정답 미노출 원칙 검증 (Zero Answer Leakage in Placeholders) ---
+  try {
+    const knownAnswerMap = {
+      'p01-q1': ['5/6'],
+      'p01-q2': ['0.2'],
+      'p02-a': ['+3', '3'],
+      'p02-b': ['1.5', '3/2'],
+      'p03-q1': ['>'],
+      'p03-q2': ['<'],
+      'p11-robot-pos': ['-2'],
+      'p11-temp2': ['-7'],
+      'p11-money': ['-500'],
+      'p12-ints': ['-3, 0, +5', '-3, 0, 5'],
+      'p12-zero': ['둘다아니다', '둘 다 아니다'],
+      'p13-q1': ['O', 'o'],
+      'p13-q2': ['-2.5', '-5/2'],
+      'p14-q1': ['5'],
+      'p14-q2': ['2.7'],
+      'p14-q3': ['+4, -4', '4, -4', '+4,-4'],
+      'p21-q1': ['>'],
+      'p21-q2': ['<'],
+      'p21-q3': ['<'],
+      'p22-q1': ['>='],
+      'p22-q2': ['<='],
+      'p22-q3': ['-1<x<=5', '-1 < x <= 5'],
+      'p23-max': ['+1.5', '1.5'],
+      'p23-min': ['-4.5'],
+      'p31-q1': ['+10', '10'],
+      'p31-q2': ['-13'],
+      'p31-q3': ['+6', '6'],
+      'p31-q4': ['-6'],
+      'p32-law1': ['교환법칙'],
+      'p32-law2': ['결합법칙'],
+      'p32-val': ['+5', '5'],
+      'p33-q1': ['-3'],
+      'p33-q2': ['+7', '7'],
+      'p33-q3': ['-4'],
+      'p34-q1': ['+5', '5'],
+      'p34-q2': ['-5'],
+      'p41-q1': ['+12', '12'],
+      'p41-q2': ['-30'],
+      'p41-q3': ['+56', '56'],
+      'p42-q1': ['2'],
+      'p42-q2': ['-8'],
+      'p42-q3': ['-16'],
+      'p43-recip': ['-5/3'],
+      'p43-ans': ['+9', '9'],
+      'p51-q1': ['+5', '5'],
+      'p51-q2': ['음수'],
+      'p52-tempdiff': ['17']
+    };
+
+    let leakedInputs = [];
+    const allInputs = document.querySelectorAll('input.proof-input-text');
+    allInputs.forEach(input => {
+      const id = input.id;
+      const ph = (input.placeholder || '').trim();
+      if (!ph) return;
+
+      const expected = knownAnswerMap[id];
+      if (expected) {
+        for (const ans of expected) {
+          const cleanAns = ans.replace(/\s+/g, '');
+          const cleanPh = ph.replace(/\s+/g, '');
+          if (cleanPh === cleanAns || cleanPh === `예:${cleanAns}` || cleanPh.includes(`:${cleanAns}`) || cleanPh === `${cleanAns}등`) {
+            leakedInputs.push(`${id} (placeholder: "${ph}", 정답: "${ans}")`);
+          }
+        }
+      }
+    });
+
+    const isZeroLeakPassed = (leakedInputs.length === 0);
+    const leakDetails = isZeroLeakPassed
+      ? `전체 ${allInputs.length}개 입력란 전수 검사 완료: 플레이스홀더 내 정답 노출 0건 (완전 준수)`
+      : `정답 노출 발견 (${leakedInputs.length}건): ${leakedInputs.join('; ')}`;
+    recordCheck('INTENT-15', '🚫 정답 미노출 원칙 (Zero Answer Leakage in Placeholder/Hints)', isZeroLeakPassed, leakDetails);
+    if (!isZeroLeakPassed) {
+      isLoginCriticalPassed = false;
+    }
+  } catch (e) {
+    recordCheck('INTENT-15', '정답 미노출 원칙 검사', false, e.message);
+  }
+
   // --- 계산 및 리포트 작성 ---
   const totalItems = results.length;
   const passedItems = results.filter(r => r.isPassed).length;

@@ -480,6 +480,78 @@ async function runSubagentEvaluationCh1() {
     recordCheck('INTENT-14', '좌표평면 질적 비교 벤치마크', false, err.message);
   }
 
+  // --- 15. 정답 미노출 원칙 검증 (Zero Answer Leakage in Placeholders) ---
+  try {
+    const knownAnswerMap = {
+      'p01-ans': ['1,2,3,4,6,12', '1, 2, 3, 4, 6, 12'],
+      'p02-common': ['1,2,3,6', '1, 2, 3, 6'],
+      'p02-gcd': ['6'],
+      'p03-lcm': ['12'],
+      'p03-prop': ['배수'],
+      'p11-g1': ['1'],
+      'p11-g2': ['2,3,5,7', '2, 3, 5, 7'],
+      'p11-g3': ['4,6,8,9,10', '4, 6, 8, 9, 10'],
+      'p12-one': ['둘다아니다', '둘 다 아니다'],
+      'p12-two': ['2'],
+      'p13-count': ['15'],
+      'p21-base': ['2'],
+      'p21-exp': ['5'],
+      'p21-val': ['32'],
+      'p22-36': ['2^2*3^2', '2^2 * 3^2'],
+      'p22-60': ['2^2*3*5', '2^2 * 3 * 5'],
+      'p23-cnt': ['12'],
+      'p23-second': ['36'],
+      'p24-q1': ['15', '(4+1)*(2+1)'],
+      'p24-q2': ['9'],
+      'p31-gcd': ['6'],
+      'p31-coprime': ['예'],
+      'p32-power': ['2^2*3', '2^2 * 3'],
+      'p32-val': ['12'],
+      'p33-ans': ['12'],
+      'p41-power': ['2^2*3^2*5', '2^2 * 3^2 * 5'],
+      'p41-val': ['180'],
+      'p42-lcm': ['72'],
+      'p42-rotA': ['3'],
+      'p42-rotB': ['2'],
+      'p43-min': ['60'],
+      'p43-time': ['8시', '오전 8시', '오전8시'],
+      'p51-q1': ['8'],
+      'p51-q2': ['6'],
+      'p52-size': ['12'],
+      'p52-count': ['6']
+    };
+
+    let leakedInputs = [];
+    const allInputs = document.querySelectorAll('input.proof-input-text');
+    allInputs.forEach(input => {
+      const id = input.id;
+      const ph = (input.placeholder || '').trim();
+      if (!ph) return;
+
+      const expected = knownAnswerMap[id];
+      if (expected) {
+        for (const ans of expected) {
+          const cleanAns = ans.replace(/\s+/g, '');
+          const cleanPh = ph.replace(/\s+/g, '');
+          if (cleanPh === cleanAns || cleanPh === `예:${cleanAns}` || cleanPh.includes(`:${cleanAns}`) || cleanPh === `${cleanAns}등`) {
+            leakedInputs.push(`${id} (placeholder: "${ph}", 정답: "${ans}")`);
+          }
+        }
+      }
+    });
+
+    const isZeroLeakPassed = (leakedInputs.length === 0);
+    const leakDetails = isZeroLeakPassed
+      ? `전체 ${allInputs.length}개 입력란 전수 검사 완료: 플레이스홀더 내 정답 노출 0건 (완전 준수)`
+      : `정답 노출 발견 (${leakedInputs.length}건): ${leakedInputs.join('; ')}`;
+    recordCheck('INTENT-15', '🚫 정답 미노출 원칙 (Zero Answer Leakage in Placeholder/Hints)', isZeroLeakPassed, leakDetails);
+    if (!isZeroLeakPassed) {
+      isLoginCriticalPassed = false;
+    }
+  } catch (e) {
+    recordCheck('INTENT-15', '정답 미노출 원칙 검사', false, e.message);
+  }
+
   // --- 계산 및 리포트 작성 ---
   const totalItems = results.length;
   const passedItems = results.filter(r => r.isPassed).length;

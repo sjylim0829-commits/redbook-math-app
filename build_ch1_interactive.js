@@ -58,7 +58,7 @@ const ch1Config = {
               <p style="margin-top:6px; font-weight:700; color:#1e293b;">12개의 타일로 만들 수 있는 직사각형의 변의 길이(약수)를 작은 수부터 차례로 모두 적으세요.</p>
               <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
                 <span>12의 약수:</span>
-                <input type="text" id="p01-ans" class="form-control proof-input-text" style="width:240px;" placeholder="예: 1, 2, 3, 4, 6, 12">
+                <input type="text" id="p01-ans" class="form-control proof-input-text" style="width:240px;" placeholder="약수를 쉼표로 나열 (작은 수부터)">
               </div>
             </div>
             <div id="p01-err" style="display:none; color:#dc2626; font-size:0.85rem; font-weight:700; margin-bottom:10px;"></div>
@@ -72,11 +72,11 @@ const ch1Config = {
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
             <div style="margin-bottom:12px;">
               <p style="font-weight:700; color:#1e293b;">1) 18과 24의 공약수를 모두 쓰세요.</p>
-              <input type="text" id="p02-common" class="form-control proof-input-text" style="width:100%; margin-top:4px;" placeholder="예: 1, 2, 3, 6">
+              <input type="text" id="p02-common" class="form-control proof-input-text" style="width:100%; margin-top:4px;" placeholder="공약수를 쉼표로 나열">
             </div>
             <div style="margin-bottom:14px;">
               <p style="font-weight:700; color:#1e293b;">2) 18과 24의 최대공약수를 구하세요.</p>
-              <input type="text" id="p02-gcd" class="form-control proof-input-text" style="width:100px; margin-top:4px;" placeholder="숫자만">
+              <input type="text" id="p02-gcd" class="form-control proof-input-text" style="width:100px; margin-top:4px;" placeholder="최대공약수 (숫자)">
             </div>
             <div id="p02-err" style="display:none; color:#dc2626; font-size:0.85rem; font-weight:700; margin-bottom:10px;"></div>
             <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check02Submit()">✅ 제출 및 채점</button>
@@ -93,7 +93,7 @@ const ch1Config = {
             </div>
             <div style="margin-bottom:14px;">
               <p style="font-weight:700; color:#1e293b;">2) 4와 6의 공배수는 최소공배수의 어떤 수인가요?</p>
-              <input type="text" id="p03-prop" class="form-control proof-input-text" style="width:160px; margin-top:4px;" placeholder="예: 배수">
+              <input type="text" id="p03-prop" class="form-control proof-input-text" style="width:160px; margin-top:4px;" placeholder="용어 입력 (예: 약수 / 배수)">
             </div>
             <div id="p03-err" style="display:none; color:#dc2626; font-size:0.85rem; font-weight:700; margin-bottom:10px;"></div>
             <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check03Submit()">✅ 제출 및 채점</button>
@@ -106,15 +106,15 @@ const ch1Config = {
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
             <div style="margin-bottom:12px;">
               <p style="font-weight:700; color:#1e293b;">1) 약수가 1개인 자연수는 무엇인가요?</p>
-              <input type="text" id="p11-g1" class="form-control proof-input-text" style="width:80px; margin-top:4px;" placeholder="1">
+              <input type="text" id="p11-g1" class="form-control proof-input-text" style="width:80px; margin-top:4px;" placeholder="자연수 입력">
             </div>
             <div style="margin-bottom:12px;">
               <p style="font-weight:700; color:#1e293b;">2) 약수가 2개인 자연수를 10 이하에서 모두 적으세요.</p>
-              <input type="text" id="p11-g2" class="form-control proof-input-text" style="width:180px; margin-top:4px;" placeholder="예: 2, 3, 5, 7">
+              <input type="text" id="p11-g2" class="form-control proof-input-text" style="width:180px; margin-top:4px;" placeholder="쉼표로 수 나열">
             </div>
             <div style="margin-bottom:14px;">
               <p style="font-weight:700; color:#1e293b;">3) 약수가 3개 이상인 자연수를 10 이하에서 모두 적으세요.</p>
-              <input type="text" id="p11-g3" class="form-control proof-input-text" style="width:200px; margin-top:4px;" placeholder="예: 4, 6, 8, 9, 10">
+              <input type="text" id="p11-g3" class="form-control proof-input-text" style="width:200px; margin-top:4px;" placeholder="쉼표로 수 나열">
             </div>
             <div id="p11-err" style="display:none; color:#dc2626; font-size:0.85rem; font-weight:700; margin-bottom:10px;"></div>
             <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check11Submit()">✅ 제출 및 채점</button>
@@ -127,7 +127,7 @@ const ch1Config = {
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
             <div style="margin-bottom:12px;">
               <p style="font-weight:700; color:#1e293b;">1) 1은 소수인가요, 합성수인가요?</p>
-              <input type="text" id="p12-one" class="form-control proof-input-text" style="width:240px; margin-top:4px;" placeholder="예: 둘 다 아니다">
+              <input type="text" id="p12-one" class="form-control proof-input-text" style="width:240px; margin-top:4px;" placeholder="소수 / 합성수 / 둘 다 아님">
             </div>
             <div style="margin-bottom:14px;">
               <p style="font-weight:700; color:#1e293b;">2) 가장 작은 소수이자 유일한 짝수 소수는 무엇인가요?</p>
@@ -183,13 +183,13 @@ const ch1Config = {
             <div style="margin-bottom:12px;">
               <p style="font-weight:700; color:#1e293b;">1) 2를 5번 곱한 것(2×2×2×2×2)에서 밑과 지수는?</p>
               <div style="display:flex; gap:12px; margin-top:6px;">
-                <span>밑: <input type="text" id="p21-base" class="form-control proof-input-text" style="width:60px;" placeholder="2"></span>
-                <span>지수: <input type="text" id="p21-exp" class="form-control proof-input-text" style="width:60px;" placeholder="5"></span>
+                <span>밑: <input type="text" id="p21-base" class="form-control proof-input-text" style="width:60px;" placeholder="밑 입력"></span>
+                <span>지수: <input type="text" id="p21-exp" class="form-control proof-input-text" style="width:60px;" placeholder="지수 입력"></span>
               </div>
             </div>
             <div style="margin-bottom:14px;">
               <p style="font-weight:700; color:#1e293b;">2) 2의 5제곱(2^5)의 계산 결과는?</p>
-              <input type="text" id="p21-val" class="form-control proof-input-text" style="width:100px; margin-top:4px;" placeholder="32">
+              <input type="text" id="p21-val" class="form-control proof-input-text" style="width:100px; margin-top:4px;" placeholder="계산 결과 입력">
             </div>
             <div id="p21-err" style="display:none; color:#dc2626; font-size:0.85rem; font-weight:700; margin-bottom:10px;"></div>
             <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check21Submit()">✅ 제출 및 채점</button>
@@ -202,11 +202,11 @@ const ch1Config = {
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
             <div style="margin-bottom:12px;">
               <p style="font-weight:700; color:#1e293b;">1) 36을 소인수분해하여 거듭제곱으로 나타내세요.</p>
-              <input type="text" id="p22-36" class="form-control proof-input-text" style="width:200px; margin-top:4px;" placeholder="예: 2^2 * 3^2">
+              <input type="text" id="p22-36" class="form-control proof-input-text" style="width:200px; margin-top:4px;" placeholder="거듭제곱 꼴 (예: a^m * b^n)">
             </div>
             <div style="margin-bottom:14px;">
               <p style="font-weight:700; color:#1e293b;">2) 60을 소인수분해하여 거듭제곱으로 나타내세요.</p>
-              <input type="text" id="p22-60" class="form-control proof-input-text" style="width:200px; margin-top:4px;" placeholder="예: 2^2 * 3 * 5">
+              <input type="text" id="p22-60" class="form-control proof-input-text" style="width:200px; margin-top:4px;" placeholder="거듭제곱 꼴 (예: a^m * b^n)">
             </div>
             <div id="p22-err" style="display:none; color:#dc2626; font-size:0.85rem; font-weight:700; margin-bottom:10px;"></div>
             <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check22Submit()">✅ 제출 및 채점</button>
@@ -219,11 +219,11 @@ const ch1Config = {
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
             <div style="margin-bottom:12px;">
               <p style="font-weight:700; color:#1e293b;">1) 72의 약수는 총 몇 개인가요?</p>
-              <input type="text" id="p23-cnt" class="form-control proof-input-text" style="width:100px; margin-top:4px;" placeholder="12">
+              <input type="text" id="p23-cnt" class="form-control proof-input-text" style="width:100px; margin-top:4px;" placeholder="개수 입력">
             </div>
             <div style="margin-bottom:14px;">
               <p style="font-weight:700; color:#1e293b;">2) 72의 약수 중 2번째로 큰 수는?</p>
-              <input type="text" id="p23-second" class="form-control proof-input-text" style="width:100px; margin-top:4px;" placeholder="36">
+              <input type="text" id="p23-second" class="form-control proof-input-text" style="width:100px; margin-top:4px;" placeholder="숫자 입력">
             </div>
             <div id="p23-err" style="display:none; color:#dc2626; font-size:0.85rem; font-weight:700; margin-bottom:10px;"></div>
             <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check23Submit()">✅ 제출 및 채점</button>
@@ -236,7 +236,7 @@ const ch1Config = {
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
             <div style="margin-bottom:12px;">
               <p style="font-weight:700; color:#1e293b;">1) 2^4 × 3^2 의 약수의 개수는?</p>
-              <input type="text" id="p24-q1" class="form-control proof-input-text" style="width:100px; margin-top:4px;" placeholder="(4+1)*(2+1)">
+              <input type="text" id="p24-q1" class="form-control proof-input-text" style="width:100px; margin-top:4px;" placeholder="계산식 또는 수 입력">
             </div>
             <div style="margin-bottom:14px;">
               <p style="font-weight:700; color:#1e293b;">2) 100 = 2^2 × 5^2 의 약수의 개수는?</p>
@@ -253,11 +253,11 @@ const ch1Config = {
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
             <div style="margin-bottom:12px;">
               <p style="font-weight:700; color:#1e293b;">1) 18과 24의 최대공약수는?</p>
-              <input type="text" id="p31-gcd" class="form-control proof-input-text" style="width:100px; margin-top:4px;" placeholder="6">
+              <input type="text" id="p31-gcd" class="form-control proof-input-text" style="width:100px; margin-top:4px;" placeholder="최대공약수 (숫자)">
             </div>
             <div style="margin-bottom:14px;">
               <p style="font-weight:700; color:#1e293b;">2) 9와 14는 서로소인가요? (예 / 아니오)</p>
-              <input type="text" id="p31-coprime" class="form-control proof-input-text" style="width:100px; margin-top:4px;" placeholder="예">
+              <input type="text" id="p31-coprime" class="form-control proof-input-text" style="width:100px; margin-top:4px;" placeholder="예 또는 아니오">
             </div>
             <div id="p31-err" style="display:none; color:#dc2626; font-size:0.85rem; font-weight:700; margin-bottom:10px;"></div>
             <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check31Submit()">✅ 제출 및 채점</button>
@@ -272,9 +272,9 @@ const ch1Config = {
               <p style="font-weight:700; color:#1e293b;">2^2 × 3 과 2^3 × 3^2 의 최대공약수는?</p>
               <div style="display:flex; align-items:center; gap:8px; margin-top:6px;">
                 <span>거듭제곱 꼴: </span>
-                <input type="text" id="p32-power" class="form-control proof-input-text" style="width:160px;" placeholder="2^2 * 3">
+                <input type="text" id="p32-power" class="form-control proof-input-text" style="width:160px;" placeholder="거듭제곱 꼴">
                 <span>값: </span>
-                <input type="text" id="p32-val" class="form-control proof-input-text" style="width:80px;" placeholder="12">
+                <input type="text" id="p32-val" class="form-control proof-input-text" style="width:80px;" placeholder="계산값 입력">
               </div>
             </div>
             <div id="p32-err" style="display:none; color:#dc2626; font-size:0.85rem; font-weight:700; margin-bottom:10px;"></div>
@@ -288,7 +288,7 @@ const ch1Config = {
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
             <div style="margin-bottom:14px;">
               <p style="font-weight:700; color:#1e293b;">24, 36, 60 의 최대공약수를 입력하세요.</p>
-              <input type="text" id="p33-ans" class="form-control proof-input-text" style="width:120px; margin-top:4px;" placeholder="12">
+              <input type="text" id="p33-ans" class="form-control proof-input-text" style="width:120px; margin-top:4px;" placeholder="최대공약수 (숫자)">
             </div>
             <div id="p33-err" style="display:none; color:#dc2626; font-size:0.85rem; font-weight:700; margin-bottom:10px;"></div>
             <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check33Submit()">✅ 제출 및 채점</button>
@@ -303,9 +303,9 @@ const ch1Config = {
               <p style="font-weight:700; color:#1e293b;">2^2 × 3 과 2 × 3^2 × 5 의 최소공배수는?</p>
               <div style="display:flex; align-items:center; gap:8px; margin-top:6px;">
                 <span>거듭제곱 꼴: </span>
-                <input type="text" id="p41-power" class="form-control proof-input-text" style="width:180px;" placeholder="2^2 * 3^2 * 5">
+                <input type="text" id="p41-power" class="form-control proof-input-text" style="width:180px;" placeholder="거듭제곱 꼴">
                 <span>값: </span>
-                <input type="text" id="p41-val" class="form-control proof-input-text" style="width:80px;" placeholder="180">
+                <input type="text" id="p41-val" class="form-control proof-input-text" style="width:80px;" placeholder="계산값 입력">
               </div>
             </div>
             <div id="p41-err" style="display:none; color:#dc2626; font-size:0.85rem; font-weight:700; margin-bottom:10px;"></div>
@@ -319,13 +319,13 @@ const ch1Config = {
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
             <div style="margin-bottom:12px;">
               <p style="font-weight:700; color:#1e293b;">1) 처음으로 다시 맞물릴 때까지 돌아간 톱니의 최소 개수(최소공배수)는?</p>
-              <input type="text" id="p42-lcm" class="form-control proof-input-text" style="width:100px; margin-top:4px;" placeholder="72">
+              <input type="text" id="p42-lcm" class="form-control proof-input-text" style="width:100px; margin-top:4px;" placeholder="최소공배수 (숫자)">
             </div>
             <div style="margin-bottom:14px;">
               <p style="font-weight:700; color:#1e293b;">2) 이때 톱니바퀴 A와 B는 각각 몇 바퀴 회전했나요?</p>
               <div style="display:flex; gap:12px; margin-top:6px;">
-                <span>A: <input type="text" id="p42-rotA" class="form-control proof-input-text" style="width:60px;" placeholder="3"> 바퀴</span>
-                <span>B: <input type="text" id="p42-rotB" class="form-control proof-input-text" style="width:60px;" placeholder="2"> 바퀴</span>
+                <span>A: <input type="text" id="p42-rotA" class="form-control proof-input-text" style="width:60px;" placeholder="회전수"> 바퀴</span>
+                <span>B: <input type="text" id="p42-rotB" class="form-control proof-input-text" style="width:60px;" placeholder="회전수"> 바퀴</span>
               </div>
             </div>
             <div id="p42-err" style="display:none; color:#dc2626; font-size:0.85rem; font-weight:700; margin-bottom:10px;"></div>
@@ -339,11 +339,11 @@ const ch1Config = {
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
             <div style="margin-bottom:12px;">
               <p style="font-weight:700; color:#1e293b;">1) 15와 20의 최소공배수는 몇 분인가요?</p>
-              <input type="text" id="p43-min" class="form-control proof-input-text" style="width:100px; margin-top:4px;" placeholder="60">
+              <input type="text" id="p43-min" class="form-control proof-input-text" style="width:100px; margin-top:4px;" placeholder="분(min) 입력">
             </div>
             <div style="margin-bottom:14px;">
               <p style="font-weight:700; color:#1e293b;">2) 다시 동시에 출발하는 시각은?</p>
-              <input type="text" id="p43-time" class="form-control proof-input-text" style="width:140px; margin-top:4px;" placeholder="예: 오전 8시 또는 8시">
+              <input type="text" id="p43-time" class="form-control proof-input-text" style="width:140px; margin-top:4px;" placeholder="시각 입력 (예: 오전 N시)">
             </div>
             <div id="p43-err" style="display:none; color:#dc2626; font-size:0.85rem; font-weight:700; margin-bottom:10px;"></div>
             <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check43Submit()">✅ 제출 및 채점</button>
@@ -356,11 +356,11 @@ const ch1Config = {
           <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
             <div style="margin-bottom:12px;">
               <p style="font-weight:700; color:#1e293b;">1) 20보다 작은 소수의 개수는 몇 개인가요?</p>
-              <input type="text" id="p51-q1" class="form-control proof-input-text" style="width:80px; margin-top:4px;" placeholder="8">
+              <input type="text" id="p51-q1" class="form-control proof-input-text" style="width:80px; margin-top:4px;" placeholder="개수 입력">
             </div>
             <div style="margin-bottom:14px;">
               <p style="font-weight:700; color:#1e293b;">2) 두 자연수 A, B의 최대공약수가 12일 때, 두 수의 공약수의 개수는?</p>
-              <input type="text" id="p51-q2" class="form-control proof-input-text" style="width:80px; margin-top:4px;" placeholder="6">
+              <input type="text" id="p51-q2" class="form-control proof-input-text" style="width:80px; margin-top:4px;" placeholder="개수 입력">
             </div>
             <div id="p51-err" style="display:none; color:#dc2626; font-size:0.85rem; font-weight:700; margin-bottom:10px;"></div>
             <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check51Submit()">✅ 제출 및 채점</button>
@@ -374,14 +374,14 @@ const ch1Config = {
             <div style="margin-bottom:12px;">
               <p style="font-weight:700; color:#1e293b;">1) 가장 큰 정사각형 타일의 한 변의 길이는? (최대공약수)</p>
               <div style="display:flex; align-items:center; gap:6px; margin-top:4px;">
-                <input type="text" id="p52-size" class="form-control proof-input-text" style="width:100px;" placeholder="12">
+                <input type="text" id="p52-size" class="form-control proof-input-text" style="width:100px;" placeholder="한 변의 길이(cm)">
                 <span>cm</span>
               </div>
             </div>
             <div style="margin-bottom:14px;">
               <p style="font-weight:700; color:#1e293b;">2) 필요한 정사각형 타일은 총 몇 장인가요?</p>
               <div style="display:flex; align-items:center; gap:6px; margin-top:4px;">
-                <input type="text" id="p52-count" class="form-control proof-input-text" style="width:100px;" placeholder="6">
+                <input type="text" id="p52-count" class="form-control proof-input-text" style="width:100px;" placeholder="필요한 장수">
                 <span>장</span>
               </div>
             </div>
