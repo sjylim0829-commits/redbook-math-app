@@ -552,7 +552,9 @@ ${tabButtonsHtml}  </nav>
               <button id="btn-pen-eraser" class="tool-btn" onclick="setEraserMode()">🧹 지우개</button>
               <button class="tool-btn" onclick="clearFreehandDrawing()">🗑️ 전체지우기</button>
             </div>
+            <div id="toolbar-custom-controls" style="margin-left:auto; display:flex; gap:6px; align-items:center;"></div>
           </div>
+          <div id="interactive-sim-controller" style="background:#f8fafc; border-bottom:1.5px solid #e2e8f0; padding:10px 16px; display:none;"></div>
           <div id="two-container" style="flex:1; width:100%; height:100%; position:relative;">
             <canvas id="freehand-drawing-canvas"></canvas>
           </div>
@@ -1210,8 +1212,19 @@ ${validationHandlersJs}
           restoreFormInputs(code);
         }
 
-        // Draw Canvas
-        if (typeof drawSubstepCanvas === 'function') {
+        // Reset Sim & Custom Controls
+        const simController = document.getElementById('interactive-sim-controller');
+        const customTb = document.getElementById('toolbar-custom-controls');
+        if (customTb) customTb.innerHTML = '';
+        if (simController) {
+          simController.innerHTML = '';
+          simController.style.display = 'none';
+        }
+
+        // Draw Canvas & Initialize Interactive Simulator
+        if (typeof setupSubstepSimulator === 'function') {
+          setupSubstepSimulator(two, code, simController);
+        } else if (typeof drawSubstepCanvas === 'function') {
           drawSubstepCanvas(two, code);
         }
 
