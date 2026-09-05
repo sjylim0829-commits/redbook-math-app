@@ -1,9 +1,43 @@
-<!DOCTYPE html>
+const fs = require('fs');
+const { execSync } = require('child_process');
+
+function createChapterHtml(config) {
+  const {
+    chapterNum,
+    chapterTitle,
+    chapterBadge,
+    mainTabs,
+    pillsConfig,
+    substepDataJs,
+    canvasDrawersJs,
+    validationHandlersJs
+  } = config;
+
+  // Flatten all substeps
+  const allSubsteps = [];
+  const substepTitles = {};
+  for (let i = 0; i < 6; i++) {
+    if (pillsConfig[i]) {
+      pillsConfig[i].forEach(p => {
+        allSubsteps.push(p.code);
+        substepTitles[p.code] = p.label;
+      });
+    }
+  }
+
+  // Pre-generate tab buttons
+  let tabButtonsHtml = '';
+  mainTabs.forEach((title, idx) => {
+    const isFirst = (idx === 0);
+    tabButtonsHtml += `    <button id="tab-${idx}" class="tab-btn ${isFirst ? 'active' : 'locked'}" onclick="switchMainTab(${idx})">${title} ${isFirst ? '🔓' : '🔒'}</button>\n`;
+  });
+
+  return `<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>중1 수학: 8. 자료의 정리와 해석</title>
+  <title>중1 수학: ${chapterTitle}</title>
   
   <!-- Supabase Cloud DB SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -453,8 +487,8 @@
   <!-- Top Header -->
   <header class="app-header">
     <div class="logo-group">
-      <span class="badge-tag">중1 수학 8단원</span>
-      <h1 class="app-title">8. 자료의 정리와 해석</h1>
+      <span class="badge-tag">${chapterBadge}</span>
+      <h1 class="app-title">${chapterTitle}</h1>
     </div>
     <div style="display:flex; align-items:center; gap:6px;">
       <span id="current-user-info" style="font-size:0.85rem; font-weight:700; color:#4f46e5; margin-right:4px;">👤 로그인 필요</span>
@@ -468,13 +502,7 @@
 
   <!-- Tab Navigation Bar -->
   <nav id="main-tab-bar" class="tab-bar-container">
-    <button id="tab-0" class="tab-btn active" onclick="switchMainTab(0)">0. 되짚어 보기 🔓</button>
-    <button id="tab-1" class="tab-btn locked" onclick="switchMainTab(1)">8.1 대푯값 🔒</button>
-    <button id="tab-2" class="tab-btn locked" onclick="switchMainTab(2)">8.2 줄기와 잎 & 도수분포표 🔒</button>
-    <button id="tab-3" class="tab-btn locked" onclick="switchMainTab(3)">8.3 히스토그램 & 도수분포다각형 🔒</button>
-    <button id="tab-4" class="tab-btn locked" onclick="switchMainTab(4)">8.4 상대도수 🔒</button>
-    <button id="tab-5" class="tab-btn locked" onclick="switchMainTab(5)">8.5 마무리 & 프로젝트 🔒</button>
-  </nav>
+${tabButtonsHtml}  </nav>
 
   <!-- Sub-Step Navigation Pills -->
   <div id="substep-bar" class="substep-bar">
@@ -679,91 +707,14 @@
 
     // Text Normalization Engine
     function normTxt(v) {
-      return v ? v.trim().replace(/\s+/g, '').toUpperCase() : '';
+      return v ? v.trim().replace(/\\s+/g, '').toUpperCase() : '';
     }
 
     // --- STATE MANAGEMENT ---
-    const ALL_SUBSTEPS = ["0-1","0-2","1-1","1-2","1-3","2-1","2-2","2-3","3-1","3-2","3-3","4-1","4-2","4-3","5-1","5-2"];
-    const SUBSTEP_TITLES = {"0-1":"1. 꺾은선그래프와 막대그래프 (초등)","0-2":"2. 평균의 계산 (초등)","1-1":"1. 평균, 중앙값, 최빈값","1-2":"2. 극단값과 적절한 대푯값","1-3":"3. 대푯값 실생활 응용","2-1":"1. 줄기와 잎 그림의 작성과 해석","2-2":"2. 변량과 계급, 도수","2-3":"3. 도수분포표 완성하기","3-1":"1. 히스토그램의 특징과 넓이","3-2":"2. 도수분포다각형 그리기","3-3":"3. 둘러싸인 넓이의 성질","4-1":"1. 상대도수의 정의와 성질","4-2":"2. 상대도수 분포표 완성","4-3":"3. 두 집단의 분포 비교","5-1":"1. 8단원 통계 스스로 마무리","5-2":"2. 통계 프로젝트: 지속가능발전 데이터 탐구"};
-    const pillsConfig = {
-  "0": [
-    {
-      "code": "0-1",
-      "label": "1. 꺾은선그래프와 막대그래프 (초등)"
-    },
-    {
-      "code": "0-2",
-      "label": "2. 평균의 계산 (초등)"
-    }
-  ],
-  "1": [
-    {
-      "code": "1-1",
-      "label": "1. 평균, 중앙값, 최빈값"
-    },
-    {
-      "code": "1-2",
-      "label": "2. 극단값과 적절한 대푯값"
-    },
-    {
-      "code": "1-3",
-      "label": "3. 대푯값 실생활 응용"
-    }
-  ],
-  "2": [
-    {
-      "code": "2-1",
-      "label": "1. 줄기와 잎 그림의 작성과 해석"
-    },
-    {
-      "code": "2-2",
-      "label": "2. 변량과 계급, 도수"
-    },
-    {
-      "code": "2-3",
-      "label": "3. 도수분포표 완성하기"
-    }
-  ],
-  "3": [
-    {
-      "code": "3-1",
-      "label": "1. 히스토그램의 특징과 넓이"
-    },
-    {
-      "code": "3-2",
-      "label": "2. 도수분포다각형 그리기"
-    },
-    {
-      "code": "3-3",
-      "label": "3. 둘러싸인 넓이의 성질"
-    }
-  ],
-  "4": [
-    {
-      "code": "4-1",
-      "label": "1. 상대도수의 정의와 성질"
-    },
-    {
-      "code": "4-2",
-      "label": "2. 상대도수 분포표 완성"
-    },
-    {
-      "code": "4-3",
-      "label": "3. 두 집단의 분포 비교"
-    }
-  ],
-  "5": [
-    {
-      "code": "5-1",
-      "label": "1. 8단원 통계 스스로 마무리"
-    },
-    {
-      "code": "5-2",
-      "label": "2. 통계 프로젝트: 지속가능발전 데이터 탐구"
-    }
-  ]
-};
-    const STORAGE_KEY_UNLOCK = 'redbook_g1_ch8_global_unlock_step';
+    const ALL_SUBSTEPS = ${JSON.stringify(allSubsteps)};
+    const SUBSTEP_TITLES = ${JSON.stringify(substepTitles)};
+    const pillsConfig = ${JSON.stringify(pillsConfig, null, 2)};
+    const STORAGE_KEY_UNLOCK = 'redbook_g1_ch${chapterNum}_global_unlock_step';
 
     const state = {
       studentId: '10101',
@@ -800,7 +751,7 @@
         if (dashBtn) dashBtn.style.display = 'none';
       }
       document.querySelectorAll('.view-panel').forEach(el => { el.classList.remove('active'); el.style.display = 'none'; });
-      const targetView = document.getElementById(`view-${viewName}`);
+      const targetView = document.getElementById(\`view-\${viewName}\`);
       if (targetView) { targetView.classList.add('active'); targetView.style.display = 'flex'; }
     }
 
@@ -867,7 +818,7 @@
         switchView('activity');
         switchMainTab(0);
         loadSubStep('0-1');
-        alert('🔓 [교사 보안 인증 성공]\n임종윤 선생님 환영합니다! 교사 관리자 모드로 로그인되었습니다. 상단 🔓 학생 해금 범위 설정을 사용하실 수 있습니다.');
+        alert('🔓 [교사 보안 인증 성공]\\n임종윤 선생님 환영합니다! 교사 관리자 모드로 로그인되었습니다. 상단 🔓 학생 해금 범위 설정을 사용하실 수 있습니다.');
         return false;
       }
 
@@ -890,7 +841,7 @@
 
           const userDisp = document.getElementById('current-user-info');
           if (userDisp) {
-            userDisp.innerText = `👤 ${res.user.name} (${res.user.id})`;
+            userDisp.innerText = \`👤 \${res.user.name} (\${res.user.id})\`;
             userDisp.style.color = '#4f46e5';
           }
 
@@ -925,14 +876,14 @@
                 });
               }
               return {
-                activityTitle: `[학습 진행] ${state.subStep || '0-1'}`,
+                activityTitle: \`[학습 진행] \${state.subStep || '0-1'}\`,
                 answerText: txts.trim() || '답안 작성 중...',
                 score: (state.completedSubSteps && state.completedSubSteps.includes(state.subStep)) ? 100 : 50
               };
             });
           }
         } else {
-          showLoginError(`❌ ${res ? res.message : '학번 또는 비밀번호가 일치하지 않습니다.'}`);
+          showLoginError(\`❌ \${res ? res.message : '학번 또는 비밀번호가 일치하지 않습니다.'}\`);
         }
       } catch (err) {
         console.error(err);
@@ -983,15 +934,15 @@
         if (!isUnlocked) extraClass += ' locked-pill';
         if (isCompleted) extraClass += ' completed';
 
-        btn.className = `substep-pill ${extraClass}`;
+        btn.className = \`substep-pill \${extraClass}\`;
         const prefix = isCompleted ? '✅ ' : (isUnlocked ? '' : '🔒 ');
-        btn.innerText = `${prefix}${p.label}`;
+        btn.innerText = \`\${prefix}\${p.label}\`;
 
         if (isUnlocked) {
           btn.onclick = () => loadSubStep(p.code);
         } else {
           btn.onclick = () => {
-            alert("🔒 이전 세부활동을 먼저 완료하셔야 진행할 수 있습니다!\n(활동을 완료해야 다음 페이지가 해금됩니다)");
+            alert("🔒 이전 세부활동을 먼저 완료하셔야 진행할 수 있습니다!\\n(활동을 완료해야 다음 페이지가 해금됩니다)");
           };
         }
         container.appendChild(btn);
@@ -999,13 +950,13 @@
     }
 
     function updateTabLocks(isTeacher) {
-      const titles = ["0. 되짚어 보기","8.1 대푯값","8.2 줄기와 잎 & 도수분포표","8.3 히스토그램 & 도수분포다각형","8.4 상대도수","8.5 마무리 & 프로젝트"];
+      const titles = ${JSON.stringify(mainTabs)};
       for (let i = 0; i < 6; i++) {
-        const btn = document.getElementById(`tab-${i}`);
+        const btn = document.getElementById(\`tab-\${i}\`);
         if (!btn) continue;
         const isUnlocked = isTeacher || state.unlockedTabs.includes(i);
         btn.classList.toggle('locked', !isUnlocked);
-        btn.innerText = `${titles[i]} ${isUnlocked ? '🔓' : '🔒'}`;
+        btn.innerText = \`\${titles[i]} \${isUnlocked ? '🔓' : '🔒'}\`;
       }
     }
 
@@ -1025,7 +976,7 @@
       const formArea = document.getElementById('form-work-area');
       if (!formArea) return;
       Object.keys(saved).forEach(id => {
-        const el = formArea.querySelector(`#${id}`);
+        const el = formArea.querySelector(\`#\${id}\`);
         if (el) el.value = saved[id];
       });
     }
@@ -1041,7 +992,7 @@
             timer = setTimeout(() => {
               if (typeof LMSIntegration !== 'undefined') {
                 LMSIntegration.saveStudentProgress(state.subStep, {
-                  activityTitle: `[8. 자료의 정리와 해석] ${state.subStep}`,
+                  activityTitle: \`[${chapterTitle}] \${state.subStep}\`,
                   answerText: inp.value
                 });
               }
@@ -1053,7 +1004,7 @@
 
     function formatMathText(txt) {
       if (typeof katex === 'undefined') return txt;
-      return txt.replace(/\$(.*?)\$/g, (match, math) => {
+      return txt.replace(/\\$(.*?)\\$/g, (match, math) => {
         try { return katex.renderToString(math, { throwOnError: false }); } catch(e) { return math; }
       });
     }
@@ -1065,9 +1016,9 @@
           window.renderMathInElement(el, {
             delimiters: [
               { left: "$$", right: "$$", display: true },
-              { left: "\\[", right: "\\]", display: true },
+              { left: "\\\\[", right: "\\\\]", display: true },
               { left: "$", right: "$", display: false },
-              { left: "\\(", right: "\\)", display: false }
+              { left: "\\\\(", right: "\\\\)", display: false }
             ],
             ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code", "input"],
             throwOnError: false
@@ -1201,22 +1152,22 @@
       if (!formArea) return;
 
       const isLast = (nextCode === state.subStep || ALL_SUBSTEPS.indexOf(nextCode) === -1);
-      formArea.innerHTML = `
+      formArea.innerHTML = \`
         <div class="verified-answer-card">
-          <div class="verified-title"><span>🎉</span> ${title}</div>
-          <div class="verified-desc">${desc}</div>
-          ${!isLast ? `<button id="btn-verified-next-substep" class="btn btn-primary" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; background:linear-gradient(135deg, #059669, #0284c7);" onclick="loadSubStep('${nextCode}')">🚀 다음 단계로 진행하기 ➔</button>` : `<div style="font-weight:800; color:#059669; text-align:center; padding:8px;">🏆 모든 탐구 과정을 성공적으로 마쳤습니다!</div>`}
+          <div class="verified-title"><span>🎉</span> \${title}</div>
+          <div class="verified-desc">\${desc}</div>
+          \${!isLast ? \`<button id="btn-verified-next-substep" class="btn btn-primary" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; background:linear-gradient(135deg, #059669, #0284c7);" onclick="loadSubStep('\${nextCode}')">🚀 다음 단계로 진행하기 ➔</button>\` : \`<div style="font-weight:800; color:#059669; text-align:center; padding:8px;">🏆 모든 탐구 과정을 성공적으로 마쳤습니다!</div>\`}
         </div>
-      `;
+      \`;
       renderMathInPage(formArea);
     }
 
     // --- SUBSTEP CONFIG & RENDERING ---
-undefined
+${substepDataJs}
 
-undefined
+${canvasDrawersJs}
 
-undefined
+${validationHandlersJs}
 
     function loadSubStep(code) {
       if (!state.unlockedSubSteps.includes(code) && !state.isTeacherLoggedIn) {
@@ -1306,12 +1257,12 @@ undefined
 
     function openTeacherPassModal() {
       if (state.isTeacherLoggedIn) {
-        if (confirm(`🔑 교사 권한으로 현재 [${state.subStep}] 페이지를 즉시 통과하시겠습니까?`)) {
+        if (confirm(\`🔑 교사 권한으로 현재 [\${state.subStep}] 페이지를 즉시 통과하시겠습니까?\`)) {
           passCurrentSubStep();
         }
         return;
       }
-      openSecurePasswordModal('teacher_pass', '교사 인증 패스 (Pass)', `현재 [${state.subStep}] 페이지를 학생 대신 통과 처리하려면 교사 비밀번호를 입력해 주세요.`);
+      openSecurePasswordModal('teacher_pass', '교사 인증 패스 (Pass)', \`현재 [\${state.subStep}] 페이지를 학생 대신 통과 처리하려면 교사 비밀번호를 입력해 주세요.\`);
     }
 
     function openTeacherDashboardModal() {
@@ -1371,7 +1322,7 @@ undefined
         switchView('activity');
         switchMainTab(0);
         loadSubStep('0-1');
-        alert('🔓 [교사 보안 인증 성공]\n임종윤 선생님 환영합니다! 교사 관리자 모드로 로그인되었습니다. 상단 🔓 학생 해금 범위 설정을 사용하실 수 있습니다.');
+        alert('🔓 [교사 보안 인증 성공]\\n임종윤 선생님 환영합니다! 교사 관리자 모드로 로그인되었습니다. 상단 🔓 학생 해금 범위 설정을 사용하실 수 있습니다.');
       } else if (currentSecureModalAction === 'teacher_pass') {
         passCurrentSubStep();
       } else if (currentSecureModalAction === 'teacher_dashboard') {
@@ -1402,7 +1353,7 @@ undefined
 
       if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
         LMSIntegration.saveStudentProgress(state.subStep, {
-          activityTitle: `[교사 패스] ${state.subStep}`,
+          activityTitle: \`[교사 패스] \${state.subStep}\`,
           answerText: '교사 인증을 통해 해당 단계를 통과하였습니다.',
           score: 100
         });
@@ -1410,7 +1361,7 @@ undefined
 
       renderVerifiedAnswerView(
         "🔑 교사 인증 패스 (Pass) 완료",
-        `교사 권한으로 <b>[${state.subStep}]</b> 페이지가 통과 처리되었습니다.<br>다음 단계인 <b>[${nextCode}]</b> 로 즉시 이동합니다.`,
+        \`교사 권한으로 <b>[\${state.subStep}]</b> 페이지가 통과 처리되었습니다.<br>다음 단계인 <b>[\${nextCode}]</b> 로 즉시 이동합니다.\`,
         nextCode
       );
     }
@@ -1429,7 +1380,7 @@ undefined
         ALL_SUBSTEPS.forEach(code => {
           const opt = document.createElement('option');
           opt.value = code;
-          opt.innerText = `[${code}] ${SUBSTEP_TITLES[code] || code}`;
+          opt.innerText = \`[\${code}] \${SUBSTEP_TITLES[code] || code}\`;
           select.appendChild(opt);
         });
         const saved = localStorage.getItem(STORAGE_KEY_UNLOCK) || ALL_SUBSTEPS[ALL_SUBSTEPS.length - 1];
@@ -1458,7 +1409,7 @@ undefined
         if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveGlobalUnlockStep) {
           LMSIntegration.saveGlobalUnlockStep(targetCode);
         }
-        alert(`🔓 [${targetCode}] 까지 학생 해금 범위가 설정되었습니다.`);
+        alert(\`🔓 [\${targetCode}] 까지 학생 해금 범위가 설정되었습니다.\`);
       }
       closeUnlockBoundaryModal();
     }
@@ -1486,8 +1437,8 @@ undefined
       container.innerHTML = '';
 
       for (let num = 1; num <= 25; num++) {
-        const numStr = num < 10 ? `0${num}` : `${num}`;
-        const stId = `10${currentMonitoringClass}${numStr}`;
+        const numStr = num < 10 ? \`0\${num}\` : \`\${num}\`;
+        const stId = \`10\${currentMonitoringClass}\${numStr}\`;
         const card = document.createElement('div');
         card.style.cssText = 'background:#ffffff; border:1.5px solid #e2e8f0; border-radius:12px; padding:10px; cursor:pointer; transition:all 0.2s ease; box-shadow:0 2px 4px rgba(0,0,0,0.02);';
         card.onmouseover = () => { card.style.borderColor = '#4f46e5'; card.style.transform = 'translateY(-2px)'; };
@@ -1499,12 +1450,12 @@ undefined
         const statusText = isCompleted ? '✅ 완료' : (isStudying ? '🟢 활동중' : '🟡 대기');
         const statusColor = isCompleted ? '#059669' : (isStudying ? '#0284c7' : '#d97706');
 
-        card.innerHTML = `
-          <div style="font-size:0.78rem; font-weight:800; color:#1e293b; margin-bottom:4px;">👤 ${stId} 학생</div>
-          <div style="font-size:0.72rem; color:#64748b;">현재: <b>[${step}]</b></div>
-          <div style="font-size:0.72rem; font-weight:700; color:${statusColor}; margin-top:4px;">${statusText}</div>
-        `;
-        card.onclick = () => openStudentZoomModal({ id: stId, name: `${stId} 학생`, step, status: statusText });
+        card.innerHTML = \`
+          <div style="font-size:0.78rem; font-weight:800; color:#1e293b; margin-bottom:4px;">👤 \${stId} 학생</div>
+          <div style="font-size:0.72rem; color:#64748b;">현재: <b>[\${step}]</b></div>
+          <div style="font-size:0.72rem; font-weight:700; color:\${statusColor}; margin-top:4px;">\${statusText}</div>
+        \`;
+        card.onclick = () => openStudentZoomModal({ id: stId, name: \`\${stId} 학생\`, step, status: statusText });
         container.appendChild(card);
       }
     }
@@ -1514,15 +1465,15 @@ undefined
       const modal = document.getElementById('student-zoom-modal');
       const title = document.getElementById('zoom-student-title');
       const body = document.getElementById('zoom-student-body');
-      if (title) title.innerText = `👤 ${student.name} (${student.id}) 1:1 관제`;
+      if (title) title.innerText = \`👤 \${student.name} (\${student.id}) 1:1 관제\`;
       if (body) {
-        body.innerHTML = `
+        body.innerHTML = \`
           <div style="background:#f8fafc; padding:14px; border-radius:10px; border:1px solid #e2e8f0; margin-bottom:12px;">
-            <b>• 현재 학습 단계:</b> [${student.step}] ${SUBSTEP_TITLES[student.step] || ''}<br>
-            <b>• 실시간 상태:</b> ${student.status}<br>
+            <b>• 현재 학습 단계:</b> [\${student.step}] \${SUBSTEP_TITLES[student.step] || ''}<br>
+            <b>• 실시간 상태:</b> \${student.status}<br>
             <b>• 최근 답안 작성:</b> 정상 활동 수행 중
           </div>
-        `;
+        \`;
       }
       if (modal) modal.style.display = 'flex';
     }
@@ -1535,7 +1486,7 @@ undefined
 
     function remotePassSelectedStudent() {
       if (!currentZoomStudent) return;
-      alert(`✅ ${currentZoomStudent.name} 학생의 [${currentZoomStudent.step}] 단계를 교사 권한으로 원격 통과 처리하였습니다!`);
+      alert(\`✅ \${currentZoomStudent.name} 학생의 [\${currentZoomStudent.step}] 단계를 교사 권한으로 원격 통과 처리하였습니다!\`);
       closeStudentZoomModal();
     }
 
@@ -1546,4 +1497,7 @@ undefined
     });
   </script>
 </body>
-</html>
+</html>`;
+}
+
+module.exports = { createChapterHtml };
