@@ -16,7 +16,7 @@ function createChapterHtml(config) {
   // Flatten all substeps
   const allSubsteps = [];
   const substepTitles = {};
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < mainTabs.length; i++) {
     if (pillsConfig[i]) {
       pillsConfig[i].forEach(p => {
         allSubsteps.push(p.code);
@@ -821,7 +821,7 @@ ${tabButtonsHtml}  </nav>
         if (unlockBtn) unlockBtn.style.display = 'inline-flex';
         if (dashBtn) dashBtn.style.display = 'inline-flex';
 
-        state.unlockedTabs = [0, 1, 2, 3, 4, 5];
+        state.unlockedTabs = Array.from({length: ${mainTabs.length}}, (_, i) => i);
         state.unlockedSubSteps = [...ALL_SUBSTEPS];
 
         document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -951,6 +951,7 @@ ${tabButtonsHtml}  </nav>
         if (isCompleted) extraClass += ' completed';
 
         btn.className = \`substep-pill \${extraClass}\`;
+        btn.setAttribute('data-code', p.code);
         const prefix = isCompleted ? '✅ ' : (isUnlocked ? '' : '🔒 ');
         btn.innerText = \`\${prefix}\${p.label}\`;
 
@@ -967,7 +968,7 @@ ${tabButtonsHtml}  </nav>
 
     function updateTabLocks(isTeacher) {
       const titles = ${JSON.stringify(mainTabs)};
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < ${mainTabs.length}; i++) {
         const btn = document.getElementById(\`tab-\${i}\`);
         if (!btn) continue;
         const isUnlocked = isTeacher || state.unlockedTabs.includes(i);
@@ -1293,7 +1294,7 @@ ${tabButtonsHtml}  </nav>
     // --- STEP PROGRESSION ENGINE ---
     function unlockNextStep(tabIndex) {
       const nextTab = tabIndex + 1;
-      if (nextTab < 6 && !state.unlockedTabs.includes(nextTab)) {
+      if (nextTab < ${mainTabs.length} && !state.unlockedTabs.includes(nextTab)) {
         state.unlockedTabs.push(nextTab);
       }
       updateTabLocks(state.isTeacherLoggedIn);
@@ -1490,7 +1491,7 @@ ${validationHandlersJs}
           info.style.color = '#059669';
         }
 
-        state.unlockedTabs = [0, 1, 2, 3, 4, 5];
+        state.unlockedTabs = Array.from({length: ${mainTabs.length}}, (_, i) => i);
         state.unlockedSubSteps = [...ALL_SUBSTEPS];
 
         document.querySelectorAll('.tab-btn').forEach(btn => {
