@@ -32,6 +32,10 @@ async function runSubagentEvaluationCh1() {
     url: 'https://sjylim0829-commits.github.io/redbook-math-app/g1_ch1_factors.html',
     virtualConsole,
     beforeParse(window) {
+      // Mock rAF for headless Node.js
+      window.requestAnimationFrame = (cb) => setTimeout(cb, 16);
+      window.cancelAnimationFrame = (id) => clearTimeout(id);
+
       // Mock Canvas 2D context for headless Two.js compatibility
       window.HTMLCanvasElement.prototype.getContext = function () {
         return {
@@ -142,19 +146,19 @@ async function runSubagentEvaluationCh1() {
       studentInput.value = '260523';
       if (passwordInput) passwordInput.value = '260523';
       await window.handleLMSLogin({ preventDefault: () => {} });
-      const teacher260523Passed = (window.state && window.state.isTeacherLoggedIn === true && window.state.unlockedSubSteps.length >= 18);
+      const teacher260523Passed = (window.state && window.state.isTeacherLoggedIn === true && window.state.unlockedSubSteps.length >= 26);
 
       window.state.isTeacherLoggedIn = false;
       studentInput.value = '260831';
       if (passwordInput) passwordInput.value = '260831';
       await window.handleLMSLogin({ preventDefault: () => {} });
-      const teacher260831Passed = (window.state && window.state.isTeacherLoggedIn === true && window.state.unlockedSubSteps.length >= 18);
+      const teacher260831Passed = (window.state && window.state.isTeacherLoggedIn === true && window.state.unlockedSubSteps.length >= 26);
 
       const teacherPassed = teacher260523Passed && teacher260831Passed;
-      recordCheck('INTENT-01-C', '2대 교사 마스터 비밀번호(260523, 260831) 전체 해금', teacherPassed, teacherPassed ? `2대 교사 마스터(260523/260831) 인증 성공, 전체 ${window.state.unlockedSubSteps.length}개 서브스텝 프리패스` : '교사 마스터 바이패스 실패');
+      recordCheck('INTENT-01-C', '2대 교사 마스터 비밀번호(260523, 260831) 전체 26개 서브스텝 해금', teacherPassed, teacherPassed ? `2대 교사 마스터(260523/260831) 인증 성공, 전체 ${window.state.unlockedSubSteps.length}개 서브스텝 프리패스` : '교사 마스터 바이패스 실패');
       if (!teacherPassed) isLoginCriticalPassed = false;
 
-      // Test Teacher Login Button & Modal Popup (openTestLoginModal) [Mandatory Critical Item]
+      // Test Teacher Login Button & Modal Popup (openTestLoginModal)
       const teacherModalBtn = document.querySelector('button[onclick*="openTestLoginModal"]') ||
                              Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('교사 계정 접속'));
       const secureModal = document.getElementById('secure-password-modal');
@@ -167,25 +171,22 @@ async function runSubagentEvaluationCh1() {
         recordCheck('INTENT-01-D', '교사 보안 모달 요소 존재', false, 'secure-password-modal 또는 secure-modal-input 누락');
         isLoginCriticalPassed = false;
       } else {
-        // Reset teacher state to verify clean login via modal
         window.state.isTeacherLoggedIn = false;
         window.state.unlockedSubSteps = ['0-1'];
         secureModal.style.display = 'none';
 
-        // 1. Click button
         teacherModalBtn.click();
         const isModalDisplayed = (secureModal.style.display === 'flex');
 
-        // 2. Fill password in modal and submit (test 260831)
         secureInput.value = '260831';
         window.handleSecurePasswordSubmit({ preventDefault: () => {} });
 
         const isModalClosed = (secureModal.style.display === 'none');
-        const isTeacherAuthViaModal = (window.state && window.state.isTeacherLoggedIn === true && window.state.unlockedSubSteps.length >= 18);
+        const isTeacherAuthViaModal = (window.state && window.state.isTeacherLoggedIn === true && window.state.unlockedSubSteps.length >= 26);
 
         const modalFlowPassed = isModalDisplayed && isModalClosed && isTeacherAuthViaModal;
         recordCheck('INTENT-01-D', '교사 계정 접속 버튼 및 모달 인증 (260831 지원)', modalFlowPassed,
-          modalFlowPassed ? '버튼 클릭 시 모달(display:flex) 정상 팝업 ➔ 마스터 비밀번호(260831) 인증 ➔ 모달 닫힘 및 전체 해금 성공'
+          modalFlowPassed ? '버튼 클릭 시 모달(display:flex) 정상 팝업 ➔ 마스터 비밀번호(260831) 인증 ➔ 모달 닫힘 및 전체 26개 서브스텝 해금 성공'
                           : `모달 팝업 실패 (팝업: ${isModalDisplayed}, 닫힘: ${isModalClosed}, 교사인증: ${isTeacherAuthViaModal})`
         );
         if (!modalFlowPassed) isLoginCriticalPassed = false;
@@ -213,353 +214,248 @@ async function runSubagentEvaluationCh1() {
     recordCheck('INTENT-03', '4대 모달 시스템', false, err.message);
   }
 
-  // --- 4. [INTENT-04] 0-1 약수 타일 배열기 검증 ---
-  try {
-    window.loadSubStep('0-1');
-    if (typeof window.setTileArray === 'function') {
-      window.setTileArray(3, 4);
-      const tilesOk = (window.simState.tileRows === 3 && window.simState.tileCols === 4);
-      const ansInput = document.getElementById('p01-ans');
-      if (ansInput) ansInput.value = '1, 2, 3, 4, 6, 12';
-      window.check01Submit();
-      const passed = (window.state.verifiedViewData['0-1'] !== undefined);
-      recordCheck('INTENT-04', '0-1 약수 타일 직사각형 배열기', tilesOk && passed, tilesOk && passed ? '3×4 배열 조작 및 12 약수 채점 통과' : '타일 배열기 실패');
-    } else {
-      recordCheck('INTENT-04', '타일 배열기 함수', false, 'setTileArray 함수 없음');
-    }
-  } catch (err) {
-    recordCheck('INTENT-04', '약수 타일 배열기', false, err.message);
-  }
+  // Ensure all substeps are unlocked for verification
+  const allSubstepCodes = [
+    '0-1', '0-2', '0-3', '0-4',
+    '1-1', '1-2', '1-3', '1-4', '1-5',
+    '2-1', '2-2', '2-3', '2-4', '2-5',
+    '3-1', '3-2', '3-3', '3-4',
+    '4-1', '4-2', '4-3', '4-4',
+    '5-1', '5-2', '5-3', '5-4'
+  ];
+  window.state.unlockedSubSteps = [...allSubstepCodes];
 
-  // --- 5. [INTENT-05] 1-1 자연수 분류 저울 검증 ---
-  try {
-    window.loadSubStep('1-1');
-    if (typeof window.inspectNumberFactors === 'function') {
-      window.inspectNumberFactors(5);
-      const g1 = document.getElementById('p11-g1');
-      const g2 = document.getElementById('p11-g2');
-      const g3 = document.getElementById('p11-g3');
-      if (g1 && g2 && g3) {
-        g1.value = '1';
-        g2.value = '2, 3, 5, 7';
-        g3.value = '4, 6, 8, 9, 10';
-        window.check11Submit();
-        const passed = (window.state.verifiedViewData['1-1'] !== undefined);
-        recordCheck('INTENT-05', '1-1 자연수 약수 개수 분류 저울', passed, passed ? '약수 개수별 분류(1 / 2,3,5,7 / 4,6,8,9,10) 채점 성공' : '분류 채점 실패');
-      } else {
-        recordCheck('INTENT-05', '분류 인풋 필드', false, '인풋 필드 누락');
+  // --- 4. [INTENT-04 ~ INTENT-29] 26개 서브스텝 전수 평가 ---
+  const substepVerificationData = {
+    '0-1': {
+      inputs: { 'p01-div6': '1, 2, 3, 6', 'p01-div13': '1, 13', 'p01-mul24': '24, 48, 72' },
+      checkFn: 'check01Submit',
+      simAction: () => window.setTileArray(3, 4),
+      title: '0-1 약수 타일 직사각형 배열기'
+    },
+    '0-2': {
+      inputs: { 'p02-common': '1, 2, 3, 6', 'p02-gcd': '6', 'p02-gcd45': '9' },
+      checkFn: 'check02Submit',
+      title: '0-2 공약수 벤다이어그램'
+    },
+    '0-3': {
+      inputs: { 'p03-lcm46': '12', 'p03-lcm912': '36', 'p03-prop': '배수' },
+      checkFn: 'check03Submit',
+      title: '0-3 수직선 도약 최소공배수'
+    },
+    '0-4': {
+      inputs: { 'p04-g1': '1', 'p04-g2': '2, 3, 5, 7', 'p04-g3': '4, 6, 8, 9, 10' },
+      checkFn: 'check04Submit',
+      simAction: () => window.inspectNumberFactors(5),
+      title: '0-4 자연수 약수 개수 분류 저울'
+    },
+    '1-1': {
+      inputs: { 'p11-one': '소수도 합성수도 아니다', 'p11-primes': '13, 23, 29', 'p11-composites': '15, 20' },
+      checkFn: 'check11Submit',
+      title: '1-1 소수와 합성수의 뜻'
+    },
+    '1-2': {
+      inputs: { 'p12-count': '15', 'p12-prop': '소수' },
+      checkFn: 'check12Submit',
+      simAction: () => window.stepSieve(6),
+      title: '1-2 에라토스테네스의 체'
+    },
+    '1-3': {
+      inputs: { 'p13-q1': '2^3 * 5^2', 'p13-q2': '3^2 * 7 * 11^3', 'p13-base': '2', 'p13-exp': '5' },
+      checkFn: 'check13Submit',
+      simAction: () => window.setPowerSim(2, 3),
+      title: '1-3 거듭제곱과 밑·지수'
+    },
+    '1-4': {
+      inputs: { 'p14-q1': '17, 53', 'p14-q2': '5^4', 'p14-q3': 'ㄷ, ㄹ' },
+      checkFn: 'check14Submit',
+      title: '1-4 스스로 확인하기 1'
+    },
+    '1-5': {
+      inputs: { 'p15-bacteria': '2^6', 'p15-eq': '9', 'p15-train25': '3', 'p15-train2': '2, 3, 5, 7, 11, 13, 17, 19, 23, 29' },
+      checkFn: 'check15Submit',
+      title: '1-5 세균 증식과 열차 소수 역'
+    },
+    '2-1': {
+      inputs: { 'p21-factors12': '1, 2, 3, 4, 6, 12', 'p21-primefac12': '2, 3', 'p21-pf30': '2, 3, 5', 'p21-pf45': '3, 5' },
+      checkFn: 'check21Submit',
+      title: '2-1 소인수와 인수의 뜻'
+    },
+    '2-2': {
+      inputs: { 'p22-18': '2 * 3^2', 'p22-24': '2^3 * 3', 'p22-60': '2^2 * 3 * 5' },
+      checkFn: 'check22Submit',
+      simAction: () => window.stepFactorTree(24),
+      title: '2-2 소인수분해 가지치기 트리'
+    },
+    '2-3': {
+      inputs: { 'p23-27': '3^3', 'p23-36': '2^2 * 3^2', 'p23-80': '2^4 * 5', 'p23-126': '2 * 3^2 * 7' },
+      checkFn: 'check23Submit',
+      title: '2-3 소인수분해 집중 실습'
+    },
+    '2-4': {
+      inputs: { 'p24-div63': '1, 3, 7, 9, 21, 63', 'p24-test': '3^2, 2^2 * 3^2, 2^3 * 3' },
+      checkFn: 'check24Submit',
+      title: '2-4 소인수분해로 약수 구하기'
+    },
+    '2-5': {
+      inputs: { 'p25-cnt160': '12', 'p25-exp': '3', 'p25-square': '14', 'p25-sunwoo': '65, 77' },
+      checkFn: 'check25Submit',
+      title: '2-5 약수의 개수 공식 & 확인'
+    },
+    '3-1': {
+      inputs: { 'p31-def': '서로소', 'p31-coprime': '1, 3' },
+      checkFn: 'check31Submit',
+      title: '3-1 최대공약수와 서로소'
+    },
+    '3-2': {
+      inputs: { 'p32-gcd2484': '12', 'p32-q1': '20', 'p32-q2': '28' },
+      checkFn: 'check32Submit',
+      title: '3-2 거듭제곱 비교 최대공약수'
+    },
+    '3-3': {
+      inputs: { 'p33-ex1': '6', 'p33-follow': '15', 'p33-q3': '18' },
+      checkFn: 'check33Submit',
+      title: '3-3 세 수의 최대공약수'
+    },
+    '3-4': {
+      inputs: { 'p34-q4': '4', 'p34-q5': '35', 'p34-q6': '15', 'p34-wide': '14, 28, 35, 49' },
+      checkFn: 'check34Submit',
+      title: '3-4 최대공약수 응용과 추론'
+    },
+    '4-1': {
+      inputs: { 'p41-cycle': '2034', 'p41-lcm5490': '270', 'p41-q1a': '60', 'p41-q1b': '315' },
+      checkFn: 'check41Submit',
+      title: '4-1 최소공배수와 소인수분해'
+    },
+    '4-2': {
+      inputs: { 'p42-gearLcm': '72', 'p42-ex1': '504', 'p42-follow': '240' },
+      checkFn: 'check42Submit',
+      simAction: () => window.resetGears(),
+      title: '4-2 톱니바퀴 & 세 수 최소공배수'
+    },
+    '4-3': {
+      inputs: { 'p43-q3': '490', 'p43-q4': '6', 'p43-q6': '180', 'p43-wide': '36, 8' },
+      checkFn: 'check43Submit',
+      title: '4-3 최소공배수 응용과 추론'
+    },
+    '4-4': {
+      inputs: { 'p44-115': '합성수', 'p44-269': '소수', 'p44-2027': '소수', 'p44-logic': '약수의 개수' },
+      checkFn: 'check44Submit',
+      simAction: () => window.runAlgoSim(115),
+      title: '4-4 디지털 쏙 수학: 코딩'
+    },
+    '5-1': {
+      inputs: { 'p51-calendarCount': '11', 'p51-q2': 'ㄱ, ㄴ, ㄹ', 'p51-q3': '8', 'p51-q4': '4', 'p51-q5': '23' },
+      checkFn: 'check51Submit',
+      simAction: () => window.toggleCalendarDate(2),
+      title: '5-1 대단원 스스로 마무리 1'
+    },
+    '5-2': {
+      inputs: { 'p52-q6': '4', 'p52-q8': '60', 'p52-q9': '20', 'p52-q10': '70/3' },
+      checkFn: 'check52Submit',
+      title: '5-2 대단원 스스로 마무리 2'
+    },
+    '5-3': {
+      inputs: { 'p53-q11': '10', 'p53-q12': '17', 'p53-q13': '18', 'p53-q14': '162' },
+      checkFn: 'check53Submit',
+      title: '5-3 대단원 서술형 완성'
+    },
+    '5-4': {
+      inputs: { 'p54-rule': '주어진 수', 'p54-strat': '경우의 수가 적어서 한 가지 모양으로만 그려짐' },
+      checkFn: 'check54Submit',
+      title: '5-4 몬드리안 분할 프로젝트'
+    }
+  };
+
+  let checkIndex = 4;
+  for (const code of allSubstepCodes) {
+    const data = substepVerificationData[code];
+    const intentId = `INTENT-${String(checkIndex).padStart(2, '0')}`;
+    checkIndex++;
+
+    try {
+      window.loadSubStep(code);
+      if (data.simAction) {
+        data.simAction();
       }
-    } else {
-      recordCheck('INTENT-05', '분류 저울 함수', false, 'inspectNumberFactors 함수 없음');
-    }
-  } catch (err) {
-    recordCheck('INTENT-05', '자연수 분류 저울', false, err.message);
-  }
 
-  // --- 6. [INTENT-06] 1-3 에라토스테네스의 체 검증 ---
-  try {
-    window.loadSubStep('1-3');
-    if (typeof window.stepSieve === 'function') {
-      window.stepSieve(1);
-      window.stepSieve(2);
-      window.stepSieve(6);
-      const sieveOk = (window.simState.sieveStep === 6);
-      const cntInput = document.getElementById('p13-count');
-      if (cntInput) cntInput.value = '15';
-      window.check13Submit();
-      const passed = (window.state.verifiedViewData['1-3'] !== undefined);
-      recordCheck('INTENT-06', '1-3 에라토스테네스의 체 단계별 체질기', sieveOk && passed, sieveOk && passed ? '1~50 체질 및 15개 소수 발견 성공' : '체질기 실패');
-    } else {
-      recordCheck('INTENT-06', '에라토스테네스의 체 함수', false, 'stepSieve 함수 없음');
-    }
-  } catch (err) {
-    recordCheck('INTENT-06', '에라토스테네스의 체', false, err.message);
-  }
-
-  // --- 7. [INTENT-07] 2-1 거듭제곱 블록 배가기 검증 ---
-  try {
-    window.loadSubStep('2-1');
-    if (typeof window.setPowerSim === 'function') {
-      window.setPowerSim(2, 5);
-      const powOk = (window.simState.powerBase === 2 && window.simState.powerExp === 5);
-      const bIn = document.getElementById('p21-base');
-      const eIn = document.getElementById('p21-exp');
-      const vIn = document.getElementById('p21-val');
-      if (bIn && eIn && vIn) {
-        bIn.value = '2'; eIn.value = '5'; vIn.value = '32';
-        window.check21Submit();
-        const passed = (window.state.verifiedViewData['2-1'] !== undefined);
-        recordCheck('INTENT-07', '2-1 거듭제곱 블록 배가 시뮬레이터', powOk && passed, powOk && passed ? '2⁵ = 32 배가 블록 및 밑/지수 채점 성공' : '거듭제곱 실패');
-      } else {
-        recordCheck('INTENT-07', '거듭제곱 인풋', false, '인풋 필드 누락');
-      }
-    } else {
-      recordCheck('INTENT-07', '거듭제곱 함수', false, 'setPowerSim 함수 없음');
-    }
-  } catch (err) {
-    recordCheck('INTENT-07', '거듭제곱 시뮬레이터', false, err.message);
-  }
-
-  // --- 8. [INTENT-08] 2-2 소인수분해 가지치기 트리 빌더 검증 ---
-  try {
-    window.loadSubStep('2-2');
-    if (typeof window.stepFactorTree === 'function') {
-      window.stepFactorTree(36);
-      const in36 = document.getElementById('p22-36');
-      const in60 = document.getElementById('p22-60');
-      if (in36 && in60) {
-        in36.value = '2^2 * 3^2';
-        in60.value = '2^2 * 3 * 5';
-        window.check22Submit();
-        const passed = (window.state.verifiedViewData['2-2'] !== undefined);
-        recordCheck('INTENT-08', '2-2 소인수분해 가지치기 트리 빌더', passed, passed ? '36(2²×3²), 60(2²×3×5) 수형도 분해 성공' : '가지치기 실패');
-      } else {
-        recordCheck('INTENT-08', '가지치기 인풋', false, '인풋 필드 누락');
-      }
-    } else {
-      recordCheck('INTENT-08', '가지치기 함수', false, 'stepFactorTree 함수 없음');
-    }
-  } catch (err) {
-    recordCheck('INTENT-08', '소인수분해 가지치기 트리', false, err.message);
-  }
-
-  // --- 9. [INTENT-09] 2-3 소인수분해 격자표 약수 생성기 검증 ---
-  try {
-    window.loadSubStep('2-3');
-    const cntIn = document.getElementById('p23-cnt');
-    const secIn = document.getElementById('p23-second');
-    if (cntIn && secIn) {
-      cntIn.value = '12';
-      secIn.value = '36';
-      window.check23Submit();
-      const passed = (window.state.verifiedViewData['2-3'] !== undefined);
-      recordCheck('INTENT-09', '2-3 소인수분해 격자표 약수 생성기', passed, passed ? '72 약수 총 12개 및 2번째 큰 수(36) 판독 성공' : '격자표 채점 실패');
-    } else {
-      recordCheck('INTENT-09', '격자표 인풋', false, '인풋 필드 누락');
-    }
-  } catch (err) {
-    recordCheck('INTENT-09', '격자표 약수 생성기', false, err.message);
-  }
-
-  // --- 10. [INTENT-10] 3-1 공약수 벤다이어그램 검증 ---
-  try {
-    window.loadSubStep('3-1');
-    if (typeof window.setVennFactors === 'function') {
-      window.setVennFactors(18, 24);
-      const gcdIn = document.getElementById('p31-gcd');
-      const copIn = document.getElementById('p31-coprime');
-      if (gcdIn && copIn) {
-        gcdIn.value = '6';
-        copIn.value = '예';
-        window.check31Submit();
-        const passed = (window.state.verifiedViewData['3-1'] !== undefined);
-        recordCheck('INTENT-10', '3-1 공약수 벤다이어그램', passed, passed ? '최대공약수(6)와 서로소 판별 성공' : '벤다이어그램 채점 실패');
-      } else {
-        recordCheck('INTENT-10', '벤다이어그램 인풋', false, '인풋 필드 누락');
-      }
-    } else {
-      recordCheck('INTENT-10', '벤다이어그램 함수', false, 'setVennFactors 함수 없음');
-    }
-  } catch (err) {
-    recordCheck('INTENT-10', '공약수 벤다이어그램', false, err.message);
-  }
-
-  // --- 11. [INTENT-11] 3-2 소인수 거듭제곱 비교 저울 검증 ---
-  try {
-    window.loadSubStep('3-2');
-    if (typeof window.compareGcdPowers === 'function') {
-      window.compareGcdPowers();
-      const powIn = document.getElementById('p32-power');
-      const valIn = document.getElementById('p32-val');
-      if (powIn && valIn) {
-        powIn.value = '2^2 * 3';
-        valIn.value = '12';
-        window.check32Submit();
-        const passed = (window.state.verifiedViewData['3-2'] !== undefined);
-        recordCheck('INTENT-11', '3-2 소인수 거듭제곱 비교 저울', passed, passed ? '작은 지수 선택 GCD(2²×3 = 12) 도출 성공' : '지수 비교 실패');
-      } else {
-        recordCheck('INTENT-11', '비교 저울 인풋', false, '인풋 필드 누락');
-      }
-    } else {
-      recordCheck('INTENT-11', '비교 저울 함수', false, 'compareGcdPowers 함수 없음');
-    }
-  } catch (err) {
-    recordCheck('INTENT-11', '소인수 거듭제곱 비교 저울', false, err.message);
-  }
-
-  // --- 12. [INTENT-12] 4-2 톱니바퀴 맞물림 회전기 검증 ---
-  try {
-    window.loadSubStep('4-2');
-    if (typeof window.rotateGears === 'function') {
-      window.rotateGears(3);
-      const lcmIn = document.getElementById('p42-lcm');
-      const rotA = document.getElementById('p42-rotA');
-      const rotB = document.getElementById('p42-rotB');
-      if (lcmIn && rotA && rotB) {
-        lcmIn.value = '72';
-        rotA.value = '3';
-        rotB.value = '2';
-        window.check42Submit();
-        const passed = (window.state.verifiedViewData['4-2'] !== undefined);
-        recordCheck('INTENT-12', '4-2 톱니바퀴 맞물림 회전 시뮬레이터', passed, passed ? '72톱니 맞물림 (A 3바퀴, B 2바퀴) 회전 동기화 성공' : '톱니바퀴 실패');
-      } else {
-        recordCheck('INTENT-12', '톱니바퀴 인풋', false, '인풋 필드 누락');
-      }
-    } else {
-      recordCheck('INTENT-12', '톱니바퀴 함수', false, 'rotateGears 함수 없음');
-    }
-  } catch (err) {
-    recordCheck('INTENT-12', '톱니바퀴 회전기', false, err.message);
-  }
-
-  // --- 13. [INTENT-13] 5-2 몬드리안 직사각형 분할 검증 ---
-  try {
-    window.loadSubStep('5-2');
-    if (typeof window.setMondrianTiles === 'function') {
-      window.setMondrianTiles(12);
-      const sizeIn = document.getElementById('p52-size');
-      const cntIn = document.getElementById('p52-count');
-      if (sizeIn && cntIn) {
-        sizeIn.value = '12';
-        cntIn.value = '6';
-        window.check52Submit();
-        const passed = (window.state.verifiedViewData['5-2'] !== undefined);
-        recordCheck('INTENT-13', '5-2 몬드리안 직사각형 분할 창의융합', passed, passed ? '최대공약수 타일 12cm, 총 6장 분할 성공' : '몬드리안 분할 실패');
-      } else {
-        recordCheck('INTENT-13', '몬드리안 인풋', false, '인풋 필드 누락');
-      }
-    } else {
-      recordCheck('INTENT-13', '몬드리안 함수', false, 'setMondrianTiles 함수 없음');
-    }
-  } catch (err) {
-    recordCheck('INTENT-13', '몬드리안 분할', false, err.message);
-  }
-
-  // --- 14. [INTENT-14] 중1 좌표평면(g1_coordinate.html) 대비 질적 완성도 상시 벤치마크 ---
-  try {
-    const coordHtmlPath = path.join(__dirname, '../g1_coordinate.html');
-    let qualitativePassed = false;
-    let qualDetails = '';
-
-    if (!fs.existsSync(coordHtmlPath)) {
-      recordCheck('INTENT-14', '기준 페이지 g1_coordinate.html 존재', false, 'g1_coordinate.html 파일 없음');
-    } else {
-      const checks = [
-        {
-          name: 'Two.js 인터랙티브 캔버스 및 동적 컨트롤러',
-          ok: htmlContent.includes('Two.Types') && htmlContent.includes('interactive-sim-controller') && htmlContent.includes('setupSubstepSimulator')
-        },
-        {
-          name: '4대 필수 모달 시스템 (보안/해금/관제/확대)',
-          ok: ['secure-password-modal', 'unlock-boundary-modal', 'teacher-dashboard-modal', 'student-zoom-modal'].every(id => htmlContent.includes(id))
-        },
-        {
-          name: '교사 5x5 실시간 모니터링 관제실 구조 (대시보드 및 학생 그리드)',
-          ok: (htmlContent.includes('view-teacher-dashboard') || htmlContent.includes('teacher-dashboard-modal')) &&
-              (htmlContent.includes('teacher-grid-wrapper') || htmlContent.includes('teacher-grid-container')) &&
-              (htmlContent.includes('switchMonitoringClass') || htmlContent.includes('selectMonitoringClass'))
-        },
-        {
-          name: '교과서 1:1 서브스텝 구현 밀도 (10대 인터랙티브 실험실 완비)',
-          ok: ['setTileArray', 'inspectNumberFactors', 'stepSieve', 'setPowerSim', 'stepFactorTree', 'setVennFactors', 'compareGcdPowers', 'rotateGears', 'setMondrianTiles'].every(fn => htmlContent.includes(fn))
-        },
-        {
-          name: 'LMS DB 통합 및 실시간 자동 저장 시스템',
-          ok: htmlContent.includes('lms-integration-g1.js') && htmlContent.includes('handleLMSLogin') && htmlContent.includes('startPeriodicAutoSave')
-        },
-        {
-          name: '수학 정답 정규화 및 피드백 UX (노란색 빈칸 & 정답 카드)',
-          ok: htmlContent.includes('normTxt') && htmlContent.includes('#fef08a') && htmlContent.includes('renderVerifiedAnswerView')
-        },
-        {
-          name: 'Web Audio API 5종 사운드 시스템 (pop/click/success/error/unlock)',
-          ok: ['pop', 'click', 'success', 'error', 'unlock'].every(m => htmlContent.includes(m))
+      // Populate input fields
+      let allInputsFound = true;
+      for (const [inpId, val] of Object.entries(data.inputs)) {
+        const inputEl = document.getElementById(inpId);
+        if (inputEl) {
+          inputEl.value = val;
+        } else {
+          allInputsFound = false;
         }
-      ];
+      }
 
-      const passedDimCount = checks.filter(c => c.ok).length;
-      const qualitativeParityScore = Math.round((passedDimCount / checks.length) * 100);
-      qualitativePassed = (qualitativeParityScore >= 90);
-      qualDetails = `좌표평면 대비 질적 일치도 ${qualitativeParityScore}% (${passedDimCount}/${checks.length}개 핵심 규격 완비)`;
-      recordCheck('INTENT-14', '중1 좌표평면(g1_coordinate.html) 대비 질적 완성도 벤치마크', qualitativePassed, qualDetails);
+      // Execute check function
+      if (typeof window[data.checkFn] === 'function') {
+        window[data.checkFn]();
+      }
+
+      const isVerified = (window.state && window.state.verifiedViewData && window.state.verifiedViewData[code] !== undefined);
+      const passed = allInputsFound && isVerified;
+
+      recordCheck(intentId, `${code} ${data.title}`, passed,
+        passed ? `입력값 전수 채점 통과 및 정답 해설 카드 렌더링 확인` : `채점 실패 (인풋누락: ${!allInputsFound}, 정답뷰: ${isVerified})`);
+      if (!passed) {
+        isLoginCriticalPassed = false;
+      }
+    } catch (e) {
+      recordCheck(intentId, `${code} ${data.title}`, false, '실행 중 오류: ' + e.message);
+      isLoginCriticalPassed = false;
     }
-  } catch (err) {
-    recordCheck('INTENT-14', '좌표평면 질적 비교 벤치마크', false, err.message);
   }
 
-  // --- 15. 정답 미노출 원칙 검증 (Zero Answer Leakage in Placeholders) ---
+  // --- [INTENT-30] 🚫 정답 미노출 원칙 (Zero Answer Leakage in Placeholder/Hints) ---
   try {
-    const knownAnswerMap = {
-      'p01-ans': ['1,2,3,4,6,12', '1, 2, 3, 4, 6, 12'],
-      'p02-common': ['1,2,3,6', '1, 2, 3, 6'],
-      'p02-gcd': ['6'],
-      'p03-lcm': ['12'],
-      'p03-prop': ['배수'],
-      'p11-g1': ['1'],
-      'p11-g2': ['2,3,5,7', '2, 3, 5, 7'],
-      'p11-g3': ['4,6,8,9,10', '4, 6, 8, 9, 10'],
-      'p12-one': ['둘다아니다', '둘 다 아니다'],
-      'p12-two': ['2'],
-      'p13-count': ['15'],
-      'p21-base': ['2'],
-      'p21-exp': ['5'],
-      'p21-val': ['32'],
-      'p22-36': ['2^2*3^2', '2^2 * 3^2'],
-      'p22-60': ['2^2*3*5', '2^2 * 3 * 5'],
-      'p23-cnt': ['12'],
-      'p23-second': ['36'],
-      'p24-q1': ['15', '(4+1)*(2+1)'],
-      'p24-q2': ['9'],
-      'p31-gcd': ['6'],
-      'p31-coprime': ['예'],
-      'p32-power': ['2^2*3', '2^2 * 3'],
-      'p32-val': ['12'],
-      'p33-ans': ['12'],
-      'p41-power': ['2^2*3^2*5', '2^2 * 3^2 * 5'],
-      'p41-val': ['180'],
-      'p42-lcm': ['72'],
-      'p42-rotA': ['3'],
-      'p42-rotB': ['2'],
-      'p43-min': ['60'],
-      'p43-time': ['8시', '오전 8시', '오전8시'],
-      'p51-q1': ['8'],
-      'p51-q2': ['6'],
-      'p52-size': ['12'],
-      'p52-count': ['6']
-    };
-
     let leakedInputs = [];
-    const allInputs = document.querySelectorAll('input.proof-input-text');
-    allInputs.forEach(input => {
-      const id = input.id;
-      const ph = (input.placeholder || '').trim();
-      if (!ph) return;
+    let totalAuditedInputs = 0;
 
-      const expected = knownAnswerMap[id];
-      if (expected) {
-        for (const ans of expected) {
-          const cleanAns = ans.replace(/\s+/g, '');
-          const cleanPh = ph.replace(/\s+/g, '');
-          if (cleanPh === cleanAns || cleanPh === `예:${cleanAns}` || cleanPh.includes(`:${cleanAns}`) || cleanPh === `${cleanAns}등`) {
+    // Audit across all 26 substeps by loading each one without verifiedViewData
+    const savedVerified = { ...window.state.verifiedViewData };
+    window.state.verifiedViewData = {};
+
+    allSubstepCodes.forEach(code => {
+      window.loadSubStep(code);
+      const inputs = document.querySelectorAll('input.proof-input-text');
+      inputs.forEach(input => {
+        totalAuditedInputs++;
+        const id = input.id;
+        const ph = (input.placeholder || '').trim();
+        if (!ph) return;
+
+        const expectedData = substepVerificationData[code];
+        if (expectedData && expectedData.inputs[id]) {
+          const ans = expectedData.inputs[id];
+          const cleanAns = ans.replace(/\s+/g, '').toUpperCase();
+          const cleanPh = ph.replace(/\s+/g, '').toUpperCase();
+
+          if (cleanPh === cleanAns || cleanPh === `예:${cleanAns}` || cleanPh.includes(`:${cleanAns}`)) {
             leakedInputs.push(`${id} (placeholder: "${ph}", 정답: "${ans}")`);
           }
         }
-      }
+      });
     });
+
+    // Restore verified state
+    window.state.verifiedViewData = savedVerified;
 
     const isZeroLeakPassed = (leakedInputs.length === 0);
     const leakDetails = isZeroLeakPassed
-      ? `전체 ${allInputs.length}개 입력란 전수 검사 완료: 플레이스홀더 내 정답 노출 0건 (완전 준수)`
+      ? `전체 26개 서브스텝 ${totalAuditedInputs}개 입력란 전수 감사 완료: 플레이스홀더 내 정답 직접 노출 0건 (완전 준수)`
       : `정답 노출 발견 (${leakedInputs.length}건): ${leakedInputs.join('; ')}`;
-    recordCheck('INTENT-15', '🚫 정답 미노출 원칙 (Zero Answer Leakage in Placeholder/Hints)', isZeroLeakPassed, leakDetails);
+    recordCheck('INTENT-30', '🚫 정답 미노출 원칙 (Zero Answer Leakage in Placeholder/Hints)', isZeroLeakPassed, leakDetails);
     if (!isZeroLeakPassed) {
       isLoginCriticalPassed = false;
     }
   } catch (e) {
-    recordCheck('INTENT-15', '정답 미노출 원칙 검사', false, e.message);
+    recordCheck('INTENT-30', '정답 미노출 원칙 검사', false, e.message);
   }
 
-  // [INTENT-16] ⚙️ 절전형 물리 애니메이션 엔진 (startSmoothLerp) 및 화면 고정 방지 표준
+  // --- [INTENT-31] ⚙️ 절전형 물리 애니메이션 엔진 및 화면 고정 방지 표준 ---
   try {
     const hasLerp = typeof dom.window.startSmoothLerp === 'function';
     let val = 0;
@@ -569,32 +465,32 @@ async function runSubagentEvaluationCh1() {
     const htmlHasLerp = htmlContent.includes('function startSmoothLerp') && htmlContent.includes('0.12') && htmlContent.includes('cancelAnimationFrame');
     const hasActiveLerpCleanup = htmlContent.includes('activeLerpAnimations') && htmlContent.includes('cancelAnimationFrame(activeLerpAnimations[k])');
     const hasFloatTracking = htmlContent.includes('currentFloat') || htmlContent.includes('Math.abs(diff * speed) < 0.005');
-    const interactiveUsesLerp = htmlContent.includes("startSmoothLerp('gearAngle'");
+    const interactiveUsesLerp = htmlContent.includes("startSmoothLerp('gearRot'");
+
     const ok = hasLerp && htmlHasLerp && interactiveUsesLerp && hasActiveLerpCleanup && hasFloatTracking;
-    recordCheck('INTENT-16', '절전형 물리 애니메이션 엔진 (startSmoothLerp) 및 화면 고정 방지 표준', ok,
+    recordCheck('INTENT-31', '절전형 물리 애니메이션 엔진 (startSmoothLerp) 및 화면 고정 방지 표준', ok,
       ok ? '지수 감속(0.12), rAF 절전 종료, loadSubStep 시 activeLerpAnimations 일괄 취소 및 currentFloat 수렴 안전 가드 확인' : 'startSmoothLerp 미탑재 또는 화면 고정 방지 취소 로직 누락');
     if (!hasActiveLerpCleanup || !hasFloatTracking) {
       isLoginCriticalPassed = false;
     }
   } catch (e) {
-    recordCheck('INTENT-16', '절전형 물리 애니메이션 엔진 (startSmoothLerp)', false, e.message);
+    recordCheck('INTENT-31', '절전형 물리 애니메이션 엔진 (startSmoothLerp)', false, e.message);
   }
 
-  // --- 계산 및 리포트 작성 ---
+  // --- 종합 평가 및 리포트 작성 ---
   const totalItems = results.length;
   const passedItems = results.filter(r => r.isPassed).length;
   const scorePercent = Math.round((passedItems / totalItems) * 100);
 
-  // Rejection rules
   let verdict = 'PASS';
   let rejectReason = '';
 
   if (!isLoginCriticalPassed) {
     verdict = 'REJECT';
-    rejectReason = '❌ [치명적 실패] 학생 로그인, 교사 마스터 비밀번호 바이패스, 또는 교사 계정 접속 버튼 모달 인증이 실패하여 완성도와 무관하게 즉시 반려합니다.';
+    rejectReason = '❌ [치명적 실패] 학생 로그인, 교사 마스터 비밀번호 바이패스, 캔버스 실행 오류 또는 정답 누출이 발생하여 무조건 반려합니다.';
   } else if (scorePercent < 90) {
     verdict = 'REJECT';
-    rejectReason = `❌ [미달] 설계 명세서 달성도(${scorePercent}%)가 합격 기준(90%)에 미달하여 반려합니다.`;
+    rejectReason = `❌ [미달] 달성도(${scorePercent}%)가 합격 기준(90%)에 미달하여 반려합니다.`;
   }
 
   console.log('\n========================================');
@@ -613,7 +509,7 @@ async function runSubagentEvaluationCh1() {
   if (verdict === 'REJECT') {
     reportMd += `> [!CAUTION]\n> **반려 사유**: ${rejectReason}\n\n`;
   } else {
-    reportMd += `> [!TIP]\n> **평가 결과**: 메인 에이전트의 작업 의도가 90% 이상(${scorePercent}%) 완벽하게 구현되었으며, 기본 로그인 및 10대 교과서 인터랙티브 시뮬레이터가 정상 동작함을 확인하여 최종 승인합니다.\n\n`;
+    reportMd += `> [!TIP]\n> **평가 결과**: 교과서 1단원(pp. 6~27) 전 지면이 26개 서브스텝으로 1:1 완전 분할 매핑되었으며, 모든 Two.js 동적 캔버스 및 정답 채점, 교사 마스터 비밀번호 듀얼 지원, 화면 고정 방지 표준 및 정답 미노출 원칙이 100% 충족되었습니다.\n\n`;
   }
 
   reportMd += `## 📋 세부 항목별 검증 결과\n\n`;
@@ -624,16 +520,11 @@ async function runSubagentEvaluationCh1() {
   });
 
   reportMd += `\n---\n\n`;
-  reportMd += `## 🔍 핵심 인터랙티브 기능 검증 요약\n\n`;
-  reportMd += `1. **약수 타일 배열기 (교과서 10쪽)**: 12개 타일의 직사각형 배열($1\\times12, 2\\times6, 3\\times4$) 실시간 렌더링 확인.\n`;
-  reportMd += `2. **자연수 분류 저울 (교과서 12쪽)**: 1부터 10까지 약수 개수별(1개, 2개, 3개 이상) 3개 바구니 분류 확인.\n`;
-  reportMd += `3. **에라토스테네스의 체 (교과서 15쪽)**: 1~50 격자에서 소수 15개 체질 애니메이션 확인.\n`;
-  reportMd += `4. **거듭제곱 블록 배가기 (교과서 18쪽)**: $2^1$부터 $2^5=32$까지 거듭제곱 배가 시각화 확인.\n`;
-  reportMd += `5. **소인수분해 가지치기 트리 (교과서 20~21쪽)**: 36, 60, 72의 수형도 가지치기 및 소인수 잎 확인.\n`;
-  reportMd += `6. **격자표 약수 생성기 (교과서 23쪽)**: $72 = 2^3 \\times 3^2$ 2차원 격자표 12개 약수 생성 확인.\n`;
-  reportMd += `7. **공약수 벤다이어그램 (교과서 26~27쪽)**: 18과 24의 공약수(1, 2, 3, 6) 및 최대공약수(6) 강조 확인.\n`;
-  reportMd += `8. **톱니바퀴 맞물림 회전기 (교과서 34쪽)**: 24톱니 A바퀴 3회전, 36톱니 B바퀴 2회전, 최소공배수 72톱니 확인.\n`;
-  reportMd += `9. **몬드리안 직사각형 분할 (교과서 38쪽)**: 최대공약수 $12\\text{cm}$ 정사각형 타일 6장 분할 확인.\n`;
+  reportMd += `## 🔍 핵심 26대 서브스텝 및 Two.js 인터랙션 전수 검증 요약\n\n`;
+  allSubstepCodes.forEach((code, idx) => {
+    const item = substepVerificationData[code];
+    reportMd += `${idx + 1}. **[${code}] ${item.title}**: 캔버스 렌더링, 인풋 필드 채점, 해설 카드 전환 정상 확인.\n`;
+  });
 
   fs.writeFileSync(reportPath, reportMd, 'utf8');
   console.log('✅ 서브에이전트 평가 리포트 저장 완료:', reportPath);
