@@ -1330,19 +1330,21 @@
         delete activeLerpAnimations[key];
       }
 
+      let currentFloat = getter();
+      if (typeof currentFloat !== 'number' || isNaN(currentFloat)) currentFloat = 0;
+
       function step() {
-        const current = getter();
-        const diff = targetVal - current;
-        if (Math.abs(diff) < 0.005) {
+        const diff = targetVal - currentFloat;
+        if (Math.abs(diff) < 0.02 || Math.abs(diff * speed) < 0.005) {
           setter(targetVal);
           if (typeof onFrame === 'function') onFrame(targetVal);
           if (typeof onComplete === 'function') onComplete(targetVal);
           delete activeLerpAnimations[key];
           return;
         }
-        const nextVal = current + diff * speed;
-        setter(nextVal);
-        if (typeof onFrame === 'function') onFrame(nextVal);
+        currentFloat = currentFloat + diff * speed;
+        setter(currentFloat);
+        if (typeof onFrame === 'function') onFrame(currentFloat);
         activeLerpAnimations[key] = requestAnimationFrame(step);
       }
       activeLerpAnimations[key] = requestAnimationFrame(step);
@@ -2275,6 +2277,7 @@
       SoundFX.click();
       simState.tileRows = r;
       simState.tileCols = c;
+      if (typeof state !== 'undefined' && state.subStep !== '0-1') return;
       const badge = document.getElementById('tile-array-badge');
       if (badge) badge.innerText = `배열: ${r}행 × ${c}열 = 12`;
       if (twoInstance) renderTileArrayCanvas(twoInstance, r, c);
@@ -2282,10 +2285,11 @@
 
     function inspectNumberFactors(n) {
       SoundFX.click();
-      const badge = document.getElementById('classify-badge');
       const factorCounts = { 1: 1, 2: 2, 3: 2, 4: 3, 5: 2, 6: 4, 7: 2, 8: 4, 9: 3, 10: 4 };
       const groupNames = { 1: '약수 1개 (1)', 2: '약수 2개 (소수)', 3: '약수 3개 이상 (합성수)' };
       const grp = n === 1 ? 1 : (factorCounts[n] === 2 ? 2 : 3);
+      if (typeof state !== 'undefined' && state.subStep !== '1-1') return;
+      const badge = document.getElementById('classify-badge');
       if (badge) badge.innerText = `선택: ${n} (약수 ${factorCounts[n]}개 ➔ ${groupNames[grp]})`;
       if (twoInstance) renderClassifyCanvas(twoInstance, n);
     }
@@ -2293,6 +2297,7 @@
     function stepSieve(step) {
       SoundFX.click();
       simState.sieveStep = step;
+      if (typeof state !== 'undefined' && state.subStep !== '1-3') return;
       if (step === 6) SoundFX.success();
       if (twoInstance) renderSieveCanvas(twoInstance, step);
     }
@@ -2301,6 +2306,7 @@
       SoundFX.click();
       simState.powerBase = b;
       simState.powerExp = e;
+      if (typeof state !== 'undefined' && state.subStep !== '1-4') return;
       const readout = document.getElementById('power-readout');
       if (readout) readout.innerText = `${b}^${e} = ${Math.pow(b, e)} (밑: ${b}, 지수: ${e})`;
       if (twoInstance) renderPowerCanvas(twoInstance, b, e);
@@ -2308,6 +2314,7 @@
 
     function stepFactorTree(target) {
       SoundFX.click();
+      if (typeof state !== 'undefined' && state.subStep !== '2-1') return;
       if (twoInstance) renderFactorTreeCanvas(twoInstance, target);
     }
 
@@ -2315,11 +2322,13 @@
       SoundFX.click();
       simState.vennA = a;
       simState.vennB = b;
+      if (typeof state !== 'undefined' && state.subStep !== '3-1') return;
       if (twoInstance) renderVennCanvas(twoInstance, a, b);
     }
 
     function compareGcdPowers() {
       SoundFX.success();
+      if (typeof state !== 'undefined' && state.subStep !== '3-2') return;
       if (twoInstance) renderGcdPowerCanvas(twoInstance);
     }
 
@@ -2329,6 +2338,7 @@
       if (typeof window.startSmoothLerp === 'function') {
         window.startSmoothLerp('gearAngle', () => simState.gearAngle, (v) => {
           simState.gearAngle = Math.round(v);
+          if (typeof state !== 'undefined' && state.subStep !== '4-1') return;
           const readout = document.getElementById('gear-readout');
           if (step === 3) {
             SoundFX.success();
@@ -2340,6 +2350,7 @@
         }, targetAngle);
       } else {
         simState.gearAngle = targetAngle;
+        if (typeof state !== 'undefined' && state.subStep !== '4-1') return;
         const readout = document.getElementById('gear-readout');
         if (step === 3) {
           SoundFX.success();
@@ -2353,6 +2364,7 @@
 
     function resetGears() {
       SoundFX.click();
+      if (typeof state !== 'undefined' && state.subStep !== '4-1') return;
       const readout = document.getElementById('gear-readout');
       if (readout) readout.innerText = '현재: 0톱니 (A: 0바퀴, B: 0바퀴)';
       if (twoInstance) renderGearCanvas(twoInstance, 0, 0);
@@ -2361,6 +2373,7 @@
     function setMondrianTiles(size) {
       SoundFX.click();
       simState.mondrianSize = size;
+      if (typeof state !== 'undefined' && state.subStep !== '5-1') return;
       if (size === 12) SoundFX.success();
       if (twoInstance) renderMondrianCanvas(twoInstance, 36, 24, size);
     }
@@ -2597,6 +2610,15 @@
       if (!state.unlockedSubSteps.includes(code) && !state.isTeacherLoggedIn) {
         alert("🔒 해당 페이지는 아직 잠겨 있습니다. 이전 활동을 완료해 주세요!");
         return;
+      }
+
+      if (typeof activeLerpAnimations !== 'undefined') {
+        for (const k in activeLerpAnimations) {
+          if (activeLerpAnimations[k]) {
+            cancelAnimationFrame(activeLerpAnimations[k]);
+            delete activeLerpAnimations[k];
+          }
+        }
       }
 
       if (state.subStep && state.subStep !== code) {

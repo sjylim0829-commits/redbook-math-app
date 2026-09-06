@@ -1269,19 +1269,21 @@ ${tabButtonsHtml}  </nav>
         delete activeLerpAnimations[key];
       }
 
+      let currentFloat = getter();
+      if (typeof currentFloat !== 'number' || isNaN(currentFloat)) currentFloat = 0;
+
       function step() {
-        const current = getter();
-        const diff = targetVal - current;
-        if (Math.abs(diff) < 0.005) {
+        const diff = targetVal - currentFloat;
+        if (Math.abs(diff) < 0.02 || Math.abs(diff * speed) < 0.005) {
           setter(targetVal);
           if (typeof onFrame === 'function') onFrame(targetVal);
           if (typeof onComplete === 'function') onComplete(targetVal);
           delete activeLerpAnimations[key];
           return;
         }
-        const nextVal = current + diff * speed;
-        setter(nextVal);
-        if (typeof onFrame === 'function') onFrame(nextVal);
+        currentFloat = currentFloat + diff * speed;
+        setter(currentFloat);
+        if (typeof onFrame === 'function') onFrame(currentFloat);
         activeLerpAnimations[key] = requestAnimationFrame(step);
       }
       activeLerpAnimations[key] = requestAnimationFrame(step);
@@ -1327,6 +1329,16 @@ ${validationHandlersJs}
       if (!state.unlockedSubSteps.includes(code) && !state.isTeacherLoggedIn) {
         alert("🔒 해당 페이지는 아직 잠겨 있습니다. 이전 활동을 완료해 주세요!");
         return;
+      }
+
+      // Cancel any ongoing lerp animations immediately on navigation
+      if (typeof activeLerpAnimations !== 'undefined') {
+        for (const k in activeLerpAnimations) {
+          if (activeLerpAnimations[k]) {
+            cancelAnimationFrame(activeLerpAnimations[k]);
+            delete activeLerpAnimations[k];
+          }
+        }
       }
 
       if (state.subStep && state.subStep !== code) {

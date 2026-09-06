@@ -1330,19 +1330,21 @@
         delete activeLerpAnimations[key];
       }
 
+      let currentFloat = getter();
+      if (typeof currentFloat !== 'number' || isNaN(currentFloat)) currentFloat = 0;
+
       function step() {
-        const current = getter();
-        const diff = targetVal - current;
-        if (Math.abs(diff) < 0.005) {
+        const diff = targetVal - currentFloat;
+        if (Math.abs(diff) < 0.02 || Math.abs(diff * speed) < 0.005) {
           setter(targetVal);
           if (typeof onFrame === 'function') onFrame(targetVal);
           if (typeof onComplete === 'function') onComplete(targetVal);
           delete activeLerpAnimations[key];
           return;
         }
-        const nextVal = current + diff * speed;
-        setter(nextVal);
-        if (typeof onFrame === 'function') onFrame(nextVal);
+        currentFloat = currentFloat + diff * speed;
+        setter(currentFloat);
+        if (typeof onFrame === 'function') onFrame(currentFloat);
         activeLerpAnimations[key] = requestAnimationFrame(step);
       }
       activeLerpAnimations[key] = requestAnimationFrame(step);
@@ -2315,6 +2317,7 @@
       SoundFX.click();
       simState.robotPos = Math.max(-6, Math.min(6, simState.robotPos + delta));
       simState.robotHistory.push(simState.robotPos);
+      if (typeof state !== 'undefined' && state.subStep !== '1-1') return;
       const badge = document.getElementById('robot-pos-badge');
       if (badge) badge.innerText = '현재 위치: x = ' + (simState.robotPos > 0 ? '+' : '') + simState.robotPos + 'm';
       const two = twoInstance;
@@ -2325,6 +2328,7 @@
       SoundFX.click();
       simState.robotPos = 0;
       simState.robotHistory = [0];
+      if (typeof state !== 'undefined' && state.subStep !== '1-1') return;
       const badge = document.getElementById('robot-pos-badge');
       if (badge) badge.innerText = '현재 위치: x = 0m';
       const two = twoInstance;
@@ -2335,23 +2339,26 @@
       SoundFX.click();
       simState.robotHistory = [0];
       simState.robotPos = 0;
-      const two = twoInstance;
       const badge = document.getElementById('robot-pos-badge');
 
       // 1st step: move to +3
       setTimeout(() => {
+        if (typeof state !== 'undefined' && state.subStep !== '1-1') return;
         simState.robotPos = 3;
         simState.robotHistory.push(3);
         if (badge) badge.innerText = '1단계: 동쪽 +3m 도달!';
+        const two = twoInstance;
         if (two) renderRobotCanvas(two, 3, simState.robotHistory);
         SoundFX.click();
 
         // 2nd step: move -5m -> arrives at -2
         setTimeout(() => {
+          if (typeof state !== 'undefined' && state.subStep !== '1-1') return;
           simState.robotPos = -2;
           simState.robotHistory.push(-2);
           if (badge) badge.innerText = '2단계: 서쪽 5m 이동 ➔ 최종 위치: x = -2m!';
-          if (two) renderRobotCanvas(two, -2, simState.robotHistory);
+          const two2 = twoInstance;
+          if (two2) renderRobotCanvas(two2, -2, simState.robotHistory);
           SoundFX.success();
         }, 900);
       }, 300);
@@ -2360,6 +2367,7 @@
     function setPointP12(pt, val) {
       SoundFX.click();
       simState.p12Points[pt] = val;
+      if (typeof state !== 'undefined' && state.subStep !== '1-2') return;
       const two = twoInstance;
       if (two) renderPointsCanvas(two, simState.p12Points);
     }
@@ -2370,6 +2378,7 @@
       if (typeof window.startSmoothLerp === 'function') {
         window.startSmoothLerp('absPos', () => simState.p14Pos, (v) => {
           simState.p14Pos = Math.round(v);
+          if (typeof state !== 'undefined' && state.subStep !== '1-4') return;
           const readout = document.getElementById('abs-readout');
           if (readout) readout.innerText = '|' + simState.p14Pos + '| = ' + Math.abs(simState.p14Pos);
           const two = twoInstance;
@@ -2377,6 +2386,7 @@
         }, target);
       } else {
         simState.p14Pos = val;
+        if (typeof state !== 'undefined' && state.subStep !== '1-4') return;
         const readout = document.getElementById('abs-readout');
         if (readout) readout.innerText = '|' + val + '| = ' + Math.abs(val);
         const two = twoInstance;
@@ -2388,6 +2398,7 @@
       SoundFX.click();
       simState.p21A = a;
       simState.p21B = b;
+      if (typeof state !== 'undefined' && state.subStep !== '2-1') return;
       const readout = document.getElementById('compare-readout');
       if (readout) readout.innerText = a + (a > b ? ' > ' : ' < ') + b;
       const two = twoInstance;
@@ -2399,6 +2410,7 @@
       simState.chipCancelled = false;
       if (type === 'blue') simState.chipBlue = Math.min(12, simState.chipBlue + 1);
       if (type === 'red') simState.chipRed = Math.min(12, simState.chipRed + 1);
+      if (typeof state !== 'undefined' && state.subStep !== '2-2') return;
       const cnt = document.getElementById('chip-counter');
       if (cnt) cnt.innerText = '🔵 ' + simState.chipBlue + '개 | 🔴 ' + simState.chipRed + '개';
       const two = twoInstance;
@@ -2408,6 +2420,7 @@
     function cancelChipPairs() {
       SoundFX.success();
       simState.chipCancelled = true;
+      if (typeof state !== 'undefined' && state.subStep !== '2-2') return;
       const two = twoInstance;
       if (two) renderChipCanvas(two, simState.chipBlue, simState.chipRed, true);
     }
@@ -2417,6 +2430,7 @@
       simState.chipBlue = b;
       simState.chipRed = r;
       simState.chipCancelled = false;
+      if (typeof state !== 'undefined' && state.subStep !== '2-2') return;
       const cnt = document.getElementById('chip-counter');
       if (cnt) cnt.innerText = '🔵 ' + b + '개 | 🔴 ' + r + '개';
       const two = twoInstance;
@@ -2426,6 +2440,7 @@
     function stepArrow(step) {
       SoundFX.click();
       simState.arrowStep = step;
+      if (typeof state !== 'undefined' && state.subStep !== '2-4') return;
       const two = twoInstance;
       if (two) renderArrowCanvas(two, step);
     }
@@ -2434,6 +2449,7 @@
       SoundFX.click();
       simState.velocity = v;
       simState.timeOffset = t;
+      if (typeof state !== 'undefined' && state.subStep !== '3-1') return;
       const readout = document.getElementById('mult-readout');
       if (readout) readout.innerText = '(' + v + ') × (' + t + ') = ' + (v * t > 0 ? '+' : '') + (v * t);
       const two = twoInstance;
@@ -2444,6 +2460,7 @@
       SoundFX.click();
       simState.thermCityA = a;
       simState.thermCityB = b;
+      if (typeof state !== 'undefined' && state.subStep !== '4-1') return;
       const two = twoInstance;
       if (two) renderThermometerCanvas(two, a, b);
     }
@@ -2720,6 +2737,15 @@
       if (!state.unlockedSubSteps.includes(code) && !state.isTeacherLoggedIn) {
         alert("🔒 해당 페이지는 아직 잠겨 있습니다. 이전 활동을 완료해 주세요!");
         return;
+      }
+
+      if (typeof activeLerpAnimations !== 'undefined') {
+        for (const k in activeLerpAnimations) {
+          if (activeLerpAnimations[k]) {
+            cancelAnimationFrame(activeLerpAnimations[k]);
+            delete activeLerpAnimations[k];
+          }
+        }
       }
 
       if (state.subStep && state.subStep !== code) {

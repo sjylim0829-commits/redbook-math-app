@@ -709,13 +709,17 @@ window.setSeesawFulcrum = function(f) {
   if (typeof window.startSmoothLerp === 'function') {
     window.startSmoothLerp('seesawFulcrum', () => ch8SimState.seesawFulcrum, (v) => {
       ch8SimState.seesawFulcrum = Math.round(v);
-      const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
-      if (two) setupSubstepSimulator(two, '1-1', document.getElementById('interactive-sim-controller'));
+      if (typeof state !== 'undefined' && state.subStep === '1-1') {
+        const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+        if (two) setupSubstepSimulator(two, '1-1', document.getElementById('interactive-sim-controller'));
+      }
     }, f);
   } else {
     ch8SimState.seesawFulcrum = f;
-    const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
-    if (two) setupSubstepSimulator(two, '1-1', document.getElementById('interactive-sim-controller'));
+    if (typeof state !== 'undefined' && state.subStep === '1-1') {
+      const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+      if (two) setupSubstepSimulator(two, '1-1', document.getElementById('interactive-sim-controller'));
+    }
   }
 };
 
@@ -724,50 +728,66 @@ window.setOutlierVal = function(v) {
   if (typeof window.startSmoothLerp === 'function') {
     window.startSmoothLerp('outlierVal', () => ch8SimState.outlierVal, (val) => {
       ch8SimState.outlierVal = Math.round(val);
-      const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
-      if (two) setupSubstepSimulator(two, '1-2', document.getElementById('interactive-sim-controller'));
+      if (typeof state !== 'undefined' && state.subStep === '1-2') {
+        const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+        if (two) setupSubstepSimulator(two, '1-2', document.getElementById('interactive-sim-controller'));
+      }
     }, target);
   } else {
     ch8SimState.outlierVal = target;
-    const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
-    if (two) setupSubstepSimulator(two, '1-2', document.getElementById('interactive-sim-controller'));
+    if (typeof state !== 'undefined' && state.subStep === '1-2') {
+      const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+      if (two) setupSubstepSimulator(two, '1-2', document.getElementById('interactive-sim-controller'));
+    }
   }
 };
 
 window.setMedianMode = function(m) {
   ch8SimState.medianMode = m;
-  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
-  if (two) setupSubstepSimulator(two, '1-3', document.getElementById('interactive-sim-controller'));
+  if (typeof state !== 'undefined' && state.subStep === '1-3') {
+    const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+    if (two) setupSubstepSimulator(two, '1-3', document.getElementById('interactive-sim-controller'));
+  }
 };
 
 window.toggleStemSort = function(b) {
   ch8SimState.stemLeafSorted = b;
-  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
-  if (two) setupSubstepSimulator(two, '2-1', document.getElementById('interactive-sim-controller'));
+  if (typeof state !== 'undefined' && state.subStep === '2-1') {
+    const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+    if (two) setupSubstepSimulator(two, '2-1', document.getElementById('interactive-sim-controller'));
+  }
 };
 
 window.setClassWidth = function(w) {
   ch8SimState.classWidth = w;
-  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
-  if (two) setupSubstepSimulator(two, '3-1', document.getElementById('interactive-sim-controller'));
+  if (typeof state !== 'undefined' && state.subStep === '3-1') {
+    const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+    if (two) setupSubstepSimulator(two, '3-1', document.getElementById('interactive-sim-controller'));
+  }
 };
 
 window.setPolygonMorphStep = function(s) {
   if (typeof window.startSmoothLerp === 'function') {
     window.startSmoothLerp('polygonMorphStep', () => ch8SimState.polygonMorphStep, (v) => {
       ch8SimState.polygonMorphStep = Math.round(v);
-      const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
-      if (two) setupSubstepSimulator(two, '4-3', document.getElementById('interactive-sim-controller'));
+      if (typeof state !== 'undefined' && state.subStep === '4-3') {
+        const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+        if (two) setupSubstepSimulator(two, '4-3', document.getElementById('interactive-sim-controller'));
+      }
     }, s);
   } else {
     ch8SimState.polygonMorphStep = s;
-    const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
-    if (two) setupSubstepSimulator(two, '4-3', document.getElementById('interactive-sim-controller'));
+    if (typeof state !== 'undefined' && state.subStep === '4-3') {
+      const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+      if (two) setupSubstepSimulator(two, '4-3', document.getElementById('interactive-sim-controller'));
+    }
   }
 };
 
 window.setOverlapGroup = function(g) {
   ch8SimState.overlapGroup = g;
-  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
-  if (two) setupSubstepSimulator(two, '5-2', document.getElementById('interactive-sim-controller'));
+  if (typeof state !== 'undefined' && state.subStep === '5-2') {
+    const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+    if (two) setupSubstepSimulator(two, '5-2', document.getElementById('interactive-sim-controller'));
+  }
 };

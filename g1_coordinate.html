@@ -2344,6 +2344,15 @@
         return;
       }
 
+      if (typeof activeLerpAnimations !== 'undefined') {
+        for (const k in activeLerpAnimations) {
+          if (activeLerpAnimations[k]) {
+            cancelAnimationFrame(activeLerpAnimations[k]);
+            delete activeLerpAnimations[k];
+          }
+        }
+      }
+
       if (state.subStep && state.subStep !== subStepCode) {
         saveCurrentFormInputs(state.subStep);
       }
@@ -4618,6 +4627,7 @@
       if (typeof window.startSmoothLerp === 'function') {
         window.startSmoothLerp('slopeA', () => state.slopeA, (v) => {
           state.slopeA = Math.round(v * 10) / 10;
+          if (typeof state !== 'undefined' && state.subStep !== '4-1' && state.subStep !== '4-2' && state.subStep !== '4-3') return;
           const lbl = document.getElementById('slope-val');
           if (lbl) lbl.innerText = state.slopeA;
           if (twoInstance) {
@@ -4626,6 +4636,7 @@
         }, target);
       } else {
         state.slopeA = target;
+        if (typeof state !== 'undefined' && state.subStep !== '4-1' && state.subStep !== '4-2' && state.subStep !== '4-3') return;
         const lbl = document.getElementById('slope-val');
         if (lbl) lbl.innerText = val;
         if (twoInstance) {
@@ -8582,19 +8593,21 @@
         delete activeLerpAnimations[key];
       }
 
+      let currentFloat = getter();
+      if (typeof currentFloat !== 'number' || isNaN(currentFloat)) currentFloat = 0;
+
       function step() {
-        const current = getter();
-        const diff = targetVal - current;
-        if (Math.abs(diff) < 0.005) {
+        const diff = targetVal - currentFloat;
+        if (Math.abs(diff) < 0.02 || Math.abs(diff * speed) < 0.005) {
           setter(targetVal);
           if (typeof onFrame === 'function') onFrame(targetVal);
           if (typeof onComplete === 'function') onComplete(targetVal);
           delete activeLerpAnimations[key];
           return;
         }
-        const nextVal = current + diff * speed;
-        setter(nextVal);
-        if (typeof onFrame === 'function') onFrame(nextVal);
+        currentFloat = currentFloat + diff * speed;
+        setter(currentFloat);
+        if (typeof onFrame === 'function') onFrame(currentFloat);
         activeLerpAnimations[key] = requestAnimationFrame(step);
       }
       activeLerpAnimations[key] = requestAnimationFrame(step);

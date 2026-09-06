@@ -1345,15 +1345,19 @@ function setBoxScale(v) {
   if (typeof window.startSmoothLerp === 'function') {
     window.startSmoothLerp('boxVal', () => simState.boxVal, (val) => {
       simState.boxVal = Math.round(val);
+      if (typeof state !== 'undefined' && state.subStep !== '0-1') return;
       const badge = document.getElementById('box-scale-status');
       if (badge) badge.innerText = `현재 □ = ${simState.boxVal} (좌: ${3 * simState.boxVal + 5} vs 우: 20)`;
-      if (twoInstance) renderBoxScaleCanvas(twoInstance, simState.boxVal);
+      const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+      if (two) renderBoxScaleCanvas(two, simState.boxVal);
     }, target);
   } else {
     simState.boxVal = target;
+    if (typeof state !== 'undefined' && state.subStep !== '0-1') return;
     const badge = document.getElementById('box-scale-status');
     if (badge) badge.innerText = `현재 □ = ${v} (좌: ${3 * v + 5} vs 우: 20)`;
-    if (twoInstance) renderBoxScaleCanvas(twoInstance, simState.boxVal);
+    const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+    if (two) renderBoxScaleCanvas(two, simState.boxVal);
   }
 }
 window.setBoxScale = setBoxScale;
@@ -1361,16 +1365,20 @@ window.setBoxScale = setBoxScale;
 function setRatioVal(r) {
   if (window.SoundFX && window.SoundFX.click) window.SoundFX.click();
   simState.ratioVal = r;
+  if (typeof state !== 'undefined' && state.subStep !== '0-2') return;
   const badge = document.getElementById('ratio-badge');
   if (badge) badge.innerText = `비율: ${r}`;
-  if (twoInstance) renderRatioBarCanvas(twoInstance, r);
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) renderRatioBarCanvas(two, r);
 }
 window.setRatioVal = setRatioVal;
 
 function setRevStep(s) {
   if (window.SoundFX && window.SoundFX.click) window.SoundFX.click();
   simState.revStep = s;
-  if (twoInstance) renderReverseCalcCanvas(twoInstance, s);
+  if (typeof state !== 'undefined' && state.subStep !== '0-3') return;
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) renderReverseCalcCanvas(two, s);
 }
 window.setRevStep = setRevStep;
 
@@ -1380,15 +1388,19 @@ function setIceQty(q) {
   if (typeof window.startSmoothLerp === 'function') {
     window.startSmoothLerp('iceQty', () => simState.iceQty, (val) => {
       simState.iceQty = Math.round(val);
+      if (typeof state !== 'undefined' && state.subStep !== '1-1') return;
       const badge = document.getElementById('receipt-badge');
       if (badge) badge.innerText = `합계: 3,500 × ${simState.iceQty} = ${(3500 * simState.iceQty).toLocaleString()}원`;
-      if (twoInstance) renderReceiptCanvas(twoInstance, simState.iceQty);
+      const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+      if (two) renderReceiptCanvas(two, simState.iceQty);
     }, target);
   } else {
     simState.iceQty = target;
+    if (typeof state !== 'undefined' && state.subStep !== '1-1') return;
     const badge = document.getElementById('receipt-badge');
     if (badge) badge.innerText = `합계: 3,500 × ${q} = ${(3500 * q).toLocaleString()}원`;
-    if (twoInstance) renderReceiptCanvas(twoInstance, simState.iceQty);
+    const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+    if (two) renderReceiptCanvas(two, simState.iceQty);
   }
 }
 window.setIceQty = setIceQty;
@@ -1396,80 +1408,101 @@ window.setIceQty = setIceQty;
 function setRuleIdx(idx) {
   if (window.SoundFX && window.SoundFX.click) window.SoundFX.click();
   simState.ruleIdx = idx;
-  if (twoInstance) renderSymbolOmissionCanvas(twoInstance, idx);
+  if (typeof state !== 'undefined' && state.subStep !== '1-2') return;
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) renderSymbolOmissionCanvas(two, idx);
 }
 window.setRuleIdx = setRuleIdx;
 
 function setBookDays(d) {
   if (window.SoundFX && window.SoundFX.click) window.SoundFX.click();
   simState.bookDays = parseInt(d);
+  if (typeof state !== 'undefined' && state.subStep !== '1-3') return;
   const badge = document.getElementById('book-badge');
   if (badge) badge.innerText = `${d}일차: 남은 쪽수 ${400 - 10 * d}쪽`;
-  if (twoInstance) renderBookGaugeCanvas(twoInstance, simState.bookDays);
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) renderBookGaugeCanvas(two, simState.bookDays);
 }
 window.setBookDays = setBookDays;
 
 function setNegExpr(i) {
   if (window.SoundFX && window.SoundFX.click) window.SoundFX.click();
   simState.negExprIdx = i;
-  if (twoInstance) renderNegSubstituteCanvas(twoInstance, i);
+  if (typeof state !== 'undefined' && state.subStep !== '1-4') return;
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) renderNegSubstituteCanvas(two, i);
 }
 window.setNegExpr = setNegExpr;
 
 function setPolyMode(m) {
   if (window.SoundFX && window.SoundFX.click) window.SoundFX.click();
   simState.polyMode = m;
-  if (twoInstance) renderPolyStructureCanvas(twoInstance, m);
+  if (typeof state !== 'undefined' && state.subStep !== '2-1') return;
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) renderPolyStructureCanvas(two, m);
 }
 window.setPolyMode = setPolyMode;
 
 function setRectMode(m) {
   if (window.SoundFX && window.SoundFX.click) window.SoundFX.click();
   simState.rectMode = m;
-  if (twoInstance) renderRectDistCanvas(twoInstance, m);
+  if (typeof state !== 'undefined' && state.subStep !== '2-2') return;
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) renderRectDistCanvas(two, m);
 }
 window.setRectMode = setRectMode;
 
 function setLikeTiles(s) {
   if (window.SoundFX && window.SoundFX.click) window.SoundFX.click();
   simState.likeStep = s;
-  if (twoInstance) renderLikeTermTilesCanvas(twoInstance, s);
+  if (typeof state !== 'undefined' && state.subStep !== '2-3') return;
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) renderLikeTermTilesCanvas(two, s);
 }
 window.setLikeTiles = setLikeTiles;
 
 function setBracketStep(s) {
   if (window.SoundFX && window.SoundFX.click) window.SoundFX.click();
   simState.bracketStep = s;
-  if (twoInstance) renderBracketDistCanvas(twoInstance, s);
+  if (typeof state !== 'undefined' && state.subStep !== '2-4') return;
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) renderBracketDistCanvas(two, s);
 }
 window.setBracketStep = setBracketStep;
 
 function setEqType(t) {
   if (window.SoundFX && window.SoundFX.click) window.SoundFX.click();
   simState.eqType = t;
+  if (typeof state !== 'undefined' && state.subStep !== '3-1') return;
   const badge = document.getElementById('eq-badge');
   if (badge) badge.innerText = (t === 'equation' ? '방정식: 특정 x에서만 참' : '항등식: 모든 x에서 항상 참');
-  if (twoInstance) renderEqVsIdentityCanvas(twoInstance, t, simState.eqX);
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) renderEqVsIdentityCanvas(two, t, simState.eqX);
 }
 window.setEqType = setEqType;
 
 function setEqX(x) {
   if (window.SoundFX && window.SoundFX.click) window.SoundFX.click();
   simState.eqX = parseInt(x);
-  if (twoInstance) renderEqVsIdentityCanvas(twoInstance, simState.eqType, simState.eqX);
+  if (typeof state !== 'undefined' && state.subStep !== '3-1') return;
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) renderEqVsIdentityCanvas(two, simState.eqType, simState.eqX);
 }
 window.setEqX = setEqX;
 
 function setSolX(x) {
   if (window.SoundFX && window.SoundFX.click) window.SoundFX.click();
   simState.solX = parseInt(x);
-  if (twoInstance) renderSolutionFinderCanvas(twoInstance, simState.solX);
+  if (typeof state !== 'undefined' && state.subStep !== '3-2') return;
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) renderSolutionFinderCanvas(two, simState.solX);
 }
 window.setSolX = setSolX;
 
 function applyProp(act) {
   if (window.SoundFX && window.SoundFX.click) window.SoundFX.click();
   simState.eqProp = act;
+  if (typeof state !== 'undefined' && state.subStep !== '3-3') return;
   const badge = document.getElementById('prop-badge');
   if (badge) {
     if (act === 'add3') badge.innerText = '등식의 성질 1: 양변에 3을 더하여 x = 8 도출!';
@@ -1477,51 +1510,64 @@ function applyProp(act) {
     else if (act === 'mul2') badge.innerText = '등식의 성질 3: 양변에 2를 곱함';
     else badge.innerText = '원래 방정식: x - 3 = 5';
   }
-  if (twoInstance) renderPropertiesCanvas(twoInstance, act);
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) renderPropertiesCanvas(two, act);
 }
 window.applyProp = applyProp;
 
 function setTransStep(s) {
   if (window.SoundFX && window.SoundFX.click) window.SoundFX.click();
   simState.transStep = s;
-  if (twoInstance) renderTranspositionCanvas(twoInstance, s);
+  if (typeof state !== 'undefined' && state.subStep !== '3-5') return;
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) renderTranspositionCanvas(two, s);
 }
 window.setTransStep = setTransStep;
 
 function setAlgStep(s) {
   if (window.SoundFX && window.SoundFX.click) window.SoundFX.click();
   simState.algStep = s;
-  if (twoInstance) renderAlgStepsCanvas(twoInstance, s);
+  if (typeof state !== 'undefined' && state.subStep !== '3-6') return;
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) renderAlgStepsCanvas(two, s);
 }
 window.setAlgStep = setAlgStep;
 
 function setMagicMode(m) {
   if (window.SoundFX && window.SoundFX.click) window.SoundFX.click();
   simState.magicMode = m;
-  if (twoInstance) renderMagicEqCanvas(twoInstance, m);
+  if (typeof state !== 'undefined' && state.subStep !== '4-1') return;
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) renderMagicEqCanvas(two, m);
 }
 window.setMagicMode = setMagicMode;
 
 function setConsecX(x) {
   if (window.SoundFX && window.SoundFX.click) window.SoundFX.click();
   simState.consecX = parseInt(x);
+  if (typeof state !== 'undefined' && state.subStep !== '4-2') return;
   const badge = document.getElementById('consec-badge');
   if (badge) badge.innerText = `현재 가운데 수 x = ${x} (합: ${3 * x})`;
-  if (twoInstance) renderConsecutiveCanvas(twoInstance, simState.consecX);
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) renderConsecutiveCanvas(two, simState.consecX);
 }
 window.setConsecX = setConsecX;
 
 function setMagicX(x) {
   simState.magicX = parseInt(x) || 7;
-  if (twoInstance) renderMathMagicCanvas(twoInstance, simState.magicX, simState.magicStep);
+  if (typeof state !== 'undefined' && state.subStep !== '5-1') return;
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) renderMathMagicCanvas(two, simState.magicX, simState.magicStep);
 }
 window.setMagicX = setMagicX;
 
 function setMagicStep(s) {
   if (window.SoundFX && window.SoundFX.click) window.SoundFX.click();
   simState.magicStep = s;
+  if (typeof state !== 'undefined' && state.subStep !== '5-1') return;
   const badge = document.getElementById('magic-step-badge');
   if (badge) badge.innerText = `마술 단계: ${s}단계 (x = ${simState.magicX})`;
-  if (twoInstance) renderMathMagicCanvas(twoInstance, simState.magicX, s);
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) renderMathMagicCanvas(two, simState.magicX, s);
 }
 window.setMagicStep = setMagicStep;

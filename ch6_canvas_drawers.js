@@ -774,6 +774,7 @@ function setupSubstepSimulator(two, code, simController) {
 // Window interactive helper methods
 window.rollPiCircle = function(pos) {
   ch6SimState.rollPos = pos;
+  if (typeof state !== 'undefined' && state.subStep !== '0-1') return;
   const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
   if (two) setupSubstepSimulator(two, '0-1', document.getElementById('interactive-sim-controller'));
 };
@@ -782,11 +783,13 @@ window.setTearStep = function(step) {
   if (typeof window.startSmoothLerp === 'function') {
     window.startSmoothLerp('tearStep', () => ch6SimState.tearStep, (v) => {
       ch6SimState.tearStep = Math.round(v);
+      if (typeof state !== 'undefined' && state.subStep !== '1-1') return;
       const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
       if (two) setupSubstepSimulator(two, '1-1', document.getElementById('interactive-sim-controller'));
     }, step);
   } else {
     ch6SimState.tearStep = step;
+    if (typeof state !== 'undefined' && state.subStep !== '1-1') return;
     const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
     if (two) setupSubstepSimulator(two, '1-1', document.getElementById('interactive-sim-controller'));
   }
@@ -796,18 +799,21 @@ window.setBoomerangAngles = function(a, b, c) {
   ch6SimState.boomA = a;
   ch6SimState.boomB = b;
   ch6SimState.boomC = c;
+  if (typeof state !== 'undefined' && state.subStep !== '1-3') return;
   const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
   if (two) setupSubstepSimulator(two, '1-3', document.getElementById('interactive-sim-controller'));
 };
 
 window.setSplitPolygon = function(n) {
   ch6SimState.splitSides = n;
+  if (typeof state !== 'undefined' && state.subStep !== '2-1') return;
   const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
   if (two) setupSubstepSimulator(two, '2-1', document.getElementById('interactive-sim-controller'));
 };
 
 window.shrinkPolygon = function(scale) {
   ch6SimState.shrinkScale = scale;
+  if (typeof state !== 'undefined' && state.subStep !== '2-3') return;
   const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
   if (two) setupSubstepSimulator(two, '2-3', document.getElementById('interactive-sim-controller'));
 };
@@ -815,18 +821,21 @@ window.shrinkPolygon = function(scale) {
 window.setDiagPolygon = function(n) {
   ch6SimState.diagSides = n;
   ch6SimState.showAllDiags = false;
+  if (typeof state !== 'undefined' && state.subStep !== '3-1') return;
   const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
   if (two) setupSubstepSimulator(two, '3-1', document.getElementById('interactive-sim-controller'));
 };
 
 window.toggleAllDiags = function() {
   ch6SimState.showAllDiags = !ch6SimState.showAllDiags;
+  if (typeof state !== 'undefined' && state.subStep !== '3-1') return;
   const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
   if (two) setupSubstepSimulator(two, '3-1', document.getElementById('interactive-sim-controller'));
 };
 
 window.setCirclePart = function(part) {
   ch6SimState.partSelect = part;
+  if (typeof state !== 'undefined' && state.subStep !== '4-1') return;
   const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
   if (two) setupSubstepSimulator(two, '4-1', document.getElementById('interactive-sim-controller'));
 };
@@ -835,11 +844,13 @@ window.setPropAngle = function(mult) {
   if (typeof window.startSmoothLerp === 'function') {
     window.startSmoothLerp('propAngleMult', () => ch6SimState.propAngleMult, (v) => {
       ch6SimState.propAngleMult = Math.round(v);
+      if (typeof state !== 'undefined' && state.subStep !== '4-3') return;
       const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
       if (two) setupSubstepSimulator(two, '4-3', document.getElementById('interactive-sim-controller'));
     }, mult);
   } else {
     ch6SimState.propAngleMult = mult;
+    if (typeof state !== 'undefined' && state.subStep !== '4-3') return;
     const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
     if (two) setupSubstepSimulator(two, '4-3', document.getElementById('interactive-sim-controller'));
   }
@@ -849,11 +860,13 @@ window.setFanUnfoldStep = function(step) {
   if (typeof window.startSmoothLerp === 'function') {
     window.startSmoothLerp('fanUnfoldStep', () => ch6SimState.fanUnfoldStep, (v) => {
       ch6SimState.fanUnfoldStep = Math.round(v);
+      if (typeof state !== 'undefined' && state.subStep !== '5-1') return;
       const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
       if (two) setupSubstepSimulator(two, '5-1', document.getElementById('interactive-sim-controller'));
     }, step);
   } else {
     ch6SimState.fanUnfoldStep = step;
+    if (typeof state !== 'undefined' && state.subStep !== '5-1') return;
     const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
     if (two) setupSubstepSimulator(two, '5-1', document.getElementById('interactive-sim-controller'));
   }
@@ -861,6 +874,7 @@ window.setFanUnfoldStep = function(step) {
 
 window.setTessPolygon = function(type) {
   ch6SimState.tessPolygon = type;
+  if (typeof state !== 'undefined' && state.subStep !== '5-3') return;
   const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
   if (two) setupSubstepSimulator(two, '5-3', document.getElementById('interactive-sim-controller'));
 };

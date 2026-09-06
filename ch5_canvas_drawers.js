@@ -1026,11 +1026,13 @@ window.setAngle = function(val) {
   if (typeof window.startSmoothLerp === 'function') {
     window.startSmoothLerp('angleVal', () => ch5SimState.angleVal, (v) => {
       ch5SimState.angleVal = Math.round(v);
+      if (typeof state !== 'undefined' && state.subStep !== '0-1') return;
       const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
       if (two) setupSubstepSimulator(two, '0-1', document.getElementById('interactive-sim-controller'));
     }, val);
   } else {
     ch5SimState.angleVal = val;
+    if (typeof state !== 'undefined' && state.subStep !== '0-1') return;
     const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
     if (two) setupSubstepSimulator(two, '0-1', document.getElementById('interactive-sim-controller'));
   }
@@ -1038,18 +1040,21 @@ window.setAngle = function(val) {
 
 window.setPrismModel = function(type) {
   ch5SimState.prismType = type;
+  if (typeof state !== 'undefined' && state.subStep !== '1-1') return;
   const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
   if (two) setupSubstepSimulator(two, '1-1', document.getElementById('interactive-sim-controller'));
 };
 
 window.highlightPrismPart = function(part) {
   ch5SimState.highlightElem = part;
+  if (typeof state !== 'undefined' && state.subStep !== '1-1') return;
   const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
   if (two) setupSubstepSimulator(two, '1-1', document.getElementById('interactive-sim-controller'));
 };
 
 window.setSegLength = function(len) {
   ch5SimState.segLen = len;
+  if (typeof state !== 'undefined' && state.subStep !== '1-3') return;
   const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
   if (two) setupSubstepSimulator(two, '1-3', document.getElementById('interactive-sim-controller'));
 };
@@ -1058,11 +1063,13 @@ window.setScissorAngle = function(deg) {
   if (typeof window.startSmoothLerp === 'function') {
     window.startSmoothLerp('scissorDeg', () => ch5SimState.scissorDeg, (v) => {
       ch5SimState.scissorDeg = Math.round(v);
+      if (typeof state !== 'undefined' && state.subStep !== '2-1') return;
       const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
       if (two) setupSubstepSimulator(two, '2-1', document.getElementById('interactive-sim-controller'));
     }, deg);
   } else {
     ch5SimState.scissorDeg = deg;
+    if (typeof state !== 'undefined' && state.subStep !== '2-1') return;
     const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
     if (two) setupSubstepSimulator(two, '2-1', document.getElementById('interactive-sim-controller'));
   }
@@ -1070,24 +1077,28 @@ window.setScissorAngle = function(deg) {
 
 window.setCuboidEdge = function(edge) {
   ch5SimState.cuboidEdge = edge;
+  if (typeof state !== 'undefined' && state.subStep !== '2-4') return;
   const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
   if (two) setupSubstepSimulator(two, '2-4', document.getElementById('interactive-sim-controller'));
 };
 
 window.slideCorrAngle = function(offset) {
   ch5SimState.sliderOffset = offset;
+  if (typeof state !== 'undefined' && state.subStep !== '3-1') return;
   const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
   if (two) setupSubstepSimulator(two, '3-1', document.getElementById('interactive-sim-controller'));
 };
 
 window.toggleAuxLine = function() {
   ch5SimState.showAuxLine = !ch5SimState.showAuxLine;
+  if (typeof state !== 'undefined' && state.subStep !== '3-3') return;
   const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
   if (two) setupSubstepSimulator(two, '3-3', document.getElementById('interactive-sim-controller'));
 };
 
 window.setCompassStep = function(step) {
   ch5SimState.compassStep = step;
+  if (typeof state !== 'undefined' && state.subStep !== '4-1') return;
   const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
   if (two) setupSubstepSimulator(two, '4-1', document.getElementById('interactive-sim-controller'));
 };
@@ -1095,18 +1106,21 @@ window.setCompassStep = function(step) {
 window.setCongruentMode = function(mode) {
   ch5SimState.congruentMode = mode;
   ch5SimState.isSnapped = false;
+  if (typeof state !== 'undefined' && state.subStep !== '4-4') return;
   const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
   if (two) setupSubstepSimulator(two, '4-4', document.getElementById('interactive-sim-controller'));
 };
 
 window.snapTriangles = function() {
   ch5SimState.isSnapped = !ch5SimState.isSnapped;
+  if (typeof state !== 'undefined' && state.subStep !== '4-4') return;
   const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
   if (two) setupSubstepSimulator(two, '4-4', document.getElementById('interactive-sim-controller'));
 };
 
 window.setMandalaStep = function(step) {
   ch5SimState.mandalaStep = step;
+  if (typeof state !== 'undefined' && state.subStep !== '5-2') return;
   const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
   if (two) setupSubstepSimulator(two, '5-2', document.getElementById('interactive-sim-controller'));
 };
