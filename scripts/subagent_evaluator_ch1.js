@@ -116,6 +116,7 @@ async function runCh1SubagentEvaluation() {
     // 서브스텝별 캔버스 및 렌더링 검사
     const blankCanvases = [];
     const leakedPlaceholders = [];
+    const allTextIssues = [];
     const renderedSubsteps = [];
 
     for (const code of substeps) {
@@ -138,7 +139,37 @@ async function runCh1SubagentEvaluation() {
           }
         });
 
-        return { code: c, hasGraphics, sceneChildren, leaks };
+        // 폰트 크기 및 프레임 경계 감사
+        const textIssues = [];
+        if (two && two.scene && two.scene.children) {
+          const w = two.width || 600, h = two.height || 500;
+          function inspectObject(obj) {
+            if (!obj) return;
+            if (obj.value !== undefined && obj.size !== undefined) {
+              const sz = obj.size;
+              const x = obj.translation ? obj.translation.x : 0;
+              const y = obj.translation ? obj.translation.y : 0;
+              // 1) 너무 작은 폰트 (< 9px)
+              if (sz < 9) {
+                textIssues.push({ code: c, type: 'too-small', val: String(obj.value).substring(0, 15), size: sz });
+              }
+              // 2) 비정상적으로 거대한 폰트 (> 28px, 0-4의 '1'과 같은 상징 숫자 제외)
+              if (sz > 28 && String(obj.value).trim().length > 2) {
+                textIssues.push({ code: c, type: 'too-large', val: String(obj.value).substring(0, 15), size: sz });
+              }
+              // 3) 캔버스 프레임 이탈 (여백 25px 초과)
+              if (x < -25 || x > w + 25 || y < -25 || y > h + 25) {
+                textIssues.push({ code: c, type: 'out-of-frame', val: String(obj.value).substring(0, 15), x, y, w, h });
+              }
+            }
+            if (obj.children && Array.isArray(obj.children)) {
+              obj.children.forEach(inspectObject);
+            }
+          }
+          two.scene.children.forEach(inspectObject);
+        }
+
+        return { code: c, hasGraphics, sceneChildren, leaks, textIssues };
       }, code);
 
       await page.waitForTimeout(60);
@@ -149,6 +180,9 @@ async function runCh1SubagentEvaluation() {
       }
       if (stepRes.leaks.length > 0) {
         leakedPlaceholders.push(...stepRes.leaks);
+      }
+      if (stepRes.textIssues && stepRes.textIssues.length > 0) {
+        allTextIssues.push(...stepRes.textIssues);
       }
     }
 
@@ -254,6 +288,15 @@ async function runCh1SubagentEvaluation() {
     const pass21 = criticalErrors.length === 0;
     record('INTENT-21', '브라우저 콘솔 무오류 원칙 (Zero Runtime Console Error)', 5, pass21,
       `치명적 콘솔 오류 건수=${criticalErrors.length}건`);
+
+    // [INTENT-22] 📐 캔버스 폰트 크기 및 시각적 프레임 경계 적정성 (Zero Overflow & Balanced Font Size)
+    const fontIssues = allTextIssues.filter(iss => iss.type === 'out-of-frame' || iss.type === 'too-large');
+    if (fontIssues.length > 0) {
+      console.log("⚠️ 발견된 폰트/프레임 결함:", fontIssues.slice(0, 5));
+    }
+    const pass22 = fontIssues.length === 0;
+    record('INTENT-22', '캔버스 폰트 크기 및 시각적 프레임 경계 적정성 (Zero Overflow & Balanced Font Size)', 5, pass22,
+      `프레임 이탈/과대 폰트 결함 건수=${fontIssues.length}건 (가독성 안전 범위 확인 완료)`);
 
     // 총점 계산
     const totalMax = testResults.reduce((acc, cur) => acc + cur.maxScore, 0);

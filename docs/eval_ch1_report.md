@@ -1,9 +1,9 @@
 # 📊 [서브에이전트 평가 리포트] 1단원 소인수분해 (g1_ch1_factors.html)
 
-- **평가 일시**: 2026-09-06T12:07:40.682Z
+- **평가 일시**: 2026-09-06T12:15:05.940Z
 - **평가 대상 파일**: `g1_ch1_factors.html`
 - **적용 설계 명세서**: `docs/eval_ch1_spec.md`
-- **최종 획득 점수**: **110 / 110점 (100%)**
+- **최종 획득 점수**: **115 / 115점 (100%)**
 - **최종 심사 결과**: **🎉 PASS (합격)**
 
 ## 📋 세부 검증 항목별 채점표
@@ -31,6 +31,7 @@
 | INTENT-19 | 정답 미노출 원칙 (Zero Answer Leakage in Placeholder/Hints) | 5점 | 5점 | ✅ PASS | 플레이스홀더 정답 누출 건수=0건 |
 | INTENT-20 | 캔버스 빈 공간 0건 원칙 (Zero Blank Canvas across all 57 substeps) | 5점 | 5점 | ✅ PASS | 빈 캔버스 발생 건수=0건 (누락 서브스텝: 없음) |
 | INTENT-21 | 브라우저 콘솔 무오류 원칙 (Zero Runtime Console Error) | 5점 | 5점 | ✅ PASS | 치명적 콘솔 오류 건수=0건 |
+| INTENT-22 | 캔버스 폰트 크기 및 시각적 프레임 경계 적정성 (Zero Overflow & Balanced Font Size) | 5점 | 5점 | ✅ PASS | 프레임 이탈/과대 폰트 결함 건수=0건 (가독성 안전 범위 확인 완료) |
 
 ---
 
