@@ -7,7 +7,7 @@ window.SUBSTEP_CONFIG = {
   // Tab 0: 0. 준비학습 (pp. 6~7) — 4개 서브스텝
   // ==========================================
   '0-1': {
-    mission: "<b>[준비 1] 약수와 배수의 뜻</b><br>교과서 6~7쪽: 12개의 정사각형 타일로 직사각형을 만들어 약수와 배수의 관계를 탐구합니다. (초등학교 복습)",
+    mission: "<b>[준비 1] 약수와 배수의 뜻</b><br>교과서 6~7쪽: 좌측 [준비학습 복습 도표]를 관찰하고 12의 약수와 배수의 관계를 확인합니다. (초등학교 복습)",
     formHtml: `
       <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
         <div style="margin-bottom:14px;">
@@ -30,7 +30,7 @@ window.SUBSTEP_CONFIG = {
     `
   },
   '0-2': {
-    mission: "<b>[준비 2] 공약수와 최대공약수</b><br>교과서 6~7쪽: 12의 약수와 18의 약수를 벤다이어그램에 배치하여 공약수와 최대공약수의 성질을 확인합니다.",
+    mission: "<b>[준비 2] 공약수와 최대공약수</b><br>교과서 6~7쪽: 좌측 [공약수 벤다이어그램 도표]를 관찰하고 12와 18의 공약수 및 최대공약수를 확인합니다. (초등학교 복습)",
     formHtml: `
       <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
         <div style="margin-bottom:14px;">
@@ -53,7 +53,7 @@ window.SUBSTEP_CONFIG = {
     `
   },
   '0-3': {
-    mission: "<b>[준비 3] 공배수와 최소공배수</b><br>교과서 6~7쪽: 4와 6의 배수를 수직선 도약 시뮬레이터로 관찰하고 최소공배수를 구합니다.",
+    mission: "<b>[준비 3] 공배수와 최소공배수</b><br>교과서 6~7쪽: 좌측 [수직선 도약 복습 도표]를 관찰하고 4와 6의 공배수 및 최소공배수를 확인합니다. (초등학교 복습)",
     formHtml: `
       <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
         <div style="margin-bottom:14px;">
@@ -77,7 +77,7 @@ window.SUBSTEP_CONFIG = {
     `
   },
   '0-4': {
-    mission: "<b>[준비 4] 자연수의 분류 기준</b><br>교과서 6~7쪽: 1부터 15까지의 자연수를 약수의 개수에 따라 분류해 봅니다.",
+    mission: "<b>[준비 4] 자연수의 분류 기준</b><br>교과서 6~7쪽: 좌측 [자연수 3분류 복습 도표]를 관찰하고 1부터 15까지의 자연수를 약수의 개수에 따라 분류해 봅니다. (초등학교 복습)",
     formHtml: `
       <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
         <div style="margin-bottom:14px;">

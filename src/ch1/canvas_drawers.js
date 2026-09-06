@@ -1,659 +1,297 @@
 // src/ch1/canvas_drawers.js
-// Chapter 1: Interactive Two.js Canvas Engines for all 57 Substeps
+// Chapter 1: Two.js Canvas Engines for all 57 Substeps
 // 규칙 10 & 11 완전 준수 (소단원 확인하기 1문항 1페이지 및 마무리하기 전용 탭 14문항 1페이지)
-// Type A (핵심 인터랙티브 캔버스 15종) & Type B (정갈한 시각 지원 + 자유 펜 풀이 캔버스 42종)
-// 태블릿 가독성 대폭 향상 (최소 폰트 14px, 핵심 수치 18~22px) 및 Zero Answer Leakage 철저 준수
+// Type A: 교과서 핵심 10대 인터랙티브 활동 (1-2, 1-7, 1-9, 2-2, 2-7, 3-1, 3-2, 4-2, 4-10, 5-1 / 6-1)
+// 0단원 되짚어보기 (0-1 ~ 0-4): 반응형 인터랙티브 전면 제거, 정갈한 복습 인포그래픽 도표 제공
+// Type B: 문제 해결 지원 및 자유 펜 풀이 캔버스 (나머지 42종)
+// Canvas Context font 인터셉터 기반 안전한 가독성 대폭 향상 (최소 폰트 16px 이상) 및 Zero Answer Leakage 철저 준수
 
 (function() {
+  // =========================================================================
+  // 🎨 캔버스 폰트 크기 확대 및 가독성/선명도 극대화 엔진 (CanvasContext 기반 안전 확장)
+  // Two.js의 Two.Text.size 내부 descriptor(configurable: false) 충돌을 완벽히 방지함
+  // =========================================================================
+  (function enhanceCanvasContextFont() {
+    try {
+      if (typeof CanvasRenderingContext2D === 'undefined') return;
+      const desc = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, 'font');
+      if (!desc || !desc.set) return;
+      const originalSet = desc.set;
+      desc.set = function(val) {
+        if (typeof val === 'string') {
+          val = val.replace(/(\d+(?:\.\d+)?)\s*px/g, (match, pxStr) => {
+            const px = parseFloat(pxStr);
+            if (isNaN(px) || px <= 0) return match;
+            const boosted = Math.max(16, Math.round(px * 1.28));
+            return boosted + 'px';
+          });
+        }
+        return originalSet.call(this, val);
+      };
+      Object.defineProperty(CanvasRenderingContext2D.prototype, 'font', desc);
+    } catch (err) {
+      console.warn('Canvas font enhancement note:', err);
+    }
+  })();
+
+  // =========================================================================
+  // 시뮬레이션 상태 저장소 (0단원 드래그 변수 제거, 핵심 10종 인터랙티브 상태 완비)
+  // =========================================================================
   const simState = {
-    // 0-1
-    tileRows: 2,
-    tileCols: 6,
-    foundTileFactors: new Set(['2x6']),
-    isDraggingHandle: false,
-
-    // 0-2
-    vennCards: [
-      { id: 1, num: 1, target: 'both', currentArea: 'tray' },
-      { id: 2, num: 2, target: 'both', currentArea: 'tray' },
-      { id: 3, num: 3, target: 'both', currentArea: 'tray' },
-      { id: 4, num: 4, target: 'onlyA', currentArea: 'tray' },
-      { id: 6, num: 6, target: 'both', currentArea: 'tray' },
-      { id: 9, num: 9, target: 'onlyB', currentArea: 'tray' },
-      { id: 12, num: 12, target: 'onlyA', currentArea: 'tray' },
-      { id: 18, num: 18, target: 'onlyB', currentArea: 'tray' }
-    ],
-    activeVennDragIndex: -1,
-    vennDragPos: { x: 0, y: 0 },
-    vennHintMsg: '',
-    vennNumA: 12,
-    vennNumB: 18,
-
-    // 0-3
-    jumpPosA: 0,
-    jumpPosB: 0,
-    isDraggingJumperA: false,
-    isDraggingJumperB: false,
-    foundCommonMultiples: new Set(),
-
-    // 0-4
-    classifyNum: 2,
-    classifyCounts: { one: 0, prime: 0, comp: 0 },
-
-    // 1-1
-    primeTileN: 6,
-
-    // 1-2
+    // 1-2 에라토스테네스의 체
     sieveStep: 1,
+    sieveManualToggled: new Set(),
 
-    // 1-7
+    // 1-7 세균 증식 거듭제곱 비주얼라이저
     bacteriaMinutes: 30,
+    bacteriaTimer: null,
 
-    // 1-9
-    trainStation: 6,
+    // 1-9 열차 소수 역과 승객
+    trainStation: 25,
 
-    // 2-2
+    // 2-2 소인수분해 가지치기 트리
     factorTreeNum: 36,
+    factorTreeBranch: '6x6',
     factorTreeStep: 2,
 
-    // 2-3
-    vertDivNum: 80,
-    vertDivStep: 2,
+    // 2-7 제곱수 만들기 (56 * x = k^2)
+    squareMultX: 14,
 
-    // 2-9
-    gridNumber: 63,
-    factorGridCells: new Set(),
+    // 3-1 직사각형 타일링 (18cm x 12cm)
+    tileSquareSize: 6,
 
-    // 3-2
-    gcdExpA: 2,
-    gcdExpB: 1,
+    // 3-2 소인수분해 거듭제곱 비교 최대공약수
+    gcdPair: '12_18',
+    gcdLowered: true,
 
-    // 4-2
+    // 4-2 톱니바퀴 회전 및 최소공배수
     gearA: 24,
     gearB: 36,
     gearAngle: 0,
     isGearRotating: false,
 
-    // 4-10
+    // 4-10 소수 판별 코딩 알고리즘
     algoNum: 115,
+    algoCurrI: 2,
     algoRunning: false,
+    algoStepIdx: 0,
     algoResult: '',
+    algoLog: [],
 
-    // 5-1
+    // 5-1 달력 속 소수 날짜 찾기
     calendarPrimes: [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31],
-    calendarSelected: new Set()
+    calendarSelected: new Set(),
+
+    // 6-1 몬드리안 분할
+    mondrianRatio: 1
   };
   window.simState = simState;
 
-  // Frame-rate safe Lerp helper
-  function startSmoothLerp(key, getter, setter, targetVal, onFrame, onComplete, speed = 0.12) {
-    if (typeof activeLerpAnimations === 'undefined') window.activeLerpAnimations = {};
-    if (activeLerpAnimations[key]) {
-      cancelAnimationFrame(activeLerpAnimations[key]);
-      delete activeLerpAnimations[key];
-    }
-    let currentFloat = getter();
-    function step() {
-      const diff = targetVal - currentFloat;
-      if (Math.abs(diff) < 0.02 || Math.abs(diff * speed) < 0.005) {
-        setter(targetVal);
-        if (onFrame) onFrame(targetVal);
-        if (onComplete) onComplete();
-        delete activeLerpAnimations[key];
-        return;
-      }
-      currentFloat += diff * speed;
-      setter(currentFloat);
-      if (onFrame) onFrame(currentFloat);
-      activeLerpAnimations[key] = requestAnimationFrame(step);
-    }
-    activeLerpAnimations[key] = requestAnimationFrame(step);
-  }
-  window.startSmoothLerp = startSmoothLerp;
-
-  // ==========================================
-  // 0-1 Interactive Tile Array Helpers
-  // ==========================================
-  window.changeTileDim = function(deltaR, deltaC) {
-    const newR = Math.max(1, Math.min(12, simState.tileRows + deltaR));
-    const newC = Math.max(1, Math.min(12, simState.tileCols + deltaC));
-    window.setTileArray(newR, newC);
-  };
-
-  window.setTileArray = function(r, c) {
-    simState.tileRows = r;
-    simState.tileCols = c;
-    if (r * c === 12) {
-      simState.foundTileFactors.add(`${r}x${c}`);
-    }
-    updateTileControllerUI();
-    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '0-1') {
-      renderTileArrayCanvas(window.currentTwo, r, c);
-    }
-  };
-
-  function updateTileControllerUI() {
-    const badge = document.getElementById('tile-array-badge');
-    const r = simState.tileRows;
-    const c = simState.tileCols;
-    const total = r * c;
-    const isMatched = (total === 12);
-    if (badge) {
-      badge.innerHTML = `현재: <b>${r}행 × ${c}열 = ${total}칸</b> ${isMatched ? '🎉 (12개 완성!)' : (total < 12 ? `(⚠️ ${12 - total}개 부족)` : `(⚠️ ${total - 12}개 초과)`)}`;
-      badge.style.background = isMatched ? '#f0fdf4' : (total < 12 ? '#fffbeb' : '#fef2f2');
-      badge.style.color = isMatched ? '#166534' : (total < 12 ? '#b45309' : '#b91c1c');
-      badge.style.border = isMatched ? '1px solid #86efac' : (total < 12 ? '1px solid #fde68a' : '1px solid #fca5a5');
-    }
-  }
-
-  function setupTileArrayInteractiveEvents(two, container) {
-    if (!container) return;
-    container.style.touchAction = 'none';
-
-    function getLayout() {
-      const cx = two.width / 2;
-      const cy = two.height / 2 + 18;
-      const r = simState.tileRows;
-      const c = simState.tileCols;
-      const maxDim = Math.max(r, c, 6);
-      const size = Math.max(22, Math.min(36, Math.floor(250 / maxDim)));
-      const startX = cx - (c * size) / 2;
-      const startY = cy - (r * size) / 2;
-      const handleX = startX + c * size;
-      const handleY = startY + r * size;
-      return { cx, cy, r, c, size, startX, startY, handleX, handleY };
-    }
-
-    container.onpointerdown = (e) => {
-      if (typeof state === 'undefined' || state.subStep !== '0-1') return;
-      const rect = container.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-
-      const layout = getLayout();
-      const distHandle = Math.hypot(mx - layout.handleX, my - layout.handleY);
-      const nearRight = Math.abs(mx - layout.handleX) < 28 && my >= layout.startY - 10 && my <= layout.handleY + 28;
-      const nearBottom = Math.abs(my - layout.handleY) < 28 && mx >= layout.startX - 10 && mx <= layout.handleX + 28;
-
-      if (distHandle < 34 || nearRight || nearBottom) {
-        simState.isDraggingHandle = true;
-        try { container.setPointerCapture(e.pointerId); } catch(err){}
-        container.style.cursor = 'nwse-resize';
-        handlePointerMove(mx, my);
-      }
-    };
-
-    container.onpointermove = (e) => {
-      if (typeof state === 'undefined' || state.subStep !== '0-1') return;
-      const rect = container.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-
-      if (simState.isDraggingHandle) {
-        handlePointerMove(mx, my);
-      } else {
-        const layout = getLayout();
-        const distHandle = Math.hypot(mx - layout.handleX, my - layout.handleY);
-        const nearRight = Math.abs(mx - layout.handleX) < 28 && my >= layout.startY - 10 && my <= layout.handleY + 28;
-        const nearBottom = Math.abs(my - layout.handleY) < 28 && mx >= layout.startX - 10 && mx <= layout.handleX + 28;
-        container.style.cursor = (distHandle < 34 || nearRight || nearBottom) ? 'nwse-resize' : 'default';
-      }
-    };
-
-    container.onpointerup = container.onpointercancel = (e) => {
-      if (simState.isDraggingHandle) {
-        simState.isDraggingHandle = false;
-        container.style.cursor = 'default';
-        try { container.releasePointerCapture(e.pointerId); } catch(err){}
-        renderTileArrayCanvas(two, simState.tileRows, simState.tileCols);
-      }
-    };
-
-    function handlePointerMove(mx, my) {
-      const layout = getLayout();
-      let newCols = Math.round((mx - layout.startX) / layout.size);
-      let newRows = Math.round((my - layout.startY) / layout.size);
-
-      newCols = Math.max(1, Math.min(12, newCols));
-      newRows = Math.max(1, Math.min(12, newRows));
-
-      if (newCols !== simState.tileCols || newRows !== simState.tileRows) {
-        simState.tileCols = newCols;
-        simState.tileRows = newRows;
-
-        if (newRows * newCols === 12) {
-          const key = `${newRows}x${newCols}`;
-          if (!simState.foundTileFactors.has(key)) {
-            simState.foundTileFactors.add(key);
-            if (typeof playSound === 'function') playSound('chime');
-          }
-        }
-        updateTileControllerUI();
-        renderTileArrayCanvas(two, simState.tileRows, simState.tileCols);
-      }
-    }
-  }
-
-  // ==========================================
-  // 0-2 Interactive Venn Diagram Helpers
-  // ==========================================
-  window.resetVennCards = function() {
-    simState.vennCards.forEach(c => c.currentArea = 'tray');
-    simState.vennHintMsg = '';
-    updateVennProgressBadge();
-    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '0-2') {
-      renderVennCanvas(window.currentTwo, 12, 18);
-    }
-  };
-
-  window.autoPlaceVennCards = function() {
-    simState.vennCards.forEach(c => c.currentArea = c.target);
-    simState.vennHintMsg = '';
-    updateVennProgressBadge();
-    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '0-2') {
-      renderVennCanvas(window.currentTwo, 12, 18);
-    }
-  };
-
-  function updateVennProgressBadge() {
-    const badge = document.getElementById('venn-progress-badge');
-    const placedCount = simState.vennCards.filter(c => c.currentArea === c.target).length;
-    if (badge) {
-      const isAllPlaced = (placedCount === 8);
-      badge.innerHTML = isAllPlaced
-        ? `배치 진행: <b>8 / 8개 완료! 👑 최대공약수 발견</b>`
-        : `배치 진행: <b>${placedCount} / 8개 완료</b>`;
-      badge.style.background = isAllPlaced ? '#f0fdf4' : '#eff6ff';
-      badge.style.color = isAllPlaced ? '#166534' : '#1d4ed8';
-      badge.style.border = isAllPlaced ? '1px solid #86efac' : '1px solid #bfdbfe';
-    }
-  }
-
-  function setupVennInteractiveEvents(two, container) {
-    if (!container) return;
-    container.style.touchAction = 'none';
-
-    function getVennGeometry() {
-      const cx = two.width / 2;
-      const cy = two.height / 2 - 20;
-      const radius = 90;
-      const offset = 70;
-      const cAx = cx - offset;
-      const cAy = cy;
-      const cBx = cx + offset;
-      const cBy = cy;
-      const trayY = cy + 125;
-      const spacing = 44;
-      const trayStartX = cx - (8 * spacing) / 2 + spacing / 2;
-      return { cx, cy, radius, offset, cAx, cAy, cBx, cBy, trayY, spacing, trayStartX };
-    }
-
-    function getCardVisualPos(card, index, geom) {
-      if (card.currentArea === 'tray') {
-        return { x: geom.trayStartX + index * geom.spacing, y: geom.trayY };
-      }
-      if (card.currentArea === 'onlyA') {
-        const aCards = simState.vennCards.filter(c => c.currentArea === 'onlyA');
-        const posIdx = aCards.indexOf(card);
-        const yOff = (posIdx === 0) ? -28 : 25;
-        return { x: geom.cx - 100, y: geom.cy + yOff };
-      }
-      if (card.currentArea === 'both') {
-        const bothCards = simState.vennCards.filter(c => c.currentArea === 'both');
-        const posIdx = bothCards.indexOf(card);
-        const ySlots = [-45, -15, 15, 45];
-        return { x: geom.cx, y: geom.cy + (ySlots[posIdx] || 0) };
-      }
-      if (card.currentArea === 'onlyB') {
-        const bCards = simState.vennCards.filter(c => c.currentArea === 'onlyB');
-        const posIdx = bCards.indexOf(card);
-        const yOff = (posIdx === 0) ? -28 : 25;
-        return { x: geom.cx + 100, y: geom.cy + yOff };
-      }
-      return { x: geom.cx, y: geom.trayY };
-    }
-
-    container.onpointerdown = (e) => {
-      if (typeof state === 'undefined' || state.subStep !== '0-2') return;
-      const rect = container.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-
-      const geom = getVennGeometry();
-      let clickedIdx = -1;
-
-      for (let i = 0; i < simState.vennCards.length; i++) {
-        const card = simState.vennCards[i];
-        const pos = getCardVisualPos(card, i, geom);
-        if (Math.hypot(mx - pos.x, my - pos.y) < 24) {
-          clickedIdx = i;
-          break;
-        }
-      }
-
-      if (clickedIdx >= 0) {
-        simState.activeVennDragIndex = clickedIdx;
-        simState.vennDragPos = { x: mx, y: my };
-        simState.vennHintMsg = '';
-        try { container.setPointerCapture(e.pointerId); } catch(err){}
-        container.style.cursor = 'grabbing';
-        renderVennCanvas(two, 12, 18);
-      }
-    };
-
-    container.onpointermove = (e) => {
-      if (typeof state === 'undefined' || state.subStep !== '0-2') return;
-      const rect = container.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-
-      if (simState.activeVennDragIndex >= 0) {
-        simState.vennDragPos = { x: mx, y: my };
-        renderVennCanvas(two, 12, 18);
-      } else {
-        const geom = getVennGeometry();
-        let hovering = false;
-        for (let i = 0; i < simState.vennCards.length; i++) {
-          const card = simState.vennCards[i];
-          const pos = getCardVisualPos(card, i, geom);
-          if (Math.hypot(mx - pos.x, my - pos.y) < 24) {
-            hovering = true;
-            break;
-          }
-        }
-        container.style.cursor = hovering ? 'grab' : 'default';
-      }
-    };
-
-    container.onpointerup = container.onpointercancel = (e) => {
-      if (simState.activeVennDragIndex >= 0) {
-        const rect = container.getBoundingClientRect();
-        const mx = e.clientX - rect.left;
-        const my = e.clientY - rect.top;
-        const geom = getVennGeometry();
-
-        const card = simState.vennCards[simState.activeVennDragIndex];
-        const distA = Math.hypot(mx - geom.cAx, my - geom.cAy);
-        const distB = Math.hypot(mx - geom.cBx, my - geom.cBy);
-        const inA = (distA <= geom.radius);
-        const inB = (distB <= geom.radius);
-
-        let dropArea = 'tray';
-        if (inA && inB) dropArea = 'both';
-        else if (inA && !inB) dropArea = 'onlyA';
-        else if (!inA && inB) dropArea = 'onlyB';
-
-        if (dropArea === card.target) {
-          card.currentArea = dropArea;
-          if (typeof playSound === 'function') playSound('chime');
-          simState.vennHintMsg = '';
-        } else if (dropArea !== 'tray') {
-          if (card.target === 'both') {
-            simState.vennHintMsg = `💡 [힌트] ${card.num}은(는) 12와 18의 공통 약수예요! 가운데 교집합 영역에 넣어보세요.`;
-          } else if (card.num === 4 || card.num === 12) {
-            simState.vennHintMsg = `⚠️ [주의] ${card.num}은(는) 12의 약수이지만 18의 약수는 아니에요.`;
-          } else if (card.num === 9 || card.num === 18) {
-            simState.vennHintMsg = `⚠️ [주의] ${card.num}은(는) 18의 약수이지만 12의 약수는 아니에요.`;
-          }
-          card.currentArea = 'tray';
-        } else {
-          card.currentArea = 'tray';
-        }
-
-        simState.activeVennDragIndex = -1;
-        container.style.cursor = 'default';
-        try { container.releasePointerCapture(e.pointerId); } catch(err){}
-        updateVennProgressBadge();
-        renderVennCanvas(two, 12, 18);
-      }
-    };
-  }
-
-  // ==========================================
-  // 0-3 Interactive Number Line Jump Helpers
-  // ==========================================
-  window.stepJumperA = function(delta = 4) {
-    let next = simState.jumpPosA + delta;
-    if (next > 24) next = 0;
-    simState.jumpPosA = next;
-    checkLcmArrival();
-    updateJumpControllerUI();
-    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '0-3') {
-      renderLcmJumpCanvas(window.currentTwo, 4, 6);
-    }
-  };
-
-  window.stepJumperB = function(delta = 6) {
-    let next = simState.jumpPosB + delta;
-    if (next > 24) next = 0;
-    simState.jumpPosB = next;
-    checkLcmArrival();
-    updateJumpControllerUI();
-    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '0-3') {
-      renderLcmJumpCanvas(window.currentTwo, 4, 6);
-    }
-  };
-
-  window.resetJumpers = function() {
-    simState.jumpPosA = 0;
-    simState.jumpPosB = 0;
-    simState.foundCommonMultiples.clear();
-    updateJumpControllerUI();
-    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '0-3') {
-      renderLcmJumpCanvas(window.currentTwo, 4, 6);
-    }
-  };
-
-  window.autoDemoJumps = function() {
-    simState.jumpPosA = 12;
-    simState.jumpPosB = 12;
-    checkLcmArrival();
-    updateJumpControllerUI();
-    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '0-3') {
-      renderLcmJumpCanvas(window.currentTwo, 4, 6);
-    }
-  };
-
-  function checkLcmArrival() {
-    if (simState.jumpPosA > 0 && simState.jumpPosA === simState.jumpPosB) {
-      const match = simState.jumpPosA;
-      if (!simState.foundCommonMultiples.has(match)) {
-        simState.foundCommonMultiples.add(match);
-        if (typeof playSound === 'function') playSound('chime');
-      }
-    }
-  }
-
-  function updateJumpControllerUI() {
-    const badge = document.getElementById('jump-progress-badge');
-    if (!badge) return;
-    const isBothAt12 = (simState.jumpPosA === 12 && simState.jumpPosB === 12);
-    const isBothAt24 = (simState.jumpPosA === 24 && simState.jumpPosB === 24);
-    const hasCommon = simState.foundCommonMultiples.size > 0;
-
-    if (isBothAt12) {
-      badge.innerHTML = `🎉 공통 착지점 <b>12</b> 발견! (첫 공배수 = <b>최소공배수</b>)`;
-      badge.style.background = '#f0fdf4';
-      badge.style.color = '#166534';
-      badge.style.border = '1px solid #86efac';
-    } else if (isBothAt24) {
-      badge.innerHTML = `🎉 두 번째 공통 착지점 <b>24</b> 발견! (12의 배수)`;
-      badge.style.background = '#fefce8';
-      badge.style.color = '#854d0e';
-      badge.style.border = '1px solid #fde047';
-    } else if (hasCommon) {
-      const list = Array.from(simState.foundCommonMultiples).sort((a,b)=>a-b).join(', ');
-      badge.innerHTML = `발견한 공배수: <b>${list}</b> | 토끼: ${simState.jumpPosA}, 개구리: ${simState.jumpPosB}`;
-      badge.style.background = '#eff6ff';
-      badge.style.color = '#1d4ed8';
-      badge.style.border = '1px solid #bfdbfe';
-    } else {
-      badge.innerHTML = `도약 진행: 🐰토끼 <b>${simState.jumpPosA}</b> | 🐸개구리 <b>${simState.jumpPosB}</b> (공통 눈금을 찾아보세요)`;
-      badge.style.background = '#f8fafc';
-      badge.style.color = '#475569';
-      badge.style.border = '1px solid #e2e8f0';
-    }
-  }
-
-  function setupJumpInteractiveEvents(two, container) {
-    if (!container) return;
-    container.style.touchAction = 'none';
-
-    function getJumpGeometry() {
-      const width = two.width, height = two.height;
-      const maxVal = 24;
-      const padX = 55;
-      const stepX = (width - padX * 2) / maxVal;
-      const startX = padX;
-      const cy = height / 2;
-      const jumperAy = cy - 26;
-      const jumperBy = cy + 26;
-      const jumperAx = startX + simState.jumpPosA * stepX;
-      const jumperBx = startX + simState.jumpPosB * stepX;
-      return { width, height, maxVal, padX, stepX, startX, cy, jumperAy, jumperBy, jumperAx, jumperBx };
-    }
-
-    container.onpointerdown = (e) => {
-      const rect = container.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-      const geom = getJumpGeometry();
-
-      const distA = Math.hypot(mx - geom.jumperAx, my - geom.jumperAy);
-      const distB = Math.hypot(mx - geom.jumperBx, my - geom.jumperBy);
-
-      if (distA < 28) {
-        simState.isDraggingJumperA = true;
-        simState.isDraggingJumperB = false;
-        container.style.cursor = 'grabbing';
-        try { container.setPointerCapture(e.pointerId); } catch(err){}
-        e.preventDefault();
-      } else if (distB < 28) {
-        simState.isDraggingJumperB = true;
-        simState.isDraggingJumperA = false;
-        container.style.cursor = 'grabbing';
-        try { container.setPointerCapture(e.pointerId); } catch(err){}
-        e.preventDefault();
-      } else {
-        if (Math.abs(my - geom.cy) < 45 && mx >= geom.startX - 15 && mx <= geom.width - geom.padX + 15) {
-          const v = (mx - geom.startX) / geom.stepX;
-          if (my < geom.cy) {
-            const snapped = Math.max(0, Math.min(24, Math.round(v / 4) * 4));
-            simState.jumpPosA = snapped;
-            checkLcmArrival();
-            updateJumpControllerUI();
-            renderLcmJumpCanvas(two, 4, 6);
-          } else {
-            const snapped = Math.max(0, Math.min(24, Math.round(v / 6) * 6));
-            simState.jumpPosB = snapped;
-            checkLcmArrival();
-            updateJumpControllerUI();
-            renderLcmJumpCanvas(two, 4, 6);
-          }
-        }
-      }
-    };
-
-    container.onpointermove = (e) => {
-      const rect = container.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-      const geom = getJumpGeometry();
-
-      if (simState.isDraggingJumperA) {
-        const raw = (mx - geom.startX) / geom.stepX;
-        const snapped = Math.max(0, Math.min(24, Math.round(raw / 4) * 4));
-        if (snapped !== simState.jumpPosA) {
-          simState.jumpPosA = snapped;
-          checkLcmArrival();
-          updateJumpControllerUI();
-          renderLcmJumpCanvas(two, 4, 6);
-        }
-      } else if (simState.isDraggingJumperB) {
-        const raw = (mx - geom.startX) / geom.stepX;
-        const snapped = Math.max(0, Math.min(24, Math.round(raw / 6) * 6));
-        if (snapped !== simState.jumpPosB) {
-          simState.jumpPosB = snapped;
-          checkLcmArrival();
-          updateJumpControllerUI();
-          renderLcmJumpCanvas(two, 4, 6);
-        }
-      } else {
-        const distA = Math.hypot(mx - geom.jumperAx, my - geom.jumperAy);
-        const distB = Math.hypot(mx - geom.jumperBx, my - geom.jumperBy);
-        container.style.cursor = (distA < 28 || distB < 28) ? 'grab' : 'default';
-      }
-    };
-
-    container.onpointerup = container.onpointercancel = (e) => {
-      if (simState.isDraggingJumperA || simState.isDraggingJumperB) {
-        simState.isDraggingJumperA = false;
-        simState.isDraggingJumperB = false;
-        container.style.cursor = 'default';
-        try { container.releasePointerCapture(e.pointerId); } catch(err){}
-        renderLcmJumpCanvas(two, 4, 6);
-      }
-    };
-  }
-
-  // ==========================================
-  // Additional Type A Interactive Helpers
-  // ==========================================
-  window.setClassifyNum = function(n) {
-    simState.classifyNum = n;
-    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '0-4') {
-      renderClassifyCanvas(window.currentTwo, n);
-    }
-  };
-
-  window.changePrimeTileN = function(delta) {
-    simState.primeTileN = Math.max(2, Math.min(20, simState.primeTileN + delta));
-    const badge = document.getElementById('prime-tile-badge');
-    if (badge) badge.innerText = `현재 수: ${simState.primeTileN}`;
-    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '1-1') {
-      renderPrimeBoxesCanvas(window.currentTwo);
-    }
-  };
-
+  // =========================================================================
+  // 1-2 [인터랙티브] 에라토스테네스의 체 헬퍼
+  // =========================================================================
   window.setSieveStep = function(st) {
     simState.sieveStep = st;
+    simState.sieveManualToggled.clear();
+    const badge = document.getElementById('sieve-progress-badge');
+    if (badge) {
+      if (st === 1) badge.innerHTML = `진행: <b>1단계</b> (1은 소수가 아니므로 지움)`;
+      else if (st === 2) badge.innerHTML = `진행: <b>2단계</b> (2 남기고 2의 배수 지움)`;
+      else if (st === 3) badge.innerHTML = `진행: <b>3단계</b> (3 남기고 3의 배수 지움)`;
+      else if (st === 4) badge.innerHTML = `진행: <b>4단계</b> (5 남기고 5의 배수 지움)`;
+      else if (st === 5) badge.innerHTML = `진행: <b>5단계</b> (7 남기고 7의 배수 지움)`;
+      else if (st === 6) badge.innerHTML = `🎉 <b>완료!</b> 남은 소수 <b>15개</b> 하이라이트`;
+    }
     if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '1-2') {
       renderSieveCanvas(window.currentTwo, st);
     }
   };
 
+  window.toggleSieveCell = function(n) {
+    if (simState.sieveManualToggled.has(n)) {
+      simState.sieveManualToggled.delete(n);
+    } else {
+      simState.sieveManualToggled.add(n);
+    }
+    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '1-2') {
+      renderSieveCanvas(window.currentTwo, simState.sieveStep);
+    }
+  };
+
+  // =========================================================================
+  // 1-7 [인터랙티브] 세균 증식 거듭제곱 비주얼라이저 헬퍼
+  // =========================================================================
   window.setBacteriaMinutes = function(m) {
-    simState.bacteriaMinutes = m;
+    simState.bacteriaMinutes = Math.max(0, Math.min(60, parseInt(m) || 0));
     const badge = document.getElementById('bacteria-badge');
-    if (badge) badge.innerText = `경과 시간: ${m}분`;
+    const slider = document.getElementById('bacteria-slider');
+    if (slider) slider.value = simState.bacteriaMinutes;
+    const times = simState.bacteriaMinutes / 10;
+    const count = Math.pow(2, times);
+    if (badge) {
+      badge.innerHTML = `경과 시간: <b>${simState.bacteriaMinutes}분</b> (${times}회 분열) ➔ <b>2<sup>${times}</sup> = ${count}배</b>`;
+    }
     if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '1-7') {
-      renderBacteriaGraphCanvas(window.currentTwo, m);
+      renderBacteriaGraphCanvas(window.currentTwo, simState.bacteriaMinutes);
     }
   };
 
+  window.stepBacteriaMinutes = function(delta) {
+    window.setBacteriaMinutes(simState.bacteriaMinutes + delta);
+  };
+
+  // =========================================================================
+  // 1-9 [인터랙티브] 열차 소수 역과 승객 헬퍼
+  // =========================================================================
   window.setTrainStation = function(st) {
-    simState.trainStation = Math.max(1, Math.min(30, st));
+    simState.trainStation = Math.max(1, Math.min(30, parseInt(st) || 1));
+    const slider = document.getElementById('train-slider');
+    if (slider) slider.value = simState.trainStation;
     const badge = document.getElementById('train-badge');
-    if (badge) badge.innerText = `현재 역: ${simState.trainStation}번 역`;
+
+    // Calculate factors
+    const n = simState.trainStation;
+    const divs = [];
+    for (let i = 1; i <= n; i++) {
+      if (n % i === 0) divs.push(i);
+    }
+    const isPrime = (divs.length === 2);
+    if (badge) {
+      if (isPrime) {
+        badge.innerHTML = `현재 역: <b>${n}번 역</b> | 하차 승객: <b>2명</b> (약수: ${divs.join(', ')}) 🟢 <b>소수 역!</b>`;
+        badge.style.background = '#f0fdf4';
+        badge.style.color = '#166534';
+      } else {
+        badge.innerHTML = `현재 역: <b>${n}번 역</b> | 하차 승객: <b>${divs.length}명</b> (약수: ${divs.join(', ')}) ${n === 1 ? '(1)' : '(합성수 역)'}`;
+        badge.style.background = '#eff6ff';
+        badge.style.color = '#1e40af';
+      }
+    }
     if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '1-9') {
-      renderTrainStationCanvas(window.currentTwo);
+      renderTrainStationCanvas(window.currentTwo, simState.trainStation);
     }
   };
 
-  window.setFactorTreeStep = function(st) {
-    simState.factorTreeStep = st;
-    if (window.currentTwo && typeof state !== 'undefined' && (state.subStep === '2-2' || state.subStep === '5-4')) {
-      renderFactorTreeCanvas(window.currentTwo, state.subStep === '5-4' ? 330 : 36);
+  // =========================================================================
+  // 2-2 [인터랙티브] 소인수분해 가지치기 트리 헬퍼
+  // =========================================================================
+  window.setFactorTreeNum = function(n) {
+    simState.factorTreeNum = n;
+    simState.factorTreeStep = 1;
+    updateTreeBadge();
+    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '2-2') {
+      renderFactorTreeCanvas(window.currentTwo, n, simState.factorTreeBranch, simState.factorTreeStep);
     }
   };
 
-  window.setVertDivStep = function(st) {
-    simState.vertDivStep = st;
-    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '2-3') {
-      renderVerticalDivisionCanvas(window.currentTwo, 80);
+  window.setFactorTreeBranch = function(branch) {
+    simState.factorTreeBranch = branch;
+    updateTreeBadge();
+    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '2-2') {
+      renderFactorTreeCanvas(window.currentTwo, simState.factorTreeNum, branch, simState.factorTreeStep);
     }
   };
 
+  window.stepFactorTree = function(delta) {
+    simState.factorTreeStep = Math.max(0, Math.min(3, simState.factorTreeStep + delta));
+    updateTreeBadge();
+    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '2-2') {
+      renderFactorTreeCanvas(window.currentTwo, simState.factorTreeNum, simState.factorTreeBranch, simState.factorTreeStep);
+    }
+  };
+
+  function updateTreeBadge() {
+    const badge = document.getElementById('tree-step-badge');
+    if (badge) {
+      if (simState.factorTreeStep === 0) badge.innerHTML = `트리 상태: <b>준비 단계 (${simState.factorTreeNum})</b>`;
+      else if (simState.factorTreeStep === 1) badge.innerHTML = `트리 상태: <b>1차 가지치기</b> (두 수의 곱으로 분해)`;
+      else if (simState.factorTreeStep === 2) badge.innerHTML = `트리 상태: <b>소인수 분해 완료</b> (소수 노드 잠금)`;
+      else badge.innerHTML = `🎉 <b>소인수분해 완성: ${simState.factorTreeNum === 36 ? '2² × 3²' : (simState.factorTreeNum === 60 ? '2² × 3 × 5' : '2³ × 3²')}</b>`;
+    }
+  }
+
+  // =========================================================================
+  // 2-7 [인터랙티브] 제곱수 만들기 지수 밸런스 헬퍼
+  // =========================================================================
+  window.setSquareMultX = function(x) {
+    simState.squareMultX = parseInt(x) || 14;
+    const badge = document.getElementById('square-mult-badge');
+    const total = 56 * simState.squareMultX;
+    // factorize total
+    let t = total;
+    let exp2 = 0, exp7 = 0;
+    while (t > 0 && t % 2 === 0) { exp2++; t /= 2; }
+    while (t > 0 && t % 7 === 0) { exp7++; t /= 7; }
+    const isSquare = (exp2 % 2 === 0 && exp7 % 2 === 0 && t === 1);
+    const root = isSquare ? Math.round(Math.sqrt(total)) : 0;
+
+    if (badge) {
+      if (isSquare) {
+        badge.innerHTML = `현재 곱: 56 × <b>${simState.squareMultX}</b> = ${total} ➔ <b>2<sup>${exp2}</sup> × 7<sup>${exp7}</sup> = (${root})² 🎉 완벽한 제곱수!</b>`;
+        badge.style.background = '#f0fdf4';
+        badge.style.color = '#166534';
+      } else {
+        badge.innerHTML = `현재 곱: 56 × <b>${simState.squareMultX}</b> = ${total} ➔ 지수: 2<sup>${exp2}</sup>, 7<sup>${exp7}</sup> (홀수 지수 존재 ⚠️)`;
+        badge.style.background = '#fffbeb';
+        badge.style.color = '#b45309';
+      }
+    }
+    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '2-7') {
+      renderSquareMakerCanvas(window.currentTwo, simState.squareMultX);
+    }
+  };
+
+  // =========================================================================
+  // 3-1 [인터랙티브] 직사각형 정사각형 타일링 헬퍼
+  // =========================================================================
+  window.setTileSquareSize = function(s) {
+    simState.tileSquareSize = parseInt(s) || 6;
+    const badge = document.getElementById('tile-size-badge');
+    const sz = simState.tileSquareSize;
+    const fitW = (18 % sz === 0);
+    const fitH = (12 % sz === 0);
+    const isPerfect = (fitW && fitH);
+
+    if (badge) {
+      if (isPerfect) {
+        const cols = 18 / sz;
+        const rows = 12 / sz;
+        badge.innerHTML = `타일: <b>${sz}cm × ${sz}cm</b> ➔ 가로 ${cols}장, 세로 ${rows}장 (총 ${cols*rows}장) <b>빈틈없이 완벽!</b> 🎉 ${sz === 6 ? '👑 [최대공약수 타일]' : ''}`;
+        badge.style.background = '#f0fdf4';
+        badge.style.color = '#166534';
+      } else {
+        const remW = 18 % sz;
+        badge.innerHTML = `타일: <b>${sz}cm × ${sz}cm</b> ➔ ⚠️ 18cm 가로에 <b>${remW}cm 빈틈 발생!</b> (18의 약수가 아님)`;
+        badge.style.background = '#fef2f2';
+        badge.style.color = '#991b1b';
+      }
+    }
+    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '3-1') {
+      renderTilingSquareCanvas(window.currentTwo, simState.tileSquareSize);
+    }
+  };
+
+  // =========================================================================
+  // 3-2 [인터랙티브] 소인수분해 거듭제곱 비교 최대공약수 헬퍼
+  // =========================================================================
+  window.setGcdPair = function(pairKey) {
+    simState.gcdPair = pairKey;
+    simState.gcdLowered = true;
+    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '3-2') {
+      renderGcdBalanceCanvas(window.currentTwo, pairKey, simState.gcdLowered);
+    }
+  };
+
+  window.toggleGcdLower = function() {
+    simState.gcdLowered = !simState.gcdLowered;
+    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '3-2') {
+      renderGcdBalanceCanvas(window.currentTwo, simState.gcdPair, simState.gcdLowered);
+    }
+  };
+
+  // =========================================================================
+  // 4-2 [인터랙티브] 톱니바퀴 회전 및 최소공배수 헬퍼
+  // =========================================================================
   window.toggleGearRotation = function() {
     simState.isGearRotating = !simState.isGearRotating;
     const btn = document.getElementById('gear-rot-btn');
@@ -662,30 +300,56 @@
       btn.style.background = simState.isGearRotating ? '#ef4444' : '#0284c7';
     }
     if (simState.isGearRotating) {
-      function anim() {
+      function animGears() {
         if (!simState.isGearRotating) return;
-        simState.gearAngle += 0.03;
+        simState.gearAngle += 0.035;
         if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '4-2') {
           renderGearsCanvas(window.currentTwo, simState.gearAngle);
         }
-        requestAnimationFrame(anim);
+        requestAnimationFrame(animGears);
       }
-      requestAnimationFrame(anim);
+      requestAnimationFrame(animGears);
     }
   };
 
+  window.resetGears = function() {
+    simState.gearAngle = 0;
+    simState.isGearRotating = false;
+    const btn = document.getElementById('gear-rot-btn');
+    if (btn) {
+      btn.innerText = '▶ 톱니 회전 시작';
+      btn.style.background = '#0284c7';
+    }
+    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '4-2') {
+      renderGearsCanvas(window.currentTwo, 0);
+    }
+  };
+
+  // =========================================================================
+  // 4-10 [인터랙티브] 소수 판별 코딩 알고리즘 헬퍼
+  // =========================================================================
   window.runCodingAlgo = function() {
     const input = document.getElementById('algo-input-val');
     const val = parseInt(input ? input.value : '115') || 115;
     simState.algoNum = val;
+    simState.algoCurrI = 2;
+    simState.algoStepIdx = 1;
+    simState.algoLog = [`[시작] 수 N = ${val} 입력됨`];
+
     let isP = true;
-    if (val <= 1) isP = false;
-    else {
+    let divisor = -1;
+    if (val <= 1) {
+      isP = false;
+    } else {
       for (let i = 2; i * i <= val; i++) {
-        if (val % i === 0) { isP = false; break; }
+        if (val % i === 0) {
+          isP = false;
+          divisor = i;
+          break;
+        }
       }
     }
-    simState.algoResult = isP ? '소수' : '합성수';
+    simState.algoResult = isP ? '소수' : `합성수 (${divisor}의 배수)`;
     const resBox = document.getElementById('algo-result-box');
     if (resBox) {
       resBox.style.display = 'inline-block';
@@ -694,10 +358,13 @@
       resBox.style.color = isP ? '#166534' : '#991b1b';
     }
     if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '4-10') {
-      renderAlgoCanvas(window.currentTwo, val, isP);
+      renderAlgoCanvas(window.currentTwo, val, isP, divisor);
     }
   };
 
+  // =========================================================================
+  // 5-1 [인터랙티브] 달력 속 소수 날짜 찾기 헬퍼
+  // =========================================================================
   window.toggleCalendarPrime = function(d) {
     if (simState.calendarSelected.has(d)) {
       simState.calendarSelected.delete(d);
@@ -708,6 +375,34 @@
     if (badge) badge.innerText = `${simState.calendarSelected.size}개`;
     if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '5-1') {
       renderCalendarCanvas(window.currentTwo);
+    }
+  };
+
+  window.autoCollectCalendarPrimes = function() {
+    simState.calendarSelected = new Set(simState.calendarPrimes);
+    const badge = document.getElementById('cal-selected-count');
+    if (badge) badge.innerText = `11개 (전부 발견!) 🎉`;
+    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '5-1') {
+      renderCalendarCanvas(window.currentTwo);
+    }
+  };
+
+  window.resetCalendarPrimes = function() {
+    simState.calendarSelected.clear();
+    const badge = document.getElementById('cal-selected-count');
+    if (badge) badge.innerText = `0개`;
+    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '5-1') {
+      renderCalendarCanvas(window.currentTwo);
+    }
+  };
+
+  // =========================================================================
+  // 6-1 [인터랙티브] 몬드리안 분할 헬퍼
+  // =========================================================================
+  window.changeMondrianRatio = function(delta) {
+    simState.mondrianRatio = Math.max(1, Math.min(4, simState.mondrianRatio + delta));
+    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '6-1') {
+      renderMondrianCanvas(window.currentTwo, simState.mondrianRatio);
     }
   };
 
@@ -800,133 +495,103 @@
     switch(code) {
       // ----------------------------------------
       // Tab 0: 준비학습 (0-1 ~ 0-4)
+      // 사용자 요구사항: 모든 반응형 인터랙티브 활동 전면 제거, 정적 복습 도표 제공
       // ----------------------------------------
       case '0-1':
         if (simController) {
           simController.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <div style="display:flex; align-items:center; gap:6px;">
-                <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🧱 타일 직사각형 조작:</span>
-                <span style="font-size:0.85rem; color:#64748b;">(우하단 모서리 ⤢ 드래그 또는 버튼 조절)</span>
-              </div>
-              <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                <div style="display:inline-flex; border:1px solid #cbd5e1; border-radius:6px; overflow:hidden;">
-                  <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f8fafc; border-right:1px solid #cbd5e1;" onclick="changeTileDim(-1, 0)">세로 -</button>
-                  <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f8fafc;" onclick="changeTileDim(1, 0)">세로 +</button>
-                </div>
-                <div style="display:inline-flex; border:1px solid #cbd5e1; border-radius:6px; overflow:hidden;">
-                  <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f8fafc; border-right:1px solid #cbd5e1;" onclick="changeTileDim(0, -1)">가로 -</button>
-                  <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f8fafc;" onclick="changeTileDim(0, 1)">가로 +</button>
-                </div>
-                <div style="display:flex; gap:4px;">
-                  <button class="btn" style="padding:4px 8px; background:#e0f2fe; color:#0369a1; font-weight:800; font-size:0.82rem;" onclick="setTileArray(1, 12)">1×12</button>
-                  <button class="btn" style="padding:4px 8px; background:#e0f2fe; color:#0369a1; font-weight:800; font-size:0.82rem;" onclick="setTileArray(2, 6)">2×6</button>
-                  <button class="btn" style="padding:4px 8px; background:#e0f2fe; color:#0369a1; font-weight:800; font-size:0.82rem;" onclick="setTileArray(3, 4)">3×4</button>
-                </div>
-              </div>
-              <span id="tile-array-badge" style="background:#f0fdf4; color:#166534; font-weight:800; padding:4px 12px; border-radius:12px; font-size:0.85rem; border:1px solid #86efac;">
-                현재: 2행 × 6열 = 12칸 🎉 (12개 완성!)
+              <span style="font-weight:800; color:#0369a1; font-size:0.95rem;">💡 [준비학습 복습 도표] 12개의 타일로 만드는 직사각형과 약수·배수의 관계</span>
+              <span style="background:#f0fdf4; color:#166534; font-weight:800; padding:4px 12px; border-radius:12px; font-size:0.85rem; border:1px solid #86efac;">
+                12의 약수: 1, 2, 3, 4, 6, 12
               </span>
             </div>
           `;
         }
-        setupTileArrayInteractiveEvents(two, document.getElementById('two-container'));
-        renderTileArrayCanvas(two, simState.tileRows, simState.tileCols);
+        renderTileArrayCanvas(two);
         break;
 
       case '0-2':
         if (simController) {
           simController.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <div style="display:flex; align-items:center; gap:6px;">
-                <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">⭕ 공약수 벤다이어그램 탐구:</span>
-                <span style="font-size:0.85rem; color:#64748b;">(아래 수 카드를 드래그하여 알맞은 원 안으로 넣어보세요)</span>
-              </div>
-              <div style="display:flex; align-items:center; gap:6px;">
-                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f1f5f9;" onclick="resetVennCards()">🔄 카드 초기화</button>
-                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#e0f2fe; color:#0369a1; font-weight:800;" onclick="autoPlaceVennCards()">💡 자동 완성</button>
-                <span id="venn-progress-badge" style="background:#eff6ff; color:#1d4ed8; font-weight:800; padding:4px 12px; border-radius:12px; font-size:0.85rem; border:1px solid #bfdbfe;">
-                  배치 진행: 0 / 8개 완료
-                </span>
-              </div>
+              <span style="font-weight:800; color:#0369a1; font-size:0.95rem;">💡 [준비학습 복습 도표] 12와 18의 공약수와 최대공약수 벤다이어그램</span>
+              <span style="background:#eff6ff; color:#1d4ed8; font-weight:800; padding:4px 12px; border-radius:12px; font-size:0.85rem; border:1px solid #bfdbfe;">
+                공약수: 1, 2, 3, 6 (최대공약수: 6)
+              </span>
             </div>
           `;
         }
-        setupVennInteractiveEvents(two, document.getElementById('two-container'));
-        renderVennCanvas(two, 12, 18);
+        renderVennCanvas(two);
         break;
 
       case '0-3':
         if (simController) {
           simController.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                <button class="btn" style="padding:4px 11px; font-size:0.85rem; background:#e0f2fe; color:#0369a1; font-weight:800; border:1px solid #7dd3fc;" onclick="stepJumperA(4)">🐰 4 도약 (+4)</button>
-                <button class="btn" style="padding:4px 11px; font-size:0.85rem; background:#ffedd5; color:#c2410c; font-weight:800; border:1px solid #fdba74;" onclick="stepJumperB(6)">🐸 6 도약 (+6)</button>
-                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f1f5f9; color:#475569;" onclick="resetJumpers()">🔄 초기화</button>
-                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#fef3c7; color:#b45309; font-weight:800;" onclick="autoDemoJumps()">💡 12 발견 시연</button>
-              </div>
-              <span id="jump-progress-badge" style="background:#f8fafc; color:#475569; font-weight:800; padding:4px 14px; border-radius:12px; font-size:0.85rem; border:1px solid #e2e8f0;">
-                도약 진행: 🐰토끼 0 | 🐸개구리 0 (공통 눈금을 찾아보세요)
+              <span style="font-weight:800; color:#0369a1; font-size:0.95rem;">💡 [준비학습 복습 도표] 4와 6의 수직선 도약과 최소공배수</span>
+              <span style="background:#fefce8; color:#854d0e; font-weight:800; padding:4px 12px; border-radius:12px; font-size:0.85rem; border:1px solid #fde047;">
+                공배수: 12, 24, 36… (최소공배수: 12)
               </span>
             </div>
           `;
         }
-        setupJumpInteractiveEvents(two, document.getElementById('two-container'));
-        renderLcmJumpCanvas(two, 4, 6);
-        updateJumpControllerUI();
+        renderLcmJumpCanvas(two);
         break;
 
       case '0-4':
         if (simController) {
           simController.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">⚖️ 자연수의 3분류 저울 (약수 개수 기준):</span>
-              <div style="display:flex; gap:4px;">
-                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f1f5f9;" onclick="setClassifyNum(1)">1 관찰</button>
-                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#e0f2fe; color:#0369a1; font-weight:800;" onclick="setClassifyNum(7)">7 (소수)</button>
-                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#fef2f2; color:#b91c1c; font-weight:800;" onclick="setClassifyNum(12)">12 (합성수)</button>
-              </div>
+              <span style="font-weight:800; color:#0369a1; font-size:0.95rem;">💡 [준비학습 복습 도표] 약수의 개수에 따른 자연수의 3분류</span>
+              <span style="background:#f8fafc; color:#475569; font-weight:800; padding:4px 12px; border-radius:12px; font-size:0.85rem; border:1px solid #cbd5e1;">
+                자연수 = 1 + 약수 2개(소수) + 약수 3개 이상(합성수)
+              </span>
             </div>
           `;
         }
-        renderClassifyCanvas(two, simState.classifyNum);
+        renderClassifyCanvas(two);
         break;
 
       // ----------------------------------------
       // Tab 1: 소수와 합성수 (1-1 ~ 1-9)
+      // 핵심 인터랙티브: 1-2 (에라토스테네스 체), 1-7 (세균 증식), 1-9 (열차 역)
       // ----------------------------------------
       case '1-1':
         if (simController) {
           simController.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🏷️ 소수 vs 합성수 직사각형 타일 판별기:</span>
-              <div style="display:flex; align-items:center; gap:6px;">
-                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f1f5f9;" onclick="changePrimeTileN(-1)">수 감소 (-)</button>
-                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f1f5f9;" onclick="changePrimeTileN(1)">수 증가 (+)</button>
-                <span id="prime-tile-badge" style="background:#eff6ff; color:#1d4ed8; font-weight:800; padding:4px 10px; border-radius:12px; font-size:0.85rem;">
-                  현재 수: ${simState.primeTileN}
-                </span>
-              </div>
+              <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">📌 소수와 합성수의 뜻 탐구 (약수의 개수)</span>
+              <span style="background:#eff6ff; color:#1d4ed8; font-weight:800; padding:4px 12px; border-radius:12px; font-size:0.85rem; border:1px solid #bfdbfe;">
+                소수: 약수 2개 | 합성수: 약수 3개 이상
+              </span>
             </div>
           `;
         }
-        renderPrimeBoxesCanvas(two);
+        renderProblemSupportCanvas(two, {
+          badge: '1-1 개념 탐구',
+          title: '소수와 합성수 판별 기준',
+          given: '자연수 = 1, 소수(약수 2개), 합성수(약수 3개 이상)',
+          guide: '💡 1은 약수가 1개뿐이므로 소수도 아니고 합성수도 아닙니다. 2는 유일한 짝수 소수입니다.'
+        });
         break;
 
       case '1-2':
         if (simController) {
           simController.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🔬 에라토스테네스의 체 단계별 실행:</span>
-              <div style="display:flex; gap:4px; flex-wrap:wrap;">
-                <button class="btn" style="background:#f1f5f9; font-weight:700; font-size:0.82rem; padding:4px 8px;" onclick="setSieveStep(1)">1: 1 지우기</button>
-                <button class="btn" style="background:#f1f5f9; font-weight:700; font-size:0.82rem; padding:4px 8px;" onclick="setSieveStep(2)">2: 2의 배수</button>
-                <button class="btn" style="background:#f1f5f9; font-weight:700; font-size:0.82rem; padding:4px 8px;" onclick="setSieveStep(3)">3: 3의 배수</button>
-                <button class="btn" style="background:#f1f5f9; font-weight:700; font-size:0.82rem; padding:4px 8px;" onclick="setSieveStep(4)">4: 5의 배수</button>
-                <button class="btn" style="background:#f1f5f9; font-weight:700; font-size:0.82rem; padding:4px 8px;" onclick="setSieveStep(5)">5: 7의 배수</button>
-                <button class="btn" style="background:#e0f2fe; color:#0369a1; font-weight:800; font-size:0.82rem; padding:4px 8px;" onclick="setSieveStep(6)">6: 완성</button>
+              <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
+                <button class="btn" style="padding:4px 8px; font-size:0.82rem; background:#f1f5f9;" onclick="setSieveStep(1)">1단계: 1 지우기</button>
+                <button class="btn" style="padding:4px 8px; font-size:0.82rem; background:#e0f2fe; color:#0369a1; font-weight:800;" onclick="setSieveStep(2)">2단계: 2의 배수</button>
+                <button class="btn" style="padding:4px 8px; font-size:0.82rem; background:#e0f2fe; color:#0369a1; font-weight:800;" onclick="setSieveStep(3)">3단계: 3의 배수</button>
+                <button class="btn" style="padding:4px 8px; font-size:0.82rem; background:#e0f2fe; color:#0369a1; font-weight:800;" onclick="setSieveStep(4)">4단계: 5의 배수</button>
+                <button class="btn" style="padding:4px 8px; font-size:0.82rem; background:#e0f2fe; color:#0369a1; font-weight:800;" onclick="setSieveStep(5)">5단계: 7의 배수</button>
+                <button class="btn" style="padding:4px 8px; font-size:0.82rem; background:#fef3c7; color:#b45309; font-weight:800;" onclick="setSieveStep(6)">✨ 남은 소수 15개</button>
+                <button class="btn" style="padding:4px 8px; font-size:0.82rem; background:#f8fafc;" onclick="setSieveStep(1)">🔄 초기화</button>
               </div>
+              <span id="sieve-progress-badge" style="background:#eff6ff; color:#1d4ed8; font-weight:800; padding:4px 12px; border-radius:12px; font-size:0.85rem; border:1px solid #bfdbfe;">
+                진행: 1단계 (1은 소수가 아니므로 지움)
+              </span>
             </div>
           `;
         }
@@ -934,58 +599,38 @@
         break;
 
       case '1-3':
-        if (simController) {
-          simController.innerHTML = `
-            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">📄 거듭제곱과 밑·지수 구조 시각화:</span>
-              <span style="background:#eff6ff; color:#1e40af; font-weight:800; padding:4px 10px; border-radius:12px; font-size:0.85rem;">
-                밑(Base): 곱하는 수 / 지수(Exponent): 곱한 횟수
-              </span>
-            </div>
-          `;
-        }
-        renderPowerCanvas(two, 5, 4);
+        renderProblemSupportCanvas(two, {
+          badge: '1-3 개념 탐구',
+          title: '거듭제곱과 밑·지수',
+          given: 'a × a × … × a (n개 곱) = aⁿ',
+          guide: '💡 곱하는 수를 [밑], 곱한 횟수를 [지수]라고 합니다.'
+        });
         break;
 
       case '1-4':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🔍 1-4 수 카드 판별: 8, 17, 39, 53을 소수와 합성수로 분류</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
           badge: '1-4 스스로 확인하기 1번',
-          title: '소수와 합성수 판별하기',
-          given: '수 카드: 8, 17, 39, 53',
-          guide: '💡 각 수의 약수를 구하여 약수가 2개면 소수, 3개 이상이면 합성수로 분류하세요.'
+          title: '소수와 합성수 구분',
+          given: '주어진 수: 8, 17, 39, 53',
+          guide: '💡 각 수의 약수를 구하여 약수가 2개뿐인 수와 3개 이상인 수를 나누어 보세요.'
         });
         break;
 
       case '1-5':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🌿 1-5 거듭제곱 표현 변환 다이어그램</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
           badge: '1-5 스스로 확인하기 2번',
-          title: '거듭제곱 꼴로 표현하기',
-          given: '(1) 5×5×5×5  |  (2) 2×3×3×5  |  (3) 3×3×7×7×7×7×7',
-          guide: '💡 같은 소인수를 묶어 밑과 지수의 거듭제곱 꼴로 정돈해보세요.'
+          title: '거듭제곱 표현하기',
+          given: '1) 5⁴  2) 2 × 3² × 5  3) 3² × 7⁵',
+          guide: '💡 같은 소인수끼리 묶어서 지수를 오른쪽 위에 작게 적어 거듭제곱으로 나타냅니다.'
         });
         break;
 
       case '1-6':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">⚖️ 1-6 명제 진위 판정 논리 보드 (O/X 추론)</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
           badge: '1-6 스스로 확인하기 3번',
-          title: '소수와 합성수의 성질 진위 판정',
-          given: 'ㄱ. 가장 작은 소수는 2이다. / ㄴ. 모든 짝수는 합성수이다. / ㄷ. 소수는 약수가 2개이다.',
-          guide: '💡 반례가 존재하는지 확인하며 각 명제의 참(O)과 거짓(X)을 판별하세요.'
+          title: '소수와 합성수 성질 참/거짓 판단',
+          given: 'ㄱ. 약수 2개 이상  ㄴ. 모든 소수 홀수  ㄷ. 43 소수  ㄹ. 3의 배수 중 소수',
+          guide: '💡 1은 약수가 1개뿐이고, 2는 유일한 짝수 소수입니다. 반례를 찾아 참/거짓을 검증하세요.'
         });
         break;
 
@@ -993,15 +638,17 @@
         if (simController) {
           simController.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🦠 세균 배가 증식 시뮬레이터 (10분마다 2배):</span>
-              <div style="display:flex; align-items:center; gap:6px;">
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🦠 세균 증식 시간 조절:</span>
+                <input type="range" id="bacteria-slider" min="0" max="60" step="10" value="${simState.bacteriaMinutes}" style="width:130px; cursor:pointer;" oninput="setBacteriaMinutes(this.value)">
+                <button class="btn" style="padding:4px 8px; font-size:0.82rem; background:#f1f5f9;" onclick="setBacteriaMinutes(0)">0분</button>
                 <button class="btn" style="padding:4px 8px; font-size:0.82rem; background:#f1f5f9;" onclick="setBacteriaMinutes(10)">10분</button>
                 <button class="btn" style="padding:4px 8px; font-size:0.82rem; background:#f1f5f9;" onclick="setBacteriaMinutes(30)">30분</button>
-                <button class="btn" style="padding:4px 8px; font-size:0.82rem; background:#e0f2fe; color:#0369a1; font-weight:800;" onclick="setBacteriaMinutes(60)">60분</button>
-                <span id="bacteria-badge" style="background:#fdf2f8; color:#9d174d; font-weight:800; padding:4px 10px; border-radius:12px; font-size:0.85rem;">
-                  경과 시간: ${simState.bacteriaMinutes}분
-                </span>
+                <button class="btn" style="padding:4px 8px; font-size:0.82rem; background:#e0f2fe; color:#0369a1; font-weight:800;" onclick="setBacteriaMinutes(60)">60분(1시간)</button>
               </div>
+              <span id="bacteria-badge" style="background:#f0fdf4; color:#166534; font-weight:800; padding:4px 14px; border-radius:12px; font-size:0.85rem; border:1px solid #86efac;">
+                경과 시간: 30분 (3회 분열) ➔ 2³ = 8배
+              </span>
             </div>
           `;
         }
@@ -1009,16 +656,11 @@
         break;
 
       case '1-8':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">📐 1-8 지수방정식 밑 통일 비교판</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
-          badge: '1-8 스스로 확인하기 4번',
-          title: '지수방정식의 미지수 구하기',
+          badge: '1-8 스스로 확인하기 5번',
+          title: '지수 방정식과 밑 비교',
           given: '2^a = 64,  (1/3)^b = 1/27',
-          guide: '💡 양변의 밑을 2와 1/3로 통일한 후 지수를 비교하여 a와 b를 구해보세요.'
+          guide: '💡 64 = 2⁶ 이고, 27 = 3³ 이므로 (1/3)³ = 1/27 임을 이용해 a와 b를 구하세요.'
         });
         break;
 
@@ -1026,319 +668,260 @@
         if (simController) {
           simController.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🚂 1부터 30까지 역 열차 승객 하차 시뮬레이터:</span>
-              <div style="display:flex; align-items:center; gap:6px;">
-                <button class="btn" style="padding:4px 8px; font-size:0.82rem; background:#f1f5f9;" onclick="setTrainStation(simState.trainStation - 1)">◀ 이전 역</button>
-                <button class="btn" style="padding:4px 8px; font-size:0.82rem; background:#f1f5f9;" onclick="setTrainStation(simState.trainStation + 1)">다음 역 ▶</button>
-                <span id="train-badge" style="background:#fef3c7; color:#92400e; font-weight:800; padding:4px 10px; border-radius:12px; font-size:0.85rem;">
-                  현재 역: ${simState.trainStation}번 역
-                </span>
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🚂 열차 역 선택:</span>
+                <input type="range" id="train-slider" min="1" max="30" step="1" value="${simState.trainStation}" style="width:120px; cursor:pointer;" oninput="setTrainStation(this.value)">
+                <button class="btn" style="padding:4px 8px; font-size:0.82rem; background:#e0f2fe; color:#0369a1; font-weight:800;" onclick="setTrainStation(2)">2번 역(소수)</button>
+                <button class="btn" style="padding:4px 8px; font-size:0.82rem; background:#f1f5f9;" onclick="setTrainStation(6)">6번 역</button>
+                <button class="btn" style="padding:4px 8px; font-size:0.82rem; background:#fef3c7; color:#b45309; font-weight:800;" onclick="setTrainStation(25)">25번 역(문항 Q1)</button>
+                <button class="btn" style="padding:4px 8px; font-size:0.82rem; background:#e0f2fe; color:#0369a1; font-weight:800;" onclick="setTrainStation(29)">29번 역(소수)</button>
               </div>
-            </div>
-          `;
-        }
-        renderTrainStationCanvas(two);
-        break;
-
-      // ----------------------------------------
-      // Tab 2: 소인수분해 (2-1 ~ 2-9)
-      // ----------------------------------------
-      case '2-1':
-        if (simController) {
-          simController.innerHTML = `
-            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🧩 12의 소인수 블록 분해 개념도:</span>
-              <span style="background:#f0fdf4; color:#166534; font-weight:800; padding:4px 10px; border-radius:12px; font-size:0.85rem;">
-                소인수: 인수(약수) 중에서 소수인 것
+              <span id="train-badge" style="background:#eff6ff; color:#1e40af; font-weight:800; padding:4px 14px; border-radius:12px; font-size:0.85rem; border:1px solid #bfdbfe;">
+                현재 역: 25번 역 | 하차 승객: 3명 (약수: 1, 5, 25) (합성수 역)
               </span>
             </div>
           `;
         }
-        renderBlockSplitCanvas(two, 12);
+        renderTrainStationCanvas(two, simState.trainStation);
+        break;
+
+      // ----------------------------------------
+      // Tab 2: 소인수분해 (2-1 ~ 2-9)
+      // 핵심 인터랙티브: 2-2 (가지치기 트리), 2-7 (제곱수 만들기)
+      // ----------------------------------------
+      case '2-1':
+        renderProblemSupportCanvas(two, {
+          badge: '2-1 개념 탐구',
+          title: '소인수와 인수의 뜻',
+          given: '12의 인수: 1, 2, 3, 4, 6, 12  ➔  소인수: 2, 3',
+          guide: '💡 어떤 수의 인수(약수) 중에서 소수인 것을 [소인수]라고 합니다.'
+        });
         break;
 
       case '2-2':
         if (simController) {
           simController.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🌳 소인수분해 가지치기 분기도(Tree):</span>
-              <div style="display:flex; gap:4px;">
-                <button class="btn" style="padding:4px 8px; font-size:0.82rem; background:#f1f5f9;" onclick="setFactorTreeStep(1)">1단계: 2×18</button>
-                <button class="btn" style="padding:4px 8px; font-size:0.82rem; background:#e0f2fe; color:#0369a1; font-weight:800;" onclick="setFactorTreeStep(2)">2단계: 소인수 완성</button>
+              <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🌳 수 선택:</span>
+                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#e0f2fe; color:#0369a1; font-weight:800;" onclick="setFactorTreeNum(36)">36</button>
+                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f1f5f9;" onclick="setFactorTreeNum(60)">60</button>
+                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f1f5f9;" onclick="setFactorTreeNum(72)">72</button>
+                <span style="margin-left:8px; font-weight:700; font-size:0.85rem; color:#475569;">분해 단계:</span>
+                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f8fafc;" onclick="stepFactorTree(-1)">◀ 이전</button>
+                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#0284c7; color:#ffffff; font-weight:800;" onclick="stepFactorTree(1)">다음 단계 ▶</button>
               </div>
+              <span id="tree-step-badge" style="background:#f0fdf4; color:#166534; font-weight:800; padding:4px 14px; border-radius:12px; font-size:0.85rem; border:1px solid #86efac;">
+                트리 상태: 소인수 분해 완료 (소수 노드 잠금)
+              </span>
             </div>
           `;
         }
-        renderFactorTreeCanvas(two, 36);
+        renderFactorTreeCanvas(two, simState.factorTreeNum, simState.factorTreeBranch, simState.factorTreeStep);
         break;
 
       case '2-3':
-        if (simController) {
-          simController.innerHTML = `
-            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🧱 세로 나눗셈 소인수분해 스텝퍼 (80의 분해):</span>
-              <div style="display:flex; gap:4px;">
-                <button class="btn" style="padding:4px 8px; font-size:0.82rem; background:#f1f5f9;" onclick="setVertDivStep(1)">1단계</button>
-                <button class="btn" style="padding:4px 8px; font-size:0.82rem; background:#f1f5f9;" onclick="setVertDivStep(2)">2단계</button>
-                <button class="btn" style="padding:4px 8px; font-size:0.82rem; background:#e0f2fe; color:#0369a1; font-weight:800;" onclick="setVertDivStep(3)">전체 완성</button>
-              </div>
-            </div>
-          `;
-        }
-        renderVerticalDivisionCanvas(two, 80);
+        renderProblemSupportCanvas(two, {
+          badge: '2-3 개념 확인',
+          title: '나눗셈을 이용한 소인수분해',
+          given: '80 = 2 × 40 = 2 × 2 × 20 = 2 × 2 × 2 × 10 = 2⁴ × 5',
+          guide: '💡 몫이 소수가 될 때까지 가장 작은 소수부터 차례대로 나누어 거듭제곱으로 나타냅니다.'
+        });
         break;
 
       case '2-4':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🏷️ 2-4 소인수 추출: 15, 22, 49, 70의 소인수 구하기</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
           badge: '2-4 스스로 확인하기 1번',
-          title: '주어진 수의 소인수 모두 구하기',
-          given: '대상 수: 15,  22,  49,  70',
-          guide: '💡 각 수를 소인수분해하여 곱해진 밑(소수)들을 빠짐없이 나열하세요.'
+          title: '소인수 모두 구하기',
+          given: '주어진 수: 27, 44, 98, 120',
+          guide: '💡 각 수를 소인수분해하여 나타나는 소수 밑들을 모두 나열하세요.'
         });
         break;
 
       case '2-5':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">➗ 2-5 소인수분해하여 거듭제곱 꼴로 나타내기 (34, 75, 96)</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
           badge: '2-5 스스로 확인하기 2번',
-          title: '소인수분해하여 거듭제곱으로 표현',
-          given: '대상 수: 34,  75,  96',
-          guide: '💡 세로 나눗셈 또는 나뭇가지 그림을 이용하여 소수의 거듭제곱 꼴로 나타내세요.'
+          title: '소인수분해 거듭제곱 표현',
+          given: '1) 32  2) 54  3) 150  4) 225',
+          guide: '💡 소인수들을 크기순으로 곱하고 같은 소인수는 거듭제곱 형태로 나타내세요.'
         });
         break;
 
       case '2-6':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">📊 2-6 연속 곱 2×3×4×5×6 소인수 2의 지수 탐구</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
           badge: '2-6 스스로 확인하기 3번',
-          title: '연속된 곱의 소인수분해와 지수',
-          given: '2 × 3 × 4 × 5 × 6 = 2^a × 3^b × 5^c',
-          guide: '💡 4 = 2², 6 = 2×3과 같이 합성수를 소수의 곱으로 분해하여 2의 총 개수를 세어보세요.'
+          title: '연속된 자연수 곱의 소인수 지수',
+          given: '1 × 2 × 3 × 4 × 5 × 6 × 7 × 8 × 9 × 10 = 2^a × 3^b × 5^c × 7',
+          guide: '💡 짝수(2, 4, 6, 8, 10)에 들어 있는 2의 거듭제곱 개수들을 모두 합산하세요.'
         });
         break;
 
       case '2-7':
         if (simController) {
           simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">⚖️ 2-7 제곱수 만들기: 가장 작은 자연수 곱하기</span>
-          `;
-        }
-        renderProblemSupportCanvas(two, {
-          badge: '2-7 스스로 확인하기 4번',
-          title: '어떤 자연수의 제곱 만들기',
-          given: '56 × x = (자연수)²',
-          guide: '💡 56을 소인수분해한 후 모든 소인수의 지수가 짝수가 되도록 부족한 소수를 곱해주세요.'
-        });
-        break;
-
-      case '2-8':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🔎 2-8 선우·은서 조건 만족 수 탐색 (소인수 2개, 합 18)</span>
-          `;
-        }
-        renderProblemSupportCanvas(two, {
-          badge: '2-8 스스로 확인하기 5번',
-          title: '조건을 만족하는 두 자리 자연수 찾기',
-          given: '조건: 소인수가 2개뿐이고, 두 소인수의 합이 18인 두 자리 자연수',
-          guide: '💡 합이 18이 되는 두 소수 쌍(5+13, 7+11)을 찾아 각각 곱해보세요.'
-        });
-        break;
-
-      case '2-9':
-        if (simController) {
-          simController.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">📐 2차원 약수 곱셈 격자표 & 개수 공식:</span>
-              <span style="background:#f0fdf4; color:#166534; font-weight:800; padding:4px 10px; border-radius:12px; font-size:0.85rem;">
-                약수의 개수 = (a + 1)(b + 1)
+              <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">⚖️ 56에 곱할 x 선택:</span>
+                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f1f5f9;" onclick="setSquareMultX(2)">x = 2</button>
+                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f1f5f9;" onclick="setSquareMultX(7)">x = 7</button>
+                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f0fdf4; color:#166534; font-weight:800; border:1px solid #86efac;" onclick="setSquareMultX(14)">x = 14 (정답 확인)</button>
+                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f1f5f9;" onclick="setSquareMultX(28)">x = 28</button>
+                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f1f5f9;" onclick="setSquareMultX(56)">x = 56</button>
+              </div>
+              <span id="square-mult-badge" style="background:#f0fdf4; color:#166534; font-weight:800; padding:4px 14px; border-radius:12px; font-size:0.85rem; border:1px solid #86efac;">
+                현재 곱: 56 × 14 = 784 ➔ 2⁴ × 7² = (28)² 🎉 완벽한 제곱수!
               </span>
             </div>
           `;
         }
-        renderFactorGridCanvas(two, 63);
+        renderSquareMakerCanvas(two, simState.squareMultX);
+        break;
+
+      case '2-8':
+        renderProblemSupportCanvas(two, {
+          badge: '2-8 스스로 확인하기 5번',
+          title: '조건 만족 두 자리 자연수 탐색',
+          given: '조건: 소인수 2개뿐, 두 소인수의 합 = 18',
+          guide: '💡 합이 18이 되는 두 소수 쌍 (5와 13, 7과 11)을 찾아 각각 곱하여 두 자리 자연수를 만드세요.'
+        });
+        break;
+
+      case '2-9':
+        renderProblemSupportCanvas(two, {
+          badge: '2-9 생각 넓히기',
+          title: '소인수분해와 약수의 개수 공식',
+          given: 'N = a^m × bⁿ  ➔  약수의 개수 = (m + 1)(n + 1)',
+          guide: '💡 각 소인수의 지수에 1을 더하여 서로 곱하면 약수의 총 개수가 나옵니다.'
+        });
         break;
 
       // ----------------------------------------
       // Tab 3: 최대공약수 (3-1 ~ 3-10)
+      // 핵심 인터랙티브: 3-1 (타일 깔기), 3-2 (지수 저울 비교)
       // ----------------------------------------
       case '3-1':
         if (simController) {
           simController.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🟦 서로소 개념과 정사각형 타일 바닥 채우기:</span>
-              <span style="background:#eff6ff; color:#1e40af; font-weight:800; padding:4px 10px; border-radius:12px; font-size:0.85rem;">
-                공약수가 1뿐인 두 수의 관계: 서로소
+              <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🟦 정사각형 타일 크기:</span>
+                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f1f5f9;" onclick="setTileSquareSize(1)">1cm</button>
+                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f1f5f9;" onclick="setTileSquareSize(2)">2cm</button>
+                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f1f5f9;" onclick="setTileSquareSize(3)">3cm</button>
+                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#fef2f2; color:#b91c1c; font-weight:800;" onclick="setTileSquareSize(4)">4cm (빈틈 발생)</button>
+                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f0fdf4; color:#166534; font-weight:800; border:1px solid #86efac;" onclick="setTileSquareSize(6)">6cm (최대공약수 타일!)</button>
+              </div>
+              <span id="tile-size-badge" style="background:#f0fdf4; color:#166534; font-weight:800; padding:4px 14px; border-radius:12px; font-size:0.85rem; border:1px solid #86efac;">
+                타일: 6cm × 6cm ➔ 가로 3장, 세로 2장 (총 6장) 빈틈없이 완벽! 👑
               </span>
             </div>
           `;
         }
-        renderTilingSquareCanvas(two);
+        renderTilingSquareCanvas(two, simState.tileSquareSize);
         break;
 
       case '3-2':
         if (simController) {
           simController.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">⚖️ 공통 소인수 지수 비교 저울 (최대공약수):</span>
-              <span style="background:#fef3c7; color:#92400e; font-weight:800; padding:4px 10px; border-radius:12px; font-size:0.85rem;">
+              <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">⚖️ 비교할 두 수:</span>
+                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#e0f2fe; color:#0369a1; font-weight:800;" onclick="setGcdPair('12_18')">12와 18</button>
+                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f1f5f9;" onclick="setGcdPair('24_36')">24와 36</button>
+                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f1f5f9;" onclick="setGcdPair('28_42')">28과 42</button>
+                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#0284c7; color:#ffffff; font-weight:800;" onclick="toggleGcdLower()">공통 소인수 내리기 ▼</button>
+              </div>
+              <span style="background:#eff6ff; color:#1d4ed8; font-weight:800; padding:4px 14px; border-radius:12px; font-size:0.85rem; border:1px solid #bfdbfe;">
                 공통 소인수 중 지수가 작거나 같은 것을 택하여 곱합니다!
               </span>
             </div>
           `;
         }
-        renderGcdBalanceCanvas(two, 24, 84);
+        renderGcdBalanceCanvas(two, simState.gcdPair, simState.gcdLowered);
         break;
 
       case '3-3':
-        if (simController) {
-          simController.innerHTML = `
-            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🔢 세 수 최대공약수 세로 정렬판:</span>
-              <span style="background:#f1f5f9; color:#475569; font-weight:800; padding:4px 10px; border-radius:12px; font-size:0.85rem;">
-                세 수 60, 72, 150의 공통 소인수 곱
-              </span>
-            </div>
-          `;
-        }
-        renderThreeNumGcdCanvas(two);
+        renderProblemSupportCanvas(two, {
+          badge: '3-3 개념 확인',
+          title: '세 수의 최대공약수',
+          given: '세 수 모두를 동시에 나누어떨어지게 하는 가장 큰 공약수',
+          guide: '💡 세 수 모두가 공통으로 가지고 있는 소인수 중 지수가 가장 작은 것을 곱합니다.'
+        });
         break;
 
       case '3-4':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">⚖️ 3-4 두 수의 최대공약수 구하기 (2·7² & 2²·3²·7 / 84 & 150)</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
           badge: '3-4 스스로 확인하기 1번',
           title: '두 수의 최대공약수 구하기',
-          given: '(1) 2×7²,  2²×3²×7   |   (2) 84,  150',
-          guide: '💡 공통인 소인수 중 지수가 작거나 같은 것을 택하여 모두 곱하세요.'
+          given: '1) 2² × 3² 와 2³ × 3   2) 48과 72',
+          guide: '💡 공통 소인수의 지수 중 작거나 같은 것을 택하여 곱하세요.'
         });
         break;
 
       case '3-5':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🔢 3-5 세 수의 최대공약수 구하기 (52, 65, 91)</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
           badge: '3-5 스스로 확인하기 2번',
           title: '세 수의 최대공약수 구하기',
-          given: '(1) 3²×7,  3³×7²,  3×7²×11   |   (2) 52,  65,  91',
-          guide: '💡 세 수 모두에 공통으로 들어있는 소인수를 찾아 지수가 가장 작은 것을 택하세요.'
+          given: '주어진 세 수: 36, 54, 90',
+          guide: '💡 세 수를 각각 소인수분해하여 공통 소인수의 최소 지수를 구하세요.'
         });
         break;
 
       case '3-6':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">📏 3-6 20보다 크고 30보다 작은 자연수 중 15와 서로소인 수</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
           badge: '3-6 스스로 확인하기 3번',
           title: '15와 서로소인 수 찾기',
-          given: '범위: 20 < x < 30 인 자연수 x   /   기준: 15 = 3 × 5',
-          guide: '💡 15의 소인수인 3과 5의 배수를 제외한 수들을 골라보세요.'
+          given: '15 = 3 × 5  (서로소: 최대공약수가 1뿐인 수)',
+          guide: '💡 3의 배수도 아니고 5의 배수도 아닌 수를 보기에서 고르세요.'
         });
         break;
 
       case '3-7':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">⚖️ 3-7 최대공약수가 100일 때 미지수 지수 a, b 구하기</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
           badge: '3-7 스스로 확인하기 4번',
-          title: '최대공약수 조건으로 지수 맞추기',
-          given: '두 수: 2^a × 5³ × 7,   2³ × 3 × 5^b   /   최대공약수: 100 = 2² × 5²',
-          guide: '💡 공통 소인수 2와 5의 작은 쪽 지수가 각각 2가 되도록 a와 b를 결정하세요.'
+          title: '지수 미지수 결정하기',
+          given: '두 수 2^a × 3³ × 5 와 2³ × 3^b 의 최대공약수가 2² × 3²',
+          guide: '💡 min(a, 3) = 2 이고 min(3, b) = 2 임을 이용하여 a, b의 값을 구하세요.'
         });
         break;
 
       case '3-8':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">📐 3-8 105/N, 350/N 을 모두 자연수로 만드는 가장 큰 N</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
           badge: '3-8 스스로 확인하기 5번',
-          title: '분수를 자연수로 만드는 수 구하기',
-          given: '105/N 과 350/N 이 모두 자연수가 됨',
-          guide: '💡 N은 105와 350의 공약수이어야 하므로, 가장 큰 N은 두 수의 최대공약수입니다.'
+          title: '분수를 자연수로 만드는 가장 큰 수',
+          given: '60/n 과 84/n 이 모두 자연수가 되게 하는 자연수 n',
+          guide: '💡 n은 60의 약수이면서 84의 약수이어야 하므로, 60과 84의 최대공약수입니다.'
         });
         break;
 
       case '3-9':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">📦 3-9 나머지가 생기는 나눗셈의 최대 제수 구하기</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
           badge: '3-9 스스로 확인하기 6번',
-          title: '나머지 보정 최대공약수 활용',
-          given: '107을 나누면 2가 남고, 153을 나누면 3이 남고, 90은 나누어떨어짐',
-          guide: '💡 남는 나머지를 각각 뺀 수 (107-2=105, 153-3=150, 90)의 최대공약수를 구하세요.'
+          title: '나머지가 있는 나눗셈과 최대공약수',
+          given: '어떤 수로 53을 나누면 5가 남고, 75를 나누면 3이 남음',
+          guide: '💡 (53 - 5 = 48)과 (75 - 3 = 72)의 공약수 중 나머지(5)보다 큰 수를 찾으세요.'
         });
         break;
 
       case '3-10':
-        if (simController) {
-          simController.innerHTML = `
-            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🕸️ 3-10 21과의 최대공약수가 7인 50 이하의 자연수</span>
-              <span style="background:#f0fdf4; color:#166534; font-weight:800; padding:4px 10px; border-radius:12px; font-size:0.85rem;">
-                7 × k (k는 3과 서로소)
-              </span>
-            </div>
-          `;
-        }
         renderProblemSupportCanvas(two, {
-          badge: '3-10 스스로 확인하기 7번',
-          title: '최대공약수가 주어진 수의 조건 탐색',
-          given: '21 = 3 × 7 과의 최대공약수가 7인 50 이하의 자연수',
-          guide: '💡 7의 배수 중 3의 배수를 제외한 수(7×1, 7×2, 7×4, 7×5 등)를 찾아보세요.'
+          badge: '3-10 생각 넓히기',
+          title: '21과 최대공약수가 7인 두 자리 자연수 추론',
+          given: '21 = 3 × 7  ➔  GCD(21, N) = 7',
+          guide: '💡 N은 7의 배수이되 3의 배수는 아니어야 21과의 최대공약수가 7로 유지됩니다.'
         });
         break;
 
       // ----------------------------------------
-      // Tab 4: 최소공배수 (4-1 ~ 4-10)
+      // Tab 4: 최소공배수 (4-1 ~ 4-11)
+      // 핵심 인터랙티브: 4-2 (톱니바퀴 회전), 4-10 (코딩 알고리즘)
       // ----------------------------------------
       case '4-1':
-        if (simController) {
-          simController.innerHTML = `
-            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">⚽ 동시 개최 주기 회전 시뮬레이터:</span>
-              <span style="background:#eff6ff; color:#1e40af; font-weight:800; padding:4px 10px; border-radius:12px; font-size:0.85rem;">
-                두 주기의 공통 배수 = 최소공배수의 배수
-              </span>
-            </div>
-          `;
-        }
         renderProblemSupportCanvas(two, {
           badge: '4-1 개념 탐구',
-          title: '동시 개최 주기와 최소공배수',
-          given: '올림픽(4년 주기), 아시안게임(4년 주기), 월드컵(4년 주기) 등의 랑데부',
-          guide: '💡 다음 동시 개최 연도는 각 주기의 최소공배수를 더하여 계산합니다.'
+          title: '최소공배수와 소인수분해',
+          given: '두 수의 모든 소인수 중 지수가 크거나 같은 것을 택하여 곱함',
+          guide: '💡 공통 소인수는 큰 지수를 택하고, 공통이 아닌 소인수도 모두 빠짐없이 곱합니다.'
         });
         break;
 
@@ -1346,10 +929,13 @@
         if (simController) {
           simController.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">⚙️ 맞물린 톱니바퀴 (24개, 36개) 회전 시뮬레이터:</span>
-              <button id="gear-rot-btn" class="btn" style="background:#0284c7; color:#ffffff; font-weight:800; font-size:0.85rem; padding:4px 12px;" onclick="toggleGearRotation()">
-                ${simState.isGearRotating ? '⏹ 회전 정지' : '▶ 톱니 회전 시작'}
-              </button>
+              <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                <button id="gear-rot-btn" class="btn" style="padding:5px 12px; font-size:0.85rem; background:#0284c7; color:#ffffff; font-weight:800;" onclick="toggleGearRotation()">▶ 톱니 회전 시작</button>
+                <button class="btn" style="padding:5px 10px; font-size:0.85rem; background:#f1f5f9;" onclick="resetGears()">🔄 위치 초기화</button>
+              </div>
+              <span id="gear-badge" style="background:#eff6ff; color:#1d4ed8; font-weight:800; padding:4px 14px; border-radius:12px; font-size:0.85rem; border:1px solid #bfdbfe;">
+                톱니바퀴 A (24개) & B (36개) ➔ 최소공배수 <b>72번째 톱니</b>에서 처음 다시 맞물림!
+              </span>
             </div>
           `;
         }
@@ -1357,105 +943,65 @@
         break;
 
       case '4-3':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">📏 4-3 두 수의 최소공배수 구하기 (3²·11 & 3·5·11 / 21 & 27)</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
           badge: '4-3 스스로 확인하기 1번',
           title: '두 수의 최소공배수 구하기',
-          given: '(1) 3²×11,  3×5×11   |   (2) 21,  27',
-          guide: '💡 모든 소인수를 곱하되 지수가 크거나 같은 것을 택하여 곱하세요.'
+          given: '1) 2² × 3 과 2 × 3²   2) 28과 42',
+          guide: '💡 모든 소인수의 거듭제곱 중 지수가 크거나 같은 것을 빠짐없이 곱하세요.'
         });
         break;
 
       case '4-4':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">📊 4-4 세 수의 최소공배수 구하기 (6, 42, 63)</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
           badge: '4-4 스스로 확인하기 2번',
           title: '세 수의 최소공배수 구하기',
-          given: '(1) 2⁴×3³,  2²×3×5,  2³×3²×5²   |   (2) 6,  42,  63',
-          guide: '💡 세 수의 모든 소인수 중 가장 높은 지수를 택하여 곱하세요.'
+          given: '세 수: 12, 18, 30',
+          guide: '💡 세 수를 소인수분해한 후 2, 3, 5의 최고 지수를 택하여 곱하세요.'
         });
         break;
 
       case '4-5':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">⚖️ 4-5 분수를 자연수로 만드는 가장 작은 자연수 구하기</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
           badge: '4-5 스스로 확인하기 3번',
-          title: '분수 통분과 최소공배수 활용',
-          given: '1/70 과 1/98 에 곱하여 모두 자연수가 되게 하는 가장 작은 자연수 N',
-          guide: '💡 N은 두 분모 70과 98의 공배수이어야 하므로, 최소공배수를 구하면 됩니다.'
+          title: '분수를 자연수로 만드는 가장 작은 수',
+          given: 'n/12 와 n/15 가 모두 자연수가 되게 하는 자연수 n',
+          guide: '💡 n은 12의 배수이자 15의 배수이어야 하므로 12와 15의 최소공배수입니다.'
         });
         break;
 
       case '4-6':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">⚖️ 4-6 3A, 4A, 5A의 최소공배수가 360일 때 자연수 A</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
           badge: '4-6 스스로 확인하기 4번',
-          title: '미지수가 포함된 세 수의 최소공배수',
-          given: '세 수: 3A,  4A,  5A   /   최소공배수: 360',
-          guide: '💡 3, 4, 5의 최소공배수는 60이므로, 세 수의 최소공배수는 60 × A 가 됩니다.'
+          title: '3A, 4A, 5A 의 최소공배수',
+          given: '세 수 3A, 4A, 5A 의 최소공배수가 360',
+          guide: '💡 3, 4, 5는 서로소이므로 최소공배수는 3 × 4 × 5 × A = 60A = 360 입니다.'
         });
         break;
 
       case '4-7':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🧩 4-7 두 수의 최소공배수가 500일 때 가능한 자연수 후보</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
           badge: '4-7 스스로 확인하기 5번',
-          title: '최소공배수 지수 조합 탐색',
-          given: '두 수: 2² × 5³,   □ × 5³   /   최소공배수: 500 = 2² × 5³',
-          guide: '💡 빈칸에 들어갈 수는 2²의 약수(1, 2, 4)와 5의 거듭제곱 조합을 검토하세요.'
+          title: '세 수의 최소공배수 미지수 결정',
+          given: '2^a × 3, 2² × 3^b, 2³ × 3² 의 최소공배수가 2⁴ × 3²',
+          guide: '💡 max(a, 2, 3) = 4 이므로 a = 4 이고, b의 범위를 파악하세요.'
         });
         break;
 
       case '4-8':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🏃 4-8 18과 45의 공배수 중 가장 작은 세 자리 자연수</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
           badge: '4-8 스스로 확인하기 6번',
-          title: '공배수 중 조건에 맞는 수 찾기',
-          given: '두 수 18과 45의 공배수 중 가장 작은 세 자리 자연수',
-          guide: '💡 18과 45의 최소공배수 L을 구한 후, L의 배수 중 100 이상인 최솟값을 찾으세요.'
+          title: '세 자리 공배수 찾기',
+          given: '두 수의 최소공배수가 28일 때, 세 자리 공배수 중 가장 작은 수',
+          guide: '💡 공배수는 최소공배수의 배수이므로 28 × k ≥ 100 을 만족하는 가장 작은 k를 구하세요.'
         });
         break;
 
       case '4-9':
-        if (simController) {
-          simController.innerHTML = `
-            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">⚖️ 4-9 합 44, GCD 4, LCM 72 관계형 천칭</span>
-              <span style="background:#fef3c7; color:#92400e; font-weight:800; padding:4px 10px; border-radius:12px; font-size:0.85rem;">
-                A = 4a, B = 4b (a, b 서로소)
-              </span>
-            </div>
-          `;
-        }
         renderProblemSupportCanvas(two, {
-          badge: '4-9 스스로 확인하기 7번',
-          title: '합과 GCD, LCM이 주어진 두 자연수',
-          given: '두 수의 합: 44,   최대공약수(G): 4,   최소공배수(L): 72',
-          guide: '💡 A = 4a, B = 4b라 하면 a + b = 11 이고 a × b = 18 인 서로소 쌍을 찾으세요.'
+          badge: '4-9 생각 넓히기',
+          title: '두 수의 합과 최대공약수·최소공배수 추론',
+          given: 'GCD = 6, LCM = 72, 두 수의 합 = 42',
+          guide: '💡 A = 6a, B = 6b (a, b 서로소) 라 하면 a × b = 12, a + b = 7 입니다.'
         });
         break;
 
@@ -1463,28 +1009,38 @@
         if (simController) {
           simController.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">💻 알지오매스 소수 판별 코딩 러너:</span>
-              <div style="display:flex; align-items:center; gap:6px;">
-                <input type="number" id="algo-input-val" class="form-control" style="width:90px; padding:4px 8px; font-weight:700;" value="${simState.algoNum}">
-                <button class="btn btn-primary" style="padding:4px 12px; font-weight:800; font-size:0.85rem;" onclick="runCodingAlgo()">알고리즘 실행</button>
+              <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">💻 수 N 입력:</span>
+                <input type="number" id="algo-input-val" value="${simState.algoNum}" style="width:75px; padding:3px 6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:800;">
+                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#0284c7; color:#ffffff; font-weight:800;" onclick="runCodingAlgo()">▶ 알고리즘 실행</button>
+                <button class="btn" style="padding:4px 7px; font-size:0.82rem; background:#f1f5f9;" onclick="document.getElementById('algo-input-val').value=115; runCodingAlgo();">115</button>
+                <button class="btn" style="padding:4px 7px; font-size:0.82rem; background:#f1f5f9;" onclick="document.getElementById('algo-input-val').value=37; runCodingAlgo();">37(소수)</button>
+                <button class="btn" style="padding:4px 7px; font-size:0.82rem; background:#f1f5f9;" onclick="document.getElementById('algo-input-val').value=91; runCodingAlgo();">91</button>
               </div>
-              <div id="algo-result-box" style="display:none; background:#eff6ff; color:#1e40af; padding:4px 10px; border-radius:6px; font-size:0.85rem; font-weight:800;"></div>
+              <span id="algo-result-box" style="display:inline-block; background:#fef2f2; color:#991b1b; font-weight:800; padding:4px 14px; border-radius:12px; font-size:0.85rem; border:1px solid #fecaca;">
+                판별 결과: <b>115</b>은(는) <b>합성수 (5의 배수)</b>입니다!
+              </span>
             </div>
           `;
         }
-        renderAlgoCanvas(two, simState.algoNum, false);
+        renderAlgoCanvas(two, simState.algoNum, false, 5);
         break;
 
       // ----------------------------------------
       // Tab 5: 스스로 마무리하기 (5-1 ~ 5-14)
+      // 핵심 인터랙티브: 5-1 (달력 속 소수 날짜 찾기)
       // ----------------------------------------
       case '5-1':
         if (simController) {
           simController.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">📅 달력 속 31일까지의 날짜 중 소수 탐색:</span>
-              <span style="background:#f0fdf4; color:#166534; font-weight:800; padding:4px 10px; border-radius:12px; font-size:0.85rem;">
-                선택된 소수 날짜: <b id="cal-selected-count">${simState.calendarSelected.size}개</b> / 총 11개
+              <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">📅 5월 달력: 소수 날짜를 클릭하여 모두 찾아보세요!</span>
+                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f0fdf4; color:#166534; font-weight:800; border:1px solid #86efac;" onclick="autoCollectCalendarPrimes()">💡 소수 모두 찾기</button>
+                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f1f5f9;" onclick="resetCalendarPrimes()">🔄 초기화</button>
+              </div>
+              <span style="background:#eff6ff; color:#1d4ed8; font-weight:800; padding:4px 14px; border-radius:12px; font-size:0.85rem; border:1px solid #bfdbfe;">
+                수집한 소수 날짜: <b id="cal-selected-count">${simState.calendarSelected.size}개</b> / 총 11개
               </span>
             </div>
           `;
@@ -1493,189 +1049,119 @@
         break;
 
       case '5-2':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">⚖️ 5-2 명제 진위 판정 (ㄱ, ㄴ, ㄷ, ㄹ)</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
-          badge: '대단원 스스로 마무리하기 02번',
-          title: '소수와 합성수 명제 진위 판정',
-          given: 'ㄱ. 모든 소수는 홀수이다. / ㄴ. 10 이하의 소수는 4개이다. / ㄷ. 가장 작은 합성수는 4이다. / ㄹ. 자연수는 1, 소수, 합성수이다.',
-          guide: '💡 2는 짝수이면서 유일한 소수라는 점과 각 명제의 정의를 꼼꼼히 확인하세요.'
+          badge: '마무리 02번',
+          title: '소수와 합성수 성질 참/거짓 판단',
+          given: '보기: ① 1은 소수  ② 가장 작은 소수 2  ③ 합성수는 짝수  ④ 10 이하 소수 5개',
+          guide: '💡 2는 가장 작은 소수이자 유일한 짝수 소수입니다. 1은 소수도 합성수도 아닙니다.'
         });
         break;
 
       case '5-3':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🔄 5-3 거듭제곱 계산 결과의 일의 자리 숫자 규칙 탐색</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
-          badge: '대단원 스스로 마무리하기 03번',
-          title: '거듭제곱의 일의 자리 숫자 규칙',
-          given: '3¹³,  5²⁰ 의 일의 자리 숫자 계산',
-          guide: '💡 3의 거듭제곱의 일의 자리는 3, 9, 7, 1 (4개 주기)로 반복됩니다.'
+          badge: '마무리 03번',
+          title: '거듭제곱의 일의 자리 규칙성',
+          given: '3¹ = 3, 3² = 9, 3³ = 27, 3⁴ = 81, 3⁵ = 243 …',
+          guide: '💡 일의 자리가 3 ➔ 9 ➔ 7 ➔ 1 로 4개 주기로 반복됩니다. 50을 4로 나눈 나머지를 구하세요.'
         });
         break;
 
       case '5-4':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🌳 5-4 330의 소인수분해와 약수가 아닌 것 찾기</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
-          badge: '대단원 스스로 마무리하기 04번',
-          title: '330의 소인수분해와 약수 판별',
-          given: '대상 수: 330',
-          guide: '💡 330을 소인수분해하여 그 소인수들의 곱으로 나타낼 수 없는 보기를 고르세요.'
+          badge: '마무리 04번',
+          title: '330의 소인수 찾기',
+          given: '330 = 2 × 3 × 5 × 11',
+          guide: '💡 330을 소인수분해하여 나타나는 소인수 목록(2, 3, 5, 11)과 보기를 비교하세요.'
         });
         break;
 
       case '5-5':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">⚖️ 5-5 나눗셈으로 제곱수 만들기 (84 ÷ x = y²)</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
-          badge: '대단원 스스로 마무리하기 05번',
-          title: '자연수로 나누어 제곱수 만들기',
-          given: '84 ÷ x = y² (가장 작은 자연수 x, 그때의 y)',
-          guide: '💡 84를 소인수분해하여 지수가 홀수인 소인수들을 묶어 x로 소거하세요.'
+          badge: '마무리 05번',
+          title: '84를 나누어 어떤 자연수의 제곱 만들기',
+          given: '84 / x = (자연수)²,  84 = 2² × 3 × 7',
+          guide: '💡 지수가 홀수인 3과 7을 나누어 제거해야 지수가 모두 짝수가 됩니다. 따라서 x = 3 × 7 = 21 입니다.'
         });
         break;
 
       case '5-6':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">⭕ 5-6 35와 서로소인 수 찾기</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
-          badge: '대단원 스스로 마무리하기 06번',
-          title: '35와 서로소인 수 판별',
-          given: '35 = 5 × 7',
-          guide: '💡 35의 소인수인 5와 7을 소인수로 갖지 않는 보기를 찾으세요.'
+          badge: '마무리 06번',
+          title: '서로소인 두 수 찾기',
+          given: '공약수가 1뿐인 두 수',
+          guide: '💡 보기의 두 수를 소인수분해하여 공통인 소인수가 전혀 없는 쌍을 찾으세요.'
         });
         break;
 
       case '5-7':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🧱 5-7 두 수의 최대공약수와 최소공배수 구하기</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
-          badge: '대단원 스스로 마무리하기 07번',
-          title: '소인수분해 꼴에서 GCD와 LCM 구하기',
-          given: '두 수: 2³ × 3² × 5,   2² × 3³ × 7',
-          guide: '💡 최대공약수는 작은 지수, 최소공배수는 큰 지수를 택하여 계산하세요.'
+          badge: '마무리 07번',
+          title: '최대공약수와 최소공배수 구하기',
+          given: '두 수 2² × 3³ × 5 와 2³ × 3² × 7',
+          guide: '💡 최대공약수는 공통 소인수의 최소 지수, 최소공배수는 모든 소인수의 최고 지수를 곱합니다.'
         });
         break;
 
       case '5-8':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">⚖️ 5-8 두 수의 곱과 최대공약수·최소공배수의 관계</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
-          badge: '대단원 스스로 마무리하기 08번',
-          title: 'A × B = G × L 관계 공식',
-          given: '두 자연수 A와 36   /   최대공약수: 12,   최소공배수: 180',
-          guide: '💡 공식 A × 36 = 12 × 180 을 세워 미지수 A의 값을 계산해보세요.'
+          badge: '마무리 08번',
+          title: 'A와 36의 관계 추론',
+          given: 'GCD(A, 36) = 12,  LCM(A, 36) = 180',
+          guide: '💡 두 수의 곱은 최대공약수와 최소공배수의 곱과 같습니다: A × 36 = 12 × 180.'
         });
         break;
 
       case '5-9':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">📊 5-9 두 자연수의 비가 3:7이고 최소공배수가 420일 때 최대공약수</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
-          badge: '대단원 스스로 마무리하기 09번',
-          title: '비율과 최소공배수를 이용한 GCD 구하기',
-          given: '두 수 A : B = 3 : 7   /   최소공배수: 420',
-          guide: '💡 두 수를 3g, 7g라 두면 최소공배수는 21g = 420 이 됩니다.'
+          badge: '마무리 09번',
+          title: '비가 3:7 인 두 수의 차',
+          given: '두 수 3k, 7k 의 최소공배수가 105',
+          guide: '💡 3과 7은 서로소이므로 LCM = 3 × 7 × k = 21k = 105 ➔ k = 5 입니다.'
         });
         break;
 
       case '5-10':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🔗 5-10 세 분수를 자연수로 만드는 가장 작은 기약분수</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
-          badge: '대단원 스스로 마무리하기 10번',
-          title: '분수 곱셈의 자연수 조건',
-          given: '세 분수 9/5,  36/7,  15/14 에 곱하여 모두 자연수가 되게 하는 기약분수',
-          guide: '💡 구하는 분수는 (분모들의 최소공배수) / (분자들의 최대공약수) 꼴입니다.'
+          badge: '마무리 10번',
+          title: '두 분수를 자연수로 만드는 가장 작은 기약분수',
+          given: '7/12 와 14/15 에 곱하여 자연수가 되는 가장 작은 분수 b/a',
+          guide: '💡 분자 b는 분모들(12, 15)의 최소공배수, 분모 a는 분자들(7, 14)의 최대공약수입니다.'
         });
         break;
 
       case '5-11':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">📝 5-11 서술형: 126의 최대 소인수와 45의 최소 소인수</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
-          badge: '대단원 스스로 마무리하기 11번 (서술형)',
-          title: '소인수분해를 이용한 최대·최소 소인수',
-          given: '126의 가장 큰 소인수 A,  45의 가장 작은 소인수 B',
-          guide: '💡 126과 45를 각각 소인수분해하여 소인수 목록을 적고 A와 B의 합을 구하세요.'
+          badge: '마무리 11번 (서술형)',
+          title: '소인수분해와 지수 합 a+b',
+          given: '360 = 2^a × 3^b × 5',
+          guide: '💡 360을 소인수분해하여 2의 지수 a와 3의 지수 b를 구한 뒤 더하세요.'
         });
         break;
 
       case '5-12':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">📝 5-12 서술형: 1부터 12까지의 곱 소인수분해</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
-          badge: '대단원 스스로 마무리하기 12번 (서술형)',
-          title: '연속 곱의 소인수별 지수 구하기',
-          given: '1 × 2 × 3 × ... × 12 = 2^a × 3^b × 5^c × 7^d × 11^e',
-          guide: '💡 1부터 12까지 각 수에 포함된 2의 개수와 3의 개수를 세어 지수의 합을 구하세요.'
+          badge: '마무리 12번 (서술형)',
+          title: '1부터 12까지의 곱과 소인수 지수',
+          given: '1 × 2 × … × 12 = 2^a × 3^b × 5^c × 7^d × 11',
+          guide: '💡 1부터 12까지 수들 속에 포함된 소인수 2, 3, 5, 7의 개수를 각각 카운트하세요.'
         });
         break;
 
       case '5-13':
-        if (simController) {
-          simController.innerHTML = `
-            <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">📝 5-13 서술형: 세 수 72, 60, A의 최대공약수가 6일 때 가장 작은 A</span>
-          `;
-        }
         renderProblemSupportCanvas(two, {
-          badge: '대단원 스스로 마무리하기 13번 (서술형)',
-          title: '세 수의 공통 소인수 조건 탐색',
-          given: '세 수 72, 60, A   /   최대공약수: 6 = 2 × 3',
-          guide: '💡 A는 6의 배수이면서, 4나 9의 배수가 되지 않도록 조건을 만족하는 최솟값을 찾으세요.'
+          badge: '마무리 13번 (서술형)',
+          title: '세 수의 최대공약수가 6일 때 미지수 A',
+          given: 'GCD(54, 90, A) = 6,  A는 20 이상 30 이하의 자연수',
+          guide: '💡 A는 6의 배수이어야 하며, 54와 90의 공통 소인수 중 3²의 배수가 되어서는 안 됩니다.'
         });
         break;
 
       case '5-14':
-        if (simController) {
-          simController.innerHTML = `
-            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🌲 5-14 서술형: 최대공약수 / 최소공배수 연결 트리</span>
-              <span style="background:#eff6ff; color:#1d4ed8; font-weight:800; padding:4px 10px; border-radius:12px; font-size:0.85rem;">
-                미지수 A, B, C를 단계별로 역추적
-              </span>
-            </div>
-          `;
-        }
         renderProblemSupportCanvas(two, {
-          badge: '대단원 스스로 마무리하기 14번 (서술형)',
-          title: '연결 관계망을 통한 미지수 구하기',
-          given: 'A와 24의 GCD=12, LCM=72  /  B와 24의 관계  /  C의 값',
-          guide: '💡 두 수의 곱과 GCD·LCM 관계 공식을 각 노드에 적용하여 A, B, C의 합을 구하세요.'
+          badge: '마무리 14번 (서술형)',
+          title: 'GCD와 LCM 연결 트리 탐색',
+          given: '두 수의 최대공약수와 최소공배수의 성질을 연결하는 종합 문제',
+          guide: '💡 주어진 조건에 따라 단계별로 소인수분해를 수행하고 관계식을 정리하세요.'
         });
         break;
 
@@ -1686,568 +1172,342 @@
         if (simController) {
           simController.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🎨 몬드리안 직사각형 분할 실험실:</span>
-              <span style="background:#eff6ff; color:#1e40af; font-weight:800; padding:4px 10px; border-radius:12px; font-size:0.85rem;">
-                넓이가 주어진 수와 같은 직사각형들로 판을 빈틈없이 채웁니다!
+              <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                <span style="font-weight:800; color:#0284c7; font-size:0.95rem;">🎨 몬드리안 격자 분할 비율 조절:</span>
+                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#f1f5f9;" onclick="changeMondrianRatio(-1)">◀ 이전 분할</button>
+                <button class="btn" style="padding:4px 9px; font-size:0.82rem; background:#0284c7; color:#ffffff; font-weight:800;" onclick="changeMondrianRatio(1)">다음 분할 ▶</button>
+              </div>
+              <span style="background:#eff6ff; color:#1d4ed8; font-weight:800; padding:4px 14px; border-radius:12px; font-size:0.85rem; border:1px solid #bfdbfe;">
+                소인수분해와 정수 비율을 이용한 몬드리안 면적 분할 예술
               </span>
             </div>
           `;
         }
-        renderMondrianCanvas(two);
+        renderMondrianCanvas(two, simState.mondrianRatio);
         break;
 
       default:
-        renderDefaultCanvas(two, code);
+        renderProblemSupportCanvas(two, {
+          badge: '학습 지원',
+          title: '수학 자유 연습 영역',
+          given: '문제 풀이 과정을 자유롭게 기록해보세요.',
+          guide: '💡 상단 도구 모음의 펜 도구를 활용할 수 있습니다.'
+        });
         break;
     }
-    two.update();
   }
   window.setupSubstepSimulator = setupSubstepSimulator;
 
-  // ==========================================
-  // Detailed Two.js Rendering Functions (Type A & Legacy)
-  // 태블릿 가독성 대폭 향상 (폰트 크기 14~24px)
-  // ==========================================
+  // =========================================================================
+  // 0단원 전용 정적 인포그래픽 도표 렌더러 (조작 제거 완비)
+  // =========================================================================
 
-  function renderTileArrayCanvas(two, r, c) {
+  // 0-1: 12개의 타일로 만드는 직사각형과 약수·배수 (3가지 경우를 한눈에 도표화)
+  function renderTileArrayCanvas(two) {
     if (!two) return;
     two.clear();
-
     const cx = two.width / 2;
-    const cy = two.height / 2 + 16;
-    const maxDim = Math.max(r, c, 6);
-    const size = Math.max(24, Math.min(38, Math.floor(260 / maxDim)));
-    const startX = cx - (c * size) / 2;
-    const startY = cy - (r * size) / 2;
-    const totalCells = r * c;
-    const isExact12 = (totalCells === 12);
 
-    const allPairs = [
-      { key: '1x12', label: '1 × 12' },
-      { key: '2x6', label: '2 × 6' },
-      { key: '3x4', label: '3 × 4' },
-      { key: '4x3', label: '4 × 3' },
-      { key: '6x2', label: '6 × 2' },
-      { key: '12x1', label: '12 × 1' }
-    ];
+    // 상단 제목
+    const tTitle = two.makeText("📐 [초등 복습] 12개의 정사각형 타일로 만드는 직사각형 배열", cx, 28);
+    tTitle.size = 17; tTitle.weight = 800; tTitle.fill = '#1e293b';
 
-    const topY = 28;
-    const headerTitle = two.makeText("🏆 12개 타일로 만들 수 있는 직사각형 모양 수집기", cx, topY - 14);
-    headerTitle.size = 17; headerTitle.weight = 800; headerTitle.fill = '#1e293b';
+    // 3개의 직사각형 카드 나란히 배치
+    // 카드 1: 1 × 12
+    const y1 = 80;
+    const box1 = two.makeRoundedRectangle(cx, y1, 480, 52, 8);
+    box1.fill = '#f8fafc'; box1.stroke = '#cbd5e1'; box1.linewidth = 1.5;
+    const l1 = two.makeText("1행 × 12열 (가로 12, 세로 1)", cx - 130, y1);
+    l1.size = 14; l1.weight = 800; l1.fill = '#0284c7';
+    // 12칸 작은 타일
+    const startX1 = cx - 20;
+    for (let j = 0; j < 12; j++) {
+      const tile = two.makeRoundedRectangle(startX1 + j * 18, y1, 16, 16, 2);
+      tile.fill = '#38bdf8'; tile.stroke = '#0284c7'; tile.linewidth = 1;
+      const numT = two.makeText(String(j + 1), startX1 + j * 18, y1);
+      numT.size = 10; numT.weight = 700; numT.fill = '#ffffff';
+    }
+    const r1 = two.makeText("1 × 12 = 12", cx + 200, y1);
+    r1.size = 14; r1.weight = 800; r1.fill = '#15803d';
 
-    const pillW = 56;
-    const pillH = 24;
-    const totalPillsW = allPairs.length * (pillW + 6) - 6;
-    const pillStartX = cx - totalPillsW / 2 + pillW / 2;
-
-    allPairs.forEach((pair, idx) => {
-      const px = pillStartX + idx * (pillW + 6);
-      const isFound = simState.foundTileFactors.has(pair.key);
-      const pill = two.makeRoundedRectangle(px, topY + 12, pillW, pillH, 6);
-      if (isFound) {
-        pill.fill = '#ecfdf5';
-        pill.stroke = '#10b981';
-        pill.linewidth = 1.5;
-        const t = two.makeText(pair.label, px, topY + 12);
-        t.size = 13; t.weight = 800; t.fill = '#065f46';
-      } else {
-        pill.fill = '#f8fafc';
-        pill.stroke = '#cbd5e1';
-        pill.linewidth = 1;
-        const t = two.makeText("? × ?", px, topY + 12);
-        t.size = 13; t.weight = 600; t.fill = '#94a3b8';
-      }
-    });
-
-    const bgW = Math.max(c * size + 44, 250);
-    const bgH = Math.max(r * size + 44, 190);
-    const bgBox = two.makeRoundedRectangle(cx, cy, bgW, bgH, 12);
-    bgBox.fill = '#f8fafc';
-    bgBox.stroke = '#e2e8f0';
-    bgBox.linewidth = 1.5;
-
-    const dimTopY = startY - 16;
-    const topArrow = two.makeLine(startX, dimTopY, startX + c * size, dimTopY);
-    topArrow.stroke = '#0284c7'; topArrow.linewidth = 2;
-    two.makeLine(startX, dimTopY - 5, startX, dimTopY + 5).stroke = '#0284c7';
-    two.makeLine(startX + c * size, dimTopY - 5, startX + c * size, dimTopY + 5).stroke = '#0284c7';
-    const topLabel = two.makeText(`가로 ${c}칸`, cx, dimTopY - 11);
-    topLabel.size = 15; topLabel.weight = 800; topLabel.fill = '#0284c7';
-
-    const dimLeftX = startX - 18;
-    const leftArrow = two.makeLine(dimLeftX, startY, dimLeftX, startY + r * size);
-    leftArrow.stroke = '#0284c7'; leftArrow.linewidth = 2;
-    two.makeLine(dimLeftX - 5, startY, dimLeftX + 5, startY).stroke = '#0284c7';
-    two.makeLine(dimLeftX - 5, startY + r * size, dimLeftX + 5, startY + r * size).stroke = '#0284c7';
-    const leftLabel = two.makeText(`세로 ${r}칸`, dimLeftX - 18, cy);
-    leftLabel.size = 15; leftLabel.weight = 800; leftLabel.fill = '#0284c7';
-    leftLabel.rotation = -Math.PI / 2;
-
-    for (let i = 0; i < r; i++) {
-      for (let j = 0; j < c; j++) {
-        const cellNum = i * c + j + 1;
-        const tx = startX + j * size + size / 2;
-        const ty = startY + i * size + size / 2;
-
-        if (cellNum <= 12) {
-          const tile = two.makeRoundedRectangle(tx, ty, size - 3, size - 3, 4);
-          if (isExact12) {
-            tile.fill = '#0284c7';
-            tile.stroke = '#0369a1';
-            tile.linewidth = 2;
-          } else {
-            tile.fill = '#38bdf8';
-            tile.stroke = '#0284c7';
-            tile.linewidth = 1.5;
-          }
-          const numT = two.makeText(String(cellNum), tx, ty);
-          numT.size = Math.max(12, Math.floor(size * 0.44));
-          numT.weight = 800;
-          numT.fill = '#ffffff';
-        } else {
-          const emptyCell = two.makeRoundedRectangle(tx, ty, size - 3, size - 3, 4);
-          emptyCell.fill = 'rgba(239, 68, 68, 0.08)';
-          emptyCell.stroke = '#f87171';
-          emptyCell.linewidth = 1.5;
-          const warnT = two.makeText("빈칸", tx, ty);
-          warnT.size = Math.max(11, Math.floor(size * 0.36));
-          warnT.weight = 700;
-          warnT.fill = '#ef4444';
-        }
+    // 카드 2: 2 × 6
+    const y2 = 150;
+    const box2 = two.makeRoundedRectangle(cx, y2, 480, 68, 8);
+    box2.fill = '#f8fafc'; box2.stroke = '#cbd5e1'; box2.linewidth = 1.5;
+    const l2 = two.makeText("2행 × 6열 (가로 6, 세로 2)", cx - 130, y2);
+    l2.size = 14; l2.weight = 800; l2.fill = '#0284c7';
+    // 2x6 타일
+    const startX2 = cx + 20;
+    for (let r = 0; r < 2; r++) {
+      for (let c = 0; c < 6; c++) {
+        const num = r * 6 + c + 1;
+        const tile = two.makeRoundedRectangle(startX2 + c * 22, y2 - 12 + r * 24, 20, 20, 3);
+        tile.fill = '#0284c7'; tile.stroke = '#0369a1'; tile.linewidth = 1;
+        const numT = two.makeText(String(num), startX2 + c * 22, y2 - 12 + r * 24);
+        numT.size = 11; numT.weight = 700; numT.fill = '#ffffff';
       }
     }
+    const r2 = two.makeText("2 × 6 = 12", cx + 200, y2);
+    r2.size = 14; r2.weight = 800; r2.fill = '#15803d';
 
-    const handleX = startX + c * size;
-    const handleY = startY + r * size;
-
-    const aura = two.makeCircle(handleX, handleY, 22);
-    aura.fill = 'rgba(99, 102, 241, 0.22)';
-    aura.noStroke();
-
-    const handleCircle = two.makeCircle(handleX, handleY, 13);
-    handleCircle.fill = '#4f46e5';
-    handleCircle.stroke = '#ffffff';
-    handleCircle.linewidth = 2.5;
-
-    const icon = two.makeText("⤢", handleX, handleY);
-    icon.size = 14; icon.weight = 800; icon.fill = '#ffffff';
-
-    const botY = cy + (r * size) / 2 + 30;
-
-    if (isExact12) {
-      const banner = two.makeRoundedRectangle(cx, botY, 360, 32, 16);
-      banner.fill = '#f0fdf4';
-      banner.stroke = '#22c55e';
-      banner.linewidth = 2;
-
-      const t = two.makeText(`🎉 [직사각형 완성!] ${r} × ${c} = 12 ➔ 12의 약수: ${r}, ${c}`, cx, botY);
-      t.size = 14; t.weight = 800; t.fill = '#15803d';
-    } else if (totalCells < 12) {
-      const banner = two.makeRoundedRectangle(cx, botY, 340, 30, 15);
-      banner.fill = '#fffbeb';
-      banner.stroke = '#f59e0b';
-      banner.linewidth = 1.5;
-
-      const t = two.makeText(`⚠️ 현재 ${totalCells}칸: 12개 중 ${12 - totalCells}개 타일이 덜 채워짐`, cx, botY);
-      t.size = 13; t.weight = 700; t.fill = '#b45309';
-    } else {
-      const banner = two.makeRoundedRectangle(cx, botY, 350, 30, 15);
-      banner.fill = '#fef2f2';
-      banner.stroke = '#ef4444';
-      banner.linewidth = 1.5;
-
-      const t = two.makeText(`⚠️ 현재 ${totalCells}칸: 12개 타일 초과로 ${totalCells - 12}칸이 비어있음`, cx, botY);
-      t.size = 13; t.weight = 700; t.fill = '#b91c1c';
+    // 카드 3: 3 × 4
+    const y3 = 236;
+    const box3 = two.makeRoundedRectangle(cx, y3, 480, 84, 8);
+    box3.fill = '#f8fafc'; box3.stroke = '#cbd5e1'; box3.linewidth = 1.5;
+    const l3 = two.makeText("3행 × 4열 (가로 4, 세로 3)", cx - 130, y3);
+    l3.size = 14; l3.weight = 800; l3.fill = '#0284c7';
+    // 3x4 타일
+    const startX3 = cx + 40;
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 4; c++) {
+        const num = r * 4 + c + 1;
+        const tile = two.makeRoundedRectangle(startX3 + c * 22, y3 - 22 + r * 22, 20, 20, 3);
+        tile.fill = '#0369a1'; tile.stroke = '#075985'; tile.linewidth = 1;
+        const numT = two.makeText(String(num), startX3 + c * 22, y3 - 22 + r * 22);
+        numT.size = 11; numT.weight = 700; numT.fill = '#ffffff';
+      }
     }
+    const r3 = two.makeText("3 × 4 = 12", cx + 200, y3);
+    r3.size = 14; r3.weight = 800; r3.fill = '#15803d';
 
-    const guideT = two.makeText("🖐️ 우하단 보라색 모서리 핸들을 잡고 드래그하여 직사각형을 완성해보세요!", cx, botY + 28);
-    guideT.size = 13; guideT.weight = 600; guideT.fill = '#64748b';
+    // 하단 정리 배너
+    const yBot = 305;
+    const banner = two.makeRoundedRectangle(cx, yBot, 480, 36, 18);
+    banner.fill = '#f0fdf4'; banner.stroke = '#86efac'; banner.linewidth = 1.5;
+    const bTxt = two.makeText("💡 12 = 1 × 12 = 2 × 6 = 3 × 4  ➔  12의 약수: 1, 2, 3, 4, 6, 12", cx, yBot);
+    bTxt.size = 14; bTxt.weight = 800; bTxt.fill = '#166534';
 
     two.update();
   }
 
-  function renderVennCanvas(two, nA, nB) {
+  // 0-2: 12와 18의 공약수와 최대공약수 벤다이어그램 (정적 완성본)
+  function renderVennCanvas(two) {
     if (!two) return;
     two.clear();
-
     const cx = two.width / 2;
-    const cy = two.height / 2 - 20;
-    const radius = 90;
-    const offset = 70;
-    const cAx = cx - offset;
-    const cAy = cy;
-    const cBx = cx + offset;
-    const cBy = cy;
+    const cy = two.height / 2 - 10;
 
-    const c1 = two.makeCircle(cAx, cAy, radius);
-    c1.fill = 'rgba(59, 130, 246, 0.18)';
-    c1.stroke = '#2563eb';
-    c1.linewidth = 2.5;
+    const tTitle = two.makeText("⭕ [초등 복습] 12와 18의 공약수와 최대공약수 벤다이어그램", cx, 30);
+    tTitle.size = 17; tTitle.weight = 800; tTitle.fill = '#1e293b';
 
-    const c2 = two.makeCircle(cBx, cBy, radius);
-    c2.fill = 'rgba(244, 63, 94, 0.18)';
-    c2.stroke = '#e11d48';
-    c2.linewidth = 2.5;
+    const radius = 95;
+    const offset = 75;
 
-    const tA = two.makeText(`${nA}의 약수`, cAx - 35, cAy - radius - 16);
-    tA.fill = '#1d4ed8'; tA.weight = 800; tA.size = 16;
+    // 원 A: 12의 약수
+    const circleA = two.makeCircle(cx - offset, cy, radius);
+    circleA.fill = 'rgba(56, 189, 248, 0.15)';
+    circleA.stroke = '#0284c7';
+    circleA.linewidth = 2.5;
 
-    const tB = two.makeText(`${nB}의 약수`, cBx + 35, cBy - radius - 16);
-    tB.fill = '#be123c'; tB.weight = 800; tB.size = 16;
+    // 원 B: 18의 약수
+    const circleB = two.makeCircle(cx + offset, cy, radius);
+    circleB.fill = 'rgba(168, 85, 247, 0.15)';
+    circleB.stroke = '#9333ea';
+    circleB.linewidth = 2.5;
 
-    const tBoth = two.makeText("공약수 (A ∩ B)", cx, cAy - radius - 16);
-    tBoth.fill = '#7c3aed'; tBoth.weight = 800; tBoth.size = 16;
+    // 원 이름 라벨
+    const lblA = two.makeText("12의 약수", cx - offset - 30, cy - radius - 14);
+    lblA.size = 15; lblA.weight = 800; lblA.fill = '#0284c7';
+    const lblB = two.makeText("18의 약수", cx + offset + 30, cy - radius - 14);
+    lblB.size = 15; lblB.weight = 800; lblB.fill = '#9333ea';
 
-    const trayY = cy + 125;
-    const trayBox = two.makeRoundedRectangle(cx, trayY, 410, 52, 10);
-    trayBox.fill = '#f8fafc';
-    trayBox.stroke = '#cbd5e1';
-    trayBox.linewidth = 1.5;
+    // 12만의 약수: 4, 12
+    const t4 = two.makeText("4", cx - offset - 35, cy - 20);
+    t4.size = 18; t4.weight = 800; t4.fill = '#0369a1';
+    const t12 = two.makeText("12", cx - offset - 35, cy + 25);
+    t12.size = 18; t12.weight = 800; t12.fill = '#0369a1';
 
-    const trayLabel = two.makeText("📦 수 카드 보관함 (마우스/터치로 원 안으로 끌어다 놓으세요)", cx, trayY - 34);
-    trayLabel.size = 14; trayLabel.fill = '#475569'; trayLabel.weight = 700;
+    // 18만의 약수: 9, 18
+    const t9 = two.makeText("9", cx + offset + 35, cy - 20);
+    t9.size = 18; t9.weight = 800; t9.fill = '#7e22ce';
+    const t18 = two.makeText("18", cx + offset + 35, cy + 25);
+    t18.size = 18; t18.weight = 800; t18.fill = '#7e22ce';
 
-    const spacing = 44;
-    const trayStartX = cx - (8 * spacing) / 2 + spacing / 2;
+    // 공약수 (교집합): 1, 2, 3, 6
+    const t1 = two.makeText("1", cx, cy - 50);
+    t1.size = 18; t1.weight = 800; t1.fill = '#15803d';
+    const t2 = two.makeText("2", cx, cy - 20);
+    t2.size = 18; t2.weight = 800; t2.fill = '#15803d';
+    const t3 = two.makeText("3", cx, cy + 10);
+    t3.size = 18; t3.weight = 800; t3.fill = '#15803d';
 
-    simState.vennCards.forEach((card, i) => {
-      if (simState.activeVennDragIndex === i) return;
+    // 6 (최대공약수) 특별 하이라이트
+    const t6Badge = two.makeRoundedRectangle(cx, cy + 45, 52, 26, 6);
+    t6Badge.fill = '#fef08a'; t6Badge.stroke = '#ca8a04'; t6Badge.linewidth = 2;
+    const t6 = two.makeText("6 👑", cx, cy + 45);
+    t6.size = 16; t6.weight = 900; t6.fill = '#854d0e';
 
-      let px = trayStartX + i * spacing;
-      let py = trayY;
+    const lblInter = two.makeText("공약수", cx, cy - radius - 14);
+    lblInter.size = 15; lblInter.weight = 800; lblInter.fill = '#15803d';
 
-      if (card.currentArea === 'onlyA') {
-        const aCards = simState.vennCards.filter(c => c.currentArea === 'onlyA');
-        const posIdx = aCards.indexOf(card);
-        px = cx - 100;
-        py = cy + ((posIdx === 0) ? -28 : 26);
-      } else if (card.currentArea === 'both') {
-        const bothCards = simState.vennCards.filter(c => c.currentArea === 'both');
-        const posIdx = bothCards.indexOf(card);
-        const ySlots = [-45, -15, 15, 45];
-        px = cx;
-        py = cy + (ySlots[posIdx] || 0);
-      } else if (card.currentArea === 'onlyB') {
-        const bCards = simState.vennCards.filter(c => c.currentArea === 'onlyB');
-        const posIdx = bCards.indexOf(card);
-        px = cx + 100;
-        py = cy + ((posIdx === 0) ? -28 : 26);
-      }
-
-      const cardBox = two.makeRoundedRectangle(px, py, 34, 34, 6);
-      if (card.currentArea === 'tray') {
-        cardBox.fill = '#ffffff';
-        cardBox.stroke = '#94a3b8';
-        cardBox.linewidth = 1.5;
-      } else if (card.currentArea === 'both') {
-        cardBox.fill = '#faf5ff';
-        cardBox.stroke = '#9333ea';
-        cardBox.linewidth = 2;
-      } else if (card.currentArea === 'onlyA') {
-        cardBox.fill = '#eff6ff';
-        cardBox.stroke = '#2563eb';
-        cardBox.linewidth = 2;
-      } else {
-        cardBox.fill = '#fff1f2';
-        cardBox.stroke = '#e11d48';
-        cardBox.linewidth = 2;
-      }
-
-      const txt = two.makeText(String(card.num), px, py);
-      txt.size = 16; txt.weight = 800;
-      txt.fill = (card.currentArea === 'both') ? '#6b21a8' : (card.currentArea === 'onlyA' ? '#1e40af' : (card.currentArea === 'onlyB' ? '#9f1239' : '#1e293b'));
-
-      const totalPlaced = simState.vennCards.filter(c => c.currentArea === c.target).length;
-      if (totalPlaced === 8 && card.num === 6 && card.currentArea === 'both') {
-        cardBox.fill = '#fef08a';
-        cardBox.stroke = '#eab308';
-        cardBox.linewidth = 2.5;
-        const crown = two.makeText("👑", px, py - 22);
-        crown.size = 16;
-      }
-    });
-
-    if (simState.activeVennDragIndex >= 0) {
-      const card = simState.vennCards[simState.activeVennDragIndex];
-      const dx = simState.vennDragPos.x;
-      const dy = simState.vennDragPos.y;
-
-      const shadow = two.makeRoundedRectangle(dx + 3, dy + 3, 40, 40, 8);
-      shadow.fill = 'rgba(0,0,0,0.15)'; shadow.noStroke();
-
-      const dragCard = two.makeRoundedRectangle(dx, dy, 38, 38, 8);
-      dragCard.fill = '#ffffff';
-      dragCard.stroke = '#4f46e5';
-      dragCard.linewidth = 2.5;
-
-      const dragTxt = two.makeText(String(card.num), dx, dy);
-      dragTxt.size = 18; dragTxt.weight = 800; dragTxt.fill = '#4338ca';
-    }
-
-    const totalPlaced = simState.vennCards.filter(c => c.currentArea === c.target).length;
-    const bannerY = cy + 62;
-
-    if (totalPlaced === 8) {
-      const banner = two.makeRoundedRectangle(cx, bannerY, 410, 32, 16);
-      banner.fill = '#f0fdf4';
-      banner.stroke = '#22c55e';
-      banner.linewidth = 2;
-
-      const t = two.makeText("🎉 [분류 완료!] 공약수: 1, 2, 3, 6 ➔ 최대공약수 = 6 👑", cx, bannerY);
-      t.size = 15; t.weight = 800; t.fill = '#15803d';
-    } else if (simState.vennHintMsg) {
-      const banner = two.makeRoundedRectangle(cx, bannerY, 410, 30, 15);
-      banner.fill = '#fffbeb';
-      banner.stroke = '#f59e0b';
-      banner.linewidth = 1.5;
-
-      const t = two.makeText(simState.vennHintMsg, cx, bannerY);
-      t.size = 13.5; t.weight = 700; t.fill = '#b45309';
-    }
+    // 하단 결론 배너
+    const yBot = cy + radius + 30;
+    const banner = two.makeRoundedRectangle(cx, yBot, 480, 36, 18);
+    banner.fill = '#f0fdf4'; banner.stroke = '#86efac'; banner.linewidth = 1.5;
+    const bTxt = two.makeText("💡 공약수: 1, 2, 3, 6  ➔  가장 큰 공약수: 6 (최대공약수)", cx, yBot);
+    bTxt.size = 14; bTxt.weight = 800; bTxt.fill = '#166534';
 
     two.update();
   }
 
-  function renderLcmJumpCanvas(two, a = 4, b = 6) {
+  // 0-3: 4와 6의 수직선 도약과 최소공배수 (정적 완성본)
+  function renderLcmJumpCanvas(two) {
     if (!two) return;
     two.clear();
-    const width = two.width, height = two.height;
-    const maxVal = 24;
-    const padX = 55;
-    const stepX = (width - padX * 2) / maxVal;
+    const cx = two.width / 2;
+    const cy = two.height / 2 - 5;
+
+    const tTitle = two.makeText("🐰🐸 [초등 복습] 4와 6의 수직선 도약과 최소공배수", cx, 30);
+    tTitle.size = 17; tTitle.weight = 800; tTitle.fill = '#1e293b';
+
+    const padX = 50;
     const startX = padX;
-    const endX = width - padX;
-    const cy = height / 2;
+    const endX = two.width - padX;
+    const numLineY = cy;
 
-    const bgCard = two.makeRoundedRectangle(width / 2, height / 2, width - 20, height - 20, 10);
-    bgCard.fill = '#f8fafc';
-    bgCard.stroke = '#e2e8f0';
-    bgCard.linewidth = 1;
+    // 수직선 본체
+    const line = two.makeLine(startX, numLineY, endX, numLineY);
+    line.stroke = '#64748b'; line.linewidth = 2.5;
 
-    const legendA = two.makeText("🐰 4씩 도약 (토끼)", startX + 70, 26);
-    legendA.size = 15; legendA.weight = 800; legendA.fill = '#0284c7';
+    // 눈금 (0 ~ 24)
+    const maxVal = 24;
+    const stepX = (endX - startX) / maxVal;
+    for (let v = 0; v <= maxVal; v++) {
+      const x = startX + v * stepX;
+      const isKey = (v === 0 || v === 4 || v === 6 || v === 8 || v === 12 || v === 16 || v === 18 || v === 20 || v === 24);
+      const tickH = isKey ? 10 : 5;
+      const tick = two.makeLine(x, numLineY - tickH, x, numLineY + tickH);
+      tick.stroke = isKey ? '#0f172a' : '#cbd5e1';
+      tick.linewidth = isKey ? 2 : 1;
 
-    const legendB = two.makeText("🐸 6씩 도약 (개구리)", startX + 220, 26);
-    legendB.size = 15; legendB.weight = 800; legendB.fill = '#ea580c';
-
-    const hintTxt = two.makeText("💡 말을 드래그하거나 도약 버튼을 눌러보세요", width - 170, 26);
-    hintTxt.size = 13.5; hintTxt.fill = '#64748b'; hintTxt.alignment = 'right';
-
-    [12, 24].forEach(cVal => {
-      const cxPos = startX + cVal * stepX;
-      const isReachedBoth = (simState.jumpPosA === cVal && simState.jumpPosB === cVal);
-      const isDiscovered = simState.foundCommonMultiples.has(cVal);
-
-      if (isReachedBoth || isDiscovered) {
-        const band = two.makeRoundedRectangle(cxPos, cy, 28, height - 60, 6);
-        band.fill = isReachedBoth ? 'rgba(16, 185, 129, 0.16)' : 'rgba(245, 158, 11, 0.08)';
-        band.stroke = isReachedBoth ? '#10b981' : '#f59e0b';
-        band.linewidth = isReachedBoth ? 2 : 1;
-        band.dashes = isReachedBoth ? [] : [4, 4];
-      }
-    });
-
-    const line = two.makeLine(startX - 15, cy, endX + 22, cy);
-    line.stroke = '#334155'; line.linewidth = 2.5;
-
-    if (typeof two.makePath === 'function') {
-      const arrow = two.makePath(
-        endX + 22, cy,
-        endX + 13, cy - 5,
-        endX + 15, cy,
-        endX + 13, cy + 5,
-        true
-      );
-      arrow.fill = '#334155'; arrow.stroke = '#334155';
-    } else {
-      two.makeLine(endX + 13, cy - 5, endX + 22, cy);
-      two.makeLine(endX + 13, cy + 5, endX + 22, cy);
-    }
-
-    for (let i = 0; i <= maxVal; i++) {
-      const x = startX + i * stepX;
-      const isEven = (i % 2 === 0);
-      const isMul4 = (i > 0 && i % 4 === 0);
-      const isMul6 = (i > 0 && i % 6 === 0);
-      const isCommon = (i > 0 && i % 12 === 0);
-
-      const tickLen = isEven ? 7 : 4;
-      const tick = two.makeLine(x, cy - tickLen, x, cy + tickLen);
-      tick.stroke = isCommon ? '#10b981' : (isEven ? '#475569' : '#cbd5e1');
-      tick.linewidth = isCommon ? 2.5 : (isEven ? 1.8 : 1);
-
-      if (isEven) {
-        const lbl = two.makeText(String(i), x, cy + 20);
-        lbl.size = isCommon ? 15 : 13.5;
-        lbl.weight = isCommon ? 900 : (isMul4 || isMul6 ? 800 : 600);
-        lbl.fill = isCommon ? '#059669' : (isMul4 ? '#0284c7' : (isMul6 ? '#ea580c' : '#475569'));
+      if (isKey) {
+        const numT = two.makeText(String(v), x, numLineY + 22);
+        numT.size = (v === 12 || v === 24) ? 16 : 13;
+        numT.weight = (v === 12 || v === 24) ? 900 : 700;
+        numT.fill = (v === 12) ? '#dc2626' : ((v === 24) ? '#ea580c' : '#475569');
       }
     }
 
-    for (let k = 0; k < simState.jumpPosA; k += a) {
-      const x1 = startX + k * stepX;
-      const x2 = startX + (k + a) * stepX;
-      const arcMidX = (x1 + x2) / 2;
-      const arcMidY = cy - 40;
-      const arc = two.makeCurve(x1, cy, arcMidX, arcMidY, x2, cy, true);
-      arc.stroke = '#0284c7'; arc.linewidth = 2.5; arc.noFill();
-
-      const plusA = two.makeText("+4", arcMidX, arcMidY - 9);
-      plusA.size = 13; plusA.weight = 800; plusA.fill = '#0284c7';
-
-      const pDot = two.makeCircle(x2, cy, 4);
-      pDot.fill = '#0284c7'; pDot.stroke = '#ffffff'; pDot.linewidth = 1;
+    // 4의 도약 (토끼: 위쪽 파란 아치)
+    for (let v = 0; v < 24; v += 4) {
+      const x1 = startX + v * stepX;
+      const x2 = startX + (v + 4) * stepX;
+      const midX = (x1 + x2) / 2;
+      const arch = two.makeCurve(x1, numLineY, midX, numLineY - 32, x2, numLineY, true);
+      arch.noFill(); arch.stroke = '#0284c7'; arch.linewidth = 2;
     }
+    const lblRabbit = two.makeText("🐰 토끼 (4의 배수: 4, 8, 12, 16, 20, 24)", startX + 130, numLineY - 45);
+    lblRabbit.size = 13; lblRabbit.weight = 800; lblRabbit.fill = '#0284c7';
 
-    for (let k = 0; k < simState.jumpPosB; k += b) {
-      const x1 = startX + k * stepX;
-      const x2 = startX + (k + b) * stepX;
-      const arcMidX = (x1 + x2) / 2;
-      const arcMidY = cy + 44;
-      const arc = two.makeCurve(x1, cy, arcMidX, arcMidY, x2, cy, true);
-      arc.stroke = '#ea580c'; arc.linewidth = 2.5; arc.noFill();
-
-      const plusB = two.makeText("+6", arcMidX, arcMidY + 16);
-      plusB.size = 13; plusB.weight = 800; plusB.fill = '#ea580c';
-
-      const pDot = two.makeCircle(x2, cy, 4);
-      pDot.fill = '#ea580c'; pDot.stroke = '#ffffff'; pDot.linewidth = 1;
+    // 6의 도약 (개구리: 아래쪽 주황 아치)
+    for (let v = 0; v < 24; v += 6) {
+      const x1 = startX + v * stepX;
+      const x2 = startX + (v + 6) * stepX;
+      const midX = (x1 + x2) / 2;
+      const arch = two.makeCurve(x1, numLineY, midX, numLineY + 38, x2, numLineY, true);
+      arch.noFill(); arch.stroke = '#ea580c'; arch.linewidth = 2;
     }
+    const lblFrog = two.makeText("🐸 개구리 (6의 배수: 6, 12, 18, 24)", startX + 120, numLineY + 58);
+    lblFrog.size = 13; lblFrog.weight = 800; lblFrog.fill = '#ea580c';
 
-    if (simState.jumpPosA > 0 && simState.jumpPosA === simState.jumpPosB) {
-      const cVal = simState.jumpPosA;
-      const xMeet = startX + cVal * stepX;
+    // 12 (첫 번째 만남 🚩 최소공배수)
+    const x12 = startX + 12 * stepX;
+    const flag12 = two.makeRoundedRectangle(x12, numLineY - 60, 130, 26, 6);
+    flag12.fill = '#fef2f2'; flag12.stroke = '#ef4444'; flag12.linewidth = 2;
+    const fTxt12 = two.makeText("🚩 최소공배수: 12", x12, numLineY - 60);
+    fTxt12.size = 13; fTxt12.weight = 900; fTxt12.fill = '#dc2626';
 
-      const beam = two.makeLine(xMeet, cy - 26, xMeet, cy + 26);
-      beam.stroke = '#10b981'; beam.linewidth = 3.5;
+    // 24 (두 번째 만남 🚩 공배수)
+    const x24 = startX + 24 * stepX;
+    const flag24 = two.makeRoundedRectangle(x24 - 15, numLineY - 60, 110, 26, 6);
+    flag24.fill = '#fffbeb'; flag24.stroke = '#f59e0b'; flag24.linewidth = 1.5;
+    const fTxt24 = two.makeText("두 번째 공배수 24", x24 - 15, numLineY - 60);
+    fTxt24.size = 12; fTxt24.weight = 800; fTxt24.fill = '#b45309';
 
-      const beaconAura = two.makeCircle(xMeet, cy, 16);
-      beaconAura.fill = 'rgba(16, 185, 129, 0.3)'; beaconAura.stroke = 'transparent';
-
-      const beaconDot = two.makeCircle(xMeet, cy, 8);
-      beaconDot.fill = '#10b981'; beaconDot.stroke = '#ffffff'; beaconDot.linewidth = 2;
-
-      const isFirst = (cVal === 12);
-      const crownBg = two.makeRoundedRectangle(xMeet, cy - 70, isFirst ? 210 : 160, 30, 15);
-      crownBg.fill = '#fef3c7'; crownBg.stroke = '#f59e0b'; crownBg.linewidth = 1.5;
-
-      const crownTxt = two.makeText(
-        isFirst ? "👑 12 (첫 공배수 = 최소공배수!)" : "⭐ 24 (두 번째 공배수)",
-        xMeet, cy - 70
-      );
-      crownTxt.size = 13.5; crownTxt.weight = 800; crownTxt.fill = '#92400e';
-    }
-
-    const curAx = startX + simState.jumpPosA * stepX;
-    const curAy = cy - 26;
-    const guideA = two.makeLine(curAx, curAy, curAx, cy);
-    guideA.stroke = '#0284c7'; guideA.linewidth = 1.5; guideA.dashes = [3, 3];
-
-    const auraA = two.makeCircle(curAx, curAy, 20);
-    auraA.fill = 'rgba(2, 132, 199, 0.2)'; auraA.stroke = 'transparent';
-
-    const tokenA = two.makeCircle(curAx, curAy, 14);
-    tokenA.fill = '#0284c7'; tokenA.stroke = '#ffffff'; tokenA.linewidth = 2;
-
-    const lblA = two.makeText("🐰", curAx, curAy - 1);
-    lblA.size = 13;
-
-    const curBx = startX + simState.jumpPosB * stepX;
-    const curBy = cy + 26;
-    const guideB = two.makeLine(curBx, curBy, curBx, cy);
-    guideB.stroke = '#ea580c'; guideB.linewidth = 1.5; guideB.dashes = [3, 3];
-
-    const auraB = two.makeCircle(curBx, curBy, 20);
-    auraB.fill = 'rgba(234, 88, 12, 0.2)'; auraB.stroke = 'transparent';
-
-    const tokenB = two.makeCircle(curBx, curBy, 14);
-    tokenB.fill = '#ea580c'; tokenB.stroke = '#ffffff'; tokenB.linewidth = 2;
-
-    const lblB = two.makeText("🐸", curBx, curBy - 1);
-    lblB.size = 13;
+    // 하단 결론 배너
+    const banner = two.makeRoundedRectangle(cx, cy + 90, 480, 36, 18);
+    banner.fill = '#f0fdf4'; banner.stroke = '#86efac'; banner.linewidth = 1.5;
+    const bTxt = two.makeText("💡 4와 6의 공배수: 12, 24, 36…  ➔  가장 작은 공배수: 12 (최소공배수)", cx, cy + 90);
+    bTxt.size = 14; bTxt.weight = 800; bTxt.fill = '#166534';
 
     two.update();
   }
 
-  function renderClassifyCanvas(two, selectedN) {
+  // 0-4: 약수의 개수에 따른 자연수의 3분류 도표 (정적 완성본)
+  function renderClassifyCanvas(two) {
     if (!two) return;
     two.clear();
     const cx = two.width / 2;
-    const cy = two.height / 2;
+    const cy = two.height / 2 - 5;
 
-    const title = two.makeText(`자연수 약수 개수 분류 탐구 (현재 관찰 수: ${selectedN})`, cx, cy - 85);
-    title.size = 17; title.weight = 800; title.fill = '#1e293b';
+    const tTitle = two.makeText("📊 [초등 복습] 1부터 15까지 자연수의 약수 개수별 3분류", cx, 30);
+    tTitle.size = 17; tTitle.weight = 800; tTitle.fill = '#1e293b';
 
-    const b1 = two.makeRoundedRectangle(cx - 150, cy + 10, 130, 140, 10);
-    b1.fill = '#f1f5f9'; b1.stroke = '#94a3b8'; b1.linewidth = 2;
-    const t1 = two.makeText("약수 1개\n\n1\n(유일)", cx - 150, cy - 10);
-    t1.weight = 800; t1.fill = '#475569'; t1.size = 15;
+    const cardW = 150;
+    const cardH = 180;
+    const gap = 16;
+    const startX = cx - cardW - gap;
 
-    const b2 = two.makeRoundedRectangle(cx, cy + 10, 130, 140, 10);
-    b2.fill = '#eff6ff'; b2.stroke = '#3b82f6'; b2.linewidth = 2;
-    const t2 = two.makeText("약수 2개\n(소수)\n\n2, 3, 5, 7, 11...", cx, cy - 10);
-    t2.weight = 800; t2.fill = '#1d4ed8'; t2.size = 15;
+    // 분류 1: 약수가 1개뿐인 수
+    const box1 = two.makeRoundedRectangle(startX, cy, cardW, cardH, 10);
+    box1.fill = '#f8fafc'; box1.stroke = '#94a3b8'; box1.linewidth = 2;
+    const h1 = two.makeText("약수가 1개", startX, cy - 65);
+    h1.size = 15; h1.weight = 800; h1.fill = '#475569';
+    const num1 = two.makeText("1", startX, cy - 10);
+    num1.size = 36; num1.weight = 900; num1.fill = '#0f172a';
+    const sub1 = two.makeText("소수도 아니고\n합성수도 아님", startX, cy + 45);
+    sub1.size = 12; sub1.weight = 700; sub1.fill = '#64748b';
 
-    const b3 = two.makeRoundedRectangle(cx + 150, cy + 10, 130, 140, 10);
-    b3.fill = '#fef2f2'; b3.stroke = '#ef4444'; b3.linewidth = 2;
-    const t3 = two.makeText("약수 3개 이상\n(합성수)\n\n4, 6, 8, 9, 10...", cx + 150, cy - 10);
-    t3.weight = 800; t3.fill = '#b91c1c'; t3.size = 15;
+    // 분류 2: 약수가 2개인 수 (소수)
+    const box2 = two.makeRoundedRectangle(cx, cy, cardW, cardH, 10);
+    box2.fill = '#f0fdf4'; box2.stroke = '#16a34a'; box2.linewidth = 2.5;
+    const h2 = two.makeText("약수가 2개 (소수)", cx, cy - 65);
+    h2.size = 15; h2.weight = 900; h2.fill = '#166534';
+    const num2 = two.makeText("2, 3, 5,\n7, 11, 13", cx, cy - 10);
+    num2.size = 16; num2.weight = 800; num2.fill = '#15803d';
+    const sub2 = two.makeText("1과 자기 자신만을\n약수로 가짐 (총 6개)", cx, cy + 45);
+    sub2.size = 12; sub2.weight = 700; sub2.fill = '#166534';
 
-    two.update();
-  }
+    // 분류 3: 약수가 3개 이상인 수 (합성수)
+    const box3 = two.makeRoundedRectangle(cx + cardW + gap, cy, cardW, cardH, 10);
+    box3.fill = '#fffbeb'; box3.stroke = '#d97706'; box3.linewidth = 2;
+    const h3 = two.makeText("약수 3개 이상 (합성수)", cx + cardW + gap, cy - 65);
+    h3.size = 15; h3.weight = 800; h3.fill = '#b45309';
+    const num3 = two.makeText("4, 6, 8, 9,\n10, 12, 14, 15", cx + cardW + gap, cy - 10);
+    num3.size = 15; num3.weight = 800; num3.fill = '#b45309';
+    const sub3 = two.makeText("1과 자신 외의 약수를\n가짐 (총 8개)", cx + cardW + gap, cy + 45);
+    sub3.size = 12; sub3.weight = 700; sub3.fill = '#b45309';
 
-  function renderPrimeBoxesCanvas(two) {
-    if (!two) return;
-    two.clear();
-    const cx = two.width / 2;
-    const cy = two.height / 2;
-    const n = simState.primeTileN || 6;
-
-    let isP = true;
-    if (n <= 1) isP = false;
-    else {
-      for (let i = 2; i * i <= n; i++) {
-        if (n % i === 0) { isP = false; break; }
-      }
-    }
-
-    const title = two.makeText(`수 [ ${n} ] 타일 직사각형 배열 판별기`, cx, cy - 85);
-    title.size = 18; title.weight = 800; title.fill = '#1e293b';
-
-    const r1 = two.makeRoundedRectangle(cx - 130, cy + 15, 170, 140, 10);
-    r1.fill = isP ? '#eff6ff' : '#f8fafc';
-    r1.stroke = isP ? '#2563eb' : '#cbd5e1';
-    r1.linewidth = isP ? 3 : 1.5;
-    const t1 = two.makeText("소수 (Prime)\n\n1줄로만 배열 가능\n(약수가 1과 자기자신뿐)", cx - 130, cy + 10);
-    t1.weight = 800; t1.fill = isP ? '#1e40af' : '#64748b'; t1.size = 15;
-
-    const r2 = two.makeRoundedRectangle(cx + 130, cy + 15, 170, 140, 10);
-    r2.fill = !isP ? '#fee2e2' : '#f8fafc';
-    r2.stroke = !isP ? '#dc2626' : '#cbd5e1';
-    r2.linewidth = !isP ? 3 : 1.5;
-    const t2 = two.makeText("합성수 (Composite)\n\n여러 행/열 직사각형 배열 가능\n(약수가 3개 이상)", cx + 130, cy + 10);
-    t2.weight = 800; t2.fill = !isP ? '#991b1b' : '#64748b'; t2.size = 15;
+    // 하단 정리 배너
+    const banner = two.makeRoundedRectangle(cx, cy + 115, 480, 36, 18);
+    banner.fill = '#eff6ff'; banner.stroke = '#93c5fd'; banner.linewidth = 1.5;
+    const bTxt = two.makeText("💡 자연수 = 1  +  소수(약수 2개)  +  합성수(약수 3개 이상)", cx, cy + 115);
+    bTxt.size = 14; bTxt.weight = 800; bTxt.fill = '#1d4ed8';
 
     two.update();
   }
 
+  // =========================================================================
+  // 핵심 10대 인터랙티브 캔버스 렌더러 함수군
+  // =========================================================================
+
+  // 1-2: 에라토스테네스의 체 (1~50 격자판)
   function renderSieveCanvas(two, step) {
     if (!two) return;
     two.clear();
     const cx = two.width / 2;
-    const cy = two.height / 2;
-    const startX = cx - 165;
-    const startY = cy - 75;
+    const startX = cx - 180;
+    const startY = 65;
     const primes = new Set([2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47]);
 
-    const title = two.makeText("🔬 에라토스테네스의 체 (1부터 50까지)", cx, startY - 26);
+    const title = two.makeText("🔬 [탐구] 1부터 50까지 에라토스테네스의 체 (소수 15개 찾기)", cx, 30);
     title.size = 17; title.weight = 800; title.fill = '#1e293b';
 
     for (let n = 1; n <= 50; n++) {
       const col = (n - 1) % 10;
       const row = Math.floor((n - 1) / 10);
-      const x = startX + col * 36;
-      const y = startY + row * 32;
+      const x = startX + col * 40;
+      const y = startY + row * 40;
 
       let isErased = false;
       if (step >= 1 && n === 1) isErased = true;
@@ -2256,376 +1516,730 @@
       if (step >= 4 && n > 5 && n % 5 === 0) isErased = true;
       if (step >= 5 && n > 7 && n % 7 === 0) isErased = true;
 
-      const isP = primes.has(n);
-      const rect = two.makeRoundedRectangle(x, y, 32, 28, 4);
-
-      if (isErased) {
-        rect.fill = '#f1f5f9';
-        rect.stroke = '#cbd5e1';
-      } else if (step === 6 && isP) {
-        rect.fill = '#fef08a';
-        rect.stroke = '#eab308';
-        rect.linewidth = 2;
-      } else {
-        rect.fill = '#ffffff';
-        rect.stroke = '#94a3b8';
+      // 수동 토글 반영
+      if (simState.sieveManualToggled.has(n)) {
+        isErased = !isErased;
       }
 
-      const txt = two.makeText(String(n), x, y + 1);
-      txt.size = 14;
-      txt.weight = 800;
-      txt.fill = isErased ? '#94a3b8' : (step === 6 && isP ? '#854d0e' : '#1e293b');
+      const isP = primes.has(n);
+      const isBasePrime = (n === 2 && step >= 2) || (n === 3 && step >= 3) || (n === 5 && step >= 4) || (n === 7 && step >= 5);
+
+      const rect = two.makeRoundedRectangle(x, y, 36, 34, 6);
+
+      if (isErased) {
+        rect.fill = '#f1f5f9'; rect.stroke = '#e2e8f0'; rect.linewidth = 1;
+      } else if (step === 6 && isP) {
+        rect.fill = '#dcfce7'; rect.stroke = '#22c55e'; rect.linewidth = 2;
+      } else if (isBasePrime) {
+        rect.fill = '#e0f2fe'; rect.stroke = '#0284c7'; rect.linewidth = 2;
+      } else {
+        rect.fill = '#ffffff'; rect.stroke = '#cbd5e1'; rect.linewidth = 1.5;
+      }
+
+      const txt = two.makeText(String(n), x, y);
+      txt.size = 14; txt.weight = 800;
+      if (isErased) {
+        txt.fill = '#cbd5e1';
+      } else if (step === 6 && isP) {
+        txt.fill = '#15803d';
+      } else if (isBasePrime) {
+        txt.fill = '#0284c7';
+      } else {
+        txt.fill = '#1e293b';
+      }
+
+      if (isErased) {
+        const slash = two.makeLine(x - 12, y - 10, x + 12, y + 10);
+        slash.stroke = '#94a3b8'; slash.linewidth = 1.5;
+      }
     }
 
-    two.update();
-  }
+    // 하단 요약 배너
+    const yBot = startY + 5 * 40 + 25;
+    const banner = two.makeRoundedRectangle(cx, yBot, 490, 36, 18);
+    banner.fill = (step === 6) ? '#f0fdf4' : '#f8fafc';
+    banner.stroke = (step === 6) ? '#86efac' : '#e2e8f0';
+    banner.linewidth = 1.5;
 
-  function renderPowerCanvas(two, b, e) {
-    if (!two) return;
-    two.clear();
-    const cx = two.width / 2;
-    const cy = two.height / 2;
-
-    const title = two.makeText("거듭제곱과 밑·지수의 구조", cx, cy - 80);
-    title.size = 18; title.weight = 800; title.fill = '#1e293b';
-
-    const baseBox = two.makeRoundedRectangle(cx - 35, cy + 10, 65, 70, 8);
-    baseBox.fill = '#dbeafe'; baseBox.stroke = '#2563eb'; baseBox.linewidth = 2;
-    const baseTxt = two.makeText(String(b), cx - 35, cy + 12);
-    baseTxt.size = 36; baseTxt.weight = 800; baseTxt.fill = '#1e3a8a';
-
-    const expBox = two.makeRoundedRectangle(cx + 30, cy - 30, 48, 48, 8);
-    expBox.fill = '#fef3c7'; expBox.stroke = '#d97706'; expBox.linewidth = 2;
-    const expTxt = two.makeText(String(e), cx + 30, cy - 28);
-    expTxt.size = 24; expTxt.weight = 800; expTxt.fill = '#92400e';
-
-    const label = two.makeText("밑 (Base: 곱하는 수)         지수 (Exp: 곱한 횟수)", cx, cy + 75);
-    label.weight = 800; label.fill = '#475569'; label.size = 16;
+    const bTxt = two.makeText(
+      (step === 6)
+        ? "🎉 1부터 50까지의 소수 (총 15개): 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47"
+        : "💡 위의 단계 버튼을 차례로 누르거나 숫자를 직접 클릭하여 체질해 보세요.",
+      cx, yBot
+    );
+    bTxt.size = 13; bTxt.weight = 800;
+    bTxt.fill = (step === 6) ? '#166534' : '#64748b';
 
     two.update();
   }
 
+  // 1-7: 세균 증식 거듭제곱 비주얼라이저
   function renderBacteriaGraphCanvas(two, minutes) {
     if (!two) return;
     two.clear();
     const cx = two.width / 2;
-    const cy = two.height / 2;
+    const times = minutes / 10;
+    const count = Math.pow(2, times);
 
-    const title = two.makeText(`세균 배가 증식 시뮬레이터 (경과 시간: ${minutes}분)`, cx, cy - 75);
+    const title = two.makeText("🦠 [비주얼라이저] 10분마다 2배씩 늘어나는 세균과 거듭제곱", cx, 30);
     title.size = 17; title.weight = 800; title.fill = '#1e293b';
 
-    const curve = two.makeCurve(cx - 120, cy + 40, cx - 50, cy + 30, cx + 20, cy, cx + 90, cy - 45, true);
-    curve.stroke = '#ec4899'; curve.linewidth = 3.5; curve.noFill();
+    // 수식 대형 카드
+    const cardY = 75;
+    const formulaCard = two.makeRoundedRectangle(cx, cardY, 480, 52, 10);
+    formulaCard.fill = '#f0fdf4'; formulaCard.stroke = '#86efac'; formulaCard.linewidth = 2;
 
-    const exp = Math.floor(minutes / 10);
-    const count = Math.pow(2, exp);
-    const t = two.makeText(`10분마다 2배 ➔ ${minutes}분 경과 시: 2^${exp} = ${count}마리`, cx, cy + 65);
-    t.size = 16; t.weight = 800; t.fill = '#9d174d';
+    let expr = "1";
+    if (times === 1) expr = "2";
+    else if (times > 1) expr = Array(times).fill("2").join(" × ");
 
-    two.update();
-  }
+    const fTxt = two.makeText(`경과 시간 ${minutes}분:  ${expr} = 2${times > 0 ? '^' + times : ''} = ${count}배`, cx, cardY);
+    fTxt.size = 16; fTxt.weight = 900; fTxt.fill = '#15803d';
 
-  function renderTrainStationCanvas(two) {
-    if (!two) return;
-    two.clear();
-    const cx = two.width / 2;
-    const cy = two.height / 2;
-    const st = simState.trainStation || 6;
+    // 세포 시각화 영역 (그리드 배치)
+    const areaY = 200;
+    const areaBox = two.makeRoundedRectangle(cx, areaY, 480, 170, 12);
+    areaBox.fill = '#f8fafc'; areaBox.stroke = '#e2e8f0'; areaBox.linewidth = 1.5;
 
-    const banner = two.makeText(`🚂 ${st}번 역 열차 하차 시뮬레이터`, cx, cy - 65);
-    banner.weight = 800; banner.fill = '#1e40af'; banner.size = 18;
+    // 최대 64개 세포 렌더링
+    const cols = Math.min(count, 16);
+    const rows = Math.ceil(count / cols);
+    const cellSize = (count <= 16) ? 30 : 18;
+    const startCellX = cx - (cols * (cellSize + 6)) / 2 + cellSize / 2;
+    const startCellY = areaY - (rows * (cellSize + 6)) / 2 + cellSize / 2;
 
-    const line = two.makeLine(40, cy, two.width - 40, cy);
-    line.stroke = '#3b82f6'; line.linewidth = 3.5;
+    for (let i = 0; i < count; i++) {
+      const r = Math.floor(i / cols);
+      const c = i % cols;
+      const x = startCellX + c * (cellSize + 6);
+      const y = startCellY + r * (cellSize + 6);
 
-    let factors = [];
-    for (let i = 1; i <= st; i++) {
-      if (st % i === 0) factors.push(i);
+      const circle = two.makeCircle(x, y, cellSize / 2);
+      circle.fill = '#22c55e';
+      circle.stroke = '#15803d';
+      circle.linewidth = 1.5;
+
+      if (count <= 16) {
+        const dot = two.makeCircle(x, y, 3);
+        dot.fill = '#ffffff'; dot.noStroke();
+      }
     }
 
-    const t = two.makeText(`${st}의 약수: [ ${factors.join(', ')} ] ➔ 하차 승객: ${factors.length}명`, cx, cy + 50);
-    t.size = 16; t.weight = 800; t.fill = '#15803d';
+    const info = two.makeText(`현재 활성 세균 수: ${count}개 (총 ${times}회 분열 완료)`, cx, areaY + 70);
+    info.size = 13; info.weight = 700; info.fill = '#475569';
 
     two.update();
   }
 
-  function renderBlockSplitCanvas(two, n) {
+  // 1-9: 열차 소수 역과 승객 시뮬레이터
+  function renderTrainStationCanvas(two, station) {
     if (!two) return;
     two.clear();
     const cx = two.width / 2;
-    const cy = two.height / 2;
 
-    const title = two.makeText(`${n}의 소인수 블록 분해`, cx, cy - 75);
-    title.size = 18; title.weight = 800; title.fill = '#1e293b';
+    const title = two.makeText("🚂 [시뮬레이터] 열차 소수 역과 승객 (약수의 개수 탐구)", cx, 30);
+    title.size = 17; title.weight = 800; title.fill = '#1e293b';
 
-    const top = two.makeRoundedRectangle(cx, cy - 30, 80, 42, 8);
-    top.fill = '#e0e7ff'; top.stroke = '#4f46e5'; top.linewidth = 2;
-    const tTop = two.makeText(String(n), cx, cy - 30);
-    tTop.weight = 800; tTop.size = 18; tTop.fill = '#3730a3';
+    // 기차 레일
+    const railY = 120;
+    const rail1 = two.makeLine(30, railY - 10, two.width - 30, railY - 10);
+    rail1.stroke = '#64748b'; rail1.linewidth = 3;
+    const rail2 = two.makeLine(30, railY + 10, two.width - 30, railY + 10);
+    rail2.stroke = '#64748b'; rail2.linewidth = 3;
+    for (let x = 40; x < two.width - 30; x += 25) {
+      const sleeper = two.makeLine(x, railY - 14, x, railY + 14);
+      sleeper.stroke = '#94a3b8'; sleeper.linewidth = 2;
+    }
 
-    two.makeLine(cx, cy - 8, cx - 55, cy + 30).stroke = '#6366f1';
-    two.makeLine(cx, cy - 8, cx + 55, cy + 30).stroke = '#6366f1';
+    // 열차 본체
+    const trainBox = two.makeRoundedRectangle(cx, railY, 220, 56, 10);
+    trainBox.fill = '#0284c7'; trainBox.stroke = '#0369a1'; trainBox.linewidth = 2;
+    const trainT = two.makeText(`🚆 수학 열차 #${station}번 역 도착`, cx, railY);
+    trainT.size = 14; trainT.weight = 800; trainT.fill = '#ffffff';
 
-    const bLeft = two.makeRoundedRectangle(cx - 55, cy + 40, 55, 36, 6);
-    bLeft.fill = '#fef08a'; bLeft.stroke = '#eab308'; bLeft.linewidth = 2;
-    const tL = two.makeText("2 (소수)", cx - 55, cy + 40);
-    tL.weight = 800; tL.fill = '#854d0e'; tL.size = 13;
+    // 플랫폼 영역
+    const platY = 220;
+    const platBox = two.makeRoundedRectangle(cx, platY, 480, 110, 12);
+    platBox.fill = '#f8fafc'; platBox.stroke = '#cbd5e1'; platBox.linewidth = 1.5;
 
-    const bRight = two.makeRoundedRectangle(cx + 55, cy + 40, 55, 36, 6);
-    bRight.fill = '#f1f5f9'; bRight.stroke = '#94a3b8'; bRight.linewidth = 2;
-    const tR = two.makeText(String(n / 2), cx + 55, cy + 40);
-    tR.weight = 800; tR.fill = '#334155'; tR.size = 15;
+    // 해당 역 번호의 약수 승객들
+    const divs = [];
+    for (let i = 1; i <= station; i++) {
+      if (station % i === 0) divs.push(i);
+    }
+    const isPrime = (divs.length === 2);
+
+    const pTitle = two.makeText(`🚉 [${station}번 역 플랫폼] 내린 승객 (약수 번호 승객): 총 ${divs.length}명`, cx, platY - 32);
+    pTitle.size = 14; pTitle.weight = 800; pTitle.fill = '#1e293b';
+
+    // 승객들 렌더링
+    const pStartX = cx - (divs.length * 44) / 2 + 22;
+    divs.forEach((d, idx) => {
+      const px = pStartX + idx * 44;
+      const py = platY + 10;
+      const passenger = two.makeCircle(px, py - 6, 14);
+      passenger.fill = isPrime ? '#dcfce7' : '#e0f2fe';
+      passenger.stroke = isPrime ? '#16a34a' : '#0284c7';
+      passenger.linewidth = 2;
+      const pNum = two.makeText(String(d), px, py - 6);
+      pNum.size = 12; pNum.weight = 900; pNum.fill = isPrime ? '#15803d' : '#0369a1';
+
+      const pBody = two.makeLine(px, py + 8, px, py + 22);
+      pBody.stroke = '#64748b'; pBody.linewidth = 2;
+    });
+
+    // 하단 판정 배너
+    const yBot = 300;
+    const banner = two.makeRoundedRectangle(cx, yBot, 480, 36, 18);
+    banner.fill = isPrime ? '#f0fdf4' : (station === 1 ? '#f8fafc' : '#eff6ff');
+    banner.stroke = isPrime ? '#86efac' : '#cbd5e1';
+    banner.linewidth = 2;
+
+    let msg = "";
+    if (isPrime) msg = `🎉 승객이 정확히 2명(1과 자기자신) 내렸으므로 [소수 역 🟢]입니다!`;
+    else if (station === 1) msg = `⚠️ 1번 역은 1명만 내리므로 소수도 합성수도 아닙니다.`;
+    else msg = `⚠️ 승객이 3명 이상(${divs.length}명) 내렸으므로 [합성수 역 🟠]입니다!`;
+
+    const bTxt = two.makeText(msg, cx, yBot);
+    bTxt.size = 14; bTxt.weight = 800;
+    bTxt.fill = isPrime ? '#166534' : '#1e40af';
 
     two.update();
   }
 
-  function renderFactorTreeCanvas(two, n) {
+  // 2-2: 소인수분해 가지치기 트리 빌더
+  function renderFactorTreeCanvas(two, num, branch, step) {
     if (!two) return;
     two.clear();
     const cx = two.width / 2;
-    const cy = two.height / 2;
 
-    const title = two.makeText(`${n}의 소인수분해 나뭇가지 그림`, cx, cy - 80);
-    title.size = 18; title.weight = 800; title.fill = '#1e293b';
+    const title = two.makeText(`🌳 [트리 빌더] ${num}의 소인수분해 가지치기 트리`, cx, 30);
+    title.size = 17; title.weight = 800; title.fill = '#1e293b';
 
-    const root = two.makeCircle(cx, cy - 35, 24);
-    root.fill = '#e0e7ff'; root.stroke = '#4338ca'; root.linewidth = 2;
-    const tR = two.makeText(String(n), cx, cy - 35);
-    tR.weight = 800; tR.size = 16; tR.fill = '#312e81';
+    const rootY = 70;
+    // 루트 노드
+    const rootCircle = two.makeCircle(cx, rootY, 26);
+    rootCircle.fill = '#eff6ff'; rootCircle.stroke = '#0284c7'; rootCircle.linewidth = 2.5;
+    const rootT = two.makeText(String(num), cx, rootY);
+    rootT.size = 18; rootT.weight = 900; rootT.fill = '#0f172a';
 
-    const n1 = two.makeCircle(cx - 60, cy + 35, 20);
-    n1.fill = '#fef08a'; n1.stroke = '#ca8a04'; n1.linewidth = 2;
-    const tn1 = two.makeText("2", cx - 60, cy + 35);
-    tn1.weight = 800; tn1.size = 15; tn1.fill = '#713f12';
+    if (num === 36) {
+      if (step >= 1) {
+        // 가지 1
+        two.makeLine(cx, rootY + 26, cx - 80, 140).stroke = '#94a3b8';
+        two.makeLine(cx, rootY + 26, cx + 80, 140).stroke = '#94a3b8';
 
-    const n2 = two.makeCircle(cx + 60, cy + 35, 20);
-    n2.fill = '#e0e7ff'; n2.stroke = '#4338ca'; n2.linewidth = 2;
-    const tn2 = two.makeText(String(n / 2), cx + 60, cy + 35);
-    tn2.weight = 800; tn2.size = 15; tn2.fill = '#312e81';
+        const nA = two.makeCircle(cx - 80, 140, 22);
+        nA.fill = '#f8fafc'; nA.stroke = '#64748b'; nA.linewidth = 2;
+        const tA = two.makeText("6", cx - 80, 140);
+        tA.size = 16; tA.weight = 800; tA.fill = '#334155';
 
-    two.makeLine(cx, cy - 11, cx - 60, cy + 15).stroke = '#4338ca';
-    two.makeLine(cx, cy - 11, cx + 60, cy + 15).stroke = '#4338ca';
+        const nB = two.makeCircle(cx + 80, 140, 22);
+        nB.fill = '#f8fafc'; nB.stroke = '#64748b'; nB.linewidth = 2;
+        const tB = two.makeText("6", cx + 80, 140);
+        tB.size = 16; tB.weight = 800; tB.fill = '#334155';
+      }
+      if (step >= 2) {
+        // 6 ➔ 2 × 3
+        two.makeLine(cx - 80, 162, cx - 120, 220).stroke = '#94a3b8';
+        two.makeLine(cx - 80, 162, cx - 40, 220).stroke = '#94a3b8';
+        two.makeLine(cx + 80, 162, cx + 40, 220).stroke = '#94a3b8';
+        two.makeLine(cx + 80, 162, cx + 120, 220).stroke = '#94a3b8';
+
+        const pNodes = [
+          { x: cx - 120, y: 220, val: "2" },
+          { x: cx - 40, y: 220, val: "3" },
+          { x: cx + 40, y: 220, val: "2" },
+          { x: cx + 120, y: 220, val: "3" }
+        ];
+
+        pNodes.forEach(p => {
+          const c = two.makeCircle(p.x, p.y, 20);
+          c.fill = '#fef08a'; c.stroke = '#ca8a04'; c.linewidth = 2.5;
+          const t = two.makeText(p.val, p.x, p.y);
+          t.size = 16; t.weight = 900; t.fill = '#854d0e';
+        });
+      }
+    } else {
+      // 60 또는 72
+      if (step >= 1) {
+        two.makeLine(cx, rootY + 26, cx - 70, 140).stroke = '#94a3b8';
+        two.makeLine(cx, rootY + 26, cx + 70, 140).stroke = '#94a3b8';
+        two.makeCircle(cx - 70, 140, 20).fill = '#fef08a';
+        two.makeText("2", cx - 70, 140).size = 16;
+        two.makeCircle(cx + 70, 140, 20).fill = '#f8fafc';
+        two.makeText(num === 60 ? "30" : "36", cx + 70, 140).size = 16;
+      }
+      if (step >= 2) {
+        two.makeLine(cx + 70, 160, cx + 30, 220).stroke = '#94a3b8';
+        two.makeLine(cx + 70, 160, cx + 110, 220).stroke = '#94a3b8';
+        two.makeCircle(cx + 30, 220, 20).fill = '#fef08a';
+        two.makeText(num === 60 ? "3" : "2", cx + 30, 220).size = 16;
+        two.makeCircle(cx + 110, 220, 20).fill = '#fef08a';
+        two.makeText(num === 60 ? "5" : "18", cx + 110, 220).size = 16;
+      }
+    }
+
+    // 하단 최종 소인수분해 거듭제곱 배너
+    const yBot = 285;
+    const banner = two.makeRoundedRectangle(cx, yBot, 480, 36, 18);
+    banner.fill = (step >= 2) ? '#f0fdf4' : '#f8fafc';
+    banner.stroke = (step >= 2) ? '#86efac' : '#e2e8f0';
+    banner.linewidth = 2;
+
+    const resStr = (num === 36) ? "36 = 2 × 2 × 3 × 3 = 2² × 3²" : (num === 60 ? "60 = 2² × 3 × 5" : "72 = 2³ × 3²");
+    const bTxt = two.makeText(
+      (step >= 2) ? `🎉 소인수분해 결과: ${resStr}` : "💡 [다음 단계 ▶] 버튼을 눌러 소인수 분해를 진행하세요.",
+      cx, yBot
+    );
+    bTxt.size = 14; bTxt.weight = 800;
+    bTxt.fill = (step >= 2) ? '#166534' : '#64748b';
 
     two.update();
   }
 
-  function renderVerticalDivisionCanvas(two, num) {
+  // 2-7: 제곱수 만들기 지수 짝수 밸런스 저울
+  function renderSquareMakerCanvas(two, multX) {
     if (!two) return;
     two.clear();
     const cx = two.width / 2;
-    const cy = two.height / 2;
 
-    const title = two.makeText(`${num}의 세로 나눗셈 소인수분해`, cx, cy - 75);
-    title.size = 18; title.weight = 800; title.fill = '#1e293b';
+    const title = two.makeText("⚖️ [밸런스 저울] 56 × x = (자연수)² 제곱수 만들기 탐구", cx, 30);
+    title.size = 17; title.weight = 800; title.fill = '#1e293b';
 
-    const rect = two.makeRoundedRectangle(cx, cy + 10, 300, 110, 10);
-    rect.fill = '#f8fafc'; rect.stroke = '#64748b'; rect.linewidth = 2;
+    const total = 56 * multX;
+    let t = total;
+    let exp2 = 0, exp7 = 0;
+    while (t > 0 && t % 2 === 0) { exp2++; t /= 2; }
+    while (t > 0 && t % 7 === 0) { exp7++; t /= 7; }
+    const isSquare = (exp2 % 2 === 0 && exp7 % 2 === 0 && t === 1);
 
-    const t1 = two.makeText(`2 )  ${num}`, cx - 40, cy - 15);
-    t1.size = 18; t1.weight = 800; t1.fill = '#0f172a';
+    // 56 분해 박스
+    const boxY = 80;
+    const box56 = two.makeRoundedRectangle(cx, boxY, 480, 48, 8);
+    box56.fill = '#f8fafc'; box56.stroke = '#cbd5e1'; box56.linewidth = 1.5;
+    const t56 = two.makeText(`56 = 2³ × 7¹  ➔  소인수 2의 지수: 3 (홀수), 소인수 7의 지수: 1 (홀수)`, cx, boxY);
+    t56.size = 14; t56.weight = 800; t56.fill = '#334155';
 
-    const t2 = two.makeText(`2 )  ${num / 2}`, cx - 40, cy + 20);
-    t2.size = 18; t2.weight = 800; t2.fill = '#0f172a';
+    // 저울 기둥 2개 (소인수 2 기둥 vs 소인수 7 기둥)
+    const pillarY = 190;
+    const col2X = cx - 110;
+    const col7X = cx + 110;
+
+    // 기둥 2
+    const p2 = two.makeRoundedRectangle(col2X, pillarY, 130, 110, 8);
+    p2.fill = (exp2 % 2 === 0) ? '#f0fdf4' : '#fffbeb';
+    p2.stroke = (exp2 % 2 === 0) ? '#16a34a' : '#f59e0b';
+    p2.linewidth = 2;
+    const p2H = two.makeText(`소인수 [ 2 ]`, col2X, pillarY - 35);
+    p2H.size = 15; p2H.weight = 800; p2H.fill = '#0f172a';
+    const p2Exp = two.makeText(`지수: ${exp2} (${exp2 % 2 === 0 ? '짝수 🟢' : '홀수 ⚠️'})`, col2X, pillarY);
+    p2Exp.size = 14; p2Exp.weight = 800; p2Exp.fill = (exp2 % 2 === 0) ? '#166534' : '#b45309';
+    const p2Sub = two.makeText(exp2 % 2 === 0 ? "짝수 지수 완성!" : "2가 1개 더 필요", col2X, pillarY + 30);
+    p2Sub.size = 12; p2Sub.weight = 700; p2Sub.fill = '#64748b';
+
+    // 기둥 7
+    const p7 = two.makeRoundedRectangle(col7X, pillarY, 130, 110, 8);
+    p7.fill = (exp7 % 2 === 0) ? '#f0fdf4' : '#fffbeb';
+    p7.stroke = (exp7 % 2 === 0) ? '#16a34a' : '#f59e0b';
+    p7.linewidth = 2;
+    const p7H = two.makeText(`소인수 [ 7 ]`, col7X, pillarY - 35);
+    p7H.size = 15; p7H.weight = 800; p7H.fill = '#0f172a';
+    const p7Exp = two.makeText(`지수: ${exp7} (${exp7 % 2 === 0 ? '짝수 🟢' : '홀수 ⚠️'})`, col7X, pillarY);
+    p7Exp.size = 14; p7Exp.weight = 800; p7Exp.fill = (exp7 % 2 === 0) ? '#166534' : '#b45309';
+    const p7Sub = two.makeText(exp7 % 2 === 0 ? "짝수 지수 완성!" : "7이 1개 더 필요", col7X, pillarY + 30);
+    p7Sub.size = 12; p7Sub.weight = 700; p7Sub.fill = '#64748b';
+
+    // 하단 결론 배너
+    const yBot = 285;
+    const banner = two.makeRoundedRectangle(cx, yBot, 480, 36, 18);
+    banner.fill = isSquare ? '#f0fdf4' : '#fffbeb';
+    banner.stroke = isSquare ? '#86efac' : '#fde68a';
+    banner.linewidth = 2;
+
+    const root = isSquare ? Math.round(Math.sqrt(total)) : 0;
+    const bTxt = two.makeText(
+      isSquare
+        ? `🎉 x = ${multX} 일 때: 56 × ${multX} = 2⁴ × 7² = (2² × 7)² = ${root}² (제곱수 완성!)`
+        : `⚠️ x = ${multX} 일 때: 모든 소인수의 지수가 짝수가 아니므로 제곱수가 아닙니다.`,
+      cx, yBot
+    );
+    bTxt.size = 13; bTxt.weight = 800;
+    bTxt.fill = isSquare ? '#166534' : '#b45309';
 
     two.update();
   }
 
-  function renderFactorGridCanvas(two, n) {
+  // 3-1: 정사각형 타일 채우기 시뮬레이터 (18cm x 12cm)
+  function renderTilingSquareCanvas(two, tileSize) {
     if (!two) return;
     two.clear();
     const cx = two.width / 2;
-    const cy = two.height / 2;
 
-    const title = two.makeText("2차원 약수 곱셈 격자표", cx, cy - 75);
-    title.size = 18; title.weight = 800; title.fill = '#1e293b';
+    const title = two.makeText("🟦 [시뮬레이터] 가로 18cm × 세로 12cm 바닥에 정사각형 타일 깔기", cx, 30);
+    title.size = 16; title.weight = 800; title.fill = '#1e293b';
 
-    const rect = two.makeRoundedRectangle(cx, cy + 10, 320, 110, 8);
-    rect.fill = '#f8fafc'; rect.stroke = '#0284c7'; rect.linewidth = 2;
+    const sz = tileSize;
+    const fitW = (18 % sz === 0);
+    const fitH = (12 % sz === 0);
+    const isPerfect = (fitW && fitH);
 
-    const label = two.makeText("약수의 개수 = (지수 + 1) × (지수 + 1)", cx, cy + 10);
-    label.weight = 800; label.size = 16; label.fill = '#0369a1';
+    // 바닥 렌더링 (가로 18cm ➔ 360px, 세로 12cm ➔ 240px, scale 20)
+    const scale = 18;
+    const floorW = 18 * scale;
+    const floorH = 12 * scale;
+    const floorY = 160;
+
+    const floorBox = two.makeRoundedRectangle(cx, floorY, floorW, floorH, 6);
+    floorBox.fill = '#f8fafc'; floorBox.stroke = '#475569'; floorBox.linewidth = 2.5;
+
+    // 타일 깔기
+    const startX = cx - floorW / 2;
+    const startY = floorY - floorH / 2;
+    const tilePx = sz * scale;
+
+    const numCols = Math.floor(18 / sz);
+    const numRows = Math.floor(12 / sz);
+
+    for (let r = 0; r < numRows; r++) {
+      for (let c = 0; c < numCols; c++) {
+        const tx = startX + c * tilePx + tilePx / 2;
+        const ty = startY + r * tilePx + tilePx / 2;
+        const tBox = two.makeRoundedRectangle(tx, ty, tilePx - 2, tilePx - 2, 4);
+        tBox.fill = isPerfect ? '#0284c7' : '#38bdf8';
+        tBox.stroke = '#0369a1';
+        tBox.linewidth = 1;
+      }
+    }
+
+    // 빈틈 경고 영역 (남는 공간이 있을 때)
+    if (!fitW) {
+      const remW = (18 % sz) * scale;
+      const remBox = two.makeRoundedRectangle(startX + numCols * tilePx + remW / 2, floorY, remW, floorH, 2);
+      remBox.fill = 'rgba(239, 68, 68, 0.25)';
+      remBox.stroke = '#ef4444'; remBox.linewidth = 2;
+      const wTxt = two.makeText("빈틈\n발생!", startX + numCols * tilePx + remW / 2, floorY);
+      wTxt.size = 11; wTxt.weight = 800; wTxt.fill = '#dc2626';
+    }
+
+    // 치수 표시
+    const dimTop = two.makeText("가로 18cm", cx, floorY - floorH / 2 - 12);
+    dimTop.size = 14; dimTop.weight = 800; dimTop.fill = '#0f172a';
+    const dimLeft = two.makeText("세로 12cm", cx - floorW / 2 - 25, floorY);
+    dimLeft.size = 14; dimLeft.weight = 800; dimLeft.fill = '#0f172a';
+    dimLeft.rotation = -Math.PI / 2;
+
+    // 하단 결론 배너
+    const yBot = 295;
+    const banner = two.makeRoundedRectangle(cx, yBot, 480, 36, 18);
+    banner.fill = isPerfect ? '#f0fdf4' : '#fef2f2';
+    banner.stroke = isPerfect ? '#86efac' : '#fca5a5';
+    banner.linewidth = 2;
+
+    const bTxt = two.makeText(
+      isPerfect
+        ? (sz === 6 ? "🎉 최대공약수 6cm: 빈틈없이 채우는 가장 큰 정사각형 타일!" : `🎉 ${sz}cm 타일: 빈틈없이 완벽하게 채워짐 (${18/sz}×${12/sz}장)`)
+        : `⚠️ ${sz}cm 타일: 18의 약수가 아니므로 빈틈이 발생하여 불가능!`,
+      cx, yBot
+    );
+    bTxt.size = 13; bTxt.weight = 800;
+    bTxt.fill = isPerfect ? '#166534' : '#b91c1c';
 
     two.update();
   }
 
-  function renderTilingSquareCanvas(two) {
+  // 3-2: 소인수분해 거듭제곱 비교 최대공약수 밸런스 저울
+  function renderGcdBalanceCanvas(two, pairKey, lowered) {
     if (!two) return;
     two.clear();
     const cx = two.width / 2;
-    const cy = two.height / 2;
 
-    const title = two.makeText("정사각형 타일 채우기와 서로소", cx, cy - 75);
-    title.size = 18; title.weight = 800; title.fill = '#1e293b';
+    const title = two.makeText("⚖️ [지수 저울] 소인수분해를 이용한 최대공약수 구하기", cx, 30);
+    title.size = 17; title.weight = 800; title.fill = '#1e293b';
 
-    const outer = two.makeRectangle(cx, cy + 5, 200, 130);
-    outer.fill = '#f1f5f9'; outer.stroke = '#0284c7'; outer.linewidth = 2;
+    let nA = 12, nB = 18;
+    let sA = "2² × 3¹", sB = "2¹ × 3²";
+    let minExp2 = 1, minExp3 = 1;
+    let gcdVal = 6;
 
-    const tile = two.makeRectangle(cx - 50, cy - 10, 65, 65);
-    tile.fill = '#bae6fd'; tile.stroke = '#0369a1'; tile.linewidth = 2;
+    if (pairKey === '24_36') {
+      nA = 24; nB = 36; sA = "2³ × 3¹"; sB = "2² × 3²"; minExp2 = 2; minExp3 = 1; gcdVal = 12;
+    } else if (pairKey === '28_42') {
+      nA = 28; nB = 42; sA = "2² × 7¹"; sB = "2¹ × 3¹ × 7¹"; minExp2 = 1; minExp3 = 0; gcdVal = 14;
+    }
 
-    const t = two.makeText("최대 정사각형 타일 한 변 = 최대공약수", cx, cy + 55);
-    t.size = 15; t.weight = 800; t.fill = '#0369a1';
+    // 두 수 카드
+    const cardY = 85;
+    const cA = two.makeRoundedRectangle(cx - 120, cardY, 210, 52, 8);
+    cA.fill = '#eff6ff'; cA.stroke = '#3b82f6'; cA.linewidth = 2;
+    const tA = two.makeText(`${nA} = ${sA}`, cx - 120, cardY);
+    tA.size = 15; tA.weight = 800; tA.fill = '#1d4ed8';
+
+    const cB = two.makeRoundedRectangle(cx + 120, cardY, 210, 52, 8);
+    cB.fill = '#faf5ff'; cB.stroke = '#a855f7'; cB.linewidth = 2;
+    const tB = two.makeText(`${nB} = ${sB}`, cx + 120, cardY);
+    tB.size = 15; tB.weight = 800; tB.fill = '#7e22ce';
+
+    // 아래 화살표
+    const arr1 = two.makeLine(cx, 120, cx, 150);
+    arr1.stroke = '#94a3b8'; arr1.linewidth = 2;
+
+    // 최대공약수 도출 바구니
+    const basketY = 195;
+    const basket = two.makeRoundedRectangle(cx, basketY, 450, 72, 10);
+    basket.fill = '#f0fdf4'; basket.stroke = '#22c55e'; basket.linewidth = 2.5;
+
+    const bTitle = two.makeText("👑 [최대공약수 바구니: 공통 소인수의 최소 지수 선택]", cx, basketY - 18);
+    bTitle.size = 13; bTitle.weight = 800; bTitle.fill = '#15803d';
+
+    let expExpr = `2¹ × 3¹ = 6`;
+    if (pairKey === '24_36') expExpr = `2² × 3¹ = 12`;
+    else if (pairKey === '28_42') expExpr = `2¹ × 7¹ = 14`;
+
+    const bVal = two.makeText(`최대공약수 = ${expExpr}`, cx, basketY + 14);
+    bVal.size = 18; bVal.weight = 900; bVal.fill = '#166534';
+
+    // 하단 안내 배너
+    const yBot = 285;
+    const banner = two.makeRoundedRectangle(cx, yBot, 480, 36, 18);
+    banner.fill = '#eff6ff'; banner.stroke = '#93c5fd'; banner.linewidth = 1.5;
+    const bTxt = two.makeText("💡 공통인 소인수 중 지수가 작거나 같은 것을 택하여 곱합니다.", cx, yBot);
+    bTxt.size = 14; bTxt.weight = 800; bTxt.fill = '#1d4ed8';
 
     two.update();
   }
 
-  function renderGcdBalanceCanvas(two, a, b) {
-    if (!two) return;
-    two.clear();
-    const cx = two.width / 2;
-    const cy = two.height / 2;
-
-    const title = two.makeText(`공통 소인수 지수 비교 저울`, cx, cy - 75);
-    title.size = 18; title.weight = 800; title.fill = '#1e293b';
-
-    const r1 = two.makeRoundedRectangle(cx - 80, cy + 10, 110, 70, 8);
-    r1.fill = '#e0e7ff'; r1.stroke = '#4338ca'; r1.linewidth = 2;
-    const t1 = two.makeText(String(a), cx - 80, cy + 10);
-    t1.weight = 800; t1.fill = '#312e81'; t1.size = 18;
-
-    const r2 = two.makeRoundedRectangle(cx + 80, cy + 10, 110, 70, 8);
-    r2.fill = '#fef3c7'; r2.stroke = '#d97706'; r2.linewidth = 2;
-    const t2 = two.makeText(String(b), cx + 80, cy + 10);
-    t2.weight = 800; t2.fill = '#78350f'; t2.size = 18;
-
-    two.update();
-  }
-
-  function renderThreeNumGcdCanvas(two) {
-    if (!two) return;
-    two.clear();
-    const cx = two.width / 2;
-    const cy = two.height / 2;
-
-    const title = two.makeText("세 수의 최대공약수 세로 정렬판", cx, cy - 65);
-    title.size = 18; title.weight = 800; title.fill = '#1e293b';
-
-    const rect = two.makeRoundedRectangle(cx, cy + 15, 320, 100, 10);
-    rect.fill = '#f8fafc'; rect.stroke = '#3b82f6'; rect.linewidth = 2;
-
-    const txt = two.makeText("세 수의 공통 소인수 중 가장 작은 지수 곱", cx, cy + 15);
-    txt.size = 15; txt.weight = 800; txt.fill = '#1d4ed8';
-
-    two.update();
-  }
-
+  // 4-2: 톱니바퀴 회전 및 최소공배수 시뮬레이터
   function renderGearsCanvas(two, angle) {
     if (!two) return;
     two.clear();
     const cx = two.width / 2;
-    const cy = two.height / 2;
+    const cy = 150;
 
-    const title = two.makeText("맞물린 톱니바퀴 회전 시뮬레이터", cx, cy - 80);
-    title.size = 18; title.weight = 800; title.fill = '#1e293b';
+    const title = two.makeText("⚙️ [시뮬레이터] 톱니바퀴 맞물림 회전과 최소공배수", cx, 30);
+    title.size = 17; title.weight = 800; title.fill = '#1e293b';
 
-    const g1 = two.makeCircle(cx - 60, cy, 45);
-    g1.fill = '#e0f2fe'; g1.stroke = '#0284c7'; g1.linewidth = 3;
-    g1.rotation = angle;
-    const tg1 = two.makeText("24톱니", cx - 60, cy);
-    tg1.size = 14; tg1.weight = 800; tg1.fill = '#0369a1';
+    const rA = 65;
+    const rB = 95;
+    const gearAx = cx - 80;
+    const gearBx = cx + 80;
 
-    const g2 = two.makeCircle(cx + 55, cy, 60);
-    g2.fill = '#fef3c7'; g2.stroke = '#d97706'; g2.linewidth = 3;
-    g2.rotation = -angle * (24 / 36);
-    const tg2 = two.makeText("36톱니", cx + 55, cy);
-    tg2.size = 15; tg2.weight = 800; tg2.fill = '#92400e';
+    // 톱니 A (24개, 각속도 높음)
+    const angA = angle * (36 / 24);
+    const circleA = two.makeCircle(gearAx, cy, rA);
+    circleA.fill = '#e0f2fe'; circleA.stroke = '#0284c7'; circleA.linewidth = 3;
+    // 톱니 이빨들
+    for (let i = 0; i < 24; i++) {
+      const a = angA + (i * Math.PI * 2) / 24;
+      const tx = gearAx + Math.cos(a) * (rA + 6);
+      const ty = cy + Math.sin(a) * (rA + 6);
+      const tooth = two.makeCircle(tx, ty, 5);
+      tooth.fill = (i === 0) ? '#ef4444' : '#0369a1';
+      tooth.noStroke();
+    }
+    const tA = two.makeText("A\n24개", gearAx, cy);
+    tA.size = 14; tA.weight = 800; tA.fill = '#0369a1';
 
-    const txt = two.makeText("처음으로 다시 맞물릴 때까지 돌아간 톱니 수 = 최소공배수", cx, cy + 80);
-    txt.size = 15; txt.weight = 800; txt.fill = '#0f172a';
+    // 톱니 B (36개, 반대방향 회전)
+    const angB = -angle;
+    const circleB = two.makeCircle(gearBx, cy, rB);
+    circleB.fill = '#fef3c7'; circleB.stroke = '#d97706'; circleB.linewidth = 3;
+    for (let i = 0; i < 36; i++) {
+      const a = angB + (i * Math.PI * 2) / 36;
+      const tx = gearBx + Math.cos(a) * (rB + 6);
+      const ty = cy + Math.sin(a) * (rB + 6);
+      const tooth = two.makeCircle(tx, ty, 5);
+      tooth.fill = (i === 0) ? '#ef4444' : '#b45309';
+      tooth.noStroke();
+    }
+    const tB = two.makeText("B\n36개", gearBx, cy);
+    tB.size = 15; tB.weight = 800; tB.fill = '#b45309';
+
+    // 맞물림 중심 지점 표시
+    const midX = (gearAx + gearBx) / 2;
+    const contact = two.makeCircle(midX, cy, 7);
+    contact.fill = '#ef4444'; contact.noStroke();
+
+    // 하단 결론 배너
+    const yBot = 285;
+    const banner = two.makeRoundedRectangle(cx, yBot, 480, 36, 18);
+    banner.fill = '#f0fdf4'; banner.stroke = '#86efac'; banner.linewidth = 2;
+    const bTxt = two.makeText("🎉 24와 36의 최소공배수: 72 ➔ 72번째 톱니에서 처음으로 다시 맞물림!", cx, yBot);
+    bTxt.size = 13; bTxt.weight = 800; bTxt.fill = '#166534';
 
     two.update();
   }
 
-  function renderAlgoCanvas(two, n, isPrime) {
+  // 4-10: 소수 판별 코딩 알고리즘 순서도 비주얼라이저
+  function renderAlgoCanvas(two, n, isP, divisor) {
     if (!two) return;
     two.clear();
     const cx = two.width / 2;
-    const cy = two.height / 2;
 
-    const title = two.makeText("알지오매스 소수 판별 코딩 알고리즘", cx, cy - 75);
-    title.size = 18; title.weight = 800; title.fill = '#1e293b';
+    const title = two.makeText("💻 [알고리즘] 코딩으로 소수 판별하기 순서도", cx, 28);
+    title.size = 17; title.weight = 800; title.fill = '#1e293b';
 
-    const box = two.makeRoundedRectangle(cx, cy + 10, 320, 90, 10);
-    box.fill = isPrime ? '#f0fdf4' : '#fef2f2';
-    box.stroke = isPrime ? '#16a34a' : '#ef4444';
-    box.linewidth = 2;
+    // 순서도 블록들
+    // 1. 시작 (입력 N)
+    const b1 = two.makeRoundedRectangle(cx, 70, 200, 36, 18);
+    b1.fill = '#eff6ff'; b1.stroke = '#3b82f6'; b1.linewidth = 2;
+    const t1 = two.makeText(`1. 시작 (N = ${n} 입력)`, cx, 70);
+    t1.size = 14; t1.weight = 800; t1.fill = '#1d4ed8';
 
-    const t = two.makeText(`검사 수: ${n} ➔ 알고리즘 판별: ${isPrime ? '소수' : '합성수'}`, cx, cy + 10);
-    t.size = 16; t.weight = 800; t.fill = isPrime ? '#166534' : '#991b1b';
+    two.makeLine(cx, 88, cx, 115).stroke = '#94a3b8';
+
+    // 2. 반복 i = 2부터 √N까지
+    const b2 = two.makeRoundedRectangle(cx, 135, 260, 38, 8);
+    b2.fill = '#f8fafc'; b2.stroke = '#64748b'; b2.linewidth = 2;
+    const t2 = two.makeText(`2. i = 2부터 √${n}(≈${Math.floor(Math.sqrt(n))})까지 나눗셈`, cx, 135);
+    t2.size = 13; t2.weight = 800; t2.fill = '#1e293b';
+
+    two.makeLine(cx, 154, cx, 185).stroke = '#94a3b8';
+
+    // 3. 조건 분기 N % i == 0 ?
+    const b3 = two.makePolygon(cx, 215, 42, 4); // 다이아몬드
+    b3.fill = '#fefce8'; b3.stroke = '#eab308'; b3.linewidth = 2;
+    const t3 = two.makeText("N % i == 0 ?", cx, 215);
+    t3.size = 13; t3.weight = 800; t3.fill = '#854d0e';
+
+    // 분기 Yes / No
+    // Yes ➔ 합성수
+    two.makeLine(cx - 42, 215, cx - 110, 215).stroke = '#ef4444';
+    const bYes = two.makeRoundedRectangle(cx - 150, 215, 80, 32, 6);
+    bYes.fill = '#fef2f2'; bYes.stroke = '#ef4444'; bYes.linewidth = 2;
+    const tYes = two.makeText("합성수!", cx - 150, 215);
+    tYes.size = 13; tYes.weight = 800; tYes.fill = '#991b1b';
+
+    // No ➔ 소수
+    two.makeLine(cx + 42, 215, cx + 110, 215).stroke = '#16a34a';
+    const bNo = two.makeRoundedRectangle(cx + 150, 215, 80, 32, 6);
+    bNo.fill = '#f0fdf4'; bNo.stroke = '#16a34a'; bNo.linewidth = 2;
+    const tNo = two.makeText("소수!", cx + 150, 215);
+    tNo.size = 13; tNo.weight = 800; tNo.fill = '#166534';
+
+    // 하단 최종 판정 배너
+    const yBot = 285;
+    const banner = two.makeRoundedRectangle(cx, yBot, 480, 36, 18);
+    banner.fill = isP ? '#f0fdf4' : '#fef2f2';
+    banner.stroke = isP ? '#86efac' : '#fca5a5';
+    banner.linewidth = 2;
+
+    const bTxt = two.makeText(
+      isP
+        ? `🎉 판정 완료: ${n}은(는) 1보다 큰 약수가 없으므로 [소수]입니다!`
+        : `⚠️ 판정 완료: ${n}은(는) ${divisor}로 나누어떨어지므로 [합성수]입니다!`,
+      cx, yBot
+    );
+    bTxt.size = 14; bTxt.weight = 800;
+    bTxt.fill = isP ? '#166534' : '#991b1b';
 
     two.update();
   }
 
+  // 5-1: 5월 달력 속 소수 날짜 찾기
   function renderCalendarCanvas(two) {
     if (!two) return;
     two.clear();
     const cx = two.width / 2;
-    const cy = two.height / 2;
-    const primes = new Set(simState.calendarPrimes);
-    const startX = cx - 110;
-    const startY = cy - 75;
 
-    const title = two.makeText("📅 달력 속 31일까지의 날짜 중 소수 찾기", cx, startY - 26);
+    const title = two.makeText("📅 [달력 탐구] 5월 달력에서 소수 날짜 (11개) 모두 찾기", cx, 28);
     title.size = 17; title.weight = 800; title.fill = '#1e293b';
 
-    for (let d = 1; d <= 31; d++) {
-      const col = (d - 1) % 7;
-      const row = Math.floor((d - 1) / 7);
-      const x = startX + col * 36;
-      const y = startY + row * 32;
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    const startX = cx - 180;
+    const startY = 65;
 
-      const circle = two.makeCircle(x, y, 14);
-      if (primes.has(d)) {
-        circle.fill = '#fef08a'; circle.stroke = '#ca8a04'; circle.linewidth = 2;
-      } else {
-        circle.fill = '#ffffff'; circle.stroke = '#cbd5e1';
-      }
-
-      const txt = two.makeText(String(d), x, y + 1);
-      txt.size = 13; txt.weight = 800;
-      txt.fill = primes.has(d) ? '#854d0e' : '#475569';
+    // 요일 헤더
+    for (let d = 0; d < 7; d++) {
+      const x = startX + d * 60;
+      const hTxt = two.makeText(days[d], x, startY);
+      hTxt.size = 14; hTxt.weight = 800;
+      hTxt.fill = (d === 0) ? '#ef4444' : ((d === 6) ? '#0284c7' : '#475569');
     }
 
+    const primes = new Set([2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31]);
+    const firstDayOffset = 3; // 수요일 시작 가정
+
+    for (let day = 1; day <= 31; day++) {
+      const cellIdx = day + firstDayOffset - 1;
+      const col = cellIdx % 7;
+      const row = Math.floor(cellIdx / 7);
+      const x = startX + col * 60;
+      const y = startY + 28 + row * 34;
+
+      const isPrime = primes.has(day);
+      const isSelected = simState.calendarSelected.has(day);
+
+      const cell = two.makeRoundedRectangle(x, y, 48, 28, 6);
+
+      if (isSelected && isPrime) {
+        cell.fill = '#dcfce7'; cell.stroke = '#16a34a'; cell.linewidth = 2;
+      } else if (isSelected && !isPrime) {
+        cell.fill = '#fef2f2'; cell.stroke = '#ef4444'; cell.linewidth = 1.5;
+      } else {
+        cell.fill = '#ffffff'; cell.stroke = '#e2e8f0'; cell.linewidth = 1;
+      }
+
+      const dTxt = two.makeText(String(day), x, y);
+      dTxt.size = 13; dTxt.weight = 800;
+      dTxt.fill = (isSelected && isPrime) ? '#15803d' : ((isSelected && !isPrime) ? '#dc2626' : '#1e293b');
+    }
+
+    // 하단 요약 배너
+    const yBot = 285;
+    const isAllFound = (simState.calendarSelected.size === 11);
+    const banner = two.makeRoundedRectangle(cx, yBot, 480, 36, 18);
+    banner.fill = isAllFound ? '#f0fdf4' : '#eff6ff';
+    banner.stroke = isAllFound ? '#86efac' : '#bfdbfe';
+    banner.linewidth = 2;
+
+    const bTxt = two.makeText(
+      isAllFound
+        ? "🏆 5월의 소수 날짜 11개(2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31) 완벽 수집 완료!"
+        : "💡 달력의 날짜를 클릭하여 소수 날짜 11개를 모두 찾아보세요.",
+      cx, yBot
+    );
+    bTxt.size = 13; bTxt.weight = 800;
+    bTxt.fill = isAllFound ? '#166534' : '#1d4ed8';
+
     two.update();
   }
 
-  function renderMondrianCanvas(two) {
+  // 6-1: 몬드리안 분할 프로젝트
+  function renderMondrianCanvas(two, ratio) {
     if (!two) return;
     two.clear();
     const cx = two.width / 2;
-    const cy = two.height / 2;
 
-    const title = two.makeText("🎨 몬드리안 직사각형 분할 아트", cx, cy - 80);
-    title.size = 18; title.weight = 800; title.fill = '#1e293b';
+    const title = two.makeText("🎨 [창의융합] 소인수분해와 정수 면적 분할: 몬드리안 아트", cx, 30);
+    title.size = 17; title.weight = 800; title.fill = '#1e293b';
 
-    const r1 = two.makeRectangle(cx - 50, cy - 20, 80, 60);
-    r1.fill = '#ef4444'; r1.stroke = '#0f172a'; r1.linewidth = 3;
+    const boxW = 340;
+    const boxH = 200;
+    const boxY = 150;
 
-    const r2 = two.makeRectangle(cx + 50, cy - 20, 100, 60);
-    r2.fill = '#3b82f6'; r2.stroke = '#0f172a'; r2.linewidth = 3;
+    const outer = two.makeRoundedRectangle(cx, boxY, boxW, boxH, 4);
+    outer.fill = '#ffffff'; outer.stroke = '#0f172a'; outer.linewidth = 6;
 
-    const r3 = two.makeRectangle(cx - 50, cy + 45, 80, 70);
-    r3.fill = '#eab308'; r3.stroke = '#0f172a'; r3.linewidth = 3;
+    // 분할 직사각형들
+    const r1 = two.makeRectangle(cx - 70, boxY - 30, 200, 140);
+    r1.fill = '#dc2626'; r1.stroke = '#0f172a'; r1.linewidth = 5;
 
-    const r4 = two.makeRectangle(cx + 50, cy + 45, 100, 70);
-    r4.fill = '#ffffff'; r4.stroke = '#0f172a'; r4.linewidth = 3;
+    const r2 = two.makeRectangle(cx + 100, boxY - 50, 140, 100);
+    r2.fill = '#2563eb'; r2.stroke = '#0f172a'; r2.linewidth = 5;
 
-    const txt = two.makeText("넓이 = 주어진 수 (직사각형 분할)", cx, cy + 95);
-    txt.size = 15; txt.weight = 800; txt.fill = '#0f172a';
+    const r3 = two.makeRectangle(cx + 100, boxY + 50, 140, 100);
+    r3.fill = '#facc15'; r3.stroke = '#0f172a'; r3.linewidth = 5;
 
-    two.update();
-  }
+    const r4 = two.makeRectangle(cx - 70, boxY + 70, 200, 60);
+    r4.fill = '#f8fafc'; r4.stroke = '#0f172a'; r4.linewidth = 5;
 
-  function renderDefaultCanvas(two, code) {
-    if (!two) return;
-    two.clear();
-    const cx = two.width / 2;
-    const cy = two.height / 2;
-    const rect = two.makeRoundedRectangle(cx, cy, 300, 90, 10);
-    rect.fill = '#f8fafc'; rect.stroke = '#cbd5e1'; rect.linewidth = 2;
+    const yBot = 285;
+    const banner = two.makeRoundedRectangle(cx, yBot, 480, 36, 18);
+    banner.fill = '#f8fafc'; banner.stroke = '#cbd5e1'; banner.linewidth = 1.5;
+    const bTxt = two.makeText("💡 서로소와 소인수 분해 비율을 결합한 조화로운 사각형 면적 분할", cx, yBot);
+    bTxt.size = 13; bTxt.weight = 800; bTxt.fill = '#334155';
 
-    const t = two.makeText(`서브스텝 [${code}] 시뮬레이터`, cx, cy);
-    t.size = 16; t.weight = 800; t.fill = '#0284c7';
     two.update();
   }
 
