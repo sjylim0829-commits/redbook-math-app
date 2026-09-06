@@ -2527,6 +2527,11 @@ window.SUBSTEP_CONFIG = {
     vennHintMsg: '',
     vennNumA: 12,
     vennNumB: 18,
+    jumpPosA: 0,
+    jumpPosB: 0,
+    isDraggingJumperA: false,
+    isDraggingJumperB: false,
+    foundCommonMultiples: new Set(),
     classifyNum: 2,
     sieveStep: 1,
     powerBase: 2,
@@ -2866,6 +2871,197 @@ window.SUBSTEP_CONFIG = {
     };
   }
 
+  // --- 0-3 Interactive Number Line Jump Helpers & Pointer Engine ---
+  window.stepJumperA = function(delta = 4) {
+    let next = simState.jumpPosA + delta;
+    if (next > 24) next = 0;
+    simState.jumpPosA = next;
+    checkLcmArrival();
+    updateJumpControllerUI();
+    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '0-3') {
+      renderLcmJumpCanvas(window.currentTwo, 4, 6);
+    }
+  };
+
+  window.stepJumperB = function(delta = 6) {
+    let next = simState.jumpPosB + delta;
+    if (next > 24) next = 0;
+    simState.jumpPosB = next;
+    checkLcmArrival();
+    updateJumpControllerUI();
+    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '0-3') {
+      renderLcmJumpCanvas(window.currentTwo, 4, 6);
+    }
+  };
+
+  window.resetJumpers = function() {
+    simState.jumpPosA = 0;
+    simState.jumpPosB = 0;
+    simState.foundCommonMultiples.clear();
+    updateJumpControllerUI();
+    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '0-3') {
+      renderLcmJumpCanvas(window.currentTwo, 4, 6);
+    }
+  };
+
+  window.autoDemoJumps = function() {
+    simState.jumpPosA = 12;
+    simState.jumpPosB = 12;
+    checkLcmArrival();
+    updateJumpControllerUI();
+    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '0-3') {
+      renderLcmJumpCanvas(window.currentTwo, 4, 6);
+    }
+  };
+
+  function checkLcmArrival() {
+    if (simState.jumpPosA > 0 && simState.jumpPosA === simState.jumpPosB) {
+      const match = simState.jumpPosA;
+      if (!simState.foundCommonMultiples.has(match)) {
+        simState.foundCommonMultiples.add(match);
+        if (typeof playSound === 'function') playSound('chime');
+      }
+    }
+  }
+
+  function updateJumpControllerUI() {
+    const badge = document.getElementById('jump-progress-badge');
+    if (!badge) return;
+    const isBothAt12 = (simState.jumpPosA === 12 && simState.jumpPosB === 12);
+    const isBothAt24 = (simState.jumpPosA === 24 && simState.jumpPosB === 24);
+    const hasCommon = simState.foundCommonMultiples.size > 0;
+
+    if (isBothAt12) {
+      badge.innerHTML = `🎉 공통 착지점 <b>12</b> 발견! (첫 공배수 = <b>최소공배수</b>)`;
+      badge.style.background = '#f0fdf4';
+      badge.style.color = '#166534';
+      badge.style.border = '1px solid #86efac';
+    } else if (isBothAt24) {
+      badge.innerHTML = `🎉 두 번째 공통 착지점 <b>24</b> 발견! (12의 배수)`;
+      badge.style.background = '#fefce8';
+      badge.style.color = '#854d0e';
+      badge.style.border = '1px solid #fde047';
+    } else if (hasCommon) {
+      const list = Array.from(simState.foundCommonMultiples).sort((a,b)=>a-b).join(', ');
+      badge.innerHTML = `발견한 공배수: <b>${list}</b> | 토끼: ${simState.jumpPosA}, 개구리: ${simState.jumpPosB}`;
+      badge.style.background = '#eff6ff';
+      badge.style.color = '#1d4ed8';
+      badge.style.border = '1px solid #bfdbfe';
+    } else {
+      badge.innerHTML = `도약 진행: 🐰토끼 <b>${simState.jumpPosA}</b> | 🐸개구리 <b>${simState.jumpPosB}</b> (공통 눈금을 찾아보세요)`;
+      badge.style.background = '#f8fafc';
+      badge.style.color = '#475569';
+      badge.style.border = '1px solid #e2e8f0';
+    }
+  }
+
+  function setupJumpInteractiveEvents(two, container) {
+    if (!container) return;
+    container.style.touchAction = 'none';
+
+    function getJumpGeometry() {
+      const width = two.width, height = two.height;
+      const maxVal = 24;
+      const padX = 55;
+      const stepX = (width - padX * 2) / maxVal;
+      const startX = padX;
+      const cy = height / 2;
+      const jumperAy = cy - 24;
+      const jumperBy = cy + 24;
+      const jumperAx = startX + simState.jumpPosA * stepX;
+      const jumperBx = startX + simState.jumpPosB * stepX;
+      return { width, height, maxVal, padX, stepX, startX, cy, jumperAy, jumperBy, jumperAx, jumperBx };
+    }
+
+    container.onpointerdown = (e) => {
+      const rect = container.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const geom = getJumpGeometry();
+
+      const distA = Math.hypot(mx - geom.jumperAx, my - geom.jumperAy);
+      const distB = Math.hypot(mx - geom.jumperBx, my - geom.jumperBy);
+
+      if (distA < 26) {
+        simState.isDraggingJumperA = true;
+        simState.isDraggingJumperB = false;
+        container.style.cursor = 'grabbing';
+        try { container.setPointerCapture(e.pointerId); } catch(err){}
+        e.preventDefault();
+      } else if (distB < 26) {
+        simState.isDraggingJumperB = true;
+        simState.isDraggingJumperA = false;
+        container.style.cursor = 'grabbing';
+        try { container.setPointerCapture(e.pointerId); } catch(err){}
+        e.preventDefault();
+      } else {
+        if (Math.abs(my - geom.cy) < 40 && mx >= geom.startX - 15 && mx <= geom.width - geom.padX + 15) {
+          const v = (mx - geom.startX) / geom.stepX;
+          if (my < geom.cy) {
+            const snapped = Math.max(0, Math.min(24, Math.round(v / 4) * 4));
+            simState.jumpPosA = snapped;
+            checkLcmArrival();
+            updateJumpControllerUI();
+            renderLcmJumpCanvas(two, 4, 6);
+          } else {
+            const snapped = Math.max(0, Math.min(24, Math.round(v / 6) * 6));
+            simState.jumpPosB = snapped;
+            checkLcmArrival();
+            updateJumpControllerUI();
+            renderLcmJumpCanvas(two, 4, 6);
+          }
+        }
+      }
+    };
+
+    container.onpointermove = (e) => {
+      const rect = container.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const geom = getJumpGeometry();
+
+      if (simState.isDraggingJumperA) {
+        const v = (mx - geom.startX) / geom.stepX;
+        const snapped = Math.max(0, Math.min(24, Math.round(v / 4) * 4));
+        if (snapped !== simState.jumpPosA) {
+          simState.jumpPosA = snapped;
+          checkLcmArrival();
+          updateJumpControllerUI();
+          renderLcmJumpCanvas(two, 4, 6);
+        }
+      } else if (simState.isDraggingJumperB) {
+        const v = (mx - geom.startX) / geom.stepX;
+        const snapped = Math.max(0, Math.min(24, Math.round(v / 6) * 6));
+        if (snapped !== simState.jumpPosB) {
+          simState.jumpPosB = snapped;
+          checkLcmArrival();
+          updateJumpControllerUI();
+          renderLcmJumpCanvas(two, 4, 6);
+        }
+      } else {
+        const distA = Math.hypot(mx - geom.jumperAx, my - geom.jumperAy);
+        const distB = Math.hypot(mx - geom.jumperBx, my - geom.jumperBy);
+        if (distA < 26 || distB < 26) {
+          container.style.cursor = 'grab';
+        } else if (Math.abs(my - geom.cy) < 30 && mx >= geom.startX && mx <= geom.width - geom.padX) {
+          container.style.cursor = 'pointer';
+        } else {
+          container.style.cursor = 'default';
+        }
+      }
+    };
+
+    container.onpointerup = container.onpointercancel = (e) => {
+      if (simState.isDraggingJumperA || simState.isDraggingJumperB) {
+        simState.isDraggingJumperA = false;
+        simState.isDraggingJumperB = false;
+        container.style.cursor = 'default';
+        try { container.releasePointerCapture(e.pointerId); } catch(err){}
+        renderLcmJumpCanvas(two, 4, 6);
+      }
+    };
+  }
+
   window.setSieveStep = function(step) {
     simState.sieveStep = step;
     if (window.currentTwo && state.subStep === '1-2') {
@@ -3004,14 +3200,21 @@ window.SUBSTEP_CONFIG = {
         if (simController) {
           simController.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <span style="font-weight:800; color:#0284c7; font-size:0.92rem;">🦘 4와 6 수직선 도약 공배수 관측기:</span>
-              <span style="background:#fef3c7; color:#b45309; font-weight:800; padding:4px 10px; border-radius:12px; font-size:0.82rem;">
-                공통 착지 지점: 12, 24, 36... ➔ 최소공배수: 12
+              <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                <button class="btn" style="padding:4px 10px; font-size:0.82rem; background:#e0f2fe; color:#0369a1; font-weight:800; border:1px solid #7dd3fc;" onclick="stepJumperA(4)">🐰 4 도약 (+4)</button>
+                <button class="btn" style="padding:4px 10px; font-size:0.82rem; background:#ffedd5; color:#c2410c; font-weight:800; border:1px solid #fdba74;" onclick="stepJumperB(6)">🐸 6 도약 (+6)</button>
+                <button class="btn" style="padding:4px 8px; font-size:0.78rem; background:#f1f5f9; color:#475569;" onclick="resetJumpers()">🔄 초기화</button>
+                <button class="btn" style="padding:4px 8px; font-size:0.78rem; background:#fef3c7; color:#b45309; font-weight:700;" onclick="autoDemoJumps()">💡 12 발견 시연</button>
+              </div>
+              <span id="jump-progress-badge" style="background:#f8fafc; color:#475569; font-weight:800; padding:4px 12px; border-radius:12px; font-size:0.8rem; border:1px solid #e2e8f0;">
+                도약 진행: 🐰토끼 0 | 🐸개구리 0 (공통 눈금을 찾아보세요)
               </span>
             </div>
           `;
         }
+        setupJumpInteractiveEvents(two, document.getElementById('two-container'));
         renderLcmJumpCanvas(two, 4, 6);
+        updateJumpControllerUI();
         break;
 
       case '0-4':
@@ -3974,41 +4177,186 @@ window.SUBSTEP_CONFIG = {
     two.update();
   }
 
-  function renderLcmJumpCanvas(two, a, b) {
-    const cx = two.width / 2;
-    const cy = two.height / 2;
-    const line = two.makeLine(30, cy, two.width - 30, cy);
-    line.stroke = '#64748b'; line.linewidth = 2;
-
+  function renderLcmJumpCanvas(two, a = 4, b = 6) {
+    two.clear();
+    const width = two.width, height = two.height;
     const maxVal = 24;
-    const stepX = (two.width - 80) / maxVal;
+    const padX = 55;
+    const stepX = (width - padX * 2) / maxVal;
+    const startX = padX;
+    const endX = width - padX;
+    const cy = height / 2;
 
-    for (let i = 0; i <= maxVal; i += 2) {
-      const x = 40 + i * stepX;
-      two.makeLine(x, cy - 5, x, cy + 5);
-      const t = two.makeText(String(i), x, cy + 18);
-      t.size = 10; t.fill = '#64748b';
+    // Background decorative guide
+    const bgCard = two.makeRoundedRectangle(width / 2, height / 2, width - 20, height - 20, 10);
+    bgCard.fill = '#f8fafc';
+    bgCard.stroke = '#e2e8f0';
+    bgCard.linewidth = 1;
+
+    // Header Legend on Canvas
+    const legendA = two.makeText("🐰 4씩 도약 (토끼)", startX + 55, 24);
+    legendA.size = 11.5; legendA.weight = 800; legendA.fill = '#0284c7';
+
+    const legendB = two.makeText("🐸 6씩 도약 (개구리)", startX + 185, 24);
+    legendB.size = 11.5; legendB.weight = 800; legendB.fill = '#ea580c';
+
+    const hintTxt = two.makeText("💡 말을 마우스로 드래그하거나 도약 버튼을 눌러보세요", width - 150, 24);
+    hintTxt.size = 10.5; hintTxt.fill = '#64748b'; hintTxt.alignment = 'right';
+
+    // Highlight vertical bands for discovered common multiples (12, 24)
+    [12, 24].forEach(cVal => {
+      const cxPos = startX + cVal * stepX;
+      const isReachedBoth = (simState.jumpPosA === cVal && simState.jumpPosB === cVal);
+      const isDiscovered = simState.foundCommonMultiples.has(cVal);
+
+      if (isReachedBoth || isDiscovered) {
+        const band = two.makeRoundedRectangle(cxPos, cy, 26, height - 60, 6);
+        band.fill = isReachedBoth ? 'rgba(16, 185, 129, 0.16)' : 'rgba(245, 158, 11, 0.08)';
+        band.stroke = isReachedBoth ? '#10b981' : '#f59e0b';
+        band.linewidth = isReachedBoth ? 2 : 1;
+        band.dashes = isReachedBoth ? [] : [4, 4];
+      }
+    });
+
+    // The Main Number Line
+    const line = two.makeLine(startX - 15, cy, endX + 22, cy);
+    line.stroke = '#334155'; line.linewidth = 2.5;
+
+    // Arrowhead at right
+    if (typeof two.makePath === 'function') {
+      const arrow = two.makePath(
+        endX + 22, cy,
+        endX + 13, cy - 5,
+        endX + 15, cy,
+        endX + 13, cy + 5,
+        true
+      );
+      arrow.fill = '#334155'; arrow.stroke = '#334155';
+    } else {
+      two.makeLine(endX + 13, cy - 5, endX + 22, cy);
+      two.makeLine(endX + 13, cy + 5, endX + 22, cy);
     }
 
-    for (let k = 0; k < maxVal; k += a) {
-      const x1 = 40 + k * stepX;
-      const x2 = 40 + (k + a) * stepX;
-      const arc = two.makeCurve(x1, cy, (x1 + x2) / 2, cy - 35, x2, cy, true);
-      arc.stroke = '#0284c7'; arc.linewidth = 2; arc.noFill();
+    // Tick marks and Labels
+    for (let i = 0; i <= maxVal; i++) {
+      const x = startX + i * stepX;
+      const isEven = (i % 2 === 0);
+      const isMul4 = (i > 0 && i % 4 === 0);
+      const isMul6 = (i > 0 && i % 6 === 0);
+      const isCommon = (i > 0 && i % 12 === 0);
+
+      const tickLen = isEven ? 6 : 3.5;
+      const tick = two.makeLine(x, cy - tickLen, x, cy + tickLen);
+      tick.stroke = isCommon ? '#10b981' : (isEven ? '#475569' : '#cbd5e1');
+      tick.linewidth = isCommon ? 2.5 : (isEven ? 1.8 : 1);
+
+      if (isEven) {
+        const lbl = two.makeText(String(i), x, cy + 17);
+        lbl.size = isCommon ? 12.5 : 11;
+        lbl.weight = isCommon ? 900 : (isMul4 || isMul6 ? 700 : 500);
+        lbl.fill = isCommon ? '#059669' : (isMul4 ? '#0284c7' : (isMul6 ? '#ea580c' : '#475569'));
+      }
     }
 
-    for (let k = 0; k < maxVal; k += b) {
-      const x1 = 40 + k * stepX;
-      const x2 = 40 + (k + b) * stepX;
-      const arc = two.makeCurve(x1, cy, (x1 + x2) / 2, cy + 35, x2, cy, true);
-      arc.stroke = '#ea580c'; arc.linewidth = 2; arc.noFill();
+    // Jump Arcs for A (Rabbit / 4)
+    for (let k = 0; k < simState.jumpPosA; k += a) {
+      const x1 = startX + k * stepX;
+      const x2 = startX + (k + a) * stepX;
+      const arcMidX = (x1 + x2) / 2;
+      const arcMidY = cy - 38;
+      const arc = two.makeCurve(x1, cy, arcMidX, arcMidY, x2, cy, true);
+      arc.stroke = '#0284c7'; arc.linewidth = 2.5; arc.noFill();
+
+      // +4 indicator at apex
+      const plusA = two.makeText("+4", arcMidX, arcMidY - 7);
+      plusA.size = 10; plusA.weight = 800; plusA.fill = '#0284c7';
+
+      // Small baseline landing point
+      const pDot = two.makeCircle(x2, cy, 3.5);
+      pDot.fill = '#0284c7'; pDot.stroke = '#ffffff'; pDot.linewidth = 1;
     }
 
-    const dot = two.makeCircle(40 + 12 * stepX, cy, 6);
-    dot.fill = '#16a34a'; dot.stroke = '#ffffff'; dot.linewidth = 2;
+    // Jump Arcs for B (Frog / 6)
+    for (let k = 0; k < simState.jumpPosB; k += b) {
+      const x1 = startX + k * stepX;
+      const x2 = startX + (k + b) * stepX;
+      const arcMidX = (x1 + x2) / 2;
+      const arcMidY = cy + 42;
+      const arc = two.makeCurve(x1, cy, arcMidX, arcMidY, x2, cy, true);
+      arc.stroke = '#ea580c'; arc.linewidth = 2.5; arc.noFill();
 
-    const hit = two.makeText("공통 착지점 12 (최소공배수)", 40 + 12 * stepX, cy - 45);
-    hit.fill = '#16a34a'; hit.weight = 800; hit.size = 12;
+      // +6 indicator at apex
+      const plusB = two.makeText("+6", arcMidX, arcMidY + 14);
+      plusB.size = 10; plusB.weight = 800; plusB.fill = '#ea580c';
+
+      // Small baseline landing point
+      const pDot = two.makeCircle(x2, cy, 3.5);
+      pDot.fill = '#ea580c'; pDot.stroke = '#ffffff'; pDot.linewidth = 1;
+    }
+
+    // Common Landing Celebration Effects (when both jumpers meet at same point > 0)
+    if (simState.jumpPosA > 0 && simState.jumpPosA === simState.jumpPosB) {
+      const cVal = simState.jumpPosA;
+      const xMeet = startX + cVal * stepX;
+
+      // Connecting energy beam between jumpers
+      const beam = two.makeLine(xMeet, cy - 24, xMeet, cy + 24);
+      beam.stroke = '#10b981'; beam.linewidth = 3.5;
+
+      // Central landing beacon
+      const beaconAura = two.makeCircle(xMeet, cy, 15);
+      beaconAura.fill = 'rgba(16, 185, 129, 0.3)'; beaconAura.stroke = 'transparent';
+
+      const beaconDot = two.makeCircle(xMeet, cy, 7);
+      beaconDot.fill = '#10b981'; beaconDot.stroke = '#ffffff'; beaconDot.linewidth = 2;
+
+      // Crown / Star celebration badge
+      const isFirst = (cVal === 12);
+      const crownBg = two.makeRoundedRectangle(xMeet, cy - 64, isFirst ? 180 : 130, 26, 13);
+      crownBg.fill = '#fef3c7'; crownBg.stroke = '#f59e0b'; crownBg.linewidth = 1.5;
+
+      const crownTxt = two.makeText(
+        isFirst ? "👑 12 (첫 공배수 = 최소공배수!)" : "⭐ 24 (두 번째 공배수)",
+        xMeet, cy - 64
+      );
+      crownTxt.size = 10.5; crownTxt.weight = 800; crownTxt.fill = '#92400e';
+    }
+
+    // Jumper A Token (Rabbit / 4)
+    const curAx = startX + simState.jumpPosA * stepX;
+    const curAy = cy - 24;
+
+    // Guide line from jumper A to baseline
+    const guideA = two.makeLine(curAx, curAy, curAx, cy);
+    guideA.stroke = '#0284c7'; guideA.linewidth = 1.5; guideA.dashes = [3, 3];
+
+    const auraA = two.makeCircle(curAx, curAy, 18);
+    auraA.fill = 'rgba(2, 132, 199, 0.2)'; auraA.stroke = 'transparent';
+
+    const tokenA = two.makeCircle(curAx, curAy, 12);
+    tokenA.fill = '#0284c7'; tokenA.stroke = '#ffffff'; tokenA.linewidth = 2;
+
+    const lblA = two.makeText("🐰", curAx, curAy - 1);
+    lblA.size = 11;
+
+    // Jumper B Token (Frog / 6)
+    const curBx = startX + simState.jumpPosB * stepX;
+    const curBy = cy + 24;
+
+    // Guide line from jumper B to baseline
+    const guideB = two.makeLine(curBx, curBy, curBx, cy);
+    guideB.stroke = '#ea580c'; guideB.linewidth = 1.5; guideB.dashes = [3, 3];
+
+    const auraB = two.makeCircle(curBx, curBy, 18);
+    auraB.fill = 'rgba(234, 88, 12, 0.2)'; auraB.stroke = 'transparent';
+
+    const tokenB = two.makeCircle(curBx, curBy, 12);
+    tokenB.fill = '#ea580c'; tokenB.stroke = '#ffffff'; tokenB.linewidth = 2;
+
+    const lblB = two.makeText("🐸", curBx, curBy - 1);
+    lblB.size = 11;
+
+    two.update();
   }
 
   function renderClassifyCanvas(two, selectedN) {

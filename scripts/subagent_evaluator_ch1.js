@@ -91,6 +91,7 @@ const dom = new JSDOM(html, {
       makePolygon() { return createMockShape(); }
       makeText(t) { return Object.assign(createMockShape(), { size: 12, weight: 600 }); }
       makeCurve() { return createMockShape(); }
+      makePath() { return createMockShape(); }
       makeGroup() { return Object.assign(createMockShape(), { add: () => {}, children: [] }); }
     }
     MockTwo.Types = { canvas: 'canvas' };
