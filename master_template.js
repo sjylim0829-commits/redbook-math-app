@@ -344,7 +344,7 @@ function createChapterHtml(config) {
       left: 0;
       width: 100%;
       height: 100%;
-      pointer-events: auto;
+      pointer-events: none;
       z-index: 20;
     }
 
@@ -1077,6 +1077,15 @@ ${tabButtonsHtml}  </nav>
 
     function setTool(toolName) {
       state.tool = toolName;
+      const canvas = document.getElementById('freehand-drawing-canvas');
+      if (canvas) {
+        if (toolName === 'pen' || toolName === 'eraser') {
+          canvas.style.pointerEvents = 'auto';
+          isEraserMode = (toolName === 'eraser');
+        } else {
+          canvas.style.pointerEvents = 'none';
+        }
+      }
     }
 
     // --- FREEHAND DRAWING OVERLAY ---

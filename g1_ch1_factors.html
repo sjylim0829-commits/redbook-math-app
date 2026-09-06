@@ -310,7 +310,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      pointer-events: auto;
+      pointer-events: none;
       z-index: 20;
     }
 
@@ -1293,6 +1293,15 @@
 
     function setTool(toolName) {
       state.tool = toolName;
+      const canvas = document.getElementById('freehand-drawing-canvas');
+      if (canvas) {
+        if (toolName === 'pen' || toolName === 'eraser') {
+          canvas.style.pointerEvents = 'auto';
+          isEraserMode = (toolName === 'eraser');
+        } else {
+          canvas.style.pointerEvents = 'none';
+        }
+      }
     }
 
     // --- FREEHAND DRAWING OVERLAY ---
@@ -2501,6 +2510,8 @@ window.SUBSTEP_CONFIG = {
   const simState = {
     tileRows: 2,
     tileCols: 6,
+    foundTileFactors: new Set(['2x6']),
+    isDraggingHandle: false,
     vennNumA: 12,
     vennNumB: 18,
     classifyNum: 2,
@@ -2546,16 +2557,127 @@ window.SUBSTEP_CONFIG = {
   }
   window.startSmoothLerp = startSmoothLerp;
 
-  // Simulator helper functions
+  // --- 0-1 Interactive Tile Array Helpers ---
+  window.changeTileDim = function(deltaR, deltaC) {
+    const newR = Math.max(1, Math.min(12, simState.tileRows + deltaR));
+    const newC = Math.max(1, Math.min(12, simState.tileCols + deltaC));
+    window.setTileArray(newR, newC);
+  };
+
   window.setTileArray = function(r, c) {
     simState.tileRows = r;
     simState.tileCols = c;
-    const badge = document.getElementById('tile-array-badge');
-    if (badge) badge.innerText = `배열: ${r}행 × ${c}열 = 12`;
-    if (window.currentTwo && state.subStep === '0-1') {
+    if (r * c === 12) {
+      simState.foundTileFactors.add(`${r}x${c}`);
+    }
+    updateTileControllerUI();
+    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '0-1') {
       renderTileArrayCanvas(window.currentTwo, r, c);
     }
   };
+
+  function updateTileControllerUI() {
+    const badge = document.getElementById('tile-array-badge');
+    const r = simState.tileRows;
+    const c = simState.tileCols;
+    const total = r * c;
+    const isMatched = (total === 12);
+    if (badge) {
+      badge.innerHTML = `현재: <b>${r}행 × ${c}열 = ${total}칸</b> ${isMatched ? '🎉 (12개 완성!)' : (total < 12 ? `(⚠️ ${12 - total}개 부족)` : `(⚠️ ${total - 12}개 초과)`)}`;
+      badge.style.background = isMatched ? '#f0fdf4' : (total < 12 ? '#fffbeb' : '#fef2f2');
+      badge.style.color = isMatched ? '#166534' : (total < 12 ? '#b45309' : '#b91c1c');
+      badge.style.border = isMatched ? '1px solid #86efac' : (total < 12 ? '1px solid #fde68a' : '1px solid #fca5a5');
+    }
+  }
+
+  // 0-1 Interactive Tile Array Drag Engine (Pointer Events)
+  function setupTileArrayInteractiveEvents(two, container) {
+    if (!container) return;
+    container.style.touchAction = 'none';
+
+    function getLayout() {
+      const cx = two.width / 2;
+      const cy = two.height / 2 + 18;
+      const r = simState.tileRows;
+      const c = simState.tileCols;
+      const maxDim = Math.max(r, c, 6);
+      const size = Math.max(22, Math.min(36, Math.floor(250 / maxDim)));
+      const startX = cx - (c * size) / 2;
+      const startY = cy - (r * size) / 2;
+      const handleX = startX + c * size;
+      const handleY = startY + r * size;
+      return { cx, cy, r, c, size, startX, startY, handleX, handleY };
+    }
+
+    container.onpointerdown = (e) => {
+      if (typeof state === 'undefined' || state.subStep !== '0-1') return;
+      const rect = container.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      const layout = getLayout();
+      const distHandle = Math.hypot(mx - layout.handleX, my - layout.handleY);
+      const nearRight = Math.abs(mx - layout.handleX) < 28 && my >= layout.startY - 10 && my <= layout.handleY + 28;
+      const nearBottom = Math.abs(my - layout.handleY) < 28 && mx >= layout.startX - 10 && mx <= layout.handleX + 28;
+
+      if (distHandle < 34 || nearRight || nearBottom) {
+        simState.isDraggingHandle = true;
+        try { container.setPointerCapture(e.pointerId); } catch(err){}
+        container.style.cursor = 'nwse-resize';
+        handlePointerMove(mx, my);
+      }
+    };
+
+    container.onpointermove = (e) => {
+      if (typeof state === 'undefined' || state.subStep !== '0-1') return;
+      const rect = container.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      if (simState.isDraggingHandle) {
+        handlePointerMove(mx, my);
+      } else {
+        const layout = getLayout();
+        const distHandle = Math.hypot(mx - layout.handleX, my - layout.handleY);
+        const nearRight = Math.abs(mx - layout.handleX) < 28 && my >= layout.startY - 10 && my <= layout.handleY + 28;
+        const nearBottom = Math.abs(my - layout.handleY) < 28 && mx >= layout.startX - 10 && mx <= layout.handleX + 28;
+        container.style.cursor = (distHandle < 34 || nearRight || nearBottom) ? 'nwse-resize' : 'default';
+      }
+    };
+
+    container.onpointerup = container.onpointercancel = (e) => {
+      if (simState.isDraggingHandle) {
+        simState.isDraggingHandle = false;
+        container.style.cursor = 'default';
+        try { container.releasePointerCapture(e.pointerId); } catch(err){}
+        renderTileArrayCanvas(two, simState.tileRows, simState.tileCols);
+      }
+    };
+
+    function handlePointerMove(mx, my) {
+      const layout = getLayout();
+      let newCols = Math.round((mx - layout.startX) / layout.size);
+      let newRows = Math.round((my - layout.startY) / layout.size);
+
+      newCols = Math.max(1, Math.min(12, newCols));
+      newRows = Math.max(1, Math.min(12, newRows));
+
+      if (newCols !== simState.tileCols || newRows !== simState.tileRows) {
+        simState.tileCols = newCols;
+        simState.tileRows = newRows;
+
+        if (newRows * newCols === 12) {
+          const key = `${newRows}x${newCols}`;
+          if (!simState.foundTileFactors.has(key)) {
+            simState.foundTileFactors.add(key);
+            if (typeof playSound === 'function') playSound('chime');
+          }
+        }
+        updateTileControllerUI();
+        renderTileArrayCanvas(two, simState.tileRows, simState.tileCols);
+      }
+    }
+  }
 
   window.setSieveStep = function(step) {
     simState.sieveStep = step;
@@ -2640,18 +2762,32 @@ window.SUBSTEP_CONFIG = {
         if (simController) {
           simController.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <span style="font-weight:800; color:#0284c7; font-size:0.92rem;">🧱 12개 타일 직사각형 배열기:</span>
-              <div style="display:flex; gap:6px;">
-                <button class="btn" style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.82rem;" onclick="setTileArray(1, 12)">1 × 12</button>
-                <button class="btn" style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.82rem;" onclick="setTileArray(2, 6)">2 × 6</button>
-                <button class="btn" style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.82rem;" onclick="setTileArray(3, 4)">3 × 4</button>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span style="font-weight:800; color:#0284c7; font-size:0.9rem;">🧱 타일 직사각형 탐구:</span>
+                <span style="font-size:0.8rem; color:#64748b;">(모서리 ⤢ 드래그 또는 버튼 조절)</span>
               </div>
-              <span id="tile-array-badge" style="background:#f0fdf4; color:#166534; font-weight:800; padding:4px 10px; border-radius:12px; font-size:0.82rem; border:1px solid #86efac;">
-                배열: ${simState.tileRows}행 × ${simState.tileCols}열 = 12
+              <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                <div style="display:inline-flex; border:1px solid #cbd5e1; border-radius:6px; overflow:hidden;">
+                  <button class="btn" style="padding:3px 8px; font-size:0.78rem; background:#f8fafc; border-right:1px solid #cbd5e1;" onclick="changeTileDim(-1, 0)" title="세로 1칸 줄이기">세로 -</button>
+                  <button class="btn" style="padding:3px 8px; font-size:0.78rem; background:#f8fafc;" onclick="changeTileDim(1, 0)" title="세로 1칸 늘리기">세로 +</button>
+                </div>
+                <div style="display:inline-flex; border:1px solid #cbd5e1; border-radius:6px; overflow:hidden;">
+                  <button class="btn" style="padding:3px 8px; font-size:0.78rem; background:#f8fafc; border-right:1px solid #cbd5e1;" onclick="changeTileDim(0, -1)" title="가로 1칸 줄이기">가로 -</button>
+                  <button class="btn" style="padding:3px 8px; font-size:0.78rem; background:#f8fafc;" onclick="changeTileDim(0, 1)" title="가로 1칸 늘리기">가로 +</button>
+                </div>
+                <div style="display:flex; gap:4px;">
+                  <button class="btn" style="padding:3px 7px; background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.78rem;" onclick="setTileArray(1, 12)">1×12</button>
+                  <button class="btn" style="padding:3px 7px; background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.78rem;" onclick="setTileArray(2, 6)">2×6</button>
+                  <button class="btn" style="padding:3px 7px; background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.78rem;" onclick="setTileArray(3, 4)">3×4</button>
+                </div>
+              </div>
+              <span id="tile-array-badge" style="background:#f0fdf4; color:#166534; font-weight:800; padding:4px 10px; border-radius:12px; font-size:0.8rem; border:1px solid #86efac;">
+                현재: 2행 × 6열 = 12칸 🎉 (12개 완성!)
               </span>
             </div>
           `;
         }
+        setupTileArrayInteractiveEvents(two, document.getElementById('two-container'));
         renderTileArrayCanvas(two, simState.tileRows, simState.tileCols);
         break;
 
@@ -3307,24 +3443,172 @@ window.SUBSTEP_CONFIG = {
   // ==========================================
 
   function renderTileArrayCanvas(two, r, c) {
-    const cx = two.width / 2;
-    const cy = two.height / 2;
-    const size = Math.min(32, Math.floor(260 / Math.max(r, c)));
-    const startX = cx - (c * size) / 2 + size / 2;
-    const startY = cy - (r * size) / 2 + size / 2;
+    if (!two) return;
+    two.clear();
 
+    const cx = two.width / 2;
+    const cy = two.height / 2 + 16;
+    const maxDim = Math.max(r, c, 6);
+    const size = Math.max(22, Math.min(36, Math.floor(250 / maxDim)));
+    const startX = cx - (c * size) / 2;
+    const startY = cy - (r * size) / 2;
+    const totalCells = r * c;
+    const isExact12 = (totalCells === 12);
+
+    // 1. Top Collection Bar: 6 factor pairs of 12
+    const allPairs = [
+      { key: '1x12', label: '1 × 12' },
+      { key: '2x6', label: '2 × 6' },
+      { key: '3x4', label: '3 × 4' },
+      { key: '4x3', label: '4 × 3' },
+      { key: '6x2', label: '6 × 2' },
+      { key: '12x1', label: '12 × 1' }
+    ];
+
+    const topY = 28;
+    const headerTitle = two.makeText("🏆 12개 타일로 만들 수 있는 직사각형 모양 수집기 (약수 탐구)", cx, topY - 14);
+    headerTitle.size = 11; headerTitle.weight = 800; headerTitle.fill = '#475569';
+
+    const pillW = 48;
+    const pillH = 20;
+    const totalPillsW = allPairs.length * (pillW + 6) - 6;
+    const pillStartX = cx - totalPillsW / 2 + pillW / 2;
+
+    allPairs.forEach((pair, idx) => {
+      const px = pillStartX + idx * (pillW + 6);
+      const isFound = simState.foundTileFactors.has(pair.key);
+      const pill = two.makeRoundedRectangle(px, topY + 8, pillW, pillH, 6);
+      if (isFound) {
+        pill.fill = '#ecfdf5';
+        pill.stroke = '#10b981';
+        pill.linewidth = 1.5;
+        const t = two.makeText(pair.label, px, topY + 8);
+        t.size = 10; t.weight = 800; t.fill = '#065f46';
+      } else {
+        pill.fill = '#f8fafc';
+        pill.stroke = '#cbd5e1';
+        pill.linewidth = 1;
+        const t = two.makeText("? × ?", px, topY + 8);
+        t.size = 10; t.weight = 600; t.fill = '#94a3b8';
+      }
+    });
+
+    // 2. Faint workspace guide grid background
+    const bgW = Math.max(c * size + 40, 240);
+    const bgH = Math.max(r * size + 40, 180);
+    const bgBox = two.makeRoundedRectangle(cx, cy, bgW, bgH, 12);
+    bgBox.fill = '#f8fafc';
+    bgBox.stroke = '#e2e8f0';
+    bgBox.linewidth = 1.5;
+
+    // 3. Dimension indicators (Top: Width, Left: Height)
+    const dimTopY = startY - 14;
+    const topArrow = two.makeLine(startX, dimTopY, startX + c * size, dimTopY);
+    topArrow.stroke = '#0284c7'; topArrow.linewidth = 1.5;
+    two.makeLine(startX, dimTopY - 4, startX, dimTopY + 4).stroke = '#0284c7';
+    two.makeLine(startX + c * size, dimTopY - 4, startX + c * size, dimTopY + 4).stroke = '#0284c7';
+    const topLabel = two.makeText(`가로 ${c}칸`, cx, dimTopY - 9);
+    topLabel.size = 11; topLabel.weight = 800; topLabel.fill = '#0284c7';
+
+    const dimLeftX = startX - 16;
+    const leftArrow = two.makeLine(dimLeftX, startY, dimLeftX, startY + r * size);
+    leftArrow.stroke = '#0284c7'; leftArrow.linewidth = 1.5;
+    two.makeLine(dimLeftX - 4, startY, dimLeftX + 4, startY).stroke = '#0284c7';
+    two.makeLine(dimLeftX - 4, startY + r * size, dimLeftX + 4, startY + r * size).stroke = '#0284c7';
+    const leftLabel = two.makeText(`세로 ${r}칸`, dimLeftX - 16, cy);
+    leftLabel.size = 11; leftLabel.weight = 800; leftLabel.fill = '#0284c7';
+    leftLabel.rotation = -Math.PI / 2;
+
+    // 4. Render Grid Cells & Tiles
     for (let i = 0; i < r; i++) {
       for (let j = 0; j < c; j++) {
-        const rect = two.makeRectangle(startX + j * size, startY + i * size, size - 3, size - 3);
-        rect.fill = '#38bdf8';
-        rect.stroke = '#0284c7';
-        rect.linewidth = 2;
+        const cellNum = i * c + j + 1;
+        const tx = startX + j * size + size / 2;
+        const ty = startY + i * size + size / 2;
+
+        if (cellNum <= 12) {
+          // Real tile of the 12
+          const tile = two.makeRoundedRectangle(tx, ty, size - 3, size - 3, 4);
+          if (isExact12) {
+            tile.fill = '#0284c7';
+            tile.stroke = '#0369a1';
+            tile.linewidth = 2;
+          } else {
+            tile.fill = '#38bdf8';
+            tile.stroke = '#0284c7';
+            tile.linewidth = 1.5;
+          }
+          const numT = two.makeText(String(cellNum), tx, ty);
+          numT.size = Math.max(10, Math.floor(size * 0.42));
+          numT.weight = 800;
+          numT.fill = '#ffffff';
+        } else {
+          // Empty excess cell (red dotted)
+          const emptyCell = two.makeRoundedRectangle(tx, ty, size - 3, size - 3, 4);
+          emptyCell.fill = 'rgba(239, 68, 68, 0.08)';
+          emptyCell.stroke = '#f87171';
+          emptyCell.linewidth = 1.5;
+          const warnT = two.makeText("빈칸", tx, ty);
+          warnT.size = Math.max(9, Math.floor(size * 0.35));
+          warnT.weight = 700;
+          warnT.fill = '#ef4444';
+        }
       }
     }
-    const label = two.makeText(`${r} × ${c} = 12 (12의 약수: ${r}, ${c})`, cx, cy + (r * size) / 2 + 25);
-    label.fill = '#0f172a';
-    label.weight = 800;
-    label.size = 14;
+
+    // 5. Interactive Corner Drag Handle at bottom-right
+    const handleX = startX + c * size;
+    const handleY = startY + r * size;
+
+    // Pulsing aura circle
+    const aura = two.makeCircle(handleX, handleY, 20);
+    aura.fill = 'rgba(99, 102, 241, 0.22)';
+    aura.noStroke();
+
+    // Solid inner handle
+    const handleCircle = two.makeCircle(handleX, handleY, 12);
+    handleCircle.fill = '#4f46e5';
+    handleCircle.stroke = '#ffffff';
+    handleCircle.linewidth = 2.5;
+
+    // Resize arrows icon
+    const icon = two.makeText("⤢", handleX, handleY);
+    icon.size = 12; icon.weight = 800; icon.fill = '#ffffff';
+
+    // 6. Bottom Status & Discovery Feedback
+    const botY = cy + (r * size) / 2 + 28;
+
+    if (isExact12) {
+      const banner = two.makeRoundedRectangle(cx, botY, 320, 28, 14);
+      banner.fill = '#f0fdf4';
+      banner.stroke = '#22c55e';
+      banner.linewidth = 2;
+
+      const t = two.makeText(`🎉 [직사각형 완성!] ${r} × ${c} = 12 ➔ 12의 약수: ${r}, ${c}`, cx, botY);
+      t.size = 12; t.weight = 800; t.fill = '#15803d';
+    } else if (totalCells < 12) {
+      const banner = two.makeRoundedRectangle(cx, botY, 300, 26, 13);
+      banner.fill = '#fffbeb';
+      banner.stroke = '#f59e0b';
+      banner.linewidth = 1.5;
+
+      const t = two.makeText(`⚠️ 현재 ${totalCells}칸: 12개 중 ${12 - totalCells}개 타일이 덜 채워짐`, cx, botY);
+      t.size = 11; t.weight = 700; t.fill = '#b45309';
+    } else {
+      const banner = two.makeRoundedRectangle(cx, botY, 320, 26, 13);
+      banner.fill = '#fef2f2';
+      banner.stroke = '#ef4444';
+      banner.linewidth = 1.5;
+
+      const t = two.makeText(`⚠️ 현재 ${totalCells}칸: 12개 타일 초과로 ${totalCells - 12}칸이 비어있음`, cx, botY);
+      t.size = 11; t.weight = 700; t.fill = '#b91c1c';
+    }
+
+    // Helper text
+    const guideT = two.makeText("🖐️ 우하단 보라색 모서리 핸들을 잡고 드래그하여 직사각형을 완성해보세요!", cx, botY + 24);
+    guideT.size = 10; guideT.weight = 600; guideT.fill = '#64748b';
+
+    two.update();
   }
 
   function renderVennCanvas(two, nA, nB) {
