@@ -217,11 +217,19 @@ async function runSubagentEvaluationCh8() {
     await window.handleLMSLogin({ preventDefault: () => {} });
     const studentLoggedIn = (window.state && window.state.studentId === '10101');
 
-    // 2. Teacher Master Bypass
+    // 2. Teacher Master Bypass (Test both 260523 and 260831)
+    studentInput.value = '260523';
+    if (passwordInput) passwordInput.value = '260523';
+    await window.handleLMSLogin({ preventDefault: () => {} });
+    const teacher260523Passed = (window.state && window.state.isTeacherLoggedIn === true && window.state.unlockedSubSteps.length >= 18);
+
+    window.state.isTeacherLoggedIn = false;
     studentInput.value = '260831';
     if (passwordInput) passwordInput.value = '260831';
     await window.handleLMSLogin({ preventDefault: () => {} });
-    const teacherBypassWorks = (window.state && window.state.isTeacherLoggedIn === true && window.state.unlockedSubSteps.length >= 18);
+    const teacher260831Passed = (window.state && window.state.isTeacherLoggedIn === true && window.state.unlockedSubSteps.length >= 18);
+
+    const teacherBypassWorks = teacher260523Passed && teacher260831Passed;
 
     // 3. Teacher Modal Button & Auth
     const teacherModalBtn = document.querySelector('button[onclick*="openTestLoginModal"]') ||
@@ -494,10 +502,12 @@ async function runSubagentEvaluationCh8() {
       window.startSmoothLerp('testKey', () => val, (v) => { val = v; }, 10, null, null, 0.5);
     }
     const htmlHasLerp = htmlContent.includes('function startSmoothLerp') && htmlContent.includes('0.12') && htmlContent.includes('cancelAnimationFrame');
+    const hasActiveLerpCleanup = htmlContent.includes('activeLerpAnimations') && htmlContent.includes('cancelAnimationFrame(activeLerpAnimations[k])');
+    const hasFloatTracking = htmlContent.includes('currentFloat') || htmlContent.includes('Math.abs(diff * speed) < 0.005');
     const interactiveUsesLerp = htmlContent.includes("startSmoothLerp('seesawFulcrum'") || htmlContent.includes("startSmoothLerp('outlierVal'");
-    const ok = hasLerp && htmlHasLerp && interactiveUsesLerp;
-    record('INTENT-21', '절전형 물리 애니메이션 엔진 (startSmoothLerp) 및 시뮬레이터 연동', 5, ok,
-      ok ? '지수 감속(0.12), rAF 절전 종료, 8단원 시소/이상치 시뮬레이터 실시간 Lerp 연동 확인' : 'startSmoothLerp 미탑재 또는 시뮬레이터 미연동');
+    const ok = hasLerp && htmlHasLerp && interactiveUsesLerp && hasActiveLerpCleanup && hasFloatTracking;
+    record('INTENT-21', '절전형 물리 애니메이션 엔진 (startSmoothLerp) 및 화면 고정 방지 표준', 5, ok,
+      ok ? '지수 감속(0.12), rAF 절전 종료, loadSubStep 시 activeLerpAnimations 일괄 취소 및 currentFloat 수렴 안전 가드 확인' : 'startSmoothLerp 미탑재 또는 화면 고정 방지 취소 로직 누락');
   } catch (e) {
     record('INTENT-21', '절전형 물리 애니메이션 엔진 (startSmoothLerp)', 5, false, e.message);
   }

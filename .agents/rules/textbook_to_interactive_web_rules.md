@@ -177,21 +177,113 @@ const state = {
 
 ---
 
-## 6. 🚀 교과서 지면을 받았을 때의 신규 단원 자동 제작 파이프라인
+## 6. 🧩 교과서 요소를 웹 인터랙션으로 변환하는 8대 핵심 디자인 패턴
 
-사용자가 새로운 교과서 페이지(단원 내용)를 제공하면, 에이전트는 다음 6단계 프로세스를 엄격히 수행합니다:
+모든 단원(1, 2, 3, 5, 6, 7, 8단원) 개발 시 교과서 4단원(`g1_coordinate.html`) 벤치마크에서 확립된 다음 **8대 변환 공식**을 기계적으로 적용합니다:
 
-1. **지면 정밀 해독 및 코너 추출**:
-   - 제공된 페이지에서 도입 상황, 탐구 발문, 정의 박스, 주의/참고 팁, 연습 문제, 형성평가, 심화 코너를 추출.
-2. **서브스텝 코드 및 타이틀 매핑**:
-   - `0-1, 0-2...` (되짚어보기), `1-1, 1-2...` (소단원1), `2-1...` (소단원2)와 같이 위계적 코드 부여.
-3. **캔버스 인터랙션 모델링**:
-   - 어떤 요소를 드래그할 것인가? (점, 도형의 꼭짓점, 슬라이더)
-   - 모눈 그리드 규격(step, 사분면 색상, 점선 가이드) 결정.
-4. **빈칸 및 문항 설계**:
-   - 핵심 용어, 공식, 기호, 성질, 계산 수치에 `.proof-input-text` 빈칸 배치.
-   - `normTxt` 기반 유연한 채점 로직 및 친절한 힌트 메시지 작성.
-5. **UI 통합 및 KaTeX 렌더링 검증**:
-   - Split-view 레이아웃에 통합하고, 모든 수식에 LaTeX(`$x$`, `$\overline{AB}$`) 적용 후 `renderMathInPage()` 바인딩.
-6. **Git 즉시 반영**:
-   - 완성 즉시 `git add`, `git commit`, `git push` 실행.
+```
+[패턴 1] 정적 삽화/다이어그램 ───> Two.js 벡터 애니메이션 및 기하 렌더러
+[패턴 2] 본문 개념 설명 ─────────> 실시간 드래그 & 스마트 자석 스냅 인터랙터
+[패턴 3] 좌표/위치 찾기 문항 ────> 다중 점 목표 배치 미션 & 실시간 상태 뱃지
+[패턴 4] 보조선/작도형 문항 ─────> 투명 펜 드로잉 오버레이 레이어
+[패턴 5] 개념 정의 및 수식 ─────> 인라인 괄호 빈칸 (.proof-input-text) & KaTeX
+[패턴 6] 오개념/주의사항 ────────> 스포일러 방지형 [주의 / 핵심 팁] 카드
+[패턴 7] 제출 및 정답 확인 ─────> 폭죽(Confetti) + 음향 + 해설 요약 카드 전환
+[패턴 8] 교과서 흐름/페이지 ─────> 상단 대단원 탭 + 하단 서브스텝 필(Pills)
+```
+
+1. **패턴 1 (정적 삽화 $\rightarrow$ Two.js 동적 캔버스)**: 교과서의 그림을 캡처하지 않고 순수 Two.js 코드로 직접 그려 Retina 해상도와 동적 애니메이션 지원.
+2. **패턴 2 (본문 개념 $\rightarrow$ 실시간 드래그 & 스마트 자석 스냅)**: 수학적 대상을 잡고 움직이며 변화를 체득. 격자 정수 단위 자동 반올림 스냅(`Math.round((mx - cx) / step)`) 적용.
+3. **패턴 3 (좌표/위치 찾기 $\rightarrow$ 다중 점 목표 배치 미션)**: 목표 위치로 점/객체를 옮기면 실시간 뱃지(`완료!`)로 게이미피케이션 피드백.
+4. **패턴 4 (보조선/작도 $\rightarrow$ 투명 펜 드로잉 오버레이)**: Two.js 위에 투명 캔버스 레이어를 얹어 태블릿 펜이나 마우스로 보조선 긋기 및 지우기 지원.
+5. **패턴 5 (개념/수식 $\rightarrow$ 인라인 괄호 빈칸 & KaTeX)**: 문맥 속 `.proof-input-text` 빈칸과 `normTxt` 정규화 채점으로 공백/기호 유연 처리.
+6. **패턴 6 (오개념/주의 $\rightarrow$ 스포일러 방지 팁 카드)**: placeholder나 힌트에 정답을 직접 노출하지 않고 입력 형식만 안내 (Zero Answer Leakage).
+7. **패턴 7 (제출 $\rightarrow$ 축하 및 해설 카드 전환)**: 정답 시 경쾌한 사운드 + 색종이 폭죽(`launchConfetti()`) + 깔끔한 정답 해설 카드(`.verified-answer-card`) 전환.
+8. **패턴 8 (교과서 위계 $\rightarrow$ 잠금 해금 내비게이션)**: 이전 단계를 완료해야 다음 서브스텝이 열리는 빗장 구조(`🔒`)와 교사 마스터 키(`260523`, `260831`).
+
+---
+
+## 7. ⚡ 프레임 기반 물리 애니메이션 및 화면 고정 방지 표준 규격
+
+시뮬레이터 조작 후 서브스텝 전환 시 화면이 멈추거나 캔버스가 이전 단계로 강제 고정되는 현상을 원천 차단하기 위해 다음 표준을 엄격히 적용합니다:
+
+### 7.1 `startSmoothLerp` 수렴 안전 가드
+- 매 프레임 `getter()`를 재호출하지 않고 내부 부동소수점 변수(`currentFloat`)를 유지하여 지수 감속을 계산합니다.
+- 변화량이 임계치 미만일 때 최종 목표값(`targetVal`)으로 즉시 강제 안착하고 `requestAnimationFrame`을 완전히 종료합니다:
+```javascript
+function startSmoothLerp(key, getter, setter, targetVal, onFrame, onComplete, speed = 0.12) {
+  if (typeof activeLerpAnimations === 'undefined') window.activeLerpAnimations = {};
+  if (activeLerpAnimations[key]) {
+    cancelAnimationFrame(activeLerpAnimations[key]);
+    delete activeLerpAnimations[key];
+  }
+  let currentFloat = getter();
+  function step() {
+    const diff = targetVal - currentFloat;
+    if (Math.abs(diff) < 0.02 || Math.abs(diff * speed) < 0.005) {
+      setter(targetVal);
+      if (onFrame) onFrame(targetVal);
+      if (onComplete) onComplete();
+      delete activeLerpAnimations[key];
+      return;
+    }
+    currentFloat += diff * speed;
+    setter(currentFloat);
+    if (onFrame) onFrame(currentFloat);
+    activeLerpAnimations[key] = requestAnimationFrame(step);
+  }
+  activeLerpAnimations[key] = requestAnimationFrame(step);
+}
+```
+
+### 7.2 `loadSubStep` 진입 시 잔류 애니메이션 전량 정리
+서브스텝을 변경할 때 실행 중인 모든 애니메이션 루프를 즉시 취소하여 새 페이지 캔버스 오염을 방지합니다:
+```javascript
+if (typeof activeLerpAnimations !== 'undefined') {
+  for (const k in activeLerpAnimations) {
+    if (activeLerpAnimations[k]) {
+      cancelAnimationFrame(activeLerpAnimations[k]);
+      delete activeLerpAnimations[k];
+    }
+  }
+}
+```
+
+### 7.3 시뮬레이터 콜백 내 현재 서브스텝 가드
+- 시뮬레이터 컨트롤러 콜백에서 `state.subStep === expectedCode`를 확인하여, 다른 화면에 있을 때 이전 시뮬레이터 캔버스가 다시 그려지는 것을 방지합니다.
+
+---
+
+## 8. 🤖 서브에이전트 검증 규칙 및 6대 무조건 반려(REJECT) 원칙
+
+서브에이전트가 단원 페이지를 자동 평가할 때 다음 6대 필수 탈락 기준 중 **단 하나라도 위반하면 전체 완성도 점수와 무관하게 즉시 반려(`REJECT`)**합니다:
+
+1. **[REJECT-01] 학생 로그인 실패**:
+   - 학번 `10101`, 이름 입력 후 활동 뷰로 정상 전환되지 않거나 `0-1` 서브스텝이 열리지 않을 때.
+2. **[REJECT-02] 교사 마스터 비밀번호(260523, 260831) 인증 실패**:
+   - `student-id`에 `260523` 또는 `260831` 입력 시 즉시 전체 해금 프리패스 실패 시.
+   - `🔑 교사 계정 접속` 버튼 클릭 시 `#secure-password-modal`이 출현하지 않거나, 모달에서 `260523` 또는 `260831` 입력 후 관리자 모드 진입에 실패할 때.
+3. **[REJECT-03] 정답 미노출 원칙 위반 (Zero Answer Leakage)**:
+   - 모든 `.proof-input-text`의 `placeholder`, 주변 안내문구, 레이블 등에 해당 문제의 **실제 채점 정답(숫자, 수식, 텍스트)이 직접 노출**되었을 때.
+4. **[REJECT-04] 좌측 캔버스 비어있음(Blank Canvas)**:
+   - 특정 서브스텝에서 좌측 캔버스 드로잉 함수가 누락되었거나 런타임 오류가 발생하여 빈 화면으로 방치될 때.
+5. **[REJECT-05] 화면 고정 버그 (Screen Freeze) 및 잔류 애니메이션**:
+   - 시뮬레이터 버튼 조작 후 다른 서브스텝으로 이동 시 좌측 캔버스가 전환되지 않고 이전 시뮬레이터 화면으로 고정될 때.
+   - `loadSubStep`에 `activeLerpAnimations` 취소 로직이 누락되었을 때.
+6. **[REJECT-06] 기준 페이지(g1_coordinate.html) 대비 질적 완성도 미달**:
+   - Two.js 동적 그래픽, KaTeX 수식 렌더링, 4대 모달, 5x5 관제 대시보드, normTxt 채점 UX, 5종 사운드 등 기준 규격 대비 달성률이 90% 미만일 때.
+
+---
+
+## 9. 📋 타 단원 개발 지시 및 검증 9대 체크리스트
+
+1. [ ] **지면 분할 무손실성**: 교과서 지면의 생각열기, 개념정리, 문제, 스스로 확인하기, 생각넓히기가 빠짐없이 1:1 서브스텝으로 분할 매핑되었는가?
+2. [ ] **좌측 캔버스 비어있음 0건**: 어떤 서브스텝에서도 좌측 캔버스가 빈 화면으로 방치되지 않고 의미 있는 그래픽이나 시뮬레이터가 작동하는가?
+3. [ ] **동적 조작성(Interactivity)**: 정적인 그림 감상이 아니라, 학생이 슬라이더, 드래그, 클릭 조작을 할 수 있는 인터랙션이 최소 1개 이상 포함되었는가?
+4. [ ] **수식 KaTeX 표준화**: 모든 수학 기호, 변수, 수식에 `$x$`, `$\overline{AB}$`, `$y=ax$` 등의 LaTeX 문법이 적용되었는가?
+5. [ ] **정답 미노출 원칙(Zero Answer Leakage)**: 모든 인풋의 `placeholder`에 실제 정답이 누출되지 않았는가?
+6. [ ] **부드러운 애니메이션 수렴**: `startSmoothLerp`를 사용할 때 부동소수점 추적(`currentFloat`)과 임계 스냅 조건이 적용되어 무한 루프가 발생하지 않는가?
+7. [ ] **페이지 이동 시 애니메이션 취소**: `loadSubStep` 진입 시 `activeLerpAnimations`를 일괄 취소하여 화면 고정 버그를 예방하였는가?
+8. [ ] **2대 교사 마스터 비밀번호 지원**: `260523` 및 `260831`로 로그인 및 5x5 모니터링 대시보드가 정상 작동하는가?
+9. [ ] **Git 즉시 동기화**: 작업 완료 즉시 `git add`, `git commit`, `git push origin main`이 수행되었는가?
+

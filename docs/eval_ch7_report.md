@@ -1,6 +1,6 @@
 # 📊 [서브에이전트 평가 리포트] 7단원 입체도형 (g1_ch7_solid_figures.html)
 
-- **평가 일시**: 2026-09-06T05:25:37.303Z
+- **평가 일시**: 2026-09-06T06:01:15.254Z
 - **평가 대상 파일**: `g1_ch7_solid_figures.html`
 - **적용 설계 명세서**: `docs/eval_ch7_spec.md`
 - **최종 획득 점수**: **110 / 110점 (100%)**
@@ -30,7 +30,7 @@
 | INTENT-18 | 시뮬레이터 9, 10: 구의 부피 & 아르키메데스 황금비율 (5-2, 5-3) | 5점 | 5점 | ✅ PASS | 5-2=true, 5-3=true, 아르키메데스컨트롤=true |
 | INTENT-19 | 정답 미노출 원칙 (Zero Answer Leakage in Placeholder/Hints) | 5점 | 5점 | ✅ PASS | 모든 입력 필드 placeholder 정답 누출 0건 (완전 준수) |
 | INTENT-20 | 캔버스 빈 공간 0건 원칙 (Zero Blank Canvas across all 20 substeps) | 5점 | 5점 | ✅ PASS | 20개 전 서브스텝 Two.js 캔버스 렌더링 100% 확인 |
-| INTENT-21 | 절전형 물리 애니메이션 엔진 (startSmoothLerp) 및 시뮬레이터 연동 | 5점 | 5점 | ✅ PASS | 지수 감속(0.12), rAF 절전 종료, 7단원 전개도 시뮬레이터 실시간 Lerp 연동 확인 |
+| INTENT-21 | 절전형 물리 애니메이션 엔진 (startSmoothLerp) 및 화면 고정 방지 표준 | 5점 | 5점 | ✅ PASS | 지수 감속(0.12), rAF 절전 종료, loadSubStep 시 activeLerpAnimations 일괄 취소 및 currentFloat 수렴 안전 가드 확인 |
 
 ---
 

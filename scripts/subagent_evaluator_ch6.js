@@ -230,13 +230,20 @@ async function runSubagentEvaluationCh6() {
       recordCheck('INTENT-01-B', '학생 로그인 및 초기 단계 잠금', studentPassed, studentPassed ? '10101 학생 정상 로그인, 0-1 기본 해금' : '학생 로그인 실패');
       if (!studentPassed) isLoginCriticalPassed = false;
 
-      // Test Teacher Login Bypass (260523)
+      // Test Teacher Login Bypass (260523 and 260831)
       studentInput.value = '260523';
       if (passwordInput) passwordInput.value = '260523';
       await window.handleLMSLogin({ preventDefault: () => {} });
+      const teacher260523Passed = (window.state && window.state.isTeacherLoggedIn === true && window.state.unlockedSubSteps.length >= 20);
 
-      const teacherPassed = (window.state && window.state.isTeacherLoggedIn === true && window.state.unlockedSubSteps.length >= 20);
-      recordCheck('INTENT-01-C', '교사 마스터 비밀번호(260523) 전체 해금', teacherPassed, teacherPassed ? `교사 인증 성공, 전체 ${window.state.unlockedSubSteps.length}개 서브스텝 프리패스` : '교사 마스터 바이패스 실패');
+      window.state.isTeacherLoggedIn = false;
+      studentInput.value = '260831';
+      if (passwordInput) passwordInput.value = '260831';
+      await window.handleLMSLogin({ preventDefault: () => {} });
+      const teacher260831Passed = (window.state && window.state.isTeacherLoggedIn === true && window.state.unlockedSubSteps.length >= 20);
+
+      const teacherPassed = teacher260523Passed && teacher260831Passed;
+      recordCheck('INTENT-01-C', '2대 교사 마스터 비밀번호(260523, 260831) 전체 해금', teacherPassed, teacherPassed ? `2대 교사 마스터(260523/260831) 인증 성공, 전체 ${window.state.unlockedSubSteps.length}개 서브스텝 프리패스` : '교사 마스터 바이패스 실패');
       if (!teacherPassed) isLoginCriticalPassed = false;
 
       // Test Teacher Login Button & Modal Popup
@@ -259,14 +266,15 @@ async function runSubagentEvaluationCh6() {
         teacherModalBtn.click();
         const isModalDisplayed = (secureModal.style.display === 'flex');
 
-        secureInput.value = '260523';
+        // Test with 260831
+        secureInput.value = '260831';
         window.handleSecurePasswordSubmit({ preventDefault: () => {} });
 
         const isModalClosed = (secureModal.style.display === 'none');
         const isTeacherAuthViaModal = (window.state && window.state.isTeacherLoggedIn === true && window.state.unlockedSubSteps.length >= 20);
 
         const modalIntentPassed = (isModalDisplayed && isModalClosed && isTeacherAuthViaModal);
-        recordCheck('INTENT-01-D', '교사 계정 접속 버튼 및 모달 인증 (필수 항목)', modalIntentPassed, modalIntentPassed ? '버튼 클릭 시 모달(display:flex) 정상 팝업 ➔ 비밀번호 인증 ➔ 모달 닫힘 및 전체 해금 성공' : `모달 플로우 실패 (팝업:${isModalDisplayed}, 닫힘:${isModalClosed}, 인증:${isTeacherAuthViaModal})`);
+        recordCheck('INTENT-01-D', '교사 계정 접속 버튼 및 모달 인증 (260831 지원)', modalIntentPassed, modalIntentPassed ? '버튼 클릭 시 모달(display:flex) 정상 팝업 ➔ 마스터 비밀번호(260831) 인증 ➔ 모달 닫힘 및 전체 해금 성공' : `모달 플로우 실패 (팝업:${isModalDisplayed}, 닫힘:${isModalClosed}, 인증:${isTeacherAuthViaModal})`);
         if (!modalIntentPassed) isLoginCriticalPassed = false;
       }
     }
@@ -606,7 +614,7 @@ async function runSubagentEvaluationCh6() {
     recordCheck('INTENT-18', 'Zero Blank Canvas 전수 감사 예외', false, e.message);
   }
 
-  // [INTENT-19] ⚙️ 절전형 물리 애니메이션 엔진 (startSmoothLerp)
+  // [INTENT-19] ⚙️ 절전형 물리 애니메이션 엔진 (startSmoothLerp) 및 화면 고정 방지 표준
   try {
     const hasLerp = typeof window.startSmoothLerp === 'function';
     let val = 0;
@@ -614,10 +622,15 @@ async function runSubagentEvaluationCh6() {
       window.startSmoothLerp('testKey', () => val, (v) => { val = v; }, 10, null, null, 0.5);
     }
     const htmlHasLerp = htmlContent.includes('function startSmoothLerp') && htmlContent.includes('0.12') && htmlContent.includes('cancelAnimationFrame');
+    const hasActiveLerpCleanup = htmlContent.includes('activeLerpAnimations') && htmlContent.includes('cancelAnimationFrame(activeLerpAnimations[k])');
+    const hasFloatTracking = htmlContent.includes('currentFloat') || htmlContent.includes('Math.abs(diff * speed) < 0.005');
     const interactiveUsesLerp = htmlContent.includes("startSmoothLerp('propAngleMult'") || htmlContent.includes("startSmoothLerp('fanUnfoldStep'");
-    const ok = hasLerp && htmlHasLerp && interactiveUsesLerp;
-    recordCheck('INTENT-19', '절전형 물리 애니메이션 엔진 (startSmoothLerp) 및 시뮬레이터 연동', ok,
-      ok ? '지수 감속(0.12), rAF 절전 종료, 6단원 부채꼴/전개도 시뮬레이터 실시간 Lerp 연동 확인' : 'startSmoothLerp 미탑재 또는 시뮬레이터 미연동');
+    const ok = hasLerp && htmlHasLerp && interactiveUsesLerp && hasActiveLerpCleanup && hasFloatTracking;
+    recordCheck('INTENT-19', '절전형 물리 애니메이션 엔진 (startSmoothLerp) 및 화면 고정 방지 표준', ok,
+      ok ? '지수 감속(0.12), rAF 절전 종료, loadSubStep 시 activeLerpAnimations 일괄 취소 및 currentFloat 수렴 안전 가드 확인' : 'startSmoothLerp 미탑재 또는 화면 고정 방지 취소 로직 누락');
+    if (!hasActiveLerpCleanup || !hasFloatTracking) {
+      isLoginCriticalPassed = false;
+    }
   } catch (e) {
     recordCheck('INTENT-19', '절전형 물리 애니메이션 엔진 (startSmoothLerp)', false, e.message);
   }

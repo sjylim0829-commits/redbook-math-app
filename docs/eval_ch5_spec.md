@@ -81,8 +81,17 @@
 - 컴퍼스의 반지름을 그대로 유지하며 원주 위에서 6개의 교점을 연결하여 6꽃잎 로제트(Flower of Life) 문양을 단계별로 완성.
 - `check52Submit()`에서 반지름 길이 조건('유지') 채점 정상 동작.
 
-### [INTENT-14] 🌟 중1 좌표평면(g1_coordinate.html) 대비 질적 완성도 상시 벤치마크
-- 영서중 기준 페이지인 `g1_coordinate.html`과 7대 질적 규격(Two.js 동적 캔버스, 4대 모달, 5x5 대시보드, 교과서 1:1 서브스텝 실험실, LMS 동기화, normTxt 채점 UX, 5종 사운드 시스템)을 비교하여 **90% 이상 일치 시에만 최종 합격**.
+### [INTENT-14] 🌟 중1 좌표평면(g1_coordinate.html) 대비 질적 완성도 및 8대 디자인 변환 패턴 준수
+- 영서중 기준 페이지인 `g1_coordinate.html` 및 [교과서 4단원 대조 보고서](file:///home/ubuntu/workspace/Redbook/docs/textbook_to_coordinate_reflection_report.md)의 **8대 인터랙션 변환 패턴**을 5단원에 1:1 대응 적용:
+  - **패턴 1 (정적 삽화 $\rightarrow$ Two.js 동적 캔버스)**: 점/선/면 기하 벡터 그래픽, 3D 공간 직육면체 꼬인 위치 와이어프레임.
+  - **패턴 2 (본문 개념 $\rightarrow$ 실시간 드래그 & 스마트 자석 스냅)**: 점과 직선 드래그 & 스냅, 맞꼭지각/가위 각도 실시간 회전 인터랙터.
+  - **패턴 3 (좌표/위치 $\rightarrow$ 목표 배치 미션)**: 평행선 동위각/엇각 매칭 미션 및 SSS, SAS, ASA 3대 조건 결합 미션.
+  - **패턴 4 (보조선/작도 $\rightarrow$ 투명 펜 드로잉 오버레이)**: 컴퍼스와 눈금 없는 자를 이용한 기본 작도 및 기하학 문양 필기 레이어.
+  - **패턴 5 (개념/수식 $\rightarrow$ 인라인 괄호 빈칸 & KaTeX)**: 기하 기호($\overleftrightarrow{AB}$, $\angle ABC$, $\parallel$, $\perp$, $\triangle ABC \equiv \triangle DEF$) 인라인 빈칸과 `normTxt` 채점.
+  - **패턴 6 (오개념/주의 $\rightarrow$ 스포일러 방지 팁 카드)**: 반직선의 시작점과 방향 주의($\overrightarrow{AB} \neq \overrightarrow{BA}$), 꼬인 위치 판별 주의 등.
+  - **패턴 7 (제출 $\rightarrow$ 축하 및 해설 카드 전환)**: Confetti 폭죽 + 음향 + 정답 해설 카드(`.verified-answer-card`).
+  - **패턴 8 (교과서 흐름 $\rightarrow$ 잠금 해금 내비게이션)**: 20개 서브스텝 단계적 잠금(`🔒`) 및 2대 교사 마스터 키.
+- 기준 페이지 대비 질적 지표(Two.js 동적 캔버스, 4대 모달, 5x5 대시보드, 교과서 1:1 서브스텝 실험실, LMS 동기화, normTxt 채점 UX, 5종 사운드 시스템) **90% 이상 필수 일치**.
 
 ### [INTENT-15] 🚫 정답 미노출 원칙 (Zero Answer Leakage in Placeholder/Hints)
 - 학생이 정답을 입력하는 빈칸의 `placeholder`, 안내 문구, 힌트 예시 등에 **해당 문제의 실제 정답(숫자, 수식, 텍스트 등)을 절대 직접 노출하지 않음**.
@@ -93,18 +102,37 @@
 - 20개 전 서브스텝(`0-1` ~ `5-2`) 전수 감사:
 - 각 서브스텝 로드 시 좌측 인터랙티브 영역에 빈 화면(Blank Canvas)이 절대 존재하지 않아야 하며, Two.js 셰이프 및 인터랙티브 시뮬레이터가 100% 정상 가동되어야 함.
 
-### [INTENT-17] ⚙️ 절전형 물리 애니메이션 엔진 (`startSmoothLerp`)
+### [INTENT-17] ⚙️ 절전형 물리 애니메이션 엔진 및 화면 고정 방지 표준
 - 전 단원 공통 물리 애니메이션 함수 `startSmoothLerp(key, getter, setter, targetVal, onFrame, onComplete, speed = 0.12)` 탑재.
-- 지수 감속 수렴(`|target - current| < 0.005`) 시 즉시 `cancelAnimationFrame` 호출 및 루프 종료로 배터리 및 CPU 낭비 제로화.
-- 실제 인터랙티브 시뮬레이터(회전 각도기 바늘 회전, 가위 각도 등) 조작 시 부드러운 전환 연동 및 정상 동작 확인.
+- 내부 실수 변수(`currentFloat`) 기반 지수 감속 수렴 및 임계 도달(`|diff| < 0.02 || |diff*speed| < 0.005`) 시 즉시 강제 안착 및 `requestAnimationFrame` 완전 종료.
+- **`loadSubStep` 진입 시 `activeLerpAnimations` 잔여 애니메이션 전량 취소** (`cancelAnimationFrame` 호출 후 삭제)하여 페이지 전환 시 이전 시뮬레이터로 인한 좌측 캔버스 고정 현상 100% 차단.
+- 시뮬레이터 콜백 내 `state.subStep === expectedCode` 가드로 오염 방지.
+
+### [INTENT-18] 🔑 2대 교사 마스터 비밀번호 동시 지원 (`260523`, `260831`)
+- 학번/비밀번호 로그인 및 `#secure-password-modal`에서 `260523`과 `260831` 모두 정상적으로 교사 관리자 권한을 획득하고 전 서브스텝이 프리패스 해금되어야 함.
 
 ---
 
-## 📊 3. 서브에이전트 통과 및 판정 기준
+## 📊 3. 서브에이전트 통과 및 판정 기준 (6대 무조건 반려 원칙)
 
-- 총 16개 검증 항목 중 **15개 이상(90% 이상) 통과 시 최종 PASS**.
-- 단, 다음 3대 필수 항목은 반드시 통과해야 함:
-  1. `INTENT-01-D`: 교사 계정 접속 버튼 및 모달 정상 작동
-  2. `INTENT-15`: 플레이스홀더 정답 미노출 원칙 (누출 0건)
-  3. `INTENT-16`: 전 서브스텝 Zero Blank Canvas 감사 (빈 화면 0건)
+서브에이전트는 다음 6대 필수 탈락 기준 중 **단 하나라도 위반 시 무조건 반려(`REJECT`)**합니다:
+
+1. **[REJECT-01] 학생 로그인 실패**:
+   - 학번 `10101`, 이름 입력 후 활동 뷰로 정상 전환되지 않거나 `0-1`이 열리지 않을 때.
+2. **[REJECT-02] 2대 교사 마스터 비밀번호(260523, 260831) 및 모달 실패**:
+   - `260523` 또는 `260831` 마스터 비밀번호 바이패스 실패 시.
+   - `🔑 교사 계정 접속` 버튼 클릭 시 모달 미출현 또는 모달 내 인증 실패 시.
+3. **[REJECT-03] 정답 미노출 원칙 위반 (Zero Answer Leakage)**:
+   - `placeholder` 또는 안내 라벨에 실제 문제의 정답이 직접 노출되었을 때.
+4. **[REJECT-04] 좌측 캔버스 비어있음 (Blank Canvas)**:
+   - 5단원 20개 서브스텝 중 단 하나의 서브스텝이라도 캔버스 함수 미실행 또는 런타임 오류로 빈 화면이 발생할 때.
+5. **[REJECT-05] 화면 고정 버그 (Screen Freeze) 및 잔류 애니메이션**:
+   - 시뮬레이터 조작 후 서브스텝 이동 시 좌측 캔버스가 이전 단계 화면으로 고정될 때.
+   - `loadSubStep` 내 `activeLerpAnimations` 취소 로직 누락 시.
+6. **[REJECT-06] 질적 완성도 90% 미달**:
+   - `g1_coordinate.html` 대비 Two.js 인터랙션, KaTeX 수식, 모달 관제 등 종합 질적 지표가 90% 미만일 때.
+
+### [종합 합격 기준]
+- 6대 필수 항목 100% 통과 및 전체 검증 항목 90% 이상 성공 시 최종 합격(`PASS`), 미달 시 반려(`REJECT`).
 - 검증 완료 후 `docs/eval_ch5_report.md` 생성 및 즉시 Git 반영.
+
