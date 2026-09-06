@@ -3964,17 +3964,381 @@ window.SUBSTEP_CONFIG = {
   }
 
   // =========================================================================
-  // 🧭 setupSubstepSimulator: 57개 전 서브스텝 실시간 라우팅 (No Fake Cards!)
+  // 🕹️ getSimControllerHtml: 각 서브스텝별 직관적 대화형 조작 컨트롤러 UI 생성
+  // =========================================================================
+  function getSimControllerHtml(code) {
+    if (code.startsWith('0-')) return '';
+
+    const panelStyle = "display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; background:#ffffff; border:1.5px solid #cbd5e1; border-radius:10px; padding:10px 14px; box-shadow:0 2px 4px rgba(0,0,0,0.04);";
+
+    // 1-1: 음료수 진열대
+    if (code === '1-1') {
+      return `
+        <div style="${panelStyle}">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-weight:800; color:#1e40af; font-size:0.88rem;">🥫 음료수 개수:</span>
+            <button type="button" class="btn btn-sm" style="padding:4px 10px; font-weight:700; background:${simState.beverageCount === 12 ? '#0284c7' : '#f1f5f9'}; color:${simState.beverageCount === 12 ? '#fff' : '#334155'}; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setBeverageCount(12)">12캔 (합성수)</button>
+            <button type="button" class="btn btn-sm" style="padding:4px 10px; font-weight:700; background:${simState.beverageCount === 7 ? '#f59e0b' : '#f1f5f9'}; color:${simState.beverageCount === 7 ? '#fff' : '#334155'}; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setBeverageCount(7)">7캔 (소수)</button>
+          </div>
+          <div style="display:flex; align-items:center; gap:5px;">
+            <span style="font-weight:800; color:#334155; font-size:0.85rem;">한 줄 캔 수 (열):</span>
+            ${[1, 2, 3, 4, 6, 12].map(c => `
+              <button type="button" class="btn btn-sm" style="padding:3px 8px; font-weight:700; background:${simState.beverageCols === c ? '#0284c7' : '#f1f5f9'}; color:${simState.beverageCols === c ? '#fff' : '#334155'}; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setBeverageCols(${c})">${c}열</button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // 1-2: 에라토스테네스의 체
+    if (code === '1-2') {
+      return `
+        <div style="${panelStyle}">
+          <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px;">
+            <span style="font-weight:800; color:#166534; font-size:0.88rem;">🔍 체질 단계:</span>
+            <button type="button" class="btn btn-sm" style="padding:4px 8px; font-weight:700; background:${simState.sieveStep === 1 ? '#15803d' : '#f1f5f9'}; color:${simState.sieveStep === 1 ? '#fff' : '#334155'}; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setSieveStep(1)">1단계(1제외)</button>
+            <button type="button" class="btn btn-sm" style="padding:4px 8px; font-weight:700; background:${simState.sieveStep === 2 ? '#15803d' : '#f1f5f9'}; color:${simState.sieveStep === 2 ? '#fff' : '#334155'}; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setSieveStep(2)">2단계(2의배수)</button>
+            <button type="button" class="btn btn-sm" style="padding:4px 8px; font-weight:700; background:${simState.sieveStep === 3 ? '#15803d' : '#f1f5f9'}; color:${simState.sieveStep === 3 ? '#fff' : '#334155'}; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setSieveStep(3)">3단계(3의배수)</button>
+            <button type="button" class="btn btn-sm" style="padding:4px 8px; font-weight:700; background:${simState.sieveStep === 4 ? '#15803d' : '#f1f5f9'}; color:${simState.sieveStep === 4 ? '#fff' : '#334155'}; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setSieveStep(4)">4단계(5의배수)</button>
+            <button type="button" class="btn btn-sm" style="padding:4px 8px; font-weight:700; background:${simState.sieveStep === 5 ? '#15803d' : '#f1f5f9'}; color:${simState.sieveStep === 5 ? '#fff' : '#334155'}; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setSieveStep(5)">5단계(7의배수)</button>
+            <button type="button" class="btn btn-sm" style="padding:4px 10px; font-weight:800; background:#16a34a; color:#fff; border-radius:6px; cursor:pointer;" onclick="setSieveStep(6)">✨ 소수 완성</button>
+          </div>
+          <span id="sieve-progress-badge" style="font-size:0.8rem; font-weight:700; color:#15803d; background:#dcfce7; padding:3px 8px; border-radius:8px;">진행: ${simState.sieveStep}단계</span>
+        </div>
+      `;
+    }
+
+    // 1-3: 거듭제곱 타일 스택
+    if (code === '1-3' || code === '5-3') {
+      return `
+        <div style="${panelStyle}">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-weight:800; color:#4338ca; font-size:0.88rem;">🧊 거듭제곱 지수 $n$:</span>
+            ${[1, 2, 3, 4, 5].map(e => `
+              <button type="button" class="btn btn-sm" style="padding:4px 10px; font-weight:700; background:${simState.powerExp === e ? '#4f46e5' : '#f1f5f9'}; color:${simState.powerExp === e ? '#fff' : '#334155'}; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setPowerExp(${e})">2<sup>${e}</sup> = ${Math.pow(2, e)}</button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // 1-4, 5-2: 소수/합성수 구슬 분류
+    if (code === '1-4' || code === '5-2') {
+      return `
+        <div style="${panelStyle}">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-weight:800; color:#0f766e; font-size:0.88rem;">🎯 자연수 구슬 선택:</span>
+            ${[4, 7, 9, 11, 15].map(n => `
+              <button type="button" class="btn btn-sm" style="padding:4px 10px; font-weight:700; background:${simState.primeSortActiveNum === n ? '#0d9488' : '#f1f5f9'}; color:${simState.primeSortActiveNum === n ? '#fff' : '#334155'}; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setPrimeSortNum(${n})">수 ${n}</button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // 1-6: 소수 반례 돋보기
+    if (code === '1-6') {
+      return `
+        <div style="${panelStyle}">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-weight:800; color:#b45309; font-size:0.88rem;">🔎 반례 돋보기 대상:</span>
+            <button type="button" class="btn btn-sm" style="padding:4px 10px; font-weight:700; background:#fef3c7; color:#92400e; border:1.5px solid #fde68a; border-radius:6px; cursor:pointer;" onclick="setCounterExampleNum(2)">짝수 2 (소수 반례!)</button>
+            <button type="button" class="btn btn-sm" style="padding:4px 10px; font-weight:700; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setCounterExampleNum(9)">홀수 9 (합성수)</button>
+            <button type="button" class="btn btn-sm" style="padding:4px 10px; font-weight:700; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setCounterExampleNum(15)">홀수 15 (합성수)</button>
+          </div>
+        </div>
+      `;
+    }
+
+    // 1-7: 세균 증식 거듭제곱
+    if (code === '1-7') {
+      return `
+        <div style="${panelStyle}">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-weight:800; color:#be185d; font-size:0.88rem;">⏱️ 경과 시간:</span>
+            ${[10, 20, 30, 40, 50].map(m => `
+              <button type="button" class="btn btn-sm" style="padding:4px 8px; font-weight:700; background:${simState.bacteriaMinutes === m ? '#db2777' : '#f1f5f9'}; color:${simState.bacteriaMinutes === m ? '#fff' : '#334155'}; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setBacteriaMinutes(${m})">${m}분</button>
+            `).join('')}
+          </div>
+          <span id="bacteria-badge" style="font-size:0.8rem; font-weight:700; color:#9d174d; background:#fce7f3; padding:3px 8px; border-radius:8px;">${simState.bacteriaMinutes}분 ➔ 2<sup>${simState.bacteriaMinutes/10}</sup> = ${Math.pow(2, simState.bacteriaMinutes/10)}마리</span>
+        </div>
+      `;
+    }
+
+    // 1-9: 지하철 소수 역
+    if (code === '1-9') {
+      return `
+        <div style="${panelStyle}">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-weight:800; color:#1e40af; font-size:0.88rem;">🚇 역 번호:</span>
+            ${[21, 23, 25, 29, 30].map(st => `
+              <button type="button" class="btn btn-sm" style="padding:4px 8px; font-weight:700; background:${simState.trainStation === st ? '#2563eb' : '#f1f5f9'}; color:${simState.trainStation === st ? '#fff' : '#334155'}; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setTrainStation(${st})">${st}번역</button>
+            `).join('')}
+          </div>
+          <span id="train-badge" style="font-size:0.8rem; font-weight:700; color:#1e40af; background:#eff6ff; padding:3px 8px; border-radius:8px;">${simState.trainStation}번역 탐구 중</span>
+        </div>
+      `;
+    }
+
+    // 2-2, 5-4: 소인수분해 가지치기 트리
+    if (code === '2-2' || code === '5-4') {
+      return `
+        <div style="${panelStyle}">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-weight:800; color:#166534; font-size:0.88rem;">🌳 분해 대상:</span>
+            ${[36, 60, 72].map(n => `
+              <button type="button" class="btn btn-sm" style="padding:4px 8px; font-weight:700; background:${simState.factorTreeNum === n ? '#15803d' : '#f1f5f9'}; color:${simState.factorTreeNum === n ? '#fff' : '#334155'}; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setFactorTreeNum(${n})">수 ${n}</button>
+            `).join('')}
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-weight:800; color:#334155; font-size:0.85rem;">가지치기:</span>
+            <button type="button" class="btn btn-sm" style="padding:4px 10px; font-weight:800; background:#16a34a; color:#fff; border-radius:6px; cursor:pointer;" onclick="stepFactorTree(1)">🌱 다음 분기 (+1)</button>
+            <button type="button" class="btn btn-sm" style="padding:4px 8px; font-weight:700; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="stepFactorTree(-1)">⏪ 되돌리기</button>
+          </div>
+        </div>
+      `;
+    }
+
+    // 2-3: ㄴ자 나눗셈
+    if (code === '2-3') {
+      return `
+        <div style="${panelStyle}">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-weight:800; color:#4338ca; font-size:0.88rem;">⨼ 나눗셈 단계:</span>
+            <button type="button" class="btn btn-sm" style="padding:4px 8px; font-weight:700; background:${simState.lDivStep === 1 ? '#4338ca' : '#f1f5f9'}; color:${simState.lDivStep === 1 ? '#fff' : '#334155'}; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setLDivStep(1)">1단계(÷2)</button>
+            <button type="button" class="btn btn-sm" style="padding:4px 8px; font-weight:700; background:${simState.lDivStep === 2 ? '#4338ca' : '#f1f5f9'}; color:${simState.lDivStep === 2 ? '#fff' : '#334155'}; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setLDivStep(2)">2단계(÷2)</button>
+            <button type="button" class="btn btn-sm" style="padding:4px 8px; font-weight:700; background:${simState.lDivStep === 3 ? '#4338ca' : '#f1f5f9'}; color:${simState.lDivStep === 3 ? '#fff' : '#334155'}; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setLDivStep(3)">3단계(÷3)</button>
+            <button type="button" class="btn btn-sm" style="padding:4px 10px; font-weight:800; background:#4338ca; color:#fff; border-radius:6px; cursor:pointer;" onclick="setLDivStep(4)">✨ 완성</button>
+          </div>
+        </div>
+      `;
+    }
+
+    // 2-7, 5-6: 제곱수 만들기 밸런스
+    if (code === '2-7' || code === '5-6') {
+      return `
+        <div style="${panelStyle}">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-weight:800; color:#b45309; font-size:0.88rem;">⚖️ 56에 곱할 수 $x$:</span>
+            ${[7, 14, 21, 28].map(x => `
+              <button type="button" class="btn btn-sm" style="padding:4px 8px; font-weight:700; background:${simState.squareMultX === x ? (x === 14 ? '#16a34a' : '#ea580c') : '#f1f5f9'}; color:${simState.squareMultX === x ? '#fff' : '#334155'}; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setSquareMultX(${x})">x = ${x} ${x === 14 ? '(제곱수!)' : ''}</button>
+            `).join('')}
+          </div>
+          <span id="square-mult-badge" style="font-size:0.8rem; font-weight:700; color:#166534; background:#f0fdf4; padding:3px 8px; border-radius:8px;">56 × 14 = 28² 완벽한 제곱수!</span>
+        </div>
+      `;
+    }
+
+    // 2-9, 5-5: 약수의 개수 직교 격자
+    if (code === '2-9' || code === '5-5') {
+      return `
+        <div style="${panelStyle}">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-weight:800; color:#0f766e; font-size:0.88rem;">📊 $2^a \times 3^b$ 지수 선택:</span>
+            <button type="button" class="btn btn-sm" style="padding:4px 8px; font-weight:700; background:${simState.divGridA === 2 && simState.divGridB === 1 ? '#0d9488' : '#f1f5f9'}; color:${simState.divGridA === 2 && simState.divGridB === 1 ? '#fff' : '#334155'}; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setDivGrid(2, 1)">2² × 3¹ (약수 6개)</button>
+            <button type="button" class="btn btn-sm" style="padding:4px 8px; font-weight:700; background:${simState.divGridA === 3 && simState.divGridB === 2 ? '#0d9488' : '#f1f5f9'}; color:${simState.divGridA === 3 && simState.divGridB === 2 ? '#fff' : '#334155'}; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setDivGrid(3, 2)">2³ × 3² (약수 12개)</button>
+            <button type="button" class="btn btn-sm" style="padding:4px 8px; font-weight:700; background:${simState.divGridA === 1 && simState.divGridB === 3 ? '#0d9488' : '#f1f5f9'}; color:${simState.divGridA === 1 && simState.divGridB === 3 ? '#fff' : '#334155'}; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setDivGrid(1, 3)">2¹ × 3³ (약수 8개)</button>
+          </div>
+        </div>
+      `;
+    }
+
+    // 3-1, 5-7: 직사각형 타일 채우기
+    if (code === '3-1' || code === '5-7') {
+      return `
+        <div style="${panelStyle}">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-weight:800; color:#0284c7; font-size:0.88rem;">🧱 타일 한 변 길이:</span>
+            ${[1, 2, 3, 4, 6].map(sz => `
+              <button type="button" class="btn btn-sm" style="padding:4px 8px; font-weight:700; background:${simState.tileSquareSize === sz ? (sz === 6 ? '#0284c7' : (sz === 4 ? '#ef4444' : '#0369a1')) : '#f1f5f9'}; color:${simState.tileSquareSize === sz ? '#fff' : '#334155'}; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setTileSquareSize(${sz})">${sz}cm ${sz === 6 ? '(최대공약수 👑)' : (sz === 4 ? '(빈틈)' : '')}</button>
+            `).join('')}
+          </div>
+          <span id="tile-size-badge" style="font-size:0.8rem; font-weight:700; color:#166534; background:#f0fdf4; padding:3px 8px; border-radius:8px;">타일 6cm: 빈틈없이 딱 채움!</span>
+        </div>
+      `;
+    }
+
+    // 3-9: 과일 바구니 분배
+    if (code === '3-9') {
+      return `
+        <div style="${panelStyle}">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-weight:800; color:#15803d; font-size:0.88rem;">🍎🍊 나눌 인원수:</span>
+            ${[2, 3, 4, 6, 12].map(b => `
+              <button type="button" class="btn btn-sm" style="padding:4px 7px; font-weight:700; background:${simState.basketPeople === b ? '#16a34a' : '#f1f5f9'}; color:${simState.basketPeople === b ? '#fff' : '#334155'}; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setBasketPeople(${b})">${b}명 ${b === 12 ? '(최대 👑)' : ''}</button>
+            `).join('')}
+          </div>
+          <span id="basket-badge" style="font-size:0.8rem; font-weight:700; color:#166534; background:#f0fdf4; padding:3px 8px; border-radius:8px;">12명 배분: 사과 3개, 귤 4개</span>
+        </div>
+      `;
+    }
+
+    // 4-1: 톱니바퀴 맞물림 회전
+    if (code === '4-1') {
+      return `
+        <div style="${panelStyle}">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-weight:800; color:#7c3aed; font-size:0.88rem;">⚙️ 톱니바퀴 회전:</span>
+            <button type="button" class="btn btn-sm" style="padding:4px 10px; font-weight:700; background:#7c3aed; color:#fff; border-radius:6px; cursor:pointer;" onclick="setGearRotation(45)">🔄 시계방향 (+45°)</button>
+            <button type="button" class="btn btn-sm" style="padding:4px 10px; font-weight:700; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setGearRotation(-45)">🔄 반시계방향 (-45°)</button>
+            <button type="button" class="btn btn-sm" style="padding:4px 10px; font-weight:700; background:#0284c7; color:#fff; border-radius:6px; cursor:pointer;" onclick="setGearRotation(360)">⏩ 1회전 (360°)</button>
+            <button type="button" class="btn btn-sm" style="padding:4px 10px; font-weight:700; background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; border-radius:6px; cursor:pointer;" onclick="simState.gearAngle=0; setGearRotation(0)">🔄 처음 위치</button>
+          </div>
+        </div>
+      `;
+    }
+
+    // 4-6, 5-10: 버스 동시 출발 시계
+    if (code === '4-6' || code === '5-10') {
+      return `
+        <div style="${panelStyle}">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-weight:800; color:#c2410c; font-size:0.88rem;">🚌 버스 시계 조작:</span>
+            <button type="button" class="btn btn-sm" style="padding:4px 8px; font-weight:700; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="advanceBusClock(5)">+5분 전진</button>
+            <button type="button" class="btn btn-sm" style="padding:4px 8px; font-weight:700; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="advanceBusClock(10)">+10분 전진</button>
+            <button type="button" class="btn btn-sm" style="padding:4px 8px; font-weight:700; background:#c2410c; color:#fff; border-radius:6px; cursor:pointer;" onclick="advanceBusClock(15)">+15분 전진</button>
+            <button type="button" class="btn btn-sm" style="padding:4px 8px; font-weight:700; background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; border-radius:6px; cursor:pointer;" onclick="simState.busClockMin=0; advanceBusClock(0)">🔄 0분 초기화</button>
+          </div>
+          <span id="bus-clock-badge" style="font-size:0.8rem; font-weight:700; color:#1d4ed8; background:#eff6ff; padding:3px 8px; border-radius:8px;">경과: ${simState.busClockMin}분</span>
+        </div>
+      `;
+    }
+
+    // 4-7, 5-11: 직육면체 블록 쌓기
+    if (code === '4-7' || code === '5-11') {
+      return `
+        <div style="${panelStyle}">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-weight:800; color:#0369a1; font-size:0.88rem;">📦 블록 쌓는 높이:</span>
+            ${[1, 2, 3, 4].map(l => `
+              <button type="button" class="btn btn-sm" style="padding:4px 10px; font-weight:700; background:${simState.blockLayers === l ? '#0284c7' : '#f1f5f9'}; color:${simState.blockLayers === l ? '#fff' : '#334155'}; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="setBlockLayers(${l})">${l}층 (${l*3}cm ${l === 4 ? '= 정육면체 👑' : ''})</button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // 4-10: 소수 판별 코딩 알고리즘
+    if (code === '4-10') {
+      return `
+        <div style="${panelStyle}">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-weight:800; color:#047857; font-size:0.88rem;">💻 알고리즘 실행:</span>
+            <button type="button" class="btn btn-sm" style="padding:4px 12px; font-weight:800; background:#047857; color:#fff; border-radius:6px; cursor:pointer;" onclick="runCodingAlgo()">▶️ 115의 소수 판별 알고리즘 단계별 추적</button>
+          </div>
+        </div>
+      `;
+    }
+
+    // 5-1: 달력 속 소수 탐색
+    if (code === '5-1') {
+      return `
+        <div style="${panelStyle}">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-weight:800; color:#b45309; font-size:0.88rem;">📅 달력 소수 스탬프:</span>
+            <button type="button" class="btn btn-sm" style="padding:4px 12px; font-weight:800; background:#b45309; color:#fff; border-radius:6px; cursor:pointer;" onclick="autoCollectCalendarPrimes()">✨ 달력 속 소수 11개 전수 탐색 및 스탬프 찍기</button>
+          </div>
+        </div>
+      `;
+    }
+
+    // 6-1: 창의융합 RSA 암호
+    if (code === '6-1') {
+      return `
+        <div style="${panelStyle}">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-weight:800; color:#6366f1; font-size:0.88rem;">🔐 RSA 암호 생성:</span>
+            <button type="button" class="btn btn-sm" style="padding:4px 10px; font-weight:700; background:#6366f1; color:#fff; border-radius:6px; cursor:pointer;" onclick="simState.mondrianRatio=1; if (window.currentTwo) renderMondrianCanvas(window.currentTwo);">🔑 공개키 (N=33, e=3)</button>
+            <button type="button" class="btn btn-sm" style="padding:4px 10px; font-weight:700; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" onclick="simState.mondrianRatio=2; if (window.currentTwo) renderMondrianCanvas(window.currentTwo);">🔓 개인키 복호화 (d=7)</button>
+          </div>
+        </div>
+      `;
+    }
+
+    // 기타 모든 문항
+    return `
+      <div style="${panelStyle}">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-weight:800; color:#475569; font-size:0.88rem;">💡 대화형 시뮬레이션 탐구 도구:</span>
+          <button type="button" class="btn btn-sm" style="padding:4px 10px; font-weight:700; background:#f8fafc; border:1px solid #cbd5e1; color:#334155; border-radius:6px; cursor:pointer;" onclick="if(window.currentTwo) window.currentTwo.update()">🔄 캔버스 시각화 갱신</button>
+        </div>
+      </div>
+    `;
+  }
+  window.getSimControllerHtml = getSimControllerHtml;
+
+  // =========================================================================
+  // 🧭 setupSubstepSimulator: 57개 전 서브스텝 실시간 라우팅 및 인터랙터 바인딩
   // =========================================================================
   function setupSubstepSimulator(two, code, simController) {
     if (!two) return;
     two.clear();
     window.currentTwo = two;
 
+    // 1. 시뮬레이터 조작 패널 DOM UI 구축
     if (simController) {
-      simController.style.display = 'block';
+      const ctrlHtml = getSimControllerHtml(code);
+      if (ctrlHtml) {
+        simController.innerHTML = ctrlHtml;
+        simController.style.display = 'block';
+      } else {
+        simController.innerHTML = '';
+        simController.style.display = 'none';
+      }
     }
 
+    // 2. 캔버스 직접 클릭 시 반응형 이벤트 바인딩 (Action-Reaction Direct Click)
+    const domElem = two.renderer ? two.renderer.domElement : null;
+    if (domElem) {
+      domElem.style.cursor = 'pointer';
+      domElem.onclick = function(e) {
+        if (code === '1-1') {
+          const nextCols = { 1: 2, 2: 3, 3: 4, 4: 6, 6: 12, 12: 1 };
+          setBeverageCols(nextCols[simState.beverageCols] || 4);
+          if (simController) simController.innerHTML = getSimControllerHtml(code);
+        } else if (code === '1-2') {
+          const nextSt = (simState.sieveStep % 6) + 1;
+          setSieveStep(nextSt);
+          if (simController) simController.innerHTML = getSimControllerHtml(code);
+        } else if (code === '1-3' || code === '5-3') {
+          const nextE = (simState.powerExp % 5) + 1;
+          setPowerExp(nextE);
+          if (simController) simController.innerHTML = getSimControllerHtml(code);
+        } else if (code === '1-7') {
+          const nextM = ((simState.bacteriaMinutes) % 50) + 10;
+          setBacteriaMinutes(nextM);
+          if (simController) simController.innerHTML = getSimControllerHtml(code);
+        } else if (code === '2-2' || code === '5-4') {
+          stepFactorTree(1);
+          if (simController) simController.innerHTML = getSimControllerHtml(code);
+        } else if (code === '2-7' || code === '5-6') {
+          const nextX = { 7: 14, 14: 21, 21: 28, 28: 7 };
+          setSquareMultX(nextX[simState.squareMultX] || 14);
+          if (simController) simController.innerHTML = getSimControllerHtml(code);
+        } else if (code === '3-1' || code === '5-7') {
+          const nextSz = { 1: 2, 2: 3, 3: 4, 4: 6, 6: 1 };
+          setTileSquareSize(nextSz[simState.tileSquareSize] || 6);
+          if (simController) simController.innerHTML = getSimControllerHtml(code);
+        } else if (code === '3-9') {
+          const nextP = { 2: 3, 3: 4, 4: 6, 6: 12, 12: 2 };
+          setBasketPeople(nextP[simState.basketPeople] || 12);
+          if (simController) simController.innerHTML = getSimControllerHtml(code);
+        } else if (code === '4-1') {
+          setGearRotation(45);
+        } else if (code === '4-6' || code === '5-10') {
+          advanceBusClock(15);
+          if (simController) simController.innerHTML = getSimControllerHtml(code);
+        } else if (code === '4-7' || code === '5-11') {
+          const nextL = (simState.blockLayers % 4) + 1;
+          setBlockLayers(nextL);
+          if (simController) simController.innerHTML = getSimControllerHtml(code);
+        } else if (code === '5-1') {
+          autoCollectCalendarPrimes();
+        }
+      };
+    }
+
+    // 3. Two.js 시각화 렌더링
     switch(code) {
       // --- Tab 0: 준비학습 ---
       case '0-1': renderTileArrayCanvas(two); break;
@@ -4056,6 +4420,7 @@ window.SUBSTEP_CONFIG = {
   window.setupSubstepSimulator = setupSubstepSimulator;
 
 })();
+
 
 
 // src/ch1/validation_handlers.js
