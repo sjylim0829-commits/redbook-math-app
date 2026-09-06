@@ -2512,6 +2512,19 @@ window.SUBSTEP_CONFIG = {
     tileCols: 6,
     foundTileFactors: new Set(['2x6']),
     isDraggingHandle: false,
+    vennCards: [
+      { id: 1, num: 1, target: 'both', currentArea: 'tray' },
+      { id: 2, num: 2, target: 'both', currentArea: 'tray' },
+      { id: 3, num: 3, target: 'both', currentArea: 'tray' },
+      { id: 4, num: 4, target: 'onlyA', currentArea: 'tray' },
+      { id: 6, num: 6, target: 'both', currentArea: 'tray' },
+      { id: 9, num: 9, target: 'onlyB', currentArea: 'tray' },
+      { id: 12, num: 12, target: 'onlyA', currentArea: 'tray' },
+      { id: 18, num: 18, target: 'onlyB', currentArea: 'tray' }
+    ],
+    activeVennDragIndex: -1,
+    vennDragPos: { x: 0, y: 0 },
+    vennHintMsg: '',
     vennNumA: 12,
     vennNumB: 18,
     classifyNum: 2,
@@ -2679,6 +2692,180 @@ window.SUBSTEP_CONFIG = {
     }
   }
 
+  // --- 0-2 Interactive Venn Diagram Helpers & Pointer Engine ---
+  window.resetVennCards = function() {
+    simState.vennCards.forEach(c => c.currentArea = 'tray');
+    simState.vennHintMsg = '';
+    updateVennProgressBadge();
+    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '0-2') {
+      renderVennCanvas(window.currentTwo, 12, 18);
+    }
+  };
+
+  window.autoPlaceVennCards = function() {
+    simState.vennCards.forEach(c => c.currentArea = c.target);
+    simState.vennHintMsg = '';
+    updateVennProgressBadge();
+    if (window.currentTwo && typeof state !== 'undefined' && state.subStep === '0-2') {
+      renderVennCanvas(window.currentTwo, 12, 18);
+    }
+  };
+
+  function updateVennProgressBadge() {
+    const badge = document.getElementById('venn-progress-badge');
+    const placedCount = simState.vennCards.filter(c => c.currentArea === c.target).length;
+    if (badge) {
+      const isAllPlaced = (placedCount === 8);
+      badge.innerHTML = isAllPlaced
+        ? `배치 진행: <b>8 / 8개 완료! 👑 최대공약수 발견</b>`
+        : `배치 진행: <b>${placedCount} / 8개 완료</b>`;
+      badge.style.background = isAllPlaced ? '#f0fdf4' : '#eff6ff';
+      badge.style.color = isAllPlaced ? '#166534' : '#1d4ed8';
+      badge.style.border = isAllPlaced ? '1px solid #86efac' : '1px solid #bfdbfe';
+    }
+  }
+
+  function setupVennInteractiveEvents(two, container) {
+    if (!container) return;
+    container.style.touchAction = 'none';
+
+    function getVennGeometry() {
+      const cx = two.width / 2;
+      const cy = two.height / 2 - 20;
+      const radius = 85;
+      const offset = 65;
+      const cAx = cx - offset;
+      const cAy = cy;
+      const cBx = cx + offset;
+      const cBy = cy;
+      const trayY = cy + 120;
+      const spacing = 42;
+      const trayStartX = cx - (8 * spacing) / 2 + spacing / 2;
+      return { cx, cy, radius, offset, cAx, cAy, cBx, cBy, trayY, spacing, trayStartX };
+    }
+
+    function getCardVisualPos(card, index, geom) {
+      if (card.currentArea === 'tray') {
+        return { x: geom.trayStartX + index * geom.spacing, y: geom.trayY };
+      }
+      if (card.currentArea === 'onlyA') {
+        const aCards = simState.vennCards.filter(c => c.currentArea === 'onlyA');
+        const posIdx = aCards.indexOf(card);
+        const yOff = (posIdx === 0) ? -28 : 25;
+        return { x: geom.cx - 95, y: geom.cy + yOff };
+      }
+      if (card.currentArea === 'both') {
+        const bothCards = simState.vennCards.filter(c => c.currentArea === 'both');
+        const posIdx = bothCards.indexOf(card);
+        const ySlots = [-45, -15, 15, 45];
+        return { x: geom.cx, y: geom.cy + (ySlots[posIdx] || 0) };
+      }
+      if (card.currentArea === 'onlyB') {
+        const bCards = simState.vennCards.filter(c => c.currentArea === 'onlyB');
+        const posIdx = bCards.indexOf(card);
+        const yOff = (posIdx === 0) ? -28 : 25;
+        return { x: geom.cx + 95, y: geom.cy + yOff };
+      }
+      return { x: geom.cx, y: geom.trayY };
+    }
+
+    container.onpointerdown = (e) => {
+      if (typeof state === 'undefined' || state.subStep !== '0-2') return;
+      const rect = container.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      const geom = getVennGeometry();
+      let clickedIdx = -1;
+
+      for (let i = 0; i < simState.vennCards.length; i++) {
+        const card = simState.vennCards[i];
+        const pos = getCardVisualPos(card, i, geom);
+        if (Math.hypot(mx - pos.x, my - pos.y) < 22) {
+          clickedIdx = i;
+          break;
+        }
+      }
+
+      if (clickedIdx >= 0) {
+        simState.activeVennDragIndex = clickedIdx;
+        simState.vennDragPos = { x: mx, y: my };
+        simState.vennHintMsg = '';
+        try { container.setPointerCapture(e.pointerId); } catch(err){}
+        container.style.cursor = 'grabbing';
+        renderVennCanvas(two, 12, 18);
+      }
+    };
+
+    container.onpointermove = (e) => {
+      if (typeof state === 'undefined' || state.subStep !== '0-2') return;
+      const rect = container.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      if (simState.activeVennDragIndex >= 0) {
+        simState.vennDragPos = { x: mx, y: my };
+        renderVennCanvas(two, 12, 18);
+      } else {
+        const geom = getVennGeometry();
+        let hovering = false;
+        for (let i = 0; i < simState.vennCards.length; i++) {
+          const card = simState.vennCards[i];
+          const pos = getCardVisualPos(card, i, geom);
+          if (Math.hypot(mx - pos.x, my - pos.y) < 22) {
+            hovering = true;
+            break;
+          }
+        }
+        container.style.cursor = hovering ? 'grab' : 'default';
+      }
+    };
+
+    container.onpointerup = container.onpointercancel = (e) => {
+      if (simState.activeVennDragIndex >= 0) {
+        const rect = container.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        const geom = getVennGeometry();
+
+        const card = simState.vennCards[simState.activeVennDragIndex];
+        const distA = Math.hypot(mx - geom.cAx, my - geom.cAy);
+        const distB = Math.hypot(mx - geom.cBx, my - geom.cBy);
+        const inA = (distA <= geom.radius);
+        const inB = (distB <= geom.radius);
+
+        let dropArea = 'tray';
+        if (inA && inB) dropArea = 'both';
+        else if (inA && !inB) dropArea = 'onlyA';
+        else if (!inA && inB) dropArea = 'onlyB';
+
+        if (dropArea === card.target) {
+          card.currentArea = dropArea;
+          if (typeof playSound === 'function') playSound('chime');
+          simState.vennHintMsg = '';
+        } else if (dropArea !== 'tray') {
+          // Explanatory hint for incorrect placement
+          if (card.target === 'both') {
+            simState.vennHintMsg = `💡 [힌트] ${card.num}은(는) 12와 18의 공통 약수예요! 가운데 교집합 영역에 넣어보세요.`;
+          } else if (card.num === 4 || card.num === 12) {
+            simState.vennHintMsg = `⚠️ [주의] ${card.num}은(는) 12의 약수이지만 18의 약수는 아니에요 (18 ÷ ${card.num} 나누어떨어지지 않음).`;
+          } else if (card.num === 9 || card.num === 18) {
+            simState.vennHintMsg = `⚠️ [주의] ${card.num}은(는) 18의 약수이지만 12의 약수는 아니에요 (12 ÷ ${card.num} 나누어떨어지지 않음).`;
+          }
+          card.currentArea = 'tray';
+        } else {
+          card.currentArea = 'tray';
+        }
+
+        simState.activeVennDragIndex = -1;
+        container.style.cursor = 'default';
+        try { container.releasePointerCapture(e.pointerId); } catch(err){}
+        updateVennProgressBadge();
+        renderVennCanvas(two, 12, 18);
+      }
+    };
+  }
+
   window.setSieveStep = function(step) {
     simState.sieveStep = step;
     if (window.currentTwo && state.subStep === '1-2') {
@@ -2795,13 +2982,21 @@ window.SUBSTEP_CONFIG = {
         if (simController) {
           simController.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-              <span style="font-weight:800; color:#0284c7; font-size:0.92rem;">⭕ 12와 18의 공약수 벤다이어그램:</span>
-              <span style="background:#eff6ff; color:#1d4ed8; font-weight:800; padding:4px 10px; border-radius:12px; font-size:0.82rem;">
-                교집합(공약수): 1, 2, 3, 6 ➔ 최대공약수: 6
-              </span>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span style="font-weight:800; color:#0284c7; font-size:0.9rem;">⭕ 공약수 벤다이어그램 탐구:</span>
+                <span style="font-size:0.8rem; color:#64748b;">(아래 수 카드를 드래그하여 알맞은 원 안으로 넣어보세요)</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <button class="btn" style="padding:3px 8px; font-size:0.78rem; background:#f1f5f9;" onclick="resetVennCards()">🔄 카드 초기화</button>
+                <button class="btn" style="padding:3px 8px; font-size:0.78rem; background:#e0f2fe; color:#0369a1; font-weight:700;" onclick="autoPlaceVennCards()">💡 자동 완성</button>
+                <span id="venn-progress-badge" style="background:#eff6ff; color:#1d4ed8; font-weight:800; padding:4px 10px; border-radius:12px; font-size:0.8rem; border:1px solid #bfdbfe;">
+                  배치 진행: 0 / 8개 완료
+                </span>
+              </div>
             </div>
           `;
         }
+        setupVennInteractiveEvents(two, document.getElementById('two-container'));
         renderVennCanvas(two, 12, 18);
         break;
 
@@ -3612,37 +3807,171 @@ window.SUBSTEP_CONFIG = {
   }
 
   function renderVennCanvas(two, nA, nB) {
+    if (!two) return;
+    two.clear();
+
     const cx = two.width / 2;
-    const cy = two.height / 2 - 10;
-    const radius = 80;
+    const cy = two.height / 2 - 20;
+    const radius = 85;
+    const offset = 65;
+    const cAx = cx - offset;
+    const cAy = cy;
+    const cBx = cx + offset;
+    const cBy = cy;
 
-    const c1 = two.makeCircle(cx - 50, cy, radius);
-    c1.fill = 'rgba(59, 130, 246, 0.25)';
+    // 1. Venn Circles
+    const c1 = two.makeCircle(cAx, cAy, radius);
+    c1.fill = 'rgba(59, 130, 246, 0.18)';
     c1.stroke = '#2563eb';
-    c1.linewidth = 3;
+    c1.linewidth = 2.5;
 
-    const c2 = two.makeCircle(cx + 50, cy, radius);
-    c2.fill = 'rgba(244, 63, 94, 0.25)';
+    const c2 = two.makeCircle(cBx, cBy, radius);
+    c2.fill = 'rgba(244, 63, 94, 0.18)';
     c2.stroke = '#e11d48';
-    c2.linewidth = 3;
+    c2.linewidth = 2.5;
 
-    const tA = two.makeText(`${nA}의 약수`, cx - 90, cy - 60);
+    // Region Labels
+    const tA = two.makeText(`${nA}의 약수`, cAx - 35, cAy - radius - 14);
     tA.fill = '#1d4ed8'; tA.weight = 800; tA.size = 13;
 
-    const tB = two.makeText(`${nB}의 약수`, cx + 90, cy - 60);
+    const tB = two.makeText(`${nB}의 약수`, cBx + 35, cBy - radius - 14);
     tB.fill = '#be123c'; tB.weight = 800; tB.size = 13;
 
-    const common = two.makeText("1, 2, 3, 6", cx, cy);
-    common.fill = '#1e1b4b'; common.weight = 800; common.size = 14;
+    const tBoth = two.makeText("공약수 (A ∩ B)", cx, cAy - radius - 14);
+    tBoth.fill = '#7c3aed'; tBoth.weight = 800; tBoth.size = 13;
 
-    const onlyA = two.makeText("4, 12", cx - 80, cy);
-    onlyA.fill = '#1d4ed8'; onlyA.weight = 700; onlyA.size = 13;
+    // Subtle drop targets indicator if empty
+    const onlyACount = simState.vennCards.filter(c => c.currentArea === 'onlyA').length;
+    if (onlyACount === 0) {
+      const gA = two.makeText("여기에 12만의 약수 배치", cAx - 20, cAy);
+      gA.size = 10; gA.fill = '#94a3b8'; gA.weight = 600;
+    }
+    const onlyBCount = simState.vennCards.filter(c => c.currentArea === 'onlyB').length;
+    if (onlyBCount === 0) {
+      const gB = two.makeText("여기에 18만의 약수 배치", cBx + 20, cAy);
+      gB.size = 10; gB.fill = '#94a3b8'; gB.weight = 600;
+    }
+    const bothCount = simState.vennCards.filter(c => c.currentArea === 'both').length;
+    if (bothCount === 0) {
+      const gBoth = two.makeText("공통 약수", cx, cy);
+      gBoth.size = 10; gBoth.fill = '#a855f7'; gBoth.weight = 700;
+    }
 
-    const onlyB = two.makeText("9, 18", cx + 80, cy);
-    onlyB.fill = '#be123c'; onlyB.weight = 700; onlyB.size = 13;
+    // 2. Tray Box at Bottom
+    const trayY = cy + 120;
+    const trayBox = two.makeRoundedRectangle(cx, trayY, 390, 48, 10);
+    trayBox.fill = '#f8fafc';
+    trayBox.stroke = '#cbd5e1';
+    trayBox.linewidth = 1.5;
 
-    const bot = two.makeText("공약수: 1, 2, 3, 6 ➔ 최대공약수 = 6", cx, cy + 90);
-    bot.fill = '#0f172a'; bot.weight = 800; bot.size = 14;
+    const trayLabel = two.makeText("📦 수 카드 보관함 (마우스/터치로 원 안으로 끌어다 놓으세요)", cx, trayY - 30);
+    trayLabel.size = 10; trayLabel.fill = '#64748b'; trayLabel.weight = 700;
+
+    // 3. Render Cards
+    const spacing = 42;
+    const trayStartX = cx - (8 * spacing) / 2 + spacing / 2;
+
+    simState.vennCards.forEach((card, i) => {
+      // If currently dragging this card, skip drawing in static slot
+      if (simState.activeVennDragIndex === i) return;
+
+      let px = trayStartX + i * spacing;
+      let py = trayY;
+
+      if (card.currentArea === 'onlyA') {
+        const aCards = simState.vennCards.filter(c => c.currentArea === 'onlyA');
+        const posIdx = aCards.indexOf(card);
+        px = cx - 95;
+        py = cy + ((posIdx === 0) ? -26 : 25);
+      } else if (card.currentArea === 'both') {
+        const bothCards = simState.vennCards.filter(c => c.currentArea === 'both');
+        const posIdx = bothCards.indexOf(card);
+        const ySlots = [-45, -15, 15, 45];
+        px = cx;
+        py = cy + (ySlots[posIdx] || 0);
+      } else if (card.currentArea === 'onlyB') {
+        const bCards = simState.vennCards.filter(c => c.currentArea === 'onlyB');
+        const posIdx = bCards.indexOf(card);
+        px = cx + 95;
+        py = cy + ((posIdx === 0) ? -26 : 25);
+      }
+
+      // Draw Card Tile
+      const cardBox = two.makeRoundedRectangle(px, py, 32, 32, 6);
+      if (card.currentArea === 'tray') {
+        cardBox.fill = '#ffffff';
+        cardBox.stroke = '#94a3b8';
+        cardBox.linewidth = 1.5;
+      } else if (card.currentArea === 'both') {
+        cardBox.fill = '#faf5ff';
+        cardBox.stroke = '#9333ea';
+        cardBox.linewidth = 2;
+      } else if (card.currentArea === 'onlyA') {
+        cardBox.fill = '#eff6ff';
+        cardBox.stroke = '#2563eb';
+        cardBox.linewidth = 2;
+      } else {
+        cardBox.fill = '#fff1f2';
+        cardBox.stroke = '#e11d48';
+        cardBox.linewidth = 2;
+      }
+
+      const txt = two.makeText(String(card.num), px, py);
+      txt.size = 13; txt.weight = 800;
+      txt.fill = (card.currentArea === 'both') ? '#6b21a8' : (card.currentArea === 'onlyA' ? '#1e40af' : (card.currentArea === 'onlyB' ? '#9f1239' : '#1e293b'));
+
+      // If all 8 cards placed and this card is 6 (GCD), crown it!
+      const totalPlaced = simState.vennCards.filter(c => c.currentArea === c.target).length;
+      if (totalPlaced === 8 && card.num === 6 && card.currentArea === 'both') {
+        cardBox.fill = '#fef08a';
+        cardBox.stroke = '#eab308';
+        cardBox.linewidth = 2.5;
+        const crown = two.makeText("👑", px, py - 20);
+        crown.size = 14;
+      }
+    });
+
+    // 4. Render Active Dragging Card
+    if (simState.activeVennDragIndex >= 0) {
+      const card = simState.vennCards[simState.activeVennDragIndex];
+      const dx = simState.vennDragPos.x;
+      const dy = simState.vennDragPos.y;
+
+      const shadow = two.makeRoundedRectangle(dx + 3, dy + 3, 38, 38, 8);
+      shadow.fill = 'rgba(0,0,0,0.15)'; shadow.noStroke();
+
+      const dragCard = two.makeRoundedRectangle(dx, dy, 36, 36, 8);
+      dragCard.fill = '#ffffff';
+      dragCard.stroke = '#4f46e5';
+      dragCard.linewidth = 2.5;
+
+      const dragTxt = two.makeText(String(card.num), dx, dy);
+      dragTxt.size = 15; dragTxt.weight = 800; dragTxt.fill = '#4338ca';
+    }
+
+    // 5. Dynamic Discovery & Feedback Banner
+    const totalPlaced = simState.vennCards.filter(c => c.currentArea === c.target).length;
+    const bannerY = cy + 62;
+
+    if (totalPlaced === 8) {
+      const banner = two.makeRoundedRectangle(cx, bannerY, 390, 28, 14);
+      banner.fill = '#f0fdf4';
+      banner.stroke = '#22c55e';
+      banner.linewidth = 2;
+
+      const t = two.makeText("🎉 [분류 완료!] 공약수: 1, 2, 3, 6 ➔ 최대공약수 = 6 👑", cx, bannerY);
+      t.size = 12; t.weight = 800; t.fill = '#15803d';
+    } else if (simState.vennHintMsg) {
+      const banner = two.makeRoundedRectangle(cx, bannerY, 390, 26, 13);
+      banner.fill = '#fffbeb';
+      banner.stroke = '#f59e0b';
+      banner.linewidth = 1.5;
+
+      const t = two.makeText(simState.vennHintMsg, cx, bannerY);
+      t.size = 10.5; t.weight = 700; t.fill = '#b45309';
+    }
+
+    two.update();
   }
 
   function renderLcmJumpCanvas(two, a, b) {
