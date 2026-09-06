@@ -1341,10 +1341,20 @@ function renderDefaultConceptCanvas(two, code, simController) {
 
 function setBoxScale(v) {
   if (window.SoundFX && window.SoundFX.click) window.SoundFX.click();
-  simState.boxVal = parseInt(v);
-  const badge = document.getElementById('box-scale-status');
-  if (badge) badge.innerText = `현재 □ = ${v} (좌: ${3 * v + 5} vs 우: 20)`;
-  if (twoInstance) renderBoxScaleCanvas(twoInstance, simState.boxVal);
+  const target = parseInt(v);
+  if (typeof window.startSmoothLerp === 'function') {
+    window.startSmoothLerp('boxVal', () => simState.boxVal, (val) => {
+      simState.boxVal = Math.round(val);
+      const badge = document.getElementById('box-scale-status');
+      if (badge) badge.innerText = `현재 □ = ${simState.boxVal} (좌: ${3 * simState.boxVal + 5} vs 우: 20)`;
+      if (twoInstance) renderBoxScaleCanvas(twoInstance, simState.boxVal);
+    }, target);
+  } else {
+    simState.boxVal = target;
+    const badge = document.getElementById('box-scale-status');
+    if (badge) badge.innerText = `현재 □ = ${v} (좌: ${3 * v + 5} vs 우: 20)`;
+    if (twoInstance) renderBoxScaleCanvas(twoInstance, simState.boxVal);
+  }
 }
 window.setBoxScale = setBoxScale;
 
@@ -1366,10 +1376,20 @@ window.setRevStep = setRevStep;
 
 function setIceQty(q) {
   if (window.SoundFX && window.SoundFX.click) window.SoundFX.click();
-  simState.iceQty = parseInt(q);
-  const badge = document.getElementById('receipt-badge');
-  if (badge) badge.innerText = `합계: 3,500 × ${q} = ${(3500 * q).toLocaleString()}원`;
-  if (twoInstance) renderReceiptCanvas(twoInstance, simState.iceQty);
+  const target = parseInt(q);
+  if (typeof window.startSmoothLerp === 'function') {
+    window.startSmoothLerp('iceQty', () => simState.iceQty, (val) => {
+      simState.iceQty = Math.round(val);
+      const badge = document.getElementById('receipt-badge');
+      if (badge) badge.innerText = `합계: 3,500 × ${simState.iceQty} = ${(3500 * simState.iceQty).toLocaleString()}원`;
+      if (twoInstance) renderReceiptCanvas(twoInstance, simState.iceQty);
+    }, target);
+  } else {
+    simState.iceQty = target;
+    const badge = document.getElementById('receipt-badge');
+    if (badge) badge.innerText = `합계: 3,500 × ${q} = ${(3500 * q).toLocaleString()}원`;
+    if (twoInstance) renderReceiptCanvas(twoInstance, simState.iceQty);
+  }
 }
 window.setIceQty = setIceQty;
 

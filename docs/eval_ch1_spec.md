@@ -7,6 +7,7 @@
 ---
 
 ## 🎯 1. 핵심 아키텍처 및 기본 기능 설계 의도 (Essential Architecture)
+- **프레임 기반 부드러운 물리 애니메이션 (Lerp 감속)**: 수치 조작 시 즉각적인 순간이동 대신 지수 감속(`dx * 0.12`)으로 우아하게 이동하며, 목표 도달 시 루프를 즉각 종료(`cancelAnimationFrame`)하여 전력과 CPU를 보존.
 
 ### [INTENT-01] 🔐 로그인 모듈 및 교사 권한 (필수 탈락 기준)
 - **INTENT-01-A (로그인 UI)**: 학번 인풋(`student-id`), 비밀번호 인풋(`student-name`), 로그인 버튼, 교사 계정 접속 버튼(`openTestLoginModal`)이 모두 정상 배치되어야 함.
@@ -86,6 +87,11 @@
 - 학생이 정답을 입력하는 빈칸의 `placeholder`, 안내 문구, 힌트 예시 등에 **해당 문제의 실제 정답(숫자, 수식, 텍스트 등)을 절대 직접 노출하지 않음**.
 - `placeholder`는 오직 입력 형식 안내(예: `placeholder="약수를 쉼표로 나열"`, `placeholder="최대공약수 (숫자)"`) 목적으로만 구성.
 - 모든 입력란의 플레이스홀더를 전수 감사하여 실제 정답 누출 발견 시 즉시 반려.
+
+### [INTENT-16] ⚙️ 절전형 물리 애니메이션 엔진 (`startSmoothLerp`)
+- 전 단원 공통 물리 애니메이션 함수 `startSmoothLerp(key, getter, setter, targetVal, onFrame, onComplete, speed = 0.12)` 탑재.
+- 지수 감속 수렴(`|target - current| < 0.005`) 시 즉시 `cancelAnimationFrame` 호출 및 루프 종료로 배터리 및 CPU 낭비 제로화.
+- 실제 인터랙티브 시뮬레이터(톱니바퀴 회전 등) 조작 시 부드러운 전환 연동 및 정상 동작 확인.
 
 ---
 

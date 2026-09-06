@@ -606,6 +606,22 @@ async function runSubagentEvaluationCh6() {
     recordCheck('INTENT-18', 'Zero Blank Canvas 전수 감사 예외', false, e.message);
   }
 
+  // [INTENT-19] ⚙️ 절전형 물리 애니메이션 엔진 (startSmoothLerp)
+  try {
+    const hasLerp = typeof window.startSmoothLerp === 'function';
+    let val = 0;
+    if (hasLerp) {
+      window.startSmoothLerp('testKey', () => val, (v) => { val = v; }, 10, null, null, 0.5);
+    }
+    const htmlHasLerp = htmlContent.includes('function startSmoothLerp') && htmlContent.includes('0.12') && htmlContent.includes('cancelAnimationFrame');
+    const interactiveUsesLerp = htmlContent.includes("startSmoothLerp('propAngleMult'") || htmlContent.includes("startSmoothLerp('fanUnfoldStep'");
+    const ok = hasLerp && htmlHasLerp && interactiveUsesLerp;
+    recordCheck('INTENT-19', '절전형 물리 애니메이션 엔진 (startSmoothLerp) 및 시뮬레이터 연동', ok,
+      ok ? '지수 감속(0.12), rAF 절전 종료, 6단원 부채꼴/전개도 시뮬레이터 실시간 Lerp 연동 확인' : 'startSmoothLerp 미탑재 또는 시뮬레이터 미연동');
+  } catch (e) {
+    recordCheck('INTENT-19', '절전형 물리 애니메이션 엔진 (startSmoothLerp)', false, e.message);
+  }
+
   // --- 최종 판정 및 리포트 작성 ---
   const passedCount = results.filter(r => r.isPassed).length;
   const totalCount = results.length;

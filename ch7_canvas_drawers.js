@@ -640,9 +640,17 @@ function setupSubstepSimulator(two, code, simController) {
 
 // Window interactive helper methods
 window.setPolyFoldStep = function(step) {
-  ch7SimState.polyFoldStep = step;
-  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
-  if (two) setupSubstepSimulator(two, '1-1', document.getElementById('interactive-sim-controller'));
+  if (typeof window.startSmoothLerp === 'function') {
+    window.startSmoothLerp('polyFoldStep', () => ch7SimState.polyFoldStep, (v) => {
+      ch7SimState.polyFoldStep = Math.round(v);
+      const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+      if (two) setupSubstepSimulator(two, '1-1', document.getElementById('interactive-sim-controller'));
+    }, step);
+  } else {
+    ch7SimState.polyFoldStep = step;
+    const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+    if (two) setupSubstepSimulator(two, '1-1', document.getElementById('interactive-sim-controller'));
+  }
 };
 
 window.setPlatonicType = function(type) {
@@ -670,21 +678,45 @@ window.setSliceType = function(s) {
 };
 
 window.setPrismUnfold = function(st) {
-  ch7SimState.prismUnfold = st;
-  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
-  if (two) setupSubstepSimulator(two, '3-1', document.getElementById('interactive-sim-controller'));
+  if (typeof window.startSmoothLerp === 'function') {
+    window.startSmoothLerp('prismUnfold', () => ch7SimState.prismUnfold, (v) => {
+      ch7SimState.prismUnfold = Math.round(v);
+      const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+      if (two) setupSubstepSimulator(two, '3-1', document.getElementById('interactive-sim-controller'));
+    }, st);
+  } else {
+    ch7SimState.prismUnfold = st;
+    const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+    if (two) setupSubstepSimulator(two, '3-1', document.getElementById('interactive-sim-controller'));
+  }
 };
 
 window.setWaterStep = function(step) {
-  ch7SimState.waterStep = step;
-  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
-  if (two) setupSubstepSimulator(two, '4-1', document.getElementById('interactive-sim-controller'));
+  if (typeof window.startSmoothLerp === 'function') {
+    window.startSmoothLerp('waterStep', () => ch7SimState.waterStep, (v) => {
+      ch7SimState.waterStep = Math.round(v);
+      const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+      if (two) setupSubstepSimulator(two, '4-1', document.getElementById('interactive-sim-controller'));
+    }, step);
+  } else {
+    ch7SimState.waterStep = step;
+    const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+    if (two) setupSubstepSimulator(two, '4-1', document.getElementById('interactive-sim-controller'));
+  }
 };
 
 window.setSphereCordStep = function(step) {
-  ch7SimState.sphereCordStep = step;
-  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
-  if (two) setupSubstepSimulator(two, '5-1', document.getElementById('interactive-sim-controller'));
+  if (typeof window.startSmoothLerp === 'function') {
+    window.startSmoothLerp('sphereCordStep', () => ch7SimState.sphereCordStep, (v) => {
+      ch7SimState.sphereCordStep = Math.round(v);
+      const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+      if (two) setupSubstepSimulator(two, '5-1', document.getElementById('interactive-sim-controller'));
+    }, step);
+  } else {
+    ch7SimState.sphereCordStep = step;
+    const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+    if (two) setupSubstepSimulator(two, '5-1', document.getElementById('interactive-sim-controller'));
+  }
 };
 
 window.setArchimedesView = function(view) {

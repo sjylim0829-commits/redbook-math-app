@@ -1023,9 +1023,17 @@ function getAngleDesc(deg) {
 }
 
 window.setAngle = function(val) {
-  ch5SimState.angleVal = val;
-  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
-  if (two) setupSubstepSimulator(two, '0-1', document.getElementById('interactive-sim-controller'));
+  if (typeof window.startSmoothLerp === 'function') {
+    window.startSmoothLerp('angleVal', () => ch5SimState.angleVal, (v) => {
+      ch5SimState.angleVal = Math.round(v);
+      const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+      if (two) setupSubstepSimulator(two, '0-1', document.getElementById('interactive-sim-controller'));
+    }, val);
+  } else {
+    ch5SimState.angleVal = val;
+    const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+    if (two) setupSubstepSimulator(two, '0-1', document.getElementById('interactive-sim-controller'));
+  }
 };
 
 window.setPrismModel = function(type) {
@@ -1047,9 +1055,17 @@ window.setSegLength = function(len) {
 };
 
 window.setScissorAngle = function(deg) {
-  ch5SimState.scissorDeg = deg;
-  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
-  if (two) setupSubstepSimulator(two, '2-1', document.getElementById('interactive-sim-controller'));
+  if (typeof window.startSmoothLerp === 'function') {
+    window.startSmoothLerp('scissorDeg', () => ch5SimState.scissorDeg, (v) => {
+      ch5SimState.scissorDeg = Math.round(v);
+      const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+      if (two) setupSubstepSimulator(two, '2-1', document.getElementById('interactive-sim-controller'));
+    }, deg);
+  } else {
+    ch5SimState.scissorDeg = deg;
+    const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+    if (two) setupSubstepSimulator(two, '2-1', document.getElementById('interactive-sim-controller'));
+  }
 };
 
 window.setCuboidEdge = function(edge) {

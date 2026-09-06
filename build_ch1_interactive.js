@@ -992,15 +992,30 @@ const ch1Config = {
 
     function rotateGears(step) {
       SoundFX.click();
-      simState.gearAngle = step * 120;
-      const readout = document.getElementById('gear-readout');
-      if (step === 3) {
-        SoundFX.success();
-        if (readout) readout.innerText = '72톱니 완료! (A: 3바퀴, B: 2바퀴 ➔ 처음 맞물림 위치 복귀!)';
+      const targetAngle = step * 120;
+      if (typeof window.startSmoothLerp === 'function') {
+        window.startSmoothLerp('gearAngle', () => simState.gearAngle, (v) => {
+          simState.gearAngle = Math.round(v);
+          const readout = document.getElementById('gear-readout');
+          if (step === 3) {
+            SoundFX.success();
+            if (readout) readout.innerText = '72톱니 완료! (A: 3바퀴, B: 2바퀴 ➔ 처음 맞물림 위치 복귀!)';
+          } else {
+            if (readout) readout.innerText = \`회전: \${step * 24}톱니 (A: \${step}바퀴, B: \${(step * 24 / 36).toFixed(1)}바퀴)\`;
+          }
+          if (twoInstance) renderGearCanvas(twoInstance, step, step);
+        }, targetAngle);
       } else {
-        if (readout) readout.innerText = \`회전: \${step * 24}톱니 (A: \${step}바퀴, B: \${(step * 24 / 36).toFixed(1)}바퀴)\`;
+        simState.gearAngle = targetAngle;
+        const readout = document.getElementById('gear-readout');
+        if (step === 3) {
+          SoundFX.success();
+          if (readout) readout.innerText = '72톱니 완료! (A: 3바퀴, B: 2바퀴 ➔ 처음 맞물림 위치 복귀!)';
+        } else {
+          if (readout) readout.innerText = \`회전: \${step * 24}톱니 (A: \${step}바퀴, B: \${(step * 24 / 36).toFixed(1)}바퀴)\`;
+        }
+        if (twoInstance) renderGearCanvas(twoInstance, step, step);
       }
-      if (twoInstance) renderGearCanvas(twoInstance, step, step);
     }
 
     function resetGears() {

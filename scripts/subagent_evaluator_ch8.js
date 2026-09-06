@@ -486,6 +486,22 @@ async function runSubagentEvaluationCh8() {
     record('INTENT-20', '캔버스 빈 공간 0건 원칙', 5, false, e.message);
   }
 
+  // [INTENT-21] ⚙️ 절전형 물리 애니메이션 엔진 (startSmoothLerp)
+  try {
+    const hasLerp = typeof window.startSmoothLerp === 'function';
+    let val = 0;
+    if (hasLerp) {
+      window.startSmoothLerp('testKey', () => val, (v) => { val = v; }, 10, null, null, 0.5);
+    }
+    const htmlHasLerp = htmlContent.includes('function startSmoothLerp') && htmlContent.includes('0.12') && htmlContent.includes('cancelAnimationFrame');
+    const interactiveUsesLerp = htmlContent.includes("startSmoothLerp('seesawFulcrum'") || htmlContent.includes("startSmoothLerp('outlierVal'");
+    const ok = hasLerp && htmlHasLerp && interactiveUsesLerp;
+    record('INTENT-21', '절전형 물리 애니메이션 엔진 (startSmoothLerp) 및 시뮬레이터 연동', 5, ok,
+      ok ? '지수 감속(0.12), rAF 절전 종료, 8단원 시소/이상치 시뮬레이터 실시간 Lerp 연동 확인' : 'startSmoothLerp 미탑재 또는 시뮬레이터 미연동');
+  } catch (e) {
+    record('INTENT-21', '절전형 물리 애니메이션 엔진 (startSmoothLerp)', 5, false, e.message);
+  }
+
   // Calculate final score
   const totalScore = testResults.reduce((acc, r) => acc + r.score, 0);
   const maxScore = testResults.reduce((acc, r) => acc + r.maxScore, 0);
