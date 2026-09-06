@@ -1,0 +1,1541 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>🏴‍☠️ [초고화질 인터랙티브] 생각 넓히기: 보물지도에서 보물의 위치 찾기</title>
+  
+  <!-- Pretendard & Medieval Antique Fonts -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Pirata+One&display=swap" rel="stylesheet">
+  
+  <!-- KaTeX -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #d97706;
+      --primary-dark: #b45309;
+      --primary-light: #fef3c7;
+      --ocean-deep: #0f172a;
+      --ocean-blue: #0284c7;
+      --parchment-bg: #fbf6ec;
+      --parchment-border: #d5c39c;
+      --text-dark: #1e293b;
+      --text-muted: #64748b;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-md: 0 6px 20px rgba(0,0,0,0.1);
+      --shadow-lg: 0 12px 32px rgba(180, 83, 9, 0.15);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      background: radial-gradient(circle at top center, #1e293b 0%, #0f172a 100%);
+      color: var(--text-dark);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Navigation Header */
+    header {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .badge-grade {
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding: 3px 9px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+    .header-title h1 {
+      color: #f8fafc;
+      font-size: 1.15rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .header-title h1 span.sub-badge {
+      font-size: 0.8rem;
+      color: #fbbf24;
+      font-weight: 600;
+      background: rgba(251, 191, 36, 0.15);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn-sound {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #f1f5f9;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-sound:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Main Container Grid */
+    .app-layout {
+      flex: 1;
+      max-width: 1440px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    @media (max-width: 1024px) {
+      .app-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Left: Canvas Area Container */
+    .canvas-panel {
+      background: #ffffff;
+      border-radius: 18px;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.25);
+      border: 2px solid rgba(251, 191, 36, 0.3);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Interactive Toolbar */
+    .canvas-toolbar {
+      background: #fdfbf7;
+      border-bottom: 1.5px solid #e2d9c8;
+      padding: 10px 14px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+    .tool-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tool-pill-btn {
+      background: #ffffff;
+      border: 1.5px solid #cbd5e1;
+      color: #475569;
+      padding: 7px 14px;
+      border-radius: 10px;
+      font-size: 0.86rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .tool-pill-btn:hover {
+      background: #f8fafc;
+      border-color: #94a3b8;
+      transform: translateY(-1px);
+    }
+    .tool-pill-btn.active {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      border-color: #b45309;
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
+    }
+    .tool-pill-btn.active-blue {
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      border-color: #075985;
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+    }
+    .pen-palette {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding-left: 8px;
+      border-left: 1.5px solid #e2e8f0;
+    }
+    .pen-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+      transition: transform 0.15s;
+    }
+    .pen-dot:hover { transform: scale(1.15); }
+    .pen-dot.active {
+      outline: 2.5px solid #f59e0b;
+      transform: scale(1.2);
+    }
+
+    /* Canvas Stage Wrapper */
+    .canvas-stage-wrapper {
+      position: relative;
+      width: 100%;
+      height: 540px;
+      background: #0284c7;
+      overflow: hidden;
+      touch-action: none;
+      user-select: none;
+    }
+    #main-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+    #drawing-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+      pointer-events: none;
+    }
+    #drawing-canvas.active-events {
+      pointer-events: auto;
+      cursor: crosshair;
+    }
+
+    /* Magnifier Loupe Floating Overlay */
+    .magnifier-loupe {
+      position: absolute;
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      border: 3.5px solid #b45309;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35), inset 0 2px 6px rgba(255,255,255,0.6);
+      background: radial-gradient(circle, rgba(254, 243, 199, 0.85) 0%, rgba(253, 230, 138, 0.95) 100%);
+      pointer-events: none;
+      z-index: 10;
+      display: none;
+      transform: translate(-50%, -120%);
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: #78350f;
+    }
+    .magnifier-loupe::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 7px solid transparent;
+      border-right: 7px solid transparent;
+      border-top: 8px solid #b45309;
+    }
+
+    /* Canvas Bottom Live Status Bar */
+    .canvas-footer {
+      background: #fffbeb;
+      border-top: 1.5px solid #fde68a;
+      padding: 9px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+    }
+
+    /* Right: Worksheet & Clue Reasoning Panel */
+    .worksheet-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      border: 1.5px solid #e2e8f0;
+      box-shadow: var(--shadow-sm);
+      padding: 18px 20px;
+    }
+    .card-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      border-bottom: 2px solid #f1f5f9;
+      padding-bottom: 8px;
+    }
+    .card-title h2 {
+      font-size: 1.08rem;
+      font-weight: 800;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tag-mission {
+      background: #fef3c7;
+      color: #b45309;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid #fde68a;
+    }
+
+    /* Clues Container (Parchment Scroll Effect) */
+    .clues-scroll-box {
+      background: linear-gradient(180deg, #fffdf8 0%, #faf4e6 100%);
+      border: 2px solid #e7d8b8;
+      border-radius: 14px;
+      padding: 16px;
+      position: relative;
+      box-shadow: inset 0 2px 6px rgba(180, 83, 9, 0.05);
+    }
+    .clues-scroll-box::before {
+      content: '📜 보물지도의 3대 비밀 단서';
+      display: block;
+      font-family: 'Cinzel', serif;
+      font-weight: 900;
+      font-size: 0.98rem;
+      color: #92400e;
+      margin-bottom: 12px;
+      border-bottom: 1.5px dashed #d5c39c;
+      padding-bottom: 6px;
+    }
+    .clue-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 10px;
+      font-size: 0.9rem;
+      line-height: 1.65;
+      color: #451a03;
+    }
+    .clue-item:last-child { margin-bottom: 0; }
+    .clue-num {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #f59e0b;
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    /* Live Deductive Clue Inspector */
+    .deductive-inspector {
+      background: #f8fafc;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-top: 12px;
+    }
+    .inspector-header {
+      font-size: 0.88rem;
+      font-weight: 800;
+      color: #334155;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .check-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      padding: 9px 12px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      font-size: 0.84rem;
+    }
+    .check-row:last-child { margin-bottom: 0; }
+    .check-status {
+      font-weight: 800;
+      font-size: 0.82rem;
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+    .status-pass { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+    .status-fail { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .status-wait { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
+
+    /* Action Control Buttons */
+    .btn-submit {
+      width: 100%;
+      padding: 15px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: #ffffff;
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      box-shadow: 0 6px 18px rgba(217, 119, 6, 0.35);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-submit:hover {
+      background: linear-gradient(135deg, #fbbf24 0%, #b45309 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(217, 119, 6, 0.45);
+    }
+    .btn-submit:active {
+      transform: translateY(0);
+    }
+
+    /* Modal / Popup for Explanation */
+    .modal-backdrop {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(8px);
+      z-index: 1000;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .modal-card {
+      background: #ffffff;
+      border-radius: 20px;
+      max-width: 600px;
+      width: 100%;
+      padding: 24px 28px;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
+      border: 2px solid #f59e0b;
+      animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes popIn {
+      from { transform: scale(0.9) translateY(20px); opacity: 0; }
+      to { transform: scale(1) translateY(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header>
+    <div class="header-title">
+      <span class="badge-grade">중1 수학</span>
+      <h1>
+        4. 좌표평면과 그래프
+        <span class="sub-badge">4.2 생각 넓히기 (보물지도)</span>
+      </h1>
+    </div>
+    <div class="header-actions">
+      <button class="btn-sound" id="btn-sound-toggle" onclick="toggleSound()">
+        🔊 사운드 ON
+      </button>
+      <div style="color: #94a3b8; font-size: 0.85rem; font-weight: 600;">
+        지도서 p.162 / 교과서 p.111
+      </div>
+    </div>
+  </header>
+
+  <!-- Main App Layout -->
+  <main class="app-layout">
+    
+    <!-- Left: Canvas Area Container -->
+    <section class="canvas-panel">
+      <!-- Interactive Toolbar -->
+      <div class="canvas-toolbar">
+        <!-- Main Mode Tabs -->
+        <div class="tool-group">
+          <button class="tool-pill-btn active" id="btn-mode-dig" onclick="setAppMode('dig')">
+            🏴‍☠️ 보물 발굴 모드
+          </button>
+          <button class="tool-pill-btn" id="btn-mode-axis" onclick="setAppMode('axis')">
+            📐 좌표축 탐색 도구
+          </button>
+          <button class="tool-pill-btn" id="btn-mode-pen" onclick="setAppMode('pen')">
+            ✏️ 해적 펜 필기
+          </button>
+        </div>
+
+        <!-- Pen Tools (shown in pen mode) -->
+        <div class="pen-palette" id="pen-tools" style="display: none;">
+          <div class="pen-dot active" style="background: #dc2626;" title="빨간 펜" onclick="setPenColor('#dc2626')"></div>
+          <div class="pen-dot" style="background: #0284c7;" title="파란 펜" onclick="setPenColor('#0284c7')"></div>
+          <div class="pen-dot" style="background: #1e293b;" title="검정 펜" onclick="setPenColor('#1e293b')"></div>
+          <button class="tool-pill-btn" style="padding: 4px 8px; font-size: 0.8rem;" onclick="clearPenDrawing()">
+            🧹 지우기
+          </button>
+        </div>
+
+        <!-- Reset Button -->
+        <div class="tool-group">
+          <button class="tool-pill-btn" style="padding: 6px 12px; font-size: 0.82rem;" onclick="resetTreasureIsland()">
+            🔄 지도 초기화
+          </button>
+        </div>
+      </div>
+
+      <!-- Canvas Stage Wrapper -->
+      <div class="canvas-stage-wrapper" id="canvas-wrapper">
+        <canvas id="main-canvas"></canvas>
+        <canvas id="drawing-canvas"></canvas>
+        <!-- Floating Magnifier Loupe -->
+        <div class="magnifier-loupe" id="loupe">
+          <div style="font-size:0.68rem; color:#b45309;">좌표 추적기</div>
+          <div id="loupe-coords" style="font-size:0.86rem; color:#451a03;">(?, ?)</div>
+        </div>
+      </div>
+
+      <!-- Canvas Footer Status -->
+      <div class="canvas-footer">
+        <div class="status-badge" id="axis-status-badge">
+          <span style="color:#d97706;">📍 좌표축 상태:</span>
+          <span id="axis-status-text" style="font-weight:800; color:#b45309;">미설정 (직접 탐색 가능)</span>
+        </div>
+        <div class="status-badge" id="treasure-status-badge">
+          <span style="color:#0284c7;">💎 발굴된 보물:</span>
+          <span id="treasure-status-text" style="font-weight:800; color:#0369a1;">지도를 클릭하여 발굴하세요</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right: Clues, Logic Analyzer & Submissions -->
+    <aside class="worksheet-panel">
+      
+      <!-- Mission & Clues Card -->
+      <div class="card">
+        <div class="card-title">
+          <h2>
+            <span>🏴‍☠️ 생각 넓히기: 보물의 위치를 찾아라!</span>
+          </h2>
+          <span class="tag-mission">탐구 미션</span>
+        </div>
+
+        <!-- Antique Parchment Clues -->
+        <div class="clues-scroll-box">
+          <div class="clue-item">
+            <div class="clue-num">1</div>
+            <div>
+              이 섬에 두 좌표축을 그었는데, <b>두 점 $A$와 $B$는 어느 사분면에도 속하지 않는다</b>네.
+            </div>
+          </div>
+          <div class="clue-item">
+            <div class="clue-num">2</div>
+            <div>
+              <b>점 $C$의 $x$좌표와 점 $D$의 $y$좌표의 부호는 서로 다르다</b>네.
+            </div>
+          </div>
+          <div class="clue-item">
+            <div class="clue-num">3</div>
+            <div>
+              모눈 한 칸의 길이를 1이라고 하면 보물은 <b>점 $(-2, -3)$의 위치</b>에 묻혀 있다네!
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Deductive Clue Inspector -->
+        <div class="deductive-inspector">
+          <div class="inspector-header">
+            <span>🔍 3대 단서 실시간 논리 검증기</span>
+            <span style="font-size: 0.76rem; color: #64748b;">좌표축 설정 시 자동 분석</span>
+          </div>
+
+          <div class="check-row">
+            <span>단서 ①: 점 A, B가 좌표축 위에 위치</span>
+            <span class="check-status status-wait" id="check-clue-1">검증 대기</span>
+          </div>
+          <div class="check-row">
+            <span>단서 ②: $C(x)$와 $D(y)$의 부호가 다름</span>
+            <span class="check-status status-wait" id="check-clue-2">검증 대기</span>
+          </div>
+          <div class="check-row">
+            <span>단서 ③: 점 $(-2, -3)$에 보물 마커 지정</span>
+            <span class="check-status status-wait" id="check-clue-3">미발굴</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Strategy Guide Box -->
+      <div class="card" style="background: #f0fdf4; border-color: #86efac;">
+        <div style="font-weight: 800; color: #166534; margin-bottom: 6px; font-size: 0.92rem; display:flex; align-items:center; gap:6px;">
+          <span>💡 탐구 전략 가이드</span>
+        </div>
+        <p style="font-size: 0.86rem; color: #14532d; line-height: 1.6;">
+          1. <b>[📐 좌표축 탐색 도구]</b>를 켜고 가로선과 세로선을 이동시켜 점 $A$와 점 $B$를 지나도록 맞춰보세요.<br>
+          2. 두 선의 교점이 원점 $O(0, 0)$이 됩니다.<br>
+          3. 원점에서 <b>왼쪽으로 2칸, 아래로 3칸</b> 이동한 지점을 클릭하여 보물을 파내세요!
+        </p>
+      </div>
+
+      <!-- Final Submit Action Button -->
+      <button class="btn-submit" onclick="verifyFinalTreasure()">
+        <span>🏴‍☠️ 보물 발굴 결과 확인 및 제출</span>
+      </button>
+
+    </aside>
+  </main>
+
+  <!-- Result Modal -->
+  <div class="modal-backdrop" id="result-modal" onclick="closeModal(event)">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <script>
+    /* =========================================================================
+       1. Global State & Math Configuration
+       ========================================================================= */
+    const state = {
+      mode: 'dig', // 'dig', 'axis', 'pen'
+      soundEnabled: true,
+      
+      // Grid dimensions (relative grid units: x in [-6, 6], y in [-5, 5])
+      grid: {
+        step: 40,
+        cx: 0,
+        cy: 0,
+        maxGx: 6,
+        maxGy: 5
+      },
+      
+      // Known Points on the island (relative to real answer origin)
+      points: [
+        { name: 'A', gx: -4, gy: 0, color: '#dc2626', bg: 'rgba(220, 38, 38, 0.15)' },
+        { name: 'B', gx: 0, gy: -3, color: '#0284c7', bg: 'rgba(2, 132, 199, 0.15)' },
+        { name: 'C', gx: 1, gy: 1, color: '#16a34a', bg: 'rgba(22, 163, 74, 0.15)' },
+        { name: 'D', gx: -3, gy: -1, color: '#9333ea', bg: 'rgba(147, 51, 234, 0.15)' }
+      ],
+
+      // Interactive Axis tool state
+      axes: {
+        // user chosen line positions (in grid units)
+        hLineY: null, // y of horizontal line (e.g. 0)
+        vLineX: null, // x of vertical line (e.g. 0)
+        isAnswerRevealed: false
+      },
+
+      // Dug treasure position
+      treasure: {
+        gx: null,
+        gy: null,
+        isCorrect: false,
+        foundAt: null
+      },
+
+      // Animation & rendering
+      time: 0,
+      particles: [],
+      hoverPos: null
+    };
+
+    /* Web Audio API Sound Synthesizer */
+    const AudioEngine = {
+      ctx: null,
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) this.ctx = new AudioContext();
+        }
+      },
+      playPop() {
+        if (!state.soundEnabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(440, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.1);
+      },
+      playDig() {
+        if (!state.soundEnabled) return;
+        this.init();
+        if (!this.ctx) return;
+        // Low rumble frequency + noise burst
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(60, this.ctx.currentTime + 0.18);
+        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.2);
+      },
+      playSuccess() {
+        if (!state.soundEnabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+        notes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.1);
+          gain.gain.setValueAtTime(0.2, now + idx * 0.1);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.1 + 0.35);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + idx * 0.1);
+          osc.stop(now + idx * 0.1 + 0.35);
+        });
+      },
+      playSnap() {
+        if (!state.soundEnabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+        osc.frequency.setValueAtTime(300, this.ctx.currentTime + 0.04);
+        gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.08);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.08);
+      }
+    };
+
+    function toggleSound() {
+      state.soundEnabled = !state.soundEnabled;
+      const btn = document.getElementById('btn-sound-toggle');
+      btn.innerHTML = state.soundEnabled ? '🔊 사운드 ON' : '🔇 사운드 OFF';
+      btn.style.opacity = state.soundEnabled ? '1' : '0.6';
+    }
+
+    /* =========================================================================
+       2. Canvas Setup & Hi-DPI Scaling
+       ========================================================================= */
+    const mainCanvas = document.getElementById('main-canvas');
+    const mainCtx = mainCanvas.getContext('2d');
+    const drawingCanvas = document.getElementById('drawing-canvas');
+    const drawCtx = drawingCanvas.getContext('2d');
+    const canvasWrapper = document.getElementById('canvas-wrapper');
+    const loupe = document.getElementById('loupe');
+    const loupeCoords = document.getElementById('loupe-coords');
+
+    let isDrawing = false;
+    let penColor = '#dc2626';
+
+    function resizeCanvases() {
+      const rect = canvasWrapper.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      
+      mainCanvas.width = rect.width * dpr;
+      mainCanvas.height = rect.height * dpr;
+      drawingCanvas.width = rect.width * dpr;
+      drawingCanvas.height = rect.height * dpr;
+      
+      mainCtx.resetTransform();
+      mainCtx.scale(dpr, dpr);
+      drawCtx.resetTransform();
+      drawCtx.scale(dpr, dpr);
+
+      state.grid.cx = rect.width / 2;
+      state.grid.cy = rect.height / 2 + 10;
+      state.grid.step = Math.min(rect.width / 14, rect.height / 12, 42);
+    }
+
+    window.addEventListener('resize', () => {
+      resizeCanvases();
+      renderScene();
+    });
+
+    /* =========================================================================
+       3. Nautical Art Island & Coast Rendering Engine
+       ========================================================================= */
+    function gridToScreen(gx, gy) {
+      return {
+        x: state.grid.cx + gx * state.grid.step,
+        y: state.grid.cy - gy * state.grid.step
+      };
+    }
+
+    function screenToGrid(sx, sy) {
+      return {
+        gx: Math.round((sx - state.grid.cx) / state.grid.step),
+        gy: Math.round((state.grid.cy - sy) / state.grid.step)
+      };
+    }
+
+    // Island polygon vertices in relative grid coordinates
+    const islandPoly = [
+      { gx: -5.4, gy: -1.2 },
+      { gx: -4.8, gy: -3.3 },
+      { gx: -2.5, gy: -4.3 },
+      { gx: 0.5,  gy: -4.4 },
+      { gx: 3.6,  gy: -3.6 },
+      { gx: 5.1,  gy: -1.6 },
+      { gx: 5.3,  gy: 1.4 },
+      { gx: 3.9,  gy: 3.7 },
+      { gx: 1.6,  gy: 4.3 },
+      { gx: -0.7, gy: 3.9 },
+      { gx: -2.6, gy: 4.4 },
+      { gx: -4.4, gy: 3.3 },
+      { gx: -5.3, gy: 1.0 }
+    ];
+
+    function drawOceanWater(ctx, width, height, time) {
+      // Deep tropical ocean gradient
+      const oceanGrad = ctx.createRadialGradient(
+        state.grid.cx, state.grid.cy, 80,
+        state.grid.cx, state.grid.cy, width * 0.75
+      );
+      oceanGrad.addColorStop(0, '#0284c7');
+      oceanGrad.addColorStop(0.5, '#0369a1');
+      oceanGrad.addColorStop(1, '#075985');
+      ctx.fillStyle = oceanGrad;
+      ctx.fillRect(0, 0, width, height);
+
+      // Subtle animated ocean ripples
+      ctx.save();
+      ctx.strokeStyle = 'rgba(224, 242, 254, 0.25)';
+      ctx.lineWidth = 1.5;
+      for (let i = 0; i < 6; i++) {
+        const offset = (time * 0.03 + i * 80) % (width + 200);
+        const yBase = (height / 7) * (i + 1) + Math.sin(time * 0.02 + i) * 6;
+        ctx.beginPath();
+        ctx.arc(offset - 100, yBase, 40, 0.2 * Math.PI, 0.8 * Math.PI);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawAntiqueParchmentBorder(ctx, width, height) {
+      ctx.save();
+      // Nautical chart neatline
+      ctx.strokeStyle = 'rgba(254, 243, 199, 0.4)';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(12, 12, width - 24, height - 24);
+      ctx.strokeStyle = 'rgba(217, 119, 6, 0.3)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(16, 16, width - 32, height - 32);
+      ctx.restore();
+    }
+
+    function drawTreasureIsland(ctx, time) {
+      const step = state.grid.step;
+
+      // 1. Shallow Water Glow (Lagoon Shoals)
+      ctx.save();
+      ctx.beginPath();
+      islandPoly.forEach((pt, idx) => {
+        const p = gridToScreen(pt.gx * 1.08, pt.gy * 1.08);
+        if (idx === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.35)';
+      ctx.shadowColor = 'rgba(56, 189, 248, 0.5)';
+      ctx.shadowBlur = 20;
+      ctx.fill();
+      ctx.restore();
+
+      // 2. Sandy Beach Layer (Gold Ochre)
+      ctx.save();
+      ctx.beginPath();
+      islandPoly.forEach((pt, idx) => {
+        const p = gridToScreen(pt.gx, pt.gy);
+        if (idx === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.closePath();
+      ctx.fillStyle = '#fef08a';
+      ctx.strokeStyle = '#eab308';
+      ctx.lineWidth = 7;
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+      ctx.fill();
+      ctx.restore();
+
+      // 3. Island Lush Greenery (Interior Forest)
+      ctx.save();
+      ctx.beginPath();
+      islandPoly.forEach((pt, idx) => {
+        const p = gridToScreen(pt.gx * 0.93, pt.gy * 0.93);
+        if (idx === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.closePath();
+      const landGrad = ctx.createLinearGradient(
+        state.grid.cx - 200, state.grid.cy - 200,
+        state.grid.cx + 200, state.grid.cy + 200
+      );
+      landGrad.addColorStop(0, '#86efac');
+      landGrad.addColorStop(0.6, '#4ade80');
+      landGrad.addColorStop(1, '#22c55e');
+      ctx.fillStyle = landGrad;
+      ctx.strokeStyle = '#15803d';
+      ctx.lineWidth = 2.5;
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      // 4. Freshwater Lakes (Interior)
+      const lake1 = gridToScreen(-1.2, 1.5);
+      const lake2 = gridToScreen(2.2, 0.8);
+      
+      [lake1, lake2].forEach((lake, i) => {
+        ctx.save();
+        ctx.beginPath();
+        ctx.ellipse(lake.x, lake.y, step * (i === 0 ? 0.75 : 0.6), step * (i === 0 ? 0.45 : 0.38), 0.1, 0, Math.PI * 2);
+        ctx.fillStyle = '#38bdf8';
+        ctx.strokeStyle = '#0284c7';
+        ctx.lineWidth = 2;
+        ctx.fill();
+        ctx.stroke();
+        // Lake ripple
+        ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(lake.x - 4, lake.y - 2, 8, 0.2, 1.2);
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      // 5. Stylized Mountains & Ridges (North-East)
+      const mountains = [
+        { gx: 1.5, gy: 3.2, s: step * 0.8 },
+        { gx: 2.8, gy: 2.8, s: step * 0.95 },
+        { gx: -1.0, gy: 3.6, s: step * 0.7 }
+      ];
+      mountains.forEach(m => {
+        const mp = gridToScreen(m.gx, m.gy);
+        ctx.save();
+        // Mountain base triangle
+        ctx.beginPath();
+        ctx.moveTo(mp.x, mp.y - m.s * 0.6);
+        ctx.lineTo(mp.x + m.s * 0.5, mp.y + m.s * 0.4);
+        ctx.lineTo(mp.x - m.s * 0.5, mp.y + m.s * 0.4);
+        ctx.closePath();
+        ctx.fillStyle = '#86efac';
+        ctx.strokeStyle = '#166534';
+        ctx.lineWidth = 2;
+        ctx.fill();
+        ctx.stroke();
+
+        // Shaded ridge side
+        ctx.beginPath();
+        ctx.moveTo(mp.x, mp.y - m.s * 0.6);
+        ctx.lineTo(mp.x + m.s * 0.5, mp.y + m.s * 0.4);
+        ctx.lineTo(mp.x, mp.y + m.s * 0.4);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(22, 101, 52, 0.25)';
+        ctx.fill();
+        ctx.restore();
+      });
+
+      // 6. Compass Rose (Nautical 8-Point Star) at upper right
+      drawCompassRose(ctx, state.grid.cx + 4.8 * step, state.grid.cy - 3.8 * step, step * 0.7);
+    }
+
+    function drawCompassRose(ctx, x, y, radius) {
+      ctx.save();
+      ctx.translate(x, y);
+
+      // Outer ring
+      ctx.strokeStyle = 'rgba(245, 158, 11, 0.6)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 4 Main Points (N, S, E, W)
+      const points = [
+        { angle: -Math.PI / 2, label: 'N', color: '#dc2626' },
+        { angle: Math.PI / 2, label: 'S', color: '#b45309' },
+        { angle: 0, label: 'E', color: '#b45309' },
+        { angle: Math.PI, label: 'W', color: '#b45309' }
+      ];
+
+      points.forEach(p => {
+        ctx.save();
+        ctx.rotate(p.angle);
+        ctx.beginPath();
+        ctx.moveTo(0, -radius * 1.15);
+        ctx.lineTo(radius * 0.22, 0);
+        ctx.lineTo(0, 0);
+        ctx.closePath();
+        ctx.fillStyle = p.color;
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(0, -radius * 1.15);
+        ctx.lineTo(-radius * 0.22, 0);
+        ctx.lineTo(0, 0);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.fill();
+        ctx.restore();
+      });
+
+      // North Label
+      ctx.font = 'bold 11px Cinzel, serif';
+      ctx.fillStyle = '#dc2626';
+      ctx.textAlign = 'center';
+      ctx.fillText('N', 0, -radius * 1.25);
+
+      ctx.restore();
+    }
+
+    /* =========================================================================
+       4. Nautical Grid & Mathematics Overlay
+       ========================================================================= */
+    function drawNauticalGrid(ctx) {
+      const step = state.grid.step;
+      const { cx, cy, maxGx, maxGy } = state.grid;
+
+      ctx.save();
+      ctx.strokeStyle = 'rgba(30, 41, 59, 0.28)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+
+      // Vertical grid lines
+      for (let gx = -maxGx; gx <= maxGx; gx++) {
+        const x = cx + gx * step;
+        ctx.beginPath();
+        ctx.moveTo(x, cy - maxGy * step);
+        ctx.lineTo(x, cy + maxGy * step);
+        ctx.stroke();
+      }
+
+      // Horizontal grid lines
+      for (let gy = -maxGy; gy <= maxGy; gy++) {
+        const y = cy - gy * step;
+        ctx.beginPath();
+        ctx.moveTo(cx - maxGx * step, y);
+        ctx.lineTo(cx + maxGx * step, y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawAxesAndQuadrants(ctx) {
+      const step = state.grid.step;
+      const { cx, cy, maxGx, maxGy } = state.grid;
+      const hY = state.axes.hLineY;
+      const vX = state.axes.vLineX;
+
+      // When horizontal axis is placed
+      if (hY !== null) {
+        const y = cy - hY * step;
+        ctx.save();
+        ctx.strokeStyle = '#dc2626';
+        ctx.lineWidth = 3;
+        ctx.shadowColor = 'rgba(220, 38, 38, 0.4)';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.moveTo(cx - (maxGx + 0.4) * step, y);
+        ctx.lineTo(cx + (maxGx + 0.4) * step, y);
+        ctx.stroke();
+
+        // Arrowhead & Label
+        ctx.fillStyle = '#dc2626';
+        ctx.beginPath();
+        ctx.moveTo(cx + (maxGx + 0.4) * step + 8, y);
+        ctx.lineTo(cx + (maxGx + 0.4) * step - 4, y - 5);
+        ctx.lineTo(cx + (maxGx + 0.4) * step - 4, y + 5);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.font = 'italic bold 18px Pretendard';
+        ctx.fillText('x', cx + (maxGx + 0.4) * step + 12, y + 6);
+        ctx.restore();
+      }
+
+      // When vertical axis is placed
+      if (vX !== null) {
+        const x = cx + vX * step;
+        ctx.save();
+        ctx.strokeStyle = '#0284c7';
+        ctx.lineWidth = 3;
+        ctx.shadowColor = 'rgba(2, 132, 199, 0.4)';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.moveTo(x, cy + (maxGy + 0.4) * step);
+        ctx.lineTo(x, cy - (maxGy + 0.4) * step);
+        ctx.stroke();
+
+        // Arrowhead & Label
+        ctx.fillStyle = '#0284c7';
+        ctx.beginPath();
+        ctx.moveTo(x, cy - (maxGy + 0.4) * step - 8);
+        ctx.lineTo(x - 5, cy - (maxGy + 0.4) * step + 4);
+        ctx.lineTo(x + 5, cy - (maxGy + 0.4) * step + 4);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.font = 'italic bold 18px Pretendard';
+        ctx.fillText('y', x - 6, cy - (maxGy + 0.4) * step - 14);
+        ctx.restore();
+      }
+
+      // Origin O intersection
+      if (hY !== null && vX !== null) {
+        const originPos = gridToScreen(vX, hY);
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(originPos.x, originPos.y, 8, 0, Math.PI * 2);
+        ctx.fillStyle = '#f59e0b';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = 'rgba(245, 158, 11, 0.6)';
+        ctx.shadowBlur = 10;
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = 'bold 14px Pretendard';
+        ctx.fillStyle = '#78350f';
+        ctx.fillText('O(0,0)', originPos.x + 12, originPos.y + 18);
+
+        // Subtle Quadrant Badges
+        const qOffset = step * 1.8;
+        ctx.font = '600 12px Pretendard';
+        ctx.fillStyle = 'rgba(30, 41, 59, 0.55)';
+        ctx.fillText('제1사분면 (+,+)', originPos.x + qOffset * 0.7, originPos.y - qOffset * 0.7);
+        ctx.fillText('제2사분면 (-,+)', originPos.x - qOffset * 1.4, originPos.y - qOffset * 0.7);
+        ctx.fillText('제3사분면 (-,-)', originPos.x - qOffset * 1.4, originPos.y + qOffset * 0.9);
+        ctx.fillText('제4사분면 (+,-)', originPos.x + qOffset * 0.7, originPos.y + qOffset * 0.9);
+        ctx.restore();
+      }
+    }
+
+    function drawLandmarkPoints(ctx) {
+      state.points.forEach(pt => {
+        const p = gridToScreen(pt.gx, pt.gy);
+        ctx.save();
+
+        // Pulsing outer aura
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 16, 0, Math.PI * 2);
+        ctx.fillStyle = pt.bg;
+        ctx.strokeStyle = pt.color;
+        ctx.lineWidth = 1.5;
+        ctx.fill();
+        ctx.stroke();
+
+        // Core dot
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 7, 0, Math.PI * 2);
+        ctx.fillStyle = pt.color;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.shadowColor = pt.color;
+        ctx.shadowBlur = 6;
+        ctx.fill();
+        ctx.stroke();
+
+        // Label Badge
+        let label = pt.name;
+        if (state.axes.isAnswerRevealed || (state.axes.hLineY === 0 && state.axes.vLineX === 0)) {
+          label = `${pt.name}(${pt.gx}, ${pt.gy})`;
+        }
+
+        ctx.font = 'bold 15px Pretendard';
+        ctx.fillStyle = pt.color;
+        ctx.shadowColor = '#ffffff';
+        ctx.shadowBlur = 4;
+        ctx.fillText(label, p.x + 14, p.y - 10);
+        ctx.restore();
+      });
+    }
+
+    function drawTreasureMarker(ctx) {
+      if (state.treasure.gx === null) return;
+      const p = gridToScreen(state.treasure.gx, state.treasure.gy);
+
+      ctx.save();
+      // Glowing treasure beacon
+      const auraGrad = ctx.createRadialGradient(p.x, p.y, 4, p.x, p.y, 28);
+      auraGrad.addColorStop(0, 'rgba(245, 158, 11, 0.8)');
+      auraGrad.addColorStop(0.6, 'rgba(217, 119, 6, 0.3)');
+      auraGrad.addColorStop(1, 'rgba(217, 119, 6, 0)');
+      ctx.fillStyle = auraGrad;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 28, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Chest / Gem Marker
+      ctx.font = '24px serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(state.treasure.isCorrect ? '👑' : '💎', p.x, p.y - 2);
+
+      // Label
+      ctx.font = 'bold 13px Pretendard';
+      ctx.fillStyle = '#b45309';
+      ctx.textAlign = 'left';
+      const coordTxt = (state.axes.isAnswerRevealed || state.treasure.isCorrect) 
+        ? `보물 (${state.treasure.gx}, ${state.treasure.gy})`
+        : '발굴한 위치';
+      ctx.fillText(`📍 ${coordTxt}`, p.x + 16, p.y - 12);
+      ctx.restore();
+    }
+
+    /* =========================================================================
+       5. Main Render Loop
+       ========================================================================= */
+    function renderScene() {
+      state.time += 1;
+      const { width, height } = canvasWrapper.getBoundingClientRect();
+
+      mainCtx.clearRect(0, 0, width, height);
+      drawOceanWater(mainCtx, width, height, state.time);
+      drawTreasureIsland(mainCtx, state.time);
+      drawNauticalGrid(mainCtx);
+      drawAxesAndQuadrants(mainCtx);
+      drawLandmarkPoints(mainCtx);
+      drawTreasureMarker(mainCtx);
+      drawAntiqueParchmentBorder(mainCtx, width, height);
+
+      requestAnimationFrame(renderScene);
+    }
+
+    /* =========================================================================
+       6. Interactive Modes & Logic Verification
+       ========================================================================= */
+    function setAppMode(mode) {
+      state.mode = mode;
+      AudioEngine.playPop();
+
+      document.querySelectorAll('.tool-pill-btn').forEach(btn => btn.classList.remove('active', 'active-blue'));
+      const penTools = document.getElementById('pen-tools');
+      
+      if (mode === 'dig') {
+        document.getElementById('btn-mode-dig').classList.add('active');
+        drawingCanvas.classList.remove('active-events');
+        penTools.style.display = 'none';
+        canvasWrapper.style.cursor = 'crosshair';
+      } else if (mode === 'axis') {
+        document.getElementById('btn-mode-axis').classList.add('active-blue');
+        drawingCanvas.classList.remove('active-events');
+        penTools.style.display = 'none';
+        canvasWrapper.style.cursor = 'pointer';
+      } else if (mode === 'pen') {
+        document.getElementById('btn-mode-pen').classList.add('active');
+        drawingCanvas.classList.add('active-events');
+        penTools.style.display = 'flex';
+        canvasWrapper.style.cursor = 'crosshair';
+      }
+    }
+
+    function setPenColor(color) {
+      penColor = color;
+      AudioEngine.playPop();
+      document.querySelectorAll('.pen-dot').forEach(dot => dot.classList.remove('active'));
+      const target = Array.from(document.querySelectorAll('.pen-dot')).find(d => d.style.background.includes(color) || d.getAttribute('title').includes(color === '#dc2626' ? '빨간' : (color === '#0284c7' ? '파란' : '검정')));
+      if (target) target.classList.add('active');
+    }
+
+    function clearPenDrawing() {
+      const rect = canvasWrapper.getBoundingClientRect();
+      drawCtx.clearRect(0, 0, rect.width, rect.height);
+      AudioEngine.playPop();
+    }
+
+    function resetTreasureIsland() {
+      state.axes.hLineY = null;
+      state.axes.vLineX = null;
+      state.axes.isAnswerRevealed = false;
+      state.treasure.gx = null;
+      state.treasure.gy = null;
+      state.treasure.isCorrect = false;
+      clearPenDrawing();
+      updateClueInspector();
+      AudioEngine.playPop();
+
+      document.getElementById('axis-status-text').innerText = '미설정 (직접 탐색 가능)';
+      document.getElementById('axis-status-text').style.color = '#b45309';
+      document.getElementById('treasure-status-text').innerText = '지도를 클릭하여 발굴하세요';
+      document.getElementById('treasure-status-text').style.color = '#0369a1';
+    }
+
+    /* Deductive Clue Checker */
+    function updateClueInspector() {
+      const c1 = document.getElementById('check-clue-1');
+      const c2 = document.getElementById('check-clue-2');
+      const c3 = document.getElementById('check-clue-3');
+
+      const hY = state.axes.hLineY;
+      const vX = state.axes.vLineX;
+
+      if (hY === null || vX === null) {
+        c1.className = 'check-status status-wait'; c1.innerText = '좌표축 미완성';
+        c2.className = 'check-status status-wait'; c2.innerText = '좌표축 미완성';
+      } else {
+        // Clue 1: A and B on axes
+        // A is at relative (-4, 0), B is at relative (0, -3)
+        // A is on horizontal line if hY == 0. B is on vertical line if vX == 0.
+        const aOnAxis = (hY === 0 || vX === -4);
+        const bOnAxis = (vX === 0 || hY === -3);
+
+        if (hY === 0 && vX === 0) {
+          c1.className = 'check-status status-pass'; c1.innerText = '✅ 완벽 일치 (축 위)';
+          // Clue 2: C(x) and D(y) sign
+          // C: x=1 > 0 (양수), D: y=-1 < 0 (음수) -> different signs!
+          c2.className = 'check-status status-pass'; c2.innerText = '✅ 부호 다름 (+, -)';
+        } else if (aOnAxis && bOnAxis) {
+          c1.className = 'check-status status-pass'; c1.innerText = '조건 성립';
+          // Check if reverse axis (vLine through A=-4, hLine through B=-3)
+          if (vX === -4 && hY === -3) {
+            // C relative: x = 1 - (-4) = +5, y = 1 - (-3) = +4
+            // D relative: x = -3 - (-4) = +1, y = -1 - (-3) = +2
+            // C(x)=+5, D(y)=+2 -> Same sign!
+            c2.className = 'check-status status-fail'; c2.innerText = '❌ 부호 같음 (+, +)';
+          } else {
+            c2.className = 'check-status status-fail'; c2.innerText = '❌ 단서 불일치';
+          }
+        } else {
+          c1.className = 'check-status status-fail'; c1.innerText = '❌ 사분면 침범';
+          c2.className = 'check-status status-fail'; c2.innerText = '❌ 단서 불일치';
+        }
+      }
+
+      // Clue 3: Treasure Check
+      if (state.treasure.gx === null) {
+        c3.className = 'check-status status-wait'; c3.innerText = '미발굴';
+      } else if (state.treasure.gx === -2 && state.treasure.gy === -3) {
+        c3.className = 'check-status status-pass'; c3.innerText = '✅ (-2, -3) 적중!';
+      } else {
+        c3.className = 'check-status status-fail'; c3.innerText = `❌ (${state.treasure.gx}, ${state.treasure.gy})`;
+      }
+    }
+
+    /* Canvas Pointer Interaction */
+    canvasWrapper.addEventListener('pointerdown', (e) => {
+      const rect = canvasWrapper.getBoundingClientRect();
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+      const { gx, gy } = screenToGrid(sx, sy);
+
+      if (state.mode === 'dig') {
+        // Dig Treasure
+        state.treasure.gx = gx;
+        state.treasure.gy = gy;
+        state.treasure.isCorrect = (gx === -2 && gy === -3);
+        AudioEngine.playDig();
+
+        const tDisp = document.getElementById('treasure-status-text');
+        tDisp.innerText = `발굴 완료! 좌표 (${gx}, ${gy})`;
+        tDisp.style.color = '#15803d';
+
+        updateClueInspector();
+      } 
+      else if (state.mode === 'axis') {
+        // Place Axes based on nearest clicks or points
+        AudioEngine.playSnap();
+        if (state.axes.hLineY === null) {
+          state.axes.hLineY = gy;
+        } else if (state.axes.vLineX === null) {
+          state.axes.vLineX = gx;
+        } else {
+          // Toggle or cycle
+          state.axes.hLineY = gy;
+          state.axes.vLineX = gx;
+        }
+
+        const aDisp = document.getElementById('axis-status-text');
+        aDisp.innerText = `가로축 y=${state.axes.hLineY}, 세로축 x=${state.axes.vLineX}`;
+        aDisp.style.color = '#0369a1';
+        updateClueInspector();
+      }
+    });
+
+    // Pen Drawing on secondary overlay canvas
+    drawingCanvas.addEventListener('pointerdown', (e) => {
+      if (state.mode !== 'pen') return;
+      isDrawing = true;
+      const rect = drawingCanvas.getBoundingClientRect();
+      drawCtx.beginPath();
+      drawCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+      drawCtx.strokeStyle = penColor;
+      drawCtx.lineWidth = 3;
+      drawCtx.lineCap = 'round';
+      drawCtx.lineJoin = 'round';
+    });
+
+    drawingCanvas.addEventListener('pointermove', (e) => {
+      if (!isDrawing || state.mode !== 'pen') return;
+      const rect = drawingCanvas.getBoundingClientRect();
+      drawCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+      drawCtx.stroke();
+    });
+
+    window.addEventListener('pointerup', () => { isDrawing = false; });
+
+    // Floating Loupe Coordinates Tracking
+    canvasWrapper.addEventListener('pointermove', (e) => {
+      const rect = canvasWrapper.getBoundingClientRect();
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+      const { gx, gy } = screenToGrid(sx, sy);
+
+      if (sx >= 0 && sx <= rect.width && sy >= 0 && sy <= rect.height) {
+        loupe.style.display = 'flex';
+        loupe.style.left = `${sx}px`;
+        loupe.style.top = `${sy}px`;
+        loupeCoords.innerText = `(${gx}, ${gy})`;
+      } else {
+        loupe.style.display = 'none';
+      }
+    });
+
+    canvasWrapper.addEventListener('pointerleave', () => {
+      loupe.style.display = 'none';
+    });
+
+    /* =========================================================================
+       7. Final Verification & Celebration Modal
+       ========================================================================= */
+    function verifyFinalTreasure() {
+      const modal = document.getElementById('result-modal');
+      const content = document.getElementById('modal-content');
+
+      const isTreasureCorrect = (state.treasure.gx === -2 && state.treasure.gy === -3);
+
+      if (isTreasureCorrect) {
+        // Success!
+        state.axes.hLineY = 0;
+        state.axes.vLineX = 0;
+        state.axes.isAnswerRevealed = true;
+        updateClueInspector();
+        AudioEngine.playSuccess();
+
+        // Launch Confetti!
+        confetti({
+          particleCount: 120,
+          spread: 80,
+          origin: { y: 0.6 }
+        });
+
+        content.innerHTML = `
+          <div style="text-align:center;">
+            <div style="font-size:3rem; margin-bottom:10px;">👑 🏴‍☠️ 🎉</div>
+            <h2 style="font-size:1.45rem; color:#b45309; font-weight:900; margin-bottom:12px;">
+              보물 발견 성공! 대항해 완수!
+            </h2>
+            <div style="background:#fffbeb; border:1.5px solid #fde68a; border-radius:12px; padding:16px; text-align:left; font-size:0.92rem; line-height:1.75; color:#78350f; margin-bottom:18px;">
+              <b>[완벽한 논리 추론 증명]</b><br>
+              1. <b>단서 1:</b> 점 $A$와 $B$가 사분면에 없으므로 두 점은 좌표축 위에 있습니다.<br>
+              2. <b>단서 2:</b> 가로축($x$축)이 점 $A$를 지나고, 세로축($y$축)이 점 $B$를 지날 때, 점 $C$의 $x$좌표는 <b>$+1$ (양수)</b>, 점 $D$의 $y$좌표는 <b>$-1$ (음수)</b>로 부호가 달라 조건을 완벽히 만족합니다!<br>
+              3. <b>단서 3:</b> 두 축의 교점인 원점 $O(0, 0)$에서 왼쪽으로 2칸, 아래로 3칸 이동한 <b>$(-2, -3)$</b> 위치에서 황금 보물상자를 정확히 찾아냈습니다!
+            </div>
+            <button class="btn-submit" onclick="closeModal()">
+              ✨ 멋져요! 계속 탐구하기
+            </button>
+          </div>
+        `;
+      } else {
+        // Incorrect
+        state.axes.hLineY = 0;
+        state.axes.vLineX = 0;
+        state.axes.isAnswerRevealed = true;
+        updateClueInspector();
+
+        content.innerHTML = `
+          <div style="text-align:center;">
+            <div style="font-size:3rem; margin-bottom:10px;">🗺️ 🧭 ⛏️</div>
+            <h2 style="font-size:1.35rem; color:#dc2626; font-weight:900; margin-bottom:12px;">
+              아직 진짜 보물에 도달하지 못했습니다!
+            </h2>
+            <div style="background:#fef2f2; border:1.5px solid #fecaca; border-radius:12px; padding:16px; text-align:left; font-size:0.9rem; line-height:1.7; color:#991b1b; margin-bottom:18px;">
+              <b>[지도에 올바른 좌표축(빨강/파랑)이 표시되었습니다!]</b><br>
+              • 점 $A$를 지나는 가로선이 <b>$x$축</b>, 점 $B$를 지나는 세로선이 <b>$y$축</b>입니다.<br>
+              • 두 축이 만나는 교점 <b>원점 $O(0, 0)$</b>을 기준으로<br>
+              • <b>왼쪽으로 2칸($x=-2$), 아래로 3칸($y=-3$)</b> 지점을 지도에서 다시 클릭해 보세요!
+            </div>
+            <button class="btn-submit" style="background:#475569;" onclick="closeModal()">
+              다시 도전하기
+            </button>
+          </div>
+        `;
+      }
+
+      modal.style.display = 'flex';
+      if (window.renderMathInElement) {
+        renderMathInElement(content);
+      }
+    }
+
+    function closeModal(e) {
+      document.getElementById('result-modal').style.display = 'none';
+    }
+
+    // Startup Initialization
+    window.addEventListener('DOMContentLoaded', () => {
+      resizeCanvases();
+      renderScene();
+      updateClueInspector();
+    });
+  </script>
+</body>
+</html>
