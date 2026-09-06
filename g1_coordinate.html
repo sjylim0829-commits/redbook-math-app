@@ -998,57 +998,30 @@
 
   <script>
     // =========================================================================
-    // 🎨 Two.js 캔버스 폰트 크기 확대 및 가독성/선명도 극대화 엔진
+    // 🎨 캔버스 폰트 크기 확대 및 가독성/선명도 극대화 엔진 (CanvasContext 기반 안전 확장)
     // =========================================================================
-    (function enhanceCanvasTypography() {
-      if (typeof Two === 'undefined' || !Two.prototype || !Two.prototype.makeText) return;
-      const originalMakeText = Two.prototype.makeText;
-
-      Two.prototype.makeText = function(message, x, y, styles) {
-        const txt = originalMakeText.call(this, message, x, y, styles);
-        if (!txt) return txt;
-
-        txt.family = 'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-
-        const boostSize = (rawSize) => {
-          const num = parseFloat(rawSize);
-          if (isNaN(num) || num <= 0) return 17;
-          // 작은 폰트는 최소 16px 이상으로 보장하고, 기존 대비 약 1.28배 확대하여 캔버스 가독성 극대화
-          return Math.max(16, Math.round(num * 1.28));
+    (function enhanceCanvasContextFont() {
+      try {
+        if (typeof CanvasRenderingContext2D === 'undefined') return;
+        const desc = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, 'font');
+        if (!desc || !desc.set) return;
+        const originalSet = desc.set;
+        desc.set = function(val) {
+          if (typeof val === 'string') {
+            // 작은 폰트는 최소 16px 이상으로 보장하고, 기존 대비 약 1.28배 확대하여 캔버스 가독성 극대화
+            val = val.replace(/(\d+(?:\.\d+)?)\s*px/g, (match, pxStr) => {
+              const px = parseFloat(pxStr);
+              if (isNaN(px) || px <= 0) return match;
+              const boosted = Math.max(16, Math.round(px * 1.28));
+              return boosted + 'px';
+            });
+          }
+          return originalSet.call(this, val);
         };
-
-        let _currentSize = boostSize(txt.size || 13);
-        let _currentWeight = Math.max(700, parseInt(txt.weight) || 700);
-
-        Object.defineProperty(txt, 'size', {
-          get() { return _currentSize; },
-          set(val) {
-            const num = parseFloat(val);
-            if (!isNaN(num) && num > 0) {
-              _currentSize = boostSize(num);
-              if (this.leading !== undefined) {
-                this.leading = Math.round(_currentSize * 1.25);
-              }
-            }
-          },
-          configurable: true,
-          enumerable: true
-        });
-
-        Object.defineProperty(txt, 'weight', {
-          get() { return _currentWeight; },
-          set(val) {
-            const w = parseInt(val) || 700;
-            _currentWeight = Math.max(700, w);
-          },
-          configurable: true,
-          enumerable: true
-        });
-
-        txt.size = _currentSize;
-        txt.weight = _currentWeight;
-        return txt;
-      };
+        Object.defineProperty(CanvasRenderingContext2D.prototype, 'font', desc);
+      } catch (err) {
+        console.warn('Canvas font enhancement note:', err);
+      }
     })();
 
     const state = {
@@ -2656,6 +2629,8 @@
           coordDisp.innerText = '🧪 생각 넓히기 (물병 모양과 수면 높이)';
         } else {
           coordDisp.style.display = 'inline-block';
+          const title = (typeof SUBSTEP_TITLES !== 'undefined' && SUBSTEP_TITLES[subStepCode]) ? SUBSTEP_TITLES[subStepCode] : (state.pointP ? `📍 좌표: (${state.pointP.x}, ${state.pointP.y})` : '📍 좌표평면 탐구');
+          coordDisp.innerText = title;
         }
       }
 
