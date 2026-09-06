@@ -634,6 +634,7 @@ async function runSubagentEvaluationCh5() {
   if (!isFinalPass) {
     process.exit(1);
   }
+  process.exit(0);
 }
 
 runSubagentEvaluationCh5().catch(e => {
