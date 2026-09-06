@@ -56,7 +56,7 @@
 | **4~5단계** | **생각 넓히기 / 히든 미션** | 심화 발전 과제, 실생활 연계, 보물찾기 게임 | 2~3단계 통과 시 동적 해금되는 챌린지 미션 (성취감 극대화) |
 
 > 📖 **교과서 기반 대화형 웹 변환 상세 가이드**:
-> 교과서 지면을 서브스텝별로 분할하고 좌표평면/캔버스 렌더링, 빈칸 뚫기 5대 영역, 정규화 채점(`normTxt`)을 구현하는 상세 프로세스는 [`.agents/rules/textbook_to_interactive_web_rules.md`](file:///.agents/rules/textbook_to_interactive_web_rules.md)를 필히 준수합니다.
+> 교과서 지면을 서브스텝별로 분할하고 좌표평면/캔버스 렌더링, 빈칸 뚫기 5대 영역, 정규화 채점(`normTxt`)을 구현하는 상세 프로세스는 [Part 1](file:///.agents/rules/textbook_to_interactive_web_rules_part1.md) 및 [Part 2](file:///.agents/rules/textbook_to_interactive_web_rules_part2.md)를 필히 준수합니다.
 
 ---
 

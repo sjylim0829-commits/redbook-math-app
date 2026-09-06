@@ -6,7 +6,10 @@
 
 ## 2. 📐 수학 웹 애플리케이션 개발 규칙
 - 기본 개발 표준 및 가이드라인: [`.agents/rules/math_webpage_guidelines.md`](file:///.agents/rules/math_webpage_guidelines.md)
-- 교과서 기반 대화형 웹페이지 자동 제작 규칙: [`.agents/rules/textbook_to_interactive_web_rules.md`](file:///.agents/rules/textbook_to_interactive_web_rules.md)
+- 교과서 기반 대화형 웹페이지 자동 제작 규칙:
+  - [Part 1: 핵심 철학 및 캔버스·빈칸 설계](file:///.agents/rules/textbook_to_interactive_web_rules_part1.md)
+  - [Part 2: 상태 관리, 물리 애니메이션, 품질 검증 및 문항 구조](file:///.agents/rules/textbook_to_interactive_web_rules_part2.md)
+  - [마스터 인덱스 안내](file:///.agents/rules/textbook_to_interactive_web_rules.md)
   - 교과서 지면 제공 시 1:1 서브스텝 매핑, 좌표평면/캔버스 렌더링 규격, 빈칸 뚫기 원칙, 동적 점 드래그/스마트 스냅, 정규화 채점(`normTxt`) 등 상세 규칙 준수.
 - 교사 마스터 비밀번호(`260523`, `260831`) 및 관리자 인증 로직은 페이지 상에 노출되지 않도록 철저히 관리합니다.
 
