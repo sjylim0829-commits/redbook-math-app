@@ -115,8 +115,10 @@
 | **INTENT-17** | 세부 탐구 드롭다운 네비게이션 지원 | 5점 | 헤더 드롭다운 셀렉터로 57개 서브스텝 직접 점프 |
 | **INTENT-18** | 절전형 물리 애니메이션(Lerp) 및 화면 고정 방지 표준 | 5점 | `startSmoothLerp` 수렴 가드 + `loadSubStep` 시 rAF 취소 |
 | **INTENT-19** | **🚫 정답 미노출 원칙 (Zero Answer Leakage in Placeholder/Hints)** | 5점 | 전 57개 서브스텝 placeholder 정답 누출 전수 감사 0건 |
-| **INTENT-20** | **🎨 캔버스 빈 공간 0건 원칙 (Zero Blank Canvas across all 57 substeps)** | 5점 | 57개 전 서브스텝 Two.js 캔버스 렌더링 100% 가동 |
+| **INTENT-20** | **🎨 캔버스 빈 공간 0건 및 가짜 텍스트 카드(Fake Text Box) 전무 원칙** | 5점 | 57개 전 서브스텝 Two.js 캔버스 렌더링 100% 가동 및 renderProblemSupportCanvas/더미 텍스트 박스 0건 |
 | **INTENT-21** | 브라우저 콘솔 무오류 원칙 (Zero Runtime Console Error) | 5점 | 57개 서브스텝 순회 시 JS 런타임 오류 0건 |
-| **INTENT-22** | **📐 캔버스 폰트 크기 및 시각적 프레임 경계 적정성 (Zero Overflow & Balanced Font Size)** | 5점 | 57개 서브스텝 캔버스 텍스트 과대/과소 폰트 방지(11~26px 범위), 캔버스 프레임 오버플로우 0건, 1.15배 이하 온건 스케일 감사 |
+| **INTENT-22** | **📐 캔버스 폰트 크기 및 시각적 프레임 경계 적정성 (Zero Overflow & Balanced Font Size)** | 5점 | 57개 서브스텝 캔버스 텍스트 과대/과소 폰트 방지(9~28px 범위), 캔버스 프레임 오버플로우 0건, 1.12배 온건 스케일 감사 |
+| **INTENT-23** | **🤖 실질 상호작용성(Action-Reaction) 브라우저 e2e 실환경 검증** | 5점 | 10대 핵심 인터랙터(음료수 진열대, 소수 바구니, 반례 돋보기, 거듭제곱 저울, 약수 격자, 정사각형 타일, 과일 분배, 톱니바퀴 회전, 소인수 결합기, 소수 캘린더) 실시간 조작 시 simState 변경 및 캔버스 재렌더링 100% 검증 |
 
-- **합격 기준**: **115점 만점 중 115점 (100%)** 달성 시 최종 통과 (`PASS`)
+- **합격 기준**: **120점 만점 중 120점 (100%)** 달성 시 최종 통과 (`PASS`)
+

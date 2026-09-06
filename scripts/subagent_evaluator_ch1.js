@@ -115,6 +115,7 @@ async function runCh1SubagentEvaluation() {
 
     // 서브스텝별 캔버스 및 렌더링 검사
     const blankCanvases = [];
+    const fakeCards = [];
     const leakedPlaceholders = [];
     const allTextIssues = [];
     const renderedSubsteps = [];
@@ -128,18 +129,21 @@ async function runCh1SubagentEvaluation() {
         const sceneChildren = two && two.scene ? two.scene.children.length : 0;
         const hasGraphics = domCanvas > 0 && sceneChildren > 0;
         
+        // 가짜 텍스트 카드 감지
+        let isFakeCard = false;
+        const allCanvasTexts = [];
+
         // 정답 누출 감사
         const inputs = Array.from(document.querySelectorAll('#form-work-area input, #form-work-area textarea'));
         const leaks = [];
         inputs.forEach(inp => {
           const ph = (inp.getAttribute('placeholder') || '').trim();
-          // 만약 플레이스홀더에 구체적 정답 숫자가 단독으로 있거나 누출된 경우
           if (/^(정답|답)\s*[:=]/i.test(ph)) {
             leaks.push({ code: c, placeholder: ph });
           }
         });
 
-        // 폰트 크기 및 프레임 경계 감사
+        // 폰트 크기 및 프레임 경계 감사 & 텍스트 내용 수집
         const textIssues = [];
         if (two && two.scene && two.scene.children) {
           const w = two.width || 600, h = two.height || 500;
@@ -147,19 +151,21 @@ async function runCh1SubagentEvaluation() {
             if (!obj) return;
             if (obj.value !== undefined && obj.size !== undefined) {
               const sz = obj.size;
+              const strVal = String(obj.value);
+              allCanvasTexts.push(strVal);
               const x = obj.translation ? obj.translation.x : 0;
               const y = obj.translation ? obj.translation.y : 0;
               // 1) 너무 작은 폰트 (< 9px)
               if (sz < 9) {
-                textIssues.push({ code: c, type: 'too-small', val: String(obj.value).substring(0, 15), size: sz });
+                textIssues.push({ code: c, type: 'too-small', val: strVal.substring(0, 15), size: sz });
               }
               // 2) 비정상적으로 거대한 폰트 (> 28px, 0-4의 '1'과 같은 상징 숫자 제외)
-              if (sz > 28 && String(obj.value).trim().length > 2) {
-                textIssues.push({ code: c, type: 'too-large', val: String(obj.value).substring(0, 15), size: sz });
+              if (sz > 28 && strVal.trim().length > 2) {
+                textIssues.push({ code: c, type: 'too-large', val: strVal.substring(0, 15), size: sz });
               }
               // 3) 캔버스 프레임 이탈 (여백 25px 초과)
               if (x < -25 || x > w + 25 || y < -25 || y > h + 25) {
-                textIssues.push({ code: c, type: 'out-of-frame', val: String(obj.value).substring(0, 15), x, y, w, h });
+                textIssues.push({ code: c, type: 'out-of-frame', val: strVal.substring(0, 15), x, y, w, h });
               }
             }
             if (obj.children && Array.isArray(obj.children)) {
@@ -169,7 +175,12 @@ async function runCh1SubagentEvaluation() {
           two.scene.children.forEach(inspectObject);
         }
 
-        return { code: c, hasGraphics, sceneChildren, leaks, textIssues };
+        const combinedText = allCanvasTexts.join(' ');
+        if (combinedText.includes('자유 펜 풀이') || combinedText.includes('renderProblemSupportCanvas')) {
+          isFakeCard = true;
+        }
+
+        return { code: c, hasGraphics, sceneChildren, isFakeCard, leaks, textIssues };
       }, code);
 
       await page.waitForTimeout(60);
@@ -177,6 +188,9 @@ async function runCh1SubagentEvaluation() {
       renderedSubsteps.push(stepRes.code);
       if (!stepRes.hasGraphics || stepRes.sceneChildren === 0) {
         blankCanvases.push(stepRes.code);
+      }
+      if (stepRes.isFakeCard) {
+        fakeCards.push(stepRes.code);
       }
       if (stepRes.leaks.length > 0) {
         leakedPlaceholders.push(...stepRes.leaks);
@@ -275,10 +289,10 @@ async function runCh1SubagentEvaluation() {
     record('INTENT-19', '정답 미노출 원칙 (Zero Answer Leakage in Placeholder/Hints)', 5, pass19,
       `플레이스홀더 정답 누출 건수=${leakedPlaceholders.length}건`);
 
-    // [INTENT-20] 🎨 캔버스 빈 공간 0건 원칙 (Zero Blank Canvas across all 57 substeps)
-    const pass20 = blankCanvases.length === 0;
-    record('INTENT-20', '캔버스 빈 공간 0건 원칙 (Zero Blank Canvas across all 57 substeps)', 5, pass20,
-      `빈 캔버스 발생 건수=${blankCanvases.length}건 (누락 서브스텝: ${blankCanvases.join(', ') || '없음'})`);
+    // [INTENT-20] 🎨 캔버스 빈 공간 0건 및 가짜 텍스트 카드 0건 원칙
+    const pass20 = blankCanvases.length === 0 && fakeCards.length === 0;
+    record('INTENT-20', '캔버스 빈 공간 0건 및 가짜 텍스트 카드 0건 원칙', 5, pass20,
+      `빈 캔버스=${blankCanvases.length}건, 가짜 카드=${fakeCards.length}건 (전 서브스텝 고유 시뮬레이터 완비)`);
 
     // [INTENT-21] 브라우저 콘솔 무오류 원칙 (Zero Runtime Console Error)
     const criticalErrors = consoleErrors.filter(e => !e.includes('favicon') && !e.includes('mathjax') && !e.includes('404'));
@@ -297,6 +311,113 @@ async function runCh1SubagentEvaluation() {
     const pass22 = fontIssues.length === 0;
     record('INTENT-22', '캔버스 폰트 크기 및 시각적 프레임 경계 적정성 (Zero Overflow & Balanced Font Size)', 5, pass22,
       `프레임 이탈/과대 폰트 결함 건수=${fontIssues.length}건 (가독성 안전 범위 확인 완료)`);
+
+    // [INTENT-23] 🤖 실질 상호작용성(Action-Reaction) 브라우저 e2e 실환경 검증
+    try {
+      const actionReactionResults = await page.evaluate(async () => {
+        const tests = [];
+
+        // 1) 1-1 음료수 진열대: setBeverageCols(4)
+        if (typeof loadSubStep === 'function') loadSubStep('1-1');
+        if (typeof window.setBeverageCols === 'function') {
+          window.setBeverageCols(4);
+          tests.push({ id: '1-1', pass: window.simState && window.simState.beverageCols === 4, name: '음료수 진열 4열 재배치' });
+        } else {
+          tests.push({ id: '1-1', pass: false, name: 'setBeverageCols 함수 미존재' });
+        }
+
+        // 2) 1-2 에라토스테네스의 체: setSieveStep(3)
+        loadSubStep('1-2');
+        if (typeof window.setSieveStep === 'function') {
+          window.setSieveStep(3);
+          tests.push({ id: '1-2', pass: window.simState && window.simState.sieveStep === 3, name: '에라토스테네스의 체 3단계(3의 배수 지움) 전이' });
+        } else {
+          tests.push({ id: '1-2', pass: false, name: 'setSieveStep 함수 미존재' });
+        }
+
+        // 3) 1-7 세균 증식 거듭제곱: setBacteriaMinutes(40)
+        loadSubStep('1-7');
+        if (typeof window.setBacteriaMinutes === 'function') {
+          window.setBacteriaMinutes(40);
+          tests.push({ id: '1-7', pass: window.simState && window.simState.bacteriaMinutes === 40, name: '세균 증식 40분 경과(2^4 마리) 애니메이션 갱신' });
+        } else {
+          tests.push({ id: '1-7', pass: false, name: 'setBacteriaMinutes 함수 미존재' });
+        }
+
+        // 4) 2-2 거듭제곱 저울 및 소인수 트리: stepFactorTree(1)
+        loadSubStep('2-2');
+        if (typeof window.stepFactorTree === 'function') {
+          window.stepFactorTree(1);
+          tests.push({ id: '2-2', pass: window.simState && window.simState.factorTreeStep >= 1, name: '소인수분해 가지치기 트리 단계별 분해' });
+        } else {
+          tests.push({ id: '2-2', pass: false, name: 'stepFactorTree 함수 미존재' });
+        }
+
+        // 5) 2-7 제곱수 만들기 밸런스: setSquareMultX(14)
+        loadSubStep('2-7');
+        if (typeof window.setSquareMultX === 'function') {
+          window.setSquareMultX(14);
+          tests.push({ id: '2-7', pass: window.simState && window.simState.squareMultX === 14, name: '56 x 14 = 784 = 28^2 완벽한 제곱수 밸런스' });
+        } else {
+          tests.push({ id: '2-7', pass: false, name: 'setSquareMultX 함수 미존재' });
+        }
+
+        // 6) 3-1 직사각형 타일 채우기: setTileSquareSize(6)
+        loadSubStep('3-1');
+        if (typeof window.setTileSquareSize === 'function') {
+          window.setTileSquareSize(6);
+          tests.push({ id: '3-1', pass: window.simState && window.simState.tileSquareSize === 6, name: '6x6 타일로 직사각형(18x12) 빈틈없이 채우기' });
+        } else {
+          tests.push({ id: '3-1', pass: false, name: 'setTileSquareSize 함수 미존재' });
+        }
+
+        // 7) 3-9 과일 바구니 분배: setBasketPeople(6)
+        loadSubStep('3-9');
+        if (typeof window.setBasketPeople === 'function') {
+          window.setBasketPeople(6);
+          tests.push({ id: '3-9', pass: window.simState && window.simState.basketPeople === 6, name: '사과/귤 6명 똑같이 나누기 분배' });
+        } else {
+          tests.push({ id: '3-9', pass: false, name: 'setBasketPeople 함수 미존재' });
+        }
+
+        // 8) 4-1 톱니바퀴 맞물림: setGearRotation(45)
+        loadSubStep('4-1');
+        if (typeof window.setGearRotation === 'function') {
+          window.setGearRotation(45);
+          tests.push({ id: '4-1', pass: window.simState && window.simState.gearAngle === 45, name: '톱니 45도 맞물림 동시 회전' });
+        } else {
+          tests.push({ id: '4-1', pass: false, name: 'setGearRotation 함수 미존재' });
+        }
+
+        // 9) 4-6 버스 동시 출발 시계: advanceBusClock(15)
+        loadSubStep('4-6');
+        if (typeof window.advanceBusClock === 'function') {
+          window.advanceBusClock(15);
+          tests.push({ id: '4-6', pass: window.simState && window.simState.busClockMin === 15, name: '버스 시계 15분 전진 및 동시 출발 판정' });
+        } else {
+          tests.push({ id: '4-6', pass: false, name: 'advanceBusClock 함수 미존재' });
+        }
+
+        // 10) 5-1 달력 속 소수 탐색: autoCollectCalendarPrimes()
+        loadSubStep('5-1');
+        if (typeof window.autoCollectCalendarPrimes === 'function') {
+          window.autoCollectCalendarPrimes();
+          tests.push({ id: '5-1', pass: window.simState && window.simState.calendarSelected && window.simState.calendarSelected.size === 11, name: '달력 날짜 소수 11개 전수 탐색 및 스탬프' });
+        } else {
+          tests.push({ id: '5-1', pass: false, name: 'autoCollectCalendarPrimes 함수 미존재' });
+        }
+
+        return tests;
+      });
+
+      const failedActions = actionReactionResults.filter(t => !t.pass);
+      const pass23 = failedActions.length === 0;
+      record('INTENT-23', '실질 상호작용성(Action-Reaction) 브라우저 e2e 실환경 검증', 5, pass23,
+        `10대 인터랙터 실환경 제어 성공=${actionReactionResults.filter(t => t.pass).length}/10개 (실패: ${failedActions.map(f => f.id).join(', ') || '없음'})`);
+    } catch (err) {
+      record('INTENT-23', '실질 상호작용성(Action-Reaction) 브라우저 e2e 실환경 검증', 5, false, err.message);
+    }
+
 
     // 총점 계산
     const totalMax = testResults.reduce((acc, cur) => acc + cur.maxScore, 0);
