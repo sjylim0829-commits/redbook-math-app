@@ -470,10 +470,10 @@
   <nav id="main-tab-bar" class="tab-bar-container">
     <button id="tab-0" class="tab-btn active" onclick="switchMainTab(0)">0. 되짚어 보기 🔓</button>
     <button id="tab-1" class="tab-btn locked" onclick="switchMainTab(1)">7.1 다면체와 정다면체 🔒</button>
-    <button id="tab-2" class="tab-btn locked" onclick="switchMainTab(2)">7.2 회전체 🔒</button>
-    <button id="tab-3" class="tab-btn locked" onclick="switchMainTab(3)">7.3 기둥의 겉넓이/부피 🔒</button>
-    <button id="tab-4" class="tab-btn locked" onclick="switchMainTab(4)">7.4 뿔과 구의 겉넓이/부피 🔒</button>
-    <button id="tab-5" class="tab-btn locked" onclick="switchMainTab(5)">7.5 마무리 & 탐구 🔒</button>
+    <button id="tab-2" class="tab-btn locked" onclick="switchMainTab(2)">7.2 회전체와 단면 🔒</button>
+    <button id="tab-3" class="tab-btn locked" onclick="switchMainTab(3)">7.3 기둥의 겉넓이와 부피 🔒</button>
+    <button id="tab-4" class="tab-btn locked" onclick="switchMainTab(4)">7.4 뿔의 겉넓이와 부피 🔒</button>
+    <button id="tab-5" class="tab-btn locked" onclick="switchMainTab(5)">7.5 구의 겉넓이·부피 & 아르키메데스 🔒</button>
   </nav>
 
   <!-- Sub-Step Navigation Pills -->
@@ -524,7 +524,9 @@
               <button id="btn-pen-eraser" class="tool-btn" onclick="setEraserMode()">🧹 지우개</button>
               <button class="tool-btn" onclick="clearFreehandDrawing()">🗑️ 전체지우기</button>
             </div>
+            <div id="toolbar-custom-controls" style="margin-left:auto; display:flex; gap:6px; align-items:center;"></div>
           </div>
+          <div id="interactive-sim-controller" style="background:#f8fafc; border-bottom:1.5px solid #e2e8f0; padding:10px 16px; display:none;"></div>
           <div id="two-container" style="flex:1; width:100%; height:100%; position:relative;">
             <canvas id="freehand-drawing-canvas"></canvas>
           </div>
@@ -665,6 +667,7 @@
         } catch(e) {}
       },
       pop() { this.playTone(600, 0.08, 'triangle', 0.12); },
+      click() { this.playTone(800, 0.04, 'sine', 0.08); },
       success() {
         this.playTone(523.25, 0.1, 'sine');
         setTimeout(() => this.playTone(659.25, 0.1, 'sine'), 80);
@@ -676,6 +679,7 @@
         setTimeout(() => this.playTone(880, 0.2, 'triangle'), 100);
       }
     };
+    window.SoundFX = SoundFX;
 
     // Text Normalization Engine
     function normTxt(v) {
@@ -683,87 +687,99 @@
     }
 
     // --- STATE MANAGEMENT ---
-    const ALL_SUBSTEPS = ["0-1","0-2","1-1","1-2","1-3","1-4","2-1","2-2","2-3","3-1","3-2","3-3","4-1","4-2","4-3","5-1","5-2"];
-    const SUBSTEP_TITLES = {"0-1":"1. 직육면체와 각기둥 (초등)","0-2":"2. 원기둥과 원뿔 (초등)","1-1":"1. 다면체의 뜻과 분류","1-2":"2. 각기둥, 각뿔, 각뿔대","1-3":"3. 5가지 정다면체","1-4":"4. 오일러 다면체 정리","2-1":"1. 회전체의 뜻과 회전축","2-2":"2. 회전체의 단면 관찰","2-3":"3. 회전체의 전개도","3-1":"1. 각기둥의 겉넓이와 부피","3-2":"2. 원기둥의 겉넓이","3-3":"3. 원기둥의 부피 (V = πr²h)","4-1":"1. 뿔의 겉넓이와 부피 (1/3 Sh)","4-2":"2. 구의 겉넓이 (4πr²)","4-3":"3. 구의 부피 (4/3 πr³)","5-1":"1. 7단원 입체도형 스스로 마무리","5-2":"2. 창의융합: 아르키메데스의 묘비"};
+    const ALL_SUBSTEPS = ["0-1","0-2","0-3","1-1","1-2","1-3","1-4","2-1","2-2","2-3","2-4","3-1","3-2","3-3","4-1","4-2","4-3","5-1","5-2","5-3"];
+    const SUBSTEP_TITLES = {"0-1":"1. 직육면체와 각기둥 (초등 5~6)","0-2":"2. 원기둥과 원뿔 (초등 6)","0-3":"3. 직육면체 겉넓이와 부피 (초등 6)","1-1":"1. 다면체 전개도 접기 & 입체 조립기","1-2":"2. 각기둥, 각뿔, 각뿔대 공식","1-3":"3. 5가지 정다면체 3D 갤러리","1-4":"4. 오일러 다면체 정리 실험실","2-1":"1. 회전체 360° 고속 회전 생성기","2-2":"2. 회전체의 구성 요소와 모선","2-3":"3. 회전체 단면 슬라이서","2-4":"4. 원기둥과 원뿔의 전개도","3-1":"1. 기둥 전개도 펼치기 & 겉넓이 계산","3-2":"2. 원기둥 겉넓이 공식 계산","3-3":"3. 기둥의 부피 (V = Sh)","4-1":"1. 뿔의 부피 물 채우기 실험실","4-2":"2. 뿔의 겉넓이 공식 계산","4-3":"3. 각뿔과 원뿔의 부피 계산","5-1":"1. 구의 겉넓이 끈 감기 실험실","5-2":"2. 구의 부피 공식 유도 및 계산","5-3":"3. 아르키메데스의 묘비: 3:2:1 비율"};
     const pillsConfig = {
   "0": [
     {
       "code": "0-1",
-      "label": "1. 직육면체와 각기둥 (초등)"
+      "label": "1. 직육면체와 각기둥 (초등 5~6)"
     },
     {
       "code": "0-2",
-      "label": "2. 원기둥과 원뿔 (초등)"
+      "label": "2. 원기둥과 원뿔 (초등 6)"
+    },
+    {
+      "code": "0-3",
+      "label": "3. 직육면체 겉넓이와 부피 (초등 6)"
     }
   ],
   "1": [
     {
       "code": "1-1",
-      "label": "1. 다면체의 뜻과 분류"
+      "label": "1. 다면체 전개도 접기 & 입체 조립기"
     },
     {
       "code": "1-2",
-      "label": "2. 각기둥, 각뿔, 각뿔대"
+      "label": "2. 각기둥, 각뿔, 각뿔대 공식"
     },
     {
       "code": "1-3",
-      "label": "3. 5가지 정다면체"
+      "label": "3. 5가지 정다면체 3D 갤러리"
     },
     {
       "code": "1-4",
-      "label": "4. 오일러 다면체 정리"
+      "label": "4. 오일러 다면체 정리 실험실"
     }
   ],
   "2": [
     {
       "code": "2-1",
-      "label": "1. 회전체의 뜻과 회전축"
+      "label": "1. 회전체 360° 고속 회전 생성기"
     },
     {
       "code": "2-2",
-      "label": "2. 회전체의 단면 관찰"
+      "label": "2. 회전체의 구성 요소와 모선"
     },
     {
       "code": "2-3",
-      "label": "3. 회전체의 전개도"
+      "label": "3. 회전체 단면 슬라이서"
+    },
+    {
+      "code": "2-4",
+      "label": "4. 원기둥과 원뿔의 전개도"
     }
   ],
   "3": [
     {
       "code": "3-1",
-      "label": "1. 각기둥의 겉넓이와 부피"
+      "label": "1. 기둥 전개도 펼치기 & 겉넓이 계산"
     },
     {
       "code": "3-2",
-      "label": "2. 원기둥의 겉넓이"
+      "label": "2. 원기둥 겉넓이 공식 계산"
     },
     {
       "code": "3-3",
-      "label": "3. 원기둥의 부피 (V = πr²h)"
+      "label": "3. 기둥의 부피 (V = Sh)"
     }
   ],
   "4": [
     {
       "code": "4-1",
-      "label": "1. 뿔의 겉넓이와 부피 (1/3 Sh)"
+      "label": "1. 뿔의 부피 물 채우기 실험실"
     },
     {
       "code": "4-2",
-      "label": "2. 구의 겉넓이 (4πr²)"
+      "label": "2. 뿔의 겉넓이 공식 계산"
     },
     {
       "code": "4-3",
-      "label": "3. 구의 부피 (4/3 πr³)"
+      "label": "3. 각뿔과 원뿔의 부피 계산"
     }
   ],
   "5": [
     {
       "code": "5-1",
-      "label": "1. 7단원 입체도형 스스로 마무리"
+      "label": "1. 구의 겉넓이 끈 감기 실험실"
     },
     {
       "code": "5-2",
-      "label": "2. 창의융합: 아르키메데스의 묘비"
+      "label": "2. 구의 부피 공식 유도 및 계산"
+    },
+    {
+      "code": "5-3",
+      "label": "3. 아르키메데스의 묘비: 3:2:1 비율"
     }
   ]
 };
@@ -785,6 +801,7 @@
       savedFormInputs: {},
       verifiedViewData: {}
     };
+    window.state = state;
 
     let twoInstance = null;
     let currentMonitoringClass = 1;
@@ -1003,7 +1020,7 @@
     }
 
     function updateTabLocks(isTeacher) {
-      const titles = ["0. 되짚어 보기","7.1 다면체와 정다면체","7.2 회전체","7.3 기둥의 겉넓이/부피","7.4 뿔과 구의 겉넓이/부피","7.5 마무리 & 탐구"];
+      const titles = ["0. 되짚어 보기","7.1 다면체와 정다면체","7.2 회전체와 단면","7.3 기둥의 겉넓이와 부피","7.4 뿔의 겉넓이와 부피","7.5 구의 겉넓이·부피 & 아르키메데스"];
       for (let i = 0; i < 6; i++) {
         const btn = document.getElementById(`tab-${i}`);
         if (!btn) continue;
@@ -1084,11 +1101,16 @@
     function initTwoEngine() {
       const container = document.getElementById('two-container');
       if (!container) return null;
+      if (typeof Two === 'undefined') {
+        return null;
+      }
       if (!twoInstance) {
         container.innerHTML = '<canvas id="freehand-drawing-canvas"></canvas>';
         const w = container.clientWidth || 600;
         const h = container.clientHeight || 500;
         twoInstance = new Two({ width: w, height: h, type: Two.Types.canvas }).appendTo(container);
+        window.twoInstance = twoInstance;
+        window.two = twoInstance;
         setupFreehandDrawing();
         window.addEventListener('resize', () => {
           if (twoInstance) {
@@ -1216,11 +1238,1280 @@
     }
 
     // --- SUBSTEP CONFIG & RENDERING ---
-undefined
 
-undefined
+    const SUBSTEP_CONFIG = {
+      '0-1': {
+        mission: "<b>[되짚어 보기 1] 직육면체와 각기둥 (초등 5~6학년)</b><br>교과서 210~211쪽: 직육면체(사각기둥)의 면의 수와 꼭짓점의 수를 각각 입력하세요.",
+        formHtml: `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
+            <div style="font-size:0.92rem; margin-bottom:14px; line-height:2.0;">
+              직육면체의 구성 요소의 개수를 구하세요.<br>
+              • 면의 개수: ( <input type="text" id="p01-f" class="proof-input-text" style="width:80px;" placeholder="면의 수 (숫자)"> )개<br>
+              • 꼭짓점의 개수: ( <input type="text" id="p01-v" class="proof-input-text" style="width:80px;" placeholder="꼭짓점 수 (숫자)"> )개
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check01Submit()">✅ 제출 및 채점</button>
+            <div id="p01-err" class="proof-error-notice" style="display:none;"></div>
+          </div>
+        `
+      },
+      '0-2': {
+        mission: "<b>[되짚어 보기 2] 원기둥과 원뿔 (초등 6학년)</b><br>교과서 210~211쪽: 원기둥의 밑면의 개수와 원뿔의 꼭짓점의 개수를 각각 구하세요.",
+        formHtml: `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
+            <div style="font-size:0.92rem; margin-bottom:14px; line-height:2.0;">
+              원기둥과 원뿔의 특징을 입력하세요.<br>
+              • 원기둥의 밑면의 개수: ( <input type="text" id="p02-cyl" class="proof-input-text" style="width:80px;" placeholder="개수 (숫자)"> )개<br>
+              • 원뿔의 꼭짓점의 개수: ( <input type="text" id="p02-cone" class="proof-input-text" style="width:80px;" placeholder="개수 (숫자)"> )개
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check02Submit()">✅ 제출 및 채점</button>
+            <div id="p02-err" class="proof-error-notice" style="display:none;"></div>
+          </div>
+        `
+      },
+      '0-3': {
+        mission: "<b>[되짚어 보기 3] 직육면체 겉넓이와 부피 (초등 6학년)</b><br>교과서 211쪽: 가로 4 cm, 세로 3 cm, 높이 5 cm인 직육면체의 겉넓이와 부피를 각각 구하세요.",
+        formHtml: `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
+            <div style="font-size:0.92rem; margin-bottom:14px; line-height:2.0;">
+              직육면체의 겉넓이와 부피를 계산하세요.<br>
+              • 겉넓이: 2 × (4×3 + 3×5 + 4×5) = ( <input type="text" id="p03-area" class="proof-input-text" style="width:90px;" placeholder="겉넓이 (숫자)"> ) cm²<br>
+              • 부피: 4 × 3 × 5 = ( <input type="text" id="p03-vol" class="proof-input-text" style="width:90px;" placeholder="부피 (숫자)"> ) cm³
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800; background:linear-gradient(135deg, #059669, #0284c7);" onclick="check03Submit()">🏆 되짚어 보기 최종 제출</button>
+            <div id="p03-err" class="proof-error-notice" style="display:none;"></div>
+          </div>
+        `
+      },
+      '1-1': {
+        mission: "<b>[7.1 개념열기] 다면체 전개도 접기 & 입체 조립기</b><br>교과서 212~214쪽: 좌측 시뮬레이터에서 3단계를 차례로 실행해 보세요. 다각형인 면으로만 둘러싸인 입체도형의 명칭과 사각뿔의 면 수에 따른 이름을 입력하세요.",
+        formHtml: `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
+            <div class="concept-box">
+              💡 <b>다면체:</b> 다각형인 면으로만 둘러싸인 입체도형을 <b>다면체</b>라 하며, 둘러싸인 면의 수에 따라 사면체, 오면체, 육면체 등으로 부릅니다.
+            </div>
+            <div style="font-size:0.92rem; margin-bottom:14px; line-height:2.0;">
+              용어와 면의 수에 따른 이름을 완성하세요.<br>
+              • 다각형인 면으로만 둘러싸인 입체도형: ( <input type="text" id="p11-poly" class="proof-input-text" style="width:100px;" placeholder="용어 (예: 다면체)"> )<br>
+              • 사각뿔은 면이 5개이므로 ( <input type="text" id="p11-f" class="proof-input-text" style="width:90px;" placeholder="다면체 이름 (예: 오면체)"> )입니다.
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check11Submit()">✅ 제출 및 채점</button>
+            <div id="p11-err" class="proof-error-notice" style="display:none;"></div>
+          </div>
+        `
+      },
+      '1-2': {
+        mission: "<b>[7.1 개념학습] 각기둥, 각뿔, 각뿔대 공식</b><br>교과서 214쪽: 칠각기둥의 꼭짓점의 개수와 오각뿔의 모서리의 개수를 각각 구하세요.",
+        formHtml: `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
+            <div style="font-size:0.92rem; margin-bottom:14px; line-height:2.0;">
+              공식을 적용하여 개수를 구하세요.<br>
+              • 칠각기둥($n=7$)의 꼭짓점의 수 ($2n$): ( <input type="text" id="p12-prism" class="proof-input-text" style="width:80px;" placeholder="꼭짓점 수 (숫자)"> )개<br>
+              • 오각뿔($n=5$)의 모서리의 수 ($2n$): ( <input type="text" id="p12-pyramid" class="proof-input-text" style="width:80px;" placeholder="모서리 수 (숫자)"> )개
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check12Submit()">✅ 제출 및 채점</button>
+            <div id="p12-err" class="proof-error-notice" style="display:none;"></div>
+          </div>
+        `
+      },
+      '1-3': {
+        mission: "<b>[7.1 탐구활동] 5가지 정다면체 3D 갤러리</b><br>교과서 215~217쪽: 좌측 갤러리에서 정다면체들을 관찰하세요. 정다면체는 총 몇 가지뿐이며, 정팔면체의 면의 모양은 무엇인가요?",
+        formHtml: `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
+            <div style="font-size:0.92rem; margin-bottom:14px; line-height:2.0;">
+              정다면체의 성질을 입력하세요.<br>
+              • 정다면체의 총 종류: ( <input type="text" id="p13-count" class="proof-input-text" style="width:80px;" placeholder="종류의 수 (숫자)"> )가지<br>
+              • 정팔면체의 면의 모양: ( <input type="text" id="p13-shape" class="proof-input-text" style="width:100px;" placeholder="도형의 모양 (예: 정삼각형)"> )
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check13Submit()">✅ 제출 및 채점</button>
+            <div id="p13-err" class="proof-error-notice" style="display:none;"></div>
+          </div>
+        `
+      },
+      '1-4': {
+        mission: "<b>[7.1 공식유도] 오일러 다면체 정리 실험실</b><br>교과서 217쪽: 좌측 시뮬레이터에서 다면체를 전환해 보세요. 모든 다면체에서 꼭짓점의 수($v$), 모서리의 수($e$), 면의 수($f$) 사이의 값 $v - e + f$는 항상 얼마인가요?",
+        formHtml: `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
+            <div style="font-size:0.92rem; margin-bottom:14px; line-height:2.0;">
+              오일러 다면체 정리 공식:<br>
+              • 꼭짓점($v$) - 모서리($e$) + 면($f$) = ( <input type="text" id="p14-euler" class="proof-input-text" style="width:80px;" placeholder="수식의 값 (숫자)"> )
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800; background:linear-gradient(135deg, #0284c7, #4f46e5);" onclick="check14Submit()">🏆 7.1 소단원 최종 제출</button>
+            <div id="p14-err" class="proof-error-notice" style="display:none;"></div>
+          </div>
+        `
+      },
+      '2-1': {
+        mission: "<b>[7.2 개념열기] 회전체 360° 고속 회전 생성기</b><br>교과서 218~220쪽: 평면도형을 한 직선을 축으로 1회전 시켜 생기는 입체도형의 명칭과 직사각형을 1회전 시켜 생기는 회전체의 이름을 입력하세요.",
+        formHtml: `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
+            <div style="font-size:0.92rem; margin-bottom:14px; line-height:2.0;">
+              회전체의 정의와 입체도형 이름을 완성하세요.<br>
+              • 평면도형을 1회전 시켜 얻는 입체도형: ( <input type="text" id="p21-rev" class="proof-input-text" style="width:90px;" placeholder="용어 (예: 회전체)"> )<br>
+              • 직사각형을 한 변을 축으로 회전시킨 입체: ( <input type="text" id="p21-shape" class="proof-input-text" style="width:90px;" placeholder="입체도형 이름 (예: 원기둥)"> )
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check21Submit()">✅ 제출 및 채점</button>
+            <div id="p21-err" class="proof-error-notice" style="display:none;"></div>
+          </div>
+        `
+      },
+      '2-2': {
+        mission: "<b>[7.2 개념학습] 회전체의 구성 요소와 모선</b><br>교과서 220쪽: 회전시킬 때 축이 되는 직선과, 회전하여 옆면을 만드는 선분의 명칭을 각각 입력하세요.",
+        formHtml: `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
+            <div style="font-size:0.92rem; margin-bottom:14px; line-height:2.0;">
+              용어를 입력하세요.<br>
+              • 축이 되는 직선: ( <input type="text" id="p22-axis" class="proof-input-text" style="width:90px;" placeholder="용어 (예: 회전축)"> )<br>
+              • 회전하여 옆면을 만드는 선분: ( <input type="text" id="p22-gen" class="proof-input-text" style="width:90px;" placeholder="용어 (예: 모선)"> )
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check22Submit()">✅ 제출 및 채점</button>
+            <div id="p22-err" class="proof-error-notice" style="display:none;"></div>
+          </div>
+        `
+      },
+      '2-3': {
+        mission: "<b>[7.2 단면탐색] 회전체 단면 슬라이서</b><br>교과서 221~222쪽: 좌측 슬라이서에서 단면을 확인하세요. 회전축을 포함하는 평면으로 자른 단면의 대칭 관계와, 회전축에 수직인 평면으로 자른 단면의 모양을 입력하세요.",
+        formHtml: `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
+            <div style="font-size:0.92rem; margin-bottom:14px; line-height:2.0;">
+              단면의 성질을 완성하세요.<br>
+              • 회전축을 포함하는 평면으로 자른 단면: 회전축에 대하여 ( <input type="text" id="p23-axis" class="proof-input-text" style="width:90px;" placeholder="대칭 관계 (예: 선대칭)"> )도형<br>
+              • 회전축에 수직인 평면으로 자른 단면: 항상 ( <input type="text" id="p23-perp" class="proof-input-text" style="width:80px;" placeholder="도형 이름 (예: 원)"> ) 모양
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check23Submit()">✅ 제출 및 채점</button>
+            <div id="p23-err" class="proof-error-notice" style="display:none;"></div>
+          </div>
+        `
+      },
+      '2-4': {
+        mission: "<b>[7.2 전개도] 원기둥과 원뿔의 전개도</b><br>교과서 222쪽: 원기둥의 옆면의 모양과 원뿔의 옆면의 모양을 각각 입력하세요.",
+        formHtml: `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
+            <div style="font-size:0.92rem; margin-bottom:14px; line-height:2.0;">
+              전개도 옆면의 모양을 입력하세요.<br>
+              • 원기둥의 옆면의 모양: ( <input type="text" id="p24-cyl" class="proof-input-text" style="width:100px;" placeholder="도형 이름 (예: 직사각형)"> )<br>
+              • 원뿔의 옆면의 모양: ( <input type="text" id="p24-cone" class="proof-input-text" style="width:100px;" placeholder="도형 이름 (예: 부채꼴)"> )
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800; background:linear-gradient(135deg, #059669, #0284c7);" onclick="check24Submit()">🏆 7.2 소단원 최종 제출</button>
+            <div id="p24-err" class="proof-error-notice" style="display:none;"></div>
+          </div>
+        `
+      },
+      '3-1': {
+        mission: "<b>[7.3 공식유도] 기둥 전개도 펼치기 & 겉넓이 계산</b><br>교과서 223~225쪽: 기둥의 겉넓이 공식을 완성하세요. 기둥의 겉넓이는 (밑넓이 × [   ]) + 옆넓이 입니다.",
+        formHtml: `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
+            <div class="concept-box">
+              💡 <b>기둥의 겉넓이:</b> 기둥은 밑면이 2개이므로 겉넓이 = (밑넓이 × 2) + 옆넓이 입니다.
+            </div>
+            <div style="font-size:0.92rem; margin-bottom:14px; line-height:2.0;">
+              기둥의 겉넓이 공식에서 밑넓이에 곱하는 숫자를 입력하세요.<br>
+              • 겉넓이 = (밑넓이 × <input type="text" id="p31-base" class="proof-input-text" style="width:60px;" placeholder="곱하는 수 (숫자)"> ) + 옆넓이
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check31Submit()">✅ 제출 및 채점</button>
+            <div id="p31-err" class="proof-error-notice" style="display:none;"></div>
+          </div>
+        `
+      },
+      '3-2': {
+        mission: "<b>[7.3 공식적용] 원기둥 겉넓이 공식 계산</b><br>교과서 225쪽: 밑면 반지름 $r = 3\text{ cm}$, 높이 $h = 5\text{ cm}$인 원기둥의 겉넓이를 구하세요. (원주율 $\\pi$ 기호 포함)",
+        formHtml: `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
+            <div style="font-size:0.92rem; margin-bottom:14px; line-height:2.0;">
+              원기둥의 겉넓이를 계산하세요.<br>
+              • 밑넓이 × 2 = $2 \\times \\pi \\times 3^2 = 18\\pi$<br>
+              • 옆넓이 = $2\\pi \\times 3 \\times 5 = 30\\pi$<br>
+              • 원기둥의 겉넓이 = ( <input type="text" id="p32-s" class="proof-input-text" style="width:90px;" placeholder="겉넓이 (pi 포함)"> ) cm²
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check32Submit()">✅ 제출 및 채점</button>
+            <div id="p32-err" class="proof-error-notice" style="display:none;"></div>
+          </div>
+        `
+      },
+      '3-3': {
+        mission: "<b>[7.3 부피공식] 기둥의 부피 (V = Sh)</b><br>교과서 226~227쪽: 밑면 반지름 $r = 3\text{ cm}$, 높이 $h = 5\text{ cm}$인 원기둥의 부피를 구하세요. (원주율 $\\pi$ 기호 포함)",
+        formHtml: `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
+            <div style="font-size:0.92rem; margin-bottom:14px; line-height:2.0;">
+              기둥의 부피 = 밑넓이($S$) × 높이($h$)<br>
+              • 원기둥의 부피 = ( <input type="text" id="p33-v" class="proof-input-text" style="width:90px;" placeholder="부피 (pi 포함)"> ) cm³
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800; background:linear-gradient(135deg, #0284c7, #4f46e5);" onclick="check33Submit()">🏆 7.3 소단원 최종 제출</button>
+            <div id="p33-err" class="proof-error-notice" style="display:none;"></div>
+          </div>
+        `
+      },
+      '4-1': {
+        mission: "<b>[7.4 공식유도] 뿔의 부피 물 채우기 실험실</b><br>교과서 228~230쪽: 좌측 실험실에서 뿔에 물을 채워 기둥에 붓는 과정을 확인하세요. 밑면과 높이가 같은 뿔의 부피는 기둥의 부피의 몇 분의 몇인가요?",
+        formHtml: `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
+            <div style="font-size:0.92rem; margin-bottom:14px; line-height:2.0;">
+              기둥 부피에 대한 뿔의 부피의 비율을 입력하세요.<br>
+              • 뿔의 부피 = 기둥 부피의 ( <input type="text" id="p41-ratio" class="proof-input-text" style="width:80px;" placeholder="분수 (예: 1/2)"> )
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check41Submit()">✅ 제출 및 채점</button>
+            <div id="p41-err" class="proof-error-notice" style="display:none;"></div>
+          </div>
+        `
+      },
+      '4-2': {
+        mission: "<b>[7.4 공식적용] 뿔의 겉넓이 공식 계산</b><br>교과서 231쪽: 밑면 반지름 $r = 4\text{ cm}$, 모선의 길이 $l = 10\text{ cm}$인 원뿔의 겉넓이를 구하세요. (원주율 $\\pi$ 기호 포함)",
+        formHtml: `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
+            <div style="font-size:0.92rem; margin-bottom:14px; line-height:2.0;">
+              원뿔의 겉넓이 = 밑넓이($\\pi r^2$) + 옆넓이($\\pi r l$)<br>
+              • 밑넓이 = $\\pi \\times 4^2 = 16\\pi$<br>
+              • 옆넓이 = $\\pi \\times 4 \\times 10 = 40\\pi$<br>
+              • 원뿔의 겉넓이 = ( <input type="text" id="p42-s" class="proof-input-text" style="width:90px;" placeholder="겉넓이 (pi 포함)"> ) cm²
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check42Submit()">✅ 제출 및 채점</button>
+            <div id="p42-err" class="proof-error-notice" style="display:none;"></div>
+          </div>
+        `
+      },
+      '4-3': {
+        mission: "<b>[7.4 공식적용] 각뿔의 부피 계산</b><br>교과서 232쪽: 밑면이 한 변의 길이가 $6\text{ cm}$인 정사각형이고 높이가 $8\text{ cm}$인 사각뿔의 부피를 구하세요.",
+        formHtml: `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
+            <div style="font-size:0.92rem; margin-bottom:14px; line-height:2.0;">
+              뿔의 부피 $V = \\frac{1}{3} \\times S \\times h$<br>
+              • 밑넓이 $S = 6 \\times 6 = 36\text{ cm}^2$<br>
+              • 사각뿔의 부피 = ( <input type="text" id="p43-v" class="proof-input-text" style="width:90px;" placeholder="부피 (숫자)"> ) cm³
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800; background:linear-gradient(135deg, #059669, #0284c7);" onclick="check43Submit()">🏆 7.4 소단원 최종 제출</button>
+            <div id="p43-err" class="proof-error-notice" style="display:none;"></div>
+          </div>
+        `
+      },
+      '5-1': {
+        mission: "<b>[7.5 공식유도] 구의 겉넓이 끈 감기 실험실</b><br>교과서 233~235쪽: 좌측 실험실에서 끈 감기 과정을 관찰하세요. 반지름이 $r$인 구의 겉넓이는 반지름이 $r$인 평면 원의 넓이($\\pi r^2$)의 몇 배인가요?",
+        formHtml: `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
+            <div class="concept-box">
+              💡 <b>구의 겉넓이:</b> 반지름이 $r$인 구의 겉넓이는 반지름이 $r$인 원의 넓이($\\pi r^2$)의 4배이므로 $S = 4\\pi r^2$ 입니다.
+            </div>
+            <div style="font-size:0.92rem; margin-bottom:14px; line-height:2.0;">
+              반지름이 $r$인 원의 넓이의 몇 배인지 입력하세요.<br>
+              • 구의 겉넓이 = ( <input type="text" id="p51-ratio" class="proof-input-text" style="width:80px;" placeholder="배수 (숫자)"> ) 배 ($S = 4\\pi r^2$)
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check51Submit()">✅ 제출 및 채점</button>
+            <div id="p51-err" class="proof-error-notice" style="display:none;"></div>
+          </div>
+        `
+      },
+      '5-2': {
+        mission: "<b>[7.5 공식유도] 구의 부피 공식 계산</b><br>교과서 236~237쪽: 반지름 $r = 3\text{ cm}$인 구의 부피를 구하세요. (공식 $V = \\frac{4}{3}\\pi r^3$, 원주율 $\\pi$ 기호 포함)",
+        formHtml: `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
+            <div style="font-size:0.92rem; margin-bottom:14px; line-height:2.0;">
+              구의 부피 $V = \\frac{4}{3}\\pi \\times 3^3 = \\frac{4}{3}\\pi \\times 27$<br>
+              • 구의 부피 = ( <input type="text" id="p52-v" class="proof-input-text" style="width:90px;" placeholder="부피 (pi 포함)"> ) cm³
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800;" onclick="check52Submit()">✅ 제출 및 채점</button>
+            <div id="p52-err" class="proof-error-notice" style="display:none;"></div>
+          </div>
+        `
+      },
+      '5-3': {
+        mission: "<b>[7.5 창의융합] 아르키메데스의 묘비: 3:2:1 황금비율</b><br>교과서 241쪽: 밑면의 지름과 높이가 같은 원기둥, 구, 원뿔의 부피의 비를 가장 간단한 자연수의 비로 나타내세요.",
+        formHtml: `
+          <div class="card" style="background:#ffffff; border:2px solid #cbd5e1; padding:18px; border-radius:12px;">
+            <div style="font-size:0.92rem; margin-bottom:14px; line-height:2.0;">
+              (원기둥의 부피) : (구의 부피) : (원뿔의 부피)를 입력하세요.<br>
+              • 부피의 비: ( <input type="text" id="p53-ratio" class="proof-input-text" style="width:100px;" placeholder="비율 (예: 3:2:1)"> )
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:800; background:linear-gradient(135deg, #ec4899, #4f46e5);" onclick="check53Submit()">🏆 7단원 입체도형 완주 및 최종 제출</button>
+            <div id="p53-err" class="proof-error-notice" style="display:none;"></div>
+          </div>
+        `
+      }
+    };
+  
 
-undefined
+// Chapter 7 Interactive Canvas Drawers and Simulators (Two.js)
+// Ⅶ. 입체도형 10대 인터랙티브 시뮬레이터 및 전 서브스텝 기하 렌더러
+
+const ch7SimState = {
+  polyFoldStep: 1,      // 1-1 다면체 전개도 접기 단계 (1: 전개도, 2: 반접힘, 3: 완전 조립 입체)
+  platonicType: 'tetra',// 1-3 정다면체 선택 (tetra: 정사면체, cube: 정육면체, octa: 정팔면체, dodeca: 정십이면체, icosa: 정이십면체)
+  eulerPoly: 'cube',    // 1-4 오일러 정리 다면체 (cube, tetra, octa, pentaprism, hexapyramid)
+  revType: 'cylinder',  // 2-1 회전체 선택 (cylinder, cone, frustum, sphere)
+  revProgress: 1,       // 2-1 회전 진행도 (0 ~ 1)
+  sliceType: 'axis',    // 2-3 회전체 단면 (axis: 회전축 포함, perp: 회전축 수직)
+  prismUnfold: 1,       // 3-1 기둥 전개도 펼침 단계 (1: 입체, 2: 반펼침, 3: 전개도)
+  waterStep: 1,         // 4-1 뿔의 부피 물 채우기 단계 (1: 1/3, 2: 2/3, 3: 3/3 가득 참)
+  sphereCordStep: 1,    // 5-1 구의 겉넓이 끈 감기 단계 (1: 반구 끈 감기, 2: 풀기, 3: 원 4개 매칭)
+  archimedesView: 'all' // 5-3 아르키메데스 3:2:1 (all: 3개 동시, cylinder, sphere, cone)
+};
+window.ch7SimState = ch7SimState;
+
+function setupSubstepSimulator(two, code, simController) {
+  if (!two) return;
+  two.clear();
+  if (simController) {
+    simController.style.display = 'block';
+  }
+
+  const w = two.width || 600;
+  const h = two.height || 480;
+  const cx = w / 2;
+  const cy = h / 2;
+
+  // --- 0-1: [되짚어 보기 1] 직육면체와 각기둥 (초등 5~6학년) ---
+  if (code === '0-1') {
+    // 3D Cuboid Isometric wireframe
+    const x1 = cx - 120, y1 = cy - 20;
+    const cw = 110, ch = 80, cd = 50;
+
+    // Front rect
+    two.makeRectangle(x1, y1, cw, ch).fill = 'rgba(2, 132, 199, 0.2)';
+    two.makeRectangle(x1, y1, cw, ch).stroke = '#0284c7';
+    // Back rect
+    two.makeRectangle(x1 + cd*0.6, y1 - cd*0.5, cw, ch).stroke = '#94a3b8';
+    // Connect corners
+    two.makeLine(x1 - cw/2, y1 - ch/2, x1 - cw/2 + cd*0.6, y1 - ch/2 - cd*0.5).stroke = '#0284c7';
+    two.makeLine(x1 + cw/2, y1 - ch/2, x1 + cw/2 + cd*0.6, y1 - ch/2 - cd*0.5).stroke = '#0284c7';
+    two.makeLine(x1 + cw/2, y1 + ch/2, x1 + cw/2 + cd*0.6, y1 + ch/2 - cd*0.5).stroke = '#0284c7';
+
+    // Labels
+    two.makeText('직육면체 (사각기둥)', x1, y1 + ch/2 + 35).fill = '#0284c7';
+    two.makeText('꼭짓점 8개, 모서리 12개, 면 6개', x1, y1 + ch/2 + 55).fill = '#475569';
+
+    // Right: Triangular Prism
+    const x2 = cx + 120, y2 = cy - 20;
+    const tri1 = two.makePolygon(x2, y2 - 40, 45, 3); tri1.fill = 'rgba(5, 150, 105, 0.2)'; tri1.stroke = '#059669';
+    const tri2 = two.makePolygon(x2, y2 + 40, 45, 3); tri2.fill = 'rgba(5, 150, 105, 0.2)'; tri2.stroke = '#059669';
+    two.makeLine(x2 - 35, y2 - 20, x2 - 35, y2 + 60).stroke = '#059669';
+    two.makeLine(x2 + 35, y2 - 20, x2 + 35, y2 + 60).stroke = '#059669';
+    two.makeLine(x2, y2 - 75, x2, y2 + 5).stroke = '#059669';
+
+    two.makeText('삼각기둥', x2, y2 + 75).fill = '#059669';
+    two.makeText('꼭짓점 6개, 모서리 9개, 면 5개', x2, y2 + 95).fill = '#475569';
+
+    const title = two.makeText('초등 복습: 직육면체와 각기둥의 꼭짓점·모서리·면', cx, 40);
+    title.size = 15; title.weight = 800; title.fill = '#1e293b';
+  }
+
+  // --- 0-2: [되짚어 보기 2] 원기둥과 원뿔의 구성 요소 (초등 6학년) ---
+  else if (code === '0-2') {
+    const x1 = cx - 110, y1 = cy;
+    // Cylinder
+    two.makeEllipse(x1, y1 - 45, 45, 16).fill = 'rgba(236, 72, 153, 0.25)'; two.makeEllipse(x1, y1 - 45, 45, 16).stroke = '#ec4899';
+    two.makeEllipse(x1, y1 + 45, 45, 16).fill = 'rgba(236, 72, 153, 0.25)'; two.makeEllipse(x1, y1 + 45, 45, 16).stroke = '#ec4899';
+    two.makeLine(x1 - 45, y1 - 45, x1 - 45, y1 + 45).stroke = '#ec4899';
+    two.makeLine(x1 + 45, y1 - 45, x1 + 45, y1 + 45).stroke = '#ec4899';
+
+    two.makeText('원기둥 (밑면 2개, 옆면 굽은 면)', x1, y1 + 80).fill = '#ec4899';
+
+    // Cone
+    const x2 = cx + 110, y2 = cy;
+    two.makeEllipse(x2, y2 + 45, 45, 16).fill = 'rgba(217, 119, 6, 0.25)'; two.makeEllipse(x2, y2 + 45, 45, 16).stroke = '#d97706';
+    two.makeLine(x2 - 45, y2 + 45, x2, y2 - 50).stroke = '#d97706';
+    two.makeLine(x2 + 45, y2 + 45, x2, y2 - 50).stroke = '#d97706';
+    two.makeCircle(x2, y2 - 50, 4).fill = '#dc2626';
+
+    two.makeText('원뿔 (꼭짓점 1개, 밑면 1개)', x2, y2 + 80).fill = '#d97706';
+
+    const title = two.makeText('초등 복습: 원기둥과 원뿔의 구성 요소', cx, 40);
+    title.size = 16; title.weight = 800; title.fill = '#1e293b';
+  }
+
+  // --- 0-3: [되짚어 보기 3] 직육면체 겉넓이와 부피 기초 (초등 6학년) ---
+  else if (code === '0-3') {
+    const x = cx, y = cy - 10;
+    two.makeRectangle(x, y, 140, 90).fill = 'rgba(99, 102, 241, 0.2)'; two.makeRectangle(x, y, 140, 90).stroke = '#4f46e5';
+    two.makeRectangle(x + 35, y - 30, 140, 90).stroke = '#94a3b8';
+    two.makeLine(x - 70, y - 45, x - 35, y - 75).stroke = '#4f46e5';
+    two.makeLine(x + 70, y - 45, x + 105, y - 75).stroke = '#4f46e5';
+    two.makeLine(x + 70, y + 45, x + 105, y + 15).stroke = '#4f46e5';
+
+    two.makeText('가로 4 cm', x, y + 60).fill = '#1e293b';
+    two.makeText('세로 3 cm', x + 95, y - 20).fill = '#1e293b';
+    two.makeText('높이 5 cm', x - 90, y).fill = '#1e293b';
+
+    two.makeText('• 겉넓이 = 2 × (4×3 + 3×5 + 4×5) = 2 × 47 = 94 cm²', cx, cy + 90).fill = '#0284c7';
+    two.makeText('• 부피 = 4 × 3 × 5 = 60 cm³', cx, cy + 115).fill = '#059669';
+
+    const title = two.makeText('초등 복습: 직육면체의 겉넓이와 부피 공식', cx, 40);
+    title.size = 16; title.weight = 800; title.fill = '#1e293b';
+  }
+
+  // --- 1-1: [7.1 개념열기] 다면체 전개도 접기 & 입체 조립기 (10대 시뮬레이터 #1) ---
+  else if (code === '1-1') {
+    const step = ch7SimState.polyFoldStep; // 1: 전개도, 2: 반접힘, 3: 입체 완성
+
+    if (simController) {
+      simController.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+          <span style="font-weight:800; color:#1e40af; font-size:0.92rem;">📦 다면체 전개도 접기 & 입체 조립기 (교과서 212~214쪽)</span>
+          <span id="fold-badge" style="background:#eff6ff; color:#1d4ed8; font-weight:800; padding:3px 10px; border-radius:12px; font-size:0.82rem; border:1px solid #bfdbfe;">
+            ${step === 1 ? '1. 평면 전개도 펼침' : (step === 2 ? '2. 옆면 45° 접힘 진행 중' : '3. 완벽한 사각뿔 입체 조립 완료! ✨')}
+          </span>
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+          <button class="tool-btn ${step === 1 ? 'active' : ''}" style="font-weight:700;" onclick="setPolyFoldStep(1)">1. 평면 전개도</button>
+          <button class="tool-btn ${step === 2 ? 'active' : ''}" style="font-weight:700;" onclick="setPolyFoldStep(2)">2. 45° 입체 접기</button>
+          <button class="tool-btn ${step === 3 ? 'active' : ''}" style="font-weight:800; background:#dcfce7; color:#15803d;" onclick="setPolyFoldStep(3)">3. 사각뿔 입체 완성! (오면체)</button>
+        </div>
+      `;
+    }
+
+    if (step === 1) {
+      // Net of square pyramid: square at center + 4 triangles
+      const s = 65;
+      two.makeRectangle(cx, cy, s, s).fill = 'rgba(2, 132, 199, 0.3)'; two.makeRectangle(cx, cy, s, s).stroke = '#0284c7';
+      // Top tri
+      two.makePath(cx - s/2, cy - s/2, cx + s/2, cy - s/2, cx, cy - s/2 - 60, true).fill = 'rgba(236, 72, 153, 0.25)';
+      // Bottom tri
+      two.makePath(cx - s/2, cy + s/2, cx + s/2, cy + s/2, cx, cy + s/2 + 60, true).fill = 'rgba(236, 72, 153, 0.25)';
+      // Left tri
+      two.makePath(cx - s/2, cy - s/2, cx - s/2, cy + s/2, cx - s/2 - 60, cy, true).fill = 'rgba(236, 72, 153, 0.25)';
+      // Right tri
+      two.makePath(cx + s/2, cy - s/2, cx + s/2, cy + s/2, cx + s/2 + 60, cy, true).fill = 'rgba(236, 72, 153, 0.25)';
+
+      two.makeText('밑면 (정사각형)', cx, cy).fill = '#0284c7';
+      two.makeText('옆면 4개 (이등변삼각형)', cx, cy - 85).fill = '#ec4899';
+    } else if (step === 2) {
+      // Semi-folded
+      const s = 65;
+      two.makeRectangle(cx, cy + 20, s, s * 0.7).fill = 'rgba(2, 132, 199, 0.3)';
+      two.makePath(cx - s/2, cy + 20 - s*0.35, cx + s/2, cy + 20 - s*0.35, cx, cy - 40, true).stroke = '#ec4899';
+      two.makePath(cx - s/2, cy + 20 + s*0.35, cx + s/2, cy + 20 + s*0.35, cx, cy - 40, true).stroke = '#ec4899';
+      two.makeText('모든 옆면이 꼭짓점을 향해 모여드는 중...', cx, cy + 85).fill = '#475569';
+    } else if (step === 3) {
+      // 3D Square Pyramid wireframe
+      const bx = cx, by = cy + 40;
+      const bw = 90, bh = 40, topY = cy - 70;
+      two.makePolygon(bx, by, 50, 4).fill = 'rgba(2, 132, 199, 0.25)';
+      two.makeLine(bx - 45, by, bx, topY).stroke = '#0284c7'; two.makeLine(bx - 45, by, bx, topY).linewidth = 2.5;
+      two.makeLine(bx + 45, by, bx, topY).stroke = '#0284c7'; two.makeLine(bx + 45, by, bx, topY).linewidth = 2.5;
+      two.makeLine(bx, by + 25, bx, topY).stroke = '#0284c7'; two.makeLine(bx, by + 25, bx, topY).linewidth = 2.5;
+      const hiddenLine = two.makeLine(bx, by - 25, bx, topY); hiddenLine.stroke = '#94a3b8'; hiddenLine.dashes = [4, 4];
+
+      two.makeCircle(bx, topY, 5).fill = '#dc2626';
+      two.makeText('사각뿔 완성: 면 5개(오면체), 모서리 8개, 꼭짓점 5개', cx, cy + 85).fill = '#15803d';
+    }
+
+    const title = two.makeText('다면체: 다각형인 면으로만 둘러싸인 입체도형 (면의 수에 따라 사면체, 오면체...)', cx, 40);
+    title.size = 14.5; title.weight = 800; title.fill = '#1e293b';
+  }
+
+  // --- 1-2: [7.1 개념학습] 각기둥, 각뿔, 각뿔대 ---
+  else if (code === '1-2') {
+    const x1 = cx - 140, x2 = cx, x3 = cx + 140;
+    const y = cy - 10;
+
+    // Prism
+    two.makeRectangle(x1, y, 60, 80).fill = 'rgba(2, 132, 199, 0.2)'; two.makeRectangle(x1, y, 60, 80).stroke = '#0284c7';
+    two.makeText('n각기둥', x1, y + 60).fill = '#0284c7';
+    two.makeText('면: n + 2', x1, y + 80).fill = '#1e293b';
+    two.makeText('모서리: 3n', x1, y + 98).fill = '#1e293b';
+    two.makeText('꼭짓점: 2n', x1, y + 116).fill = '#1e293b';
+
+    // Pyramid
+    two.makePath(x2 - 35, y + 40, x2 + 35, y + 40, x2, y - 40, true).fill = 'rgba(236, 72, 153, 0.2)';
+    two.makeText('n각뿔', x2, y + 60).fill = '#ec4899';
+    two.makeText('면: n + 1', x2, y + 80).fill = '#1e293b';
+    two.makeText('모서리: 2n', x2, y + 98).fill = '#1e293b';
+    two.makeText('꼭짓점: n + 1', x2, y + 116).fill = '#1e293b';
+
+    // Frustum
+    two.makePath(x3 - 40, y + 40, x3 + 40, y + 40, x3 + 22, y - 40, x3 - 22, y - 40, true).fill = 'rgba(5, 150, 105, 0.2)';
+    two.makeText('n각뿔대', x3, y + 60).fill = '#059669';
+    two.makeText('면: n + 2', x3, y + 80).fill = '#1e293b';
+    two.makeText('모서리: 3n', x3, y + 98).fill = '#1e293b';
+    two.makeText('꼭짓점: 2n', x3, y + 116).fill = '#1e293b';
+
+    const title = two.makeText('각기둥, 각뿔, 각뿔대의 면, 모서리, 꼭짓점의 개수 공식', cx, 40);
+    title.size = 15; title.weight = 800; title.fill = '#1e293b';
+  }
+
+  // --- 1-3: [7.1 탐구활동] 5가지 정다면체 회전 갤러리 (10대 시뮬레이터 #2) ---
+  else if (code === '1-3') {
+    const p = ch7SimState.platonicType;
+
+    if (simController) {
+      simController.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+          <span style="font-weight:800; color:#1e40af; font-size:0.92rem;">💎 5가지 정다면체 3D 갤러리 (교과서 215~217쪽)</span>
+          <span id="platonic-badge" style="background:#eff6ff; color:#1d4ed8; font-weight:800; padding:3px 10px; border-radius:12px; font-size:0.82rem; border:1px solid #bfdbfe;">
+            ${p === 'tetra' ? '정사면체 (정삼각형 4개, 꼭짓점 4, 모서리 6)' : (p === 'cube' ? '정육면체 (정사각형 6개, 꼭짓점 8, 모서리 12)' : (p === 'octa' ? '정팔면체 (정삼각형 8개, 꼭짓점 6, 모서리 12)' : (p === 'dodeca' ? '정십이면체 (정오각형 12개, 꼭짓점 20, 모서리 30)' : '정이십면체 (정삼각형 20개, 꼭짓점 12, 모서리 30)')))}
+          </span>
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+          <button class="tool-btn ${p === 'tetra' ? 'active' : ''}" style="font-weight:700;" onclick="setPlatonicType('tetra')">1. 정사면체</button>
+          <button class="tool-btn ${p === 'cube' ? 'active' : ''}" style="font-weight:700;" onclick="setPlatonicType('cube')">2. 정육면체</button>
+          <button class="tool-btn ${p === 'octa' ? 'active' : ''}" style="font-weight:700;" onclick="setPlatonicType('octa')">3. 정팔면체</button>
+          <button class="tool-btn ${p === 'dodeca' ? 'active' : ''}" style="font-weight:700;" onclick="setPlatonicType('dodeca')">4. 정십이면체</button>
+          <button class="tool-btn ${p === 'icosa' ? 'active' : ''}" style="font-weight:700;" onclick="setPlatonicType('icosa')">5. 정이십면체</button>
+        </div>
+      `;
+    }
+
+    if (p === 'tetra') {
+      const top = { x: cx, y: cy - 70 };
+      const b1 = { x: cx - 60, y: cy + 40 };
+      const b2 = { x: cx + 60, y: cy + 40 };
+      const b3 = { x: cx, y: cy + 60 };
+      two.makePath(top.x, top.y, b1.x, b1.y, b3.x, b3.y, true).fill = 'rgba(236, 72, 153, 0.35)';
+      two.makePath(top.x, top.y, b2.x, b2.y, b3.x, b3.y, true).fill = 'rgba(236, 72, 153, 0.2)';
+      two.makeText('면의 모양: 정삼각형 (한 꼭짓점에 3개 모임)', cx, cy + 95).fill = '#ec4899';
+    } else if (p === 'cube') {
+      two.makeRectangle(cx - 15, cy + 15, 80, 80).fill = 'rgba(2, 132, 199, 0.35)';
+      two.makeRectangle(cx + 15, cy - 15, 80, 80).stroke = '#0284c7';
+      two.makeLine(cx - 55, cy - 25, cx - 25, cy - 55).stroke = '#0284c7';
+      two.makeLine(cx + 25, cy - 25, cx + 55, cy - 55).stroke = '#0284c7';
+      two.makeLine(cx + 25, cy + 55, cx + 55, cy + 25).stroke = '#0284c7';
+      two.makeText('면의 모양: 정사각형 (한 꼭짓점에 3개 모임)', cx, cy + 95).fill = '#0284c7';
+    } else if (p === 'octa') {
+      two.makePolygon(cx, cy, 65, 4).fill = 'rgba(5, 150, 105, 0.3)';
+      two.makeLine(cx - 65, cy, cx, cy - 75).stroke = '#059669'; two.makeLine(cx + 65, cy, cx, cy - 75).stroke = '#059669';
+      two.makeLine(cx - 65, cy, cx, cy + 75).stroke = '#059669'; two.makeLine(cx + 65, cy, cx, cy + 75).stroke = '#059669';
+      two.makeText('면의 모양: 정삼각형 (한 꼭짓점에 4개 모임)', cx, cy + 95).fill = '#059669';
+    } else if (p === 'dodeca') {
+      two.makePolygon(cx, cy, 70, 5).fill = 'rgba(217, 119, 6, 0.3)';
+      for (let i = 0; i < 5; i++) {
+        const rad = i * 2 * Math.PI / 5 - Math.PI / 2;
+        two.makeCircle(cx + 70 * Math.cos(rad), cy + 70 * Math.sin(rad), 4).fill = '#d97706';
+      }
+      two.makeText('면의 모양: 정오각형 (한 꼭짓점에 3개 모임)', cx, cy + 95).fill = '#d97706';
+    } else {
+      two.makePolygon(cx, cy, 75, 6).fill = 'rgba(124, 58, 237, 0.3)';
+      two.makeLine(cx, cy - 75, cx, cy + 75).stroke = '#7c3aed';
+      two.makeText('면의 모양: 정삼각형 (한 꼭짓점에 5개 모임)', cx, cy + 95).fill = '#7c3aed';
+    }
+
+    const title = two.makeText('정다면체는 오직 5가지만 존재한다! (한 꼭짓점에 모인 내각의 합 < 360°)', cx, 40);
+    title.size = 15; title.weight = 800; title.fill = '#1e293b';
+  }
+
+  // --- 1-4: [7.1 공식유도] 오일러 다면체 정리 실험실 (10대 시뮬레이터 #3) ---
+  else if (code === '1-4') {
+    const poly = ch7SimState.eulerPoly;
+    let v = 8, e = 12, f = 6, name = '정육면체';
+    if (poly === 'tetra') { v = 4; e = 6; f = 4; name = '정사면체'; }
+    else if (poly === 'octa') { v = 6; e = 12; f = 8; name = '정팔면체'; }
+    else if (poly === 'pentaprism') { v = 10; e = 15; f = 7; name = '오각기둥'; }
+    else if (poly === 'hexapyramid') { v = 7; e = 12; f = 7; name = '육각뿔'; }
+
+    if (simController) {
+      simController.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+          <span style="font-weight:800; color:#1e40af; font-size:0.92rem;">📐 오일러 다면체 정리 실험실: v - e + f = 2 (교과서 217쪽)</span>
+          <span id="euler-badge" style="background:#eff6ff; color:#1d4ed8; font-weight:800; padding:3px 10px; border-radius:12px; font-size:0.82rem; border:1px solid #bfdbfe;">
+            ${name}: ${v} - ${e} + ${f} = ${v - e + f} (항상 2 성립!) ✨
+          </span>
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+          <button class="tool-btn ${poly === 'cube' ? 'active' : ''}" style="font-weight:700;" onclick="setEulerPoly('cube')">정육면체</button>
+          <button class="tool-btn ${poly === 'tetra' ? 'active' : ''}" style="font-weight:700;" onclick="setEulerPoly('tetra')">정사면체</button>
+          <button class="tool-btn ${poly === 'octa' ? 'active' : ''}" style="font-weight:700;" onclick="setEulerPoly('octa')">정팔면체</button>
+          <button class="tool-btn ${poly === 'pentaprism' ? 'active' : ''}" style="font-weight:700;" onclick="setEulerPoly('pentaprism')">오각기둥</button>
+          <button class="tool-btn ${poly === 'hexapyramid' ? 'active' : ''}" style="font-weight:700;" onclick="setEulerPoly('hexapyramid')">육각뿔</button>
+        </div>
+      `;
+    }
+
+    // Card showing formula
+    const card = two.makeRoundedRectangle(cx, cy, 260, 120, 12);
+    card.fill = 'rgba(240, 253, 244, 0.7)'; card.stroke = '#86efac'; card.linewidth = 2;
+
+    two.makeText(`${name}의 오일러 공식 검증`, cx, cy - 35).fill = '#15803d';
+    two.makeText(`꼭짓점(v) = ${v},  모서리(e) = ${e},  면(f) = ${f}`, cx, cy - 5).fill = '#1e293b';
+    const resTxt = two.makeText(`v - e + f = ${v} - ${e} + ${f} = 2 ✨`, cx, cy + 28);
+    resTxt.size = 16; resTxt.weight = 800; resTxt.fill = '#059669';
+
+    const title = two.makeText('모든 다면체에서 항상 성립하는 법칙: 꼭짓점 - 모서리 + 면 = 2', cx, 40);
+    title.size = 15; title.weight = 800; title.fill = '#1e293b';
+  }
+
+  // --- 2-1: [7.2 개념열기] 회전체 360° 고속 회전 생성기 (10대 시뮬레이터 #4) ---
+  else if (code === '2-1') {
+    const t = ch7SimState.revType; // cylinder, cone, frustum, sphere
+    const prog = ch7SimState.revProgress;
+
+    if (simController) {
+      simController.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+          <span style="font-weight:800; color:#1e40af; font-size:0.92rem;">🌀 회전체 360° 고속 회전 생성기 (교과서 218~220쪽)</span>
+          <span id="rev-badge" style="background:#eff6ff; color:#1d4ed8; font-weight:800; padding:3px 10px; border-radius:12px; font-size:0.82rem; border:1px solid #bfdbfe;">
+            ${t === 'cylinder' ? '직사각형 회전 ➔ 원기둥' : (t === 'cone' ? '직각삼각형 회전 ➔ 원뿔' : (t === 'frustum' ? '사다리꼴 회전 ➔ 원뿔대' : '반원 회전 ➔ 구'))}
+          </span>
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+          <button class="tool-btn ${t === 'cylinder' ? 'active' : ''}" style="font-weight:700;" onclick="setRevType('cylinder')">1. 원기둥</button>
+          <button class="tool-btn ${t === 'cone' ? 'active' : ''}" style="font-weight:700;" onclick="setRevType('cone')">2. 원뿔</button>
+          <button class="tool-btn ${t === 'frustum' ? 'active' : ''}" style="font-weight:700;" onclick="setRevType('frustum')">3. 원뿔대</button>
+          <button class="tool-btn ${t === 'sphere' ? 'active' : ''}" style="font-weight:700;" onclick="setRevType('sphere')">4. 구</button>
+        </div>
+      `;
+    }
+
+    // Rotation axis line
+    const axis = two.makeLine(cx, cy - 90, cx, cy + 90);
+    axis.stroke = '#dc2626'; axis.linewidth = 2.5; axis.dashes = [5, 4];
+    two.makeText('회전축 l', cx, cy - 100).fill = '#dc2626';
+
+    if (t === 'cylinder') {
+      // 2D plane generator: rectangle on right of axis
+      two.makeRectangle(cx + 35, cy, 70, 100).fill = 'rgba(2, 132, 199, 0.4)'; two.makeRectangle(cx + 35, cy, 70, 100).stroke = '#0284c7';
+      // 3D Revolution ellipses
+      two.makeEllipse(cx, cy - 50, 70, 18).stroke = '#0284c7';
+      two.makeEllipse(cx, cy + 50, 70, 18).stroke = '#0284c7';
+      two.makeLine(cx - 70, cy - 50, cx - 70, cy + 50).stroke = '#0284c7';
+      two.makeText('직사각형 1회전 ➔ 원기둥 완성', cx, cy + 85).fill = '#0284c7';
+    } else if (t === 'cone') {
+      two.makePath(cx, cy + 50, cx + 70, cy + 50, cx, cy - 50, true).fill = 'rgba(236, 72, 153, 0.4)';
+      two.makeEllipse(cx, cy + 50, 70, 18).stroke = '#ec4899';
+      two.makeLine(cx - 70, cy + 50, cx, cy - 50).stroke = '#ec4899';
+      two.makeText('직각삼각형 1회전 ➔ 원뿔 완성', cx, cy + 85).fill = '#ec4899';
+    } else if (t === 'frustum') {
+      two.makePath(cx, cy + 50, cx + 70, cy + 50, cx + 40, cy - 40, cx, cy - 40, true).fill = 'rgba(5, 150, 105, 0.4)';
+      two.makeEllipse(cx, cy - 40, 40, 12).stroke = '#059669';
+      two.makeEllipse(cx, cy + 50, 70, 18).stroke = '#059669';
+      two.makeLine(cx - 70, cy + 50, cx - 40, cy - 40).stroke = '#059669';
+      two.makeText('사다리꼴 1회전 ➔ 원뿔대 완성', cx, cy + 85).fill = '#059669';
+    } else {
+      two.makeArcSegment(cx, cy, 0, 70, -Math.PI/2, Math.PI/2).fill = 'rgba(217, 119, 6, 0.4)';
+      two.makeCircle(cx, cy, 70).stroke = '#d97706';
+      two.makeEllipse(cx, cy, 70, 20).stroke = '#d97706';
+      two.makeText('반원 1회전 ➔ 구 완성', cx, cy + 85).fill = '#d97706';
+    }
+
+    const title = two.makeText('평면도형을 한 직선(회전축)을 중심으로 1회전 시켜 생기는 입체도형 = 회전체', cx, 40);
+    title.size = 14.5; title.weight = 800; title.fill = '#1e293b';
+  }
+
+  // --- 2-2: [7.2 개념학습] 회전체의 구성 요소 ---
+  else if (code === '2-2') {
+    const title = two.makeText('회전체의 구성 요소: 회전축, 모선, 밑면, 옆면', cx, 40);
+    title.size = 16; title.weight = 800; title.fill = '#1e293b';
+
+    two.makeText('• 회전축: 회전시킬 때 축이 되는 직선 l', cx, cy - 30).fill = '#0284c7';
+    two.makeText('• 모선: 회전하여 옆면을 만드는 선분', cx, cy + 5).fill = '#ec4899';
+    two.makeText('• 원뿔대: 원뿔을 밑면에 평행한 평면으로 잘라 생기는 두 입체도형 중 원뿔이 아닌 부분', cx, cy + 40).fill = '#059669';
+  }
+
+  // --- 2-3: [7.2 단면탐색] 회전체 단면 슬라이서 (10대 시뮬레이터 #5) ---
+  else if (code === '2-3') {
+    const s = ch7SimState.sliceType; // axis (선대칭), perp (원)
+
+    if (simController) {
+      simController.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+          <span style="font-weight:800; color:#1e40af; font-size:0.92rem;">🔪 회전체 단면 슬라이서 (교과서 221~222쪽)</span>
+          <span id="slice-badge" style="background:#eff6ff; color:#1d4ed8; font-weight:800; padding:3px 10px; border-radius:12px; font-size:0.82rem; border:1px solid #bfdbfe;">
+            ${s === 'axis' ? '회전축을 포함하는 평면으로 자른 단면 ➔ 회전축에 선대칭!' : '회전축에 수직인 평면으로 자른 단면 ➔ 항상 원!'}
+          </span>
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+          <button class="tool-btn ${s === 'axis' ? 'active' : ''}" style="font-weight:700;" onclick="setSliceType('axis')">1. 회전축 포함 단면 (선대칭)</button>
+          <button class="tool-btn ${s === 'perp' ? 'active' : ''}" style="font-weight:700;" onclick="setSliceType('perp')">2. 회전축 수직 단면 (항상 원)</button>
+        </div>
+      `;
+    }
+
+    if (s === 'axis') {
+      // Cone cut by axis -> Isosceles triangle
+      const tri = two.makePolygon(cx, cy, 65, 3);
+      tri.fill = 'rgba(236, 72, 153, 0.4)'; tri.stroke = '#ec4899'; tri.linewidth = 3;
+      const axis = two.makeLine(cx, cy - 80, cx, cy + 80);
+      axis.stroke = '#dc2626'; axis.dashes = [4, 4];
+      two.makeText('원뿔을 회전축 포함 평면으로 자르면: 이등변삼각형 (회전축 선대칭)', cx, cy + 85).fill = '#ec4899';
+    } else {
+      // Cut perpendicular -> perfect circle
+      const circ = two.makeCircle(cx, cy, 55);
+      circ.fill = 'rgba(2, 132, 199, 0.4)'; circ.stroke = '#0284c7'; circ.linewidth = 3;
+      two.makeText('원뿔, 원기둥, 구 등을 회전축에 수직으로 자르면: 항상 원!', cx, cy + 85).fill = '#0284c7';
+    }
+
+    const title = two.makeText('회전체 단면의 2대 절대 법칙', cx, 40);
+    title.size = 16; title.weight = 800; title.fill = '#1e293b';
+  }
+
+  // --- 2-4: [7.2 전개도] 회전체의 전개도 ---
+  else if (code === '2-4') {
+    const title = two.makeText('원기둥과 원뿔의 전개도 핵심', cx, 40);
+    title.size = 16; title.weight = 800; title.fill = '#1e293b';
+
+    two.makeText('• 원기둥 전개도: 합동인 두 원(밑면) + 직사각형(옆면)', cx, cy - 25).fill = '#0284c7';
+    two.makeText('• 옆면 직사각형의 가로 길이 = 밑면 원의 둘레 (2πr)', cx, cy + 5).fill = '#ec4899';
+    two.makeText('• 원뿔 전개도: 원(밑면) + 부채꼴(옆면, 호의 길이 = 2πr)', cx, cy + 35).fill = '#059669';
+  }
+
+  // --- 3-1: [7.3 공식유도] 기둥 전개도 펼치기 & 겉넓이 계산기 (10대 시뮬레이터 #6) ---
+  else if (code === '3-1') {
+    const st = ch7SimState.prismUnfold;
+
+    if (simController) {
+      simController.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+          <span style="font-weight:800; color:#1e40af; font-size:0.92rem;">📐 기둥 전개도 펼치기 & 겉넓이 계산기 (교과서 223~225쪽)</span>
+          <span id="prism-badge" style="background:#eff6ff; color:#1d4ed8; font-weight:800; padding:3px 10px; border-radius:12px; font-size:0.82rem; border:1px solid #bfdbfe;">
+            겉넓이 공식 = (밑넓이 × 2) + 옆넓이
+          </span>
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+          <button class="tool-btn ${st === 1 ? 'active' : ''}" style="font-weight:700;" onclick="setPrismUnfold(1)">1. 입체 원기둥</button>
+          <button class="tool-btn ${st === 2 ? 'active' : ''}" style="font-weight:700;" onclick="setPrismUnfold(2)">2. 전개도 완전 펼침</button>
+        </div>
+      `;
+    }
+
+    if (st === 1) {
+      // 3D cylinder
+      two.makeEllipse(cx, cy - 40, 50, 18).fill = 'rgba(2, 132, 199, 0.3)';
+      two.makeEllipse(cx, cy + 40, 50, 18).fill = 'rgba(2, 132, 199, 0.3)';
+      two.makeLine(cx - 50, cy - 40, cx - 50, cy + 40).stroke = '#0284c7';
+      two.makeLine(cx + 50, cy - 40, cx + 50, cy + 40).stroke = '#0284c7';
+      two.makeText('반지름 r, 높이 h', cx, cy).fill = '#1e293b';
+    } else {
+      // Net: rect + 2 circles
+      two.makeRectangle(cx, cy, 180, 70).fill = 'rgba(5, 150, 105, 0.25)'; two.makeRectangle(cx, cy, 180, 70).stroke = '#059669';
+      two.makeCircle(cx, cy - 55, 20).fill = 'rgba(2, 132, 199, 0.3)'; two.makeCircle(cx, cy - 55, 20).stroke = '#0284c7';
+      two.makeCircle(cx, cy + 55, 20).fill = 'rgba(2, 132, 199, 0.3)'; two.makeCircle(cx, cy + 55, 20).stroke = '#0284c7';
+      two.makeText('가로 = 2πr (밑면 둘레)', cx, cy - 5).fill = '#059669';
+      two.makeText('세로 = h', cx - 110, cy).fill = '#059669';
+      two.makeText('밑넓이 πr²', cx, cy - 55).fill = '#0284c7';
+      two.makeText('밑넓이 πr²', cx, cy + 55).fill = '#0284c7';
+    }
+
+    const title = two.makeText('기둥의 겉넓이 = (밑넓이 × 2) + 옆넓이 = 2πr² + 2πrh', cx, 40);
+    title.size = 15; title.weight = 800; title.fill = '#1e293b';
+  }
+
+  // --- 3-2: [7.3 공식적용] 원기둥 겉넓이 계산 ---
+  else if (code === '3-2') {
+    const title = two.makeText('원기둥 겉넓이 계산 예제', cx, 40);
+    title.size = 16; title.weight = 800; title.fill = '#1e293b';
+
+    two.makeText('반지름 r = 3 cm, 높이 h = 5 cm 일 때:', cx, cy - 30).fill = '#1e293b';
+    two.makeText('• 밑넓이 × 2 = (π × 3²) × 2 = 18π cm²', cx, cy + 5).fill = '#0284c7';
+    two.makeText('• 옆넓이 = (2π × 3) × 5 = 30π cm²', cx, cy + 35).fill = '#059669';
+    two.makeText('• 겉넓이 = 18π + 30π = 48π cm²', cx, cy + 65).fill = '#ec4899';
+  }
+
+  // --- 3-3: [7.3 부피공식] 기둥의 부피 (V = Sh) ---
+  else if (code === '3-3') {
+    const title = two.makeText('기둥의 부피 공식: V = 밑넓이(S) × 높이(h)', cx, 40);
+    title.size = 16; title.weight = 800; title.fill = '#1e293b';
+
+    two.makeText('반지름 r = 3 cm, 높이 h = 5 cm 인 원기둥의 부피:', cx, cy - 20).fill = '#1e293b';
+    two.makeText('V = Sh = (π × 3²) × 5 = 9π × 5 = 45π cm³', cx, cy + 25).fill = '#4f46e5';
+  }
+
+  // --- 4-1: [7.4 공식유도] 뿔의 부피 물 채우기 실험실 (10대 시뮬레이터 #7) ---
+  else if (code === '4-1') {
+    const step = ch7SimState.waterStep; // 1: 1/3, 2: 2/3, 3: 3/3
+
+    if (simController) {
+      simController.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+          <span style="font-weight:800; color:#1e40af; font-size:0.92rem;">💧 뿔의 부피 물 채우기 실험실 (교과서 228~230쪽)</span>
+          <span id="water-badge" style="background:#eff6ff; color:#1d4ed8; font-weight:800; padding:3px 10px; border-radius:12px; font-size:0.82rem; border:1px solid #bfdbfe;">
+            ${step === 1 ? '원뿔 1번 부음 ➔ 원기둥 높이의 1/3 채움' : (step === 2 ? '원뿔 2번 부음 ➔ 원기둥 높이의 2/3 채움' : '원뿔 3번 부음 ➔ 원기둥 완벽히 가득 참! (V = 1/3 Sh)')}
+          </span>
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+          <button class="tool-btn ${step === 1 ? 'active' : ''}" style="font-weight:700;" onclick="setWaterStep(1)">1. 원뿔 1번 (1/3)</button>
+          <button class="tool-btn ${step === 2 ? 'active' : ''}" style="font-weight:700;" onclick="setWaterStep(2)">2. 원뿔 2번 (2/3)</button>
+          <button class="tool-btn ${step === 3 ? 'active' : ''}" style="font-weight:800; background:#dcfce7; color:#15803d;" onclick="setWaterStep(3)">3. 원뿔 3번 (3/3 가득 참!)</button>
+        </div>
+      `;
+    }
+
+    // Left: Cone pourer
+    const cx1 = cx - 110;
+    two.makePath(cx1 - 40, cy - 20, cx1 + 40, cy - 20, cx1, cy + 50, true).fill = 'rgba(236, 72, 153, 0.3)';
+    two.makeText('밑면과 높이가 같은 원뿔', cx1, cy + 75).fill = '#ec4899';
+
+    // Right: Cylinder beaker
+    const cx2 = cx + 110;
+    const cylH = 110;
+    two.makeRectangle(cx2, cy, 80, cylH).stroke = '#0284c7'; two.makeRectangle(cx2, cy, 80, cylH).linewidth = 2.5;
+
+    // Water level inside cylinder
+    const fillH = (cylH / 3) * step;
+    const fillY = cy + cylH/2 - fillH/2;
+    const water = two.makeRectangle(cx2, fillY, 78, fillH);
+    water.fill = 'rgba(2, 132, 199, 0.5)';
+
+    two.makeText(`물높이: ${step}/3`, cx2, cy - 65).fill = '#0284c7';
+
+    const title = two.makeText('밑면과 높이가 같은 뿔의 부피 = 기둥 부피의 1/3 (V = 1/3 · S · h)', cx, 40);
+    title.size = 15; title.weight = 800; title.fill = '#1e293b';
+  }
+
+  // --- 4-2: [7.4 공식적용] 뿔의 겉넓이 계산 ---
+  else if (code === '4-2') {
+    const title = two.makeText('원뿔의 겉넓이 계산 공식', cx, 40);
+    title.size = 16; title.weight = 800; title.fill = '#1e293b';
+
+    two.makeText('밑면 반지름 r = 4 cm, 모선 l = 10 cm 인 원뿔:', cx, cy - 25).fill = '#1e293b';
+    two.makeText('• 밑넓이 = π × 4² = 16π cm²', cx, cy + 5).fill = '#0284c7';
+    two.makeText('• 옆넓이 = π × r × l = π × 4 × 10 = 40π cm²', cx, cy + 35).fill = '#ec4899';
+    two.makeText('• 겉넓이 S = 16π + 40π = 56π cm²', cx, cy + 65).fill = '#059669';
+  }
+
+  // --- 4-3: [7.4 공식적용] 사각뿔 부피 계산 ---
+  else if (code === '4-3') {
+    const title = two.makeText('각뿔의 부피 계산 공식', cx, 40);
+    title.size = 16; title.weight = 800; title.fill = '#1e293b';
+
+    two.makeText('밑면이 한 변 6 cm인 정사각형이고 높이 h = 8 cm인 사각뿔:', cx, cy - 25).fill = '#1e293b';
+    two.makeText('• 밑넓이 S = 6 × 6 = 36 cm²', cx, cy + 5).fill = '#0284c7';
+    two.makeText('• 부피 V = 1/3 × S × h = 1/3 × 36 × 8 = 96 cm³', cx, cy + 40).fill = '#ec4899';
+  }
+
+  // --- 5-1: [7.5 공식유도] 구의 겉넓이 끈 감기 실험실 (10대 시뮬레이터 #8) ---
+  else if (code === '5-1') {
+    const step = ch7SimState.sphereCordStep; // 1: 감기, 2: 풀기, 3: 원 4개 일치
+
+    if (simController) {
+      simController.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+          <span style="font-weight:800; color:#1e40af; font-size:0.92rem;">🧶 구의 겉넓이 끈 감기 실험실 (교과서 233~235쪽)</span>
+          <span id="cord-badge" style="background:#eff6ff; color:#1d4ed8; font-weight:800; padding:3px 10px; border-radius:12px; font-size:0.82rem; border:1px solid #bfdbfe;">
+            ${step === 1 ? '1. 반지름 r인 반구에 끈을 빈틈없이 감음' : (step === 2 ? '2. 끈을 풀어 평면에 펼치기' : '3. 반지름 r인 평면 원 4개를 완벽히 채움! (S = 4πr²)')}
+          </span>
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+          <button class="tool-btn ${step === 1 ? 'active' : ''}" style="font-weight:700;" onclick="setSphereCordStep(1)">1. 반구에 끈 감기</button>
+          <button class="tool-btn ${step === 2 ? 'active' : ''}" style="font-weight:700;" onclick="setSphereCordStep(2)">2. 끈 풀기</button>
+          <button class="tool-btn ${step === 3 ? 'active' : ''}" style="font-weight:800; background:#dcfce7; color:#15803d;" onclick="setSphereCordStep(3)">3. 원 4개 완성! (4πr²)</button>
+        </div>
+      `;
+    }
+
+    if (step === 1) {
+      // Hemisphere with winding cords
+      two.makeArcSegment(cx, cy, 0, 70, -Math.PI, 0).fill = 'rgba(236, 72, 153, 0.4)';
+      two.makeEllipse(cx, cy, 70, 20).stroke = '#ec4899';
+      two.makeText('반지름 r인 반구의 곡면에 끈을 감습니다...', cx, cy + 60).fill = '#ec4899';
+    } else if (step === 2) {
+      // Unwound cords
+      two.makeLine(cx - 140, cy, cx + 140, cy).stroke = '#ec4899'; two.makeLine(cx - 140, cy, cx + 140, cy).linewidth = 4;
+      two.makeText('풀어낸 끈의 면적을 원형으로 감아보면...', cx, cy + 40).fill = '#475569';
+    } else {
+      // 4 Circles of radius r
+      const offsets = [
+        { x: cx - 75, y: cy - 35 },
+        { x: cx + 75, y: cy - 35 },
+        { x: cx - 75, y: cy + 45 },
+        { x: cx + 75, y: cy + 45 }
+      ];
+      offsets.forEach((o, i) => {
+        two.makeCircle(o.x, o.y, 35).fill = 'rgba(236, 72, 153, 0.35)'; two.makeCircle(o.x, o.y, 35).stroke = '#ec4899';
+        two.makeText(`원 ${i+1}: πr²`, o.x, o.y).fill = '#ec4899';
+      });
+      two.makeText('반지름 r인 구의 겉넓이 = 4 × πr² = 4πr² ✨', cx, cy + 95).fill = '#15803d';
+    }
+
+    const title = two.makeText('구의 겉넓이 공식 유도: S = 4πr²', cx, 40);
+    title.size = 16; title.weight = 800; title.fill = '#1e293b';
+  }
+
+  // --- 5-2: [7.5 공식유도] 구의 부피 계산 ---
+  else if (code === '5-2') {
+    const title = two.makeText('구의 부피 공식: V = 4/3 · π · r³', cx, 40);
+    title.size = 16; title.weight = 800; title.fill = '#1e293b';
+
+    two.makeText('반지름 r = 3 cm 인 구의 부피 계산:', cx, cy - 25).fill = '#1e293b';
+    two.makeText('V = 4/3 × π × 3³ = 4/3 × 27π = 36π cm³', cx, cy + 15).fill = '#0284c7';
+  }
+
+  // --- 5-3: [7.5 창의융합] 아르키메데스 원기둥:구:원뿔 부피비 3:2:1 (10대 시뮬레이터 #10) ---
+  else if (code === '5-3') {
+    const v = ch7SimState.archimedesView;
+
+    if (simController) {
+      simController.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+          <span style="font-weight:800; color:#1e40af; font-size:0.92rem;">🏛️ 아르키메데스의 묘비: 원기둥·구·원뿔 부피비 3:2:1 (교과서 241쪽)</span>
+          <span id="arch-badge" style="background:#eff6ff; color:#1d4ed8; font-weight:800; padding:3px 10px; border-radius:12px; font-size:0.82rem; border:1px solid #bfdbfe;">
+            부피비: 원기둥(3) : 구(2) : 원뿔(1) = 3 : 2 : 1
+          </span>
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+          <button class="tool-btn ${v === 'all' ? 'active' : ''}" style="font-weight:700;" onclick="setArchimedesView('all')">1. 3개 도형 동시 비교</button>
+          <button class="tool-btn ${v === 'cylinder' ? 'active' : ''}" style="font-weight:700;" onclick="setArchimedesView('cylinder')">2. 원기둥 (3)</button>
+          <button class="tool-btn ${v === 'sphere' ? 'active' : ''}" style="font-weight:700;" onclick="setArchimedesView('sphere')">3. 구 (2)</button>
+          <button class="tool-btn ${v === 'cone' ? 'active' : ''}" style="font-weight:700;" onclick="setArchimedesView('cone')">4. 원뿔 (1)</button>
+        </div>
+      `;
+    }
+
+    const x1 = cx - 140, x2 = cx, x3 = cx + 140;
+
+    // Cylinder (3)
+    two.makeRectangle(x1, cy, 70, 70).fill = 'rgba(2, 132, 199, 0.3)';
+    two.makeText('원기둥', x1, cy - 50).fill = '#0284c7';
+    two.makeText('V = 2πr³', x1, cy + 50).fill = '#0284c7';
+    two.makeText('(비율 3)', x1, cy + 70).fill = '#0284c7';
+
+    // Sphere (2)
+    two.makeCircle(x2, cy, 35).fill = 'rgba(236, 72, 153, 0.3)';
+    two.makeText('구', x2, cy - 50).fill = '#ec4899';
+    two.makeText('V = 4/3 πr³', x2, cy + 50).fill = '#ec4899';
+    two.makeText('(비율 2)', x2, cy + 70).fill = '#ec4899';
+
+    // Cone (1)
+    two.makePath(x3 - 35, cy + 35, x3 + 35, cy + 35, x3, cy - 35, true).fill = 'rgba(5, 150, 105, 0.3)';
+    two.makeText('원뿔', x3, cy - 50).fill = '#059669';
+    two.makeText('V = 2/3 πr³', x3, cy + 50).fill = '#059669';
+    two.makeText('(비율 1)', x3, cy + 70).fill = '#059669';
+
+    const title = two.makeText('아르키메데스가 가장 자랑스러워한 발견: 원기둥 : 구 : 원뿔 = 3 : 2 : 1', cx, 40);
+    title.size = 15; title.weight = 800; title.fill = '#1e293b';
+  }
+
+  two.update();
+}
+
+// Window interactive helper methods
+window.setPolyFoldStep = function(step) {
+  ch7SimState.polyFoldStep = step;
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) setupSubstepSimulator(two, '1-1', document.getElementById('interactive-sim-controller'));
+};
+
+window.setPlatonicType = function(type) {
+  ch7SimState.platonicType = type;
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) setupSubstepSimulator(two, '1-3', document.getElementById('interactive-sim-controller'));
+};
+
+window.setEulerPoly = function(p) {
+  ch7SimState.eulerPoly = p;
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) setupSubstepSimulator(two, '1-4', document.getElementById('interactive-sim-controller'));
+};
+
+window.setRevType = function(type) {
+  ch7SimState.revType = type;
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) setupSubstepSimulator(two, '2-1', document.getElementById('interactive-sim-controller'));
+};
+
+window.setSliceType = function(s) {
+  ch7SimState.sliceType = s;
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) setupSubstepSimulator(two, '2-3', document.getElementById('interactive-sim-controller'));
+};
+
+window.setPrismUnfold = function(st) {
+  ch7SimState.prismUnfold = st;
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) setupSubstepSimulator(two, '3-1', document.getElementById('interactive-sim-controller'));
+};
+
+window.setWaterStep = function(step) {
+  ch7SimState.waterStep = step;
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) setupSubstepSimulator(two, '4-1', document.getElementById('interactive-sim-controller'));
+};
+
+window.setSphereCordStep = function(step) {
+  ch7SimState.sphereCordStep = step;
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) setupSubstepSimulator(two, '5-1', document.getElementById('interactive-sim-controller'));
+};
+
+window.setArchimedesView = function(view) {
+  ch7SimState.archimedesView = view;
+  const two = window.twoInstance || (window.getTwoInstance ? window.getTwoInstance() : null);
+  if (two) setupSubstepSimulator(two, '5-3', document.getElementById('interactive-sim-controller'));
+};
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    setupSubstepSimulatorCode: setupSubstepSimulator.toString()
+  };
+}
+
+
+
+    function normTxt(v) {
+      if (!v) return '';
+      return String(v).replace(/\s+/g, '').toLowerCase();
+    }
+
+    function handlePassAndNext(currCode, nextCode, title, desc) {
+      if (typeof renderVerifiedAnswerView === 'function') {
+        renderVerifiedAnswerView(title, desc, nextCode);
+      }
+      if (typeof SoundFX !== 'undefined' && SoundFX.success) {
+        SoundFX.success();
+      }
+    }
+
+    function check01Submit() {
+      const f = normTxt(document.getElementById('p01-f')?.value);
+      const v = normTxt(document.getElementById('p01-v')?.value);
+      const err = document.getElementById('p01-err');
+      if (f === '6' && v === '8') {
+        err.style.display = 'none';
+        handlePassAndNext('0-1', '0-2', '직육면체의 기초 완료!', '직육면체는 면 6개, 꼭짓점 8개, 모서리 12개입니다.');
+      } else {
+        err.style.display = 'block';
+        err.innerText = '오답입니다. 직육면체는 면 6개, 꼭짓점 8개입니다.';
+      }
+    }
+
+    function check02Submit() {
+      const cyl = normTxt(document.getElementById('p02-cyl')?.value);
+      const cone = normTxt(document.getElementById('p02-cone')?.value);
+      const err = document.getElementById('p02-err');
+      if (cyl === '2' && cone === '1') {
+        err.style.display = 'none';
+        handlePassAndNext('0-2', '0-3', '원기둥과 원뿔의 기초 완료!', '원기둥은 밑면 2개, 원뿔은 꼭짓점 1개와 밑면 1개입니다.');
+      } else {
+        err.style.display = 'block';
+        err.innerText = '오답입니다. 원기둥의 밑면은 2개, 원뿔의 꼭짓점은 1개입니다.';
+      }
+    }
+
+    function check03Submit() {
+      const area = normTxt(document.getElementById('p03-area')?.value);
+      const vol = normTxt(document.getElementById('p03-vol')?.value);
+      const err = document.getElementById('p03-err');
+      if (area === '94' && vol === '60') {
+        err.style.display = 'none';
+        handlePassAndNext('0-3', '1-1', '겉넓이와 부피 기초 완료!', '겉넓이는 94 cm², 부피는 60 cm³입니다.');
+      } else {
+        err.style.display = 'block';
+        err.innerText = '오답입니다. 겉넓이는 94, 부피는 60입니다.';
+      }
+    }
+
+    function check11Submit() {
+      const poly = normTxt(document.getElementById('p11-poly')?.value);
+      const f = normTxt(document.getElementById('p11-f')?.value);
+      const err = document.getElementById('p11-err');
+      const isPoly = poly.includes('다면체');
+      const isF = (f === '5' || f.includes('오면체') || f === '5면체');
+      if (isPoly && isF) {
+        err.style.display = 'none';
+        handlePassAndNext('1-1', '1-2', '다면체의 정의와 분류 완료!', '다각형인 면으로 둘러싸인 도형은 다면체, 사각뿔은 오면체입니다.');
+      } else {
+        err.style.display = 'block';
+        err.innerText = '오답입니다. 도형은 "다면체", 사각뿔은 "오면체"입니다.';
+      }
+    }
+
+    function check12Submit() {
+      const prism = normTxt(document.getElementById('p12-prism')?.value);
+      const pyramid = normTxt(document.getElementById('p12-pyramid')?.value);
+      const err = document.getElementById('p12-err');
+      if (prism === '14' && pyramid === '10') {
+        err.style.display = 'none';
+        handlePassAndNext('1-2', '1-3', '각기둥과 각뿔 공식 완료!', '칠각기둥 꼭짓점은 2×7=14개, 오각뿔 모서리는 2×5=10개입니다.');
+      } else {
+        err.style.display = 'block';
+        err.innerText = '오답입니다. 칠각기둥 꼭짓점은 14개, 오각뿔 모서리는 10개입니다.';
+      }
+    }
+
+    function check13Submit() {
+      const count = normTxt(document.getElementById('p13-count')?.value);
+      const shape = normTxt(document.getElementById('p13-shape')?.value);
+      const err = document.getElementById('p13-err');
+      const isCount = (count === '5' || count.includes('5'));
+      const isShape = (shape.includes('정삼각형') || shape === '삼각형');
+      if (isCount && isShape) {
+        err.style.display = 'none';
+        handlePassAndNext('1-3', '1-4', '5가지 정다면체 완전 정복!', '정다면체는 5가지뿐이며, 정팔면체의 면은 정삼각형입니다.');
+      } else {
+        err.style.display = 'block';
+        err.innerText = '오답입니다. 정다면체는 "5"가지이며, 정팔면체의 면은 "정삼각형"입니다.';
+      }
+    }
+
+    function check14Submit() {
+      const euler = normTxt(document.getElementById('p14-euler')?.value);
+      const err = document.getElementById('p14-err');
+      if (euler === '2') {
+        err.style.display = 'none';
+        handlePassAndNext('1-4', '2-1', '오일러 다면체 정리 완료!', '모든 다면체에서 v - e + f = 2 가 항상 성립합니다.');
+      } else {
+        err.style.display = 'block';
+        err.innerText = '오답입니다. v - e + f = 2 입니다.';
+      }
+    }
+
+    function check21Submit() {
+      const rev = normTxt(document.getElementById('p21-rev')?.value);
+      const shape = normTxt(document.getElementById('p21-shape')?.value);
+      const err = document.getElementById('p21-err');
+      const isRev = rev.includes('회전체');
+      const isShape = shape.includes('원기둥');
+      if (isRev && isShape) {
+        err.style.display = 'none';
+        handlePassAndNext('2-1', '2-2', '회전체의 뜻과 원기둥 완료!', '1회전 시켜 생기는 입체는 회전체, 직사각형 회전은 원기둥입니다.');
+      } else {
+        err.style.display = 'block';
+        err.innerText = '오답입니다. 첫 번째는 "회전체", 두 번째는 "원기둥"입니다.';
+      }
+    }
+
+    function check22Submit() {
+      const axis = normTxt(document.getElementById('p22-axis')?.value);
+      const gen = normTxt(document.getElementById('p22-gen')?.value);
+      const err = document.getElementById('p22-err');
+      const isAxis = axis.includes('회전축');
+      const isGen = gen.includes('모선');
+      if (isAxis && isGen) {
+        err.style.display = 'none';
+        handlePassAndNext('2-2', '2-3', '회전체 구성 요소 완료!', '축이 되는 직선은 회전축, 옆면을 만드는 선분은 모선입니다.');
+      } else {
+        err.style.display = 'block';
+        err.innerText = '오답입니다. 첫 번째는 "회전축", 두 번째는 "모선"입니다.';
+      }
+    }
+
+    function check23Submit() {
+      const axis = normTxt(document.getElementById('p23-axis')?.value);
+      const perp = normTxt(document.getElementById('p23-perp')?.value);
+      const err = document.getElementById('p23-err');
+      const isAxis = axis.includes('선대칭');
+      const isPerp = perp.includes('원');
+      if (isAxis && isPerp) {
+        err.style.display = 'none';
+        handlePassAndNext('2-3', '2-4', '회전체 단면의 성질 완료!', '회전축 포함 단면은 선대칭, 회전축 수직 단면은 항상 원입니다.');
+      } else {
+        err.style.display = 'block';
+        err.innerText = '오답입니다. 첫 번째는 "선대칭", 두 번째는 "원"입니다.';
+      }
+    }
+
+    function check24Submit() {
+      const cyl = normTxt(document.getElementById('p24-cyl')?.value);
+      const cone = normTxt(document.getElementById('p24-cone')?.value);
+      const err = document.getElementById('p24-err');
+      const isCyl = cyl.includes('직사각형') || cyl.includes('사각형');
+      const isCone = cone.includes('부채꼴');
+      if (isCyl && isCone) {
+        err.style.display = 'none';
+        handlePassAndNext('2-4', '3-1', '회전체의 전개도 완료!', '원기둥 옆면은 직사각형, 원뿔 옆면은 부채꼴입니다.');
+      } else {
+        err.style.display = 'block';
+        err.innerText = '오답입니다. 원기둥 옆면은 "직사각형", 원뿔 옆면은 "부채꼴"입니다.';
+      }
+    }
+
+    function check31Submit() {
+      const base = normTxt(document.getElementById('p31-base')?.value);
+      const err = document.getElementById('p31-err');
+      if (base === '2') {
+        err.style.display = 'none';
+        handlePassAndNext('3-1', '3-2', '기둥 겉넓이 공식 유도 완료!', '기둥은 밑면이 2개이므로 밑넓이 × 2 + 옆넓이입니다.');
+      } else {
+        err.style.display = 'block';
+        err.innerText = '오답입니다. 밑넓이에 곱하는 수는 밑면이 2개이므로 "2"입니다.';
+      }
+    }
+
+    function check32Submit() {
+      const s = normTxt(document.getElementById('p32-s')?.value);
+      const err = document.getElementById('p32-err');
+      const isS = (s === '48π' || s === '48pi');
+      if (isS) {
+        err.style.display = 'none';
+        handlePassAndNext('3-2', '3-3', '원기둥 겉넓이 계산 완료!', '18π + 30π = 48π cm²입니다.');
+      } else {
+        err.style.display = 'block';
+        err.innerText = '오답입니다. 겉넓이는 48π (또는 48pi) 입니다.';
+      }
+    }
+
+    function check33Submit() {
+      const v = normTxt(document.getElementById('p33-v')?.value);
+      const err = document.getElementById('p33-err');
+      const isV = (v === '45π' || v === '45pi');
+      if (isV) {
+        err.style.display = 'none';
+        handlePassAndNext('3-3', '4-1', '원기둥의 부피 완료!', 'V = Sh = 9π × 5 = 45π cm³입니다.');
+      } else {
+        err.style.display = 'block';
+        err.innerText = '오답입니다. 부피는 45π (또는 45pi) 입니다.';
+      }
+    }
+
+    function check41Submit() {
+      const ratio = normTxt(document.getElementById('p41-ratio')?.value);
+      const err = document.getElementById('p41-err');
+      const isRatio = (ratio === '1/3' || ratio.includes('1/3') || ratio.includes('3분의1'));
+      if (isRatio) {
+        err.style.display = 'none';
+        handlePassAndNext('4-1', '4-2', '뿔의 부피 공식 유도 완료!', '밑면과 높이가 같은 뿔의 부피는 기둥 부피의 1/3입니다.');
+      } else {
+        err.style.display = 'block';
+        err.innerText = '오답입니다. 기둥 부피의 "1/3" 입니다.';
+      }
+    }
+
+    function check42Submit() {
+      const s = normTxt(document.getElementById('p42-s')?.value);
+      const err = document.getElementById('p42-err');
+      const isS = (s === '56π' || s === '56pi');
+      if (isS) {
+        err.style.display = 'none';
+        handlePassAndNext('4-2', '4-3', '원뿔의 겉넓이 완료!', '16π + 40π = 56π cm²입니다.');
+      } else {
+        err.style.display = 'block';
+        err.innerText = '오답입니다. 겉넓이는 56π (또는 56pi) 입니다.';
+      }
+    }
+
+    function check43Submit() {
+      const v = normTxt(document.getElementById('p43-v')?.value);
+      const err = document.getElementById('p43-err');
+      if (v === '96') {
+        err.style.display = 'none';
+        handlePassAndNext('4-3', '5-1', '사각뿔 부피 완료!', '1/3 × 36 × 8 = 96 cm³입니다.');
+      } else {
+        err.style.display = 'block';
+        err.innerText = '오답입니다. 부피는 96 입니다.';
+      }
+    }
+
+    function check51Submit() {
+      const ratio = normTxt(document.getElementById('p51-ratio')?.value);
+      const err = document.getElementById('p51-err');
+      if (ratio === '4') {
+        err.style.display = 'none';
+        handlePassAndNext('5-1', '5-2', '구의 겉넓이 공식 유도 완료!', '구의 겉넓이는 평면 원 넓이의 4배(S = 4πr²)입니다.');
+      } else {
+        err.style.display = 'block';
+        err.innerText = '오답입니다. 평면 원의 "4"배 입니다.';
+      }
+    }
+
+    function check52Submit() {
+      const v = normTxt(document.getElementById('p52-v')?.value);
+      const err = document.getElementById('p52-err');
+      const isV = (v === '36π' || v === '36pi');
+      if (isV) {
+        err.style.display = 'none';
+        handlePassAndNext('5-2', '5-3', '구의 부피 계산 완료!', '4/3 × π × 27 = 36π cm³입니다.');
+      } else {
+        err.style.display = 'block';
+        err.innerText = '오답입니다. 부피는 36π (또는 36pi) 입니다.';
+      }
+    }
+
+    function check53Submit() {
+      const ratio = normTxt(document.getElementById('p53-ratio')?.value);
+      const err = document.getElementById('p53-err');
+      const isRatio = (ratio === '3:2:1' || ratio === '3,2,1' || ratio.includes('3:2:1'));
+      if (isRatio) {
+        err.style.display = 'none';
+        handlePassAndNext('5-3', 'complete', '🎉 7단원 입체도형 완주 축하합니다!', '원기둥(3) : 구(2) : 원뿔(1) = 3:2:1의 아름다운 황금비율을 마스터했습니다!');
+      } else {
+        err.style.display = 'block';
+        err.innerText = '오답입니다. 원기둥 : 구 : 원뿔 = "3:2:1" 입니다.';
+      }
+    }
+  
 
     function loadSubStep(code) {
       if (!state.unlockedSubSteps.includes(code) && !state.isTeacherLoggedIn) {
@@ -1263,8 +2554,19 @@ undefined
           restoreFormInputs(code);
         }
 
-        // Draw Canvas
-        if (typeof drawSubstepCanvas === 'function') {
+        // Reset Sim & Custom Controls
+        const simController = document.getElementById('interactive-sim-controller');
+        const customTb = document.getElementById('toolbar-custom-controls');
+        if (customTb) customTb.innerHTML = '';
+        if (simController) {
+          simController.innerHTML = '';
+          simController.style.display = 'none';
+        }
+
+        // Draw Canvas & Initialize Interactive Simulator
+        if (typeof setupSubstepSimulator === 'function') {
+          setupSubstepSimulator(two, code, simController);
+        } else if (typeof drawSubstepCanvas === 'function') {
           drawSubstepCanvas(two, code);
         }
 
@@ -1272,6 +2574,10 @@ undefined
         attachRealtimeInputTracker();
       }
     }
+    window.loadSubStep = loadSubStep;
+    window.switchMainTab = switchMainTab;
+    window.switchView = switchView;
+    window.handleLMSLogin = handleLMSLogin;
 
     // --- TEACHER MODAL CONTROLS & AUTH ---
     let currentSecureModalAction = 'teacher_login';
@@ -1387,6 +2693,13 @@ undefined
 
       return false;
     }
+    window.openSecurePasswordModal = openSecurePasswordModal;
+    window.closeSecurePasswordModal = closeSecurePasswordModal;
+    window.openTeacherLoginModal = openTeacherLoginModal;
+    window.openTestLoginModal = openTestLoginModal;
+    window.openTeacherPassModal = openTeacherPassModal;
+    window.openTeacherDashboardModal = openTeacherDashboardModal;
+    window.handleSecurePasswordSubmit = handleSecurePasswordSubmit;
 
     function passCurrentSubStep() {
       const curIdx = ALL_SUBSTEPS.indexOf(state.subStep);
