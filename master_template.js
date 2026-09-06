@@ -395,7 +395,7 @@ function createChapterHtml(config) {
       margin-bottom: 14px;
     }
 
-    /* Yellow Blank Input Styles (User Requirement) */
+    /* Yellow Blank Input Styles (Enhanced Gamification & Neon UI) */
     .proof-input-text {
       display: inline-block;
       padding: 5px 10px;
@@ -407,16 +407,18 @@ function createChapterHtml(config) {
       font-weight: 800;
       color: #854d0e;
       outline: none;
-      transition: all 0.2s ease;
+      transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+      will-change: transform;
       min-width: 80px;
       text-align: center;
     }
 
     .proof-input-text:focus {
-      background: #ffffff;
-      border-color: #3b82f6;
+      background: #ffffff !important;
+      border-color: #6366f1 !important;
       color: #0f172a;
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+      transform: scale(1.04);
+      box-shadow: 0 0 0 2px #6366f1, 0 0 16px rgba(99, 102, 241, 0.45);
     }
 
     .proof-input-textarea, #form-work-area textarea {
@@ -433,9 +435,9 @@ function createChapterHtml(config) {
 
     .proof-input-textarea:focus, #form-work-area textarea:focus {
       background: #ffffff;
-      border-color: #3b82f6;
+      border-color: #6366f1;
       color: #0f172a;
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
     }
 
     .verified-answer-card {
@@ -443,6 +445,15 @@ function createChapterHtml(config) {
       border: 2px solid #86efac;
       border-radius: 16px;
       padding: 20px;
+      text-align: center;
+      animation: bounceInCard 0.42s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes bounceInCard {
+      0% { transform: scale(0.92); opacity: 0; }
+      60% { transform: scale(1.03); opacity: 1; }
+      100% { transform: scale(1); }
+    }
       margin-top: 14px;
       animation: fadeIn 0.3s ease;
     }
@@ -1145,6 +1156,138 @@ ${tabButtonsHtml}  </nav>
       if (el) el.classList.add('active');
     }
 
+    // --- ZERO-DEPENDENCY CANVAS 2D CONFETTI ENGINE ---
+    // Pure Vanilla Canvas 2D, ultra-lightweight (no external libs, zero RAM waste)
+    function launchConfetti(originX, originY) {
+      try {
+        if (typeof document === 'undefined') return;
+        let canvas = document.getElementById('celebration-confetti-canvas');
+        if (!canvas) {
+          canvas = document.createElement('canvas');
+          canvas.id = 'celebration-confetti-canvas';
+          canvas.style.position = 'fixed';
+          canvas.style.top = '0';
+          canvas.style.left = '0';
+          canvas.style.width = '100vw';
+          canvas.style.height = '100vh';
+          canvas.style.pointerEvents = 'none';
+          canvas.style.zIndex = '99999';
+          document.body.appendChild(canvas);
+        }
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        canvas.width = window.innerWidth || 800;
+        canvas.height = window.innerHeight || 600;
+
+        const colors = ['#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4'];
+        const particles = [];
+        const count = 45;
+        const startX = originX || (canvas.width / 2);
+        const startY = originY || (canvas.height * 0.65);
+
+        for (let i = 0; i < count; i++) {
+          const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.5;
+          const speed = 7 + Math.random() * 8;
+          particles.push({
+            x: startX,
+            y: startY,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            w: 6 + Math.random() * 6,
+            h: 10 + Math.random() * 8,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rotation: Math.random() * 360,
+            rotationSpeed: (Math.random() - 0.5) * 12,
+            gravity: 0.28,
+            drag: 0.982,
+            opacity: 1
+          });
+        }
+
+        const startTime = Date.now();
+        const duration = 1200; // 1.2 seconds
+
+        function updateParticles() {
+          const elapsed = Date.now() - startTime;
+          const progress = elapsed / duration;
+
+          if (progress >= 1) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
+            return;
+          }
+
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          particles.forEach(p => {
+            p.vx *= p.drag;
+            p.vy *= p.drag;
+            p.vy += p.gravity;
+            p.x += p.vx;
+            p.y += p.vy;
+            p.rotation += p.rotationSpeed;
+            if (progress > 0.65) {
+              p.opacity = 1 - (progress - 0.65) / 0.35;
+            }
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate((p.rotation * Math.PI) / 180);
+            ctx.globalAlpha = Math.max(0, p.opacity);
+            ctx.fillStyle = p.color;
+            ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+            ctx.restore();
+          });
+
+          if (typeof requestAnimationFrame !== 'undefined') {
+            requestAnimationFrame(updateParticles);
+          }
+        }
+
+        if (typeof requestAnimationFrame !== 'undefined') {
+          requestAnimationFrame(updateParticles);
+        }
+      } catch (e) {}
+    }
+    window.launchConfetti = launchConfetti;
+
+    // --- LERP DAMPED SMOOTH PHYSICS ANIMATION HELPER ---
+    // Zero-build, power-saving frame loop: stops immediately once settled
+    const activeLerpAnimations = {};
+    function startSmoothLerp(key, getter, setter, targetVal, onFrame, onComplete, speed = 0.12) {
+      if (typeof cancelAnimationFrame === 'undefined' || typeof requestAnimationFrame === 'undefined') {
+        setter(targetVal);
+        if (typeof onFrame === 'function') onFrame(targetVal);
+        if (typeof onComplete === 'function') onComplete(targetVal);
+        return;
+      }
+
+      if (activeLerpAnimations[key]) {
+        cancelAnimationFrame(activeLerpAnimations[key]);
+        delete activeLerpAnimations[key];
+      }
+
+      function step() {
+        const current = getter();
+        const diff = targetVal - current;
+        if (Math.abs(diff) < 0.005) {
+          setter(targetVal);
+          if (typeof onFrame === 'function') onFrame(targetVal);
+          if (typeof onComplete === 'function') onComplete(targetVal);
+          delete activeLerpAnimations[key];
+          return;
+        }
+        const nextVal = current + diff * speed;
+        setter(nextVal);
+        if (typeof onFrame === 'function') onFrame(nextVal);
+        activeLerpAnimations[key] = requestAnimationFrame(step);
+      }
+      activeLerpAnimations[key] = requestAnimationFrame(step);
+    }
+    window.startSmoothLerp = startSmoothLerp;
+
     // --- STEP PROGRESSION ENGINE ---
     function unlockNextStep(tabIndex) {
       const nextTab = tabIndex + 1;
@@ -1156,6 +1299,7 @@ ${tabButtonsHtml}  </nav>
 
     function renderVerifiedAnswerView(title, desc, nextCode) {
       SoundFX.success();
+      if (typeof launchConfetti === 'function') launchConfetti();
       state.verifiedViewData[state.subStep] = { title, desc, nextCode };
 
       const formArea = document.getElementById('form-work-area');
