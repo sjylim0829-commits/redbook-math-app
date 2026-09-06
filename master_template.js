@@ -159,15 +159,80 @@ function createChapterHtml(config) {
       background: #f1f5f9;
     }
 
-    /* Sub-Step Navigation Pills */
+    /* Sub-Step Navigation Dropdown & Stepper */
     .substep-bar {
-      background: #f1f5f9;
+      background: #f8fafc;
       border-bottom: 1px solid var(--border-color);
       padding: 4px 16px;
       display: flex;
-      gap: 6px;
       align-items: center;
-      height: 36px;
+      height: 40px;
+      box-sizing: border-box;
+    }
+
+    .substep-dropdown-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .substep-dropdown-select {
+      flex: 1;
+      max-width: 460px;
+      height: 30px;
+      padding: 2px 10px;
+      border-radius: 8px;
+      font-size: 0.84rem;
+      font-weight: 700;
+      background: #ffffff;
+      border: 1.5px solid #cbd5e1;
+      color: #1e293b;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .substep-dropdown-select:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
+    }
+
+    .substep-stepper-btn {
+      padding: 4px 10px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      color: #334155;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .substep-stepper-btn:hover:not(:disabled) {
+      background: #f1f5f9;
+      border-color: #94a3b8;
+    }
+
+    .substep-stepper-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      background: #f8fafc;
+    }
+
+    .substep-counter-badge {
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: #475569;
+      padding: 3px 8px;
+      background: #e2e8f0;
+      border-radius: 6px;
+      min-width: 52px;
+      text-align: center;
     }
 
     .substep-pill {
@@ -515,10 +580,23 @@ function createChapterHtml(config) {
   <nav id="main-tab-bar" class="tab-bar-container">
 ${tabButtonsHtml}  </nav>
 
-  <!-- Sub-Step Navigation Pills -->
+  <!-- Sub-Step Navigation Dropdown & Stepper Bar -->
   <div id="substep-bar" class="substep-bar">
-    <span style="font-size:0.78rem; font-weight:700; color:#64748b;">📑 세부 탐구 활동:</span>
-    <div id="substep-pills-container" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+    <div class="substep-dropdown-container">
+      <span style="font-size:0.82rem; font-weight:800; color:#334155; display:inline-flex; align-items:center; gap:4px; white-space:nowrap;">
+        📑 세부 탐구 활동:
+      </span>
+      <select id="substep-dropdown-select" class="substep-dropdown-select" onchange="handleSubstepSelect(this.value)">
+        <!-- options populated dynamically -->
+      </select>
+      <div id="substep-stepper-group" style="display:flex; gap:6px; margin-left:auto; align-items:center;">
+        <button id="btn-prev-substep" class="substep-stepper-btn" onclick="goToPrevSubstep()">◀ 이전</button>
+        <span id="substep-counter-badge" class="substep-counter-badge">1 / 1</span>
+        <button id="btn-next-substep" class="substep-stepper-btn" onclick="goToNextSubstep()">다음 ▶</button>
+      </div>
+    </div>
+    <!-- Hidden container maintaining data-code buttons for backward compatibility -->
+    <div id="substep-pills-container" style="display:none;"></div>
   </div>
 
   <!-- Main Container -->
@@ -935,36 +1013,106 @@ ${tabButtonsHtml}  </nav>
 
     function updateSubStepPills(tabIdx) {
       const container = document.getElementById('substep-pills-container');
-      if (!container) return;
-      container.innerHTML = '';
+      const select = document.getElementById('substep-dropdown-select');
+      const counterBadge = document.getElementById('substep-counter-badge');
+      const prevBtn = document.getElementById('btn-prev-substep');
+      const nextBtn = document.getElementById('btn-next-substep');
+
+      if (container) container.innerHTML = '';
+      if (select) select.innerHTML = '';
 
       const pills = pillsConfig[tabIdx] || [];
-      pills.forEach(p => {
-        const btn = document.createElement('button');
-        const isUnlocked = state.unlockedSubSteps.includes(p.code);
+      const curIdx = pills.findIndex(p => p.code === state.subStep);
+      const activeIdx = curIdx >= 0 ? curIdx : 0;
+
+      pills.forEach((p, idx) => {
+        const isUnlocked = state.isTeacherLoggedIn || state.unlockedSubSteps.includes(p.code);
         const isActive = (state.subStep === p.code);
         const isCompleted = state.completedSubSteps.includes(p.code);
 
-        let extraClass = '';
-        if (isActive) extraClass += ' active';
-        if (!isUnlocked) extraClass += ' locked-pill';
-        if (isCompleted) extraClass += ' completed';
-
-        btn.className = \`substep-pill \${extraClass}\`;
-        btn.setAttribute('data-code', p.code);
-        const prefix = isCompleted ? '✅ ' : (isUnlocked ? '' : '🔒 ');
-        btn.innerText = \`\${prefix}\${p.label}\`;
-
-        if (isUnlocked) {
-          btn.onclick = () => loadSubStep(p.code);
-        } else {
-          btn.onclick = () => {
-            alert("🔒 이전 세부활동을 먼저 완료하셔야 진행할 수 있습니다!\\n(활동을 완료해야 다음 페이지가 해금됩니다)");
-          };
+        // Populate Dropdown Options
+        if (select) {
+          const opt = document.createElement('option');
+          opt.value = p.code;
+          const statusIcon = isCompleted ? '✅ ' : (isUnlocked ? '• ' : '🔒 ');
+          opt.textContent = \`\${statusIcon}\${p.label}\`;
+          if (isActive) opt.selected = true;
+          if (!isUnlocked && !state.isTeacherLoggedIn) {
+            opt.style.color = '#94a3b8';
+          }
+          select.appendChild(opt);
         }
-        container.appendChild(btn);
+
+        // Hidden pills container for backwards compatibility
+        if (container) {
+          const btn = document.createElement('button');
+          let extraClass = '';
+          if (isActive) extraClass += ' active';
+          if (!isUnlocked) extraClass += ' locked-pill';
+          if (isCompleted) extraClass += ' completed';
+
+          btn.className = \`substep-pill \${extraClass}\`;
+          btn.setAttribute('data-code', p.code);
+          const prefix = isCompleted ? '✅ ' : (isUnlocked ? '' : '🔒 ');
+          btn.innerText = \`\${prefix}\${p.label}\`;
+
+          if (isUnlocked) {
+            btn.onclick = () => loadSubStep(p.code);
+          } else {
+            btn.onclick = () => {
+              alert("🔒 이전 세부활동을 먼저 완료하셔야 진행할 수 있습니다!\\n(활동을 완료해야 다음 페이지가 해금됩니다)");
+            };
+          }
+          container.appendChild(btn);
+        }
       });
+
+      // Update Stepper Buttons & Counter Badge
+      if (counterBadge) {
+        counterBadge.textContent = \`\${activeIdx + 1} / \${pills.length}\`;
+      }
+      if (prevBtn) {
+        prevBtn.disabled = (activeIdx <= 0);
+      }
+      if (nextBtn) {
+        const nextSubstep = pills[activeIdx + 1];
+        const isNextUnlocked = nextSubstep && (state.isTeacherLoggedIn || state.unlockedSubSteps.includes(nextSubstep.code));
+        nextBtn.disabled = (activeIdx >= pills.length - 1 || !isNextUnlocked);
+      }
     }
+
+    window.handleSubstepSelect = function(code) {
+      const isUnlocked = state.isTeacherLoggedIn || state.unlockedSubSteps.includes(code);
+      if (!isUnlocked) {
+        alert("🔒 이전 세부활동을 먼저 완료하셔야 진행할 수 있습니다!\\n(활동을 완료해야 다음 페이지가 해금됩니다)");
+        const select = document.getElementById('substep-dropdown-select');
+        if (select) select.value = state.subStep;
+        return;
+      }
+      loadSubStep(code);
+    };
+
+    window.goToPrevSubstep = function() {
+      const pills = pillsConfig[state.currentMainTab] || [];
+      const curIdx = pills.findIndex(p => p.code === state.subStep);
+      if (curIdx > 0) {
+        loadSubStep(pills[curIdx - 1].code);
+      }
+    };
+
+    window.goToNextSubstep = function() {
+      const pills = pillsConfig[state.currentMainTab] || [];
+      const curIdx = pills.findIndex(p => p.code === state.subStep);
+      if (curIdx >= 0 && curIdx < pills.length - 1) {
+        const nextCode = pills[curIdx + 1].code;
+        const isUnlocked = state.isTeacherLoggedIn || state.unlockedSubSteps.includes(nextCode);
+        if (isUnlocked) {
+          loadSubStep(nextCode);
+        } else {
+          alert("🔒 다음 세부활동은 현재 문제를 먼저 완료하셔야 진행할 수 있습니다!");
+        }
+      }
+    };
 
     function updateTabLocks(isTeacher) {
       const titles = ${JSON.stringify(mainTabs)};

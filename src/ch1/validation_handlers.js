@@ -529,7 +529,7 @@
     if (ok) {
       renderVerifiedAnswerView("1.3 확인 4 완료!", "최대공약수 100 = 2² × 5² 이므로 a = 2, b = 2 ➔ a + b = 4입니다.", "3-8");
     } else {
-      showInlineErr('p37-err', '❌ a=2, b=2 이므로 a+b=4 입니다!');
+      showInlineErr('p37-err', '❌ 두 수의 공통 소인수 2와 5의 지수를 최대공약수 100(=2²×5²)과 비교해보세요!');
     }
   }
 
@@ -654,7 +654,7 @@
     if (ok) {
       renderVerifiedAnswerView("1.4 확인 4 완료!", "3, 4, 5의 최소공배수는 60이므로 60 × A = 360 ➔ A = 6입니다.", "4-7");
     } else {
-      showInlineErr('p46-err', '❌ 60 * A = 360 ➔ A=6 입니다!');
+      showInlineErr('p46-err', '❌ 3, 4, 5의 최소공배수가 60이므로 60 × A = 360에서 A를 다시 계산해보세요!');
     }
   }
 
@@ -748,7 +748,7 @@
     if (ok) {
       renderVerifiedAnswerView("스스로 마무리하기 03 완료!", "3¹³의 일의 자리: 3<br>5⁴의 일의 자리: 5<br>3 + 5 = 8 입니다.", "5-4");
     } else {
-      showInlineErr('p53-err', '❌ 3^13(일의 자리 3) + 5^4(일의 자리 5) = 8 입니다!');
+      showInlineErr('p53-err', '❌ 3의 거듭제곱의 일의 자리 순환 규칙(3-9-7-1)과 5의 일의 자리를 다시 확인하세요!');
     }
   }
 
@@ -772,7 +772,7 @@
     if (ok) {
       renderVerifiedAnswerView("스스로 마무리하기 05 완료!", "84 = 2² × 3 × 7 ➔ a = 21, b = 2 ➔ a + b = 23", "5-6");
     } else {
-      showInlineErr('p55-err', '❌ a=21, b=2 이므로 a+b=23 입니다!');
+      showInlineErr('p55-err', '❌ 84를 소인수분해하여 지수가 홀수인 소인수를 묶어 a와 b를 구해보세요!');
     }
   }
 
@@ -844,7 +844,7 @@
     if (ok) {
       renderVerifiedAnswerView("스스로 마무리하기 11 서술형 완료!", "126 = 2 × 3² × 7 ➔ a = 7<br>45 = 3² × 5 ➔ b = 3<br>a + b = 7 + 3 = 10", "5-12");
     } else {
-      showInlineErr('p511-err', '❌ a=7, b=3 ➔ a+b=10 입니다!');
+      showInlineErr('p511-err', '❌ 126의 가장 큰 소인수와 45의 가장 작은 소인수를 다시 구해보세요!');
     }
   }
 
@@ -856,7 +856,7 @@
     if (ok) {
       renderVerifiedAnswerView("스스로 마무리하기 12 서술형 완료!", "1부터 12까지의 곱 = 2¹⁰ × 3⁵ × 5² × 7 × 11<br>x = 10, y = 5, z = 2 ➔ x + y + z = 17", "5-13");
     } else {
-      showInlineErr('p512-err', '❌ x=10, y=5, z=2 ➔ x+y+z=17 입니다!');
+      showInlineErr('p512-err', '❌ 1부터 12까지 소인수 2, 3, 5의 총 개수를 차근차근 세어보세요!');
     }
   }
 

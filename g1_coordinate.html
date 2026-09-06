@@ -125,15 +125,85 @@
       background: #f1f5f9;
     }
 
-    /* Sub-Step Navigation Pills */
+    /* Sub-Step Navigation Dropdown & Stepper */
     .substep-bar {
-      background: #f1f5f9;
+      background: #f8fafc;
       border-bottom: 1px solid var(--border-color);
       padding: 4px 16px;
       display: flex;
-      gap: 6px;
       align-items: center;
-      height: 36px;
+      height: 40px;
+      box-sizing: border-box;
+      z-index: 50;
+    }
+
+    .substep-dropdown-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .substep-dropdown-select {
+      flex: 1;
+      max-width: 520px;
+      height: 32px;
+      padding: 2px 10px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      background: #ffffff;
+      border: 1.5px solid #cbd5e1;
+      color: #1e293b;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .substep-dropdown-select:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
+    }
+
+    .substep-stepper-btn {
+      padding: 5px 12px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      background: #ffffff;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 8px;
+      color: #334155;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    .substep-stepper-btn:hover:not(:disabled) {
+      background: #f1f5f9;
+      border-color: #94a3b8;
+      color: #0f172a;
+    }
+
+    .substep-stepper-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      background: #f8fafc;
+      border-color: #e2e8f0;
+      color: #94a3b8;
+    }
+
+    .substep-counter-badge {
+      padding: 3px 10px;
+      font-size: 0.82rem;
+      font-weight: 800;
+      background: #eef2ff;
+      color: var(--primary-color);
+      border: 1px solid #c7d2fe;
+      border-radius: 12px;
+      white-space: nowrap;
     }
 
     .substep-pill {
@@ -173,7 +243,7 @@
       display: flex;
       position: relative;
       overflow: hidden;
-      height: calc(100vh - 126px);
+      height: calc(100vh - 130px);
     }
 
     .view-panel {
@@ -651,10 +721,23 @@
     <button id="tab-5" class="tab-btn" onclick="switchMainTab(5)">4.5 반비례 그래프 🔒</button>
   </nav>
 
-  <!-- Sub-Step Navigation Pills -->
+  <!-- Sub-Step Navigation Dropdown & Stepper Bar -->
   <div id="substep-bar" class="substep-bar">
-    <span style="font-size:0.78rem; font-weight:700; color:#64748b;">📑 세부 탐구 활동:</span>
-    <div id="substep-pills-container" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+    <div class="substep-dropdown-container">
+      <span style="font-size:0.84rem; font-weight:800; color:#334155; display:inline-flex; align-items:center; gap:4px; white-space:nowrap;">
+        📑 세부 탐구 활동:
+      </span>
+      <select id="substep-dropdown-select" class="substep-dropdown-select" onchange="handleSubstepSelect(this.value)">
+        <!-- options populated dynamically -->
+      </select>
+      <div id="substep-stepper-group" style="display:flex; gap:6px; margin-left:auto; align-items:center;">
+        <button id="btn-prev-substep" class="substep-stepper-btn" onclick="goToPrevSubstep()">◀ 이전</button>
+        <span id="substep-counter-badge" class="substep-counter-badge">1 / 1</span>
+        <button id="btn-next-substep" class="substep-stepper-btn" onclick="goToNextSubstep()">다음 ▶</button>
+      </div>
+    </div>
+    <!-- Hidden container maintaining data-code buttons for backward compatibility -->
+    <div id="substep-pills-container" style="display:none;"></div>
   </div>
 
   <!-- Main Container -->
@@ -914,6 +997,60 @@
   </div>
 
   <script>
+    // =========================================================================
+    // 🎨 Two.js 캔버스 폰트 크기 확대 및 가독성/선명도 극대화 엔진
+    // =========================================================================
+    (function enhanceCanvasTypography() {
+      if (typeof Two === 'undefined' || !Two.prototype || !Two.prototype.makeText) return;
+      const originalMakeText = Two.prototype.makeText;
+
+      Two.prototype.makeText = function(message, x, y, styles) {
+        const txt = originalMakeText.call(this, message, x, y, styles);
+        if (!txt) return txt;
+
+        txt.family = 'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
+        const boostSize = (rawSize) => {
+          const num = parseFloat(rawSize);
+          if (isNaN(num) || num <= 0) return 17;
+          // 작은 폰트는 최소 16px 이상으로 보장하고, 기존 대비 약 1.28배 확대하여 캔버스 가독성 극대화
+          return Math.max(16, Math.round(num * 1.28));
+        };
+
+        let _currentSize = boostSize(txt.size || 13);
+        let _currentWeight = Math.max(700, parseInt(txt.weight) || 700);
+
+        Object.defineProperty(txt, 'size', {
+          get() { return _currentSize; },
+          set(val) {
+            const num = parseFloat(val);
+            if (!isNaN(num) && num > 0) {
+              _currentSize = boostSize(num);
+              if (this.leading !== undefined) {
+                this.leading = Math.round(_currentSize * 1.25);
+              }
+            }
+          },
+          configurable: true,
+          enumerable: true
+        });
+
+        Object.defineProperty(txt, 'weight', {
+          get() { return _currentWeight; },
+          set(val) {
+            const w = parseInt(val) || 700;
+            _currentWeight = Math.max(700, w);
+          },
+          configurable: true,
+          enumerable: true
+        });
+
+        txt.size = _currentSize;
+        txt.weight = _currentWeight;
+        return txt;
+      };
+    })();
+
     const state = {
       studentId: '10101',
       studentName: '학생',
@@ -2118,6 +2255,59 @@
       }
     }
 
+    const G1_PILLS_CONFIG = {
+      0: [
+        { code: '0-1', label: '1. 대응 관계 (초5~6)' },
+        { code: '0-2', label: '2. 정수와 유리수 (중1)' },
+        { code: '0-3', label: '3. 문자의 사용과 식의 값 (중1)' }
+      ],
+      1: [
+        { code: '1-1', label: '1. 생각열기 (건물과 수직선)' },
+        { code: '1-2', label: '2. 수직선과 좌표 (동적 점 드래그)' },
+        { code: '1-3', label: '3. 문제 1 (수직선 세 점 좌표)' },
+        { code: '1-4', label: '4. 순서쌍의 개념 (지도 위치 대조)' },
+        { code: '1-5', label: '5. 좌표평면과 좌표축 (x축, y축, 원점)' },
+        { code: '1-6', label: '6. 점의 좌표 (x좌표, y좌표, P(a,b))' },
+        { code: '1-7', label: '7. 문제 2 (좌표평면 위 점의 좌표)' }
+      ],
+      2: [
+        { code: '2-1', label: '1. 사분면의 위치와 부호 (탐구)' },
+        { code: '2-2', label: '2. 문제 3 & 생각 나누기' },
+        { code: '2-3', label: '3. 스스로 확인하기 1' },
+        { code: '2-4', label: '4. 스스로 확인하기 2 (점 드래그)' },
+        { code: '2-5', label: '5. 스스로 확인하기 3' },
+        { code: '2-6', label: '6. 스스로 확인하기 4' },
+        { code: '2-7', label: '7. 스스로 확인하기 5 (넓이&드로잉)' },
+        { code: '2-8', label: '8. 생각 넓히기 (보물지도)' }
+      ],
+      3: [
+        { code: '3-1', label: '1. 생각열기 (자석과 안내문)' },
+        { code: '3-2', label: '2. 그래프의 뜻과 점 찍기' },
+        { code: '3-3', label: '3. [탐구] 놀이기구 시뮬레이션' },
+        { code: '3-4', label: '4. 예제 1 (놀이기구 대기 인원)' },
+        { code: '3-5', label: '5. [탐구] 용수철 시뮬레이션' },
+        { code: '3-6', label: '6. 문제 1 (용수철의 길이와 추)' },
+        { code: '3-7', label: '7. 예제 2 (풀장 물의 양과 그래프)' },
+        { code: '3-8', label: '8. 문제 2 (하루 동안 기온의 변화)' },
+        { code: '3-9', label: '9. [탐구] 대관람차의 높이와 그래프' },
+        { code: '3-10', label: '10. 예제 3 (자동차의 속력과 그래프)' },
+        { code: '3-11', label: '11. 문제 3 (도윤이의 등굣길 거리)' },
+        { code: '3-12', label: '12. 문제 4 (해수면의 높이 변화)' },
+        { code: '3-13', label: '13. [스스로 확인 1] 콩나물 관찰' },
+        { code: '3-14', label: '14. [스스로 확인 2] 열기구의 높이' },
+        { code: '3-15', label: '15. [스스로 확인 3] 둘레길 산책' },
+        { code: '3-16', label: '16. [생각 넓히기] 물병과 그래프' }
+      ],
+      4: [
+        { code: '4-1', label: '4.4 세부활동 1 (y=ax 직선)' },
+        { code: '4-2', label: '4.4 정비례 정리' }
+      ],
+      5: [
+        { code: '5-1', label: '4.5 세부활동 1 (y=a/x 쌍곡선)' },
+        { code: '5-2', label: '4.5 반비례 정리' }
+      ]
+    };
+
     function switchMainTab(idx) {
       if (!state.unlockedTabs.includes(idx)) {
         alert("🔒 이전 단원의 세부활동 및 탐구 문제를 모두 맞추셔야 해제됩니다!\n(활동을 완료해야 다음 페이지가 해금됩니다)");
@@ -2128,17 +2318,9 @@
         if (i === idx) btn.classList.add('active'); else btn.classList.remove('active');
       });
 
-      const defaultSub = { 0: '0-1', 1: '1-1', 2: '2-1', 3: '3-1', 4: '4-1', 5: '5-1' };
-      const pillsConfigForTab = {
-        0: ['0-1', '0-2', '0-3'],
-        1: ['1-1', '1-2', '1-3', '1-4', '1-5', '1-6', '1-7'],
-        2: ['2-1', '2-2', '2-3', '2-4', '2-5', '2-6', '2-7', '2-8'],
-        3: ['3-1', '3-2', '3-3', '3-4', '3-5', '3-6', '3-7', '3-8', '3-9', '3-10', '3-11', '3-12', '3-13', '3-14', '3-15', '3-16'],
-        4: ['4-1', '4-2'],
-        5: ['5-1', '5-2']
-      };
-      const tabCodes = pillsConfigForTab[idx] || [defaultSub[idx] || '0-1'];
-      let targetSub = tabCodes[0];
+      const tabPills = G1_PILLS_CONFIG[idx] || [];
+      const tabCodes = tabPills.map(p => p.code);
+      let targetSub = tabCodes[0] || '0-1';
       for (let k = tabCodes.length - 1; k >= 0; k--) {
         if (state.unlockedSubSteps && state.unlockedSubSteps.includes(tabCodes[k])) {
           targetSub = tabCodes[k];
@@ -2149,84 +2331,111 @@
     }
 
     function updateSubStepPills(mainIdx) {
+      const pills = G1_PILLS_CONFIG[mainIdx] || [];
+      const curIdx = pills.findIndex(p => p.code === state.subStep);
+      const activeIdx = curIdx >= 0 ? curIdx : 0;
+
+      // 1. 드롭다운 옵션 갱신
+      const select = document.getElementById('substep-dropdown-select');
+      if (select) {
+        select.innerHTML = '';
+        pills.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.code;
+          const isUnlocked = state.isTeacherLoggedIn || (state.unlockedSubSteps && state.unlockedSubSteps.includes(p.code));
+          const isCompleted = state.completedSubSteps && state.completedSubSteps.includes(p.code);
+          const prefix = isCompleted ? '✅ ' : (isUnlocked ? '• ' : '🔒 ');
+          opt.textContent = `${prefix}${p.label}`;
+          if (state.subStep === p.code) opt.selected = true;
+          if (!isUnlocked && !state.isTeacherLoggedIn) {
+            opt.style.color = '#94a3b8';
+          }
+          select.appendChild(opt);
+        });
+      }
+
+      // 2. 카운터 배지 갱신
+      const counterBadge = document.getElementById('substep-counter-badge');
+      if (counterBadge) {
+        counterBadge.textContent = `${activeIdx + 1} / ${pills.length}`;
+      }
+
+      // 3. 스텝퍼 버튼 (이전 / 다음) 활성화 상태 갱신
+      const prevBtn = document.getElementById('btn-prev-substep');
+      const nextBtn = document.getElementById('btn-next-substep');
+      if (prevBtn) {
+        prevBtn.disabled = (activeIdx <= 0);
+      }
+      if (nextBtn) {
+        const nextSubstep = pills[activeIdx + 1];
+        const isNextUnlocked = nextSubstep && (state.isTeacherLoggedIn || (state.unlockedSubSteps && state.unlockedSubSteps.includes(nextSubstep.code)));
+        nextBtn.disabled = (activeIdx >= pills.length - 1 || !isNextUnlocked);
+      }
+
+      // 4. 하위 호환용 pills 컨테이너 갱신 (숨김 상태여도 데이터 코드 유지)
       const container = document.getElementById('substep-pills-container');
-      if (!container) return;
-      container.innerHTML = '';
+      if (container) {
+        container.innerHTML = '';
+        pills.forEach(p => {
+          const btn = document.createElement('button');
+          const isUnlocked = state.isTeacherLoggedIn || (state.unlockedSubSteps && state.unlockedSubSteps.includes(p.code));
+          const isActive = (state.subStep === p.code);
+          const isCompleted = state.completedSubSteps && state.completedSubSteps.includes(p.code);
 
-      const pillsConfig = {
-        0: [
-          { code: '0-1', label: '1. 대응 관계 (초5~6)' },
-          { code: '0-2', label: '2. 정수와 유리수 (중1)' },
-          { code: '0-3', label: '3. 문자의 사용과 식의 값 (중1)' }
-        ],
-        1: [
-          { code: '1-1', label: '1. 생각열기 (건물과 수직선)' },
-          { code: '1-2', label: '2. 수직선과 좌표 (동적 점 드래그)' },
-          { code: '1-3', label: '3. 문제 1 (수직선 세 점 좌표)' },
-          { code: '1-4', label: '4. 순서쌍의 개념 (지도 위치 대조)' },
-          { code: '1-5', label: '5. 좌표평면과 좌표축 (x축, y축, 원점)' },
-          { code: '1-6', label: '6. 점의 좌표 (x좌표, y좌표, P(a,b))' },
-          { code: '1-7', label: '7. 문제 2 (좌표평면 위 점의 좌표)' }
-        ],
-        2: [
-          { code: '2-1', label: '1. 사분면의 위치와 부호 (탐구)' },
-          { code: '2-2', label: '2. 문제 3 & 생각 나누기' },
-          { code: '2-3', label: '3. 스스로 확인하기 1' },
-          { code: '2-4', label: '4. 스스로 확인하기 2 (점 드래그)' },
-          { code: '2-5', label: '5. 스스로 확인하기 3' },
-          { code: '2-6', label: '6. 스스로 확인하기 4' },
-          { code: '2-7', label: '7. 스스로 확인하기 5 (넓이&드로잉)' },
-          { code: '2-8', label: '8. 생각 넓히기 (보물지도)' }
-        ],
-        3: [
-          { code: '3-1', label: '1. 생각열기 (자석과 안내문)' },
-          { code: '3-2', label: '2. 그래프의 뜻과 점 찍기' },
-          { code: '3-3', label: '3. [탐구] 놀이기구 시뮬레이션' },
-          { code: '3-4', label: '4. 예제 1 (놀이기구 대기 인원)' },
-          { code: '3-5', label: '5. [탐구] 용수철 시뮬레이션' },
-          { code: '3-6', label: '6. 문제 1 (용수철의 길이와 추)' },
-          { code: '3-7', label: '7. 예제 2 (풀장 물의 양과 그래프)' },
-          { code: '3-8', label: '8. 문제 2 (하루 동안 기온의 변화)' },
-          { code: '3-9', label: '9. [탐구] 대관람차의 높이와 그래프' },
-          { code: '3-10', label: '10. 예제 3 (자동차의 속력과 그래프)' },
-          { code: '3-11', label: '11. 문제 3 (도윤이의 등굣길 거리)' },
-          { code: '3-12', label: '12. 문제 4 (해수면의 높이 변화)' },
-          { code: '3-13', label: '13. [스스로 확인 1] 콩나물 관찰' },
-          { code: '3-14', label: '14. [스스로 확인 2] 열기구의 높이' },
-          { code: '3-15', label: '15. [스스로 확인 3] 둘레길 산책' },
-          { code: '3-16', label: '16. [생각 넓히기] 물병과 그래프' }
-        ],
-        4: [{ code: '4-1', label: '4.4 세부활동 1 (y=ax 직선)' }, { code: '4-2', label: '4.4 정비례 정리' }],
-        5: [{ code: '5-1', label: '4.5 세부활동 1 (y=a/x 쌍곡선)' }, { code: '5-2', label: '4.5 반비례 정리' }]
-      };
+          let extraClass = '';
+          if (isActive) extraClass += ' active';
+          if (!isUnlocked) extraClass += ' locked-pill';
+          if (isCompleted) extraClass += ' completed';
 
-      const pills = pillsConfig[mainIdx] || [];
-      pills.forEach(p => {
-        const btn = document.createElement('button');
-        const isUnlocked = (state.unlockedSubSteps && state.unlockedSubSteps.includes(p.code));
-        const isActive = (state.subStep === p.code);
-        const isCompleted = (state.completedSubSteps && state.completedSubSteps.includes(p.code));
+          btn.className = `substep-pill ${extraClass}`;
+          btn.setAttribute('data-code', p.code);
+          const prefix = isCompleted ? '✅ ' : (isUnlocked ? '' : '🔒 ');
+          btn.innerText = `${prefix}${p.label}`;
 
-        let extraClass = '';
-        if (isActive) extraClass += ' active';
-        if (!isUnlocked) extraClass += ' locked-pill';
-        if (isCompleted) extraClass += ' completed';
-
-        btn.className = `substep-pill ${extraClass}`;
-        
-        let prefix = isCompleted ? '✅ ' : (isUnlocked ? '' : '🔒 ');
-        btn.innerText = `${prefix}${p.label}`;
-        
-        if (isUnlocked) {
-          btn.onclick = () => loadSubStep(p.code);
-        } else {
-          btn.onclick = () => {
-            alert("🔒 이전 세부활동을 먼저 완료하셔야 진행할 수 있습니다!\n(활동을 완료해야 다음 페이지가 해금됩니다)");
-          };
-        }
-        container.appendChild(btn);
-      });
+          if (isUnlocked) {
+            btn.onclick = () => loadSubStep(p.code);
+          } else {
+            btn.onclick = () => {
+              alert("🔒 이전 세부활동을 먼저 완료하셔야 진행할 수 있습니다!\n(활동을 완료해야 다음 페이지가 해금됩니다)");
+            };
+          }
+          container.appendChild(btn);
+        });
+      }
     }
+
+    window.handleSubstepSelect = function(code) {
+      const isUnlocked = state.isTeacherLoggedIn || (state.unlockedSubSteps && state.unlockedSubSteps.includes(code));
+      if (!isUnlocked) {
+        alert("🔒 이전 세부활동을 먼저 완료하셔야 진행할 수 있습니다!\n(활동을 완료해야 다음 페이지가 해금됩니다)");
+        const select = document.getElementById('substep-dropdown-select');
+        if (select) select.value = state.subStep;
+        return;
+      }
+      loadSubStep(code);
+    };
+
+    window.goToPrevSubstep = function() {
+      const pills = G1_PILLS_CONFIG[state.currentMainTab] || [];
+      const curIdx = pills.findIndex(p => p.code === state.subStep);
+      if (curIdx > 0) {
+        loadSubStep(pills[curIdx - 1].code);
+      }
+    };
+
+    window.goToNextSubstep = function() {
+      const pills = G1_PILLS_CONFIG[state.currentMainTab] || [];
+      const curIdx = pills.findIndex(p => p.code === state.subStep);
+      if (curIdx >= 0 && curIdx < pills.length - 1) {
+        const nextCode = pills[curIdx + 1].code;
+        const isUnlocked = state.isTeacherLoggedIn || (state.unlockedSubSteps && state.unlockedSubSteps.includes(nextCode));
+        if (isUnlocked) {
+          loadSubStep(nextCode);
+        } else {
+          alert("🔒 다음 세부활동은 현재 문제를 먼저 완료하셔야 진행할 수 있습니다!");
+        }
+      }
+    };
 
     function formatMathText(txt) {
       if (typeof katex === 'undefined') return txt;
@@ -2293,17 +2502,17 @@
         line.linewidth = (y === centerY) ? 2.5 : 1;
       }
 
-      // Origin & Axis Labels
-      const lblO = two.makeText('O', centerX - 14, centerY + 16); lblO.size = 16; lblO.weight = 800; lblO.fill = '#0f172a';
-      const lblX = two.makeText('x', width - 18, centerY - 14); lblX.size = 17; lblX.weight = 800; lblX.fill = '#0284c7';
-      const lblY = two.makeText('y', centerX + 14, 18); lblY.size = 17; lblY.weight = 800; lblY.fill = '#0284c7';
+      // Origin & Axis Labels (확대된 폰트 크기 및 시인성 개선)
+      const lblO = two.makeText('O', centerX - 16, centerY + 20); lblO.size = 19; lblO.weight = 800; lblO.fill = '#0f172a';
+      const lblX = two.makeText('x', width - 20, centerY - 16); lblX.size = 20; lblX.weight = 800; lblX.fill = '#0284c7';
+      const lblY = two.makeText('y', centerX + 18, 20); lblY.size = 20; lblY.weight = 800; lblY.fill = '#0284c7';
 
-      // Quadrant Label Overlays
+      // Quadrant Label Overlays (고대비 및 또렷한 폰트)
       if (options.showQuadrants) {
-        const q1 = two.makeText('제1사분면 (+, +)', centerX + 120, centerY - 100); q1.size = 16; q1.fill = 'rgba(79, 70, 229, 0.4)'; q1.weight = 800;
-        const q2 = two.makeText('제2사분면 (-, +)', centerX - 120, centerY - 100); q2.size = 16; q2.fill = 'rgba(2, 132, 199, 0.4)'; q2.weight = 800;
-        const q3 = two.makeText('제3사분면 (-, -)', centerX - 120, centerY + 100); q3.size = 16; q3.fill = 'rgba(236, 72, 153, 0.4)'; q3.weight = 800;
-        const q4 = two.makeText('제4사분면 (+, -)', centerX + 120, centerY + 100); q4.size = 16; q4.fill = 'rgba(5, 150, 105, 0.4)'; q4.weight = 800;
+        const q1 = two.makeText('제1사분면 (+, +)', centerX + 130, centerY - 100); q1.size = 18; q1.fill = 'rgba(79, 70, 229, 0.6)'; q1.weight = 800;
+        const q2 = two.makeText('제2사분면 (-, +)', centerX - 130, centerY - 100); q2.size = 18; q2.fill = 'rgba(2, 132, 199, 0.6)'; q2.weight = 800;
+        const q3 = two.makeText('제3사분면 (-, -)', centerX - 130, centerY + 100); q3.size = 18; q3.fill = 'rgba(236, 72, 153, 0.6)'; q3.weight = 800;
+        const q4 = two.makeText('제4사분면 (+, -)', centerX + 130, centerY + 100); q4.size = 18; q4.fill = 'rgba(5, 150, 105, 0.6)'; q4.weight = 800;
       }
 
       // Render Dynamic Point P
@@ -2316,9 +2525,9 @@
         const dashY = two.makeLine(px, py, centerX, py); dashY.stroke = '#4f46e5'; dashY.linewidth = 1.5;
 
         // Point circle
-        const circle = two.makeCircle(px, py, 8); circle.fill = '#4f46e5'; circle.stroke = '#ffffff'; circle.linewidth = 2;
-        const lblP = two.makeText(`${pointData.label || 'P'}(${pointData.x}, ${pointData.y})`, px + 24, py - 14);
-        lblP.size = 17; lblP.weight = 800; lblP.fill = '#4f46e5';
+        const circle = two.makeCircle(px, py, 9); circle.fill = '#4f46e5'; circle.stroke = '#ffffff'; circle.linewidth = 2.5;
+        const lblP = two.makeText(`${pointData.label || 'P'}(${pointData.x}, ${pointData.y})`, px + 26, py - 16);
+        lblP.size = 18; lblP.weight = 800; lblP.fill = '#4f46e5';
       }
 
       // Render Direct Proportion y = ax
@@ -2331,8 +2540,8 @@
 
         const line = two.makeLine(p1.x, p1.y, p2.x, p2.y);
         line.stroke = '#ec4899'; line.linewidth = 3.5;
-        const lblLine = two.makeText(`y = ${a}x`, p2.x - 30, p2.y - 15);
-        lblLine.size = 18; lblLine.weight = 800; lblLine.fill = '#ec4899';
+        const lblLine = two.makeText(`y = ${a}x`, p2.x - 32, p2.y - 18);
+        lblLine.size = 19; lblLine.weight = 800; lblLine.fill = '#ec4899';
       }
 
       two.update();
