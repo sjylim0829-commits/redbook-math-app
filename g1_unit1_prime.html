@@ -2410,6 +2410,13 @@ function syncBadge(id, text, bg, color) {
   if (bg) el.style.background = bg;
   if (color) el.style.color = color;
 }
+function updateSieveBadge() {
+  let primeCount = 0;
+  for (let i = 2; i <= 100; i++) {
+    if ((state.sieveNumbers || {})[i] !== 'crossed' && (state.sieveNumbers || {})[i] !== 'one') primeCount++;
+  }
+  syncBadge('sieve-count-badge', `${primeCount}개 / 25개`, (primeCount <= 25 ? '#fee2e2' : '#ecfdf5'), (primeCount <= 25 ? '#dc2626' : '#065f46'));
+}
 
 // ============================================================================
 // 60fps Dynamic Geometry & Interactive Canvas Suite for Grade 1 Unit 1
@@ -2424,6 +2431,7 @@ state.sieveNumbers = state.sieveNumbers || {};
 state.foldCount = state.foldCount || 0;
 state.factorTreeNodes = state.factorTreeNodes || [];
 state.treeCompleted = state.treeCompleted || false;
+state.currentTreeNumber = state.currentTreeNumber || 60;
 state.uniquenessCompared = state.uniquenessCompared || false;
 state.tilingSize = state.tilingSize || 1;
 state.isTileFit = (18 % state.tilingSize === 0 && 12 % state.tilingSize === 0);
@@ -2437,10 +2445,137 @@ state.varD = 0;
 state.varI = 1;
 state.mondrianRects = state.mondrianRects || [];
 state.mondrianColor = state.mondrianColor || '#ef4444';
+state.calendarSelectedPrimes = state.calendarSelectedPrimes || [];
 
+// ----------------------------------------------------------------------------
+// Mathematical Core Engine (Pure Dynamic Computation)
+// ----------------------------------------------------------------------------
 function gcdCalc(a, b) {
+  a = Math.abs(Math.round(Number(a))) || 1;
+  b = Math.abs(Math.round(Number(b))) || 1;
   while (b) { let t = b; b = a % b; a = t; }
   return a;
+}
+
+function lcmCalc(a, b) {
+  a = Math.abs(Math.round(Number(a))) || 1;
+  b = Math.abs(Math.round(Number(b))) || 1;
+  return (a * b) / gcdCalc(a, b);
+}
+
+function factorize(n) {
+  n = Math.abs(Math.round(Number(n))) || 1;
+  if (n <= 1) return [n];
+  const factors = [];
+  let d = 2, temp = n;
+  while (d * d <= temp) {
+    while (temp % d === 0) {
+      factors.push(d);
+      temp = Math.floor(temp / d);
+    }
+    d++;
+  }
+  if (temp > 1) factors.push(temp);
+  return factors;
+}
+
+function formatPrimeFactorization(n) {
+  n = Math.abs(Math.round(Number(n))) || 1;
+  const factors = factorize(n);
+  if (factors.length === 0 || n === 1) return `${n}`;
+  if (factors.length === 1) return `${n} (소수)`;
+
+  const counts = {};
+  factors.forEach(f => { counts[f] = (counts[f] || 0) + 1; });
+  const supMap = { '0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹' };
+  const toSup = (num) => num.toString().split('').map(c => supMap[c] || c).join('');
+
+  const parts = Object.keys(counts).map(k => {
+    const p = parseInt(k);
+    const exp = counts[k];
+    return exp > 1 ? `${p}${toSup(exp)}` : `${p}`;
+  });
+  return `${n} = ${parts.join(' × ')}`;
+}
+
+function getDivisors(n) {
+  n = Math.abs(Math.round(Number(n))) || 1;
+  const divs = [];
+  for (let i = 1; i * i <= n; i++) {
+    if (n % i === 0) {
+      divs.push(i);
+      if (i * i !== n) divs.push(Math.floor(n / i));
+    }
+  }
+  return divs.sort((a, b) => a - b);
+}
+
+function getVennSets(numA, numB) {
+  const fA = factorize(numA);
+  const fB = factorize(numB);
+  const common = [];
+  const onlyA = [];
+  const tempB = [...fB];
+
+  fA.forEach(f => {
+    const idx = tempB.indexOf(f);
+    if (idx !== -1) {
+      common.push(f);
+      tempB.splice(idx, 1);
+    } else {
+      onlyA.push(f);
+    }
+  });
+  const onlyB = tempB;
+  return { onlyA, common, onlyB };
+}
+
+function buildFactorTreeNodes(n, w = 550, h = 300) {
+  n = Math.abs(Math.round(Number(n))) || 60;
+  const nodes = [];
+  let idCounter = 1;
+
+  function isPrimeVal(x) {
+    if (x < 2) return false;
+    for (let i = 2; i * i <= x; i++) {
+      if (x % i === 0) return false;
+    }
+    return true;
+  }
+
+  function getFirstFactorPair(x) {
+    for (let i = 2; i * i <= x; i++) {
+      if (x % i === 0) return [i, Math.floor(x / i)];
+    }
+    return [x, 1];
+  }
+
+  function buildSubtree(val, depth, x, xSpan, parentId = null) {
+    const id = parentId ? `node_${idCounter++}` : 'root';
+    const prime = isPrimeVal(val);
+    const y = 52 + depth * 55;
+    const nodeObj = {
+      id,
+      val,
+      isPrime: prime,
+      x: Math.round(x),
+      y: Math.round(y),
+      depth,
+      parent: parentId,
+      hidden: false
+    };
+    nodes.push(nodeObj);
+
+    if (!prime && val > 1) {
+      const [f1, f2] = getFirstFactorPair(val);
+      const childSpan = xSpan / 2;
+      buildSubtree(f1, depth + 1, x - childSpan, childSpan * 0.9, id);
+      buildSubtree(f2, depth + 1, x + childSpan, childSpan * 0.9, id);
+    }
+  }
+
+  buildSubtree(n, 0, w / 2, w * 0.32);
+  return nodes;
 }
 
 // ----------------------------------------------------------------------------
@@ -2560,45 +2695,33 @@ function drawConceptTreeCanvas(two, options) {
     { title: '중학교 3학년', topic: '제곱근과 실수', sub: '근호(√), 무리수 계산', x: w * 0.8, y: 110, bg: '#f1f5f9', stroke: '#64748b' }
   ];
 
-  const arrow1 = two.makeLine(w * 0.2 + 55, 110, w * 0.5 - 65, 110);
-  arrow1.stroke = '#94a3b8'; arrow1.linewidth = 2;
-  const arrow2 = two.makeLine(w * 0.5 + 65, 110, w * 0.8 - 55, 110);
-  arrow2.stroke = '#94a3b8'; arrow2.linewidth = 2;
+  boxes.forEach(b => {
+    const isAct = (state.focusedNode === b.topic);
+    const rect = two.makeRoundedRectangle(b.x, b.y, w * 0.26, 85, 8);
+    rect.fill = isAct ? '#dbeafe' : b.bg;
+    rect.stroke = isAct ? '#1d4ed8' : b.stroke;
+    rect.linewidth = isAct ? 2.5 : 1.5;
 
-  boxes.forEach((b, idx) => {
-    const isFocused = (state.focusedNode === b.topic);
-    const rect = two.makeRoundedRectangle(b.x, b.y, 110, 75, 10);
-    rect.fill = isFocused ? '#fef08a' : b.bg;
-    rect.stroke = isFocused ? '#b45309' : b.stroke;
-    rect.linewidth = isFocused ? 3 : 1.5;
-
-    if (isFocused) {
-      const ring = two.makeCircle(b.x, b.y, 45);
-      ring.stroke = '#f59e0b'; ring.linewidth = 2; ring.noFill(); ring.dashes = [4, 3];
-    }
-
-    const t1 = two.makeText(b.title, b.x, b.y - 20);
-    t1.size = 10.5; t1.weight = 700; t1.fill = '#475569';
+    const t1 = two.makeText(b.title, b.x, b.y - 22);
+    t1.size = 9.5; t1.weight = 700; t1.fill = '#475569';
     const t2 = two.makeText(b.topic, b.x, b.y + 2);
-    t2.size = 12.5; t2.weight = 800; t2.fill = isFocused ? '#9a3412' : '#0f172a';
-    const t3 = two.makeText(b.sub, b.x, b.y + 22);
-    t3.size = 9; t3.weight = 600; t3.fill = '#64748b';
+    t2.size = 12.5; t2.weight = 800; t2.fill = isAct ? '#1e40af' : '#1e293b';
+    const t3 = two.makeText(b.sub, b.x, b.y + 24);
+    t3.size = 8.5; t3.fill = '#64748b';
   });
 
-  const bannerBg = two.makeRoundedRectangle(w / 2, 215, w - 40, 65, 8);
-  bannerBg.fill = '#ffffff'; bannerBg.stroke = '#e2e8f0'; bannerBg.linewidth = 1.5;
+  const a1 = two.makeLine(w * 0.33, 110, w * 0.37, 110);
+  a1.stroke = '#94a3b8'; a1.linewidth = 2;
+  const a2 = two.makeLine(w * 0.63, 110, w * 0.67, 110);
+  a2.stroke = '#94a3b8'; a2.linewidth = 2;
 
-  let descText = '👉 상단의 계통도 카드를 클릭하여 초·중·고 수학의 연결고리를 확인하세요!';
-  if (state.focusedNode === '약수와 배수') {
-    descText = '【초등 5~6학년 약수와 배수】\n수들의 나눗셈 관계와 곱셈 규칙을 배우며 중학교 소인수분해의 밑거름이 됩니다.';
-  } else if (state.focusedNode === '소인수분해') {
-    descText = '【중1 소인수분해 (현재 단원)】\n모든 자연수를 소수의 곱으로 분해하여 최대공약수, 최소공배수를 체계적으로 구합니다.';
-  } else if (state.focusedNode === '제곱근과 실수') {
-    descText = '【중3 제곱근과 실수】\n소인수분해를 통해 근호 안의 제곱수를 밖으로 꺼내고 무리수를 계산하는 기본 원리가 됩니다.';
-  }
-
-  const desc = two.makeText(descText, w / 2, 215);
-  desc.size = 11; desc.weight = 700; desc.fill = '#1e293b';
+  const card = two.makeRoundedRectangle(w / 2, 215, w - 40, 38, 6);
+  card.fill = '#f8fafc'; card.stroke = '#cbd5e1';
+  const desc = two.makeText(
+    `선택된 개념: ${state.focusedNode || '소인수분해'} (노드를 탭하여 연계성을 탐구하세요)`,
+    w / 2, 215
+  );
+  desc.size = 10.5; desc.weight = 800; desc.fill = '#4338ca';
 
   const container = document.getElementById('two-container');
   if (container) {
@@ -2614,11 +2737,11 @@ function drawConceptTreeCanvas(two, options) {
 }
 
 // ----------------------------------------------------------------------------
-// 2. 물질의 원소 vs 수의 소수 (Tab 0: 0-2)
+// 2. 물질의 기본 성분과 소수 모델 (Tab 0: 0-2)
 // ----------------------------------------------------------------------------
 function matchElementToPrime(elem, prime) {
-  state.elementMatched = true;
   state.matchedElements = { elem: elem || 'O', prime: prime || 3 };
+  state.elementMatched = true;
   syncBadge('matter-model-badge', '✨ 결합: H₂O ↔ 2²×3 = 12', '#ecfdf5', '#065f46');
   if (twoInstance) drawMatterElementsCanvas(twoInstance, {});
 }
@@ -2627,56 +2750,34 @@ function drawMatterElementsCanvas(two, options) {
   if (!two) return;
   two.clear();
   const w = two.width, h = two.height;
-  const title = two.makeText('⚛️ 자연의 원소와 수의 소수 (Prime & Elements)', w / 2, 22);
-  title.size = 13; title.weight = 800; title.fill = '#1e293b';
+  const t = two.makeText('🔬 물질의 원소 ↔ 자연수의 소수 (비유 탐구)', w / 2, 22);
+  t.size = 13; t.weight = 800; t.fill = '#1e293b';
 
-  // Left Box: Water molecule
-  const leftBg = two.makeRoundedRectangle(w * 0.28, 135, 140, 150, 10);
-  leftBg.fill = '#f0f9ff'; leftBg.stroke = '#38bdf8'; leftBg.linewidth = 1.5;
-  const lt1 = two.makeText('물질: 물(H₂O)', w * 0.28, 80);
-  lt1.size = 12; lt1.weight = 800; lt1.fill = '#0284c7';
+  const h1 = two.makeCircle(w * 0.28, 90, 22);
+  h1.fill = '#e0e7ff'; h1.stroke = '#4338ca'; h1.linewidth = 2;
+  two.makeText('H (2)', w * 0.28, 90).weight = 800;
 
-  const o = two.makeCircle(w * 0.28, 125, 20);
-  o.fill = state.elementMatched ? '#f43f5e' : '#ef4444';
-  two.makeText('O', w * 0.28, 125).fill = '#fff';
-  const h1 = two.makeCircle(w * 0.28 - 25, 160, 14); h1.fill = '#3b82f6';
-  two.makeText('H', w * 0.28 - 25, 160).fill = '#fff';
-  const h2 = two.makeCircle(w * 0.28 + 25, 160, 14); h2.fill = '#3b82f6';
-  two.makeText('H', w * 0.28 + 25, 160).fill = '#fff';
+  const h2 = two.makeCircle(w * 0.40, 90, 22);
+  h2.fill = '#e0e7ff'; h2.stroke = '#4338ca'; h2.linewidth = 2;
+  two.makeText('H (2)', w * 0.40, 90).weight = 800;
 
-  // Right Box: Number 12 = 2 * 2 * 3
-  const rightBg = two.makeRoundedRectangle(w * 0.72, 135, 140, 150, 10);
-  rightBg.fill = '#fefce8'; rightBg.stroke = '#eab308'; rightBg.linewidth = 1.5;
-  const rt1 = two.makeText('자연수: 12', w * 0.72, 80);
-  rt1.size = 12; rt1.weight = 800; rt1.fill = '#ca8a04';
+  const o = two.makeCircle(w * 0.34, 138, 28);
+  o.fill = '#fce7f3'; o.stroke = '#be185d'; o.linewidth = 2;
+  two.makeText('O (3)', w * 0.34, 138).weight = 800;
 
-  const p3 = two.makeCircle(w * 0.72, 125, 20);
-  p3.fill = state.elementMatched ? '#10b981' : '#16a34a';
-  two.makeText('3', w * 0.72, 125).fill = '#fff';
-  const p2a = two.makeCircle(w * 0.72 - 25, 160, 14); p2a.fill = '#6366f1';
-  two.makeText('2', w * 0.72 - 25, 160).fill = '#fff';
-  const p2b = two.makeCircle(w * 0.72 + 25, 160, 14); p2b.fill = '#6366f1';
-  two.makeText('2', w * 0.72 + 25, 160).fill = '#fff';
+  const b1 = two.makeLine(w * 0.28, 90, w * 0.34, 138);
+  b1.stroke = '#cbd5e1'; b1.linewidth = 2.5;
+  const b2 = two.makeLine(w * 0.40, 90, w * 0.34, 138);
+  b2.stroke = '#cbd5e1'; b2.linewidth = 2.5;
 
-  if (state.elementMatched) {
-    const bond = two.makeLine(w * 0.28 + 20, 125, w * 0.72 - 20, 125);
-    bond.stroke = '#ec4899'; bond.linewidth = 3; bond.dashes = [5, 3];
-    const bondTag = two.makeText('✨ 기본 단위 결합!', w / 2, 115);
-    bondTag.size = 11; bondTag.weight = 800; bondTag.fill = '#db2777';
-  }
+  const arrow = two.makeLine(w * 0.52, 115, w * 0.60, 115);
+  arrow.stroke = '#6366f1'; arrow.linewidth = 3;
 
-  const banner = two.makeRoundedRectangle(w / 2, 230, w - 40, 45, 8);
-  banner.fill = state.elementMatched ? '#ecfdf5' : '#ffffff';
-  banner.stroke = state.elementMatched ? '#10b981' : '#cbd5e1';
-  banner.linewidth = 1.5;
-
-  const bTxt = two.makeText(
-    state.elementMatched
-      ? '🎉 원소(O, H)가 물질의 기본이듯, 소수(2, 3)는 모든 자연수의 기본 원소입니다!'
-      : '👉 화면의 원소나 숫자를 클릭하여 물질과 수의 기본 단위를 매칭해 보세요!',
-    w / 2, 230
-  );
-  bTxt.size = 10.5; bTxt.weight = 700; bTxt.fill = state.elementMatched ? '#047857' : '#334155';
+  const compound = two.makeRoundedRectangle(w * 0.78, 115, w * 0.30, 80, 8);
+  compound.fill = '#ecfdf5'; compound.stroke = '#059669'; compound.linewidth = 2;
+  two.makeText('물 분자 (H₂O)', w * 0.78, 95).weight = 800;
+  two.makeText('2 × 2 × 3 = 12', w * 0.78, 118).size = 12.5;
+  two.makeText('합성수 12', w * 0.78, 138).size = 10.5;
 
   const container = document.getElementById('two-container');
   if (container) {
@@ -2686,13 +2787,45 @@ function drawMatterElementsCanvas(two, options) {
 }
 
 // ----------------------------------------------------------------------------
-// 3. 수 타일 클릭 판정 (Tab 1: 1-4)
+// 3. 암호 체계 RSA와 큰 소수 (Tab 0: 0-3)
+// ----------------------------------------------------------------------------
+function drawCryptoRSACanvas(two, options) {
+  if (!two) return;
+  two.clear();
+  const w = two.width, h = two.height;
+  const t = two.makeText('🔐 현대 정보 보호의 핵심: 큰 소수의 곱과 RSA 암호', w / 2, 22);
+  t.size = 12.5; t.weight = 800; t.fill = '#1e293b';
+
+  const bP = two.makeRoundedRectangle(w * 0.25, 90, 85, 40, 6);
+  bP.fill = '#eff6ff'; bP.stroke = '#3b82f6';
+  two.makeText('소수 p = 61', w * 0.25, 90).weight = 700;
+
+  const bQ = two.makeRoundedRectangle(w * 0.75, 90, 85, 40, 6);
+  bQ.fill = '#eff6ff'; bQ.stroke = '#3b82f6';
+  two.makeText('소수 q = 53', w * 0.75, 90).weight = 700;
+
+  const bN = two.makeRoundedRectangle(w / 2, 175, w - 80, 50, 8);
+  bN.fill = '#fef3c7'; bN.stroke = '#d97706'; bN.linewidth = 2;
+  two.makeText('공개키 N = p × q = 3233 (곱셈은 1초! 소인수분해는 수년 소요 🔒)', w / 2, 175).weight = 800;
+
+  const container = document.getElementById('two-container');
+  if (container) {
+    container.onclick = () => {};
+  }
+  two.update();
+}
+
+// ----------------------------------------------------------------------------
+// 4. 수직선 배수 점프 & 약수/배수 탐구 (Tab 0: 0-4, 0-6, Tab 4: 4-2, 4-3, etc.)
 // ----------------------------------------------------------------------------
 function toggleNumberTileSelect(num) {
   state.selectedNumbers = state.selectedNumbers || [];
   const idx = state.selectedNumbers.indexOf(num);
-  if (idx >= 0) state.selectedNumbers.splice(idx, 1);
-  else state.selectedNumbers.push(num);
+  if (idx !== -1) {
+    state.selectedNumbers.splice(idx, 1);
+  } else {
+    state.selectedNumbers.push(num);
+  }
   if (twoInstance) drawNumberLineCanvas(twoInstance, {});
 }
 
@@ -2714,56 +2847,124 @@ function drawNumberLineCanvas(two, options) {
   if (!two) return;
   two.clear();
   const w = two.width, h = two.height;
+
+  // Case A: 배수 수직선 점프 (0-6, 4-2, 4-3, 4-13)
+  if (options.numA || options.numB || state.subStep === '0-6') {
+    const a = options.numA || 4;
+    const b = options.numB || 6;
+    const lcmVal = lcmCalc(a, b);
+
+    const title = two.makeText(`수직선 상의 배수 점프: ${a}의 배수와 ${b}의 배수`, w / 2, 22);
+    title.size = 12.5; title.weight = 800; title.fill = '#1e293b';
+
+    const maxVal = Math.min(28, lcmVal * 2);
+    const startX = 35, endX = w - 35;
+    const axisY = 135;
+
+    // Horizontal axis line
+    const axis = two.makeLine(startX, axisY, endX, axisY);
+    axis.stroke = '#475569'; axis.linewidth = 2.5;
+
+    // Ticks & numbers
+    for (let i = 0; i <= maxVal; i += 2) {
+      const x = startX + (i / maxVal) * (endX - startX);
+      const tick = two.makeLine(x, axisY - 5, x, axisY + 5);
+      tick.stroke = '#94a3b8'; tick.linewidth = 1.5;
+      const lbl = two.makeText(i.toString(), x, axisY + 16);
+      lbl.size = 8.5; lbl.weight = (i % lcmVal === 0 && i > 0) ? 800 : 500;
+      lbl.fill = (i % lcmVal === 0 && i > 0) ? '#4338ca' : '#64748b';
+    }
+
+    // Jumps for A (Blue top arcs)
+    for (let i = 0; i + a <= maxVal; i += a) {
+      const x1 = startX + (i / maxVal) * (endX - startX);
+      const x2 = startX + ((i + a) / maxVal) * (endX - startX);
+      const midX = (x1 + x2) / 2;
+      const arc = two.makeCurve(x1, axisY, midX, axisY - 32, x2, axisY, true);
+      arc.stroke = '#3b82f6'; arc.linewidth = 2; arc.fill = 'transparent';
+    }
+
+    // Jumps for B (Red bottom arcs)
+    for (let j = 0; j + b <= maxVal; j += b) {
+      const x1 = startX + (j / maxVal) * (endX - startX);
+      const x2 = startX + ((j + b) / maxVal) * (endX - startX);
+      const midX = (x1 + x2) / 2;
+      const arc = two.makeCurve(x1, axisY, midX, axisY + 36, x2, axisY, true);
+      arc.stroke = '#ef4444'; arc.linewidth = 2; arc.fill = 'transparent';
+    }
+
+    // Star at common multiples (LCM)
+    for (let m = lcmVal; m <= maxVal; m += lcmVal) {
+      const mx = startX + (m / maxVal) * (endX - startX);
+      const star = two.makeText('⭐ 공배수!', mx, axisY - 48);
+      star.size = 9.5; star.weight = 800; star.fill = '#d97706';
+    }
+
+    // Banner
+    const card = two.makeRoundedRectangle(w / 2, h - 22, w - 40, 30, 6);
+    card.fill = '#eff6ff'; card.stroke = '#bfdbfe';
+    const bTxt = two.makeText(`✨ ${a}와 ${b}의 첫 번째 공통 착지점 = 최소공배수 ${lcmVal}`, w / 2, h - 22);
+    bTxt.size = 10.5; bTxt.weight = 800; bTxt.fill = '#1e40af';
+
+    const container = document.getElementById('two-container');
+    if (container) {
+      container.onclick = () => {};
+    }
+    two.update();
+    return;
+  }
+
+  // Case B: 소수/합성수 타일 인터랙티브 선택기 (1-4, 1-10)
   const title = two.makeText('🔢 수 타일을 터치하여 소수와 합성수를 판별해 보세요', w / 2, 22);
   title.size = 12.5; title.weight = 800; title.fill = '#1e293b';
 
   const numbers = [
-    { num: 13, isPrime: true, factors: '1, 13' },
-    { num: 15, isPrime: false, factors: '1, 3, 5, 15' },
-    { num: 20, isPrime: false, factors: '1, 2, 4, 5, 10, 20' },
-    { num: 23, isPrime: true, factors: '1, 23' },
-    { num: 29, isPrime: true, factors: '1, 29' }
+    { num: 13, isPrime: true },
+    { num: 15, isPrime: false },
+    { num: 20, isPrime: false },
+    { num: 23, isPrime: true },
+    { num: 29, isPrime: true }
   ];
 
-  const tileW = 75, tileH = 85;
-  const spacing = (w - 40 - numbers.length * tileW) / (numbers.length + 1);
+  numbers.forEach((item, i) => {
+    const x = w * 0.16 + i * (w * 0.17);
+    const y = 90;
+    const isSelected = (state.selectedNumbers || []).includes(item.num);
 
-  numbers.forEach((item, idx) => {
-    const cx = 20 + spacing * (idx + 1) + tileW * idx + tileW / 2;
-    const cy = 110;
-    const isSel = (state.selectedNumbers || []).includes(item.num);
+    const tile = two.makeRoundedRectangle(x, y, 52, 52, 10);
+    if (isSelected) {
+      tile.fill = item.isPrime ? '#dcfce7' : '#fee2e2';
+      tile.stroke = item.isPrime ? '#16a34a' : '#dc2626';
+      tile.linewidth = 2.5;
+    } else {
+      tile.fill = '#ffffff';
+      tile.stroke = '#cbd5e1';
+      tile.linewidth = 1.5;
+    }
 
-    const rect = two.makeRoundedRectangle(cx, cy, tileW, tileH, 8);
-    rect.fill = isSel ? (item.isPrime ? '#fef3c7' : '#fee2e2') : '#ffffff';
-    rect.stroke = isSel ? (item.isPrime ? '#f59e0b' : '#ef4444') : '#cbd5e1';
-    rect.linewidth = isSel ? 3 : 1.5;
+    const txt = two.makeText(item.num.toString(), x, y);
+    txt.size = 15; txt.weight = 800;
+    txt.fill = isSelected ? (item.isPrime ? '#15803d' : '#991b1b') : '#1e293b';
 
-    const nTxt = two.makeText(item.num.toString(), cx, cy - 14);
-    nTxt.size = 18; nTxt.weight = 800;
-    nTxt.fill = isSel ? (item.isPrime ? '#b45309' : '#b91c1c') : '#1e293b';
-
-    const typeTxt = two.makeText(item.isPrime ? '소수' : '합성수', cx, cy + 12);
-    typeTxt.size = 11; typeTxt.weight = 800;
-    typeTxt.fill = item.isPrime ? '#15803d' : '#b91c1c';
-
-    const fTxt = two.makeText('약수 ' + (item.isPrime ? '2개' : '3개+'), cx, cy + 28);
-    fTxt.size = 9; fTxt.weight = 600; fTxt.fill = '#64748b';
+    if (isSelected) {
+      const badge = two.makeText(item.isPrime ? '소수' : '합성수', x, y + 16);
+      badge.size = 8.5; badge.weight = 800;
+      badge.fill = item.isPrime ? '#15803d' : '#991b1b';
+    }
   });
 
-  // Action Buttons row
-  const b1 = two.makeRoundedRectangle(w * 0.3, 195, 130, 30, 6);
-  b1.fill = '#f0fdf4'; b1.stroke = '#22c55e';
-  const b1Txt = two.makeText('🟢 소수만 선택', w * 0.3, 195);
-  b1Txt.size = 10.5; b1Txt.weight = 700; b1Txt.fill = '#15803d';
+  const card = two.makeRoundedRectangle(w / 2, 185, w - 40, 50, 8);
+  card.fill = '#f8fafc'; card.stroke = '#cbd5e1';
 
-  const b2 = two.makeRoundedRectangle(w * 0.7, 195, 130, 30, 6);
-  b2.fill = '#fef2f2'; b2.stroke = '#ef4444';
-  const b2Txt = two.makeText('🔴 합성수만 선택', w * 0.7, 195);
-  b2Txt.size = 10.5; b2Txt.weight = 700; b2Txt.fill = '#b91c1c';
-
-  const selCount = (state.selectedNumbers || []).length;
-  const statusTxt = two.makeText(`선택된 수: ${selCount}개 (${(state.selectedNumbers || []).join(', ') || '없음'})`, w / 2, 235);
-  statusTxt.size = 11; statusTxt.weight = 800; statusTxt.fill = '#4338ca';
+  const sel = state.selectedNumbers || [];
+  let msg = '👉 위 숫자 타일을 탭하여 소수와 합성수를 직접 구분해 보세요!';
+  if (sel.length > 0) {
+    const pList = sel.filter(n => numbers.find(item => item.num === n && item.isPrime));
+    const cList = sel.filter(n => numbers.find(item => item.num === n && !item.isPrime));
+    msg = `선택한 수: 소수[${pList.join(', ') || '없음'}], 합성수[${cList.join(', ') || '없음'}]`;
+  }
+  const status = two.makeText(msg, w / 2, 185);
+  status.size = 10.5; status.weight = 800; status.fill = '#1e293b';
 
   const container = document.getElementById('two-container');
   if (container) {
@@ -2771,14 +2972,13 @@ function drawNumberLineCanvas(two, options) {
       const rect = container.getBoundingClientRect();
       const px = e.clientX - rect.left;
       const py = e.clientY - rect.top;
-      if (py > 175 && py < 215) {
-        if (px < w / 2) selectPrimesOnly();
-        else selectCompositesOnly();
-      } else if (py >= 65 && py <= 155) {
-        numbers.forEach((item, idx) => {
-          const cx = 20 + spacing * (idx + 1) + tileW * idx + tileW / 2;
-          if (Math.abs(px - cx) < tileW / 2) toggleNumberTileSelect(item.num);
+      if (py >= 60 && py <= 120) {
+        numbers.forEach((item, i) => {
+          const x = w * 0.16 + i * (w * 0.17);
+          if (Math.abs(px - x) < 26) toggleNumberTileSelect(item.num);
         });
+      } else {
+        selectPrimesOnly();
       }
     };
   }
@@ -2786,38 +2986,258 @@ function drawNumberLineCanvas(two, options) {
 }
 
 // ----------------------------------------------------------------------------
-// 4. 에라토스테네스의 체 (Tab 1: 1-6)
+// 5. 소인수 벤다이어그램 (Tab 0: 0-5, Tab 3: 3-2, 3-3, Tab 4: 4-2, etc.)
 // ----------------------------------------------------------------------------
-function sieveFilterMultiple(k) {
+function drawVennDiagramCanvas(two, options) {
+  if (!two) return;
+  two.clear();
+  const w = two.width, h = two.height;
+
+  // Read numbers dynamically from options or substep
+  let numA = options.numA || 24;
+  let numB = options.numB || 36;
+  if (!options.numA && !options.numB) {
+    if (state.subStep === '0-5') { numA = 12; numB = 18; }
+    else if (state.subStep === '3-2') { numA = 8; numB = 15; }
+    else if (state.subStep === '4-2') { numA = 36; numB = 84; }
+    else if (state.subStep === '4-3') { numA = 54; numB = 90; }
+    else if (state.subStep === '4-13') { numA = 18; numB = 45; }
+  }
+
+  const isLcm = (options.mode === 'lcm' || (state.subStep && state.subStep.startsWith('4-')));
+  const titleText = isLcm
+    ? `소인수 벤다이어그램: ${numA}와 ${numB}의 최소공배수 (합집합)`
+    : `소인수 벤다이어그램: ${numA}와 ${numB}의 최대공약수 (교집합)`;
+  const title = two.makeText(titleText, w / 2, 22);
+  title.size = 13; title.weight = 800; title.fill = '#1e293b';
+
+  const { onlyA, common, onlyB } = getVennSets(numA, numB);
+  const gcdVal = common.reduce((acc, v) => acc * v, 1);
+  const lcmVal = (numA * numB) / gcdVal;
+
+  // Left Circle A
+  const cA = two.makeCircle(w * 0.36, 125, 80);
+  cA.fill = 'rgba(59, 130, 246, 0.12)'; cA.stroke = '#3b82f6'; cA.linewidth = 2.2;
+  const txtA = two.makeText(`${numA}`, w * 0.22, 68);
+  txtA.size = 13; txtA.weight = 800; txtA.fill = '#1e40af';
+  const subA = two.makeText(formatPrimeFactorization(numA), w * 0.22, 86);
+  subA.size = 9.5; subA.weight = 700; subA.fill = '#3b82f6';
+
+  // Right Circle B
+  const cB = two.makeCircle(w * 0.64, 125, 80);
+  cB.fill = 'rgba(236, 72, 153, 0.12)'; cB.stroke = '#ec4899'; cB.linewidth = 2.2;
+  const txtB = two.makeText(`${numB}`, w * 0.78, 68);
+  txtB.size = 13; txtB.weight = 800; txtB.fill = '#9d174d';
+  const subB = two.makeText(formatPrimeFactorization(numB), w * 0.78, 86);
+  subB.size = 9.5; subB.weight = 700; subB.fill = '#ec4899';
+
+  // Draw factors in onlyA
+  onlyA.forEach((f, idx) => {
+    const fx = w * 0.25 + (idx % 2) * 22;
+    const fy = 115 + Math.floor(idx / 2) * 26;
+    const dot = two.makeCircle(fx, fy, 11);
+    dot.fill = '#3b82f6'; dot.stroke = '#1d4ed8'; dot.linewidth = 1.5;
+    const dt = two.makeText(f.toString(), fx, fy);
+    dt.fill = '#fff'; dt.weight = 800; dt.size = 10;
+  });
+
+  // Draw factors in onlyB
+  onlyB.forEach((f, idx) => {
+    const fx = w * 0.71 + (idx % 2) * 22;
+    const fy = 115 + Math.floor(idx / 2) * 26;
+    const dot = two.makeCircle(fx, fy, 11);
+    dot.fill = '#ec4899'; dot.stroke = '#be185d'; dot.linewidth = 1.5;
+    const dt = two.makeText(f.toString(), fx, fy);
+    dt.fill = '#fff'; dt.weight = 800; dt.size = 10;
+  });
+
+  // Draw common factors in intersection
+  if (common.length > 0) {
+    common.forEach((f, idx) => {
+      const fy = 105 + idx * 24;
+      const dot = two.makeCircle(w / 2, fy, 11);
+      dot.fill = '#f59e0b'; dot.stroke = '#b45309'; dot.linewidth = 1.8;
+      const dt = two.makeText(f.toString(), w / 2, fy);
+      dt.fill = '#fff'; dt.weight = 800; dt.size = 10;
+    });
+  } else {
+    // Coprime feedback
+    const copTxt = two.makeText('서로소\n(공통 없음)', w / 2, 125);
+    copTxt.size = 10.5; copTxt.weight = 800; copTxt.fill = '#dc2626';
+  }
+
+  // Bottom Banner
+  const card = two.makeRoundedRectangle(w / 2, h - 22, w - 40, 32, 6);
+  card.fill = '#f8fafc'; card.stroke = '#cbd5e1';
+
+  let msg = `✨ 공통 소인수 (교집합): ${common.length > 0 ? common.join(' × ') : '없음'} ➔ 최대공약수 = ${gcdVal}${gcdVal === 1 ? ' (서로소!)' : ''}`;
+  if (isLcm) {
+    const allUnion = [...onlyA, ...common, ...onlyB].sort((a, b) => a - b);
+    msg = `✨ 모든 소인수 곱 (합집합): ${allUnion.join(' × ')} ➔ 최소공배수 = ${lcmVal}`;
+  }
+
+  const msgTxt = two.makeText(msg, w / 2, h - 22);
+  msgTxt.size = 10.5; msgTxt.weight = 800; msgTxt.fill = '#4338ca';
+
+  const container = document.getElementById('two-container');
+  if (container) {
+    container.onclick = () => {
+      dropFactorToVenn(2, 'intersection');
+      fuseLcmUnionFactors();
+    };
+  }
+  two.update();
+}
+
+function dropFactorToVenn(factor, area) {
+  state.vennIntersection = state.vennIntersection || [];
+  if (!state.vennIntersection.includes(factor)) {
+    state.vennIntersection.push(factor);
+  }
+  if (twoInstance) drawVennDiagramCanvas(twoInstance, {});
+}
+
+function fuseLcmUnionFactors() {
+  state.lcmUnionFactors = [2, 2, 2, 3, 3];
+  if (twoInstance) drawVennDiagramCanvas(twoInstance, { mode: 'lcm' });
+}
+
+// ----------------------------------------------------------------------------
+// 6. 자연수 3대 분류 캐비닛 (Tab 1: 1-1, 1-2, 1-3, 1-12)
+// ----------------------------------------------------------------------------
+function drawBioClassifyCanvas(two, options) {
+  if (!two) return;
+  two.clear();
+  const w = two.width, h = two.height;
+  state.classifiedNumbers = state.classifiedNumbers || [];
+
+  const title = two.makeText('자연수의 3대 분류: 1, 소수, 합성수', w / 2, 20);
+  title.size = 13; title.weight = 800; title.fill = '#1e293b';
+
+  const sub = two.makeText('자연수는 약수의 개수에 따라 3가지 무리로 명확히 구분됩니다.', w / 2, 38);
+  sub.size = 10; sub.weight = 600; sub.fill = '#64748b';
+
+  const boxW = (w - 60) / 3;
+  const boxH = 130;
+  const boxY = 115;
+
+  // Box 1: 1 (약수 1개)
+  const b1 = two.makeRoundedRectangle(30 + boxW * 0.5, boxY, boxW - 8, boxH, 8);
+  b1.fill = '#f8fafc'; b1.stroke = '#94a3b8'; b1.linewidth = 2;
+  const t1 = two.makeText('1 (약수 1개)', 30 + boxW * 0.5, boxY - 45);
+  t1.size = 11.5; t1.weight = 800; t1.fill = '#475569';
+  const t1Desc = two.makeText('소수도 합성수도\n아님', 30 + boxW * 0.5, boxY - 20);
+  t1Desc.size = 9.5; t1Desc.fill = '#64748b';
+  const c1 = two.makeCircle(30 + boxW * 0.5, boxY + 20, 16);
+  c1.fill = '#e2e8f0'; c1.stroke = '#64748b';
+  const c1Txt = two.makeText('1', 30 + boxW * 0.5, boxY + 20);
+  c1Txt.size = 12; c1Txt.weight = 800;
+
+  // Box 2: 소수 (약수 2개)
+  const b2 = two.makeRoundedRectangle(30 + boxW * 1.5, boxY, boxW - 8, boxH, 8);
+  b2.fill = '#f0fdf4'; b2.stroke = '#22c55e'; b2.linewidth = 2;
+  const t2 = two.makeText('소수 (약수 2개)', 30 + boxW * 1.5, boxY - 45);
+  t2.size = 11.5; t2.weight = 800; t2.fill = '#15803d';
+  const t2Desc = two.makeText('1과 자기자신만\n약수', 30 + boxW * 1.5, boxY - 20);
+  t2Desc.size = 9.5; t2Desc.fill = '#16a34a';
+
+  const primesDemo = [2, 3, 5, 7, 11, 13];
+  primesDemo.forEach((p, idx) => {
+    const px = 30 + boxW * 1.5 - 24 + (idx % 3) * 24;
+    const py = boxY + 12 + Math.floor(idx / 3) * 22;
+    const dot = two.makeCircle(px, py, 9.5);
+    dot.fill = '#dcfce7'; dot.stroke = '#16a34a';
+    const pTxt = two.makeText(p.toString(), px, py);
+    pTxt.size = 9.5; pTxt.weight = 800; pTxt.fill = '#15803d';
+  });
+
+  // Box 3: 합성수 (약수 3개 이상)
+  const b3 = two.makeRoundedRectangle(30 + boxW * 2.5, boxY, boxW - 8, boxH, 8);
+  b3.fill = '#fffbeb'; b3.stroke = '#f59e0b'; b3.linewidth = 2;
+  const t3 = two.makeText('합성수 (약수 3개+)', 30 + boxW * 2.5, boxY - 45);
+  t3.size = 11.5; t3.weight = 800; t3.fill = '#b45309';
+  const t3Desc = two.makeText('1보다 큰 자연수 중\n소수가 아닌 수', 30 + boxW * 2.5, boxY - 20);
+  t3Desc.size = 9.5; t3Desc.fill = '#d97706';
+
+  const compDemo = [4, 6, 8, 9, 10, 12];
+  compDemo.forEach((c, idx) => {
+    const cx = 30 + boxW * 2.5 - 24 + (idx % 3) * 24;
+    const cy = boxY + 12 + Math.floor(idx / 3) * 22;
+    const dot = two.makeCircle(cx, cy, 9.5);
+    dot.fill = '#fef3c7'; dot.stroke = '#f59e0b';
+    const cTxt = two.makeText(c.toString(), cx, cy);
+    cTxt.size = 9.5; cTxt.weight = 800; cTxt.fill = '#b45309';
+  });
+
+  // Bottom interactive strip: Clickable number tokens to classify!
+  const testNums = [13, 15, 17, 21, 23, 27];
+  const bCard = two.makeRoundedRectangle(w / 2, h - 25, w - 40, 36, 6);
+  bCard.fill = '#f8fafc'; bCard.stroke = '#cbd5e1';
+
+  testNums.forEach((tn, i) => {
+    const tx = w * 0.22 + i * (w * 0.11);
+    const ty = h - 25;
+    const isP = factorize(tn).length === 1;
+    const isAct = state.selectedNumbers && state.selectedNumbers.includes(tn);
+
+    const btn = two.makeRoundedRectangle(tx, ty, 38, 22, 4);
+    btn.fill = isAct ? (isP ? '#dcfce7' : '#fee2e2') : '#ffffff';
+    btn.stroke = isAct ? (isP ? '#16a34a' : '#ef4444') : '#cbd5e1';
+    btn.linewidth = isAct ? 2 : 1;
+
+    const tTxt = two.makeText(tn.toString(), tx, ty);
+    tTxt.size = 10.5; tTxt.weight = 800;
+    tTxt.fill = isAct ? (isP ? '#15803d' : '#dc2626') : '#1e293b';
+  });
+
+  const container = document.getElementById('two-container');
+  if (container) {
+    container.onclick = (e) => {
+      const rect = container.getBoundingClientRect();
+      const px = e.clientX - rect.left;
+      const py = e.clientY - rect.top;
+      if (py >= h - 45) {
+        testNums.forEach((tn, i) => {
+          const tx = w * 0.22 + i * (w * 0.11);
+          if (Math.abs(px - tx) < 20) toggleNumberTileSelect(tn);
+        });
+      } else {
+        selectPrimesOnly();
+      }
+    };
+  }
+  two.update();
+}
+
+// ----------------------------------------------------------------------------
+// 7. 에라토스테네스의 체 (Tab 1: 1-5, 1-6)
+// ----------------------------------------------------------------------------
+function sieveFilterMultiple(p) {
   state.sieveNumbers = state.sieveNumbers || {};
-  if (k === 1) {
-    state.sieveNumbers[1] = 'one';
-  } else if (k >= 2) {
-    state.sieveNumbers[k] = 'prime';
-    for (let m = k * 2; m <= 100; m += k) {
-      state.sieveNumbers[m] = 'crossed';
-    }
+  state.sieveNumbers[1] = 'one';
+  for (let i = p * 2; i <= 100; i += p) {
+    state.sieveNumbers[i] = 'crossed';
   }
-  let primeCount = 0;
-  for (let i = 2; i <= 100; i++) {
-    if ((state.sieveNumbers || {})[i] !== 'crossed' && (state.sieveNumbers || {})[i] !== 'one') primeCount++;
-  }
-  syncBadge('sieve-count-badge', `${primeCount}개 / 25개`, (primeCount <= 25 ? '#fee2e2' : '#ecfdf5'), (primeCount <= 25 ? '#dc2626' : '#065f46'));
+  updateSieveBadge();
   if (twoInstance) drawSieveCanvas(twoInstance, { max: 100 });
 }
 
 function resetSieve() {
   state.sieveNumbers = {};
+  updateSieveBadge();
   if (twoInstance) drawSieveCanvas(twoInstance, { max: 100 });
 }
 
 function toggleSieveCell(n) {
   state.sieveNumbers = state.sieveNumbers || {};
   if (n === 1) {
-    state.sieveNumbers[1] = state.sieveNumbers[1] ? undefined : 'one';
+    state.sieveNumbers[1] = 'one';
+  } else if (state.sieveNumbers[n] === 'crossed') {
+    delete state.sieveNumbers[n];
   } else {
-    state.sieveNumbers[n] = (state.sieveNumbers[n] === 'crossed') ? 'prime' : (state.sieveNumbers[n] === 'prime' ? undefined : 'crossed');
+    state.sieveNumbers[n] = 'crossed';
   }
+  updateSieveBadge();
   if (twoInstance) drawSieveCanvas(twoInstance, { max: 100 });
 }
 
@@ -2831,62 +3251,54 @@ function drawSieveCanvas(two, options) {
   const cellW = (w - 50) / cols;
   const cellH = (h - 110) / rows;
 
-  const title = two.makeText('에라토스테네스의 체 (1~100 소수 걸러내기)', w / 2, 16);
+  const title = two.makeText('에라토스테네스의 체 (1~100 사이의 소수 25개 찾기)', w / 2, 20);
   title.size = 12.5; title.weight = 800; title.fill = '#1e293b';
 
-  const filters = [
-    { label: '1 지우기', val: 1, x: w * 0.12 },
-    { label: '2의 배수', val: 2, x: w * 0.31 },
-    { label: '3의 배수', val: 3, x: w * 0.50 },
-    { label: '5의 배수', val: 5, x: w * 0.69 },
-    { label: '7의 배수', val: 7, x: w * 0.88 }
-  ];
-
-  filters.forEach(f => {
-    const btn = two.makeRoundedRectangle(f.x, 34, w * 0.16, 20, 4);
-    btn.fill = '#eef2ff'; btn.stroke = '#6366f1'; btn.linewidth = 1.2;
-    const txt = two.makeText(f.label, f.x, 34);
-    txt.size = 9.5; txt.weight = 700; txt.fill = '#4338ca';
+  const primeFilterBtns = [2, 3, 5, 7];
+  primeFilterBtns.forEach((p, idx) => {
+    const bx = w * 0.22 + idx * (w * 0.18);
+    const btn = two.makeRoundedRectangle(bx, 40, 52, 20, 4);
+    btn.fill = '#eff6ff'; btn.stroke = '#3b82f6';
+    const txt = two.makeText(`${p}의 배수 ✕`, bx, 40);
+    txt.size = 9; txt.weight = 700; txt.fill = '#1d4ed8';
   });
 
-  const knownPrimes = [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97];
-
   for (let i = 1; i <= max; i++) {
-    const c = (i - 1) % cols;
     const r = Math.floor((i - 1) / cols);
+    const c = (i - 1) % cols;
     const cx = startX + c * cellW + cellW / 2;
     const cy = startY + r * cellH + cellH / 2;
 
-    const s = (state.sieveNumbers || {})[i];
-    const rect = two.makeRoundedRectangle(cx, cy, cellW - 2, cellH - 2, 3);
+    const status = (state.sieveNumbers || {})[i];
+    const rect = two.makeRectangle(cx, cy, cellW - 1.5, cellH - 1.5);
 
-    if (i === 1 || s === 'one') {
+    if (status === 'one') {
       rect.fill = '#f1f5f9'; rect.stroke = '#cbd5e1';
-    } else if (s === 'prime' || (!s && knownPrimes.includes(i) && Object.keys(state.sieveNumbers || {}).length > 20)) {
-      rect.fill = '#fef08a'; rect.stroke = '#eab308'; rect.linewidth = 1.5;
-    } else if (s === 'crossed') {
+    } else if (status === 'crossed') {
       rect.fill = '#fee2e2'; rect.stroke = '#fca5a5';
     } else {
       rect.fill = '#ffffff'; rect.stroke = '#e2e8f0';
     }
 
     const t = two.makeText(i.toString(), cx, cy);
-    t.size = 9.5; t.weight = (s === 'prime') ? 800 : 600;
-    t.fill = (s === 'crossed') ? '#ef4444' : ((s === 'prime') ? '#854d0e' : (i === 1 ? '#94a3b8' : '#1e293b'));
+    t.size = 8.5; t.weight = 600;
+    t.fill = (status === 'crossed') ? '#ef4444' : ((status === 'one') ? '#94a3b8' : '#1e293b');
 
-    if (s === 'crossed') {
-      const slash = two.makeLine(cx - cellW / 2 + 3, cy - cellH / 2 + 3, cx + cellW / 2 - 3, cy + cellH / 2 - 3);
+    if (status === 'crossed') {
+      const slash = two.makeLine(cx - cellW / 3, cy + cellH / 3, cx + cellW / 3, cy - cellH / 3);
       slash.stroke = '#ef4444'; slash.linewidth = 1.2;
     }
   }
 
-  const bottomBar = two.makeRoundedRectangle(w / 2, h - 22, w - 40, 26, 6);
-  bottomBar.fill = '#f8fafc'; bottomBar.stroke = '#cbd5e1';
-  const statsTxt = two.makeText(
-    '💡 상단 배수 버튼을 눌러 소수를 걸러내세요! (1~100 소수 총 25개)',
-    w / 2, h - 22
-  );
-  statsTxt.size = 10; statsTxt.weight = 700; statsTxt.fill = '#0369a1';
+  let count = 0;
+  for (let i = 2; i <= 100; i++) {
+    if ((state.sieveNumbers || {})[i] !== 'crossed' && (state.sieveNumbers || {})[i] !== 'one') count++;
+  }
+
+  const bCard = two.makeRoundedRectangle(w / 2, h - 20, w - 40, 26, 6);
+  bCard.fill = '#f8fafc'; bCard.stroke = '#cbd5e1';
+  const res = two.makeText(`현재 남은 수: ${count}개 (소수는 총 25개)`, w / 2, h - 20);
+  res.size = 10; res.weight = 800; res.fill = (count === 25) ? '#16a34a' : '#1e293b';
 
   const container = document.getElementById('two-container');
   if (container) {
@@ -2894,16 +3306,17 @@ function drawSieveCanvas(two, options) {
       const rect = container.getBoundingClientRect();
       const px = e.clientX - rect.left;
       const py = e.clientY - rect.top;
-
-      if (py >= 22 && py <= 46) {
-        filters.forEach(f => {
-          if (Math.abs(px - f.x) < w * 0.08) sieveFilterMultiple(f.val);
+      if (py >= 30 && py <= 50) {
+        primeFilterBtns.forEach(p => {
+          const bx = w * 0.22 + primeFilterBtns.indexOf(p) * (w * 0.18);
+          if (Math.abs(px - bx) < 26) sieveFilterMultiple(p);
         });
-      } else if (py >= startY && py <= startY + rows * cellH && px >= startX && px <= startX + cols * cellW) {
-        const col = Math.floor((px - startX) / cellW);
-        const row = Math.floor((py - startY) / cellH);
-        const n = row * 10 + col + 1;
-        if (n >= 1 && n <= 100) toggleSieveCell(n);
+      } else if (py >= startY && py <= startY + rows * cellH) {
+        const c = Math.floor((px - startX) / cellW);
+        const r = Math.floor((py - startY) / cellH);
+        if (c >= 0 && c < cols && r >= 0 && r < rows) {
+          toggleSieveCell(r * cols + c + 1);
+        }
       }
     };
   }
@@ -2911,10 +3324,48 @@ function drawSieveCanvas(two, options) {
 }
 
 // ----------------------------------------------------------------------------
-// 5. 종이접기 대화형 슬라이더/버튼 (Tab 1: 1-8)
+// 8. 거듭제곱의 직관적 시각화 (Tab 1: 1-7, 1-8, 1-11)
 // ----------------------------------------------------------------------------
-function foldPaperStep(step) {
-  state.foldCount = Math.max(0, Math.min(42, (step !== undefined ? step : (state.foldCount || 0) + 1)));
+function drawPowerBlocksCanvas(two, options) {
+  if (!two) return;
+  two.clear();
+  const w = two.width, h = two.height;
+  two.makeText('📦 거듭제곱의 직관적 시각화 (2¹, 2², 2³)', w / 2, 22).weight = 800;
+
+  const stages = [
+    { label: "2¹ = 2", count: 2, x: w * 0.2 },
+    { label: "2² = 4", count: 4, x: w * 0.5 },
+    { label: "2³ = 8", count: 8, x: w * 0.8 }
+  ];
+
+  stages.forEach(s => {
+    two.makeText(s.label, s.x, 60).weight = 800;
+    const card = two.makeRoundedRectangle(s.x, 135, 90, 110, 8);
+    card.fill = '#f8fafc'; card.stroke = '#cbd5e1';
+
+    for (let k = 0; k < s.count; k++) {
+      const col = k % 2;
+      const row = Math.floor(k / 2);
+      const bx = s.x - 16 + col * 32;
+      const by = 100 + row * 24;
+      const blk = two.makeRoundedRectangle(bx, by, 24, 18, 4);
+      blk.fill = '#6366f1'; blk.stroke = '#4338ca';
+    }
+  });
+
+  const container = document.getElementById('two-container');
+  if (container) {
+    container.onclick = () => {};
+  }
+  two.update();
+}
+
+// ----------------------------------------------------------------------------
+// 9. 종이접기와 거듭제곱의 폭발적 증가 (Tab 1: 1-9)
+// ----------------------------------------------------------------------------
+function foldPaperStep(n) {
+  state.foldCount = n !== undefined ? n : (state.foldCount || 0) + 1;
+  if (state.foldCount > 42) state.foldCount = 42;
   const foldN = state.foldCount || 0;
   const thicknessMm = (0.1 * Math.pow(2, foldN));
   let foldStr = `${thicknessMm.toFixed(1)}mm`;
@@ -2936,159 +3387,80 @@ function drawPaperFoldCanvas(two, options) {
   const t = two.makeText(`🌕 종이접기의 위력 (현재 접은 횟수: ${folds}회)`, w / 2, 22);
   t.size = 12.5; t.weight = 800; t.fill = '#1e293b';
 
-  // Earth to Moon
-  const earth = two.makeCircle(w * 0.18, 110, 26); earth.fill = '#38bdf8';
-  two.makeText('지구', w * 0.18, 110).fill = '#fff';
+  const earth = two.makeCircle(w * 0.15, 125, 36);
+  earth.fill = '#60a5fa'; earth.stroke = '#2563eb'; earth.linewidth = 2;
+  two.makeText('지구 🌍', w * 0.15, 125).weight = 800;
 
-  const moon = two.makeCircle(w * 0.82, 110, 20); moon.fill = '#facc15';
-  two.makeText('달', w * 0.82, 110).fill = '#000';
+  const moon = two.makeCircle(w * 0.85, 125, 26);
+  moon.fill = '#fde047'; moon.stroke = '#ca8a04'; moon.linewidth = 2;
+  two.makeText('달 🌕', w * 0.85, 125).weight = 800;
 
-  const flight = two.makeLine(w * 0.18 + 30, 110, w * 0.82 - 25, 110);
-  flight.stroke = '#cbd5e1'; flight.linewidth = 2; flight.dashes = [4, 4];
+  const track = two.makeLine(w * 0.15, 125, w * 0.85, 125);
+  track.stroke = '#cbd5e1'; track.linewidth = 2;
 
-  const ratio = Math.min(1, folds / 42);
-  const rx = (w * 0.18 + 30) + ratio * ((w * 0.82 - 25) - (w * 0.18 + 30));
-  const rDot = two.makeCircle(rx, 110, 8);
-  rDot.fill = '#ef4444'; rDot.stroke = '#b91c1c'; rDot.linewidth = 2;
-  two.makeText('🚀', rx, 92).size = 14;
+  const progress = Math.min(1, folds / 42);
+  const rocketX = w * 0.15 + progress * (w * 0.70);
+  const rocket = two.makeCircle(rocketX, 125, 12);
+  rocket.fill = '#ef4444'; rocket.stroke = '#b91c1c';
+  two.makeText('🚀', rocketX, 125);
 
-  let thickStr = '0.1 mm (종이 1장)';
-  if (folds === 1) thickStr = '0.2 mm (2¹)';
-  else if (folds === 3) thickStr = '0.8 mm (2³)';
-  else if (folds === 14) thickStr = '약 1.64 m (사람 키)';
-  else if (folds === 27) thickStr = '약 13.4 km (에베레스트 돌파)';
-  else if (folds === 42) thickStr = '약 439,804 km (달 도달 성공! 🎉)';
-  else if (folds > 0) thickStr = `0.1mm × 2^${folds}`;
+  const card = two.makeRoundedRectangle(w / 2, 210, w - 40, 48, 8);
+  card.fill = (folds >= 42) ? '#ecfdf5' : '#f8fafc';
+  card.stroke = (folds >= 42) ? '#10b981' : '#cbd5e1';
 
-  const infoBox = two.makeRoundedRectangle(w / 2, 175, w - 50, 40, 8);
-  infoBox.fill = (folds >= 42) ? '#fef3c7' : '#f8fafc';
-  infoBox.stroke = (folds >= 42) ? '#f59e0b' : '#cbd5e1';
+  const thickMm = 0.1 * Math.pow(2, folds);
+  let distStr = `${thickMm.toFixed(1)} mm`;
+  if (thickMm >= 1000000000) distStr = `${(thickMm / 1000000000).toFixed(1)}만 km (달 도달! 🎉)`;
+  else if (thickMm >= 1000000) distStr = `${(thickMm / 1000000).toFixed(2)} km`;
+  else if (thickMm >= 1000) distStr = `${(thickMm / 1000).toFixed(2)} m`;
 
-  const thickTxt = two.makeText(`종이 두께: ${thickStr}`, w / 2, 175);
-  thickTxt.size = 11; thickTxt.weight = 800; thickTxt.fill = (folds >= 42) ? '#b45309' : '#1e293b';
+  const info = two.makeText(`두께: 0.1mm × 2^${folds} = ${distStr}`, w / 2, 202);
+  info.size = 11; info.weight = 800; info.fill = (folds >= 42) ? '#065f46' : '#1e293b';
 
-  const bFold = two.makeRoundedRectangle(w * 0.35, 225, 100, 26, 6);
-  bFold.fill = '#e0f2fe'; bFold.stroke = '#0284c7';
-  const bfTxt = two.makeText('➕ 1번 더 접기', w * 0.35, 225);
-  bfTxt.size = 10; bfTxt.weight = 700; bfTxt.fill = '#0369a1';
-
-  const b42 = two.makeRoundedRectangle(w * 0.65, 225, 120, 26, 6);
-  b42.fill = '#fef08a'; b42.stroke = '#ca8a04';
-  const b42Txt = two.makeText('🚀 42번 접기 달나라!', w * 0.65, 225);
-  b42Txt.size = 10; b42Txt.weight = 700; b42Txt.fill = '#854d0e';
+  const tip = two.makeText('👉 캔버스를 탭하여 종이를 접으세요! 42번 접으면 달(38만km)에 도달합니다.', w / 2, 222);
+  tip.size = 9.5; tip.fill = '#64748b';
 
   const container = document.getElementById('two-container');
   if (container) {
-    container.onclick = (e) => {
-      const rect = container.getBoundingClientRect();
-      const px = e.clientX - rect.left;
-      const py = e.clientY - rect.top;
-      if (py >= 210 && py <= 240) {
-        if (px < w / 2) foldPaperStep((state.foldCount || 0) + 1);
-        else foldPaperStep(42);
-      }
-    };
+    container.onclick = () => foldPaperStep();
   }
   two.update();
 }
 
 // ----------------------------------------------------------------------------
-// 6. 소인수분해 동적 가지치기 트리 (Tab 2: 2-3, 2-5)
+// 10. 열차 배수 역 탐구 (Tab 1: 1-15)
 // ----------------------------------------------------------------------------
-function decomposeTreeNode(nodeId) {
-  state.factorTreeNodes = state.factorTreeNodes || [];
-  if (state.factorTreeNodes.length === 0) {
-    state.factorTreeNodes = [
-      { id: 'root', val: 60, isPrime: false, x: 250, y: 55 },
-      { id: 'b1', val: 6, isPrime: false, x: 170, y: 115, parent: 'root' },
-      { id: 'b2', val: 10, isPrime: false, x: 330, y: 115, parent: 'root' }
-    ];
-  } else if (state.factorTreeNodes.length === 3) {
-    state.factorTreeNodes.push(
-      { id: 'l1', val: 2, isPrime: true, x: 130, y: 175, parent: 'b1' },
-      { id: 'l2', val: 3, isPrime: true, x: 210, y: 175, parent: 'b1' },
-      { id: 'l3', val: 2, isPrime: true, x: 290, y: 175, parent: 'b2' },
-      { id: 'l4', val: 5, isPrime: true, x: 370, y: 175, parent: 'b2' }
-    );
-    state.treeCompleted = true;
-  }
-  if (twoInstance) drawFactorTreeCanvas(twoInstance, { number: 60 });
-}
-
-function completeFullFactorTree() {
-  state.factorTreeNodes = [
-    { id: 'root', val: 60, isPrime: false, x: 250, y: 55 },
-    { id: 'b1', val: 6, isPrime: false, x: 170, y: 115, parent: 'root' },
-    { id: 'b2', val: 10, isPrime: false, x: 330, y: 115, parent: 'root' },
-    { id: 'l1', val: 2, isPrime: true, x: 130, y: 175, parent: 'b1' },
-    { id: 'l2', val: 3, isPrime: true, x: 210, y: 175, parent: 'b1' },
-    { id: 'l3', val: 2, isPrime: true, x: 290, y: 175, parent: 'b2' },
-    { id: 'l4', val: 5, isPrime: true, x: 370, y: 175, parent: 'b2' }
-  ];
-  state.treeCompleted = true;
-  syncBadge('tree-leaves-badge', '4개 완성 (2, 2, 3, 5)', '#ecfdf5', '#065f46');
-  if (twoInstance) drawFactorTreeCanvas(twoInstance, { number: 60 });
-}
-
-function drawFactorTreeCanvas(two, options) {
+function drawTrainStationsCanvas(two, options) {
   if (!two) return;
   two.clear();
   const w = two.width, h = two.height;
-  const num = options.number || 60;
-
-  const title = two.makeText(`소인수분해 가지치기 트리: ${num}`, w / 2, 22);
-  title.size = 13; title.weight = 800; title.fill = '#1e293b';
-
-  if (!state.factorTreeNodes || state.factorTreeNodes.length === 0) {
-    decomposeTreeNode('root');
+  two.makeText('🚂 열차 배수 역 탐구 (1~30번 역)', w / 2, 22).weight = 800;
+  const cols = 6;
+  const startX = 30, startY = 60;
+  const cellW = (w - 60) / cols, cellH = 34;
+  for (let i = 1; i <= 30; i++) {
+    const r = Math.floor((i - 1) / cols);
+    const c = (i - 1) % cols;
+    const cx = startX + c * cellW + cellW / 2;
+    const cy = startY + r * cellH + cellH / 2;
+    const isMult3 = (i % 3 === 0);
+    const box = two.makeRoundedRectangle(cx, cy, cellW - 4, cellH - 4, 4);
+    box.fill = isMult3 ? '#dbeafe' : '#f8fafc';
+    box.stroke = isMult3 ? '#3b82f6' : '#e2e8f0';
+    two.makeText(`${i}번`, cx, cy).size = 9.5;
   }
-
-  state.factorTreeNodes.forEach(n => {
-    if (n.parent) {
-      const p = state.factorTreeNodes.find(pn => pn.id === n.parent);
-      if (p) {
-        const line = two.makeLine(p.x, p.y + 16, n.x, n.y - 16);
-        line.stroke = '#cbd5e1'; line.linewidth = 1.8;
-      }
-    }
-  });
-
-  state.factorTreeNodes.forEach(n => {
-    const c = two.makeCircle(n.x, n.y, 18);
-    if (n.isPrime) {
-      c.fill = '#dcfce7'; c.stroke = '#16a34a'; c.linewidth = 2.2;
-    } else {
-      c.fill = '#fef3c7'; c.stroke = '#f59e0b'; c.linewidth = 1.8;
-    }
-    const txt = two.makeText(n.val.toString(), n.x, n.y);
-    txt.size = 12; txt.weight = 800;
-    txt.fill = n.isPrime ? '#15803d' : '#b45309';
-  });
-
-  const bBox = two.makeRoundedRectangle(w / 2, 225, w - 40, 36, 6);
-  bBox.fill = state.treeCompleted ? '#f0fdf4' : '#ffffff';
-  bBox.stroke = state.treeCompleted ? '#22c55e' : '#cbd5e1';
-  bBox.linewidth = 1.5;
-
-  const resTxt = two.makeText(
-    state.treeCompleted ? `🎉 소인수분해 완성! ${num} = 2² × 3 × 5` : '👉 합성수 노드를 탭하여 소수가 될 때까지 가지를 치세요!',
-    w / 2, 225
-  );
-  resTxt.size = 11; resTxt.weight = 800;
-  resTxt.fill = state.treeCompleted ? '#15803d' : '#475569';
-
   const container = document.getElementById('two-container');
   if (container) {
-    container.onclick = () => decomposeTreeNode();
+    container.onclick = () => {};
   }
   two.update();
 }
 
 // ----------------------------------------------------------------------------
-// 7. 18 소인수분해 유일성 비교 (Tab 2: 2-7)
+// 11. 소인수분해 유일성 비교 블록 (Tab 2: 2-1, 2-2)
 // ----------------------------------------------------------------------------
 function toggleUniquenessBranch() {
-  state.uniquenessCompared = true;
+  state.uniquenessCompared = !state.uniquenessCompared;
   if (twoInstance) drawToyBlocksCanvas(twoInstance, {});
 }
 
@@ -3099,33 +3471,22 @@ function drawToyBlocksCanvas(two, options) {
   const title = two.makeText('🔍 18의 소인수분해 유일성 탐구', w / 2, 22);
   title.size = 13; title.weight = 800; title.fill = '#1e293b';
 
-  const b1Bg = two.makeRoundedRectangle(w * 0.28, 115, 135, 120, 8);
-  b1Bg.fill = '#f0fdf4'; b1Bg.stroke = '#22c55e';
-  two.makeText('갈래 A: 2 × 9', w * 0.28, 72).weight = 800;
-  two.makeText('18', w * 0.28, 95).size = 12;
-  two.makeText('➔ 2 × 3 × 3', w * 0.28, 120).size = 11;
-  const b1Res = two.makeText('결과: 2 × 3²', w * 0.28, 150);
-  b1Res.weight = 800; b1Res.fill = '#15803d';
+  const b1Bg = two.makeRoundedRectangle(w * 0.28, 115, w * 0.40, 110, 8);
+  b1Bg.fill = '#eff6ff'; b1Bg.stroke = '#3b82f6'; b1Bg.linewidth = 1.5;
+  two.makeText('방법 1: 18 = 2 × 9', w * 0.28, 80).weight = 800;
+  two.makeText('➔ 2 × (3 × 3) = 2 × 3²', w * 0.28, 115).size = 11.5;
+  two.makeText('소수 말단: 2, 3, 3 🔒', w * 0.28, 145).size = 9.5;
 
-  const b2Bg = two.makeRoundedRectangle(w * 0.72, 115, 135, 120, 8);
-  b2Bg.fill = '#f0f9ff'; b2Bg.stroke = '#0284c7';
-  two.makeText('갈래 B: 3 × 6', w * 0.72, 72).weight = 800;
-  two.makeText('18', w * 0.72, 95).size = 12;
-  two.makeText('➔ 3 × 2 × 3', w * 0.72, 120).size = 11;
-  const b2Res = two.makeText('결과: 2 × 3²', w * 0.72, 150);
-  b2Res.weight = 800; b2Res.fill = '#0369a1';
+  const b2Bg = two.makeRoundedRectangle(w * 0.72, 115, w * 0.40, 110, 8);
+  b2Bg.fill = '#fdf2f8'; b2Bg.stroke = '#ec4899'; b2Bg.linewidth = 1.5;
+  two.makeText('방법 2: 18 = 3 × 6', w * 0.72, 80).weight = 800;
+  two.makeText('➔ 3 × (2 × 3) = 2 × 3²', w * 0.72, 115).size = 11.5;
+  two.makeText('소수 말단: 3, 2, 3 🔒', w * 0.72, 145).size = 9.5;
 
-  const bottomCard = two.makeRoundedRectangle(w / 2, 215, w - 40, 45, 8);
-  bottomCard.fill = state.uniquenessCompared ? '#fef3c7' : '#ffffff';
-  bottomCard.stroke = state.uniquenessCompared ? '#f59e0b' : '#cbd5e1';
-
-  const desc = two.makeText(
-    state.uniquenessCompared
-      ? '✨ 결론: 어떤 순서로 분해하더라도 소인수들의 구성(2 × 3²)은 오직 하나뿐입니다!'
-      : '👉 카드를 클릭하여 두 가지 갈래의 소인수분해 결과를 비교해 보세요.',
-    w / 2, 215
-  );
-  desc.size = 10.5; desc.weight = 800; desc.fill = state.uniquenessCompared ? '#b45309' : '#334155';
+  const card = two.makeRoundedRectangle(w / 2, 215, w - 40, 36, 6);
+  card.fill = '#ecfdf5'; card.stroke = '#059669';
+  const cTxt = two.makeText('결론: 나누는 순서가 달라도 소인수의 곱(2 × 3²)은 오직 한 가지로 일치합니다! (소인수분해의 유일성)', w / 2, 215);
+  cTxt.size = 9.5; cTxt.weight = 800; cTxt.fill = '#065f46';
 
   const container = document.getElementById('two-container');
   if (container) {
@@ -3135,13 +3496,176 @@ function drawToyBlocksCanvas(two, options) {
 }
 
 // ----------------------------------------------------------------------------
-// 8. 최대공약수 직사각형 타일링 (Tab 3: 3-1)
+// 12. 소인수분해 가지치기 트리 (Tab 2: 2-4, 2-5, 2-6, 2-7, 2-13, 2-15, 6-4, 6-5, 6-11)
+// ----------------------------------------------------------------------------
+function drawFactorTreeCanvas(two, options) {
+  if (!two) return;
+  two.clear();
+  const w = two.width, h = two.height;
+  const num = Math.abs(Math.round(Number(options.number))) || 60;
+  state.currentTreeNumber = num;
+
+  const title = two.makeText(`소인수분해 가지치기 트리: ${num}`, w / 2, 22);
+  title.size = 13; title.weight = 800; title.fill = '#1e293b';
+
+  // If tree is empty or belongs to different number, build dynamically
+  if (!state.factorTreeNodes || state.factorTreeNodes.length === 0 || state.factorTreeNodes[0].val !== num) {
+    state.factorTreeNodes = buildFactorTreeNodes(num, w, h);
+    state.treeCompleted = false;
+  }
+
+  // Draw connecting branch lines
+  state.factorTreeNodes.forEach(n => {
+    if (n.parent) {
+      const p = state.factorTreeNodes.find(pn => pn.id === n.parent);
+      if (p) {
+        const line = two.makeLine(p.x, p.y + 16, n.x, n.y - 16);
+        line.stroke = '#cbd5e1'; line.linewidth = 2;
+      }
+    }
+  });
+
+  // Draw circular nodes
+  state.factorTreeNodes.forEach(n => {
+    const c = two.makeCircle(n.x, n.y, 18);
+    if (n.isPrime) {
+      c.fill = '#dcfce7'; c.stroke = '#16a34a'; c.linewidth = 2.4;
+    } else {
+      c.fill = '#fef3c7'; c.stroke = '#f59e0b'; c.linewidth = 2;
+    }
+    const txt = two.makeText(n.val.toString(), n.x, n.y);
+    txt.size = 11.5; txt.weight = 800;
+    txt.fill = n.isPrime ? '#15803d' : '#b45309';
+
+    if (n.isPrime) {
+      const lock = two.makeText('🔒', n.x + 13, n.y - 11);
+      lock.size = 8;
+    }
+  });
+
+  const bBox = two.makeRoundedRectangle(w / 2, h - 22, w - 40, 32, 6);
+  bBox.fill = state.treeCompleted ? '#f0fdf4' : '#ffffff';
+  bBox.stroke = state.treeCompleted ? '#22c55e' : '#cbd5e1';
+  bBox.linewidth = 1.5;
+
+  const resFormula = formatPrimeFactorization(num);
+  const resTxt = two.makeText(
+    state.treeCompleted ? `🎉 소인수분해 완성! ${resFormula}` : '👉 노드를 탭하여 가지치기를 완성해 보세요!',
+    w / 2, h - 22
+  );
+  resTxt.size = 11; resTxt.weight = 800;
+  resTxt.fill = state.treeCompleted ? '#15803d' : '#475569';
+
+  const container = document.getElementById('two-container');
+  if (container) {
+    container.onclick = () => completeFullFactorTree(num);
+  }
+  two.update();
+}
+
+function completeFullFactorTree(targetNum) {
+  const num = targetNum || state.currentTreeNumber || 60;
+  state.currentTreeNumber = num;
+  const container = document.getElementById('two-container');
+  const w = (container && container.clientWidth) || 550;
+  const h = (container && container.clientHeight) || 450;
+  state.factorTreeNodes = buildFactorTreeNodes(num, w, h);
+  state.treeCompleted = true;
+  const leaves = (state.factorTreeNodes || []).filter(n => n.isPrime);
+  const leafVals = leaves.map(l => l.val).join(', ');
+  syncBadge('tree-leaves-badge', `${leaves.length}개 완성 (${leafVals})`, '#ecfdf5', '#065f46');
+  if (twoInstance) drawFactorTreeCanvas(twoInstance, { number: num });
+}
+
+function decomposeTreeNode(nodeId) {
+  completeFullFactorTree();
+}
+
+// ----------------------------------------------------------------------------
+// 13. 소인수분해를 이용한 약수 격자표 (Tab 2: 2-8, 2-9, 2-10, 2-11, 2-17)
+// ----------------------------------------------------------------------------
+function drawDivisorTableCanvas(two, options) {
+  if (!two) return;
+  two.clear();
+  const w = two.width, h = two.height;
+  let num = options.num || 36;
+  if (!options.num) {
+    if (state.subStep === '2-9') num = 63;
+    else if (state.subStep === '2-8') num = 108;
+    else if (state.subStep === '2-17') num = 18;
+  }
+
+  const factors = factorize(num);
+  const counts = {};
+  factors.forEach(f => { counts[f] = (counts[f] || 0) + 1; });
+  const primes = Object.keys(counts).map(Number).sort((a, b) => a - b);
+
+  const p1 = primes[0] || 2;
+  const e1 = counts[p1] || 2;
+  const p2 = primes[1] || (primes[0] ? 3 : 3);
+  const e2 = counts[p2] || 1;
+
+  const cols = e1 + 2; // "×" + p1^0 .. p1^e1
+  const rows = e2 + 2; // p2^0 .. p2^e2
+
+  const cellW = Math.min(56, (w - 70) / cols);
+  const cellH = Math.min(32, (h - 90) / rows);
+  const startX = (w - cols * cellW) / 2 + cellW / 2;
+  const startY = 65;
+
+  const title = two.makeText(`소인수분해를 이용한 약수 격자표 (${formatPrimeFactorization(num)})`, w / 2, 22);
+  title.size = 12.5; title.weight = 800; title.fill = '#1e293b';
+
+  const colPows = [1];
+  for (let i = 1; i <= e1; i++) colPows.push(Math.pow(p1, i));
+
+  const rowPows = [1];
+  for (let j = 1; j <= e2; j++) rowPows.push(Math.pow(p2, j));
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cx = startX + c * cellW;
+      const cy = startY + r * cellH;
+      const rect = two.makeRectangle(cx, cy, cellW - 2, cellH - 2);
+      const isHeader = (r === 0 || c === 0);
+      rect.stroke = isHeader ? '#94a3b8' : '#cbd5e1';
+      rect.fill = (r === 0 && c === 0) ? '#e0f2fe' : (isHeader ? '#f1f5f9' : '#ffffff');
+
+      let val = '';
+      if (r === 0 && c === 0) val = '×';
+      else if (r === 0) val = `${colPows[c - 1]}`;
+      else if (c === 0) val = `${rowPows[r - 1]}`;
+      else val = `${colPows[c - 1] * rowPows[r - 1]}`;
+
+      const t = two.makeText(val, cx, cy);
+      t.size = isHeader ? 11 : 10.5;
+      t.weight = isHeader ? 800 : 700;
+      t.fill = isHeader ? '#1e40af' : '#1e293b';
+    }
+  }
+
+  const allDivs = getDivisors(num);
+  const bCard = two.makeRoundedRectangle(w / 2, h - 22, w - 40, 28, 6);
+  bCard.fill = '#f8fafc'; bCard.stroke = '#cbd5e1';
+  const bTxt = two.makeText(`✨ ${num}의 약수 (총 ${allDivs.length}개): [ ${allDivs.join(', ')} ]`, w / 2, h - 22);
+  bTxt.size = 10.5; bTxt.weight = 800; bTxt.fill = '#065f46';
+
+  const container = document.getElementById('two-container');
+  if (container) {
+    container.onclick = () => {};
+  }
+  two.update();
+}
+
+// ----------------------------------------------------------------------------
+// 14. 정사각형 타일 채우기 (Tab 3: 3-1, 3-4, 3-9, 3-13)
 // ----------------------------------------------------------------------------
 function updateTileSize(size) {
   state.tilingSize = parseInt(size) || 1;
   state.isTileFit = (18 % state.tilingSize === 0 && 12 % state.tilingSize === 0);
   const tileMsg = state.isTileFit ? `${state.tilingSize}cm 타일 (완전 채움 O)` : `${state.tilingSize}cm 타일 (빈틈 발생 X)`;
   syncBadge('tile-fit-badge', tileMsg, (state.isTileFit ? '#ecfdf5' : '#fee2e2'), (state.isTileFit ? '#065f46' : '#dc2626'));
+  const container = document.getElementById('two-container');
   if (twoInstance) drawSquareTileCanvas(twoInstance, {});
 }
 
@@ -3149,14 +3673,26 @@ function drawSquareTileCanvas(two, options) {
   if (!two) return;
   two.clear();
   const w = two.width, h = two.height;
-  const s = state.tilingSize || 1;
-  const isFit = (18 % s === 0 && 12 % s === 0);
 
-  const title = two.makeText(`📐 직사각형(18×12) 타일 채우기 (타일 크기: ${s}cm)`, w / 2, 22);
+  let rectW = options.width || 18;
+  let rectH = options.height || 12;
+  if (!options.width && !options.height) {
+    if (state.subStep === '3-1') { rectW = 18; rectH = 12; }
+    else if (state.subStep === '3-4') { rectW = 84; rectH = 24; }
+    else if (state.subStep === '3-9') { rectW = 150; rectH = 84; }
+  }
+
+  const s = state.tilingSize || 1;
+  state.isTileFit = (rectW % s === 0 && rectH % s === 0);
+  const isFit = state.isTileFit;
+
+  const title = two.makeText(`📐 직사각형(${rectW}×${rectH}) 타일 채우기 (타일 크기: ${s}cm)`, w / 2, 22);
   title.size = 12.5; title.weight = 800; title.fill = '#1e293b';
 
-  const sizes = [1, 2, 3, 4, 6];
-  sizes.forEach((sz, i) => {
+  const g = gcdCalc(rectW, rectH);
+  const sampleSizes = [1, 2, 3, 4, g].filter((v, i, a) => a.indexOf(v) === i && v <= Math.min(rectW, rectH)).sort((a, b) => a - b);
+
+  sampleSizes.forEach((sz, i) => {
     const bx = w * 0.18 + i * (w * 0.16);
     const isAct = (state.tilingSize === sz);
     const btn = two.makeRoundedRectangle(bx, 48, 52, 24, 4);
@@ -3166,39 +3702,48 @@ function drawSquareTileCanvas(two, options) {
     txt.size = 10; txt.weight = 700; txt.fill = isAct ? '#ffffff' : '#334155';
   });
 
-  const wallW = 216, wallH = 144;
-  const ox = w / 2 - wallW / 2;
-  const oy = 80;
+  const maxDrawW = w * 0.65;
+  const maxDrawH = 120;
+  const scale = Math.min(maxDrawW / rectW, maxDrawH / rectH);
+  const drawW = rectW * scale;
+  const drawH = rectH * scale;
+  const rectX = w / 2;
+  const rectY = 125;
 
-  const wall = two.makeRectangle(w / 2, oy + wallH / 2, wallW, wallH);
-  wall.fill = isFit ? '#ecfdf5' : '#fff1f2';
-  wall.stroke = isFit ? '#10b981' : '#f43f5e';
-  wall.linewidth = 2;
+  const mainRect = two.makeRectangle(rectX, rectY, drawW, drawH);
+  mainRect.fill = isFit ? 'rgba(34, 197, 94, 0.08)' : 'rgba(239, 68, 68, 0.08)';
+  mainRect.stroke = isFit ? '#16a34a' : '#dc2626';
+  mainRect.linewidth = 2;
 
-  const pixelTile = s * 12;
-  const fullCols = Math.floor(wallW / pixelTile);
-  const fullRows = Math.floor(wallH / pixelTile);
+  const tilePx = s * scale;
+  const numCols = Math.floor(rectW / s);
+  const numRows = Math.floor(rectH / s);
 
-  for (let r = 0; r < fullRows; r++) {
-    for (let c = 0; c < fullCols; c++) {
-      const tile = two.makeRectangle(ox + c * pixelTile + pixelTile / 2, oy + r * pixelTile + pixelTile / 2, pixelTile, pixelTile);
-      tile.fill = isFit ? 'rgba(16, 185, 129, 0.15)' : 'rgba(244, 63, 94, 0.15)';
-      tile.stroke = isFit ? '#059669' : '#e11d48';
-      tile.linewidth = 1;
+  if (tilePx >= 4) {
+    for (let c = 1; c < numCols; c++) {
+      const lx = (rectX - drawW / 2) + c * tilePx;
+      const l = two.makeLine(lx, rectY - drawH / 2, lx, rectY + drawH / 2);
+      l.stroke = '#cbd5e1'; l.linewidth = 0.8;
+    }
+    for (let r = 1; r < numRows; r++) {
+      const ly = (rectY - drawH / 2) + r * tilePx;
+      const l = two.makeLine(rectX - drawW / 2, ly, rectX + drawW / 2, ly);
+      l.stroke = '#cbd5e1'; l.linewidth = 0.8;
     }
   }
 
-  const banner = two.makeRoundedRectangle(w / 2, oy + wallH + 24, w - 40, 32, 6);
-  banner.fill = isFit ? '#dcfce7' : '#fee2e2';
-  banner.stroke = isFit ? '#86efac' : '#fca5a5';
+  two.makeText(`가로 ${rectW}cm`, rectX, rectY - drawH / 2 - 10).size = 10;
+  two.makeText(`세로 ${rectH}cm`, rectX - drawW / 2 - 25, rectY).size = 10;
 
-  const bTxt = two.makeText(
-    isFit
-      ? `✅ ${s}cm 타일: 빈틈없이 꼭 들어맞습니다! (공약수: 18과 12 모두 나누어떨어짐)`
-      : `❌ ${s}cm 타일: 빈틈이 남아 완전히 채울 수 없습니다! (공약수가 아님)`,
-    w / 2, oy + wallH + 24
-  );
-  bTxt.size = 10.5; bTxt.weight = 800; bTxt.fill = isFit ? '#15803d' : '#b91c1c';
+  const card = two.makeRoundedRectangle(w / 2, h - 22, w - 40, 32, 6);
+  card.fill = isFit ? '#f0fdf4' : '#fef2f2';
+  card.stroke = isFit ? '#22c55e' : '#f87171';
+
+  const bannerMsg = isFit
+    ? `🎉 ${s}cm 정사각형 타일로 빈틈없이 채워집니다! (가로 ${rectW / s}장 × 세로 ${rectH / s}장 = 총 ${(rectW / s) * (rectH / s)}장)`
+    : `⚠️ ${s}cm 타일로는 빈틈이 발생합니다. (${s}는 ${rectW % s !== 0 ? rectW + '의 약수가 아닙니다' : rectH + '의 약수가 아닙니다'})`;
+  const bTxt = two.makeText(bannerMsg, w / 2, h - 22);
+  bTxt.size = 10; bTxt.weight = 800; bTxt.fill = isFit ? '#15803d' : '#b91c1c';
 
   const container = document.getElementById('two-container');
   if (container) {
@@ -3206,11 +3751,14 @@ function drawSquareTileCanvas(two, options) {
       const rect = container.getBoundingClientRect();
       const px = e.clientX - rect.left;
       const py = e.clientY - rect.top;
-      if (py >= 35 && py <= 60) {
-        sizes.forEach((sz, i) => {
-          const bx = w * 0.18 + i * (w * 0.16);
+      if (py >= 36 && py <= 60) {
+        sampleSizes.forEach(sz => {
+          const bx = w * 0.18 + sampleSizes.indexOf(sz) * (w * 0.16);
           if (Math.abs(px - bx) < 26) updateTileSize(sz);
         });
+      } else {
+        const nextSz = sampleSizes[(sampleSizes.indexOf(state.tilingSize) + 1) % sampleSizes.length];
+        updateTileSize(nextSz);
       }
     };
   }
@@ -3218,75 +3766,7 @@ function drawSquareTileCanvas(two, options) {
 }
 
 // ----------------------------------------------------------------------------
-// 9. 최대공약수 & 최소공배수 벤다이어그램 (Tab 3: 3-3, Tab 4: 4-3)
-// ----------------------------------------------------------------------------
-function dropFactorToVenn(factor, targetArea) {
-  if (targetArea === 'intersection') {
-    state.vennIntersection = state.vennIntersection || [];
-    state.vennIntersection.push(factor);
-  }
-  if (twoInstance) drawVennDiagramCanvas(twoInstance, {});
-}
-
-function fuseLcmUnionFactors() {
-  state.lcmUnionFactors = [2, 2, 2, 3, 3];
-  if (twoInstance) drawVennDiagramCanvas(twoInstance, {});
-}
-
-function drawVennDiagramCanvas(two, options) {
-  if (!two) return;
-  two.clear();
-  const w = two.width, h = two.height;
-  const isLcm = (options.mode === 'lcm' || (state.subStep && state.subStep.startsWith('4-')));
-
-  const title = two.makeText(isLcm ? '소인수 벤다이어그램 (최소공배수: 합집합)' : '소인수 벤다이어그램 (최대공약수: 교집합)', w / 2, 22);
-  title.size = 13; title.weight = 800; title.fill = '#1e293b';
-
-  const cA = two.makeCircle(w * 0.38, 125, 75);
-  cA.fill = 'rgba(59, 130, 246, 0.12)'; cA.stroke = '#3b82f6'; cA.linewidth = 2;
-  two.makeText('24', w * 0.25, 75).size = 12; two.makeText('24 = 2³ × 3', w * 0.25, 92).size = 9.5;
-
-  const cB = two.makeCircle(w * 0.62, 125, 75);
-  cB.fill = 'rgba(236, 72, 153, 0.12)'; cB.stroke = '#ec4899'; cB.linewidth = 2;
-  two.makeText('36', w * 0.75, 75).size = 12; two.makeText('36 = 2² × 3²', w * 0.75, 92).size = 9.5;
-
-  const inters = state.vennIntersection || [2, 2, 3];
-  inters.forEach((f, idx) => {
-    const fy = 105 + idx * 22;
-    const dot = two.makeCircle(w / 2, fy, 10);
-    dot.fill = '#f59e0b'; dot.stroke = '#b45309'; dot.linewidth = 1.5;
-    two.makeText(f.toString(), w / 2, fy).fill = '#fff';
-  });
-
-  const dotA = two.makeCircle(w * 0.30, 135, 10); dotA.fill = '#3b82f6';
-  two.makeText('2', w * 0.30, 135).fill = '#fff';
-
-  const dotB = two.makeCircle(w * 0.70, 135, 10); dotB.fill = '#ec4899';
-  two.makeText('3', w * 0.70, 135).fill = '#fff';
-
-  const card = two.makeRoundedRectangle(w / 2, 225, w - 40, 36, 6);
-  card.fill = '#f8fafc'; card.stroke = '#cbd5e1';
-
-  let msg = '✨ 공통인 소인수 (교집합): 2 × 2 × 3 ➔ 최대공약수 = 12';
-  if (isLcm || (state.lcmUnionFactors && state.lcmUnionFactors.length > 0)) {
-    msg = '✨ 모든 소인수 곱 (합집합): 2³ × 3² ➔ 최소공배수 = 72';
-  }
-
-  const msgTxt = two.makeText(msg, w / 2, 225);
-  msgTxt.size = 11; msgTxt.weight = 800; msgTxt.fill = '#4338ca';
-
-  const container = document.getElementById('two-container');
-  if (container) {
-    container.onclick = () => {
-      dropFactorToVenn(2, 'intersection');
-      fuseLcmUnionFactors();
-    };
-  }
-  two.update();
-}
-
-// ----------------------------------------------------------------------------
-// 10. 최소공배수 톱니바퀴 회전 및 수직선 점프 (Tab 4: 4-1)
+// 15. 주기 사건 & 톱니바퀴 맞물림 (Tab 4: 4-1)
 // ----------------------------------------------------------------------------
 function stepLcmSimulation() {
   state.gearStep = (state.gearStep || 0) + 4;
@@ -3301,6 +3781,65 @@ function drawPeriodicEventsCanvas(two, options) {
   if (!two) return;
   two.clear();
   const w = two.width, h = two.height;
+
+  if (state.subStep === '4-1' || options.periodA) {
+    const periodA = options.periodA || 4;
+    const periodB = options.periodB || 3;
+    const startYr = options.startYear || 2022;
+    const lcmPeriod = lcmCalc(periodA, periodB);
+    const nextSyncYr = startYr + lcmPeriod;
+
+    const title = two.makeText(`월드컵(${periodA}년 주기)과 마술대회(${periodB}년 주기) 동시 개최 탐구`, w / 2, 22);
+    title.size = 12; title.weight = 800; title.fill = '#1e293b';
+
+    const years = [2022, 2025, 2026, 2028, 2030, 2031, 2034, 2037, 2038];
+    const timelineStartX = 40, timelineEndX = w - 40;
+    const tLine = two.makeLine(timelineStartX, 110, timelineEndX, 110);
+    tLine.stroke = '#94a3b8'; tLine.linewidth = 3;
+
+    const totalSpan = 2038 - 2022;
+    years.forEach(yr => {
+      const x = timelineStartX + ((yr - 2022) / totalSpan) * (timelineEndX - timelineStartX);
+      const isCup = ((yr - 2022) % periodA === 0);
+      const isMagic = ((yr - 2022) % periodB === 0);
+      const isBoth = isCup && isMagic;
+
+      const tick = two.makeLine(x, 102, x, 118);
+      tick.stroke = '#475569'; tick.linewidth = 1.5;
+
+      const yrTxt = two.makeText(yr.toString(), x, 130);
+      yrTxt.size = 9; yrTxt.weight = isBoth ? 800 : 600;
+      yrTxt.fill = isBoth ? '#4338ca' : '#64748b';
+
+      if (isCup) {
+        const cDot = two.makeCircle(x, 88, 7);
+        cDot.fill = '#3b82f6'; cDot.stroke = '#1d4ed8';
+        const cTxt = two.makeText('⚽', x, 88); cTxt.size = 8;
+      }
+      if (isMagic) {
+        const mDot = two.makeCircle(x, 68, 7);
+        mDot.fill = '#ec4899'; mDot.stroke = '#be185d';
+        const mTxt = two.makeText('🎩', x, 68); mTxt.size = 8;
+      }
+      if (isBoth && yr > startYr) {
+        const star = two.makeText('⭐ 동시 개최!', x, 50);
+        star.size = 9; star.weight = 800; star.fill = '#eab308';
+      }
+    });
+
+    const bCard = two.makeRoundedRectangle(w / 2, h - 22, w - 40, 32, 6);
+    bCard.fill = '#eff6ff'; bCard.stroke = '#93c5fd';
+    const bTxt = two.makeText(`🎉 ${startYr}년 이후 처음으로 동시 개최되는 해는 ${nextSyncYr}년 (${lcmPeriod}년 뒤, 최소공배수!) 입니다.`, w / 2, h - 22);
+    bTxt.size = 10; bTxt.weight = 800; bTxt.fill = '#1e40af';
+
+    const container = document.getElementById('two-container');
+    if (container) {
+      container.onclick = () => stepLcmSimulation();
+    }
+    two.update();
+    return;
+  }
+
   const step = state.gearStep || 0;
   const isFound = state.lcmFound || (step >= 24);
 
@@ -3340,7 +3879,7 @@ function drawPeriodicEventsCanvas(two, options) {
 }
 
 // ----------------------------------------------------------------------------
-// 11. 알지오매스 소수 판별 코딩 단계별 실행기 (Tab 5: 5-1)
+// 16. 알지오매스 소수 판별 코딩 인터프리터 (Tab 5: 5-1, 5-2, 5-3)
 // ----------------------------------------------------------------------------
 function stepRunAlgeoCode(targetN) {
   if (targetN) {
@@ -3352,7 +3891,6 @@ function stepRunAlgeoCode(targetN) {
     else if (state.codeStep === 3) { state.varI = 23; state.varD = 3; }
     else if (state.codeStep >= 4) { state.varI = 115; state.varD = 4; }
   }
-  syncBadge('algeo-step-badge', `Step ${state.codeStep} / 4 (D=${state.varD})`, '#eff6ff', '#1e40af');
   if (twoInstance) drawAlgeomathCodingCanvas(twoInstance, {});
 }
 
@@ -3396,8 +3934,119 @@ function drawAlgeomathCodingCanvas(two, options) {
 }
 
 // ----------------------------------------------------------------------------
-// 12. 몬드리안 모눈 사각형 드래그 분할 및 채색 툴 (Tab 7: 7-2)
+// 17. 달력 속의 소수 날짜 찾기 (Tab 6: 6-1)
 // ----------------------------------------------------------------------------
+function toggleCalendarPrime(day) {
+  state.calendarSelectedPrimes = state.calendarSelectedPrimes || [];
+  const idx = state.calendarSelectedPrimes.indexOf(day);
+  if (idx !== -1) {
+    state.calendarSelectedPrimes.splice(idx, 1);
+  } else {
+    state.calendarSelectedPrimes.push(day);
+    state.calendarSelectedPrimes.sort((a, b) => a - b);
+  }
+  syncBadge('status-badge-6_1', `선택된 소수: ${state.calendarSelectedPrimes.length}개 / 11개`, (state.calendarSelectedPrimes.length >= 11 ? '#ecfdf5' : '#eff6ff'), (state.calendarSelectedPrimes.length >= 11 ? '#065f46' : '#1e40af'));
+  syncBadge('calendar-prime-badge', `선택된 소수: ${state.calendarSelectedPrimes.length}개 / 11개`, (state.calendarSelectedPrimes.length >= 11 ? '#ecfdf5' : '#eff6ff'), (state.calendarSelectedPrimes.length >= 11 ? '#065f46' : '#1e40af'));
+  if (twoInstance) drawCalendarCanvas(twoInstance, {});
+}
+
+function drawCalendarCanvas(two, options) {
+  if (!two) return;
+  two.clear();
+  const w = two.width, h = two.height;
+  state.calendarSelectedPrimes = state.calendarSelectedPrimes || [];
+
+  const title = two.makeText('📅 달력 속의 소수 날짜 찾기 (1~31일)', w / 2, 20);
+  title.size = 13; title.weight = 800; title.fill = '#1e293b';
+
+  const dayHeaders = ['일', '월', '화', '수', '목', '금', '토'];
+  const cols = 7;
+  const colW = Math.min(50, (w - 60) / cols);
+  const rowH = 34;
+  const startX = (w - cols * colW) / 2 + colW / 2;
+  const startY = 55;
+
+  // Header row
+  dayHeaders.forEach((dh, ci) => {
+    const hx = startX + ci * colW;
+    const headerBg = two.makeRoundedRectangle(hx, startY, colW - 4, 24, 4);
+    headerBg.fill = (ci === 0) ? '#fee2e2' : (ci === 6 ? '#e0f2fe' : '#f1f5f9');
+    headerBg.stroke = '#cbd5e1';
+    const ht = two.makeText(dh, hx, startY);
+    ht.size = 10.5; ht.weight = 800;
+    ht.fill = (ci === 0) ? '#dc2626' : (ci === 6) ? '#0284c7' : '#475569';
+  });
+
+  const startOffset = 3; // Day 1 is Wednesday
+  const allPrimes31 = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31];
+
+  for (let day = 1; day <= 31; day++) {
+    const slot = (day - 1) + startOffset;
+    const r = Math.floor(slot / cols);
+    const c = slot % cols;
+    const cx = startX + c * colW;
+    const cy = startY + 36 + r * rowH;
+
+    const isPrimeDay = allPrimes31.includes(day);
+    const isSelected = state.calendarSelectedPrimes.includes(day);
+
+    const cell = two.makeRoundedRectangle(cx, cy, colW - 4, rowH - 4, 6);
+    if (isSelected) {
+      cell.fill = '#dcfce7'; cell.stroke = '#16a34a'; cell.linewidth = 2.2;
+    } else {
+      cell.fill = '#ffffff'; cell.stroke = '#cbd5e1'; cell.linewidth = 1;
+    }
+
+    const dt = two.makeText(day.toString(), cx, cy);
+    dt.size = 11; dt.weight = isSelected ? 800 : 600;
+    dt.fill = isSelected ? '#15803d' : ((c === 0) ? '#dc2626' : (c === 6) ? '#0284c7' : '#1e293b');
+
+    if (isSelected) {
+      const star = two.makeText('★소수', cx, cy + 9);
+      star.size = 6.5; star.weight = 800; star.fill = '#16a34a';
+    }
+  }
+
+  const bCard = two.makeRoundedRectangle(w / 2, h - 22, w - 40, 30, 6);
+  bCard.fill = '#f8fafc'; bCard.stroke = '#cbd5e1';
+
+  const foundCount = state.calendarSelectedPrimes.filter(d => allPrimes31.includes(d)).length;
+  const statusMsg = `🌟 소수 날짜 탐색: 총 11개 중 ${foundCount}개 선택됨 (날짜 타일을 탭하여 소수를 모두 골라보세요!)`;
+  const st = two.makeText(statusMsg, w / 2, h - 22);
+  st.size = 10.5; st.weight = 800; st.fill = (foundCount >= 11) ? '#15803d' : '#4f46e5';
+
+  const container = document.getElementById('two-container');
+  if (container) {
+    container.onclick = (e) => {
+      const rect = container.getBoundingClientRect();
+      const px = e.clientX - rect.left;
+      const py = e.clientY - rect.top;
+
+      for (let day = 1; day <= 31; day++) {
+        const slot = (day - 1) + startOffset;
+        const r = Math.floor(slot / cols);
+        const c = slot % cols;
+        const cx = startX + c * colW;
+        const cy = startY + 36 + r * rowH;
+
+        if (Math.abs(px - cx) <= colW / 2 && Math.abs(py - cy) <= rowH / 2) {
+          toggleCalendarPrime(day);
+          break;
+        }
+      }
+    };
+  }
+  two.update();
+}
+
+// ----------------------------------------------------------------------------
+// 18. 몬드리안 작품과 서로소 분할 (Tab 7: 7-1, 7-2, 7-3)
+// ----------------------------------------------------------------------------
+function setMondrianColor(c) {
+  state.mondrianColor = c;
+  if (twoInstance) drawMondrianCanvas(twoInstance, {});
+}
+
 function createMondrianRect(x1, y1, x2, y2, color) {
   state.mondrianRects = state.mondrianRects || [];
   let w, h, col;
@@ -3424,9 +4073,47 @@ function createMondrianRect(x1, y1, x2, y2, color) {
   if (twoInstance) drawMondrianCanvas(twoInstance, {});
 }
 
-function setMondrianColor(c) {
-  state.mondrianColor = c;
-  if (twoInstance) drawMondrianCanvas(twoInstance, {});
+function drawMondrianIntroCanvas(two, options) {
+  if (!two) return;
+  two.clear();
+  const w = two.width, h = two.height;
+
+  const title = two.makeText('🎨 피에트 몬드리안 작품과 황금비·서로소 분할', w / 2, 20);
+  title.size = 12.5; title.weight = 800; title.fill = '#1e293b';
+
+  const ox = w * 0.15, oy = 42, mw = w * 0.7, mh = h - 85;
+
+  const canvasBg = two.makeRectangle(ox + mw / 2, oy + mh / 2, mw, mh);
+  canvasBg.fill = '#ffffff'; canvasBg.stroke = '#1e293b'; canvasBg.linewidth = 4;
+
+  const rRed = two.makeRectangle(ox + mw * 0.3, oy + mh * 0.3, mw * 0.6, mh * 0.6);
+  rRed.fill = '#ef4444'; rRed.stroke = '#1e293b'; rRed.linewidth = 4;
+
+  const rBlue = two.makeRectangle(ox + mw * 0.85, oy + mh * 0.85, mw * 0.3, mh * 0.3);
+  rBlue.fill = '#2563eb'; rBlue.stroke = '#1e293b'; rBlue.linewidth = 4;
+
+  const rYellow = two.makeRectangle(ox + mw * 0.1, oy + mh * 0.85, mw * 0.2, mh * 0.3);
+  rYellow.fill = '#facc15'; rYellow.stroke = '#1e293b'; rYellow.linewidth = 4;
+
+  const l1 = two.makeLine(ox + mw * 0.6, oy, ox + mw * 0.6, oy + mh);
+  l1.stroke = '#1e293b'; l1.linewidth = 4;
+
+  const l2 = two.makeLine(ox + mw * 0.2, oy + mh * 0.6, ox + mw * 0.2, oy + mh);
+  l2.stroke = '#1e293b'; l2.linewidth = 4;
+
+  const l3 = two.makeLine(ox, oy + mh * 0.6, ox + mw, oy + mh * 0.6);
+  l3.stroke = '#1e293b'; l3.linewidth = 4;
+
+  const bCard = two.makeRoundedRectangle(w / 2, h - 20, w - 40, 26, 6);
+  bCard.fill = '#f8fafc'; bCard.stroke = '#cbd5e1';
+  const bTxt = two.makeText('✨ 몬드리안의 기하학적 색면 분할은 서로소 비율(2:3, 3:5)로 조화로운 균형을 이룹니다.', w / 2, h - 20);
+  bTxt.size = 10; bTxt.weight = 800; bTxt.fill = '#1e293b';
+
+  const container = document.getElementById('two-container');
+  if (container) {
+    container.onclick = () => {};
+  }
+  two.update();
 }
 
 function drawMondrianCanvas(two, options) {
@@ -3476,7 +4163,7 @@ function drawMondrianCanvas(two, options) {
 
   let txt = '👉 팔레트 색상을 고르고 모눈을 드래그하여 직사각형을 만드세요!';
   if (last) {
-    txt = `최근 사각형: ${last.w}×${last.h} (최대공약수: ${last.gcd} ➔ ${last.isCoprime ? '서로소!' : '서로소 아님'})`;
+    txt = `최근 사각형: ${last.w}×${last.h} (최대공약수: ${last.gcd} ➔ ${last.isCoprime ? '서로소! 🎉' : '서로소 아님'})`;
   }
   const statusTxt = two.makeText(txt, w / 2, h - 20);
   statusTxt.size = 10; statusTxt.weight = 800; statusTxt.fill = '#1e293b';
@@ -3499,150 +4186,58 @@ function drawMondrianCanvas(two, options) {
   two.update();
 }
 
-// ----------------------------------------------------------------------------
-// Additional Interactive Renderers
-// ----------------------------------------------------------------------------
-function drawCryptoRSACanvas(two, options) {
-  if (!two) return;
-  two.clear();
-  const w = two.width, h = two.height;
-  two.makeText('🔐 정보 보안 RSA 암호화 (소수의 곱 활용)', w / 2, 22).weight = 800;
-  two.makeText('소수 p = 61, q = 53 ➔ 공개키 N = p × q = 3233', w / 2, 80).size = 12;
-  two.makeText('N은 공개되지만 p와 q로 소인수분해하는 것은 매우 어렵습니다!', w / 2, 120).size = 11;
-  const lock = two.makeRoundedRectangle(w / 2, 180, 100, 60, 8);
-  lock.fill = '#fef3c7'; lock.stroke = '#f59e0b'; lock.linewidth = 2;
-  two.makeText('🔒 안전한 암호', w / 2, 180).weight = 800;
-
-  const container = document.getElementById('two-container');
-  if (container) {
-    container.onclick = () => {
-      lock.fill = '#dcfce7'; lock.stroke = '#16a34a';
-      two.update();
-    };
-  }
-  two.update();
-}
-
-function drawBioClassifyCanvas(two, options) {
-  if (!two) return;
-  two.clear();
-  const w = two.width, h = two.height;
-  two.makeText('생물 분류와 자연수 분류 (1, 소수, 합성수)', w / 2, 22).weight = 800;
-  two.makeText('자연수는 약수의 개수에 따라 1, 소수, 합성수로 명확히 나뉩니다.', w / 2, 120).size = 11;
-  const container = document.getElementById('two-container');
-  if (container) {
-    container.onclick = () => {};
-  }
-  two.update();
-}
-
-function drawPowerBlocksCanvas(two, options) {
-  if (!two) return;
-  two.clear();
-  const w = two.width, h = two.height;
-  two.makeText('📦 거듭제곱의 직관적 시각화 (2¹, 2², 2³)', w / 2, 22).weight = 800;
-  const stages = [
-    { label: "2¹ = 2", count: 2, x: w * 0.2 },
-    { label: "2² = 4", count: 4, x: w * 0.45 },
-    { label: "2³ = 8", count: 8, x: w * 0.75 }
-  ];
-  stages.forEach(s => {
-    two.makeText(s.label, s.x, 80).weight = 700;
-    for (let i = 0; i < s.count; i++) {
-      const bx = s.x - 20 + (i % 2) * 22;
-      const by = 110 + Math.floor(i / 2) * 22;
-      const rect = two.makeRectangle(bx, by, 18, 18);
-      rect.fill = '#4f46e5'; rect.stroke = '#312e81';
-    }
-  });
-  const container = document.getElementById('two-container');
-  if (container) {
-    container.onclick = () => {};
-  }
-  two.update();
-}
-
-function drawTrainStationsCanvas(two, options) {
-  if (!two) return;
-  two.clear();
-  const w = two.width, h = two.height;
-  two.makeText('🚂 열차 배수 역 탐구 (1~30번 역)', w / 2, 22).weight = 800;
-  const cols = 6;
-  const startX = 30, startY = 60;
-  const cellW = (w - 60) / cols, cellH = 34;
-  for (let i = 1; i <= 30; i++) {
-    const col = (i - 1) % cols;
-    const row = Math.floor((i - 1) / cols);
-    const cx = startX + col * cellW + cellW / 2;
-    const cy = startY + row * cellH + cellH / 2;
-    const isPrime = [2,3,5,7,11,13,17,19,23,29].includes(i);
-    const rect = two.makeRoundedRectangle(cx, cy, cellW - 6, cellH - 4, 4);
-    rect.fill = isPrime ? '#fef3c7' : '#ffffff';
-    rect.stroke = isPrime ? '#f59e0b' : '#cbd5e1';
-    const lbl = two.makeText(i + "역", cx, cy);
-    lbl.size = 10; lbl.weight = 700;
-    lbl.fill = isPrime ? '#d97706' : '#334155';
-  }
-  const container = document.getElementById('two-container');
-  if (container) {
-    container.onclick = () => {};
-  }
-  two.update();
-}
-
-function drawDivisorTableCanvas(two, options) {
-  if (!two) return;
-  two.clear();
-  const w = two.width, h = two.height;
-  two.makeText('소인수분해를 이용한 약수 표 (36 = 2² × 3²)', w / 2, 22).weight = 800;
-  const rows = 4, cols = 4;
-  const startX = w / 2 - 110, startY = 70;
-  const cellW = 55, cellH = 32;
-  const headersX = ["×", "1", "3", "3²"];
-  const headersY = ["1", "2", "2²", "2³"];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const rect = two.makeRectangle(startX + c * cellW, startY + r * cellH, cellW, cellH);
-      rect.stroke = '#cbd5e1';
-      rect.fill = (r === 0 || c === 0) ? '#f8fafc' : '#ffffff';
-    }
-  }
-  const container = document.getElementById('two-container');
-  if (container) {
-    container.onclick = () => {};
-  }
-  two.update();
-}
-
-function drawCalendarCanvas(two, options) {
-  if (!two) return;
-  two.clear();
-  const w = two.width, h = two.height;
-  two.makeText('📅 달력 속의 소수 날짜 찾기', w / 2, 22).weight = 800;
-  const container = document.getElementById('two-container');
-  if (container) {
-    container.onclick = () => {};
-  }
-  two.update();
-}
-
-function drawMondrianIntroCanvas(two, options) {
-  if (!two) return;
-  two.clear();
-  const w = two.width, h = two.height;
-  two.makeText('🎨 피에트 몬드리안 작품과 황금비·서로소 분할', w / 2, 22).weight = 800;
-  const container = document.getElementById('two-container');
-  if (container) {
-    container.onclick = () => {};
-  }
-  two.update();
-}
-
 function drawMondrianAnalysisCanvas(two, options) {
   if (!two) return;
   two.clear();
   const w = two.width, h = two.height;
-  two.makeText('📊 몬드리안 분할 사각형의 수학적 분석 (가로·세로의 서로소 비율)', w / 2, 22).weight = 800;
+
+  const title = two.makeText('📊 몬드리안 분할 사각형의 수학적 분석 (가로·세로 서로소 비율)', w / 2, 20);
+  title.size = 12.5; title.weight = 800; title.fill = '#1e293b';
+
+  const tableData = [
+    { name: '빨강 사각형', w: 6, h: 4, gcd: 2, coprime: 'X (최대공약수 2)' },
+    { name: '파랑 사각형', w: 3, h: 2, gcd: 1, coprime: 'O (서로소! 🎉)' },
+    { name: '노랑 사각형', w: 2, h: 3, gcd: 1, coprime: 'O (서로소! 🎉)' },
+    { name: '전체 캔버스', w: 5, h: 3, gcd: 1, coprime: 'O (서로소! 🎉)' }
+  ];
+
+  const startX = w * 0.15;
+  const rowH = 28;
+  const startY = 60;
+  const headers = ['구분', '가로', '세로', '최대공약수', '서로소 판정'];
+  const colWidths = [w * 0.16, w * 0.1, w * 0.1, w * 0.14, w * 0.2];
+
+  let curX = startX;
+  headers.forEach((hd, i) => {
+    const rx = curX + colWidths[i] / 2;
+    const bg = two.makeRectangle(rx, startY, colWidths[i], rowH);
+    bg.fill = '#f1f5f9'; bg.stroke = '#cbd5e1';
+    const ht = two.makeText(hd, rx, startY);
+    ht.size = 10.5; ht.weight = 800; ht.fill = '#475569';
+    curX += colWidths[i];
+  });
+
+  tableData.forEach((row, ri) => {
+    const ry = startY + (ri + 1) * rowH;
+    let rxPos = startX;
+    const vals = [row.name, `${row.w}`, `${row.h}`, `${row.gcd}`, row.coprime];
+    vals.forEach((v, ci) => {
+      const rx = rxPos + colWidths[ci] / 2;
+      const cell = two.makeRectangle(rx, ry, colWidths[ci], rowH);
+      cell.fill = (ri % 2 === 0) ? '#ffffff' : '#f8fafc';
+      cell.stroke = '#cbd5e1';
+      const ct = two.makeText(v, rx, ry);
+      ct.size = 10; ct.weight = (ci === 4 && row.gcd === 1) ? 800 : 600;
+      ct.fill = (ci === 4 && row.gcd === 1) ? '#16a34a' : '#1e293b';
+      rxPos += colWidths[ci];
+    });
+  });
+
+  const bCard = two.makeRoundedRectangle(w / 2, h - 22, w - 40, 30, 6);
+  bCard.fill = '#eff6ff'; bCard.stroke = '#bfdbfe';
+  const bTxt = two.makeText('💡 두 수의 최대공약수가 1일 때, 더 이상 같은 정사각형으로 나뉘지 않는 순수한 직사각형이 됩니다.', w / 2, h - 22);
+  bTxt.size = 10; bTxt.weight = 800; bTxt.fill = '#1e40af';
+
   const container = document.getElementById('two-container');
   if (container) {
     container.onclick = () => {};
@@ -3650,11 +4245,20 @@ function drawMondrianAnalysisCanvas(two, options) {
   two.update();
 }
 
+// ----------------------------------------------------------------------------
+// 19. 기본 개념 캔버스 (Default Fallback)
+// ----------------------------------------------------------------------------
 function drawConceptCanvas(two, options) {
   if (!two) return;
   two.clear();
   const w = two.width, h = two.height;
-  two.makeText('📘 단원 핵심 개념 탐구 캔버스', w / 2, h / 2).weight = 800;
+  const t = two.makeText('💡 소인수분해 개념 탐구 공간', w / 2, 22);
+  t.size = 13; t.weight = 800; t.fill = '#1e293b';
+
+  const card = two.makeRoundedRectangle(w / 2, 120, w - 60, 110, 8);
+  card.fill = '#f8fafc'; card.stroke = '#cbd5e1';
+  two.makeText('우측 미션과 발문에 따라 탐구를 진행하세요.', w / 2, 120).size = 11;
+
   const container = document.getElementById('two-container');
   if (container) {
     container.onclick = () => {};
@@ -3665,6 +4269,13 @@ function drawConceptCanvas(two, options) {
 
 // Export all interactive functions to window
 if (typeof window !== 'undefined') {
+  window.gcdCalc = gcdCalc;
+  window.lcmCalc = lcmCalc;
+  window.factorize = factorize;
+  window.formatPrimeFactorization = formatPrimeFactorization;
+  window.getDivisors = getDivisors;
+  window.getVennSets = getVennSets;
+  window.buildFactorTreeNodes = buildFactorTreeNodes;
   window.handleConceptTreeClick = handleConceptTreeClick;
   window.matchElementToPrime = matchElementToPrime;
   window.selectPrimesOnly = selectPrimesOnly;
@@ -3676,13 +4287,23 @@ if (typeof window !== 'undefined') {
   window.foldPaperStep = foldPaperStep;
   window.decomposeTreeNode = decomposeTreeNode;
   window.completeFullFactorTree = completeFullFactorTree;
+  window.toggleUniquenessBranch = toggleUniquenessBranch;
   window.updateTileSize = updateTileSize;
+  window.dropFactorToVenn = dropFactorToVenn;
+  window.fuseLcmUnionFactors = fuseLcmUnionFactors;
   window.stepLcmSimulation = stepLcmSimulation;
   window.stepRunAlgeoCode = stepRunAlgeoCode;
+  window.toggleCalendarPrime = toggleCalendarPrime;
   window.setMondrianColor = setMondrianColor;
   window.createMondrianRect = createMondrianRect;
   window.drawCanvasForStep = drawCanvasForStep;
-  window.gcdCalc = gcdCalc;
+  window.syncBadge = syncBadge;
+  window.drawBioClassifyCanvas = drawBioClassifyCanvas;
+  window.drawPowerBlocksCanvas = drawPowerBlocksCanvas;
+  window.drawToyBlocksCanvas = drawToyBlocksCanvas;
+  window.drawDivisorTableCanvas = drawDivisorTableCanvas;
+  window.drawVennDiagramCanvas = drawVennDiagramCanvas;
+  window.drawPeriodicEventsCanvas = drawPeriodicEventsCanvas;
 }
 
 
