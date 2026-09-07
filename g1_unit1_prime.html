@@ -7,8 +7,8 @@
   
   <!-- Supabase Cloud DB SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- 영서중 수학 LMS Integration SDK -->
-  <script src="js/lms-integration.js"></script>
+  <!-- 영서중 수학 LMS Integration SDK (중1용) -->
+  <script src="js/lms-integration-g1.js"></script>
 
   <!-- KaTeX Math Rendering Library -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
@@ -619,23 +619,26 @@
   <!-- Main Content Views -->
   <main class="app-main-content" style="flex:1; display:flex; flex-direction:column; overflow:hidden; position:relative;">
     <!-- View 1: Student Login -->
-    <section id="view-login" class="view-panel" style="display:flex; justify-content:center; align-items:center; flex:1; padding:20px;">
-      <div class="login-card" style="background:#ffffff; border-radius:18px; padding:32px 36px; width:100%; max-width:420px; box-shadow:0 20px 25px -5px rgba(0, 0, 0, 0.1); border:1.5px solid #e2e8f0; text-align:center;">
-        <div style="font-size:2.4rem; margin-bottom:8px;">🌱</div>
-        <h2 style="margin:0 0 6px 0; font-size:1.35rem; color:#1e293b; font-weight:800;">중1 수학 1단원: 소인수분해</h2>
-        <p style="margin:0 0 20px 0; font-size:0.88rem; color:#64748b;">학번 5자리를 입력하여 탐구 학습을 시작하세요.</p>
-
-        <form id="lms-login-form" onsubmit="handleLMSLogin(event)">
-          <div class="form-group" style="text-align:left; margin-bottom:16px;">
-            <label for="student-id" style="font-size:0.85rem; font-weight:700; color:#334155; margin-bottom:6px; display:block;">학번 (5자리: 학년+반+번호)</label>
-            <input type="text" id="student-id" class="form-control" placeholder="예: 10101 (1학년 1반 1번)" maxlength="5" pattern="[0-9]{5}" required style="font-size:1.05rem; font-weight:700; letter-spacing:2px; text-align:center;">
+    <section id="view-login" class="view-panel active" style="display:flex; justify-content:center; align-items:center; flex:1; padding:20px;">
+      <div class="login-card-container">
+        <h2 style="font-size:1.35rem; margin-bottom:6px; color:#1e293b;">🏫 영서중 수학 LMS 학생 로그인</h2>
+        <p style="font-size:0.86rem; color:#64748b; margin-bottom:18px;">LMS 회원가입 DB의 학번과 비밀번호를 입력하고 이어서 학습하세요!</p>
+        <form onsubmit="handleLMSLogin(event)">
+          <div class="form-group">
+            <label for="student-id">학번 (예: 10101)</label>
+            <input type="text" id="student-id" class="form-control" placeholder="LMS 가입 학번 5자리" value="10101">
           </div>
-          <button type="submit" class="btn btn-primary" style="width:100%; padding:11px; font-size:0.95rem; font-weight:800;">🚀 탐구 시작하기</button>
+          <div class="form-group">
+            <label for="student-name">비밀번호</label>
+            <input type="password" id="student-name" class="form-control" placeholder="LMS 가입 비밀번호">
+          </div>
+          <button id="btn-start-exploration" type="submit" class="btn btn-primary" style="margin-top: 8px; width:100%; font-size:1.05rem; padding:12px; font-weight:800; background:linear-gradient(135deg, #0284c7, #4f46e5);">🔐 영서중 수학 LMS 학생 로그인</button>
         </form>
+        <div id="login-error-notice" style="display:none; color:#dc2626; font-size:0.88rem; font-weight:700; margin-top:12px; background:#fef2f2; padding:10px 14px; border-radius:8px; border:1.5px solid #fca5a5; line-height:1.5; text-align:left;"></div>
 
-        <div style="margin-top:20px; padding-top:16px; border-top:1px solid #f1f5f9; display:flex; justify-content:space-between;">
-          <button type="button" class="btn" style="font-size:0.8rem; background:#f8fafc; border:1px solid #cbd5e1; color:#475569;" onclick="openTeacherLoginModal()">🔑 교사 접속</button>
-          <button type="button" class="btn" style="font-size:0.8rem; background:#e0f2fe; border:1px solid #bae6fd; color:#0369a1; font-weight:700;" onclick="openTeacherDashboardModal()">📊 5x5 관제실</button>
+        <div style="margin-top:14px; border-top:1px solid #e2e8f0; padding-top:12px; display:flex; flex-direction:column; gap:8px;">
+          <button type="button" class="btn" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; width:100%; font-weight:700;" onclick="openTestLoginModal()">🔑 교사 계정 접속</button>
+          <button type="button" class="btn" style="background:#eef2ff; color:#4338ca; border:1.5px solid #c7d2fe; width:100%; font-weight:800;" onclick="openTeacherDashboardModal()">📊 교사 5x5 실시간 모니터링 관제실</button>
         </div>
       </div>
     </section>
@@ -3031,38 +3034,146 @@
     return (c >= 1 && c <= 8) ? c : 1;
   }
 
-  function handleLMSLogin(e) {
-    if (e) e.preventDefault();
-    const inp = document.getElementById('student-id');
-    if (!inp) return;
-    const val = inp.value.trim();
-    if (!val || val.length !== 5) {
-      alert("5자리 학번을 입력하세요. (예: 10101)");
-      return;
+  function showLoginError(msg) {
+    let errBox = document.getElementById('login-error-notice');
+    if (!errBox) {
+      const loginCard = document.querySelector('.login-card-container');
+      if (loginCard) {
+        errBox = document.createElement('div');
+        errBox.id = 'login-error-notice';
+        errBox.style.cssText = 'color:#dc2626; font-size:0.88rem; font-weight:700; margin-top:12px; background:#fef2f2; padding:10px 14px; border-radius:8px; border:1.5px solid #fca5a5; line-height:1.5; text-align:left;';
+        const formEl = loginCard.querySelector('form');
+        if (formEl) formEl.insertAdjacentElement('afterend', errBox);
+        else loginCard.appendChild(errBox);
+      }
     }
-    state.studentId = val;
-    const cls = getStudentClassNumberG1(val);
-    state.studentName = `학생(${val})`;
-    document.getElementById('current-user-info').innerText = `👤 1학년 ${cls}반 ${val}`;
-    switchView('activity');
+    if (errBox) {
+      errBox.style.display = 'block';
+      errBox.innerText = msg;
+    }
+  }
+
+  async function handleLMSLogin(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const idEl = document.getElementById('student-id');
+    const pwEl = document.getElementById('student-name');
+    const studentId = idEl ? idEl.value.trim() : '';
+    const password = pwEl ? pwEl.value.trim() : '';
+
+    const errBox = document.getElementById('login-error-notice');
+    if (errBox) errBox.style.display = 'none';
+
+    // 교사 마스터 비밀번호(260523, 260831, 950420, 661227) 즉시 감지
+    const isTeacher = (password === '260523' || password === '260831' || password === '950420' || password === '661227' ||
+                       studentId === '260523' || studentId === '260831' || studentId === '950420' || studentId === '661227');
+    if (isTeacher) {
+      state.isTeacherLoggedIn = true;
+      state.isMaster = true;
+      state.studentId = '260523';
+      state.studentName = '임종윤 선생님';
+
+      const userDisp = document.getElementById('current-user-info');
+      if (userDisp) {
+        userDisp.innerText = '👨‍🏫 임종윤 선생님 (교사 관리자)';
+        userDisp.style.color = '#059669';
+      }
+
+      const unlockBtn = document.getElementById('btn-header-unlock-boundary');
+      if (unlockBtn) unlockBtn.style.display = 'inline-flex';
+
+      state.unlockedMainTabs = [0, 1, 2, 3, 4, 5];
+      state.unlockedSubSteps = ALL_SUBSTEPS;
+
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+      });
+
+      switchView('activity');
+      updateSubStepPills(0);
+      loadSubStep('0-1');
+      return false;
+    }
+
+    if (!studentId || !password) {
+      showLoginError("⚠️ 학번과 비밀번호를 모두 입력해 주세요!");
+      return false;
+    }
+
+    const loginBtn = document.getElementById('btn-start-exploration');
+    if (loginBtn) { loginBtn.disabled = true; loginBtn.innerText = "⏳ 영서중 수학 LMS DB 인증 중..."; }
+
+    try {
+      let res = null;
+      if (typeof LMSIntegration !== 'undefined' && LMSIntegration.loginStudent) {
+        res = await LMSIntegration.loginStudent(studentId, password);
+      }
+
+      if (res && res.success) {
+        state.currentUser = res.user;
+        state.studentId = res.user.id;
+        state.studentName = res.user.name;
+        const cls = getStudentClassNumberG1(res.user.id);
+        state.isTeacherLoggedIn = (res.user.role === 'teacher' || res.user.id === '260523' || res.user.id === '260831');
+
+        document.getElementById('current-user-info').innerText = `👤 1학년 ${cls}반 ${res.user.name} (${res.user.id})`;
+
+        const unlockBtn = document.getElementById('btn-header-unlock-boundary');
+        if (unlockBtn) unlockBtn.style.display = state.isTeacherLoggedIn ? 'inline-flex' : 'none';
+
+        let globalStep = '0-1';
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.loadGlobalUnlockStep) {
+          globalStep = await LMSIntegration.loadGlobalUnlockStep();
+        } else {
+          globalStep = localStorage.getItem('redbook_g1_global_unlock_step') || '0-1';
+        }
+        applyGlobalUnlockStepG1(globalStep);
+
+        switchView('activity');
+        setTimeout(() => { loadSubStep(globalStep || '0-1'); }, 50);
+      } else {
+        showLoginError(`❌ ${res ? res.message : '영서중 수학 LMS DB에 등록되지 않은 학번이거나 비밀번호가 올바르지 않습니다.'}`);
+      }
+    } catch (err) {
+      console.error(err);
+      showLoginError("❌ 영서중 수학 LMS DB 연결 중 오류가 발생했습니다.");
+    } finally {
+      if (loginBtn) { loginBtn.disabled = false; loginBtn.innerText = "🔐 영서중 수학 LMS 학생 로그인"; }
+    }
+    return false;
   }
 
   // Modal Functions
   let currentSecureModalAction = '';
 
   function openTeacherLoginModal() {
+    openSecurePasswordModal("교사 계정 보안 접속", "교사 전용 비밀번호를 입력해 주세요.");
     currentSecureModalAction = 'teacher_login';
-    openSecurePasswordModal("교사 비밀번호 인증", "교사 모드 접속을 위해 마스터 비밀번호를 입력하세요.");
+  }
+
+  function openTestLoginModal() {
+    openSecurePasswordModal("교사 계정 접속", "교사 전용 비밀번호를 입력해 주세요.");
+    currentSecureModalAction = 'test_login';
   }
 
   function openTeacherPassModal() {
-    currentSecureModalAction = 'teacher_pass';
+    if (state.isTeacherLoggedIn) {
+      if (confirm(`🔑 교사 권한으로 현재 [${state.subStep}] 페이지를 즉시 통과하시겠습니까?`)) {
+        passCurrentSubStep();
+      }
+      return;
+    }
     openSecurePasswordModal("🔑 교사 패스 (Pass)", "현재 단계를 즉시 통과시키기 위해 교사 비밀번호를 입력하세요.");
+    currentSecureModalAction = 'teacher_pass';
   }
 
   function openTeacherDashboardModal() {
-    currentSecureModalAction = 'teacher_dashboard';
+    if (state.isTeacherLoggedIn) {
+      enterTeacherDashboard();
+      return;
+    }
     openSecurePasswordModal("📊 교사 5x5 관제실", "실시간 학생 관제실에 접속하기 위해 교사 비밀번호를 입력하세요.");
+    currentSecureModalAction = 'teacher_dashboard';
   }
 
   function openSecurePasswordModal(title, desc) {
@@ -3085,8 +3196,11 @@
   function handleSecurePasswordSubmitG1() {
     const pw = document.getElementById('secure-modal-input').value.trim();
     const errBox = document.getElementById('secure-modal-error');
-    if (pw === '950420' || pw === '661227') {
+    if (pw === '950420' || pw === '661227' || pw === '260523' || pw === '260831') {
       state.isTeacherLoggedIn = true;
+      state.isMaster = true;
+      state.studentId = '260523';
+      state.studentName = '임종윤 선생님';
       document.getElementById('btn-header-unlock-boundary').style.display = 'inline-block';
       closeSecurePasswordModal();
       if (currentSecureModalAction === 'teacher_pass') {
@@ -3094,7 +3208,20 @@
       } else if (currentSecureModalAction === 'teacher_dashboard') {
         enterTeacherDashboard();
       } else {
-        alert("🔑 교사 관리자 권한이 인증되었습니다.");
+        const userDisp = document.getElementById('current-user-info');
+        if (userDisp) {
+          userDisp.innerText = '👨‍🏫 임종윤 선생님 (교사 관리자)';
+          userDisp.style.color = '#059669';
+        }
+        state.unlockedMainTabs = [0, 1, 2, 3, 4, 5];
+        state.unlockedSubSteps = ALL_SUBSTEPS;
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+          btn.style.opacity = '1';
+          btn.style.cursor = 'pointer';
+        });
+        switchView('activity');
+        updateSubStepPills(0);
+        loadSubStep('0-1');
       }
     } else {
       errBox.innerText = "비밀번호가 일치하지 않습니다.";
