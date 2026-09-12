@@ -1409,18 +1409,25 @@
       if (targetIdx < 0) return;
 
       const presetUnlocked = ALL_G1_SUBSTEPS.slice(0, targetIdx + 1);
-      state.unlockedSubSteps = presetUnlocked;
-      state.completedSubSteps = (state.completedSubSteps || []).filter(code => {
-        return ALL_G1_SUBSTEPS.indexOf(code) < targetIdx;
+      if (!state.unlockedSubSteps) state.unlockedSubSteps = [];
+      presetUnlocked.forEach(code => {
+        if (!state.unlockedSubSteps.includes(code)) {
+          state.unlockedSubSteps.push(code);
+        }
       });
 
       const maxTabIdx = parseInt(targetSubStepCode.split('-')[0]);
-      state.unlockedTabs = [];
+      if (!state.unlockedTabs) state.unlockedTabs = [];
+      for (let i = 0; i <= maxTabIdx; i++) {
+        if (!state.unlockedTabs.includes(i)) {
+          state.unlockedTabs.push(i);
+        }
+      }
+
       const titles = ['0. 되짚어 보기', '4.1 순서쌍과 좌표', '4.2 사분면', '4.3 그래프', '4.4 정비례 그래프', '4.5 반비례 그래프'];
       for (let i = 0; i <= 5; i++) {
         const tabBtn = document.getElementById(`tab-${i}`);
-        if (i <= maxTabIdx) {
-          state.unlockedTabs.push(i);
+        if (state.unlockedTabs.includes(i)) {
           if (tabBtn) {
             tabBtn.classList.remove('locked');
             tabBtn.innerText = `${titles[i]} 🔓`;
@@ -1435,9 +1442,12 @@
 
       localStorage.setItem('redbook_g1_global_unlock_step', targetSubStepCode);
 
-      if (!state.unlockedSubSteps.includes(state.subStep) || !state.hasUserNavigatedManually) {
+      const isCurrentValid = state.subStep && state.unlockedSubSteps.includes(state.subStep);
+      let needsReload = false;
+      if (!isCurrentValid || !state.hasUserNavigatedManually) {
         state.currentMainTab = maxTabIdx;
         state.subStep = targetSubStepCode;
+        needsReload = true;
       }
 
       document.querySelectorAll('.tab-btn').forEach((btn, i) => {
@@ -1456,7 +1466,9 @@
         currentDisp.innerText = `🔓 [${targetSubStepCode}] ${title} 까지 해금 (이후 페이지 잠김)`;
       }
 
-      loadSubStep(state.subStep);
+      if (needsReload) {
+        loadSubStep(state.subStep);
+      }
 
       if (showAlert) {
         alert(`✅ [학생 해금 범위 설정 완료]\n[${targetSubStepCode} - ${title}] 단계까지 해금되었으며,\n그 이후의 모든 페이지는 잠금(🔒) 처리되었습니다.\n(해당 활동을 완료해야 순차적으로 다음 페이지가 해금됩니다)`);
@@ -1479,7 +1491,7 @@
       const errEl = document.getElementById('secure-modal-error');
       const pw = inputEl ? inputEl.value.trim() : '';
 
-      const isTeacherPw = (pw === '260523' || pw === '260831');
+      const isTeacherPw = (pw === '260523' || pw === '260831' || pw === '950420');
 
       if (!isTeacherPw) {
         if (errEl) {
@@ -2023,43 +2035,56 @@
     }
 
     function passCurrentSubStep() {
-      const ALL_SUBSTEPS = [
-        '0-1', '0-2', '0-3',
-        '1-1', '1-2', '1-3', '1-4', '1-5', '1-6', '1-7',
-        '2-1', '2-2', '2-3', '2-4', '2-5', '2-6', '2-7', '2-8',
-        '3-1', '3-2',
-        '4-1', '4-2',
-        '5-1', '5-2'
-      ];
+      const ALL_SUBSTEPS = ALL_G1_SUBSTEPS;
 
-      const curIdx = ALL_SUBSTEPS.indexOf(state.subStep);
-      const nextCode = (curIdx >= 0 && curIdx < ALL_SUBSTEPS.length - 1) ? ALL_SUBSTEPS[curIdx + 1] : state.subStep;
+      const cur = state.subStep;
+      const curIdx = ALL_SUBSTEPS.indexOf(cur);
+      const nextCode = (curIdx >= 0 && curIdx < ALL_SUBSTEPS.length - 1) ? ALL_SUBSTEPS[curIdx + 1] : null;
 
-      if (!state.completedSubSteps.includes(state.subStep)) {
-        state.completedSubSteps.push(state.subStep);
+      state.hasUserNavigatedManually = true;
+
+      if (!state.completedSubSteps.includes(cur)) {
+        state.completedSubSteps.push(cur);
       }
-      if (!state.unlockedSubSteps.includes(nextCode)) {
+      if (nextCode && !state.unlockedSubSteps.includes(nextCode)) {
         state.unlockedSubSteps.push(nextCode);
       }
 
-      const nextMainTab = parseInt(nextCode.split('-')[0]);
-      for (let i = 0; i <= nextMainTab; i++) {
-        unlockNextStep(i - 1);
+      if (nextCode) {
+        const nextMainTab = parseInt(nextCode.split('-')[0]);
+        for (let i = 0; i <= nextMainTab; i++) {
+          unlockNextStep(i - 1);
+        }
       }
 
       if (typeof LMSIntegration !== 'undefined') {
-        LMSIntegration.saveStudentProgress(state.subStep, {
-          activityTitle: `[교사 패스] ${state.subStep}`,
+        LMSIntegration.saveStudentProgress(cur, {
+          activityTitle: `[교사 패스] ${cur}`,
           answerText: '교사 인증을 통해 해당 단계를 통과하였습니다.',
           score: 100
         });
       }
 
-      renderVerifiedAnswerView(
-        "🔑 교사 인증 패스 (Pass) 완료",
-        `교사 권한으로 <b>[${state.subStep}]</b> 페이지가 통과 처리되었습니다.<br>다음 단계인 <b>[${nextCode}]</b> 로 즉시 이동합니다.`,
-        nextCode
-      );
+      if (!state.verifiedViewData) state.verifiedViewData = {};
+      state.verifiedViewData[cur] = {
+        titleHtml: "🔑 교사 인증 패스 (Pass) 완료",
+        contentHtml: `교사 권한으로 <b>[${cur}]</b> 페이지가 통과 처리되었습니다.<br>다음 단계인 <b>[${nextCode || cur}]</b> 로 이동합니다.`,
+        nextStepCode: nextCode
+      };
+
+      if (typeof launchConfetti === 'function') {
+        launchConfetti();
+      }
+
+      if (nextCode && nextCode !== cur) {
+        loadSubStep(nextCode);
+      } else {
+        renderVerifiedAnswerView(
+          "🔑 교사 인증 패스 (Pass) 완료",
+          `교사 권한으로 마지막 활동인 <b>[${cur}]</b> 페이지가 통과 처리되었습니다! 🎉`,
+          null
+        );
+      }
     }
 
     function showLoginError(msg) {
@@ -2525,6 +2550,8 @@
         alert("🔒 해당 페이지는 아직 잠겨 있습니다. 이전 활동을 완료해 주세요!");
         return;
       }
+
+      state.hasUserNavigatedManually = true;
 
       if (typeof activeLerpAnimations !== 'undefined') {
         for (const k in activeLerpAnimations) {
@@ -4799,9 +4826,26 @@
         `;
       }
 
-      // 작성 중이던 답안 자동 복원 및 실시간 트래커 연동
-      restoreFormInputs(subStepCode);
-      attachRealtimeInputTracker();
+      // 작성 중이던 답안 자동 복원 또는 이미 완료된 단계인 경우 정답 확인 뷰 렌더링
+      if (state.completedSubSteps && state.completedSubSteps.includes(subStepCode)) {
+        if (state.verifiedViewData && state.verifiedViewData[subStepCode]) {
+          const v = state.verifiedViewData[subStepCode];
+          renderVerifiedAnswerView(v.titleHtml, v.contentHtml, v.nextStepCode, true);
+        } else {
+          const ALL_SUBSTEPS = ALL_G1_SUBSTEPS;
+          const curIdx = ALL_SUBSTEPS.indexOf(subStepCode);
+          const nextCode = (curIdx >= 0 && curIdx < ALL_SUBSTEPS.length - 1) ? ALL_SUBSTEPS[curIdx + 1] : null;
+          renderVerifiedAnswerView(
+            "✅ 학습 완료",
+            `<b>[${subStepCode}]</b> 활동을 성공적으로 완료하였습니다.`,
+            nextCode,
+            true
+          );
+        }
+      } else {
+        restoreFormInputs(subStepCode);
+        attachRealtimeInputTracker();
+      }
       renderMathInPage(formArea);
       renderMathInPage(document.getElementById('mission-text'));
     }
@@ -8800,9 +8844,13 @@
           <div style="font-size:0.9rem; color:#047857; line-height:1.7; margin-bottom:14px;">
             ${contentHtml}
           </div>
+          ${(nextStepCode && nextStepCode !== 'null') ? `
           <button class="btn btn-primary" style="background:#059669; font-size:1rem; padding:12px; width:100%; font-weight:800;" onclick="loadSubStep('${nextStepCode}')">
             🚀 다음 단계로 진행하기 ➔
-          </button>
+          </button>` : `
+          <div style="text-align:center; padding:10px; font-weight:800; color:#059669;">
+            🎉 모든 학습 활동을 완료하였습니다!
+          </div>`}
         </div>
       `;
       renderMathInPage(formArea);
