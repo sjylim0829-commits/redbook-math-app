@@ -1,6 +1,11 @@
 /**
- * Redbook Math App - 영서중 수학 1학년 (좌표평면과 그래프) LMS DB Integration SDK
- * Connects directly with Supabase Cloud DB Engine & Cross-Device Cloud Sync Store.
+ * Redbook Math App - 영서중 수학 1학년 통합 LMS DB Integration SDK
+ * Connects directly with Supabase Cloud DB Engine (PostgreSQL)
+ * Features:
+ *  - 100% Supabase Cloud DB Single Source of Truth (Zero reliance on expired mock APIs)
+ *  - Unit-specific progress and unlock isolation (u1, u2, u4)
+ *  - Cross-unit unified session sharing
+ *  - Teacher master authentication (260523, 260831)
  */
 
 (function(window) {
@@ -9,12 +14,9 @@
   const SUPABASE_URL = 'https://agcmetuneycqzhvshmoe.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_r_0ZhunAe99ftol-JqL5qg_ADZ1BH_X';
 
-  const APP_ID = 'math_1_coordinate_graph';
-  const LOCAL_CACHE_USER_KEY = 'redbook_g1_current_user';
-  const LOCAL_CACHE_PROGRESS_PREFIX = 'redbook_g1_progress_';
-
-  const CLOUD_CONFIG_URL = 'https://api.restful-api.dev/objects/ff8081819ff5b11001a041dff6792f8d';
-  const CLOUD_STUDENTS_PROGRESS_URL = 'https://api.restful-api.dev/objects/ff8081819ff5b11001a04706669e41aa';
+  const LOCAL_CACHE_USER_KEY = 'redbook_current_user';
+  const LOCAL_CACHE_USER_KEY_LEGACY = 'redbook_g1_current_user';
+  const LOCAL_CACHE_PROGRESS_PREFIX = 'redbook_progress_';
 
   let supabaseClient = null;
 
@@ -30,11 +32,15 @@
   }
 
   const LMSIntegration = {
+    unitId: 'u1',
     currentUser: null,
     onStudentLoadedCallback: null,
 
     init(options) {
       options = options || {};
+      if (options.unitId) {
+        this.unitId = String(options.unitId).toLowerCase();
+      }
       if (typeof options.onStudentLoaded === 'function') {
         this.onStudentLoadedCallback = options.onStudentLoaded;
       }
@@ -44,6 +50,7 @@
         this.currentUser = cached;
       }
 
+      // Handle iframe postMessage handshake
       window.addEventListener('message', (event) => {
         if (!event.data || typeof event.data !== 'object') return;
         if (event.data.type === 'MATH_LMS_INIT_STUDENT' && event.data.student) {
@@ -52,7 +59,8 @@
             id: String(st.id || '').trim(),
             name: String(st.name || '').trim(),
             grade: String(st.grade || '1').trim(),
-            classNum: String(st.classNum || st.class_num || '1').trim()
+            classNum: String(st.classNum || st.class_num || '1').trim(),
+            role: st.role || 'student'
           });
           if (this.onStudentLoadedCallback) {
             this.onStudentLoadedCallback(this.currentUser);
@@ -61,13 +69,19 @@
       });
 
       if (window.parent && window.parent !== window) {
-        window.parent.postMessage({ type: 'MATH_LMS_REQUEST_STUDENT_INFO' }, '*');
+        try {
+          window.parent.postMessage({ type: 'MATH_LMS_REQUEST_STUDENT_INFO' }, '*');
+        } catch (e) {}
       }
+    },
+
+    setUnitId(unitId) {
+      if (unitId) this.unitId = String(unitId).toLowerCase();
     },
 
     getCurrentUserFromCache() {
       try {
-        const raw = localStorage.getItem(LOCAL_CACHE_USER_KEY);
+        const raw = localStorage.getItem(LOCAL_CACHE_USER_KEY) || localStorage.getItem(LOCAL_CACHE_USER_KEY_LEGACY);
         if (raw) return JSON.parse(raw);
       } catch (e) {}
       return null;
@@ -77,11 +91,18 @@
       this.currentUser = userObj;
       try {
         if (userObj) {
-          localStorage.setItem(LOCAL_CACHE_USER_KEY, JSON.stringify(userObj));
+          const jsonStr = JSON.stringify(userObj);
+          localStorage.setItem(LOCAL_CACHE_USER_KEY, jsonStr);
+          localStorage.setItem(LOCAL_CACHE_USER_KEY_LEGACY, jsonStr);
         } else {
           localStorage.removeItem(LOCAL_CACHE_USER_KEY);
+          localStorage.removeItem(LOCAL_CACHE_USER_KEY_LEGACY);
         }
       } catch (e) {}
+    },
+
+    logout() {
+      this.setCurrentUser(null);
     },
 
     async loginStudent(studentId, password) {
@@ -92,7 +113,9 @@
         return { success: false, message: '학번과 비밀번호를 모두 입력해 주세요.' };
       }
 
-      if (cleanPw === '260523' || cleanPw === '260831' || cleanId === '260523' || cleanId === '260831') {
+      // Teacher Master Passwords
+      if (cleanPw === '260523' || cleanPw === '260831' || cleanPw === '661227' ||
+          cleanId === '260523' || cleanId === '260831' || cleanId === '661227') {
         const masterUser = {
           id: '260523',
           name: '임종윤 선생님',
@@ -104,6 +127,7 @@
         return { success: true, user: masterUser, message: '선생님 마스터 비밀번호로 인증되었습니다.' };
       }
 
+      // Supabase Direct Query
       const sb = getSupabase();
       if (sb) {
         try {
@@ -119,7 +143,7 @@
                 id: String(data.id).trim(),
                 name: String(data.name || `학생 ${cleanId}`).trim(),
                 grade: String(data.grade || '1'),
-                classNum: String(data.class_num || '1'),
+                classNum: String(data.class_num || cleanId.slice(2, 3) || '1'),
                 role: 'student'
               };
               this.setCurrentUser(userObj);
@@ -133,6 +157,7 @@
         }
       }
 
+      // Fallback cache check
       try {
         const cachedStudentsRaw = localStorage.getItem('mathlab_students_cache');
         if (cachedStudentsRaw) {
@@ -143,7 +168,7 @@
               id: matched.id,
               name: matched.name,
               grade: String(matched.grade || '1'),
-              classNum: String(matched.classNum || '1'),
+              classNum: String(matched.classNum || cleanId.slice(2, 3) || '1'),
               role: 'student'
             };
             this.setCurrentUser(userObj);
@@ -156,35 +181,15 @@
     },
 
     /**
-     * Load student's saved progress from LMS Cloud DB & Supabase Backup (cross-device)
+     * Load student's saved progress from Supabase DB, isolated by unitId (u1, u2, u4)
      */
-    async loadStudentProgress(studentId) {
-      if (!studentId) return null;
+    async loadStudentProgress(studentId, targetUnitId) {
+      if (!studentId) return { lastSubStep: '0-1', completedSteps: [] };
       const cleanId = String(studentId).trim();
-      const key = `${cleanId}_g1`;
+      const uId = String(targetUnitId || this.unitId || 'u1').toLowerCase();
+      const localCacheKey = `${LOCAL_CACHE_PROGRESS_PREFIX}${uId}_${cleanId}`;
 
-      // 1. Try Cloud DB (Cross-device shared store)
-      try {
-        const res = await fetch(CLOUD_STUDENTS_PROGRESS_URL);
-        if (res.ok) {
-          const json = await res.json();
-          if (json && json.data && json.data.records && json.data.records[key]) {
-            const rec = json.data.records[key];
-            const progressObj = {
-              lastSubStep: rec.lastSubStep || '0-1',
-              completedSteps: Array.isArray(rec.completedSteps) ? rec.completedSteps : [],
-              updatedAt: rec.updatedAt || ''
-            };
-            this.saveProgressToLocal(cleanId, progressObj);
-            console.log(`🌐 [LMS Cloud DB] Loaded G1 student progress for ${key}:`, progressObj);
-            return progressObj;
-          }
-        }
-      } catch (err) {
-        console.warn('[LMS Cloud DB] Error loading G1 student progress:', err);
-      }
-
-      // 2. Try Supabase activity submissions backup
+      // Query Supabase Activity Submissions
       const sb = getSupabase();
       if (sb) {
         try {
@@ -194,59 +199,79 @@
             .eq('student_id', cleanId)
             .eq('grade', 1)
             .order('submitted_at', { ascending: false })
-            .limit(20);
+            .limit(40);
 
           if (!error && Array.isArray(data) && data.length > 0) {
             const completedSteps = [];
-            let latestStep = '0-1';
-            data.forEach((sub, idx) => {
-              const match = String(sub.activity_title || '').match(/단계:\s*([0-9]-[0-9])/);
-              if (match && match[1]) {
-                const s = match[1];
-                if (idx === 0) latestStep = s;
-                if (!completedSteps.includes(s)) completedSteps.push(s);
+            let latestStep = null;
+
+            data.forEach((sub) => {
+              const title = String(sub.activity_title || '');
+              
+              // Unit Matching Check
+              let isMatch = false;
+              if (uId === 'u1') {
+                isMatch = title.includes('소인수분해') || title.includes('[중1-1') || title.includes('u1');
+              } else if (uId === 'u2') {
+                isMatch = title.includes('정수와 유리수') || title.includes('[중1-2') || title.includes('u2');
+              } else if (uId === 'u4') {
+                isMatch = title.includes('좌표평면') || title.includes('[중1-4') || title.includes('u4') ||
+                          (!title.includes('소인수분해') && !title.includes('정수와 유리수') && !title.includes('[중1-1') && !title.includes('[중1-2'));
+              }
+
+              if (isMatch) {
+                const match = title.match(/단계:\s*([0-9]-[0-9]+)/);
+                if (match && match[1]) {
+                  const s = match[1];
+                  if (!latestStep) latestStep = s;
+                  if (!completedSteps.includes(s)) completedSteps.push(s);
+                }
               }
             });
 
-            if (latestStep !== '0-1' || completedSteps.length > 0) {
+            if (latestStep) {
               const progressObj = {
                 lastSubStep: latestStep,
                 completedSteps: completedSteps,
                 updatedAt: data[0].submitted_at || new Date().toISOString()
               };
-              this.saveProgressToLocal(cleanId, progressObj);
-              console.log(`🌐 [Supabase Backup] Restored G1 student progress for ${cleanId}:`, progressObj);
+              this.saveProgressToLocal(localCacheKey, progressObj);
+              console.log(`🌐 [Supabase DB] Loaded isolated progress for ${cleanId} (${uId}):`, progressObj);
               return progressObj;
             }
           }
         } catch (sbErr) {
-          console.warn('[Supabase Backup] Error loading G1 student progress:', sbErr);
+          console.warn('[Supabase DB] Error loading student progress:', sbErr);
         }
       }
 
-      // 3. Fallback to Local Storage
-      return this.getProgressFromLocal(cleanId);
+      // Fallback to local storage for this specific unit
+      const localProg = this.getProgressFromLocal(localCacheKey);
+      if (localProg && localProg.lastSubStep) {
+        return localProg;
+      }
+
+      return { lastSubStep: '0-1', completedSteps: [], updatedAt: '' };
     },
 
     /**
-     * Save student progress & real-time activity to LMS Cloud DB & Supabase (cross-device)
+     * Save student progress to Supabase DB, isolated by unitId (u1, u2, u4)
      */
-    async saveStudentProgress(subStepCode, data = {}) {
+    async saveStudentProgress(subStepCode, data = {}, targetUnitId) {
+      const uId = String(targetUnitId || this.unitId || 'u1').toLowerCase();
       let cleanId = '10101';
       let studentName = '학생';
+      let classNum = 1;
 
-      if (this.currentUser && this.currentUser.id) {
-        cleanId = String(this.currentUser.id).trim();
-        studentName = this.currentUser.name || `학생 ${cleanId}`;
-      } else {
-        const cachedUser = this.getCurrentUserFromCache();
-        if (cachedUser && cachedUser.id) {
-          cleanId = String(cachedUser.id).trim();
-          studentName = cachedUser.name || `학생 ${cleanId}`;
-        }
+      const activeUser = this.currentUser || this.getCurrentUserFromCache();
+      if (activeUser && activeUser.id) {
+        cleanId = String(activeUser.id).trim();
+        studentName = activeUser.name || `학생 ${cleanId}`;
+        classNum = parseInt(activeUser.classNum || cleanId.slice(2, 3)) || 1;
       }
 
-      const existing = this.getProgressFromLocal(cleanId) || { completedSteps: [] };
+      const localCacheKey = `${LOCAL_CACHE_PROGRESS_PREFIX}${uId}_${cleanId}`;
+      const existing = this.getProgressFromLocal(localCacheKey) || { completedSteps: [] };
       const completedSet = new Set(existing.completedSteps || []);
       if (subStepCode) completedSet.add(subStepCode);
       const updatedCompleted = Array.from(completedSet);
@@ -258,54 +283,14 @@
       };
 
       // 1. Save to local cache
-      this.saveProgressToLocal(cleanId, progressObj);
+      this.saveProgressToLocal(localCacheKey, progressObj);
 
-      // 2. Save to Cloud DB for cross-device synchronization
-      try {
-        const key = `${cleanId}_g1`;
-        let records = {};
-        try {
-          const getRes = await fetch(CLOUD_STUDENTS_PROGRESS_URL);
-          if (getRes.ok) {
-            const json = await getRes.json();
-            if (json && json.data && json.data.records) records = json.data.records;
-          }
-        } catch (e) {}
+      // 2. Unit Title Formatting
+      let unitPrefix = '[중1-1 소인수분해]';
+      if (uId === 'u2') unitPrefix = '[중1-2 정수와 유리수]';
+      else if (uId === 'u4') unitPrefix = '[중1-4 좌표평면]';
 
-        records[key] = {
-          studentId: cleanId,
-          studentName: studentName,
-          lastSubStep: subStepCode || '0-1',
-          completedSteps: updatedCompleted,
-          updatedAt: new Date().toISOString()
-        };
-
-        const putRes = await fetch(CLOUD_STUDENTS_PROGRESS_URL, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: 'redbook_students_progress_cloud_store_v1',
-            data: { records, updatedAt: Date.now() }
-          })
-        });
-
-        if (!putRes.ok && putRes.status === 404) {
-          await fetch('https://api.restful-api.dev/objects', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              name: 'redbook_students_progress_cloud_store_v1',
-              data: { records, updatedAt: Date.now() }
-            })
-          });
-        }
-        console.log(`🌐 [LMS Cloud DB] Saved G1 progress for ${key}:`, records[key]);
-      } catch (err) {
-        console.warn('[LMS Cloud DB] Save error:', err);
-      }
-
-      // 3. Record activity submission log to Supabase Cloud DB
-      const activityTitle = data.activityTitle || `중1 좌표평면 탐구 [단계: ${subStepCode}]`;
+      const activityTitle = data.activityTitle || `${unitPrefix} [단계: ${subStepCode || '0-1'}]`;
       const answerText = data.answerText || '';
       const score = typeof data.score === 'number' ? data.score : 0;
 
@@ -313,18 +298,22 @@
         student_id: cleanId,
         student_name: studentName,
         grade: 1,
-        class_num: parseInt(cleanId.slice(2, 3)) || 1,
+        class_num: classNum,
         activity_title: activityTitle,
         answer_text: answerText,
         score: score,
         submitted_at: new Date().toISOString()
       };
 
+      // 3. Save to Supabase
       const sb = getSupabase();
       if (sb) {
         try {
           await sb.from('activity_submissions').insert(payload);
-        } catch (e) {}
+          console.log(`🏛️ [Supabase DB] Saved activity for ${cleanId} (${uId}):`, subStepCode);
+        } catch (e) {
+          console.warn('[Supabase DB] Save activity error:', e);
+        }
       }
 
       if (window.parent && window.parent !== window) {
@@ -340,182 +329,110 @@
       }
     },
 
-    getProgressFromLocal(studentId) {
+    getProgressFromLocal(cacheKey) {
       try {
-        const raw = localStorage.getItem(LOCAL_CACHE_PROGRESS_PREFIX + studentId);
+        const raw = localStorage.getItem(cacheKey);
         if (raw) return JSON.parse(raw);
       } catch (e) {}
       return null;
     },
 
-    saveProgressToLocal(studentId, progressObj) {
+    saveProgressToLocal(cacheKey, progressObj) {
       try {
-        localStorage.setItem(LOCAL_CACHE_PROGRESS_PREFIX + studentId, JSON.stringify(progressObj));
+        localStorage.setItem(cacheKey, JSON.stringify(progressObj));
       } catch (e) {}
     },
 
-    async saveGlobalUnlockStep(stepCode) {
+    /**
+     * Teacher Global Unlock: Saves unit-specific unlock boundary to Supabase DB
+     */
+    async saveGlobalUnlockStep(stepCode, targetUnitId) {
+      const uId = String(targetUnitId || this.unitId || 'u1').toLowerCase();
       const cleanStep = String(stepCode || '0-1').trim();
+      const sysKey = `SYS_UNLOCK_G1_${uId.toUpperCase()}`;
+
       try {
-        localStorage.setItem('redbook_g1_global_unlock_step', cleanStep);
+        localStorage.setItem(`redbook_g1_${uId}_global_unlock_step`, cleanStep);
       } catch (e) {}
 
-      // 1. Primary: Supabase DB Dedicated Unlock Record
       const sb = getSupabase();
       if (sb) {
         try {
+          // Save primary isolated key
           await sb.from('activity_submissions').insert({
-            student_id: 'SYS_UNLOCK_G1',
+            student_id: sysKey,
             student_name: '교사 관리자',
             grade: 1,
             class_num: 0,
-            activity_title: 'SYS_UNLOCK_G1',
+            activity_title: sysKey,
             answer_text: cleanStep,
             score: 100,
             submitted_at: new Date().toISOString()
           });
-          console.log('🏛️ [Supabase DB] Grade 1 unlock step saved to primary DB:', cleanStep);
-        } catch (e) {
-          console.warn('[Supabase DB] Save error:', e);
-        }
-      }
 
-      // 2. Secondary Cloud DB Sync (api.restful-api.dev live shared store)
-      try {
-        let currentData = { g1: '0-1', g2: '0-1' };
-        try {
-          const getRes = await fetch(CLOUD_CONFIG_URL);
-          if (getRes.ok) {
-            const json = await getRes.json();
-            if (json && json.data) currentData = json.data;
-          }
-        } catch (e) {}
-
-        currentData.g1 = cleanStep;
-        currentData.updatedAt = Date.now();
-        currentData.updatedBy = (this.currentUser && this.currentUser.name) ? this.currentUser.name : 'teacher_admin';
-
-        const putRes = await fetch(CLOUD_CONFIG_URL, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: 'redbook_unlock_config',
-            data: currentData
-          })
-        });
-
-        if (!putRes.ok && putRes.status === 404) {
-          await fetch('https://api.restful-api.dev/objects', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              name: 'redbook_unlock_config',
-              data: currentData
-            })
-          });
-        }
-      } catch (err) {
-        console.warn('[LMS Cloud DB] Save error:', err);
-      }
-    },
-
-    async saveGlobalUnlockBatch(configObj) {
-      if (!configObj || typeof configObj !== 'object') return;
-      const g1Step = configObj.g1 ? String(configObj.g1).trim() : null;
-      const g2Step = configObj.g2 ? String(configObj.g2).trim() : null;
-
-      if (g1Step) {
-        try { localStorage.setItem('redbook_g1_global_unlock_step', g1Step); } catch (e) {}
-      }
-      if (g2Step) {
-        try { localStorage.setItem('redbook_g2_global_unlock_step', g2Step); } catch (e) {}
-      }
-
-      // 1. Primary: Supabase DB Batch Save
-      const sb = getSupabase();
-      if (sb) {
-        if (g1Step) {
-          try {
+          // If u4, also update SYS_UNLOCK_G1 for backwards compatibility
+          if (uId === 'u4') {
             await sb.from('activity_submissions').insert({
               student_id: 'SYS_UNLOCK_G1',
               student_name: '교사 관리자',
               grade: 1,
               class_num: 0,
               activity_title: 'SYS_UNLOCK_G1',
-              answer_text: g1Step,
+              answer_text: cleanStep,
               score: 100,
               submitted_at: new Date().toISOString()
             });
-          } catch (e) {}
-        }
-        if (g2Step) {
-          try {
-            await sb.from('activity_submissions').insert({
-              student_id: 'SYS_UNLOCK_G2',
-              student_name: '교사 관리자',
-              grade: 2,
-              class_num: 0,
-              activity_title: 'SYS_UNLOCK_G2',
-              answer_text: g2Step,
-              score: 100,
-              submitted_at: new Date().toISOString()
-            });
-          } catch (e) {}
-        }
-        console.log('🏛️ [Supabase DB] Batch unlock steps saved to primary DB:', { g1: g1Step, g2: g2Step });
-      }
-
-      // 2. Secondary: Cloud DB Atomic Update
-      try {
-        let currentData = { g1: '0-1', g2: '0-1' };
-        try {
-          const getRes = await fetch(CLOUD_CONFIG_URL);
-          if (getRes.ok) {
-            const json = await getRes.json();
-            if (json && json.data) currentData = json.data;
           }
-        } catch (e) {}
 
-        if (g1Step) currentData.g1 = g1Step;
-        if (g2Step) currentData.g2 = g2Step;
-        currentData.updatedAt = Date.now();
-        currentData.updatedBy = (this.currentUser && this.currentUser.name) ? this.currentUser.name : 'teacher_admin';
-
-        await fetch(CLOUD_CONFIG_URL, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: 'redbook_unlock_config',
-            data: currentData
-          })
-        });
-      } catch (err) {
-        console.warn('[LMS Cloud DB] Batch save error:', err);
+          console.log(`🏛️ [Supabase DB] Saved unlock boundary for ${uId} (${sysKey}):`, cleanStep);
+        } catch (e) {
+          console.warn('[Supabase DB] Save unlock step error:', e);
+        }
       }
     },
 
-    async loadGlobalUnlockStep() {
-      let savedStep = '0-1';
+    /**
+     * Teacher Global Unlock: Loads unit-specific unlock boundary from Supabase DB
+     */
+    async loadGlobalUnlockStep(targetUnitId) {
+      const uId = String(targetUnitId || this.unitId || 'u1').toLowerCase();
+      const sysKey = `SYS_UNLOCK_G1_${uId.toUpperCase()}`;
+
+      let localSaved = '0-1';
       try {
-        savedStep = localStorage.getItem('redbook_g1_global_unlock_step') || '0-1';
+        localSaved = localStorage.getItem(`redbook_g1_${uId}_global_unlock_step`) || '0-1';
       } catch (e) {}
 
-      // 1. Primary Priority: Supabase DB Dedicated Unlock Record
       const sb = getSupabase();
       if (sb) {
         try {
           const { data, error } = await sb
             .from('activity_submissions')
             .select('*')
-            .eq('student_id', 'SYS_UNLOCK_G1')
+            .eq('student_id', sysKey)
             .order('id', { ascending: false })
             .limit(1);
 
           if (!error && Array.isArray(data) && data.length > 0 && data[0].answer_text) {
             const dbStep = String(data[0].answer_text).trim();
             if (dbStep) {
-              try { localStorage.setItem('redbook_g1_global_unlock_step', dbStep); } catch (e) {}
+              try { localStorage.setItem(`redbook_g1_${uId}_global_unlock_step`, dbStep); } catch (e) {}
               return dbStep;
+            }
+          }
+
+          // Fallback for coordinate unit u4 to SYS_UNLOCK_G1
+          if (uId === 'u4') {
+            const { data: legacyData, error: legacyErr } = await sb
+              .from('activity_submissions')
+              .select('*')
+              .eq('student_id', 'SYS_UNLOCK_G1')
+              .order('id', { ascending: false })
+              .limit(1);
+
+            if (!legacyErr && Array.isArray(legacyData) && legacyData.length > 0 && legacyData[0].answer_text) {
+              const legacyStep = String(legacyData[0].answer_text).trim();
+              if (legacyStep) return legacyStep;
             }
           }
         } catch (e) {
@@ -523,32 +440,18 @@
         }
       }
 
-      // 2. Secondary Fallback: Query live Cloud DB
-      try {
-        const res = await fetch(CLOUD_CONFIG_URL);
-        if (res.ok) {
-          const json = await res.json();
-          if (json && json.data && json.data.g1) {
-            const cloudStep = String(json.data.g1).trim();
-            try { localStorage.setItem('redbook_g1_global_unlock_step', cloudStep); } catch (e) {}
-            return cloudStep;
-          }
-        }
-      } catch (err) {
-        console.warn('[LMS Cloud DB] Load error:', err);
-      }
-
-      return savedStep;
+      return localSaved;
     },
 
     lastKnownUnlockStep: null,
     unlockSyncIntervalId: null,
 
-    startUnlockBoundarySync(onUpdateCallback, intervalMs = 5000) {
+    startUnlockBoundarySync(onUpdateCallback, intervalMs = 5000, targetUnitId) {
+      const uId = String(targetUnitId || this.unitId || 'u1').toLowerCase();
       if (this.unlockSyncIntervalId) clearInterval(this.unlockSyncIntervalId);
       this.unlockSyncIntervalId = setInterval(async () => {
         try {
-          const latestStep = await this.loadGlobalUnlockStep();
+          const latestStep = await this.loadGlobalUnlockStep(uId);
           if (latestStep && latestStep !== this.lastKnownUnlockStep) {
             this.lastKnownUnlockStep = latestStep;
             if (typeof onUpdateCallback === 'function') {
@@ -561,7 +464,8 @@
 
     autoSaveIntervalId: null,
 
-    startPeriodicAutoSave(getFormStateFn, intervalMs = 15000) {
+    startPeriodicAutoSave(getFormStateFn, intervalMs = 15000, targetUnitId) {
+      const uId = String(targetUnitId || this.unitId || 'u1').toLowerCase();
       if (this.autoSaveIntervalId) {
         clearInterval(this.autoSaveIntervalId);
       }
@@ -572,10 +476,9 @@
             const info = getFormStateFn();
             if (info && info.subStep) {
               this.saveStudentProgress(info.subStep, {
-                activityTitle: `[중1 좌표평면 자동저장] 단계 ${info.subStep}`,
                 answerText: info.answerText || '',
                 score: info.score || 0
-              });
+              }, uId);
             }
           }
         } catch (e) {}

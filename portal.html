@@ -8,7 +8,10 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+  <!-- Supabase Cloud DB SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- 영서중 수학 LMS Integration SDK -->
+  <script src="js/lms-integration-g1.js"></script>
 
   <style>
     :root {
@@ -314,8 +317,10 @@
     </div>
     <div style="display:flex; align-items:center; gap:8px;">
       <span id="user-status-indicator" style="font-size:0.85rem; font-weight:700; color:#4f46e5;">👤 로그인 필요</span>
+      <button id="btn-portal-login" class="btn btn-primary" onclick="openStudentLoginModal()" style="font-size:0.8rem; padding:6px 12px;">🔐 학생 로그인</button>
+      <button id="btn-portal-logout" class="btn" onclick="handlePortalLogout()" style="display:none; font-size:0.8rem; padding:6px 12px; background:#fee2e2; color:#dc2626; border:1px solid #fca5a5;">로그아웃</button>
       <button class="btn btn-success" onclick="openGlobalUnlockModal()" style="font-size:0.8rem; padding:6px 12px;">🔓 학생 해금 제어</button>
-      <button class="btn btn-primary" onclick="openTeacherLoginModal()" style="font-size:0.8rem; padding:6px 12px;">🔑 교사 관리자 접속</button>
+      <button class="btn" onclick="openTeacherLoginModal()" style="font-size:0.8rem; padding:6px 12px; background:#f1f5f9; border:1px solid #cbd5e1;">🔑 교사 관리자</button>
     </div>
   </header>
 
@@ -566,8 +571,132 @@
     </div>
   </div>
 
+  <!-- Student Login Modal -->
+  <div id="modal-student-login" class="modal-overlay">
+    <div class="modal-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1.5px solid #f1f5f9; padding-bottom:10px;">
+        <h3 style="margin:0; font-size:1.15rem; color:#1e293b; font-weight:800;">🏫 영서중 수학 LMS 학생 로그인</h3>
+        <button type="button" onclick="closeStudentLoginModal()" style="background:none; border:none; font-size:1.5rem; color:#94a3b8; cursor:pointer;">&times;</button>
+      </div>
+      <p style="font-size:0.86rem; color:#64748b; margin-bottom:16px;">학번 5자리와 비밀번호를 입력하면 모든 단원에 자동 로그인됩니다.</p>
+      <form onsubmit="handlePortalStudentLogin(event)">
+        <div style="margin-bottom:12px; text-align:left;">
+          <label style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">학번 (예: 10101)</label>
+          <input type="text" id="portal-student-id" class="form-control" placeholder="LMS 가입 학번 5자리" style="width:100%; padding:10px 12px; font-size:1rem; border-radius:8px; border:1.5px solid #cbd5e1;" required>
+        </div>
+        <div style="margin-bottom:16px; text-align:left;">
+          <label style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">비밀번호</label>
+          <input type="password" id="portal-student-pw" class="form-control" placeholder="LMS 가입 비밀번호" style="width:100%; padding:10px 12px; font-size:1rem; border-radius:8px; border:1.5px solid #cbd5e1;" required>
+        </div>
+        <div id="portal-student-login-err" style="display:none; color:#dc2626; font-size:0.84rem; font-weight:700; margin-bottom:12px; background:#fef2f2; padding:8px 10px; border-radius:6px; border:1px solid #fca5a5;"></div>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn" style="flex:1; background:#f1f5f9;" onclick="closeStudentLoginModal()">취소</button>
+          <button id="btn-portal-student-submit" type="submit" class="btn btn-primary" style="flex:2; font-weight:800;">🔐 로그인</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
     let isTeacherAuthenticated = false;
+
+    function refreshPortalUserUI(user) {
+      const userStatus = document.getElementById('user-status-indicator');
+      const btnLogin = document.getElementById('btn-portal-login');
+      const btnLogout = document.getElementById('btn-portal-logout');
+
+      if (user && user.id) {
+        if (user.role === 'teacher' || user.id === '260523' || user.id === '260831') {
+          if (userStatus) {
+            userStatus.innerText = '👨‍🏫 임종윤 선생님 (교사 관리자)';
+            userStatus.style.color = '#059669';
+          }
+        } else {
+          const cls = user.classNum || user.id.slice(2, 3) || '1';
+          if (userStatus) {
+            userStatus.innerText = `👤 1학년 ${cls}반 ${user.name} (${user.id})`;
+            userStatus.style.color = '#4f46e5';
+          }
+        }
+        if (btnLogin) btnLogin.style.display = 'none';
+        if (btnLogout) btnLogout.style.display = 'inline-flex';
+      } else {
+        if (userStatus) {
+          userStatus.innerText = '👤 로그인 필요';
+          userStatus.style.color = '#4f46e5';
+        }
+        if (btnLogin) btnLogin.style.display = 'inline-flex';
+        if (btnLogout) btnLogout.style.display = 'none';
+      }
+    }
+
+    function openStudentLoginModal() {
+      const modal = document.getElementById('modal-student-login');
+      if (modal) {
+        modal.style.display = 'flex';
+        const err = document.getElementById('portal-student-login-err');
+        if (err) err.style.display = 'none';
+        const inp = document.getElementById('portal-student-id');
+        if (inp) { inp.focus(); }
+      }
+    }
+
+    function closeStudentLoginModal() {
+      const modal = document.getElementById('modal-student-login');
+      if (modal) modal.style.display = 'none';
+    }
+
+    async function handlePortalStudentLogin(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const idInput = document.getElementById('portal-student-id');
+      const pwInput = document.getElementById('portal-student-pw');
+      const errEl = document.getElementById('portal-student-login-err');
+      const submitBtn = document.getElementById('btn-portal-student-submit');
+
+      const sid = idInput ? idInput.value.trim() : '';
+      const pw = pwInput ? pwInput.value.trim() : '';
+
+      if (!sid || !pw) return false;
+      if (errEl) errEl.style.display = 'none';
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.innerText = '인증 중...'; }
+
+      try {
+        let res = null;
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.loginStudent) {
+          res = await LMSIntegration.loginStudent(sid, pw);
+        }
+        if (res && res.success) {
+          closeStudentLoginModal();
+          refreshPortalUserUI(res.user);
+          alert(`🎉 환영합니다, ${res.user.name}님!\n로그인이 완료되었습니다. 이제 원하는 단원을 클릭하여 학습을 시작하세요.`);
+        } else {
+          if (errEl) {
+            errEl.style.display = 'block';
+            errEl.innerText = res ? res.message : '학번 또는 비밀번호가 올바르지 않습니다.';
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        if (errEl) {
+          errEl.style.display = 'block';
+          errEl.innerText = '❌ 서버 연결 중 오류가 발생했습니다.';
+        }
+      } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerText = '🔐 로그인'; }
+      }
+      return false;
+    }
+
+    function handlePortalLogout() {
+      if (typeof LMSIntegration !== 'undefined' && LMSIntegration.logout) {
+        LMSIntegration.logout();
+      } else {
+        localStorage.removeItem('redbook_current_user');
+        localStorage.removeItem('redbook_g1_current_user');
+      }
+      refreshPortalUserUI(null);
+      alert('로그아웃되었습니다.');
+    }
 
     function openTeacherLoginModal() {
       const modal = document.getElementById('modal-teacher-login');
@@ -591,14 +720,23 @@
       const errEl = document.getElementById('teacher-login-err');
       const pw = pwInput ? pwInput.value.trim() : '';
 
-      if (pw === '950420' || pw === '661227' || pw === 'teacher1234') {
+      if (pw === '260523' || pw === '260831' || pw === '661227' || pw === '950420' || pw === 'teacher1234') {
         isTeacherAuthenticated = true;
-        closeTeacherLoginModal();
-        const userStatus = document.getElementById('user-status-indicator');
-        if (userStatus) {
-          userStatus.innerText = '🔑 임종윤 선생님 (교사 관리자 접속 중)';
-          userStatus.style.color = '#059669';
+        const teacherUser = {
+          id: '260523',
+          name: '임종윤 선생님',
+          grade: '1',
+          classNum: '1',
+          role: 'teacher'
+        };
+        if (typeof LMSIntegration !== 'undefined') {
+          LMSIntegration.setCurrentUser(teacherUser);
+        } else {
+          localStorage.setItem('redbook_current_user', JSON.stringify(teacherUser));
+          localStorage.setItem('redbook_g1_current_user', JSON.stringify(teacherUser));
         }
+        closeTeacherLoginModal();
+        refreshPortalUserUI(teacherUser);
         alert('🔓 [교사 보안 인증 성공]\n선생님 계정으로 인증되었습니다. 1학년 및 2학년 관제실 및 전체 탐구에 자유롭게 접근하실 수 있습니다.');
       } else {
         if (errEl) {
@@ -620,9 +758,17 @@
       if (modal) modal.style.display = 'none';
     }
 
-    function setUnlockPreset(grade, stepCode) {
+    async function setUnlockPreset(grade, stepCode) {
       if (grade === 'g1' || grade === 'all') {
+        localStorage.setItem('redbook_g1_u1_global_unlock_step', stepCode);
+        localStorage.setItem('redbook_g1_u2_global_unlock_step', stepCode);
+        localStorage.setItem('redbook_g1_u4_global_unlock_step', stepCode);
         localStorage.setItem('redbook_g1_global_unlock_step', stepCode);
+        if (typeof LMSIntegration !== 'undefined') {
+          await LMSIntegration.saveGlobalUnlockStep(stepCode, 'u1');
+          await LMSIntegration.saveGlobalUnlockStep(stepCode, 'u2');
+          await LMSIntegration.saveGlobalUnlockStep(stepCode, 'u4');
+        }
       }
       if (grade === 'g2' || grade === 'all') {
         localStorage.setItem('redbook_g2_global_unlock_step', stepCode);
@@ -630,6 +776,19 @@
       closeGlobalUnlockModal();
       alert('✅ [학생 해금 범위 일괄 설정 완료]\n선택하신 단계까지 학생들의 모든 페이지 자물쇠가 해제되었습니다!');
     }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      let cached = null;
+      if (typeof LMSIntegration !== 'undefined') {
+        cached = LMSIntegration.getCurrentUserFromCache();
+      } else {
+        try {
+          const raw = localStorage.getItem('redbook_current_user') || localStorage.getItem('redbook_g1_current_user');
+          if (raw) cached = JSON.parse(raw);
+        } catch (e) {}
+      }
+      refreshPortalUserUI(cached);
+    });
   </script>
 </body>
 </html>

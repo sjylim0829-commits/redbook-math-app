@@ -707,7 +707,7 @@
       <button id="btn-header-unlock-boundary" class="btn" style="padding:4px 9px; font-size:0.78rem; background:linear-gradient(135deg, #10b981, #059669); color:#fff; font-weight:800; border:none; box-shadow:0 2px 6px rgba(16, 185, 129, 0.3); display:none;" onclick="openUnlockBoundaryModal()" title="학생들이 학습할 수 있는 최대 단원/단계 해금 범위 설정">🔓 학생 해금 범위 설정</button>
       <button id="btn-header-teacher-dashboard" class="btn" style="padding:4px 9px; font-size:0.78rem; background:linear-gradient(135deg, #6366f1, #8b5cf6); color:#fff; font-weight:800; border:none; box-shadow:0 2px 6px rgba(99, 102, 241, 0.3); display:none;" onclick="openTeacherDashboardModal()" title="25명 학생 5x5 실시간 모니터링">📊 교사 5x5 모니터링</button>
       <button class="btn" style="padding:4px 8px; font-size:0.78rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 페이지를 통과합니다">🔑 교사 패스 (Pass)</button>
-      <button class="btn" style="padding:4px 8px; font-size:0.78rem; background:#fee2e2; color:#dc2626; border:1px solid #fca5a5;" onclick="switchView('login')">로그아웃</button>
+      <button class="btn" style="padding:4px 8px; font-size:0.78rem; background:#fee2e2; color:#dc2626; border:1px solid #fca5a5;" onclick="handleLogout()">로그아웃</button>
     </div>
   </header>
 
@@ -2181,20 +2181,20 @@
 
           let globalStep = '0-1';
           if (typeof LMSIntegration !== 'undefined' && LMSIntegration.loadGlobalUnlockStep) {
-            globalStep = await LMSIntegration.loadGlobalUnlockStep();
+            globalStep = await LMSIntegration.loadGlobalUnlockStep('u4');
           } else {
-            globalStep = localStorage.getItem('redbook_g1_global_unlock_step') || '0-1';
+            globalStep = localStorage.getItem('redbook_g1_u4_global_unlock_step') || '0-1';
           }
           applyGlobalUnlockStepG1(globalStep, false);
 
-          const prog = await LMSIntegration.loadStudentProgress(res.user.id);
-          let targetSubStep = globalStep || '0-1';
+          const prog = await LMSIntegration.loadStudentProgress(res.user.id, 'u4');
+          let targetSubStep = '0-1';
 
-          if (prog && prog.lastSubStep) {
+          if (prog && prog.lastSubStep && prog.lastSubStep !== '0-1') {
             const globalIdx = ALL_G1_SUBSTEPS.indexOf(globalStep);
             const progIdx = ALL_G1_SUBSTEPS.indexOf(prog.lastSubStep);
             const effectiveIdx = (globalIdx >= 0 && progIdx >= 0) ? Math.min(progIdx, globalIdx) : (progIdx >= 0 ? progIdx : 0);
-            targetSubStep = ALL_G1_SUBSTEPS[effectiveIdx] || globalStep || '0-1';
+            targetSubStep = ALL_G1_SUBSTEPS[effectiveIdx] || '0-1';
 
             if (Array.isArray(prog.completedSteps)) {
               prog.completedSteps.forEach(code => {
@@ -2205,7 +2205,7 @@
               });
             }
           } else {
-            targetSubStep = globalStep || (state.unlockedSubSteps[state.unlockedSubSteps.length - 1]) || '0-1';
+            targetSubStep = '0-1';
           }
 
           const targetTabIdx = parseInt(targetSubStep.split('-')[0]) || 0;
@@ -10732,7 +10732,37 @@
       setTimeout(() => { loadSubStep(globalStep); }, 80);
     }
 
+    function handleLogout() {
+      if (typeof LMSIntegration !== 'undefined' && LMSIntegration.logout) {
+        LMSIntegration.logout();
+      }
+      state.currentUser = null;
+      state.studentId = null;
+      state.studentName = null;
+      state.isTeacherLoggedIn = false;
+      const userDisp = document.getElementById('current-user-info');
+      if (userDisp) {
+        userDisp.innerText = '👤 로그인 필요';
+        userDisp.style.color = '#4f46e5';
+      }
+      const unlockBtn = document.getElementById('btn-header-unlock-boundary');
+      const dashBtn = document.getElementById('btn-header-teacher-dashboard');
+      if (unlockBtn) unlockBtn.style.display = 'none';
+      if (dashBtn) dashBtn.style.display = 'none';
+
+      const pwInput = document.getElementById('student-name');
+      if (pwInput) pwInput.value = '';
+      const errBox = document.getElementById('login-error-notice');
+      if (errBox) errBox.style.display = 'none';
+
+      switchView('login');
+    }
+    window.handleLogout = handleLogout;
+
     window.onload = async function() {
+      if (typeof LMSIntegration !== 'undefined') {
+        LMSIntegration.init({ unitId: 'u4' });
+      }
       await checkAndApplyGlobalUnlockG1();
 
       const urlParams = new URLSearchParams(window.location.search);
@@ -10749,18 +10779,71 @@
         if (dashBtn) dashBtn.style.display = 'inline-flex';
         enterTeacherDashboard();
       } else if (isStartDirect) {
-        let globalStep = localStorage.getItem('redbook_g1_global_unlock_step') || '0-1';
+        let globalStep = localStorage.getItem('redbook_g1_u4_global_unlock_step') || '0-1';
         if (typeof LMSIntegration !== 'undefined' && LMSIntegration.loadGlobalUnlockStep) {
-          globalStep = await LMSIntegration.loadGlobalUnlockStep();
+          globalStep = await LMSIntegration.loadGlobalUnlockStep('u4');
         }
         applyGlobalUnlockStepG1(globalStep, false);
         state.studentId = '10101';
         state.studentName = '학생';
         document.getElementById('current-user-info').innerText = '👤 학생 (자율 탐구)';
         switchView('activity');
-        setTimeout(() => { loadSubStep(globalStep); }, 80);
+        setTimeout(() => { loadSubStep('0-1'); }, 80);
       } else {
-        switchView('login');
+        // Check cached user
+        const cached = (typeof LMSIntegration !== 'undefined') ? LMSIntegration.getCurrentUserFromCache() : null;
+        if (cached && cached.id) {
+          state.currentUser = cached;
+          state.studentId = cached.id;
+          state.studentName = cached.name;
+          state.isTeacherLoggedIn = (cached.role === 'teacher' || cached.id === '260523' || cached.id === '260831');
+
+          const userDisp = document.getElementById('current-user-info');
+          if (userDisp) {
+            if (state.isTeacherLoggedIn) {
+              userDisp.innerText = '👨‍🏫 임종윤 선생님 (교사 관리자)';
+              userDisp.style.color = '#059669';
+            } else {
+              userDisp.innerText = `👤 ${cached.name} (${cached.id})`;
+              userDisp.style.color = '#4f46e5';
+            }
+          }
+
+          const unlockBtn = document.getElementById('btn-header-unlock-boundary');
+          const dashBtn = document.getElementById('btn-header-teacher-dashboard');
+          if (state.isTeacherLoggedIn) {
+            if (unlockBtn) unlockBtn.style.display = 'inline-flex';
+            if (dashBtn) dashBtn.style.display = 'inline-flex';
+          } else {
+            if (unlockBtn) unlockBtn.style.display = 'none';
+            if (dashBtn) dashBtn.style.display = 'none';
+          }
+
+          let globalStep = '0-1';
+          if (typeof LMSIntegration !== 'undefined' && LMSIntegration.loadGlobalUnlockStep) {
+            globalStep = await LMSIntegration.loadGlobalUnlockStep('u4');
+          }
+          applyGlobalUnlockStepG1(globalStep, false);
+
+          let targetSubStep = '0-1';
+          if (typeof LMSIntegration !== 'undefined' && LMSIntegration.loadStudentProgress) {
+            const prog = await LMSIntegration.loadStudentProgress(cached.id, 'u4');
+            if (prog && prog.lastSubStep && prog.lastSubStep !== '0-1') {
+              targetSubStep = prog.lastSubStep;
+            }
+          }
+
+          const targetTabIdx = parseInt(targetSubStep.split('-')[0]) || 0;
+          state.currentMainTab = targetTabIdx;
+          document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+            if (i === targetTabIdx) btn.classList.add('active'); else btn.classList.remove('active');
+          });
+          updateSubStepPills(targetTabIdx);
+          switchView('activity');
+          setTimeout(() => { loadSubStep(targetSubStep); }, 80);
+        } else {
+          switchView('login');
+        }
       }
 
       // 실시간 클라우드 DB 해금 범위 연동 (교사가 변경 시 학생 화면에 즉시 동기화)
