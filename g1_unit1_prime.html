@@ -11002,13 +11002,24 @@ function checkStep_3_1() {
       const unlockBtn = document.getElementById('btn-header-unlock-boundary');
       if (unlockBtn) unlockBtn.style.display = 'inline-flex';
 
-      state.unlockedMainTabs = [0, 1, 2, 3, 4, 5];
+      state.unlockedMainTabs = [0, 1, 2, 3, 4, 5, 6, 7];
       state.unlockedSubSteps = ALL_SUBSTEPS;
 
       document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.disabled = false;
         btn.style.opacity = '1';
         btn.style.cursor = 'pointer';
       });
+
+      if (typeof LMSIntegration !== 'undefined') {
+        LMSIntegration.setCurrentUser({
+          id: '260523',
+          name: '임종윤 선생님',
+          grade: '1',
+          classNum: '1',
+          role: 'teacher'
+        });
+      }
 
       switchView('activity');
       updateSubStepPills(0);
@@ -11073,17 +11084,54 @@ function checkStep_3_1() {
     return false;
   }
 
-  // Modal Functions
-  let currentSecureModalAction = '';
+  // Modal Functions (Unit 4 Standard)
+  let currentSecureModalAction = 'teacher_login';
+
+  function openSecurePasswordModal(actionType, title, desc) {
+    if (arguments.length === 2) {
+      desc = title;
+      title = actionType;
+      actionType = 'teacher_login';
+    }
+    currentSecureModalAction = actionType || 'teacher_login';
+    const modal = document.getElementById('secure-password-modal');
+    const titleEl = document.getElementById('secure-modal-title-text');
+    const descEl = document.getElementById('secure-modal-desc');
+    const inputEl = document.getElementById('secure-modal-input');
+    const errEl = document.getElementById('secure-modal-error');
+
+    if (titleEl) titleEl.innerText = title;
+    if (descEl) descEl.innerText = desc;
+    if (inputEl) { inputEl.value = ''; inputEl.type = 'password'; }
+    if (errEl) { errEl.style.display = 'none'; errEl.innerText = ''; }
+
+    if (modal) {
+      modal.style.display = 'flex';
+      setTimeout(() => { if (inputEl) inputEl.focus(); }, 80);
+    }
+  }
+
+  function closeSecurePasswordModal() {
+    const modal = document.getElementById('secure-password-modal');
+    if (modal) modal.style.display = 'none';
+    const err = document.getElementById('secure-modal-error');
+    if (err) { err.style.display = 'none'; err.innerText = ''; }
+  }
 
   function openTeacherLoginModal() {
-    openSecurePasswordModal("교사 계정 보안 접속", "교사 전용 비밀번호를 입력해 주세요.");
-    currentSecureModalAction = 'teacher_login';
+    openSecurePasswordModal(
+      'teacher_login',
+      '교사 계정 보안 접속',
+      '교사 전용 비밀번호를 입력해 주세요.'
+    );
   }
 
   function openTestLoginModal() {
-    openSecurePasswordModal("교사 계정 접속", "교사 전용 비밀번호를 입력해 주세요.");
-    currentSecureModalAction = 'test_login';
+    openSecurePasswordModal(
+      'test_login',
+      '교사 계정 접속',
+      '교사 전용 비밀번호를 입력해 주세요.'
+    );
   }
 
   function openTeacherPassModal() {
@@ -11093,8 +11141,11 @@ function checkStep_3_1() {
       }
       return;
     }
-    openSecurePasswordModal("🔑 교사 패스 (Pass)", "현재 단계를 즉시 통과시키기 위해 교사 비밀번호를 입력하세요.");
-    currentSecureModalAction = 'teacher_pass';
+    openSecurePasswordModal(
+      'teacher_pass',
+      '교사 인증 패스 (Pass)',
+      `현재 [${state.subStep}] 페이지를 학생 대신 통과 처리하려면 교사 비밀번호를 입력해 주세요.`
+    );
   }
 
   function openTeacherDashboardModal() {
@@ -11102,61 +11153,99 @@ function checkStep_3_1() {
       enterTeacherDashboard();
       return;
     }
-    openSecurePasswordModal("📊 교사 5x5 관제실", "실시간 학생 관제실에 접속하기 위해 교사 비밀번호를 입력하세요.");
-    currentSecureModalAction = 'teacher_dashboard';
-  }
-
-  function openSecurePasswordModal(title, desc) {
-    document.getElementById('secure-modal-title-text').innerText = title;
-    document.getElementById('secure-modal-desc').innerText = desc;
-    document.getElementById('secure-modal-input').value = '';
-    document.getElementById('secure-modal-error').style.display = 'none';
-    document.getElementById('secure-password-modal').style.display = 'flex';
-  }
-
-  function closeSecurePasswordModal() {
-    document.getElementById('secure-password-modal').style.display = 'none';
+    openSecurePasswordModal(
+      'teacher_dashboard',
+      '교사 5x5 모니터링 관제실 접속',
+      '학생 실시간 수행 관제를 위해 교사 전용 비밀번호를 입력해 주세요.'
+    );
   }
 
   function handleSecurePasswordSubmit(e) {
-    if (e) e.preventDefault();
-    handleSecurePasswordSubmitG1();
+    if (e && e.preventDefault) e.preventDefault();
+    return handleSecurePasswordSubmitG1();
   }
 
   function handleSecurePasswordSubmitG1() {
-    const pw = document.getElementById('secure-modal-input').value.trim();
+    const inputEl = document.getElementById('secure-modal-input');
     const errBox = document.getElementById('secure-modal-error');
-    if (pw === '661227' || pw === '260523' || pw === '260831') {
+    const pw = (inputEl ? inputEl.value : '').trim();
+
+    const isTeacherPw = (pw === '661227' || pw === '260523' || pw === '260831');
+    if (!isTeacherPw) {
+      if (errBox) {
+        errBox.innerText = '❌ 비밀번호가 올바르지 않습니다. 다시 입력해 주세요.';
+        errBox.style.display = 'block';
+      }
+      if (inputEl) { inputEl.value = ''; inputEl.focus(); }
+      return false;
+    }
+
+    closeSecurePasswordModal();
+
+    const unlockBtn = document.getElementById('btn-header-unlock-boundary');
+    const dashBtn = document.getElementById('btn-header-teacher-dashboard');
+    if (unlockBtn) unlockBtn.style.display = 'inline-flex';
+    if (dashBtn) dashBtn.style.display = 'inline-flex';
+
+    if (currentSecureModalAction === 'teacher_pass') {
+      passCurrentSubStep();
+    } else if (currentSecureModalAction === 'teacher_dashboard') {
       state.isTeacherLoggedIn = true;
       state.isMaster = true;
       state.studentId = '260523';
       state.studentName = '임종윤 선생님';
-      document.getElementById('btn-header-unlock-boundary').style.display = 'inline-block';
-      closeSecurePasswordModal();
-      if (currentSecureModalAction === 'teacher_pass') {
-        passCurrentSubStep();
-      } else if (currentSecureModalAction === 'teacher_dashboard') {
-        enterTeacherDashboard();
-      } else {
-        const userDisp = document.getElementById('current-user-info');
-        if (userDisp) {
-          userDisp.innerText = '👨‍🏫 임종윤 선생님 (교사 관리자)';
-          userDisp.style.color = '#059669';
-        }
-        state.unlockedMainTabs = [0, 1, 2, 3, 4, 5];
-        state.unlockedSubSteps = ALL_SUBSTEPS;
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-          btn.style.opacity = '1';
-          btn.style.cursor = 'pointer';
+      if (typeof LMSIntegration !== 'undefined') {
+        LMSIntegration.setCurrentUser({
+          id: '260523',
+          name: '임종윤 선생님',
+          grade: '1',
+          classNum: '1',
+          role: 'teacher'
         });
-        switchView('activity');
-        updateSubStepPills(0);
-        loadSubStep('0-1');
       }
+      const userDisp = document.getElementById('current-user-info');
+      if (userDisp) {
+        userDisp.innerText = '👨‍🏫 임종윤 선생님 (교사 관리자)';
+        userDisp.style.color = '#059669';
+      }
+      enterTeacherDashboard();
     } else {
-      errBox.innerText = "비밀번호가 일치하지 않습니다.";
-      errBox.style.display = 'block';
+      // teacher_login or test_login
+      state.isTeacherLoggedIn = true;
+      state.isMaster = true;
+      state.studentId = '260523';
+      state.studentName = '임종윤 선생님';
+      state.unlockedMainTabs = [0, 1, 2, 3, 4, 5, 6, 7];
+      state.unlockedSubSteps = ALL_SUBSTEPS;
+
+      if (typeof LMSIntegration !== 'undefined') {
+        LMSIntegration.setCurrentUser({
+          id: '260523',
+          name: '임종윤 선생님',
+          grade: '1',
+          classNum: '1',
+          role: 'teacher'
+        });
+      }
+
+      const userDisp = document.getElementById('current-user-info');
+      if (userDisp) {
+        userDisp.innerText = '👨‍🏫 임종윤 선생님 (교사 관리자)';
+        userDisp.style.color = '#059669';
+      }
+
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+      });
+
+      switchView('activity');
+      updateSubStepPills(0);
+      loadSubStep('0-1');
+      alert('🔓 [교사 보안 인증 성공]\n임종윤 선생님 환영합니다! 교사 관리자 모드로 로그인되었습니다. 상단 🔓 학생 해금 범위 설정을 사용하실 수 있습니다.');
     }
+    return false;
   }
 
   // Teacher 5x5 Dashboard
@@ -11367,6 +11456,16 @@ function checkStep_3_1() {
     switchView('login');
   }
   window.handleLogout = handleLogout;
+  window.openSecurePasswordModal = openSecurePasswordModal;
+  window.closeSecurePasswordModal = closeSecurePasswordModal;
+  window.openTeacherLoginModal = openTeacherLoginModal;
+  window.openTestLoginModal = openTestLoginModal;
+  window.openTeacherPassModal = openTeacherPassModal;
+  window.openTeacherDashboardModal = openTeacherDashboardModal;
+  window.handleSecurePasswordSubmit = handleSecurePasswordSubmit;
+  window.handleSecurePasswordSubmitG1 = handleSecurePasswordSubmitG1;
+  window.passCurrentSubStep = passCurrentSubStep;
+  window.enterTeacherDashboard = enterTeacherDashboard;
 
   // On page load
   window.addEventListener('DOMContentLoaded', async () => {
