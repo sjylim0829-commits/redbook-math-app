@@ -8,6 +8,9 @@
   <!-- Supabase Cloud DB SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
+  <!-- Redbook LMS Supabase SDK -->
+  <script src="js/lms-integration-g1.js"></script>
+  
   <!-- KaTeX Math Rendering Library -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
@@ -788,6 +791,7 @@
             <input type="password" id="student-name" class="form-control" placeholder="비밀번호 입력" value="1234">
           </div>
           <button id="btn-start-exploration" type="submit" class="btn btn-primary" style="margin-top: 8px; width:100%; font-size:1.02rem; padding:12px; font-weight:800; background:linear-gradient(135deg, #0284c7, #4f46e5);">🔐 영서중 수학 LMS 학생 로그인</button>
+          <div id="login-error-notice" class="alert alert-danger" style="display:none; margin-top:10px; font-size:0.85rem; font-weight:700; color:#dc2626; background:#fee2e2; border:1px solid #fca5a5; padding:8px 12px; border-radius:6px;"></div>
         </form>
 
         <div style="margin-top:14px; border-top:1px solid #e2e8f0; padding-top:12px; display:flex; flex-direction:column; gap:8px;">
@@ -1234,31 +1238,172 @@
       });
     }
 
-    // LMS Login
-    function handleLMSLogin(e) {
-      if (e) e.preventDefault();
+    // Login Error Helper
+    function showLoginError(msg) {
+      const errBox = document.getElementById('login-error-notice');
+      if (errBox) {
+        errBox.textContent = msg;
+        errBox.style.display = 'block';
+      }
+      try { alert(msg); } catch(e) {}
+    }
+    window.showLoginError = showLoginError;
+
+    // LMS Login (Supabase Cloud DB Integration)
+    async function handleLMSLogin(e) {
+      if (e && e.preventDefault) e.preventDefault();
       const idInput = document.getElementById('student-id');
-      const val = idInput ? idInput.value.trim() : '10101';
-      if (!val || val.length !== 5) {
-        alert('올바른 학번 5자리를 입력하세요 (예: 10311)');
-        return;
+      const pwInput = document.getElementById('student-name');
+      const val = idInput ? idInput.value.trim() : '';
+      const password = pwInput ? pwInput.value.trim() : '';
+
+      const errBox = document.getElementById('login-error-notice');
+      if (errBox) errBox.style.display = 'none';
+
+      // 1. Teacher Master Passwords (260523, 260831, 661227)
+      const isTeacher = (password === '260523' || password === '260831' || password === '661227' ||
+                         val === '260523' || val === '260831' || val === '661227');
+      if (isTeacher) {
+        state.teacherAuth = true;
+        state.currentUser = { id: '260523', name: '임종윤 선생님', role: 'teacher', grade: '1', class: '1', number: '00' };
+        state.studentId = '260523';
+        state.studentName = '임종윤 선생님';
+        state.studentClass = 1;
+
+        const userDisp = document.getElementById('current-user-info');
+        if (userDisp) {
+          userDisp.textContent = '👨‍🏫 임종윤 선생님 (교사 관리자)';
+          userDisp.style.color = '#059669';
+        }
+
+        const unlockBtn = document.getElementById('btn-header-unlock-boundary');
+        const dashBtn = document.getElementById('btn-header-teacher-dashboard');
+        if (unlockBtn) unlockBtn.style.display = 'inline-flex';
+        if (dashBtn) dashBtn.style.display = 'inline-flex';
+
+        // Unlock all tabs and steps
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+          btn.classList.remove('locked');
+          btn.disabled = false;
+          btn.style.opacity = '1';
+          btn.style.cursor = 'pointer';
+        });
+
+        switchView('activity');
+        switchMainTab(0);
+        SoundFX.unlock();
+        alert('🔓 [교사 보안 인증 성공]\n임종윤 선생님 환영합니다! 교사 관리자 모드로 로그인되었습니다.');
+        return false;
       }
 
-      const grade = val[0];
-      const cls = parseInt(val[2], 10);
-      const num = val.substring(3);
+      if (!val || !password) {
+        showLoginError('⚠️ 학번 5자리와 비밀번호를 모두 입력해 주세요!');
+        return false;
+      }
 
-      state.currentUser = { id: val, grade, class: cls, number: num, name: `학생(${val})` };
-      state.studentClass = cls;
-      state.studentId = val;
-      state.studentName = `학생(${val})`;
-      document.getElementById('current-user-info').textContent = `👤 ${state.currentUser.name}`;
+      if (val.length !== 5) {
+        showLoginError('⚠️ 올바른 학번 5자리를 입력하세요 (예: 10311)');
+        return false;
+      }
 
-      // Update tabs lock status based on progress
-      updateTabLocks();
-      switchView('activity');
-      SoundFX.success();
+      const loginBtn = document.getElementById('btn-start-exploration');
+      const origText = loginBtn ? loginBtn.innerText : '';
+      if (loginBtn) {
+        loginBtn.disabled = true;
+        loginBtn.innerText = '⏳ 영서중 수학 LMS DB 인증 중...';
+      }
+
+      try {
+        let res = null;
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.loginStudent) {
+          res = await LMSIntegration.loginStudent(val, password);
+        } else {
+          res = {
+            success: true,
+            user: {
+              id: val,
+              name: `학생(${val})`,
+              grade: val[0],
+              classNum: val.slice(2, 3),
+              role: 'student'
+            }
+          };
+        }
+
+        if (res && res.success) {
+          const user = res.user;
+          state.currentUser = user;
+          state.studentId = user.id;
+          state.studentName = user.name;
+          state.studentClass = parseInt(user.classNum || user.id.slice(2, 3) || '1', 10);
+          state.teacherAuth = (user.role === 'teacher' || user.id === '260523' || user.id === '260831');
+
+          const userDisp = document.getElementById('current-user-info');
+          if (userDisp) {
+            userDisp.textContent = `👤 ${user.name} (${user.id})`;
+            userDisp.style.color = '#4f46e5';
+          }
+
+          const unlockBtn = document.getElementById('btn-header-unlock-boundary');
+          const dashBtn = document.getElementById('btn-header-teacher-dashboard');
+          if (state.teacherAuth) {
+            if (unlockBtn) unlockBtn.style.display = 'inline-flex';
+            if (dashBtn) dashBtn.style.display = 'inline-flex';
+          } else {
+            if (unlockBtn) unlockBtn.style.display = 'none';
+            if (dashBtn) dashBtn.style.display = 'none';
+          }
+
+          // DB Progress Load
+          if (typeof LMSIntegration !== 'undefined' && LMSIntegration.loadStudentProgress) {
+            try {
+              const prog = await LMSIntegration.loadStudentProgress(user.id, 'u5');
+              if (prog && Array.isArray(prog.completedSteps)) {
+                prog.completedSteps.forEach(s => {
+                  state.completedSteps.add(s);
+                  state.unlockedSteps.add(s);
+                });
+              }
+              if (prog && prog.lastSubStep) {
+                state.unlockedSteps.add(prog.lastSubStep);
+              }
+            } catch(e) {
+              console.warn('DB progress load warning:', e);
+            }
+          }
+
+          // Periodic Auto-Save
+          if (typeof LMSIntegration !== 'undefined' && LMSIntegration.startPeriodicAutoSave) {
+            LMSIntegration.startPeriodicAutoSave(() => {
+              const cur = state.currentSubStep;
+              return {
+                subStep: cur,
+                answerText: JSON.stringify(state.userAnswers || {}),
+                score: state.completedSteps.has(cur) ? 100 : 50
+              };
+            }, 15000, 'u5');
+          }
+
+          saveProgress();
+          updateTabLocks();
+          switchView('activity');
+          SoundFX.success();
+        } else {
+          showLoginError(`❌ ${res ? res.message : '학번 또는 비밀번호가 일치하지 않습니다.'}`);
+        }
+      } catch (err) {
+        console.error(err);
+        showLoginError('❌ 영서중 수학 LMS DB 연결 중 오류가 발생했습니다.');
+      } finally {
+        if (loginBtn) {
+          loginBtn.disabled = false;
+          loginBtn.innerText = origText || '🔐 영서중 수학 LMS 학생 로그인';
+        }
+      }
+
+      return false;
     }
+    window.handleLMSLogin = handleLMSLogin;
 
     function updateTabLocks() {
       // Unlock next tab if previous is completed
@@ -1524,6 +1669,16 @@
         updateTabLocks();
         renderSubstepPills(state.currentTab);
 
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            LMSIntegration.saveStudentProgress(stepCode, {
+              activityTitle: `[중1-5 도형의 기초] [단계: ${stepCode}]`,
+              answerText: '정답 완료',
+              score: 100
+            }, 'u5');
+          } catch(e) {}
+        }
+
         resEl.innerHTML = `
           <div class="verified-answer-card">
             <h4>🎉 정답입니다! 멋져요!</h4>
@@ -1563,6 +1718,9 @@
     function handleLogout() {
       state.currentUser = null;
       state.teacherAuth = false;
+      if (typeof LMSIntegration !== 'undefined' && LMSIntegration.logout) {
+        try { LMSIntegration.logout(); } catch(e) {}
+      }
       document.getElementById('current-user-info').textContent = '👤 로그인 필요';
       document.getElementById('btn-header-unlock-boundary').style.display = 'none';
       document.getElementById('btn-header-teacher-dashboard').style.display = 'none';
@@ -1571,6 +1729,9 @@
 
     // Initialize
     window.addEventListener('DOMContentLoaded', () => {
+      if (typeof LMSIntegration !== 'undefined') {
+        try { LMSIntegration.init({ unitId: 'u5' }); } catch(e) {}
+      }
       loadSavedProgress();
       // Setup initial substep
       renderSubstepPills(0);

@@ -39,3 +39,11 @@
 - **실제 브라우저(Playwright) 실환경에서 핵심 인터랙티브 컨트롤(버튼 클릭, 슬라이더 변경, 점 드래그 등)에 대한 실제 이벤트 발화 및 이에 따른 상태/화면 변화(Action-Reaction)**를 직접 테스트하여 검증해야 합니다.
 - 가짜 텍스트 카드(`renderProblemSupportCanvas` 형태)가 검출되거나 실질적 상호작용 컨트롤이 결여된 서브스텝이 발견될 시 서브에이전트는 즉시 **반려(`REJECT`)**하고 메인 에이전트에게 재개발을 강제합니다.
 
+## 9. 🏛️ 영서중 수학 LMS DB(Supabase) 연동 의무화 규칙 (Mandatory LMS DB Integration Rule)
+- **로컬 Mock 로그인 전면 금지**: 5단원, 6단원 수정 및 향후 모든 단원(7, 8단원 등) 개발 시, 로그인 시스템의 로컬 Mock 처리는 엄격히 금지됩니다.
+- **SDK 연동 필수**: `<head>`에 `<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>` 및 `<script src="js/lms-integration-g1.js"></script>`를 반드시 포함해야 합니다.
+- **비동기 DB 인증 (`handleLMSLogin`)**: `handleLMSLogin(e)`는 `async` 함수로 구현되어 `await LMSIntegration.loginStudent(studentId, password)`를 호출하여 실제 Supabase Cloud DB(`students`) 인증을 거쳐야 합니다.
+- **교사 마스터 바이패스 & 에러 UI**: 교사 마스터 비밀번호(`260523`, `260831`, `661227`) 입력 시 전 기능 해금 관리자 권한을 부여하며, 실패 시 `#login-error-notice` 배너로 명확한 사유를 안내해야 합니다.
+- **DB 진도 로드 및 자동 저장**: 로그인 완료 시 `await LMSIntegration.loadStudentProgress(studentId, unitId)`로 원격 진도를 복원하고, `LMSIntegration.startPeriodicAutoSave(...)`를 활성화해야 합니다.
+- **문항 완료 시 실시간 DB 저장**: `gradeStep()` 통과 시 `LMSIntegration.saveStudentProgress(stepCode, data, unitId)`를 호출하여 학습 완료 상태를 Supabase `activity_submissions`에 즉시 기록해야 합니다.
+
