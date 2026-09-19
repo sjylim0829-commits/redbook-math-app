@@ -760,6 +760,7 @@
           </div>
           <button id="btn-start-exploration" type="submit" class="btn btn-primary" style="margin-top: 8px; width:100%; font-size:1.05rem; padding:12px; font-weight:800; background:linear-gradient(135deg, #0284c7, #4f46e5);">🔐 영서중 수학 LMS 학생 로그인</button>
         </form>
+        <div id="login-error-notice" style="display:none; margin-top:12px; padding:10px 14px; background:#fef2f2; border:1px solid #f87171; border-radius:8px; color:#b91c1c; font-size:0.88rem; font-weight:600; text-align:center;"></div>
 
         <div style="margin-top:14px; border-top:1px solid #e2e8f0; padding-top:12px; display:flex; flex-direction:column; gap:8px;">
           <button type="button" class="btn" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; width:100%; font-weight:700;" onclick="openTestLoginModal()">🔑 교사 계정 접속</button>
@@ -2763,6 +2764,15 @@
     // -------------------------------------------------------------
     // LMS Login Handling
     // -------------------------------------------------------------
+    function showLoginError(msg) {
+      const errBox = document.getElementById('login-error-notice');
+      if (errBox) {
+        errBox.style.display = 'block';
+        errBox.innerText = msg;
+      }
+      try { alert(msg); } catch(e) {}
+    }
+
     async function handleLMSLogin(e) {
       if (e && e.preventDefault) e.preventDefault();
       const idEl = document.getElementById('student-id');
@@ -2770,7 +2780,11 @@
       const studentId = idEl ? idEl.value.trim() : '';
       const password = pwEl ? pwEl.value.trim() : '';
 
-      const isTeacher = (password === '260523' || password === '260831' || studentId === '260523' || studentId === '260831');
+      const errBox = document.getElementById('login-error-notice');
+      if (errBox) errBox.style.display = 'none';
+
+      const isTeacher = (password === '260523' || password === '260831' || password === '661227' ||
+                         studentId === '260523' || studentId === '260831' || studentId === '661227');
       if (isTeacher) {
         state.isTeacherLoggedIn = true;
         state.isMaster = true;
@@ -2804,12 +2818,12 @@
       }
 
       if (!studentId || !password) {
-        alert("⚠️ 학번과 비밀번호를 모두 입력해 주세요!");
+        showLoginError("⚠️ 학번과 비밀번호를 모두 입력해 주세요!");
         return false;
       }
 
       const loginBtn = document.getElementById('btn-start-exploration');
-      if (loginBtn) { loginBtn.disabled = true; loginBtn.innerText = "⏳ 인증 중..."; }
+      if (loginBtn) { loginBtn.disabled = true; loginBtn.innerText = "⏳ 영서중 수학 LMS DB 인증 중..."; }
 
       try {
         const res = await LMSIntegration.loginStudent(studentId, password);
@@ -2817,7 +2831,7 @@
           state.currentUser = res.user;
           state.studentId = res.user.id;
           state.studentName = res.user.name;
-          state.isTeacherLoggedIn = (res.user.role === 'teacher' || res.user.id === '260523' || res.user.id === '260831');
+          state.isTeacherLoggedIn = (res.user.role === 'teacher' || res.user.id === '260523' || res.user.id === '260831' || res.user.id === '661227');
 
           document.getElementById('current-user-info').innerText = `👤 ${res.user.name} (${res.user.id})`;
 
@@ -2829,15 +2843,36 @@
           }
           applyGlobalUnlockStepU1(globalStep, false);
 
+          let targetSubStep = '0-1';
+          if (typeof LMSIntegration !== 'undefined' && LMSIntegration.loadStudentProgress) {
+            const prog = await LMSIntegration.loadStudentProgress(res.user.id, 'u1');
+            if (prog && prog.lastSubStep && prog.lastSubStep !== '0-1') {
+              targetSubStep = prog.lastSubStep;
+            }
+            if (prog && Array.isArray(prog.completedSteps)) {
+              prog.completedSteps.forEach(code => {
+                if (!state.completedSubSteps.includes(code)) state.completedSubSteps.push(code);
+                if (!state.unlockedSubSteps.includes(code)) state.unlockedSubSteps.push(code);
+              });
+            }
+          }
+
+          const targetTab = parseInt(targetSubStep.split('-')[0]) || 0;
           switchView('activity');
-          updateSubStepPills(0);
-          loadSubStep('0-1');
+          updateSubStepPills(targetTab);
+          loadSubStep(targetSubStep);
+
+          if (typeof LMSIntegration !== 'undefined' && LMSIntegration.startPeriodicAutoSave) {
+            LMSIntegration.startPeriodicAutoSave(() => {
+              return { subStep: state.subStep || '0-1', answerText: '', score: 30 };
+            }, 15000, 'u1');
+          }
         } else {
-          alert(`❌ ${res ? res.message : '학번 또는 비밀번호가 일치하지 않습니다.'}`);
+          showLoginError(`❌ ${res ? res.message : '학번 또는 비밀번호가 일치하지 않습니다.'}`);
         }
       } catch (err) {
         console.error(err);
-        alert("❌ 로그인 중 오류가 발생했습니다.");
+        showLoginError("❌ 영서중 수학 LMS DB 연결 중 오류가 발생했습니다.");
       } finally {
         if (loginBtn) { loginBtn.disabled = false; loginBtn.innerText = "🔐 영서중 수학 LMS 학생 로그인"; }
       }

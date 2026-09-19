@@ -5682,6 +5682,14 @@
       }
       renderSubStepPills();
 
+      if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+        LMSIntegration.saveStudentProgress(code, {
+          activityTitle: `[중1-2 정수와 유리수] [단계: ${code}]`,
+          score: 100,
+          completed: true
+        }, 'u2');
+      }
+
       if (btnNext) {
         btnNext.style.display = 'inline-flex';
         btnNext.onclick = () => {
@@ -5766,10 +5774,14 @@
 
   // Navigation & View Switching
   function switchView(viewName) {
-    document.querySelectorAll('.view-panel').forEach(p => p.style.display = 'none');
+    document.querySelectorAll('.view-panel').forEach(p => {
+      p.style.display = 'none';
+      p.classList.remove('active');
+    });
     const target = document.getElementById('view-' + viewName);
     if (target) {
-      target.style.display = (viewName === 'login') ? 'flex' : 'flex';
+      target.classList.add('active');
+      target.style.display = 'flex';
       if (viewName === 'activity') {
         if (!two) initTwo();
         renderSubStepPills();
@@ -6255,10 +6267,12 @@
     }
 
     if (!studentId || !password) {
+      const msg = '⚠️ 학번과 비밀번호를 모두 입력해 주세요!';
       if (errBox) {
         errBox.style.display = 'block';
-        errBox.textContent = '⚠️ 학번과 비밀번호를 모두 입력해 주세요!';
+        errBox.textContent = msg;
       }
+      try { alert(msg); } catch(e) {}
       return false;
     }
 
@@ -6307,6 +6321,13 @@
               targetStep = prog.lastSubStep;
             }
           }
+          if (prog && Array.isArray(prog.completedSteps)) {
+            prog.completedSteps.forEach(code => {
+              if (!state.completedSubSteps.includes(code)) state.completedSubSteps.push(code);
+              if (!state.unlockedSubSteps.includes(code)) state.unlockedSubSteps.push(code);
+            });
+            renderSubStepPills();
+          }
         }
 
         switchView('activity');
@@ -6318,17 +6339,21 @@
           }, 15000, 'u2');
         }
       } else {
+        const msg = `❌ ${res ? res.message : '학번 또는 비밀번호가 올바르지 않습니다.'}`;
         if (errBox) {
           errBox.style.display = 'block';
-          errBox.textContent = `❌ ${res ? res.message : '학번 또는 비밀번호가 올바르지 않습니다.'}`;
+          errBox.textContent = msg;
         }
+        try { alert(msg); } catch(e) {}
       }
     } catch (err) {
       console.error(err);
+      const msg = '❌ 영서중 수학 LMS DB 연결 중 오류가 발생했습니다.';
       if (errBox) {
         errBox.style.display = 'block';
-        errBox.textContent = '❌ 영서중 수학 LMS DB 연결 중 오류가 발생했습니다.';
+        errBox.textContent = msg;
       }
+      try { alert(msg); } catch(e) {}
     } finally {
       if (loginBtn) {
         loginBtn.disabled = false;

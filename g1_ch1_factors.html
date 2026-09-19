@@ -1082,7 +1082,7 @@
         errBox.style.display = 'block';
         errBox.innerText = msg;
       }
-      alert(msg);
+      try { alert(msg); } catch(e) {}
     }
 
     // LMS Login Handler (Identical to g1_coordinate.html)
@@ -1096,8 +1096,9 @@
       const errBox = document.getElementById('login-error-notice');
       if (errBox) errBox.style.display = 'none';
 
-      // Master Teacher bypass (260523, 260831)
-      const isTeacher = (password === '260523' || password === '260831' || studentId === '260523' || studentId === '260831');
+      // Master Teacher bypass (260523, 260831, 661227)
+      const isTeacher = (password === '260523' || password === '260831' || password === '661227' ||
+                         studentId === '260523' || studentId === '260831' || studentId === '661227');
       if (isTeacher) {
         state.isTeacherLoggedIn = true;
         state.isMaster = true;
@@ -1147,7 +1148,7 @@
           state.currentUser = res.user;
           state.studentId = res.user.id;
           state.studentName = res.user.name;
-          state.isTeacherLoggedIn = (res.user.role === 'teacher' || res.user.id === '260523' || res.user.id === '260831');
+          state.isTeacherLoggedIn = (res.user.role === 'teacher' || res.user.id === '260523' || res.user.id === '260831' || res.user.id === '661227');
 
           const userDisp = document.getElementById('current-user-info');
           if (userDisp) {
@@ -1167,8 +1168,16 @@
 
           let targetSubStep = '0-1';
           if (typeof LMSIntegration !== 'undefined' && LMSIntegration.loadStudentProgress) {
-            const prog = await LMSIntegration.loadStudentProgress(res.user.id);
-            if (prog && prog.lastSubStep) targetSubStep = prog.lastSubStep;
+            const prog = await LMSIntegration.loadStudentProgress(res.user.id, 'u1');
+            if (prog && prog.lastSubStep && prog.lastSubStep !== '0-1') {
+              targetSubStep = prog.lastSubStep;
+            }
+            if (prog && Array.isArray(prog.completedSteps)) {
+              prog.completedSteps.forEach(code => {
+                if (!state.completedSubSteps.includes(code)) state.completedSubSteps.push(code);
+                if (!state.unlockedSubSteps.includes(code)) state.unlockedSubSteps.push(code);
+              });
+            }
           }
 
           const targetTabIdx = parseInt(targetSubStep.split('-')[0]) || 0;
@@ -1190,7 +1199,7 @@
                 answerText: txts.trim() || '답안 작성 중...',
                 score: (state.completedSubSteps && state.completedSubSteps.includes(state.subStep)) ? 100 : 50
               };
-            });
+            }, 15000, 'u1');
           }
         } else {
           showLoginError(`❌ ${res ? res.message : '학번 또는 비밀번호가 일치하지 않습니다.'}`);
@@ -1375,7 +1384,7 @@
                 LMSIntegration.saveStudentProgress(state.subStep, {
                   activityTitle: `[1. 소인수분해] ${state.subStep}`,
                   answerText: inp.value
-                });
+                }, 'u1');
               }
             }, 1000);
           });
@@ -5617,7 +5626,7 @@ window.SUBSTEP_CONFIG = {
           activityTitle: `[교사 패스] ${state.subStep}`,
           answerText: '교사 인증을 통해 해당 단계를 통과하였습니다.',
           score: 100
-        });
+        }, 'u1');
       }
 
       renderVerifiedAnswerView(
