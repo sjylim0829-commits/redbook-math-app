@@ -157,32 +157,23 @@
         }
       }
 
-      // Fallback cache check (Local storage cache and default test accounts)
+      // Fallback cache check
       try {
-        const defaultTestAccounts = [
-          { id: '10101', name: '김도형', password: '1234', grade: '1', classNum: '1', role: 'student' },
-          { id: '10315', name: '이도형', password: '1234', grade: '1', classNum: '3', role: 'student' },
-          { id: '10839', name: '테스트', password: '1234', grade: '1', classNum: '8', role: 'student' }
-        ];
-
-        let cachedStudents = [];
         const cachedStudentsRaw = localStorage.getItem('mathlab_students_cache');
         if (cachedStudentsRaw) {
-          cachedStudents = JSON.parse(cachedStudentsRaw);
-        }
-
-        const allCandidates = [...defaultTestAccounts, ...cachedStudents];
-        const matched = allCandidates.find(s => String(s.id).trim() === cleanId);
-        if (matched && String(matched.password).trim() === cleanPw) {
-          const userObj = {
-            id: String(matched.id).trim(),
-            name: String(matched.name || `학생 ${cleanId}`).trim(),
-            grade: String(matched.grade || '1'),
-            classNum: String(matched.classNum || matched.class_num || cleanId.slice(2, 3) || '1'),
-            role: matched.role || 'student'
-          };
-          this.setCurrentUser(userObj);
-          return { success: true, user: userObj, message: `환영합니다, ${userObj.name}님!` };
+          const cachedStudents = JSON.parse(cachedStudentsRaw);
+          const matched = cachedStudents.find(s => String(s.id).trim() === cleanId);
+          if (matched && String(matched.password).trim() === cleanPw) {
+            const userObj = {
+              id: matched.id,
+              name: matched.name,
+              grade: String(matched.grade || '1'),
+              classNum: String(matched.classNum || cleanId.slice(2, 3) || '1'),
+              role: 'student'
+            };
+            this.setCurrentUser(userObj);
+            return { success: true, user: userObj, message: `환영합니다, ${userObj.name}님!` };
+          }
         }
       } catch (e) {}
 
@@ -223,19 +214,9 @@
                 isMatch = title.includes('소인수분해') || title.includes('[중1-1') || title.includes('u1');
               } else if (uId === 'u2') {
                 isMatch = title.includes('정수와 유리수') || title.includes('[중1-2') || title.includes('u2');
-              } else if (uId === 'u3') {
-                isMatch = title.includes('문자와 식') || title.includes('[중1-3') || title.includes('u3');
               } else if (uId === 'u4') {
                 isMatch = title.includes('좌표평면') || title.includes('[중1-4') || title.includes('u4') ||
-                          (!title.includes('소인수분해') && !title.includes('정수와 유리수') && !title.includes('[중1-1') && !title.includes('[중1-2') && !title.includes('도형') && !title.includes('통계'));
-              } else if (uId === 'u5') {
-                isMatch = title.includes('도형의 기초') || title.includes('[중1-5') || title.includes('u5');
-              } else if (uId === 'u6') {
-                isMatch = title.includes('평면도형') || title.includes('[중1-6') || title.includes('u6');
-              } else if (uId === 'u7') {
-                isMatch = title.includes('입체도형') || title.includes('[중1-7') || title.includes('u7');
-              } else if (uId === 'u8') {
-                isMatch = title.includes('통계') || title.includes('[중1-8') || title.includes('u8');
+                          (!title.includes('소인수분해') && !title.includes('정수와 유리수') && !title.includes('[중1-1') && !title.includes('[중1-2'));
               }
 
               if (isMatch) {
@@ -307,12 +288,7 @@
       // 2. Unit Title Formatting
       let unitPrefix = '[중1-1 소인수분해]';
       if (uId === 'u2') unitPrefix = '[중1-2 정수와 유리수]';
-      else if (uId === 'u3') unitPrefix = '[중1-3 문자와 식]';
       else if (uId === 'u4') unitPrefix = '[중1-4 좌표평면]';
-      else if (uId === 'u5') unitPrefix = '[중1-5 도형의 기초]';
-      else if (uId === 'u6') unitPrefix = '[중1-6 평면도형]';
-      else if (uId === 'u7') unitPrefix = '[중1-7 입체도형]';
-      else if (uId === 'u8') unitPrefix = '[중1-8 통계]';
 
       const activityTitle = data.activityTitle || `${unitPrefix} [단계: ${subStepCode || '0-1'}]`;
       const answerText = data.answerText || '';
