@@ -852,6 +852,16 @@
           animT: 1.0,
           hoverBtn: null,
           isDragging: false
+        },
+        // 0-3 [준비해요 3: 등식의 성질 OX] 인터랙터 상태
+        eqScale: {
+          selectedQ: 0,       // 0: ⑴ a+2=b vs a=2+b, 1: ⑵ a/2=b vs a=2b
+          step: 0,            // 0: 원식, 1: 올바른 변형, 2: 문제의 주장 검증
+          currentTilt: 0,     // 현재 저울 기울기 각도 (라디안)
+          targetTilt: 0,      // 목표 각도
+          animT: 1.0,
+          hoverTab: null,
+          hoverStepBtn: null
         }
       }
     };
@@ -1106,6 +1116,91 @@ function setupResponsiveCanvas(canvas, customBaseW, customBaseH) {
           return {
             success: false,
             hint: hints.join("<br>") || "⚠️ 대입과 사칙연산 순서를 다시 한번 점검해 보세요!"
+          };
+        }
+      },
+
+      '0-3': {
+        tab: 0,
+        tbPage: 60,
+        pdfPage: 62,
+        title: '0-3. [준비해요 3] 등식의 성질 OX',
+        missionText: '등식의 양변에 같은 수를 더하거나, 빼거나, 곱하거나, 0이 아닌 같은 수로 나누어도 등식이 성립한다는 등식의 성질을 양팔 저울로 확인해 봅시다.',
+        drawer: 'drawIneqStep0_3Canvas',
+        formHtml: `
+          <div class="card">
+            <h4 style="font-size:0.92rem; font-weight:800; color:#1e293b; margin-bottom:10px;">✏️ 교과서 60쪽 [준비해요 3번: 등식의 성질 OX]</h4>
+            <p style="font-size:0.86rem; color:#475569; margin-bottom:12px;">다음 문장이 참이면 ○표, 거짓이면 X표를 하시오.</p>
+            
+            <div style="display:flex; flex-direction:column; gap:14px; margin-bottom:16px;">
+              <div style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
+                <p style="font-weight:700; font-size:0.9rem; margin-bottom:8px; color:#1e293b;">
+                  ⑴ $a + 2 = b$이면 $a = 2 + b$이다.
+                </p>
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <input type="text" id="ans-0-3-1" class="proof-input-text" style="width:130px; text-align:center; font-weight:800; font-size:1.05rem;" placeholder="○ 또는 X 입력">
+                  <button type="button" class="btn" style="padding:6px 12px; font-size:0.85rem; background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; font-weight:800;" onclick="document.getElementById('ans-0-3-1').value='O';">○ 참</button>
+                  <button type="button" class="btn" style="padding:6px 12px; font-size:0.85rem; background:#fef2f2; color:#991b1b; border:1px solid #fecaca; font-weight:800;" onclick="document.getElementById('ans-0-3-1').value='X';">✕ 거짓</button>
+                </div>
+                <span style="font-size:0.75rem; color:#64748b; margin-top:5px; display:block;">💡 등식의 성질에 따라 $a + 2 = b$의 양변에서 2를 빼면 $a = ?$가 되는지 확인해 보세요.</span>
+              </div>
+
+              <div style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
+                <p style="font-weight:700; font-size:0.9rem; margin-bottom:8px; color:#1e293b;">
+                  ⑵ $\\frac{a}{2} = b$이면 $a = 2b$이다.
+                </p>
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <input type="text" id="ans-0-3-2" class="proof-input-text" style="width:130px; text-align:center; font-weight:800; font-size:1.05rem;" placeholder="○ 또는 X 입력">
+                  <button type="button" class="btn" style="padding:6px 12px; font-size:0.85rem; background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; font-weight:800;" onclick="document.getElementById('ans-0-3-2').value='O';">○ 참</button>
+                  <button type="button" class="btn" style="padding:6px 12px; font-size:0.85rem; background:#fef2f2; color:#991b1b; border:1px solid #fecaca; font-weight:800;" onclick="document.getElementById('ans-0-3-2').value='X';">✕ 거짓</button>
+                </div>
+                <span style="font-size:0.75rem; color:#64748b; margin-top:5px; display:block;">💡 등식의 성질에 따라 $\\frac{a}{2} = b$의 양변에 2를 곱하면 $a = ?$가 되는지 확인해 보세요.</span>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" style="width:100%; padding:11px; font-size:0.95rem; font-weight:800;" onclick="gradeStep_0_3()">정답 확인 및 채점</button>
+          </div>
+        `,
+        grader: function() {
+          const raw1 = (document.getElementById('ans-0-3-1')?.value || '').trim();
+          const raw2 = (document.getElementById('ans-0-3-2')?.value || '').trim();
+
+          function isO(str) {
+            if (!str) return false;
+            const s = str.toString().trim().toLowerCase();
+            return ['o', '○', '0', 'true', '참', 'o표'].includes(s);
+          }
+          function isX(str) {
+            if (!str) return false;
+            const s = str.toString().trim().toLowerCase();
+            return ['x', '✕', 'false', '거짓', 'x표'].includes(s);
+          }
+
+          // ⑴ 거짓 (X)
+          const ok1 = isX(raw1);
+
+          // ⑵ 참 (O)
+          const ok2 = isO(raw2);
+
+          if (ok1 && ok2) {
+            return {
+              success: true,
+              score: 100,
+              answerText: "⑴ X (거짓), ⑵ ○ (참)",
+              explanation: "교과서 60쪽 [준비해요 3: 등식의 성질 OX] 해설:<br>" +
+                           "• ⑴ $a + 2 = b$의 양변에서 $2$를 빼면 $a + 2 - 2 = b - 2$이므로 $a = b - 2$이어야 합니다. 따라서 $a = 2 + b$는 <b>거짓(X)</b>입니다.<br>" +
+                           "• ⑵ $\\frac{a}{2} = b$의 양변에 $2$를 곱하면 $\\frac{a}{2} \\times 2 = b \\times 2$이므로 $a = 2b$가 됩니다. 따라서 <b>참(○)</b>입니다.<br>" +
+                           "등식의 양변에 같은 수를 더하거나, 빼거나, 곱하거나, 0이 아닌 같은 수로 나누어도 등식은 항상 성립합니다."
+            };
+          }
+
+          let hints = [];
+          if (!ok1) hints.push("⑴ $a + 2 = b$에서 좌변을 $a$로 만들기 위해 양변에서 2를 빼면 $a = b - 2$가 됩니다. (거짓: X)");
+          if (!ok2) hints.push("⑵ $\\frac{a}{2} = b$에서 좌변을 $a$로 만들기 위해 양변에 2를 곱하면 $a = 2b$가 됩니다. (참: ○)");
+
+          return {
+            success: false,
+            hint: hints.join("<br>") || "⚠️ 등식의 성질(양변에 같은 연산 수행)을 다시 한번 점검해 보세요!"
           };
         }
       }
@@ -2477,11 +2572,446 @@ function drawIneqStep0_2Canvas() {
 window.drawCanvas0_2 = drawIneqStep0_2Canvas;
 
 
+// =========================================================================
+// 🎨 중2 수학 제3단원 [부등식과 연립방정식] 서브스텝 0-3 인터랙티브 캔버스
+// 교과서 60쪽 [준비해요 3: 등식의 성질 OX] 양팔 저울(Balance Scale) 물리 실험실
+// 문항 ⑴: a + 2 = b 이면 a = 2 + b 인가? (저울 기우뚱 ➔ 거짓 X)
+// 문항 ⑵: a / 2 = b 이면 a = 2b 인가? (양변 ×2 ➔ 수평 균형 유지 ➔ 참 ○)
+// =========================================================================
+function drawIneqStep0_3Canvas() {
+  const canvas = document.getElementById('step-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  setupResponsiveCanvas(canvas, 760, 460);
+
+  if (!state.tab0) state.tab0 = {};
+  if (!state.tab0.eqScale) {
+    state.tab0.eqScale = {
+      selectedQ: 0,       // 0: ⑴ a+2=b vs a=2+b, 1: ⑵ a/2=b vs a=2b
+      step: 0,            // 0: 원식, 1: 올바른 변형, 2: 문제의 주장 검증
+      currentTilt: 0,     // 현재 저울 기울기 각도 (라디안)
+      targetTilt: 0,      // 목표 각도
+      animT: 1.0,
+      hoverTab: null,
+      hoverStepBtn: null
+    };
+  }
+  const sState = state.tab0.eqScale;
+
+  const qTabs = [
+    { q: 0, label: '⑴ a + 2 = b 이면 a = 2 + b ?', x: 75, y: 14, w: 290, h: 36 },
+    { q: 1, label: '⑵ a / 2 = b 이면 a = 2b ?', x: 395, y: 14, w: 290, h: 36 }
+  ];
+
+  // ⑴번 모드의 하위 단계 버튼
+  const q0StepButtons = [
+    { step: 0, label: '1. 원래 등식 (a + 2 = b)', tilt: 0, x: 80, y: 58, w: 185, h: 28 },
+    { step: 1, label: '2. 양변 -2 올바른 식 (a = b - 2)', tilt: 0, x: 275, y: 58, w: 215, h: 28 },
+    { step: 2, label: '3. 문제의 주장 (a = 2 + b) 검증', tilt: -0.15, isWrong: true, x: 500, y: 58, w: 180, h: 28 }
+  ];
+
+  // ⑵번 모드의 하위 단계 버튼
+  const q1StepButtons = [
+    { step: 0, label: '1. 원래 등식 (a / 2 = b)', tilt: 0, x: 130, y: 58, w: 235, h: 28 },
+    { step: 1, label: '2. 양변 ×2 적용 (a = 2b)', tilt: 0, isCorrect: true, x: 395, y: 58, w: 235, h: 28 }
+  ];
+
+  function roundRect(c, x, y, w, h, r, fill, stroke) {
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.lineTo(x + w - r, y);
+    c.quadraticCurveTo(x + w, y, x + w, y + r);
+    c.lineTo(x + w, y + h - r);
+    c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    c.lineTo(x + r, y + h);
+    c.quadraticCurveTo(x, y + h, x, y + h - r);
+    c.lineTo(x, y + r);
+    c.quadraticCurveTo(x, y, x + r, y);
+    c.closePath();
+    if (fill) c.fill();
+    if (stroke) c.stroke();
+  }
+
+  // 1회성 이벤트 바인딩
+  if (!canvas._step0_3_bound) {
+    canvas._step0_3_bound = true;
+
+    function getCanvasPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = 760 / rect.width;
+      const scaleY = 460 / rect.height;
+      return {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
+      };
+    }
+
+    canvas.addEventListener('click', (e) => {
+      const pos = getCanvasPos(e);
+      const st = state.tab0?.eqScale;
+      if (!st) return;
+
+      // 상단 Q 탭 클릭
+      for (let t of qTabs) {
+        if (pos.x >= t.x && pos.x <= t.x + t.w && pos.y >= t.y && pos.y <= t.y + t.h) {
+          if (st.selectedQ !== t.q) {
+            st.selectedQ = t.q;
+            st.step = 0;
+            st.targetTilt = 0;
+            st.animT = 0;
+          }
+          return;
+        }
+      }
+
+      // 하위 단계 버튼 클릭
+      const stepBtns = (st.selectedQ === 0) ? q0StepButtons : q1StepButtons;
+      for (let btn of stepBtns) {
+        if (pos.x >= btn.x && pos.x <= btn.x + btn.w && pos.y >= btn.y && pos.y <= btn.y + btn.h) {
+          if (st.step !== btn.step) {
+            st.step = btn.step;
+            st.targetTilt = btn.tilt;
+            st.animT = 0;
+          }
+          return;
+        }
+      }
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      const pos = getCanvasPos(e);
+      const st = state.tab0?.eqScale;
+      if (!st) return;
+
+      let hovered = null;
+      for (let t of qTabs) {
+        if (pos.x >= t.x && pos.x <= t.x + t.w && pos.y >= t.y && pos.y <= t.y + t.h) {
+          hovered = 'tab_' + t.q;
+          break;
+        }
+      }
+
+      const stepBtns = (st.selectedQ === 0) ? q0StepButtons : q1StepButtons;
+      for (let btn of stepBtns) {
+        if (pos.x >= btn.x && pos.x <= btn.x + btn.w && pos.y >= btn.y && pos.y <= btn.y + btn.h) {
+          hovered = 'step_' + btn.step;
+          break;
+        }
+      }
+
+      st.hoverTab = hovered;
+      canvas.style.cursor = (hovered !== null) ? 'pointer' : 'default';
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      const st = state.tab0?.eqScale;
+      if (st) st.hoverTab = null;
+      canvas.style.cursor = 'default';
+    });
+  }
+
+  // 60fps 렌더링 루프
+  if (canvas._step0_3_animId) {
+    cancelAnimationFrame(canvas._step0_3_animId);
+  }
+
+  function render() {
+    ctx.clearRect(0, 0, 760, 460);
+
+    // 1. 배경 (부드러운 에메랄드/슬레이트 테마)
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, 460);
+    bgGrad.addColorStop(0, '#f0fdf4');
+    bgGrad.addColorStop(1, '#ffffff');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, 760, 460);
+
+    // 2. 상단 문항 탭 렌더링
+    for (let t of qTabs) {
+      const isSel = (sState.selectedQ === t.q);
+      const isHov = (sState.hoverTab === 'tab_' + t.q);
+
+      ctx.save();
+      if (isSel) {
+        ctx.fillStyle = '#059669';
+        ctx.shadowColor = 'rgba(5, 150, 105, 0.35)';
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetY = 2;
+        roundRect(ctx, t.x, t.y, t.w, t.h, 8, true, false);
+      } else {
+        ctx.fillStyle = isHov ? '#ecfdf5' : '#ffffff';
+        ctx.strokeStyle = isHov ? '#10b981' : '#cbd5e1';
+        ctx.lineWidth = isHov ? 1.5 : 1;
+        roundRect(ctx, t.x, t.y, t.w, t.h, 8, true, true);
+      }
+      ctx.restore();
+
+      ctx.font = isSel ? 'bold 13px Pretendard, sans-serif' : '600 13px Pretendard, sans-serif';
+      ctx.fillStyle = isSel ? '#ffffff' : (isHov ? '#0f766e' : '#334155');
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(t.label, t.x + t.w / 2, t.y + t.h / 2);
+    }
+
+    // 3. 하위 단계 버튼들 렌더링
+    const stepBtns = (sState.selectedQ === 0) ? q0StepButtons : q1StepButtons;
+    for (let btn of stepBtns) {
+      const isSel = (sState.step === btn.step);
+      const isHov = (sState.hoverTab === 'step_' + btn.step);
+
+      ctx.save();
+      if (isSel) {
+        if (btn.isWrong) {
+          ctx.fillStyle = '#dc2626'; // 빨강 (거짓 검증)
+          ctx.shadowColor = 'rgba(220, 38, 38, 0.35)';
+        } else if (btn.isCorrect) {
+          ctx.fillStyle = '#059669'; // 초록 (참 검증)
+          ctx.shadowColor = 'rgba(5, 150, 105, 0.35)';
+        } else {
+          ctx.fillStyle = '#0284c7'; // 청록
+          ctx.shadowColor = 'rgba(2, 132, 199, 0.3)';
+        }
+        ctx.shadowBlur = 6;
+        ctx.shadowOffsetY = 1;
+        roundRect(ctx, btn.x, btn.y, btn.w, btn.h, 6, true, false);
+      } else {
+        ctx.fillStyle = isHov ? '#f8fafc' : '#ffffff';
+        ctx.strokeStyle = isHov ? '#94a3b8' : '#e2e8f0';
+        ctx.lineWidth = 1;
+        roundRect(ctx, btn.x, btn.y, btn.w, btn.h, 6, true, true);
+      }
+      ctx.restore();
+
+      ctx.font = isSel ? 'bold 11.5px Pretendard, sans-serif' : '600 11.5px Pretendard, sans-serif';
+      ctx.fillStyle = isSel ? '#ffffff' : (isHov ? '#0f172a' : '#475569');
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(btn.label, btn.x + btn.w / 2, btn.y + btn.h / 2);
+    }
+
+    // 4. 저울 기울기 보간 애니메이션 (스프링 부드러운 회전)
+    const targetA = (sState.selectedQ === 0 && sState.step === 2) ? -0.16 : 0;
+    sState.currentTilt += (targetA - sState.currentTilt) * 0.12;
+    const curA = sState.currentTilt;
+
+    // 5. 저울 기하학적 파라미터
+    const pivotX = 380;
+    const pivotY = 175;
+    const beamHalfLen = 210;
+    const chainLen = 65;
+
+    // 저울 빔의 좌우 끝점 계산 (회전 적용)
+    const cosA = Math.cos(curA);
+    const sinA = Math.sin(curA);
+
+    const leftBeamX = pivotX - beamHalfLen * cosA;
+    const leftBeamY = pivotY - beamHalfLen * sinA;
+    const rightBeamX = pivotX + beamHalfLen * cosA;
+    const rightBeamY = pivotY + beamHalfLen * sinA;
+
+    // 접시 중심 좌표 (체인은 항상 중력 방향으로 수직으로 매달림)
+    const leftPanX = leftBeamX;
+    const leftPanY = leftBeamY + chainLen;
+    const rightPanX = rightBeamX;
+    const rightPanY = rightBeamY + chainLen;
+
+    // 6. 저울 받침대 & 중앙 지지 기둥 렌더링
+    ctx.save();
+    // 기둥 베이스 (바닥 지지대)
+    ctx.fillStyle = '#64748b';
+    roundRect(ctx, pivotX - 70, pivotY + 110, 140, 16, 8, true, false);
+
+    // 삼각형 기둥 몸체
+    ctx.fillStyle = '#94a3b8';
+    ctx.beginPath();
+    ctx.moveTo(pivotX, pivotY);
+    ctx.lineTo(pivotX - 35, pivotY + 110);
+    ctx.lineTo(pivotX + 35, pivotY + 110);
+    ctx.closePath();
+    ctx.fill();
+
+    // 중앙 수직 눈금자
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(pivotX, pivotY - 20);
+    ctx.lineTo(pivotX, pivotY + 50);
+    ctx.stroke();
+
+    // 7. 저울 빔 (회전하는 바) 렌더링
+    ctx.strokeStyle = (Math.abs(curA) > 0.05) ? '#dc2626' : '#059669'; // 기우뚱할 땐 빨강, 균형일 땐 에메랄드
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(leftBeamX, leftBeamY);
+    ctx.lineTo(rightBeamX, rightBeamY);
+    ctx.stroke();
+
+    // 지점 피벗 핀 (중앙 원)
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(pivotX, pivotY, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(pivotX, pivotY, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 좌우 체인 걸이 링
+    ctx.fillStyle = '#475569';
+    ctx.beginPath();
+    ctx.arc(leftBeamX, leftBeamY, 5, 0, Math.PI * 2);
+    ctx.arc(rightBeamX, rightBeamY, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 8. 좌우 체인 및 접시 렌더링
+    const panW = 120;
+    const panH = 14;
+
+    // 좌측 체인 (2가닥)
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(leftBeamX, leftBeamY);
+    ctx.lineTo(leftPanX - panW / 2 + 10, leftPanY);
+    ctx.moveTo(leftBeamX, leftBeamY);
+    ctx.lineTo(leftPanX + panW / 2 - 10, leftPanY);
+    ctx.stroke();
+
+    // 좌측 접시 (곡면)
+    ctx.fillStyle = '#e2e8f0';
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(leftPanX - panW / 2, leftPanY);
+    ctx.quadraticCurveTo(leftPanX, leftPanY + panH * 2, leftPanX + panW / 2, leftPanY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // 우측 체인 (2가닥)
+    ctx.beginPath();
+    ctx.moveTo(rightBeamX, rightBeamY);
+    ctx.lineTo(rightPanX - panW / 2 + 10, rightPanY);
+    ctx.moveTo(rightBeamX, rightBeamY);
+    ctx.lineTo(rightPanX + panW / 2 - 10, rightPanY);
+    ctx.stroke();
+
+    // 우측 접시 (곡면)
+    ctx.beginPath();
+    ctx.moveTo(rightPanX - panW / 2, rightPanY);
+    ctx.quadraticCurveTo(rightPanX, rightPanY + panH * 2, rightPanX + panW / 2, rightPanY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    // 9. 접시 위 수식 블록 렌더링
+    let leftExp = '';
+    let rightExp = '';
+    let statusBadge = '';
+    let isBalanced = (Math.abs(curA) < 0.05);
+
+    if (sState.selectedQ === 0) {
+      if (sState.step === 0) {
+        leftExp = 'a + 2';
+        rightExp = 'b';
+        statusBadge = '⚖️ 수평 균형 성립: a + 2 = b';
+      } else if (sState.step === 1) {
+        leftExp = 'a + 2 - 2  ➔  a';
+        rightExp = 'b - 2';
+        statusBadge = '⚖️ 양변에서 2 빼기: a = b - 2 (수평 균형 유지!)';
+      } else {
+        leftExp = 'a';
+        rightExp = '2 + b  (≠ b - 2)';
+        statusBadge = '❌ 저울 기울어짐! a = 2 + b 는 거짓(X)입니다!';
+      }
+    } else {
+      if (sState.step === 0) {
+        leftExp = 'a / 2';
+        rightExp = 'b';
+        statusBadge = '⚖️ 수평 균형 성립: a / 2 = b';
+      } else {
+        leftExp = '(a / 2) × 2  ➔  a';
+        rightExp = 'b × 2  ➔  2b';
+        statusBadge = '✅ 양변에 2 곱하기: a = 2b (수평 균형 유지! 참 ○)';
+      }
+    }
+
+    // 좌측 블록 (청록 블루 박스)
+    ctx.save();
+    const blkW = 110;
+    const blkH = 40;
+    ctx.fillStyle = '#0284c7';
+    roundRect(ctx, leftPanX - blkW / 2, leftPanY - blkH - 2, blkW, blkH, 6, true, false);
+    ctx.font = 'bold 14px "KaTeX_Math", Pretendard, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(leftExp, leftPanX, leftPanY - blkH / 2 - 2);
+
+    // 우측 블록 (선택 상태에 따라 앰버 또는 레드 박스)
+    ctx.fillStyle = isBalanced ? '#d97706' : '#dc2626';
+    roundRect(ctx, rightPanX - blkW / 2, rightPanY - blkH - 2, blkW, blkH, 6, true, false);
+    ctx.font = 'bold 14px "KaTeX_Math", Pretendard, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(rightExp, rightPanX, rightPanY - blkH / 2 - 2);
+
+    // 상태 배지 (중앙 상단)
+    ctx.font = 'bold 13.5px Pretendard, sans-serif';
+    ctx.fillStyle = isBalanced ? '#059669' : '#dc2626';
+    ctx.fillText(statusBadge, pivotX, pivotY + 80);
+    ctx.restore();
+
+    // 10. 하단 [등식의 성질 4대 기본 원리] 분석 카드 (y: 315, h: 132)
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    roundRect(ctx, 25, 315, 712, 132, 10, true, false);
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 1;
+    roundRect(ctx, 25, 315, 712, 132, 10, false, true);
+
+    ctx.font = 'bold 13px Pretendard, sans-serif';
+    ctx.fillStyle = '#0f172a';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('📚 [핵심 정리] 등식의 성질 4대 원리', 40, 328);
+
+    ctx.font = '500 12px Pretendard, sans-serif';
+    ctx.fillStyle = '#334155';
+    // 2단 4개 항목
+    ctx.fillText('① 덧셈 성질: a = b 이면  a + c = b + c', 50, 355);
+    ctx.fillText('② 뺄셈 성질: a = b 이면  a - c = b - c', 50, 378);
+
+    ctx.fillText('③ 곱셈 성질: a = b 이면  a × c = b × c', 390, 355);
+    ctx.fillText('④ 나눗셈 성질: a = b 이면  a ÷ c = b ÷ c  (단, c ≠ 0)', 390, 378);
+
+    ctx.font = 'bold 12px Pretendard, sans-serif';
+    if (sState.selectedQ === 0) {
+      ctx.fillStyle = '#dc2626';
+      ctx.fillText('👉 ⑴번 해설: a + 2 = b의 양변에서 2를 빼면 a = b - 2 이어야 하므로 거짓(X)입니다!', 50, 412);
+    } else {
+      ctx.fillStyle = '#059669';
+      ctx.fillText('👉 ⑵번 해설: a / 2 = b의 양변에 2를 곱하면 a = 2b가 성립하므로 참(○)입니다!', 50, 412);
+    }
+    ctx.restore();
+
+    canvas._step0_3_animId = requestAnimationFrame(render);
+  }
+
+  render();
+}
+
+window.drawCanvas0_3 = drawIneqStep0_3Canvas;
+
+
     // =========================================================================
     // 🎯 채점 바인딩 & 공통 평가 엔진
     // =========================================================================
     window.gradeStep_0_1 = function() { executeStepGrade('0-1'); };
     window.gradeStep_0_2 = function() { executeStepGrade('0-2'); };
+    window.gradeStep_0_3 = function() { executeStepGrade('0-3'); };
 
     async function executeStepGrade(code, forcePass = false) {
       const item = SUBSTEPS_DATA[code];
