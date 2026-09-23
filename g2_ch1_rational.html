@@ -343,6 +343,53 @@
       position: absolute;
       top: 0; left: 0;
       cursor: default;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    #two-container canvas {
+      display: block;
+      max-width: 100%;
+      max-height: 100%;
+      margin: auto;
+      box-sizing: border-box;
+      object-fit: contain;
+    }
+
+    /* 태블릿 가로모드 및 중간 화면(1024~1200px) 최적화: 좌측 캔버스 영역 최대 확보 */
+    @media (max-width: 1200px) and (orientation: landscape), (max-width: 1080px) {
+      .app-main-layout {
+        flex-direction: row !important;
+      }
+      .plane-section {
+        flex: 1.35 !important;
+        min-width: 0 !important;
+      }
+      .sidebar-section {
+        flex: 0.65 !important;
+        min-width: 310px !important;
+        padding: 10px 14px !important;
+      }
+      .app-header {
+        padding: 6px 14px !important;
+      }
+      .tab-navigation {
+        padding: 4px 10px !important;
+      }
+      .substep-bar {
+        padding: 5px 10px !important;
+      }
+    }
+
+    @media (max-height: 800px) {
+      .plane-toolbar {
+        padding: 4px 10px !important;
+      }
+      .app-header {
+        padding: 6px 12px !important;
+      }
     }
 
     #two-container.tool-select {
@@ -1688,6 +1735,86 @@
         }
       }
     };
+
+
+    // =========================================================================
+    // [공통 반응형 캔버스 뷰박스 스케일링 엔진]
+    // 태블릿 가로모드 및 고해상도(DPR 2.0+) 디스플레이에서 760x460 논리 좌표계의
+    // 캔버스가 1픽셀도 잘리지 않고 화면에 100% Scale-to-fit으로 렌더링되도록 보장합니다.
+    // =========================================================================
+    function setupResponsiveCanvas(canvas, customBaseW, customBaseH) {
+      if (!canvas) return null;
+      const container = document.getElementById('two-container');
+      const baseW = customBaseW || 760;
+      const baseH = customBaseH || 460;
+
+      const availW = (container ? container.clientWidth : 0) || (window.innerWidth * 0.58) || baseW;
+      const availH = (container ? container.clientHeight : 0) || (window.innerHeight * 0.65) || baseH;
+
+      // 패딩 여백(10px)을 제외한 Scale-to-fit 비율 계산 (최대 1.0배, 축소는 유연하게)
+      const scale = Math.min((availW - 10) / baseW, (availH - 10) / baseH, 1.0);
+      const safeScale = Math.max(0.35, scale);
+      const dpr = window.devicePixelRatio || 1;
+
+      const displayW = Math.floor(baseW * safeScale);
+      const displayH = Math.floor(baseH * safeScale);
+
+      // 물리 픽셀 해상도 (DPR 보정 선명도)
+      canvas.width = Math.floor(displayW * dpr);
+      canvas.height = Math.floor(displayH * dpr);
+
+      // CSS 렌더링 크기 명시 (태블릿 2배 거대화 잘림 현상 원천 차단)
+      canvas.style.width = displayW + 'px';
+      canvas.style.height = displayH + 'px';
+      canvas.style.maxWidth = '100%';
+      canvas.style.maxHeight = '100%';
+      canvas.style.display = 'block';
+      canvas.style.margin = 'auto';
+
+      const ctx = canvas.getContext('2d');
+      // 760x460 논리 좌표계를 물리 픽셀 및 디스플레이 크기에 맞게 일괄 변환
+      ctx.setTransform(dpr * safeScale, 0, 0, dpr * safeScale, 0, 0);
+
+      return {
+        ctx: ctx,
+        scale: safeScale,
+        dpr: dpr,
+        displayW: displayW,
+        displayH: displayH,
+        baseW: baseW,
+        baseH: baseH,
+        width: baseW,
+        height: baseH
+      };
+    }
+
+    // 마우스 및 터치 좌표를 760x460 논리 좌표계로 완벽 변환하는 헬퍼
+    function getCanvasLogicalPos(canvas, e, baseW, baseH) {
+      const rect = canvas.getBoundingClientRect();
+      const bW = baseW || 760;
+      const bH = baseH || 460;
+      const clientX = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
+      const clientY = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY;
+      const displayW = rect.width || 1;
+      const displayH = rect.height || 1;
+      const mx = ((clientX - rect.left) / displayW) * bW;
+      const my = ((clientY - rect.top) / displayH) * bH;
+      return { mx, my };
+    }
+
+    // 화면 회전 및 브라우저 창 리사이즈 시 현재 서브스텝 캔버스 자동 재렌더링
+    let _canvasResizeDebounce = null;
+    window.addEventListener('resize', function() {
+      clearTimeout(_canvasResizeDebounce);
+      _canvasResizeDebounce = setTimeout(function() {
+        if (state.currentView === 'activity' && state.currentStep) {
+          const stepData = SUBSTEPS_DATA[state.currentStep];
+          if (stepData && typeof window[stepData.drawer] === 'function') {
+            window[stepData.drawer]();
+          }
+        }
+      }, 100);
+    });
 
     // 1단원 마스터 서브스텝 데이터 정의
     const SUBSTEPS_DATA = {
@@ -8770,6 +8897,10 @@
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
+      canvas.style.maxWidth = '100%';
+      canvas.style.maxHeight = '100%';
+      canvas.style.display = 'block';
+      canvas.style.margin = 'auto';
       container.appendChild(canvas);
       const ctx = canvas.getContext('2d');
 
@@ -8884,6 +9015,10 @@
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
+      canvas.style.maxWidth = '100%';
+      canvas.style.maxHeight = '100%';
+      canvas.style.display = 'block';
+      canvas.style.margin = 'auto';
       container.appendChild(canvas);
       const ctx = canvas.getContext('2d');
 
@@ -9007,6 +9142,10 @@
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
+      canvas.style.maxWidth = '100%';
+      canvas.style.maxHeight = '100%';
+      canvas.style.display = 'block';
+      canvas.style.margin = 'auto';
       container.appendChild(canvas);
       const ctx = canvas.getContext('2d');
 
@@ -9086,6 +9225,10 @@
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
+      canvas.style.maxWidth = '100%';
+      canvas.style.maxHeight = '100%';
+      canvas.style.display = 'block';
+      canvas.style.margin = 'auto';
       container.appendChild(canvas);
       const ctx = canvas.getContext('2d');
 
@@ -9199,6 +9342,10 @@
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
+      canvas.style.maxWidth = '100%';
+      canvas.style.maxHeight = '100%';
+      canvas.style.display = 'block';
+      canvas.style.margin = 'auto';
       canvas.style.cursor = 'default';
       container.appendChild(canvas);
       const ctx = canvas.getContext('2d');
@@ -9595,6 +9742,10 @@
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
+      canvas.style.maxWidth = '100%';
+      canvas.style.maxHeight = '100%';
+      canvas.style.display = 'block';
+      canvas.style.margin = 'auto';
       canvas.style.cursor = 'default';
       container.appendChild(canvas);
       const ctx = canvas.getContext('2d');
@@ -9983,6 +10134,10 @@
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
+      canvas.style.maxWidth = '100%';
+      canvas.style.maxHeight = '100%';
+      canvas.style.display = 'block';
+      canvas.style.margin = 'auto';
       canvas.style.cursor = 'default';
       container.appendChild(canvas);
       const ctx = canvas.getContext('2d');
@@ -10391,13 +10546,10 @@
       if (canvas._dotHandlerMove) canvas.removeEventListener('mousemove', canvas._dotHandlerMove);
       if (canvas._dotHandlerTouch) canvas.removeEventListener('touchstart', canvas._dotHandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 440);
+      const width = 760;
       const height = 440;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let feedbackTooltip = null; // { text, type, expireTime }
@@ -10796,13 +10948,10 @@
       if (canvas._sorterHandlerMove) canvas.removeEventListener('mousemove', canvas._sorterHandlerMove);
       if (canvas._sorterHandlerTouch) canvas.removeEventListener('touchstart', canvas._sorterHandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 440);
+      const width = 760;
       const height = 440;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let animTime = 0;
@@ -11293,13 +11442,10 @@
       if (canvas._scanHandlerMove) canvas.removeEventListener('mousemove', canvas._scanHandlerMove);
       if (canvas._scanHandlerTouch) canvas.removeEventListener('touchstart', canvas._scanHandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 440);
+      const width = 760;
       const height = 440;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let animTime = 0;
@@ -11705,13 +11851,10 @@
       if (canvas._diffHandlerMove) canvas.removeEventListener('mousemove', canvas._diffHandlerMove);
       if (canvas._diffHandlerTouch) canvas.removeEventListener('touchstart', canvas._diffHandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 440);
+      const width = 760;
       const height = 440;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let animTime = 0;
@@ -12009,13 +12152,10 @@
       if (canvas._compHandlerMove) canvas.removeEventListener('mousemove', canvas._compHandlerMove);
       if (canvas._compHandlerTouch) canvas.removeEventListener('touchstart', canvas._compHandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 440);
+      const width = 760;
       const height = 440;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let animTime = 0;
@@ -12374,13 +12514,10 @@
       if (canvas._cycleHandlerMove) canvas.removeEventListener('mousemove', canvas._cycleHandlerMove);
       if (canvas._cycleHandlerTouch) canvas.removeEventListener('touchstart', canvas._cycleHandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 440);
+      const width = 760;
       const height = 440;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let animTime = 0;
@@ -12788,13 +12925,10 @@
       if (canvas._puzzleHandlerMove) canvas.removeEventListener('mousemove', canvas._puzzleHandlerMove);
       if (canvas._puzzleHandlerTouch) canvas.removeEventListener('touchstart', canvas._puzzleHandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 450);
+      const width = 760;
       const height = 450;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let animTime = 0;
@@ -13250,13 +13384,10 @@
       if (canvas._basketHandlerMove) canvas.removeEventListener('mousemove', canvas._basketHandlerMove);
       if (canvas._basketHandlerTouch) canvas.removeEventListener('touchstart', canvas._basketHandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let animTime = 0;
@@ -13759,13 +13890,10 @@
       if (canvas._power10HandlerMove) canvas.removeEventListener('mousemove', canvas._power10HandlerMove);
       if (canvas._power10HandlerTouch) canvas.removeEventListener('touchstart', canvas._power10HandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let animTime = 0;
@@ -14237,13 +14365,10 @@
       if (canvas._factorAnalyzerHandlerMove) canvas.removeEventListener('mousemove', canvas._factorAnalyzerHandlerMove);
       if (canvas._factorAnalyzerHandlerTouch) canvas.removeEventListener('touchstart', canvas._factorAnalyzerHandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let animTime = 0;
@@ -14700,13 +14825,10 @@
       if (canvas._prob1HandlerMove) canvas.removeEventListener('mousemove', canvas._prob1HandlerMove);
       if (canvas._prob1HandlerTouch) canvas.removeEventListener('touchstart', canvas._prob1HandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let animTime = 0;
@@ -15151,13 +15273,10 @@
       if (canvas._mechHandlerMove) canvas.removeEventListener('mousemove', canvas._mechHandlerMove);
       if (canvas._mechHandlerTouch) canvas.removeEventListener('touchstart', canvas._mechHandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let animTime = 0;
@@ -15592,13 +15711,10 @@
       if (canvas._detectorHandlerMove) canvas.removeEventListener('mousemove', canvas._detectorHandlerMove);
       if (canvas._detectorHandlerTouch) canvas.removeEventListener('touchstart', canvas._detectorHandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let animTime = 0;
@@ -16268,13 +16384,10 @@
       if (canvas._dabinHandlerMove) canvas.removeEventListener('mousemove', canvas._dabinHandlerMove);
       if (canvas._dabinHandlerTouch) canvas.removeEventListener('touchstart', canvas._dabinHandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let animTime = 0;
@@ -16954,13 +17067,10 @@
       if (canvas._ss1HandlerMove) canvas.removeEventListener('mousemove', canvas._ss1HandlerMove);
       if (canvas._ss1HandlerTouch) canvas.removeEventListener('touchstart', canvas._ss1HandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let animTime = 0;
@@ -17459,13 +17569,10 @@
       if (canvas._ss2HandlerMove) canvas.removeEventListener('mousemove', canvas._ss2HandlerMove);
       if (canvas._ss2HandlerTouch) canvas.removeEventListener('touchstart', canvas._ss2HandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let animTime = 0;
@@ -17955,13 +18062,10 @@
       if (canvas._ss3HandlerMove) canvas.removeEventListener('mousemove', canvas._ss3HandlerMove);
       if (canvas._ss3HandlerTouch) canvas.removeEventListener('touchstart', canvas._ss3HandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let animTime = 0;
@@ -18509,13 +18613,10 @@
       if (canvas._jkHandlerMove) canvas.removeEventListener('mousemove', canvas._jkHandlerMove);
       if (canvas._jkHandlerTouch) canvas.removeEventListener('touchstart', canvas._jkHandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let animTime = 0;
@@ -19048,13 +19149,10 @@
       if (canvas._ss5HandlerMove) canvas.removeEventListener('mousemove', canvas._ss5HandlerMove);
       if (canvas._ss5HandlerTouch) canvas.removeEventListener('touchstart', canvas._ss5HandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let animTime = 0;
@@ -19586,13 +19684,10 @@
       if (canvas._rfpHandlerMove) canvas.removeEventListener('mousemove', canvas._rfpHandlerMove);
       if (canvas._rfpHandlerTouch) canvas.removeEventListener('touchstart', canvas._rfpHandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let animTime = 0;
@@ -20144,13 +20239,10 @@
       if (canvas._p1HandlerMove) canvas.removeEventListener('mousemove', canvas._p1HandlerMove);
       if (canvas._p1HandlerTouch) canvas.removeEventListener('touchstart', canvas._p1HandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let tabRegions = [];
@@ -20825,13 +20917,10 @@
       if (canvas._ex1HandlerMove) canvas.removeEventListener('mousemove', canvas._ex1HandlerMove);
       if (canvas._ex1HandlerTouch) canvas.removeEventListener('touchstart', canvas._ex1HandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let tabRegions = [];
@@ -21469,13 +21558,10 @@
       if (canvas._p2HandlerMove) canvas.removeEventListener('mousemove', canvas._p2HandlerMove);
       if (canvas._p2HandlerTouch) canvas.removeEventListener('touchstart', canvas._p2HandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let tabRegions = [];
@@ -22136,13 +22222,10 @@
       if (canvas._ex2HandlerMove) canvas.removeEventListener('mousemove', canvas._ex2HandlerMove);
       if (canvas._ex2HandlerTouch) canvas.removeEventListener('touchstart', canvas._ex2HandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let animTime = 0;
@@ -22577,8 +22660,8 @@
 
       function handleCanvasClick(e) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / (rect.width * dpr);
-        const scaleY = canvas.height / (rect.height * dpr);
+        const scaleX = width / (rect.width || 1);
+        const scaleY = height / (rect.height || 1);
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
 
@@ -22592,8 +22675,8 @@
 
       function handleMouseMove(e) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / (rect.width * dpr);
-        const scaleY = canvas.height / (rect.height * dpr);
+        const scaleX = width / (rect.width || 1);
+        const scaleY = height / (rect.height || 1);
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
 
@@ -22649,13 +22732,10 @@
       if (canvas._p3HandlerMove) canvas.removeEventListener('mousemove', canvas._p3HandlerMove);
       if (canvas._p3HandlerTouch) canvas.removeEventListener('touchstart', canvas._p3HandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let tabRegions = [];
@@ -23192,8 +23272,8 @@
 
       function handleCanvasClick(e) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / (rect.width * dpr);
-        const scaleY = canvas.height / (rect.height * dpr);
+        const scaleX = width / (rect.width || 1);
+        const scaleY = height / (rect.height || 1);
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
 
@@ -23214,8 +23294,8 @@
 
       function handleMouseMove(e) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / (rect.width * dpr);
-        const scaleY = canvas.height / (rect.height * dpr);
+        const scaleX = width / (rect.width || 1);
+        const scaleY = height / (rect.height || 1);
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
 
@@ -23279,13 +23359,10 @@
       if (canvas._relHandlerMove) canvas.removeEventListener('mousemove', canvas._relHandlerMove);
       if (canvas._relHandlerTouch) canvas.removeEventListener('touchstart', canvas._relHandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let cardRegions = [];
@@ -23842,8 +23919,8 @@
 
       function handleCanvasClick(e) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / (rect.width * dpr);
-        const scaleY = canvas.height / (rect.height * dpr);
+        const scaleX = width / (rect.width || 1);
+        const scaleY = height / (rect.height || 1);
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
 
@@ -23866,8 +23943,8 @@
 
       function handleMouseMove(e) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / (rect.width * dpr);
-        const scaleY = canvas.height / (rect.height * dpr);
+        const scaleX = width / (rect.width || 1);
+        const scaleY = height / (rect.height || 1);
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
 
@@ -23931,13 +24008,10 @@
       if (canvas._chatHandlerMove) canvas.removeEventListener('mousemove', canvas._chatHandlerMove);
       if (canvas._chatHandlerTouch) canvas.removeEventListener('touchstart', canvas._chatHandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let studentRegions = [];
@@ -24385,8 +24459,8 @@
 
       function handleCanvasClick(e) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / (rect.width * dpr);
-        const scaleY = canvas.height / (rect.height * dpr);
+        const scaleX = width / (rect.width || 1);
+        const scaleY = height / (rect.height || 1);
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
 
@@ -24409,8 +24483,8 @@
 
       function handleMouseMove(e) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / (rect.width * dpr);
-        const scaleY = canvas.height / (rect.height * dpr);
+        const scaleX = width / (rect.width || 1);
+        const scaleY = height / (rect.height || 1);
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
 
@@ -24474,13 +24548,10 @@
       if (canvas._houseHandlerMove) canvas.removeEventListener('mousemove', canvas._houseHandlerMove);
       if (canvas._houseHandlerTouch) canvas.removeEventListener('touchstart', canvas._houseHandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let animTime = 0;
@@ -24931,8 +25002,8 @@
 
       function handleCanvasClick(e) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / (rect.width * dpr);
-        const scaleY = canvas.height / (rect.height * dpr);
+        const scaleX = width / (rect.width || 1);
+        const scaleY = height / (rect.height || 1);
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
 
@@ -24946,8 +25017,8 @@
 
       function handleMouseMove(e) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / (rect.width * dpr);
-        const scaleY = canvas.height / (rect.height * dpr);
+        const scaleX = width / (rect.width || 1);
+        const scaleY = height / (rect.height || 1);
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
 
@@ -25003,13 +25074,10 @@
       if (canvas._ss1HandlerMove) canvas.removeEventListener('mousemove', canvas._ss1HandlerMove);
       if (canvas._ss1HandlerTouch) canvas.removeEventListener('touchstart', canvas._ss1HandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let animTime = 0;
@@ -25461,8 +25529,8 @@
 
       function handleCanvasClick(e) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / (rect.width * dpr);
-        const scaleY = canvas.height / (rect.height * dpr);
+        const scaleX = width / (rect.width || 1);
+        const scaleY = height / (rect.height || 1);
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
 
@@ -25476,8 +25544,8 @@
 
       function handleMouseMove(e) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / (rect.width * dpr);
-        const scaleY = canvas.height / (rect.height * dpr);
+        const scaleX = width / (rect.width || 1);
+        const scaleY = height / (rect.height || 1);
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
 
@@ -25533,13 +25601,10 @@
       if (canvas._ss2HandlerMove) canvas.removeEventListener('mousemove', canvas._ss2HandlerMove);
       if (canvas._ss2HandlerTouch) canvas.removeEventListener('touchstart', canvas._ss2HandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let animTime = 0;
@@ -25927,8 +25992,8 @@
 
       function handleCanvasClick(e) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / (rect.width * dpr);
-        const scaleY = canvas.height / (rect.height * dpr);
+        const scaleX = width / (rect.width || 1);
+        const scaleY = height / (rect.height || 1);
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
 
@@ -25942,8 +26007,8 @@
 
       function handleMouseMove(e) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / (rect.width * dpr);
-        const scaleY = canvas.height / (rect.height * dpr);
+        const scaleX = width / (rect.width || 1);
+        const scaleY = height / (rect.height || 1);
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
 
@@ -25998,13 +26063,10 @@
       if (canvas._ss3HandlerMove) canvas.removeEventListener('mousemove', canvas._ss3HandlerMove);
       if (canvas._ss3HandlerTouch) canvas.removeEventListener('touchstart', canvas._ss3HandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let animTime = 0;
@@ -26473,8 +26535,8 @@
 
       function handleCanvasClick(e) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / (rect.width * dpr);
-        const scaleY = canvas.height / (rect.height * dpr);
+        const scaleX = width / (rect.width || 1);
+        const scaleY = height / (rect.height || 1);
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
 
@@ -26488,8 +26550,8 @@
 
       function handleMouseMove(e) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / (rect.width * dpr);
-        const scaleY = canvas.height / (rect.height * dpr);
+        const scaleX = width / (rect.width || 1);
+        const scaleY = height / (rect.height || 1);
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
 
@@ -26544,13 +26606,10 @@
       if (canvas._ss4HandlerMove) canvas.removeEventListener('mousemove', canvas._ss4HandlerMove);
       if (canvas._ss4HandlerTouch) canvas.removeEventListener('touchstart', canvas._ss4HandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let cardRegions = [];
@@ -26912,8 +26971,8 @@
 
       function handleCanvasClick(e) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / (rect.width * dpr);
-        const scaleY = canvas.height / (rect.height * dpr);
+        const scaleX = width / (rect.width || 1);
+        const scaleY = height / (rect.height || 1);
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
 
@@ -26934,8 +26993,8 @@
 
       function handleMouseMove(e) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / (rect.width * dpr);
-        const scaleY = canvas.height / (rect.height * dpr);
+        const scaleX = width / (rect.width || 1);
+        const scaleY = height / (rect.height || 1);
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
 
@@ -26998,13 +27057,10 @@
       if (canvas._ss5HandlerMove) canvas.removeEventListener('mousemove', canvas._ss5HandlerMove);
       if (canvas._ss5HandlerTouch) canvas.removeEventListener('touchstart', canvas._ss5HandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let coinRegions = [];
@@ -27420,8 +27476,8 @@
 
       function handleCanvasClick(e) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / (rect.width * dpr);
-        const scaleY = canvas.height / (rect.height * dpr);
+        const scaleX = width / (rect.width || 1);
+        const scaleY = height / (rect.height || 1);
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
 
@@ -27442,8 +27498,8 @@
 
       function handleMouseMove(e) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / (rect.width * dpr);
-        const scaleY = canvas.height / (rect.height * dpr);
+        const scaleX = width / (rect.width || 1);
+        const scaleY = height / (rect.height || 1);
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
 
@@ -27506,13 +27562,10 @@
       if (canvas._ss6HandlerMove) canvas.removeEventListener('mousemove', canvas._ss6HandlerMove);
       if (canvas._ss6HandlerTouch) canvas.removeEventListener('touchstart', canvas._ss6HandlerTouch);
 
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width || 760;
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      const width = 760;
       const height = 460;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      const dpr = resp.dpr;
 
       let buttonRegions = [];
       let animTime = 0;
@@ -27998,8 +28051,8 @@
 
       function handleCanvasClick(e) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / (rect.width * dpr);
-        const scaleY = canvas.height / (rect.height * dpr);
+        const scaleX = width / (rect.width || 1);
+        const scaleY = height / (rect.height || 1);
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
 
@@ -28013,8 +28066,8 @@
 
       function handleMouseMove(e) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / (rect.width * dpr);
-        const scaleY = canvas.height / (rect.height * dpr);
+        const scaleX = width / (rect.width || 1);
+        const scaleY = height / (rect.height || 1);
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
 
