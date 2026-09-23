@@ -871,6 +871,19 @@
           hoverTab: null,
           hoverStepBtn: null
         }
+      },
+      // Tab 1 전용 인터랙티브 상태 객체
+      tab1: {
+        // 1-1 [부등식의 뜻과 표현 & 문제 1] 인터랙터 상태
+        ineqIntro: {
+          selectedMode: 0,   // 0: 키 센서, 1: 3x-2 > 7, 2: 800x+1500 <= 10000
+          heightVal: 135,    // 생각열기 키 값 (100 ~ 160 cm, 기준 130 cm)
+          xVal1: 4,          // 문제 1-⑴ x 값 (1 ~ 6)
+          xVal2: 8,          // 문제 1-⑵ 사과 개수 x (1 ~ 15)
+          animT: 1.0,
+          hoverTab: null,
+          hoverBtn: null
+        }
       }
     };
 
@@ -1326,6 +1339,92 @@ function setupResponsiveCanvas(canvas, customBaseW, customBaseH) {
           return {
             success: false,
             hint: hints.join("<br>") || "⚠️ 일차방정식 풀이와 학습 다짐을 다시 한번 확인해 보세요!"
+          };
+        }
+      },
+
+      // ===== Tab 1: 부등식의 해와 성질 =====
+      '1-1': {
+        tab: 1,
+        tbPage: 62,
+        pdfPage: 64,
+        title: '1-1. 부등식의 뜻과 표현',
+        missionText: '부등호 (<, >, ≤, ≥)를 사용하여 수 또는 식의 대소 관계를 나타낸 식인 부등식의 뜻을 알고, 일상생활의 문장을 부등식으로 나타내어 봅시다.',
+        drawer: 'drawIneqStep1_1Canvas',
+        formHtml: `
+          <div class="card">
+            <h4 style="font-size:0.92rem; font-weight:800; color:#1e293b; margin-bottom:10px;">✏️ 교과서 62쪽 [생각열기 탐구 & 문제 1]</h4>
+            <div style="background:#f0fdf4; padding:10px 12px; border-radius:8px; border:1px solid #bbf7d0; margin-bottom:14px;">
+              <p style="font-size:0.84rem; color:#166534; font-weight:700;">
+                🎢 [생각열기] "키가 130 cm 이상인 사람만 탈 수 있는 놀이기구가 있을 때, 키 x cm의 조건은?" ➔ <b>$x \\ge 130$</b>
+              </p>
+            </div>
+
+            <p style="font-size:0.86rem; color:#475569; margin-bottom:12px;">[문제 1] 다음 문장을 부등식을 사용하여 나타내시오.</p>
+            
+            <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:16px;">
+              <div style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
+                <p style="font-weight:700; font-size:0.9rem; margin-bottom:6px; color:#1e293b;">
+                  ⑴ $x$의 3배에서 2를 뺀 값은 7보다 크다:
+                </p>
+                <input type="text" id="ans-1-1-1" class="proof-input-text" style="width:100%; max-width:none;" placeholder="부등식 입력 (예: 2x + 1 > 5)">
+                <span style="font-size:0.75rem; color:#64748b; margin-top:4px; display:block;">💡 'x의 3배에서 2를 뺀 값'을 좌변에, 7을 우변에 두고 '크다'는 부등호 &gt; 를 사용합니다.</span>
+              </div>
+
+              <div style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
+                <p style="font-weight:700; font-size:0.9rem; margin-bottom:6px; color:#1e293b;">
+                  ⑵ 한 개에 800원인 사과 $x$개의 가격과 1500원인 바구니 하나의 가격의 합은 10000원 이하이다:
+                </p>
+                <input type="text" id="ans-1-1-2" class="proof-input-text" style="width:100%; max-width:none;" placeholder="부등식 입력 (예: 500x + 1000 <= 5000)">
+                <span style="font-size:0.75rem; color:#64748b; margin-top:4px; display:block;">💡 사과 가격(800x)과 바구니 가격(1500)의 합을 좌변에, 10000을 우변에 두고 '이하이다'는 부등호 &le; (또는 &lt;=)를 사용합니다.</span>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" style="width:100%; padding:11px; font-size:0.95rem; font-weight:800;" onclick="gradeStep_1_1()">정답 확인 및 채점</button>
+          </div>
+        `,
+        grader: function() {
+          const raw1 = (document.getElementById('ans-1-1-1')?.value || '').trim();
+          const raw2 = (document.getElementById('ans-1-1-2')?.value || '').trim();
+
+          function cleanIneq(str) {
+            if (!str) return '';
+            return str.toLowerCase().replace(/\s+/g, '').replace(/<=/g, '≤').replace(/>=/g, '≥');
+          }
+
+          const a1 = cleanIneq(raw1);
+          const a2 = cleanIneq(raw2);
+
+          // ⑴ 3x - 2 > 7 (또는 7 < 3x - 2)
+          const ok1 = (a1 === '3x-2>7' || a1 === '7<3x-2');
+
+          // ⑵ 800x + 1500 ≤ 10000 (또는 10000 ≥ 800x + 1500, <= 허용)
+          const ok2 = (
+            a2 === '800x+1500≤10000' ||
+            a2 === '10000≥800x+1500' ||
+            a2 === '1500+800x≤10000' ||
+            a2 === '10000≥1500+800x'
+          );
+
+          if (ok1 && ok2) {
+            return {
+              success: true,
+              score: 100,
+              answerText: "⑴ 3x - 2 > 7, ⑵ 800x + 1500 ≤ 10000",
+              explanation: "교과서 62쪽 [부등식의 뜻과 표현 & 문제 1] 해설:<br>" +
+                           "• [부등식의 뜻] 부등호 $<, >, \\le, \\ge$를 사용하여 수 또는 식의 대소 관계를 나타낸 식을 <b>부등식</b>이라고 합니다.<br>" +
+                           "• ⑴ $x$의 3배에서 2를 뺀 값($3x - 2$)은 7보다 크다($> 7$) $\\rightarrow$ <b>$3x - 2 > 7$</b><br>" +
+                           "• ⑵ 사과 $x$개 가격($800x$)과 바구니 1개 가격($1500$)의 합($800x + 1500$)은 10000원 이하($\\le 10000$) $\\rightarrow$ <b>$800x + 1500 \\le 10000$</b>"
+            };
+          }
+
+          let hints = [];
+          if (!ok1) hints.push("⑴ $x$의 3배에서 2를 뺀 식은 $3x - 2$이고, 7보다 크므로 부등호 > 를 사용하여 $3x - 2 > 7$로 나타냅니다.");
+          if (!ok2) hints.push("⑵ 사과 $x$개의 가격 $800x$와 바구니 1500원의 합은 $800x + 1500$이고, 10000원 이하이므로 $800x + 1500 \\le 10000$으로 나타냅니다.");
+
+          return {
+            success: false,
+            hint: hints.join("<br>") || "⚠️ 좌변의 식과 우변의 수, 부등호의 방향을 다시 한번 점검해 보세요!"
           };
         }
       }
@@ -3616,6 +3715,665 @@ function drawIneqStep0_4Canvas() {
 window.drawCanvas0_4 = drawIneqStep0_4Canvas;
 
 
+// =========================================================================
+// 🎨 중2 수학 제3단원 [부등식과 연립방정식] 서브스텝 1-1 인터랙티브 캔버스
+// 교과서 62쪽 [1-1. 부등식의 뜻과 표현 & 문제 1]
+// 모드 0: [생각열기] 놀이공원 키 측정 센서 (x >= 130 cm)
+// 모드 1: [문제 1-⑴] 3x - 2 > 7 대수 비교 게이지
+// 모드 2: [문제 1-⑵] 800x + 1500 <= 10000 사과 장바구니 예산 한도 시뮬레이터
+// =========================================================================
+function drawIneqStep1_1Canvas() {
+  const canvas = document.getElementById('step-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  setupResponsiveCanvas(canvas, 760, 460);
+
+  if (!state.tab1) state.tab1 = {};
+  if (!state.tab1.ineqIntro) {
+    state.tab1.ineqIntro = {
+      selectedMode: 0,   // 0: 키 센서, 1: 3x-2 > 7, 2: 800x+1500 <= 10000
+      heightVal: 135,    // 생각열기 키 값 (100 ~ 160 cm, 기준 130 cm)
+      xVal1: 4,          // 문제 1-⑴ x 값 (1 ~ 6)
+      xVal2: 8,          // 문제 1-⑵ 사과 개수 x (1 ~ 15)
+      animT: 1.0,
+      hoverTab: null,
+      hoverBtn: null
+    };
+  }
+  const iState = state.tab1.ineqIntro;
+
+  const modeTabs = [
+    { mode: 0, label: '🎢 생각열기: 키 측정 센서 (x ≥ 130)', x: 25, y: 14, w: 228, h: 36 },
+    { mode: 1, label: '⑴ 문제 1-⑴: 3x - 2 > 7 비교 게이지', x: 263, y: 14, w: 232, h: 36 },
+    { mode: 2, label: '🛒 문제 1-⑵: 사과 장바구니 예산 한도', x: 505, y: 14, w: 230, h: 36 }
+  ];
+
+  // 모드 0: 키 프리셋 버튼들
+  const heightButtons = [
+    { h: 115, label: '115 cm', x: 300, y: 70, w: 65, h: 28 },
+    { h: 125, label: '125 cm', x: 372, y: 70, w: 65, h: 28 },
+    { h: 130, label: '★ 130 cm', x: 444, y: 68, w: 78, h: 32, isTarget: true },
+    { h: 135, label: '135 cm', x: 529, y: 70, w: 65, h: 28 },
+    { h: 145, label: '145 cm', x: 601, y: 70, w: 65, h: 28 },
+    { h: 155, label: '155 cm', x: 673, y: 70, w: 65, h: 28 }
+  ];
+
+  // 모드 1: x값 선택 버튼들
+  const x1Buttons = [
+    { val: 1, label: 'x = 1', x: 250, y: 70, w: 75, h: 28 },
+    { val: 2, label: 'x = 2', x: 335, y: 70, w: 75, h: 28 },
+    { val: 3, label: 'x = 3', x: 420, y: 70, w: 75, h: 28 },
+    { val: 4, label: 'x = 4', x: 505, y: 70, w: 75, h: 28 },
+    { val: 5, label: 'x = 5', x: 590, y: 70, w: 75, h: 28 },
+    { val: 6, label: 'x = 6', x: 675, y: 70, w: 60, h: 28 }
+  ];
+
+  // 모드 2: 사과 개수 x 선택 버튼들
+  const x2Buttons = [
+    { val: 5, label: '사과 5개', x: 250, y: 70, w: 85, h: 28 },
+    { val: 8, label: '사과 8개', x: 345, y: 70, w: 85, h: 28 },
+    { val: 10, label: '★ 10개 (한도)', x: 440, y: 68, w: 105, h: 32, isTarget: true },
+    { val: 11, label: '사과 11개', x: 555, y: 70, w: 85, h: 28 },
+    { val: 12, label: '사과 12개', x: 650, y: 70, w: 85, h: 28 }
+  ];
+
+  function roundRect(c, x, y, w, h, r, fill, stroke) {
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.lineTo(x + w - r, y);
+    c.quadraticCurveTo(x + w, y, x + w, y + r);
+    c.lineTo(x + w, y + h - r);
+    c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    c.lineTo(x + r, y + h);
+    c.quadraticCurveTo(x, y + h, x, y + h - r);
+    c.lineTo(x, y + r);
+    c.quadraticCurveTo(x, y, x + r, y);
+    c.closePath();
+    if (fill) c.fill();
+    if (stroke) c.stroke();
+  }
+
+  // 1회성 이벤트 바인딩
+  if (!canvas._step1_1_bound) {
+    canvas._step1_1_bound = true;
+
+    function getCanvasPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = 760 / rect.width;
+      const scaleY = 460 / rect.height;
+      return {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
+      };
+    }
+
+    canvas.addEventListener('click', (e) => {
+      const pos = getCanvasPos(e);
+      const st = state.tab1?.ineqIntro;
+      if (!st) return;
+
+      // 상단 모드 탭 클릭
+      for (let t of modeTabs) {
+        if (pos.x >= t.x && pos.x <= t.x + t.w && pos.y >= t.y && pos.y <= t.y + t.h) {
+          if (st.selectedMode !== t.mode) {
+            st.selectedMode = t.mode;
+            st.animT = 0;
+          }
+          return;
+        }
+      }
+
+      // 모드별 조작 버튼 클릭
+      if (st.selectedMode === 0) {
+        for (let btn of heightButtons) {
+          if (pos.x >= btn.x && pos.x <= btn.x + btn.w && pos.y >= btn.y && pos.y <= btn.y + btn.h) {
+            st.heightVal = btn.h;
+            st.animT = 0;
+            return;
+          }
+        }
+      } else if (st.selectedMode === 1) {
+        for (let btn of x1Buttons) {
+          if (pos.x >= btn.x && pos.x <= btn.x + btn.w && pos.y >= btn.y && pos.y <= btn.y + btn.h) {
+            st.xVal1 = btn.val;
+            st.animT = 0;
+            return;
+          }
+        }
+      } else if (st.selectedMode === 2) {
+        for (let btn of x2Buttons) {
+          if (pos.x >= btn.x && pos.x <= btn.x + btn.w && pos.y >= btn.y && pos.y <= btn.y + btn.h) {
+            st.xVal2 = btn.val;
+            st.animT = 0;
+            return;
+          }
+        }
+      }
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      const pos = getCanvasPos(e);
+      const st = state.tab1?.ineqIntro;
+      if (!st) return;
+
+      let hovered = null;
+      for (let t of modeTabs) {
+        if (pos.x >= t.x && pos.x <= t.x + t.w && pos.y >= t.y && pos.y <= t.y + t.h) {
+          hovered = 'tab_' + t.mode;
+          break;
+        }
+      }
+      st.hoverTab = hovered;
+      canvas.style.cursor = (hovered !== null) ? 'pointer' : 'default';
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      const st = state.tab1?.ineqIntro;
+      if (st) st.hoverTab = null;
+      canvas.style.cursor = 'default';
+    });
+  }
+
+  // 60fps 렌더링 루프
+  if (canvas._step1_1_animId) {
+    cancelAnimationFrame(canvas._step1_1_animId);
+  }
+
+  function render() {
+    ctx.clearRect(0, 0, 760, 460);
+
+    // 1. 배경
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, 460);
+    bgGrad.addColorStop(0, '#f0fdf4');
+    bgGrad.addColorStop(1, '#ffffff');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, 760, 460);
+
+    // 2. 상단 3개 모드 탭
+    for (let t of modeTabs) {
+      const isSel = (iState.selectedMode === t.mode);
+      const isHov = (iState.hoverTab === 'tab_' + t.mode);
+
+      ctx.save();
+      if (isSel) {
+        ctx.fillStyle = '#059669';
+        ctx.shadowColor = 'rgba(5, 150, 105, 0.35)';
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetY = 2;
+        roundRect(ctx, t.x, t.y, t.w, t.h, 8, true, false);
+      } else {
+        ctx.fillStyle = isHov ? '#ecfdf5' : '#ffffff';
+        ctx.strokeStyle = isHov ? '#10b981' : '#cbd5e1';
+        ctx.lineWidth = isHov ? 1.5 : 1;
+        roundRect(ctx, t.x, t.y, t.w, t.h, 8, true, true);
+      }
+      ctx.restore();
+
+      ctx.font = isSel ? 'bold 12.5px Pretendard, sans-serif' : '600 12.5px Pretendard, sans-serif';
+      ctx.fillStyle = isSel ? '#ffffff' : (isHov ? '#0f766e' : '#334155');
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(t.label, t.x + t.w / 2, t.y + t.h / 2);
+    }
+
+    // 3. 애니메이션 진행도
+    if (iState.animT < 1.0) {
+      iState.animT += 0.08;
+      if (iState.animT > 1.0) iState.animT = 1.0;
+    }
+    const t = iState.animT;
+    const easeT = 1 - Math.pow(1 - t, 3);
+
+    // =========================================================================
+    // 4. 모드별 콘텐츠 렌더링
+    // =========================================================================
+    if (iState.selectedMode === 0) {
+      // -----------------------------------------------------------------------
+      // [모드 0: 생각열기 놀이공원 키 측정 센서 (x >= 130)]
+      // -----------------------------------------------------------------------
+      // 상단 컨트롤 바
+      ctx.font = 'bold 12.5px Pretendard, sans-serif';
+      ctx.fillStyle = '#0f172a';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('📏 학생 키(x) 선택:', 160, 84);
+
+      for (let btn of heightButtons) {
+        const isSel = (iState.heightVal === btn.h);
+        ctx.save();
+        if (isSel) {
+          ctx.fillStyle = btn.isTarget ? '#059669' : '#0284c7';
+          roundRect(ctx, btn.x, btn.y, btn.w, btn.h, 6, true, false);
+        } else {
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = btn.isTarget ? '#059669' : '#cbd5e1';
+          ctx.lineWidth = btn.isTarget ? 1.5 : 1;
+          roundRect(ctx, btn.x, btn.y, btn.w, btn.h, 6, true, true);
+        }
+        ctx.restore();
+
+        ctx.font = isSel ? 'bold 11.5px Pretendard, sans-serif' : '600 11.5px Pretendard, sans-serif';
+        ctx.fillStyle = isSel ? '#ffffff' : (btn.isTarget ? '#059669' : '#334155');
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(btn.label, btn.x + btn.w / 2, btn.y + btn.h / 2);
+      }
+
+      // 좌측: 신장 측정 게이트 (x: 45, y: 115, w: 280, h: 200)
+      const gX = 45;
+      const gY = 115;
+      const gW = 280;
+      const gH = 200;
+
+      ctx.save();
+      ctx.fillStyle = '#ffffff';
+      roundRect(ctx, gX, gY, gW, gH, 10, true, false);
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1.5;
+      roundRect(ctx, gX, gY, gW, gH, 10, false, true);
+
+      // 신장 측정 스케일 축 (100cm ~ 160cm)
+      const scaleX = gX + 60;
+      const scaleBottom = gY + gH - 25;
+      const scaleTop = gY + 30;
+      const scaleHeight = scaleBottom - scaleTop; // 145px
+      // 100cm = scaleBottom, 160cm = scaleTop
+      function cmToY(cm) {
+        return scaleBottom - ((cm - 100) / 60) * scaleHeight;
+      }
+
+      // 축 라인
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(scaleX, scaleTop);
+      ctx.lineTo(scaleX, scaleBottom);
+      ctx.stroke();
+
+      // 눈금 (10cm 단위)
+      for (let cm = 100; cm <= 160; cm += 10) {
+        const sy = cmToY(cm);
+        ctx.strokeStyle = (cm === 130) ? '#059669' : '#94a3b8';
+        ctx.lineWidth = (cm === 130) ? 2 : 1;
+        ctx.beginPath();
+        ctx.moveTo(scaleX - 5, sy);
+        ctx.lineTo(scaleX + 5, sy);
+        ctx.stroke();
+
+        ctx.font = (cm === 130) ? 'bold 11px Pretendard, sans-serif' : '500 10px Pretendard, sans-serif';
+        ctx.fillStyle = (cm === 130) ? '#059669' : '#64748b';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(cm.toString(), scaleX - 8, sy);
+      }
+
+      // 130cm 기준선 (초록 점선)
+      const y130 = cmToY(130);
+      ctx.save();
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = '#059669';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(scaleX, y130);
+      ctx.lineTo(gX + gW - 20, y130);
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.font = 'bold 11px Pretendard, sans-serif';
+      ctx.fillStyle = '#059669';
+      ctx.textAlign = 'right';
+      ctx.fillText('탑승 기준선 130 cm', gX + gW - 25, y130 - 8);
+
+      // 캐릭터 키 바
+      const currentH = iState.heightVal;
+      const charY = cmToY(currentH);
+      const charBarW = 32;
+      const charBarX = scaleX + 55;
+      const isPass = (currentH >= 130);
+
+      // 키 바
+      ctx.fillStyle = isPass ? '#10b981' : '#f59e0b';
+      roundRect(ctx, charBarX, charY, charBarW, scaleBottom - charY, 6, true, false);
+
+      // 상단 측정 판 (수평 커서)
+      ctx.fillStyle = '#0f172a';
+      roundRect(ctx, scaleX + 15, charY - 3, 90, 6, 3, true, false);
+
+      ctx.font = 'bold 13px Pretendard, sans-serif';
+      ctx.fillStyle = isPass ? '#059669' : '#d97706';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${currentH} cm`, charBarX + charBarW / 2, charY - 14);
+      ctx.restore();
+
+      // 우측: 전자 센서 판정 디스플레이 (x: 345, y: 115, w: 370, h: 200)
+      const dX = 345;
+      const dY = 115;
+      const dW = 370;
+      const dH = 200;
+
+      ctx.save();
+      ctx.fillStyle = '#ffffff';
+      roundRect(ctx, dX, dY, dW, dH, 10, true, false);
+      ctx.strokeStyle = isPass ? '#059669' : '#dc2626';
+      ctx.lineWidth = 2;
+      roundRect(ctx, dX, dY, dW, dH, 10, false, true);
+
+      // 상단 배너
+      ctx.fillStyle = isPass ? '#ecfdf5' : '#fef2f2';
+      roundRect(ctx, dX, dY, dW, 40, 10, true, false);
+      ctx.fillRect(dX, dY + 28, dW, 12);
+
+      ctx.font = 'bold 15px Pretendard, sans-serif';
+      ctx.fillStyle = isPass ? '#059669' : '#dc2626';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(isPass ? '🟢 탑승 허용 (PASS!)' : '🔴 탑승 불가 (RESTRICTED)', dX + 20, dY + 20);
+
+      // 중앙 부등식 대형 수식 박스
+      ctx.textAlign = 'left';
+      ctx.font = 'bold 13px Pretendard, sans-serif';
+      ctx.fillStyle = '#0f172a';
+      ctx.fillText('• 교과서 조건: "키가 130 cm 이상인 사람만 탑승"', dX + 20, dY + 60);
+
+      ctx.font = '600 12.5px Pretendard, sans-serif';
+      ctx.fillStyle = '#475569';
+      ctx.fillText('➔ 학생의 키를 x cm라 할 때 부등식 표현:', dX + 20, dY + 84);
+
+      // 부등식 강조 카드
+      ctx.fillStyle = '#f8fafc';
+      roundRect(ctx, dX + 20, dY + 104, dW - 40, 48, 8, true, false);
+      ctx.strokeStyle = '#059669';
+      ctx.lineWidth = 1.5;
+      roundRect(ctx, dX + 20, dY + 104, dW - 40, 48, 8, false, true);
+
+      ctx.font = 'bold 22px "KaTeX_Math", Pretendard, sans-serif';
+      ctx.fillStyle = '#059669';
+      ctx.textAlign = 'center';
+      ctx.fillText('x ≥ 130', dX + dW / 2, dY + 128);
+
+      // 현재 학생 판정
+      ctx.font = 'bold 12.5px Pretendard, sans-serif';
+      ctx.fillStyle = isPass ? '#059669' : '#dc2626';
+      ctx.fillText(
+        isPass ? `현재 학생 (x = ${currentH}): 130 이상이므로 탑승 가능!` : `현재 학생 (x = ${currentH}): 130 미만이므로 탑승 불가!`,
+        dX + dW / 2,
+        dY + 175
+      );
+      ctx.restore();
+
+      // 하단 설명 바 (y: 330, h: 115)
+      ctx.save();
+      ctx.fillStyle = '#ffffff';
+      roundRect(ctx, 25, 330, 710, 115, 10, true, false);
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1;
+      roundRect(ctx, 25, 330, 710, 115, 10, false, true);
+
+      ctx.font = 'bold 13px Pretendard, sans-serif';
+      ctx.fillStyle = '#0f172a';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText('💡 [개념 정리] 부등식이란 무엇인가?', 40, 344);
+
+      ctx.font = '500 12px Pretendard, sans-serif';
+      ctx.fillStyle = '#334155';
+      ctx.fillText('• 부등호 (<, >, ≤, ≥)를 사용하여 수 또는 식의 대소 관계를 나타낸 식을 부등식이라고 합니다.', 45, 368);
+      ctx.fillText('• "이상이다", "크거나 같다" ➔ 기호 ≥ 사용 (예: x ≥ 130)', 45, 390);
+      ctx.fillText('• "이하이다", "작거나 같다" ➔ 기호 ≤ 사용 / "초과이다" ➔ > / "미만이다" ➔ <', 45, 412);
+      ctx.restore();
+
+    } else if (iState.selectedMode === 1) {
+      // -----------------------------------------------------------------------
+      // [모드 1: 문제 1-⑴ 3x - 2 > 7 대수 비교 게이지]
+      // -----------------------------------------------------------------------
+      ctx.font = 'bold 12.5px Pretendard, sans-serif';
+      ctx.fillStyle = '#0f172a';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🔢 x의 값 선택:', 155, 84);
+
+      for (let btn of x1Buttons) {
+        const isSel = (iState.xVal1 === btn.val);
+        ctx.save();
+        if (isSel) {
+          ctx.fillStyle = '#0284c7';
+          roundRect(ctx, btn.x, btn.y, btn.w, btn.h, 6, true, false);
+        } else {
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.lineWidth = 1;
+          roundRect(ctx, btn.x, btn.y, btn.w, btn.h, 6, true, true);
+        }
+        ctx.restore();
+
+        ctx.font = isSel ? 'bold 11.5px Pretendard, sans-serif' : '600 11.5px Pretendard, sans-serif';
+        ctx.fillStyle = isSel ? '#ffffff' : '#334155';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(btn.label, btn.x + btn.w / 2, btn.y + btn.h / 2);
+      }
+
+      const curX = iState.xVal1;
+      const leftVal = 3 * curX - 2;
+      const rightVal = 7;
+      const isGreater = (leftVal > rightVal);
+
+      // 메인 카드 (y: 115, h: 200)
+      ctx.save();
+      ctx.fillStyle = '#ffffff';
+      roundRect(ctx, 45, 115, 670, 200, 10, true, false);
+      ctx.strokeStyle = isGreater ? '#059669' : '#cbd5e1';
+      ctx.lineWidth = 1.5;
+      roundRect(ctx, 45, 115, 670, 200, 10, false, true);
+
+      // 문제 원문
+      ctx.font = 'bold 14px Pretendard, sans-serif';
+      ctx.fillStyle = '#0f172a';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText('⑴ 문장: "x의 3배에서 2를 뺀 값은 7보다 크다."', 65, 130);
+
+      // 좌변 vs 우변 비교 박스
+      const boxY = 165;
+      // 좌변 박스
+      ctx.fillStyle = '#f0f9ff';
+      roundRect(ctx, 65, boxY, 250, 75, 8, true, false);
+      ctx.strokeStyle = '#0284c7';
+      ctx.lineWidth = 1.5;
+      roundRect(ctx, 65, boxY, 250, 75, 8, false, true);
+
+      ctx.font = 'bold 12px Pretendard, sans-serif';
+      ctx.fillStyle = '#0369a1';
+      ctx.fillText('좌변 (x의 3배에서 2를 뺀 값)', 80, boxY + 12);
+      ctx.font = 'bold 18px "KaTeX_Math", Pretendard, sans-serif';
+      ctx.fillText(`3x - 2 = 3(${curX}) - 2 = ${leftVal}`, 80, boxY + 38);
+
+      // 중앙 부등호 기호
+      ctx.font = 'bold 28px Pretendard, sans-serif';
+      ctx.fillStyle = isGreater ? '#059669' : '#dc2626';
+      ctx.textAlign = 'center';
+      ctx.fillText(isGreater ? '>' : '≤', 380, boxY + 38);
+
+      // 우변 박스
+      ctx.fillStyle = '#f8fafc';
+      roundRect(ctx, 445, boxY, 250, 75, 8, true, false);
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 1.5;
+      roundRect(ctx, 445, boxY, 250, 75, 8, false, true);
+
+      ctx.font = 'bold 12px Pretendard, sans-serif';
+      ctx.fillStyle = '#475569';
+      ctx.textAlign = 'left';
+      ctx.fillText('우변 (기준값)', 460, boxY + 12);
+      ctx.font = 'bold 22px "KaTeX_Math", Pretendard, sans-serif';
+      ctx.fillText('7', 460, boxY + 38);
+
+      // 하단 판정 라인
+      ctx.font = 'bold 13.5px Pretendard, sans-serif';
+      ctx.fillStyle = isGreater ? '#059669' : '#d97706';
+      ctx.textAlign = 'center';
+      ctx.fillText(
+        isGreater ? `✓ x = ${curX}일 때: 3x - 2 (${leftVal}) > 7 성립! ➔ 완성된 부등식: 3x - 2 > 7` : `x = ${curX}일 때: 3x - 2 (${leftVal}) ≤ 7 (아직 7보다 크지 않음)`,
+        380,
+        280
+      );
+      ctx.restore();
+
+      // 하단 설명 바
+      ctx.save();
+      ctx.fillStyle = '#ffffff';
+      roundRect(ctx, 25, 330, 710, 115, 10, true, false);
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1;
+      roundRect(ctx, 25, 330, 710, 115, 10, false, true);
+
+      ctx.font = 'bold 13px Pretendard, sans-serif';
+      ctx.fillStyle = '#0f172a';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText('✍️ [문제 1-⑴ 작성 요령]', 40, 345);
+
+      ctx.font = '500 12px Pretendard, sans-serif';
+      ctx.fillStyle = '#334155';
+      ctx.fillText('1. "x의 3배" ➔ 3x', 50, 370);
+      ctx.fillText('2. "2를 뺀 값" ➔ 3x - 2 (좌변 완성)', 50, 390);
+      ctx.fillText('3. "7보다 크다" ➔ 부등호 > 7 (우측 입력란에 3x-2>7 입력!)', 50, 410);
+      ctx.restore();
+
+    } else {
+      // -----------------------------------------------------------------------
+      // [모드 2: 문제 1-⑵ 사과 장바구니 예산 한도 (800x + 1500 <= 10000)]
+      // -----------------------------------------------------------------------
+      ctx.font = 'bold 12.5px Pretendard, sans-serif';
+      ctx.fillStyle = '#0f172a';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🍎 사과 개수(x) 선택:', 135, 84);
+
+      for (let btn of x2Buttons) {
+        const isSel = (iState.xVal2 === btn.val);
+        ctx.save();
+        if (isSel) {
+          ctx.fillStyle = btn.isTarget ? '#059669' : '#d97706';
+          roundRect(ctx, btn.x, btn.y, btn.w, btn.h, 6, true, false);
+        } else {
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = btn.isTarget ? '#059669' : '#cbd5e1';
+          ctx.lineWidth = btn.isTarget ? 1.5 : 1;
+          roundRect(ctx, btn.x, btn.y, btn.w, btn.h, 6, true, true);
+        }
+        ctx.restore();
+
+        ctx.font = isSel ? 'bold 11.5px Pretendard, sans-serif' : '600 11.5px Pretendard, sans-serif';
+        ctx.fillStyle = isSel ? '#ffffff' : (btn.isTarget ? '#059669' : '#334155');
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(btn.label, btn.x + btn.w / 2, btn.y + btn.h / 2);
+      }
+
+      const apples = iState.xVal2;
+      const appleCost = 800 * apples;
+      const basketCost = 1500;
+      const totalCost = appleCost + basketCost;
+      const budget = 10000;
+      const isUnderBudget = (totalCost <= budget);
+
+      // 메인 카드
+      ctx.save();
+      ctx.fillStyle = '#ffffff';
+      roundRect(ctx, 45, 115, 670, 200, 10, true, false);
+      ctx.strokeStyle = isUnderBudget ? '#059669' : '#dc2626';
+      ctx.lineWidth = 1.5;
+      roundRect(ctx, 45, 115, 670, 200, 10, false, true);
+
+      ctx.font = 'bold 13.5px Pretendard, sans-serif';
+      ctx.fillStyle = '#0f172a';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText('⑵ 문장: "개당 800원 사과 x개 + 바구니 1500원의 합은 10000원 이하이다."', 65, 128);
+
+      // 장바구니 바 게이지
+      const gaugeX = 80;
+      const gaugeY = 165;
+      const gaugeW = 580;
+      const gaugeH = 24;
+
+      ctx.fillStyle = '#f1f5f9';
+      roundRect(ctx, gaugeX, gaugeY, gaugeW, gaugeH, 6, true, false);
+
+      // 현재 총액 비율 (최대 13000원 스케일)
+      const ratio = Math.min(1.0, totalCost / 12500) * easeT;
+      const fillW = Math.max(10, gaugeW * ratio);
+
+      ctx.fillStyle = isUnderBudget ? '#10b981' : '#ef4444';
+      roundRect(ctx, gaugeX, gaugeY, fillW, gaugeH, 6, true, false);
+
+      // 10000원 예산 한도선
+      const budgetX = gaugeX + (10000 / 12500) * gaugeW; // 약 464px
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(budgetX, gaugeY - 6);
+      ctx.lineTo(budgetX, gaugeY + gaugeH + 6);
+      ctx.stroke();
+
+      ctx.font = 'bold 11.5px Pretendard, sans-serif';
+      ctx.fillStyle = '#0f172a';
+      ctx.textAlign = 'center';
+      ctx.fillText('예산 한도 10,000원', budgetX, gaugeY - 14);
+
+      // 수치 정보
+      ctx.font = 'bold 13px Pretendard, sans-serif';
+      ctx.fillStyle = '#1e293b';
+      ctx.textAlign = 'left';
+      ctx.fillText(`• 사과 ${apples}개: 800 × ${apples} = ${appleCost}원`, 80, 208);
+      ctx.fillText(`• 바구니 1개: ${basketCost}원`, 310, 208);
+      ctx.fillText(`• 총금액: ${totalCost}원`, 510, 208);
+
+      // 판정 배지
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 14px Pretendard, sans-serif';
+      ctx.fillStyle = isUnderBudget ? '#059669' : '#dc2626';
+      ctx.fillText(
+        isUnderBudget ? `✓ ${totalCost}원 ≤ 10000원 (예산 이하, 구매 가능!) ➔ 부등식: 800x + 1500 ≤ 10000` : `✕ ${totalCost}원 > 10000원 (예산 초과!)`,
+        380,
+        280
+      );
+      ctx.restore();
+
+      // 하단 설명 바
+      ctx.save();
+      ctx.fillStyle = '#ffffff';
+      roundRect(ctx, 25, 330, 710, 115, 10, true, false);
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1;
+      roundRect(ctx, 25, 330, 710, 115, 10, false, true);
+
+      ctx.font = 'bold 13px Pretendard, sans-serif';
+      ctx.fillStyle = '#0f172a';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText('✍️ [문제 1-⑵ 작성 요령]', 40, 345);
+
+      ctx.font = '500 12px Pretendard, sans-serif';
+      ctx.fillStyle = '#334155';
+      ctx.fillText('1. 800원짜리 사과 x개의 가격 ➔ 800x원', 50, 370);
+      ctx.fillText('2. 바구니 1500원과의 합 ➔ 800x + 1500 (좌변)', 50, 390);
+      ctx.fillText('3. "10000원 이하이다" ➔ 부등호 ≤ 10000 (우측 입력란에 800x+1500<=10000 입력!)', 50, 410);
+      ctx.restore();
+    }
+
+    canvas._step1_1_animId = requestAnimationFrame(render);
+  }
+
+  render();
+}
+
+window.drawCanvas1_1 = drawIneqStep1_1Canvas;
+
+
     // =========================================================================
     // 🎯 채점 바인딩 & 공통 평가 엔진
     // =========================================================================
@@ -3623,6 +4381,7 @@ window.drawCanvas0_4 = drawIneqStep0_4Canvas;
     window.gradeStep_0_2 = function() { executeStepGrade('0-2'); };
     window.gradeStep_0_3 = function() { executeStepGrade('0-3'); };
     window.gradeStep_0_4 = function() { executeStepGrade('0-4'); };
+    window.gradeStep_1_1 = function() { executeStepGrade('1-1'); };
 
     async function executeStepGrade(code, forcePass = false) {
       const item = SUBSTEPS_DATA[code];
