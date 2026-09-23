@@ -836,6 +836,18 @@
           q1AnimProgress: 0,   // 0 -> 1 애니메이션 보간값
           q2AnimProgress: 0,   // 0 -> 1 애니메이션 보간값
           hoverCard: null
+        },
+        // 0-2 문자의 사용과 식 기호 생략 인터랙터 상태
+        prepExpr: {
+          selectedQuestion: 0, // 0: ⑴, 1: ⑵, 2: ⑶, 3: ⑷
+          qStates: [
+            { compressed: false, animProgress: 0 },
+            { compressed: false, animProgress: 0 },
+            { compressed: false, animProgress: 0 },
+            { compressed: false, animProgress: 0 }
+          ],
+          hoverTab: null,
+          hoverBtn: false
         }
       }
     };
@@ -989,6 +1001,115 @@
           return {
             success: false,
             hint: hints.join("<br>") || "⚠️ 다시 한번 입력 형식과 거듭제곱 계산을 점검해 보세요!"
+          };
+        }
+      },
+
+      '0-2': {
+        tab: 0,
+        tbPage: 30,
+        pdfPage: 32,
+        title: '0-2. [되짚어보기] 문자의 사용과 식',
+        missionText: '곱셈 기호(×)와 나눗셈 기호(÷)를 생략하여 식을 간단히 나타내는 원리를 복습하고, 각 식을 알맞게 변형해 봅시다.',
+        drawer: 'drawPrepExprStep2Canvas',
+        formHtml: `
+          <div class="card">
+            <h4 style="font-size:0.92rem; font-weight:800; color:#1e293b; margin-bottom:10px;">✏️ 교과서 30쪽 [준비해요 2번]</h4>
+            <p style="font-size:0.86rem; color:#475569; margin-bottom:12px;">다음 식을 곱셈 기호 $\\times$와 나눗셈 기호 $\\div$를 쓰지 않고 나타내시오.</p>
+            
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+              <div style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
+                <p style="font-weight:700; font-size:0.9rem; margin-bottom:6px; color:#1e293b;">
+                  ⑴ $a \\times b \\times (-1) \\times a$ =
+                </p>
+                <input type="text" id="ans-0-2-1" class="proof-input-text" style="width:100%; max-width:none;" placeholder="예: -xy^2 형식으로 입력">
+                <span style="font-size:0.75rem; color:#64748b; margin-top:4px; display:block;">💡 1 생략, 같은 문자 거듭제곱, 알파벳 순</span>
+              </div>
+
+              <div style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
+                <p style="font-weight:700; font-size:0.9rem; margin-bottom:6px; color:#1e293b;">
+                  ⑵ $a \\div 4$ =
+                </p>
+                <input type="text" id="ans-0-2-2" class="proof-input-text" style="width:100%; max-width:none;" placeholder="예: x/2 또는 1/2x 형식으로 입력">
+                <span style="font-size:0.75rem; color:#64748b; margin-top:4px; display:block;">💡 나눗셈 기호 생략 ➔ 분수 꼴</span>
+              </div>
+
+              <div style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
+                <p style="font-weight:700; font-size:0.9rem; margin-bottom:6px; color:#1e293b;">
+                  ⑶ $x \\times 2 \\div y$ =
+                </p>
+                <input type="text" id="ans-0-2-3" class="proof-input-text" style="width:100%; max-width:none;" placeholder="예: 3a/b 형식으로 입력">
+                <span style="font-size:0.75rem; color:#64748b; margin-top:4px; display:block;">💡 수 먼저, 곱셈은 분자, 나눗셈은 분모</span>
+              </div>
+
+              <div style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
+                <p style="font-weight:700; font-size:0.9rem; margin-bottom:6px; color:#1e293b;">
+                  ⑷ $x \\times x \\times 3 + y \\div 5$ =
+                </p>
+                <input type="text" id="ans-0-2-4" class="proof-input-text" style="width:100%; max-width:none;" placeholder="예: 2a^2 + b/3 형식으로 입력">
+                <span style="font-size:0.75rem; color:#64748b; margin-top:4px; display:block;">💡 덧셈 기호(+)는 생략하지 않음</span>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" style="width:100%; padding:11px; font-size:0.95rem; font-weight:800;" onclick="gradeStep_0_2()">정답 확인 및 채점</button>
+          </div>
+        `,
+        grader: function() {
+          const a1 = normTxt(document.getElementById('ans-0-2-1')?.value);
+          const a2 = normTxt(document.getElementById('ans-0-2-2')?.value);
+          const a3 = normTxt(document.getElementById('ans-0-2-3')?.value);
+          const a4 = normTxt(document.getElementById('ans-0-2-4')?.value);
+
+          // ⑴ a × b × (-1) × a = -a^2b
+          const ok1 = (a1 === '-a^2b');
+
+          // ⑵ a ÷ 4 = a/4 또는 1/4a 또는 (1/4)a 또는 1/4*a
+          const ok2 = (
+            a2 === 'a/4' ||
+            a2 === '1/4a' ||
+            a2 === '(1/4)a' ||
+            a2 === '1/4*a'
+          );
+
+          // ⑶ x × 2 ÷ y = 2x/y 또는 (2x)/y 또는 2*x/y
+          const ok3 = (
+            a3 === '2x/y' ||
+            a3 === '(2x)/y' ||
+            a3 === '2*x/y'
+          );
+
+          // ⑷ x × x × 3 + y ÷ 5 = 3x^2 + y/5 또는 3x^2 + 1/5y
+          const normA4 = a4.replace(/\s+/g, '');
+          const ok4 = (
+            normA4 === '3x^2+y/5' ||
+            normA4 === '3x^2+1/5y' ||
+            normA4 === '3x^2+(1/5)y' ||
+            normA4 === '3x^2+1/5*y' ||
+            normA4 === 'y/5+3x^2' ||
+            normA4 === '1/5y+3x^2'
+          );
+
+          if (ok1 && ok2 && ok3 && ok4) {
+            return {
+              success: true,
+              score: 100,
+              answerText: "⑴ -a^2b, ⑵ a/4, ⑶ 2x/y, ⑷ 3x^2 + y/5",
+              explanation: "• ⑴ 수(-1)를 앞에 쓰고 1을 생략하며, 같은 문자(a×a)는 거듭제곱으로, 알파벳 순서대로 써서 $-a^2b$가 됩니다.<br>" +
+                           "• ⑵ 나눗셈 기호를 생략하고 분수 꼴로 나타내어 $\\frac{a}{4}$ (또는 $\\frac{1}{4}a$)가 됩니다.<br>" +
+                           "• ⑶ 곱셈과 나눗셈 기호를 생략하여 $\\frac{2x}{y}$가 됩니다.<br>" +
+                           "• ⑷ 덧셈 기호는 생략하지 않고 각 항에서 기호를 생략하여 $3x^2 + \\frac{y}{5}$가 됩니다."
+            };
+          }
+
+          let hints = [];
+          if (!ok1) hints.push("⑴ 수(-1)를 맨 앞에 쓰고 1은 생략하며, $a \\times a = a^2$ 거듭제곱과 알파벳 순서를 적용해 보세요.");
+          if (!ok2) hints.push("⑵ 나눗셈 기호는 생략하고 분수 꼴로 나타내어 보세요 (예: a/4).");
+          if (!ok3) hints.push("⑶ 수는 문자 앞에 쓰고, 나눗셈 기호 뒤의 문자는 분모로 내려갑니다.");
+          if (!ok4) hints.push("⑷ 덧셈 기호(+)는 생략하지 않고, 앞뒤의 곱셈과 나눗셈 식을 각각 간단히 한 뒤 더해 보세요.");
+
+          return {
+            success: false,
+            hint: hints.join("<br>") || "⚠️ 다시 한번 기호 생략 규칙을 점검해 보세요!"
           };
         }
       }
@@ -1298,6 +1419,8 @@
       setTimeout(() => {
         if (data.drawer && typeof window[data.drawer] === 'function') {
           window[data.drawer]();
+          const c = document.querySelector('#two-container canvas');
+          if (c) c.id = 'canvas-' + code;
         }
       }, 50);
     }
@@ -1438,7 +1561,7 @@
       container.innerHTML = '';
 
       const canvas = document.createElement('canvas');
-      canvas.id = 'canvas-' + (state.subStep || '0-1');
+      canvas.id = 'canvas-0-1';
       container.appendChild(canvas);
 
       const resp = setupResponsiveCanvas(canvas, 760, 460);
@@ -1826,10 +1949,640 @@
       render();
     }
 
+    // -------------------------------------------------------------------------
+    // [캔버스 0-2] 교과서 30쪽 [준비해요 2: 문자의 사용과 식] 기호 생략 60fps 인터랙터
+    // -------------------------------------------------------------------------
+    function drawPrepExprStep2Canvas() {
+      const container = document.getElementById('two-container');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const canvas = document.createElement('canvas');
+      canvas.id = 'canvas-0-2';
+      container.appendChild(canvas);
+
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      if (!resp) return;
+      const ctx = resp.ctx;
+      const baseW = 760;
+      const baseH = 460;
+
+      const pState = state.tab0.prepExpr;
+
+      // 4개 문항 탭 바운딩 박스
+      const tabs = [
+        { idx: 0, x: 20, y: 14, w: 172, h: 36, label: '⑴ a×b×(-1)×a' },
+        { idx: 1, x: 200, y: 14, w: 110, h: 36, label: '⑵ a÷4' },
+        { idx: 2, x: 318, y: 14, w: 130, h: 36, label: '⑶ x×2÷y' },
+        { idx: 3, x: 456, y: 14, w: 184, h: 36, label: '⑷ x×x×3 + y÷5' }
+      ];
+
+      // 토글 버튼
+      const toggleBtn = { x: 550, y: 180, w: 180, h: 44 };
+
+      let animRunning = true;
+
+      function render() {
+        ctx.clearRect(0, 0, baseW, baseH);
+
+        // 1. 배경
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, baseW, baseH);
+
+        // 2. 상단 문항 선택 탭 바
+        tabs.forEach(tab => {
+          const isSel = (pState.selectedQuestion === tab.idx);
+          const isHov = (pState.hoverTab === tab.idx);
+
+          ctx.fillStyle = isSel ? '#4f46e5' : (isHov ? '#eef2ff' : '#f8fafc');
+          ctx.strokeStyle = isSel ? '#4338ca' : '#cbd5e1';
+          ctx.lineWidth = isSel ? 2 : 1.2;
+          roundRect(ctx, tab.x, tab.y, tab.w, tab.h, 10, true, true);
+
+          ctx.fillStyle = isSel ? '#ffffff' : '#334155';
+          ctx.font = `bold ${isSel ? 13 : 12.5}px Pretendard, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(tab.label, tab.x + tab.w / 2, tab.y + tab.h / 2);
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'alphabetic';
+        });
+
+        // 3. 메인 인터랙션 카드 영역 (y: 60 ~ 300)
+        const qIdx = pState.selectedQuestion;
+        const curQ = pState.qStates[qIdx];
+        const t = curQ.animProgress; // 0 (펼침) ~ 1 (압축)
+
+        // 메인 카드 배경
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 1.5;
+        roundRect(ctx, 20, 60, baseW - 40, 238, 14, true, true);
+
+        // 문항 헤더 타이틀 배너
+        const titles = [
+          '⑴  a × b × (-1) × a  기호 생략 탐구',
+          '⑵  a ÷ 4  기호 생략 탐구',
+          '⑶  x × 2 ÷ y  기호 생략 탐구',
+          '⑷  x × x × 3 + y ÷ 5  기호 생략 탐구'
+        ];
+        ctx.fillStyle = '#1e293b';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.fillText(titles[qIdx], 38, 88);
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillText('수 카드를 클릭하거나 우측 토글 버튼을 눌러 곱셈/나눗셈 기호 생략 과정을 관찰하세요.', 38, 106);
+
+        // 토글 버튼 렌더링
+        drawToggleButton(ctx, toggleBtn, curQ.compressed);
+
+        // 문제별 시각적 카드 렌더링
+        if (qIdx === 0) {
+          renderQ1(ctx, 40, 130, t);
+        } else if (qIdx === 1) {
+          renderQ2(ctx, 40, 130, t);
+        } else if (qIdx === 2) {
+          renderQ3(ctx, 40, 130, t);
+        } else if (qIdx === 3) {
+          renderQ4(ctx, 40, 130, t);
+        }
+
+        // 4. 하단 기호 생략 핵심 4원칙 요약 카드 (y: 308 ~ 445)
+        renderSummaryRules(ctx, 20, 308, baseW - 40, 138, qIdx);
+
+        // 5. 60fps 애니메이션 프레임 보간
+        const targetT = curQ.compressed ? 1.0 : 0.0;
+        let needNextFrame = false;
+
+        if (Math.abs(curQ.animProgress - targetT) > 0.005) {
+          curQ.animProgress += (targetT - curQ.animProgress) * 0.16;
+          needNextFrame = true;
+        } else {
+          curQ.animProgress = targetT;
+        }
+
+        if (animRunning && needNextFrame) {
+          requestAnimationFrame(render);
+        }
+      }
+
+      function drawToggleButton(c, btn, isComp) {
+        const isHover = pState.hoverBtn;
+        c.fillStyle = isComp ? '#10b981' : '#4f46e5';
+        if (isHover) c.fillStyle = isComp ? '#059669' : '#4338ca';
+
+        roundRect(c, btn.x, btn.y, btn.w, btn.h, 10, true, false);
+
+        c.fillStyle = '#ffffff';
+        c.font = 'bold 13px Pretendard, sans-serif';
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        const label = isComp ? '📂 기호 펼쳐서 보기' : '📦 기호 생략하여 간단히';
+        c.fillText(label, btn.x + btn.w / 2, btn.y + btn.h / 2);
+        c.textAlign = 'left';
+        c.textBaseline = 'alphabetic';
+      }
+
+      // ⑴ a × b × (-1) × a -> -a^2b
+      function renderQ1(c, startX, startY, t) {
+        const cardW = 44;
+        const cardH = 58;
+
+        // 펼침 위치:
+        // a1 (40), × (90), b (115), × (165), (-1) (190), × (260), a2 (285)
+        // 압축 위치:
+        // (-1) -> 앞쪽 (70)에서 1이 페이드아웃되고 '-' 부호만 남음
+        // a1, a2 -> 중앙 (100)으로 모여 a^2 카드
+        // b -> 뒤쪽 (150)
+        const numX = 190 + (65 - 190) * t;
+        const a1X = 40 + (100 - 40) * t;
+        const a2X = 285 + (100 - 285) * t;
+        const bX = 115 + (150 - 115) * t;
+
+        const alphaFade = Math.max(0, 1 - t * 1.5);
+
+        // 연산 기호 (×)
+        if (alphaFade > 0.05) {
+          c.save();
+          c.globalAlpha = alphaFade;
+          c.fillStyle = '#64748b';
+          c.font = 'bold 20px Pretendard, sans-serif';
+          c.fillText('×', 90, startY + 36);
+          c.fillText('×', 165, startY + 36);
+          c.fillText('×', 260, startY + 36);
+          c.restore();
+        }
+
+        // 수 (-1) 카드
+        if (t < 0.5) {
+          drawExprCard(c, numX, startY + 8, 54, cardH, '-1', '#ea580c');
+        } else {
+          // 1이 생략되고 '-' 부호만 강조되는 뱃지
+          c.save();
+          c.fillStyle = '#ea580c';
+          c.font = 'bold 36px Pretendard, sans-serif';
+          c.textAlign = 'center';
+          c.textBaseline = 'middle';
+          c.fillText('−', 75, startY + 37);
+          c.restore();
+        }
+
+        // a1 카드
+        if (t < 0.5) {
+          drawExprCard(c, a1X, startY + 8, cardW, cardH, 'a', '#0284c7');
+        } else {
+          // a^2 거듭제곱 카드
+          drawPowerCard(c, 95, startY + 8, cardW + 4, cardH, 'a', '2', '#0284c7', '#ea580c');
+        }
+
+        // a2 카드 (합쳐지며 서서히 페이드아웃)
+        if (t < 0.95) {
+          c.save();
+          c.globalAlpha = Math.max(0, 1 - t);
+          drawExprCard(c, a2X, startY + 8, cardW, cardH, 'a', '#0284c7');
+          c.restore();
+        }
+
+        // b 카드
+        drawExprCard(c, bX, startY + 8, cardW, cardH, 'b', '#059669');
+
+        // 우측 하단 설명
+        c.font = '13px Pretendard, sans-serif';
+        if (t < 0.5) {
+          c.fillStyle = '#475569';
+          c.fillText('• 수와 문자들의 곱셈 기호(×)를 생략하는 과정입니다.', 40, startY + 95);
+          c.fillStyle = '#0284c7';
+          c.font = 'bold 13px Pretendard, sans-serif';
+          c.fillText('원칙: 수는 문자 앞에 쓰고 1은 생략, 같은 문자는 거듭제곱, 문자는 알파벳 순서!', 40, startY + 115);
+        } else {
+          c.fillStyle = '#059669';
+          c.font = 'bold 15px Pretendard, sans-serif';
+          c.fillText('✨ 기호 생략 완성: −a²b', 40, startY + 95);
+          c.fillStyle = '#334155';
+          c.font = '12.5px Pretendard, sans-serif';
+          c.fillText('수 (-1)에서 1은 생략하여 "-"만 표기, a×a = a², 문자 알파벳 순서(a ➔ b)', 40, startY + 115);
+        }
+      }
+
+      // ⑵ a ÷ 4 -> a/4
+      function renderQ2(c, startX, startY, t) {
+        const cardW = 50;
+        const cardH = 58;
+
+        // 펼침: a (70), ÷ (150), 4 (200)
+        // 압축: a는 위로(y-22), 4는 아래로(y+22), 분수선(x: 120, w: 70)
+        const aX = 70 + (130 - 70) * t;
+        const aY = (startY + 8) + (-20) * t;
+        const fourX = 200 + (130 - 200) * t;
+        const fourY = (startY + 8) + (20) * t;
+
+        const alphaFade = Math.max(0, 1 - t * 1.5);
+
+        // ÷ 기호
+        if (alphaFade > 0.05) {
+          c.save();
+          c.globalAlpha = alphaFade;
+          c.fillStyle = '#64748b';
+          c.font = 'bold 24px Pretendard, sans-serif';
+          c.fillText('÷', 145, startY + 44);
+          c.restore();
+        }
+
+        // 분수선
+        if (t > 0.1) {
+          c.save();
+          c.globalAlpha = t;
+          c.strokeStyle = '#1e293b';
+          c.lineWidth = 3;
+          c.beginPath();
+          c.moveTo(115, startY + 37);
+          c.lineTo(195, startY + 37);
+          c.stroke();
+          c.restore();
+        }
+
+        // a 카드 (분자)
+        const cardHSmall = 38;
+        if (t < 0.5) {
+          drawExprCard(c, aX, aY, cardW, cardH, 'a', '#0284c7');
+          drawExprCard(c, fourX, fourY, cardW, cardH, '4', '#ea580c');
+        } else {
+          drawExprCard(c, aX, aY, cardW, cardHSmall, 'a', '#0284c7');
+          drawExprCard(c, fourX, fourY, cardW, cardHSmall, '4', '#ea580c');
+        }
+
+        // 우측 설명
+        c.font = '13px Pretendard, sans-serif';
+        if (t < 0.5) {
+          c.fillStyle = '#475569';
+          c.fillText('• a를 4로 나누는 나눗셈 식입니다.', 40, startY + 95);
+          c.fillStyle = '#0284c7';
+          c.font = 'bold 13px Pretendard, sans-serif';
+          c.fillText('원칙: 나눗셈 기호(÷)를 생략하고 분수 꼴로 나타냅니다.', 40, startY + 115);
+        } else {
+          c.fillStyle = '#059669';
+          c.font = 'bold 15px Pretendard, sans-serif';
+          c.fillText('✨ 기호 생략 완성: a/4  (또는 1/4 a)', 40, startY + 95);
+          c.fillStyle = '#334155';
+          c.font = '12.5px Pretendard, sans-serif';
+          c.fillText('나눗셈 기호 뒤의 수 4가 분모로 내려갑니다: a ÷ 4 = a/4 = 1/4 a', 40, startY + 115);
+        }
+      }
+
+      // ⑶ x × 2 ÷ y -> 2x/y
+      function renderQ3(c, startX, startY, t) {
+        const cardW = 44;
+        const cardH = 54;
+
+        // 펼침: x (50), × (100), 2 (125), ÷ (180), y (210)
+        // 압축: 2x는 분자(y-20), y는 분모(y+20), 분수선(x: 105, w: 90)
+        const twoX = 125 + (90 - 125) * t;
+        const twoY = (startY + 8) + (-20) * t;
+        const xX = 50 + (135 - 50) * t;
+        const xY = (startY + 8) + (-20) * t;
+        const yX = 210 + (115 - 210) * t;
+        const yY = (startY + 8) + (22) * t;
+
+        const alphaFade = Math.max(0, 1 - t * 1.5);
+
+        // 연산 기호들
+        if (alphaFade > 0.05) {
+          c.save();
+          c.globalAlpha = alphaFade;
+          c.fillStyle = '#64748b';
+          c.font = 'bold 20px Pretendard, sans-serif';
+          c.fillText('×', 98, startY + 36);
+          c.fillText('÷', 178, startY + 36);
+          c.restore();
+        }
+
+        // 분수선
+        if (t > 0.1) {
+          c.save();
+          c.globalAlpha = t;
+          c.strokeStyle = '#1e293b';
+          c.lineWidth = 3;
+          c.beginPath();
+          c.moveTo(85, startY + 35);
+          c.lineTo(185, startY + 35);
+          c.stroke();
+          c.restore();
+        }
+
+        const cardHSmall = 34;
+        if (t < 0.5) {
+          drawExprCard(c, twoX, twoY, cardW, cardH, '2', '#ea580c');
+          drawExprCard(c, xX, xY, cardW, cardH, 'x', '#0284c7');
+          drawExprCard(c, yX, yY, cardW, cardH, 'y', '#7c3aed');
+        } else {
+          drawExprCard(c, twoX, twoY, 36, cardHSmall, '2', '#ea580c');
+          drawExprCard(c, xX, xY, 36, cardHSmall, 'x', '#0284c7');
+          drawExprCard(c, yX, yY, 38, cardHSmall, 'y', '#7c3aed');
+        }
+
+        // 우측 설명
+        c.font = '13px Pretendard, sans-serif';
+        if (t < 0.5) {
+          c.fillStyle = '#475569';
+          c.fillText('• 곱셈과 나눗셈이 섞여 있는 식입니다.', 40, startY + 95);
+          c.fillStyle = '#0284c7';
+          c.font = 'bold 13px Pretendard, sans-serif';
+          c.fillText('원칙: 수는 문자 앞에 쓰고(2x), 나눗셈 기호 뒤의 문자는 분모로(/y)!', 40, startY + 115);
+        } else {
+          c.fillStyle = '#059669';
+          c.font = 'bold 15px Pretendard, sans-serif';
+          c.fillText('✨ 기호 생략 완성: 2x/y', 40, startY + 95);
+          c.fillStyle = '#334155';
+          c.font = '12.5px Pretendard, sans-serif';
+          c.fillText('x × 2 = 2x (분자), ÷ y = 1/y (분모) ➔ 분수선 아래에 y를 배치하여 2x/y 완성!', 40, startY + 115);
+        }
+      }
+
+      // ⑷ x × x × 3 + y ÷ 5 -> 3x^2 + y/5
+      function renderQ4(c, startX, startY, t) {
+        const cardW = 38;
+        const cardH = 50;
+
+        // 앞 항: x, x, 3 -> 3x^2 (중앙 x: 100)
+        // 연결: + (x: 235) - 절대 생략 불가!
+        // 뒤 항: y, 5 -> y/5 (중앙 x: 300)
+        const alphaFade = Math.max(0, 1 - t * 1.5);
+
+        // 연산 기호 (×, ÷)
+        if (alphaFade > 0.05) {
+          c.save();
+          c.globalAlpha = alphaFade;
+          c.fillStyle = '#64748b';
+          c.font = 'bold 18px Pretendard, sans-serif';
+          c.fillText('×', 75, startY + 34);
+          c.fillText('×', 135, startY + 34);
+          c.fillText('÷', 320, startY + 34);
+          c.restore();
+        }
+
+        // 앞 항 렌더링
+        if (t < 0.5) {
+          drawExprCard(c, 40, startY + 8, cardW, cardH, 'x', '#0284c7');
+          drawExprCard(c, 95, startY + 8, cardW, cardH, 'x', '#0284c7');
+          drawExprCard(c, 155, startY + 8, cardW, cardH, '3', '#ea580c');
+        } else {
+          // 3x^2 카드
+          drawExprCard(c, 70, startY + 8, cardW, cardH, '3', '#ea580c');
+          drawPowerCard(c, 115, startY + 8, cardW + 4, cardH, 'x', '2', '#0284c7', '#ea580c');
+        }
+
+        // 덧셈 기호 (+) - 항상 선명하게 유지!
+        c.save();
+        c.fillStyle = '#dc2626';
+        c.font = 'bold 30px Pretendard, sans-serif';
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.fillText('+', 210, startY + 33);
+        c.restore();
+
+        // 뒤 항 렌더링 (y ÷ 5)
+        if (t < 0.5) {
+          drawExprCard(c, 270, startY + 8, cardW, cardH, 'y', '#7c3aed');
+          drawExprCard(c, 345, startY + 8, cardW, cardH, '5', '#ea580c');
+        } else {
+          // 분수선
+          c.save();
+          c.strokeStyle = '#1e293b';
+          c.lineWidth = 2.5;
+          c.beginPath();
+          c.moveTo(270, startY + 33);
+          c.lineTo(330, startY + 33);
+          c.stroke();
+          c.restore();
+
+          drawExprCard(c, 282, startY - 12, cardW - 4, 30, 'y', '#7c3aed');
+          drawExprCard(c, 282, startY + 38, cardW - 4, 30, '5', '#ea580c');
+        }
+
+        // 우측 설명
+        c.font = '13px Pretendard, sans-serif';
+        if (t < 0.5) {
+          c.fillStyle = '#475569';
+          c.fillText('• 덧셈(+) 기호로 연결된 복합 다항식입니다.', 40, startY + 95);
+          c.fillStyle = '#dc2626';
+          c.font = 'bold 13px Pretendard, sans-serif';
+          c.fillText('중요: 덧셈(+) 기호는 절대로 생략하지 않습니다! 각 항별로 기호를 생략하세요.', 40, startY + 115);
+        } else {
+          c.fillStyle = '#059669';
+          c.font = 'bold 15px Pretendard, sans-serif';
+          c.fillText('✨ 기호 생략 완성: 3x² + y/5', 40, startY + 95);
+          c.fillStyle = '#334155';
+          c.font = '12.5px Pretendard, sans-serif';
+          c.fillText('앞 항: 3x², 뒤 항: y/5 ➔ 덧셈 기호(+)는 생략 없이 연결하여 3x² + y/5 완성!', 40, startY + 115);
+        }
+      }
+
+      function drawExprCard(c, x, y, w, h, text, color) {
+        c.fillStyle = '#ffffff';
+        c.strokeStyle = color;
+        c.lineWidth = 2;
+        roundRect(c, x, y, w, h, 8, true, true);
+
+        c.fillStyle = color;
+        c.font = `bold ${Math.floor(h * 0.5)}px Pretendard, sans-serif`;
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.fillText(text, x + w / 2, y + h / 2);
+        c.textAlign = 'left';
+        c.textBaseline = 'alphabetic';
+      }
+
+      function drawPowerCard(c, x, y, w, h, baseStr, expStr, baseColor, expColor) {
+        c.fillStyle = '#ffffff';
+        c.strokeStyle = baseColor;
+        c.lineWidth = 2.2;
+        roundRect(c, x, y, w, h, 8, true, true);
+
+        c.fillStyle = baseColor;
+        c.font = `bold ${Math.floor(h * 0.52)}px Pretendard, sans-serif`;
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.fillText(baseStr, x + w * 0.42, y + h * 0.52);
+
+        // 지수 뱃지
+        const bw = 18;
+        const bh = 18;
+        const bx = x + w - bw - 2;
+        const by = y + 2;
+        c.fillStyle = expColor;
+        roundRect(c, bx, by, bw, bh, 5, true, false);
+
+        c.fillStyle = '#ffffff';
+        c.font = 'bold 11px Pretendard, sans-serif';
+        c.fillText(expStr, bx + bw / 2, by + bh / 2 + 1);
+
+        c.textAlign = 'left';
+        c.textBaseline = 'alphabetic';
+      }
+
+      function renderSummaryRules(c, x, y, w, h, activeQ) {
+        c.fillStyle = '#ffffff';
+        c.strokeStyle = '#cbd5e1';
+        c.lineWidth = 1;
+        roundRect(c, x, y, w, h, 10, true, true);
+
+        c.fillStyle = '#1e293b';
+        c.font = 'bold 13px Pretendard, sans-serif';
+        c.fillText('📖 문자의 사용과 식: 기호 생략 4대 원칙', x + 16, y + 22);
+
+        const rules = [
+          { no: '1', title: '수 × 문자', desc: '수는 문자 앞, 1/-1의 1 생략', active: (activeQ === 0 || activeQ === 2 || activeQ === 3) },
+          { no: '2', title: '문자 × 문자', desc: '알파벳 순, 거듭제곱 표현', active: (activeQ === 0 || activeQ === 3) },
+          { no: '3', title: '나눗셈 기호', desc: '분수 꼴로 나타내기 (A÷B = A/B)', active: (activeQ === 1 || activeQ === 2 || activeQ === 3) },
+          { no: '4', title: '덧셈·뺄셈 기호', desc: '⚠️ +와 − 기호는 절대 생략 불가!', active: (activeQ === 3) }
+        ];
+
+        const boxW = (w - 32 - 18) / 4;
+        rules.forEach((r, idx) => {
+          const bx = x + 16 + idx * (boxW + 6);
+          const by = y + 34;
+          const bh = h - 46;
+
+          c.fillStyle = r.active ? '#eef2ff' : '#f8fafc';
+          c.strokeStyle = r.active ? '#6366f1' : '#e2e8f0';
+          c.lineWidth = r.active ? 1.8 : 1;
+          roundRect(c, bx, by, boxW, bh, 8, true, true);
+
+          // 뱃지
+          c.fillStyle = r.active ? '#4f46e5' : '#64748b';
+          roundRect(c, bx + 6, by + 6, 20, 18, 4, true, false);
+          c.fillStyle = '#ffffff';
+          c.font = 'bold 11px Pretendard, sans-serif';
+          c.textAlign = 'center';
+          c.textBaseline = 'middle';
+          c.fillText(r.no, bx + 16, by + 15);
+
+          // 제목
+          c.fillStyle = r.active ? '#312e81' : '#334155';
+          c.font = 'bold 12px Pretendard, sans-serif';
+          c.textAlign = 'left';
+          c.fillText(r.title, bx + 32, by + 16);
+
+          // 설명
+          c.fillStyle = r.active ? '#4338ca' : '#64748b';
+          c.font = '11px Pretendard, sans-serif';
+          wrapText(c, r.desc, bx + 8, by + 42, boxW - 16, 15);
+        });
+
+        c.textAlign = 'left';
+        c.textBaseline = 'alphabetic';
+      }
+
+      function wrapText(c, text, x, y, maxW, lineH) {
+        const words = text.split(' ');
+        let line = '';
+        let curY = y;
+        for (let n = 0; n < words.length; n++) {
+          const testLine = line + words[n] + ' ';
+          const metrics = c.measureText(testLine);
+          if (metrics.width > maxW && n > 0) {
+            c.fillText(line, x, curY);
+            line = words[n] + ' ';
+            curY += lineH;
+          } else {
+            line = testLine;
+          }
+        }
+        c.fillText(line, x, curY);
+      }
+
+      function roundRect(c, x, y, w, h, r, fill, stroke) {
+        c.beginPath();
+        c.moveTo(x + r, y);
+        c.lineTo(x + w - r, y);
+        c.quadraticCurveTo(x + w, y, x + w, y + r);
+        c.lineTo(x + w, y + h - r);
+        c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        c.lineTo(x + r, y + h);
+        c.quadraticCurveTo(x, y + h, x, y + h - r);
+        c.lineTo(x, y + r);
+        c.quadraticCurveTo(x, y, x + r, y);
+        c.closePath();
+        if (fill) c.fill();
+        if (stroke) c.stroke();
+      }
+
+      // 이벤트 리스너
+      function handleCanvasClick(e) {
+        const pos = getCanvasLogicalPos(canvas, e, baseW, baseH);
+
+        // 1. 탭 클릭 검사
+        for (let i = 0; i < tabs.length; i++) {
+          const t = tabs[i];
+          if (pos.mx >= t.x && pos.mx <= t.x + t.w && pos.my >= t.y && pos.my <= t.y + t.h) {
+            pState.selectedQuestion = t.idx;
+            requestAnimationFrame(render);
+            return;
+          }
+        }
+
+        // 2. 토글 버튼 클릭 검사
+        if (pos.mx >= toggleBtn.x && pos.mx <= toggleBtn.x + toggleBtn.w &&
+            pos.my >= toggleBtn.y && pos.my <= toggleBtn.y + toggleBtn.h) {
+          const curQ = pState.qStates[pState.selectedQuestion];
+          curQ.compressed = !curQ.compressed;
+          requestAnimationFrame(render);
+          return;
+        }
+
+        // 3. 메인 카드 구역 클릭 시에도 토글
+        if (pos.mx >= 30 && pos.mx <= 520 && pos.my >= 70 && pos.my <= 280) {
+          const curQ = pState.qStates[pState.selectedQuestion];
+          curQ.compressed = !curQ.compressed;
+          requestAnimationFrame(render);
+          return;
+        }
+      }
+
+      function handleCanvasMouseMove(e) {
+        const pos = getCanvasLogicalPos(canvas, e, baseW, baseH);
+        let cursor = 'default';
+        pState.hoverTab = null;
+        pState.hoverBtn = false;
+
+        // 탭 호버
+        for (let i = 0; i < tabs.length; i++) {
+          const t = tabs[i];
+          if (pos.mx >= t.x && pos.mx <= t.x + t.w && pos.my >= t.y && pos.my <= t.y + t.h) {
+            cursor = 'pointer';
+            pState.hoverTab = t.idx;
+            break;
+          }
+        }
+
+        // 버튼 호버
+        if (pos.mx >= toggleBtn.x && pos.mx <= toggleBtn.x + toggleBtn.w &&
+            pos.my >= toggleBtn.y && pos.my <= toggleBtn.y + toggleBtn.h) {
+          cursor = 'pointer';
+          pState.hoverBtn = true;
+        } else if (pos.mx >= 30 && pos.mx <= 520 && pos.my >= 70 && pos.my <= 280) {
+          cursor = 'pointer';
+        }
+
+        canvas.style.cursor = cursor;
+        requestAnimationFrame(render);
+      }
+
+      canvas.addEventListener('click', handleCanvasClick);
+      canvas.addEventListener('mousemove', handleCanvasMouseMove);
+      canvas.addEventListener('touchstart', (e) => {
+        handleCanvasClick(e);
+      }, { passive: true });
+
+      render();
+    }
+
     // =========================================================================
     // 🎯 채점 바인딩 & 공통 평가 엔진
     // =========================================================================
     window.gradeStep_0_1 = function() { executeStepGrade('0-1'); };
+    window.gradeStep_0_2 = function() { executeStepGrade('0-2'); };
 
     async function executeStepGrade(code, forcePass = false) {
       const item = SUBSTEPS_DATA[code];
