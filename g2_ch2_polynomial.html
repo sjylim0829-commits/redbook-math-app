@@ -848,6 +848,14 @@
           ],
           hoverTab: null,
           hoverBtn: false
+        },
+        // 0-3 일차식과 수의 곱셈, 나눗셈 인터랙터 상태
+        prepMultDiv: {
+          selectedQuestion: 0, // 0: ⑴ 4a*2, 1: ⑵ -15b ÷ (5/3)
+          stages: [0, 0],      // 0: 원식, 1: 전개/역수, 2: 계산완료
+          animProgress: [0, 0],
+          hoverTab: null,
+          hoverBtn: false
         }
       }
     };
@@ -1110,6 +1118,72 @@
           return {
             success: false,
             hint: hints.join("<br>") || "⚠️ 다시 한번 기호 생략 규칙을 점검해 보세요!"
+          };
+        }
+      },
+
+      '0-3': {
+        tab: 0,
+        tbPage: 31,
+        pdfPage: 33,
+        title: '0-3. [되짚어보기] 일차식과 수의 곱셈, 나눗셈',
+        missionText: '일차식과 수의 곱셈과 나눗셈 원리를 복습해 봅시다. 수끼리 곱하거나 나누고, 나눗셈은 역수의 곱셈으로 바꾸어 계산해 보세요.',
+        drawer: 'drawPrepMultDivStep3Canvas',
+        formHtml: `
+          <div class="card">
+            <h4 style="font-size:0.92rem; font-weight:800; color:#1e293b; margin-bottom:10px;">✏️ 교과서 31쪽 [준비해요 3번]</h4>
+            <p style="font-size:0.86rem; color:#475569; margin-bottom:12px;">다음 식을 계산하시오.</p>
+            
+            <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:16px;">
+              <div style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
+                <p style="font-weight:700; font-size:0.92rem; margin-bottom:8px; color:#1e293b;">
+                  ⑴ $4a \\times 2$ = 
+                  <input type="text" id="ans-0-3-1" class="proof-input-text" placeholder="예: 6x 형식으로 입력">
+                </p>
+                <span style="font-size:0.78rem; color:#64748b;">💡 수끼리 곱하여 문자 앞에 씁니다: (4 × 2)a</span>
+              </div>
+
+              <div style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
+                <p style="font-weight:700; font-size:0.92rem; margin-bottom:8px; color:#1e293b;">
+                  ⑵ $-15b \\div \\frac{5}{3}$ = 
+                  <input type="text" id="ans-0-3-2" class="proof-input-text" placeholder="예: -4y 형식으로 입력">
+                </p>
+                <span style="font-size:0.78rem; color:#64748b;">💡 나눗셈을 역수의 곱셈(× 3/5)으로 바꾸어 약분하세요.</span>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" style="width:100%; padding:11px; font-size:0.95rem; font-weight:800;" onclick="gradeStep_0_3()">정답 확인 및 채점</button>
+          </div>
+        `,
+        grader: function() {
+          const a1 = normTxt(document.getElementById('ans-0-3-1')?.value);
+          const a2 = normTxt(document.getElementById('ans-0-3-2')?.value);
+
+          // ⑴ 4a * 2 = 8a
+          const ok1 = (a1 === '8a' || a1 === '8*a');
+
+          // ⑵ -15b ÷ (5/3) = -9b
+          const ok2 = (a2 === '-9b' || a2 === '-9*b');
+
+          if (ok1 && ok2) {
+            return {
+              success: true,
+              score: 100,
+              answerText: "⑴ 8a, ⑵ -9b",
+              explanation: "• ⑴ 수끼리 먼저 곱하여 문자 앞에 씁니다:<br>" +
+                           "&nbsp;&nbsp;$4a \\times 2 = (4 \\times 2) \\times a = 8a$<br>" +
+                           "• ⑵ 나눗셈은 나누는 수의 역수의 곱셈으로 바꾸어 계산합니다:<br>" +
+                           "&nbsp;&nbsp;$-15b \\div \\frac{5}{3} = -15b \\times \\frac{3}{5} = \\left(-15 \\times \\frac{3}{5}\\right) \\times b = (-3 \\times 3) \\times b = -9b$"
+            };
+          }
+
+          let hints = [];
+          if (!ok1) hints.push("⑴ 수끼리 먼저 곱하고 문자 a를 붙여 보세요: 4 × 2 = ?");
+          if (!ok2) hints.push("⑵ 나눗셈을 역수의 곱셈(× 3/5)으로 바꾸고, -15와 분모 5를 약분해 보세요.");
+
+          return {
+            success: false,
+            hint: hints.join("<br>") || "⚠️ 다시 한번 계산 과정을 점검해 보세요!"
           };
         }
       }
@@ -2578,11 +2652,498 @@
       render();
     }
 
+    // -------------------------------------------------------------------------
+    // [캔버스 0-3] 교과서 31쪽 [준비해요 3: 일차식과 수의 곱셈, 나눗셈] 60fps 인터랙터
+    // -------------------------------------------------------------------------
+    function drawPrepMultDivStep3Canvas() {
+      const container = document.getElementById('two-container');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const canvas = document.createElement('canvas');
+      canvas.id = 'canvas-0-3';
+      container.appendChild(canvas);
+
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      if (!resp) return;
+      const ctx = resp.ctx;
+      const baseW = 760;
+      const baseH = 460;
+
+      const pState = state.tab0.prepMultDiv;
+
+      const tabs = [
+        { idx: 0, x: 20, y: 14, w: 220, h: 36, label: '⑴ 4a × 2 (곱셈 원리)' },
+        { idx: 1, x: 250, y: 14, w: 260, h: 36, label: '⑵ -15b ÷ 5/3 (역수·약분 원리)' }
+      ];
+
+      const stepBtn = { x: 530, y: 175, w: 200, h: 44 };
+
+      let animRunning = true;
+
+      function render() {
+        ctx.clearRect(0, 0, baseW, baseH);
+
+        // 1. 배경
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, baseW, baseH);
+
+        // 2. 상단 문항 선택 탭 바
+        tabs.forEach(tab => {
+          const isSel = (pState.selectedQuestion === tab.idx);
+          const isHov = (pState.hoverTab === tab.idx);
+
+          ctx.fillStyle = isSel ? '#4f46e5' : (isHov ? '#eef2ff' : '#f8fafc');
+          ctx.strokeStyle = isSel ? '#4338ca' : '#cbd5e1';
+          ctx.lineWidth = isSel ? 2 : 1.2;
+          roundRect(ctx, tab.x, tab.y, tab.w, tab.h, 10, true, true);
+
+          ctx.fillStyle = isSel ? '#ffffff' : '#334155';
+          ctx.font = `bold ${isSel ? 13.5 : 13}px Pretendard, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(tab.label, tab.x + tab.w / 2, tab.y + tab.h / 2);
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'alphabetic';
+        });
+
+        // 3. 메인 인터랙션 카드 영역 (y: 60 ~ 300)
+        const qIdx = pState.selectedQuestion;
+        const curStage = pState.stages[qIdx]; // 0, 1, 2
+        const curT = pState.animProgress[qIdx]; // 0.0 ~ 2.0
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 1.5;
+        roundRect(ctx, 20, 60, baseW - 40, 238, 14, true, true);
+
+        // 문항 헤더 타이틀 배너
+        const titles = [
+          '⑴  4a × 2  일차식과 수의 곱셈 계산 단계',
+          '⑵  -15b ÷ 5/3  나눗셈의 역수 곱셈 및 약분 단계'
+        ];
+        ctx.fillStyle = '#1e293b';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.fillText(titles[qIdx], 38, 88);
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillText('우측 [단계별 계산 보기] 버튼이나 중앙 카드를 클릭하여 전개 과정을 확인하세요.', 38, 106);
+
+        // 단계 버튼 렌더링
+        drawStepButton(ctx, stepBtn, curStage, qIdx);
+
+        // 문항별 시각적 렌더링
+        if (qIdx === 0) {
+          renderQ1(ctx, 40, 130, curT, curStage);
+        } else {
+          renderQ2(ctx, 40, 130, curT, curStage);
+        }
+
+        // 4. 하단 계산 원칙 요약 카드 (y: 308 ~ 445)
+        renderSummaryRules(ctx, 20, 308, baseW - 40, 138, qIdx);
+
+        // 5. 60fps 애니메이션 프레임 보간
+        const targetT = curStage * 1.0;
+        let needNextFrame = false;
+
+        if (Math.abs(pState.animProgress[qIdx] - targetT) > 0.005) {
+          pState.animProgress[qIdx] += (targetT - pState.animProgress[qIdx]) * 0.16;
+          needNextFrame = true;
+        } else {
+          pState.animProgress[qIdx] = targetT;
+        }
+
+        if (animRunning && needNextFrame) {
+          requestAnimationFrame(render);
+        }
+      }
+
+      function drawStepButton(c, btn, stage, qIdx) {
+        const isHover = pState.hoverBtn;
+        c.fillStyle = stage === 2 ? '#10b981' : '#4f46e5';
+        if (isHover) c.fillStyle = stage === 2 ? '#059669' : '#4338ca';
+
+        roundRect(c, btn.x, btn.y, btn.w, btn.h, 10, true, false);
+
+        c.fillStyle = '#ffffff';
+        c.font = 'bold 13px Pretendard, sans-serif';
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+
+        let label = '';
+        if (stage === 0) {
+          label = qIdx === 0 ? '▶ 1단계: 수 묶기' : '▶ 1단계: 역수 곱셈 변환';
+        } else if (stage === 1) {
+          label = qIdx === 0 ? '▶ 2단계: 곱셈 완료' : '▶ 2단계: 약분 및 완료';
+        } else {
+          label = '🔄 처음부터 다시 보기';
+        }
+
+        c.fillText(label, btn.x + btn.w / 2, btn.y + btn.h / 2);
+        c.textAlign = 'left';
+        c.textBaseline = 'alphabetic';
+      }
+
+      // ⑴ 4a × 2
+      function renderQ1(c, startX, startY, t, stage) {
+        const cardH = 58;
+
+        if (t < 0.6) {
+          // Stage 0: 4a (x: 90), × (x: 165), 2 (x: 205)
+          drawCard(c, 80, startY + 8, 64, cardH, '4a', '#0284c7');
+          c.fillStyle = '#64748b';
+          c.font = 'bold 22px Pretendard, sans-serif';
+          c.fillText('×', 165, startY + 44);
+          drawCard(c, 195, startY + 8, 54, cardH, '2', '#ea580c');
+
+          c.font = '13px Pretendard, sans-serif';
+          c.fillStyle = '#475569';
+          c.fillText('• 원식: 일차식 4a에 수 2를 곱하는 식입니다.', 40, startY + 95);
+          c.fillStyle = '#0284c7';
+          c.font = 'bold 13px Pretendard, sans-serif';
+          c.fillText('수끼리 먼저 묶어서 곱하는 원리를 단계별로 관찰해 보세요.', 40, startY + 115);
+        } else if (t < 1.5) {
+          // Stage 1: (4 × 2)a
+          // 괄호 블록
+          c.fillStyle = '#e0f2fe';
+          c.strokeStyle = '#0284c7';
+          c.lineWidth = 2;
+          roundRect(c, 70, startY + 4, 150, cardH + 8, 12, true, true);
+
+          c.fillStyle = '#0369a1';
+          c.font = 'bold 24px Pretendard, sans-serif';
+          c.textAlign = 'center';
+          c.textBaseline = 'middle';
+          c.fillText('( 4 × 2 )', 145, startY + 42);
+
+          // a 카드
+          drawCard(c, 235, startY + 8, 48, cardH, 'a', '#7c3aed');
+
+          c.textAlign = 'left';
+          c.textBaseline = 'alphabetic';
+          c.font = '13px Pretendard, sans-serif';
+          c.fillStyle = '#475569';
+          c.fillText('• 1단계: 수끼리 괄호로 묶고 문자 a를 뒤에 씁니다: (4 × 2)a', 40, startY + 95);
+          c.fillStyle = '#0284c7';
+          c.font = 'bold 13px Pretendard, sans-serif';
+          c.fillText('이제 괄호 안의 수 4 × 2 = 8을 계산합니다.', 40, startY + 115);
+        } else {
+          // Stage 2: 8a 완성
+          drawCard(c, 130, startY + 4, 80, cardH + 8, '8a', '#10b981');
+
+          c.font = '13px Pretendard, sans-serif';
+          c.fillStyle = '#059669';
+          c.font = 'bold 15px Pretendard, sans-serif';
+          c.fillText('✨ 계산 완성: 8a', 40, startY + 95);
+          c.fillStyle = '#334155';
+          c.font = '12.5px Pretendard, sans-serif';
+          c.fillText('수끼리 곱하여 4 × 2 = 8, 문자 a를 붙여 8a가 됩니다!', 40, startY + 115);
+        }
+      }
+
+      // ⑵ -15b ÷ 5/3
+      function renderQ2(c, startX, startY, t, stage) {
+        const cardH = 58;
+
+        if (t < 0.6) {
+          // Stage 0: -15b (x: 60), ÷ (x: 160), 5/3 (x: 200)
+          drawCard(c, 55, startY + 8, 80, cardH, '-15b', '#ea580c');
+
+          c.fillStyle = '#64748b';
+          c.font = 'bold 24px Pretendard, sans-serif';
+          c.fillText('÷', 155, startY + 44);
+
+          // 분수 5/3 카드
+          drawFractionCard(c, 195, startY + 4, 56, cardH + 8, '5', '3', '#7c3aed');
+
+          c.font = '13px Pretendard, sans-serif';
+          c.fillStyle = '#475569';
+          c.fillText('• 원식: -15b를 분수 5/3으로 나누는 나눗셈 식입니다.', 40, startY + 95);
+          c.fillStyle = '#ea580c';
+          c.font = 'bold 13px Pretendard, sans-serif';
+          c.fillText('나눗셈은 나누는 수의 역수의 곱셈으로 바꾸는 원리를 관찰하세요.', 40, startY + 115);
+        } else if (t < 1.5) {
+          // Stage 1: -15b × 3/5 (분수 플립 변환)
+          drawCard(c, 55, startY + 8, 80, cardH, '-15b', '#ea580c');
+
+          c.fillStyle = '#059669';
+          c.font = 'bold 24px Pretendard, sans-serif';
+          c.fillText('×', 155, startY + 44);
+
+          // 역수 3/5 카드 (플립 효과 강조)
+          drawFractionCard(c, 195, startY + 4, 56, cardH + 8, '3', '5', '#059669');
+
+          // 회전 뱃지
+          c.fillStyle = '#eef2ff';
+          c.strokeStyle = '#6366f1';
+          c.lineWidth = 1.2;
+          roundRect(c, 265, startY + 14, 90, 36, 8, true, true);
+          c.fillStyle = '#4338ca';
+          c.font = 'bold 11px Pretendard, sans-serif';
+          c.textAlign = 'center';
+          c.textBaseline = 'middle';
+          c.fillText('🔄 역수 변환!', 310, startY + 32);
+          c.textAlign = 'left';
+          c.textBaseline = 'alphabetic';
+
+          c.font = '13px Pretendard, sans-serif';
+          c.fillStyle = '#475569';
+          c.fillText('• 1단계: 나눗셈 기호(÷)가 곱셈(×)으로 바뀌며 5/3이 역수 3/5로 180° 회전되었습니다!', 40, startY + 95);
+          c.fillStyle = '#059669';
+          c.font = 'bold 13px Pretendard, sans-serif';
+          c.fillText('이제 계수 -15와 분모 5를 약분할 차례입니다.', 40, startY + 115);
+        } else {
+          // Stage 2: 약분 연출 및 최종 -9b
+          // -15b 카드에 사선 취소선 + '-3' 뱃지
+          drawCard(c, 50, startY + 8, 80, cardH, '-15b', '#94a3b8');
+          // 사선 취소선
+          c.strokeStyle = '#dc2626';
+          c.lineWidth = 2.5;
+          c.beginPath();
+          c.moveTo(56, startY + 56);
+          c.lineTo(105, startY + 18);
+          c.stroke();
+          // 약분 후 수 뱃지
+          c.fillStyle = '#dc2626';
+          c.font = 'bold 14px Pretendard, sans-serif';
+          c.fillText('-3', 75, startY - 2);
+
+          c.fillStyle = '#64748b';
+          c.font = 'bold 20px Pretendard, sans-serif';
+          c.fillText('×', 140, startY + 44);
+
+          // 3/5 분수에서 분모 5 취소선
+          drawFractionCard(c, 165, startY + 4, 56, cardH + 8, '3', '5', '#94a3b8');
+          c.strokeStyle = '#dc2626';
+          c.lineWidth = 2.5;
+          c.beginPath();
+          c.moveTo(180, startY + 62);
+          c.lineTo(206, startY + 44);
+          c.stroke();
+          c.fillStyle = '#dc2626';
+          c.font = 'bold 13px Pretendard, sans-serif';
+          c.fillText('1', 208, startY + 58);
+
+          // 화살표
+          c.fillStyle = '#4f46e5';
+          c.font = 'bold 22px Pretendard, sans-serif';
+          c.fillText('➔', 238, startY + 44);
+
+          // 최종 완성 카드
+          drawCard(c, 275, startY + 4, 80, cardH + 8, '-9b', '#10b981');
+
+          c.font = '13px Pretendard, sans-serif';
+          c.fillStyle = '#059669';
+          c.font = 'bold 15px Pretendard, sans-serif';
+          c.fillText('✨ 계산 완성: -9b', 40, startY + 95);
+          c.fillStyle = '#334155';
+          c.font = '12.5px Pretendard, sans-serif';
+          c.fillText('-15와 분모 5를 약분하면 -3 ➔ (-3) × 3 = -9에 문자 b를 붙여 -9b 완성!', 40, startY + 115);
+        }
+      }
+
+      function drawCard(c, x, y, w, h, text, color) {
+        c.fillStyle = '#ffffff';
+        c.strokeStyle = color;
+        c.lineWidth = 2.2;
+        roundRect(c, x, y, w, h, 10, true, true);
+
+        c.fillStyle = color;
+        c.font = `bold ${Math.floor(h * 0.44)}px Pretendard, sans-serif`;
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.fillText(text, x + w / 2, y + h / 2);
+        c.textAlign = 'left';
+        c.textBaseline = 'alphabetic';
+      }
+
+      function drawFractionCard(c, x, y, w, h, num, den, color) {
+        c.fillStyle = '#ffffff';
+        c.strokeStyle = color;
+        c.lineWidth = 2.2;
+        roundRect(c, x, y, w, h, 10, true, true);
+
+        // 분수선
+        c.strokeStyle = color;
+        c.lineWidth = 2;
+        c.beginPath();
+        c.moveTo(x + 10, y + h / 2);
+        c.lineTo(x + w - 10, y + h / 2);
+        c.stroke();
+
+        c.fillStyle = color;
+        c.font = 'bold 16px Pretendard, sans-serif';
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.fillText(num, x + w / 2, y + h * 0.28);
+        c.fillText(den, x + w / 2, y + h * 0.72);
+        c.textAlign = 'left';
+        c.textBaseline = 'alphabetic';
+      }
+
+      function renderSummaryRules(c, x, y, w, h, activeQ) {
+        c.fillStyle = '#ffffff';
+        c.strokeStyle = '#cbd5e1';
+        c.lineWidth = 1;
+        roundRect(c, x, y, w, h, 10, true, true);
+
+        c.fillStyle = '#1e293b';
+        c.font = 'bold 13px Pretendard, sans-serif';
+        c.fillText('📖 일차식과 수의 곱셈·나눗셈 핵심 계산 원칙', x + 16, y + 22);
+
+        const rules = [
+          { no: '1', title: '일차식 × 수', desc: '수끼리 곱하여 문자 앞에 쓴다: (4×2)a = 8a', active: (activeQ === 0) },
+          { no: '2', title: '일차식 ÷ 분수', desc: '나눗셈은 역수의 곱셈으로 변환: ÷ c/d ➔ × d/c', active: (activeQ === 1) },
+          { no: '3', title: '부호 결정', desc: '음수(-)가 1개면 음수, 짝수 개면 양수', active: (activeQ === 1) },
+          { no: '4', title: '약분 철저', desc: '계수와 분모를 최대공약수로 나누어 간단히', active: (activeQ === 1) }
+        ];
+
+        const boxW = (w - 32 - 18) / 4;
+        rules.forEach((r, idx) => {
+          const bx = x + 16 + idx * (boxW + 6);
+          const by = y + 34;
+          const bh = h - 46;
+
+          c.fillStyle = r.active ? '#eef2ff' : '#f8fafc';
+          c.strokeStyle = r.active ? '#6366f1' : '#e2e8f0';
+          c.lineWidth = r.active ? 1.8 : 1;
+          roundRect(c, bx, by, boxW, bh, 8, true, true);
+
+          // 뱃지
+          c.fillStyle = r.active ? '#4f46e5' : '#64748b';
+          roundRect(c, bx + 6, by + 6, 20, 18, 4, true, false);
+          c.fillStyle = '#ffffff';
+          c.font = 'bold 11px Pretendard, sans-serif';
+          c.textAlign = 'center';
+          c.textBaseline = 'middle';
+          c.fillText(r.no, bx + 16, by + 15);
+
+          // 제목
+          c.fillStyle = r.active ? '#312e81' : '#334155';
+          c.font = 'bold 12px Pretendard, sans-serif';
+          c.textAlign = 'left';
+          c.fillText(r.title, bx + 32, by + 16);
+
+          // 설명
+          c.fillStyle = r.active ? '#4338ca' : '#64748b';
+          c.font = '11px Pretendard, sans-serif';
+          wrapText(c, r.desc, bx + 8, by + 42, boxW - 16, 15);
+        });
+
+        c.textAlign = 'left';
+        c.textBaseline = 'alphabetic';
+      }
+
+      function wrapText(c, text, x, y, maxW, lineH) {
+        const words = text.split(' ');
+        let line = '';
+        let curY = y;
+        for (let n = 0; n < words.length; n++) {
+          const testLine = line + words[n] + ' ';
+          const metrics = c.measureText(testLine);
+          if (metrics.width > maxW && n > 0) {
+            c.fillText(line, x, curY);
+            line = words[n] + ' ';
+            curY += lineH;
+          } else {
+            line = testLine;
+          }
+        }
+        c.fillText(line, x, curY);
+      }
+
+      function roundRect(c, x, y, w, h, r, fill, stroke) {
+        c.beginPath();
+        c.moveTo(x + r, y);
+        c.lineTo(x + w - r, y);
+        c.quadraticCurveTo(x + w, y, x + w, y + r);
+        c.lineTo(x + w, y + h - r);
+        c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        c.lineTo(x + r, y + h);
+        c.quadraticCurveTo(x, y + h, x, y + h - r);
+        c.lineTo(x, y + r);
+        c.quadraticCurveTo(x, y, x + r, y);
+        c.closePath();
+        if (fill) c.fill();
+        if (stroke) c.stroke();
+      }
+
+      function handleCanvasClick(e) {
+        const pos = getCanvasLogicalPos(canvas, e, baseW, baseH);
+
+        // 1. 탭 클릭
+        for (let i = 0; i < tabs.length; i++) {
+          const t = tabs[i];
+          if (pos.mx >= t.x && pos.mx <= t.x + t.w && pos.my >= t.y && pos.my <= t.y + t.h) {
+            pState.selectedQuestion = t.idx;
+            requestAnimationFrame(render);
+            return;
+          }
+        }
+
+        // 2. 단계 버튼 클릭
+        if (pos.mx >= stepBtn.x && pos.mx <= stepBtn.x + stepBtn.w &&
+            pos.my >= stepBtn.y && pos.my <= stepBtn.y + stepBtn.h) {
+          const qIdx = pState.selectedQuestion;
+          pState.stages[qIdx] = (pState.stages[qIdx] + 1) % 3;
+          requestAnimationFrame(render);
+          return;
+        }
+
+        // 3. 메인 카드 구역 클릭 시에도 단계 전환
+        if (pos.mx >= 30 && pos.mx <= 510 && pos.my >= 70 && pos.my <= 280) {
+          const qIdx = pState.selectedQuestion;
+          pState.stages[qIdx] = (pState.stages[qIdx] + 1) % 3;
+          requestAnimationFrame(render);
+          return;
+        }
+      }
+
+      function handleCanvasMouseMove(e) {
+        const pos = getCanvasLogicalPos(canvas, e, baseW, baseH);
+        let cursor = 'default';
+        pState.hoverTab = null;
+        pState.hoverBtn = false;
+
+        // 탭 호버
+        for (let i = 0; i < tabs.length; i++) {
+          const t = tabs[i];
+          if (pos.mx >= t.x && pos.mx <= t.x + t.w && pos.my >= t.y && pos.my <= t.y + t.h) {
+            cursor = 'pointer';
+            pState.hoverTab = t.idx;
+            break;
+          }
+        }
+
+        // 버튼 호버
+        if (pos.mx >= stepBtn.x && pos.mx <= stepBtn.x + stepBtn.w &&
+            pos.my >= stepBtn.y && pos.my <= stepBtn.y + stepBtn.h) {
+          cursor = 'pointer';
+          pState.hoverBtn = true;
+        } else if (pos.mx >= 30 && pos.mx <= 510 && pos.my >= 70 && pos.my <= 280) {
+          cursor = 'pointer';
+        }
+
+        canvas.style.cursor = cursor;
+        requestAnimationFrame(render);
+      }
+
+      canvas.addEventListener('click', handleCanvasClick);
+      canvas.addEventListener('mousemove', handleCanvasMouseMove);
+      canvas.addEventListener('touchstart', (e) => {
+        handleCanvasClick(e);
+      }, { passive: true });
+
+      render();
+    }
+
     // =========================================================================
     // 🎯 채점 바인딩 & 공통 평가 엔진
     // =========================================================================
     window.gradeStep_0_1 = function() { executeStepGrade('0-1'); };
     window.gradeStep_0_2 = function() { executeStepGrade('0-2'); };
+    window.gradeStep_0_3 = function() { executeStepGrade('0-3'); };
 
     async function executeStepGrade(code, forcePass = false) {
       const item = SUBSTEPS_DATA[code];
