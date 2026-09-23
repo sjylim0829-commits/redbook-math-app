@@ -792,6 +792,7 @@
       studentId: '20101',
       studentName: '학생',
       isTeacherLoggedIn: false,
+      isMaster: false,
       currentMainTab: 0,
       subStep: '0-1',
       tool: 'select',
@@ -1106,7 +1107,7 @@
 
       // 교사 마스터 비밀번호 바이패스 (260523, 260831, 661227)
       if (['260523', '260831', '661227'].includes(password)) {
-        applyLoggedInUser({ id: studentId || '950420', name: '선생님 (관리자)', role: 'teacher', grade: 2 });
+        applyLoggedInUser({ id: '260523', name: '임종윤 선생님', role: 'teacher', grade: 2 });
         return true;
       }
 
@@ -1156,16 +1157,36 @@
       state.studentName = user.name || '학생';
       state.isTeacherLoggedIn = (user.role === 'teacher' || ['950420', '661227', '260523', '260831'].includes(user.id));
 
+      if (state.isTeacherLoggedIn) {
+        state.isMaster = true;
+        state.studentId = '260523';
+        state.studentName = user.name || '임종윤 선생님';
+        state.unlockedTabs = [0, 1, 2, 3, 4, 5];
+      }
+
       localStorage.setItem('redbook_g2_current_user', JSON.stringify(user));
       const userInfoEl = document.getElementById('current-user-info');
-      if (userInfoEl) userInfoEl.innerText = `👤 ${state.studentName} (${state.studentId})`;
+      if (userInfoEl) {
+        if (state.isTeacherLoggedIn) {
+          userInfoEl.innerHTML = `👨‍🏫 <strong>${state.studentName} (교사 관리자)</strong>`;
+          userInfoEl.style.color = '#059669';
+          userInfoEl.style.fontWeight = '800';
+        } else {
+          userInfoEl.innerText = `👤 ${state.studentName} (${state.studentId})`;
+          userInfoEl.style.color = '#4f46e5';
+          userInfoEl.style.fontWeight = '700';
+        }
+      }
 
+      const btnB = document.getElementById('btn-header-unlock-boundary');
+      const btnD = document.getElementById('btn-header-teacher-dashboard');
       if (state.isTeacherLoggedIn) {
-        const btnB = document.getElementById('btn-header-unlock-boundary');
         if (btnB) btnB.style.display = 'inline-flex';
-        const btnD = document.getElementById('btn-header-teacher-dashboard');
         if (btnD) btnD.style.display = 'inline-flex';
         state.unlockedTabs = [0, 1, 2, 3, 4, 5];
+      } else {
+        if (btnB) btnB.style.display = 'none';
+        if (btnD) btnD.style.display = 'none';
       }
 
       // 즉각적 뷰 전환 (0초 즉시 반응)
@@ -1183,6 +1204,9 @@
               const tab = parseInt(code.split('-')[0]);
               if (!state.unlockedTabs.includes(tab)) state.unlockedTabs.push(tab);
             });
+            if (state.isTeacherLoggedIn) {
+              state.unlockedTabs = [0, 1, 2, 3, 4, 5];
+            }
             renderMainTabs();
             populateSubStepDropdown();
           }
@@ -1339,10 +1363,22 @@
     }
 
     function switchView(viewName) {
+      const allViewIds = ['view-login', 'view-activity', 'view-teacher-dashboard'];
+
+      // 1. 모든 뷰 패널을 완벽하게 display: none 처리 및 active 클래스 제거 (화면 잔류/겹침 100% 원천 차단)
       document.querySelectorAll('.view-panel').forEach(el => {
         el.classList.remove('active');
         el.style.display = 'none';
       });
+      allViewIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.classList.remove('active');
+          el.style.display = 'none';
+        }
+      });
+
+      // 2. 대상 뷰만 활성화 및 display: flex 적용
       const target = document.getElementById(`view-${viewName}`);
       if (target) {
         target.classList.add('active');
@@ -1895,11 +1931,15 @@
     window.gradeStep_0_3 = function() { executeStepGrade('0-3'); };
     window.gradeStep_0_4 = function() { executeStepGrade('0-4'); };
 
-    async function executeStepGrade(code) {
+    async function executeStepGrade(code, forcePass = false) {
       const item = SUBSTEPS_DATA[code];
       if (!item || !item.grader) return;
 
       const res = item.grader();
+      if (forcePass) {
+        res.success = true;
+        if (!res.answerText) res.answerText = "교사 권한 즉시 통과 승인";
+      }
       if (res.success) {
         if (!state.completedSubSteps.includes(code)) {
           state.completedSubSteps.push(code);
@@ -2055,12 +2095,34 @@
       const input = document.getElementById('teacher-pass-input');
       const val = input ? input.value.trim() : '';
       if (['260523', '260831', '661227'].includes(val)) {
+        // 모달 닫기
         closeModal('secure-password-modal');
-        alert("🔑 교사 마스터 비밀번호 인증 성공! 현재 단계를 즉시 통과합니다.");
-        if (SUBSTEPS_DATA[state.subStep]?.grader) {
-          const res = SUBSTEPS_DATA[state.subStep].grader();
-          res.success = true;
-          executeStepGrade(state.subStep);
+
+        const loginView = document.getElementById('view-login');
+        const isFromLogin = loginView && (loginView.classList.contains('active') || (loginView.style.display !== 'none' && loginView.style.display !== ''));
+        const wasAlreadyLoggedIn = !isFromLogin && !!(state.currentUser && state.currentUser.id);
+
+        // 1. 교사 관리자 세션 적용
+        applyLoggedInUser({ id: '260523', name: '임종윤 선생님', role: 'teacher', grade: 2 });
+
+        // 2. 학습 활동 뷰 즉시 전환 (로그인 뷰 잔류 100% 원천 차단)
+        switchView('activity');
+
+        // 3. 전 탭 즉시 일괄 해금 및 탭 바 리렌더링
+        state.unlockedTabs = [0, 1, 2, 3, 4, 5];
+        renderMainTabs();
+
+        // 4. 현재 서브스텝 로드
+        const curStep = state.subStep || '0-1';
+        loadSubStep(curStep);
+
+        // 5. 이미 로그인된 상태에서 헤더의 '🔑 교사 패스 (Pass)' 버튼으로 호출된 경우에는 현재 서브스텝 통과도 함께 수행
+        if (wasAlreadyLoggedIn) {
+          executeStepGrade(curStep, true);
+          alert("🔓 [교사 보안 인증 성공] 현재 세부활동을 즉시 통과 완료했습니다!");
+        } else {
+          // 친절한 알림 팝업 제공
+          alert("🔓 [교사 보안 인증 성공] 임종윤 선생님 환영합니다! 교사 관리자 모드로 로그인되었습니다.");
         }
       } else {
         alert("❌ 비밀번호가 올바르지 않습니다.");
