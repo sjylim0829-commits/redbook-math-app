@@ -844,6 +844,14 @@
           targetVal: 3,
           hoverVal: null,
           hoverModeBtn: null
+        },
+        // 0-2 [준비해요 2: 식의 값 구하기] 인터랙터 상태
+        evalExpr: {
+          xVal: 2,         // 기본 x값 = 2 (교과서 문제)
+          selectedQ: 0,    // 0: 동시 비교, 1: ⑴ 3x-4, 2: ⑵ 5-2x
+          animT: 1.0,
+          hoverBtn: null,
+          isDragging: false
         }
       }
     };
@@ -1029,6 +1037,75 @@ function setupResponsiveCanvas(canvas, customBaseW, customBaseH) {
           return {
             success: false,
             hint: hints.join("<br>") || "⚠️ 부등호의 방향과 등호 포함 여부를 다시 확인해 보세요!"
+          };
+        }
+      },
+
+      '0-2': {
+        tab: 0,
+        tbPage: 60,
+        pdfPage: 62,
+        title: '0-2. [준비해요 2] 식의 값 구하기',
+        missionText: '문자에 수를 대입하여 식의 값을 구하는 원리를 복습하고, x = 2일 때 두 일차식의 값을 계산해 봅시다.',
+        drawer: 'drawIneqStep0_2Canvas',
+        formHtml: `
+          <div class="card">
+            <h4 style="font-size:0.92rem; font-weight:800; color:#1e293b; margin-bottom:10px;">✏️ 교과서 60쪽 [준비해요 2번: 식의 값 구하기]</h4>
+            <p style="font-size:0.86rem; color:#475569; margin-bottom:12px;">$x = 2$일 때, 다음 식의 값을 구하시오.</p>
+            
+            <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:16px;">
+              <div style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
+                <p style="font-weight:700; font-size:0.9rem; margin-bottom:6px; color:#1e293b;">
+                  ⑴ $3x - 4$ =
+                </p>
+                <input type="text" id="ans-0-2-1" class="proof-input-text" style="width:100%; max-width:none;" placeholder="식의 값 입력 (예: 0)">
+                <span style="font-size:0.75rem; color:#64748b; margin-top:4px; display:block;">💡 x 자리에 2를 대입하여 3 × 2 - 4를 계산합니다.</span>
+              </div>
+
+              <div style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
+                <p style="font-weight:700; font-size:0.9rem; margin-bottom:6px; color:#1e293b;">
+                  ⑵ $5 - 2x$ =
+                </p>
+                <input type="text" id="ans-0-2-2" class="proof-input-text" style="width:100%; max-width:none;" placeholder="식의 값 입력 (예: 0)">
+                <span style="font-size:0.75rem; color:#64748b; margin-top:4px; display:block;">💡 x 자리에 2를 대입하여 5 - 2 × 2를 계산합니다.</span>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" style="width:100%; padding:11px; font-size:0.95rem; font-weight:800;" onclick="gradeStep_0_2()">정답 확인 및 채점</button>
+          </div>
+        `,
+        grader: function() {
+          const raw1 = (document.getElementById('ans-0-2-1')?.value || '').trim();
+          const raw2 = (document.getElementById('ans-0-2-2')?.value || '').trim();
+
+          const a1 = raw1.replace(/\s+/g, '').replace(/^\+/, '');
+          const a2 = raw2.replace(/\s+/g, '').replace(/^\+/, '');
+
+          // ⑴ 3x - 4 (x=2) -> 3(2) - 4 = 6 - 4 = 2
+          const ok1 = (a1 === '2');
+
+          // ⑵ 5 - 2x (x=2) -> 5 - 2(2) = 5 - 4 = 1
+          const ok2 = (a2 === '1');
+
+          if (ok1 && ok2) {
+            return {
+              success: true,
+              score: 100,
+              answerText: "⑴ 2, ⑵ 1",
+              explanation: "교과서 60쪽 [준비해요 2: 식의 값 구하기] 해설:<br>" +
+                           "• ⑴ $x = 2$일 때, $3x - 4 = 3 \\times 2 - 4 = 6 - 4 = 2$<br>" +
+                           "• ⑵ $x = 2$일 때, $5 - 2x = 5 - 2 \\times 2 = 5 - 4 = 1$<br>" +
+                           "문자에 수를 바꾸어 넣는 것을 '대입'이라 하고, 대입하여 계산한 결과를 '식의 값'이라고 합니다."
+            };
+          }
+
+          let hints = [];
+          if (!ok1) hints.push("⑴ $3x - 4$의 $x$에 $2$를 대입하면 $3 \\times 2 - 4 = 6 - 4$를 계산해 보세요.");
+          if (!ok2) hints.push("⑵ $5 - 2x$의 $x$에 $2$를 대입하면 $5 - 2 \\times 2 = 5 - 4$를 계산해 보세요.");
+
+          return {
+            success: false,
+            hint: hints.join("<br>") || "⚠️ 대입과 사칙연산 순서를 다시 한번 점검해 보세요!"
           };
         }
       }
@@ -1978,10 +2055,433 @@ function drawIneqStep0_1Canvas() {
 window.drawCanvas0_1 = drawIneqStep0_1Canvas;
 
 
+// =========================================================================
+// 🎨 중2 수학 제3단원 [부등식과 연립방정식] 서브스텝 0-2 인터랙티브 캔버스
+// 교과서 60쪽 [준비해요 2: 식의 값 구하기] 동적 대입 계산기 & 시각화 게이지
+// x값(-2 ~ +5) 조작에 따른 두 일차식 3x - 4 와 5 - 2x의 식의 값 실시간 비교
+// =========================================================================
+function drawIneqStep0_2Canvas() {
+  const canvas = document.getElementById('step-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  setupResponsiveCanvas(canvas, 760, 460);
+
+  if (!state.tab0) state.tab0 = {};
+  if (!state.tab0.evalExpr) {
+    state.tab0.evalExpr = {
+      xVal: 2,         // 기본 x값 = 2 (교과서 문제)
+      selectedQ: 0,    // 0: 동시 비교, 1: ⑴ 3x-4, 2: ⑵ 5-2x
+      animT: 1.0,
+      hoverBtn: null,
+      isDragging: false
+    };
+  }
+  const eState = state.tab0.evalExpr;
+
+  const xPresetButtons = [
+    { val: -2, label: 'x = -2', x: 45, y: 55, w: 72, h: 32 },
+    { val: -1, label: 'x = -1', x: 125, y: 55, w: 72, h: 32 },
+    { val: 0,  label: 'x = 0',  x: 205, y: 55, w: 72, h: 32 },
+    { val: 1,  label: 'x = 1',  x: 285, y: 55, w: 72, h: 32 },
+    { val: 2,  label: '★ x = 2', x: 365, y: 53, w: 90, h: 36, isSpecial: true }, // 교과서 타겟
+    { val: 3,  label: 'x = 3',  x: 463, y: 55, w: 72, h: 32 },
+    { val: 4,  label: 'x = 4',  x: 543, y: 55, w: 72, h: 32 },
+    { val: 5,  label: 'x = 5',  x: 623, y: 55, w: 72, h: 32 }
+  ];
+
+  function roundRect(c, x, y, w, h, r, fill, stroke) {
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.lineTo(x + w - r, y);
+    c.quadraticCurveTo(x + w, y, x + w, y + r);
+    c.lineTo(x + w, y + h - r);
+    c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    c.lineTo(x + r, y + h);
+    c.quadraticCurveTo(x, y + h, x, y + h - r);
+    c.lineTo(x, y + r);
+    c.quadraticCurveTo(x, y, x + r, y);
+    c.closePath();
+    if (fill) c.fill();
+    if (stroke) c.stroke();
+  }
+
+  // 1회성 이벤트 바인딩
+  if (!canvas._step0_2_bound) {
+    canvas._step0_2_bound = true;
+
+    function getCanvasPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = 760 / rect.width;
+      const scaleY = 460 / rect.height;
+      return {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
+      };
+    }
+
+    canvas.addEventListener('click', (e) => {
+      const pos = getCanvasPos(e);
+      const st = state.tab0?.evalExpr;
+      if (!st) return;
+
+      // 프리셋 x버튼 클릭
+      for (let btn of xPresetButtons) {
+        if (pos.x >= btn.x && pos.x <= btn.x + btn.w && pos.y >= btn.y && pos.y <= btn.y + btn.h) {
+          if (st.xVal !== btn.val) {
+            st.xVal = btn.val;
+            st.animT = 0;
+          }
+          return;
+        }
+      }
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      const pos = getCanvasPos(e);
+      const st = state.tab0?.evalExpr;
+      if (!st) return;
+
+      let hovered = null;
+      for (let btn of xPresetButtons) {
+        if (pos.x >= btn.x && pos.x <= btn.x + btn.w && pos.y >= btn.y && pos.y <= btn.y + btn.h) {
+          hovered = btn.val;
+          break;
+        }
+      }
+      st.hoverBtn = hovered;
+      canvas.style.cursor = (hovered !== null) ? 'pointer' : 'default';
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      const st = state.tab0?.evalExpr;
+      if (st) st.hoverBtn = null;
+      canvas.style.cursor = 'default';
+    });
+  }
+
+  // 60fps 렌더링 루프
+  if (canvas._step0_2_animId) {
+    cancelAnimationFrame(canvas._step0_2_animId);
+  }
+
+  function render() {
+    ctx.clearRect(0, 0, 760, 460);
+
+    // 1. 배경 (부드러운 에메랄드/슬레이트 테마)
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, 460);
+    bgGrad.addColorStop(0, '#f0fdf4');
+    bgGrad.addColorStop(1, '#ffffff');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, 760, 460);
+
+    // 2. 타이틀 배너
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    roundRect(ctx, 25, 12, 712, 34, 8, true, false);
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1;
+    roundRect(ctx, 25, 12, 712, 34, 8, false, true);
+
+    ctx.font = 'bold 13.5px Pretendard, sans-serif';
+    ctx.fillStyle = '#0f172a';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⚡ [식의 값 동적 대입 시뮬레이터]', 40, 29);
+
+    ctx.font = '600 12.5px Pretendard, sans-serif';
+    ctx.fillStyle = '#059669';
+    ctx.fillText('아래에서 x 값을 선택하여 ⑴ 3x - 4 와 ⑵ 5 - 2x 의 대입 과정과 식의 값을 관찰하세요!', 255, 29);
+    ctx.restore();
+
+    // 3. x값 프리셋 선택 버튼들
+    for (let btn of xPresetButtons) {
+      const isSel = (eState.xVal === btn.val);
+      const isHov = (eState.hoverBtn === btn.val);
+
+      ctx.save();
+      if (isSel) {
+        if (btn.isSpecial) {
+          ctx.fillStyle = '#059669'; // 교과서 타겟 에메랄드
+          ctx.shadowColor = 'rgba(5, 150, 105, 0.4)';
+        } else {
+          ctx.fillStyle = '#0284c7'; // 청록 블루
+          ctx.shadowColor = 'rgba(2, 132, 199, 0.3)';
+        }
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetY = 2;
+        roundRect(ctx, btn.x, btn.y, btn.w, btn.h, 7, true, false);
+      } else {
+        ctx.fillStyle = isHov ? '#ecfdf5' : '#ffffff';
+        if (btn.isSpecial) {
+          ctx.strokeStyle = '#059669';
+          ctx.lineWidth = 2;
+        } else {
+          ctx.strokeStyle = isHov ? '#10b981' : '#cbd5e1';
+          ctx.lineWidth = isHov ? 1.5 : 1;
+        }
+        roundRect(ctx, btn.x, btn.y, btn.w, btn.h, 7, true, true);
+      }
+      ctx.restore();
+
+      ctx.font = isSel ? 'bold 12.5px Pretendard, sans-serif' : (btn.isSpecial ? 'bold 12.5px Pretendard, sans-serif' : '600 12px Pretendard, sans-serif');
+      ctx.fillStyle = isSel ? '#ffffff' : (btn.isSpecial ? '#059669' : (isHov ? '#0f766e' : '#334155'));
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(btn.label, btn.x + btn.w / 2, btn.y + btn.h / 2);
+    }
+
+    // 4. 애니메이션 진행
+    if (eState.animT < 1.0) {
+      eState.animT += 0.08;
+      if (eState.animT > 1.0) eState.animT = 1.0;
+    }
+    const t = eState.animT;
+    const easeT = 1 - Math.pow(1 - t, 3);
+
+    const x = eState.xVal;
+    // 식 ⑴: 3x - 4
+    const v1_mult = 3 * x;
+    const v1_final = v1_mult - 4;
+
+    // 식 ⑵: 5 - 2x
+    const v2_mult = 2 * x;
+    const v2_final = 5 - v2_mult;
+
+    // 5. 나란히 놓인 2개의 대입 계산 카드
+    const cardW = 345;
+    const cardH = 205;
+    const cardY = 100;
+
+    // --- 카드 1: ⑴ 3x - 4 (좌측 x: 25) ---
+    const c1X = 25;
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    roundRect(ctx, c1X, cardY, cardW, cardH, 10, true, false);
+    ctx.strokeStyle = '#0284c7'; // 블루 테두리
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, c1X, cardY, cardW, cardH, 10, false, true);
+
+    // 카드 상단 헤더
+    ctx.fillStyle = '#0284c7';
+    roundRect(ctx, c1X, cardY, cardW, 36, 10, true, false);
+    // 상단 둥근 모서리 보정
+    ctx.fillRect(c1X, cardY + 24, cardW, 12);
+
+    ctx.font = 'bold 13.5px Pretendard, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⑴ 식: 3x - 4', c1X + 16, cardY + 18);
+    ctx.textAlign = 'right';
+    ctx.font = '600 12px Pretendard, sans-serif';
+    ctx.fillText(`현재 대입: x = ${x}`, c1X + cardW - 16, cardY + 18);
+
+    // 대입 연산 과정 단계별 박스
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = '#0f172a';
+    ctx.font = 'bold 13px Pretendard, sans-serif';
+    ctx.fillText('1단계: x 자리에 수 대입', c1X + 16, cardY + 48);
+
+    ctx.font = '600 14px "KaTeX_Math", Pretendard, sans-serif';
+    ctx.fillStyle = '#0369a1';
+    ctx.fillText(`= 3 × (${x}) - 4`, c1X + 35, cardY + 70);
+
+    ctx.font = 'bold 13px Pretendard, sans-serif';
+    ctx.fillStyle = '#0f172a';
+    ctx.fillText('2단계: 곱셈 후 뺄셈 계산', c1X + 16, cardY + 98);
+
+    ctx.font = '600 14px "KaTeX_Math", Pretendard, sans-serif';
+    ctx.fillStyle = '#0369a1';
+    ctx.fillText(`= ${v1_mult} - 4`, c1X + 35, cardY + 120);
+
+    // 최종 결과 하이라이트 박스
+    ctx.fillStyle = '#f0f9ff';
+    roundRect(ctx, c1X + 16, cardY + 148, cardW - 32, 44, 8, true, false);
+    ctx.strokeStyle = '#bae6fd';
+    ctx.lineWidth = 1;
+    roundRect(ctx, c1X + 16, cardY + 148, cardW - 32, 44, 8, false, true);
+
+    ctx.font = 'bold 14px Pretendard, sans-serif';
+    ctx.fillStyle = '#0369a1';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`🎯 식의 값 = `, c1X + 30, cardY + 170);
+
+    ctx.font = 'bold 20px Pretendard, sans-serif';
+    ctx.fillStyle = (x === 2) ? '#0284c7' : '#0369a1';
+    ctx.fillText(`${v1_final}`, c1X + 125, cardY + 170);
+
+    if (x === 2) {
+      ctx.font = 'bold 11.5px Pretendard, sans-serif';
+      ctx.fillStyle = '#059669';
+      ctx.textAlign = 'right';
+      ctx.fillText('✓ 교과서 문제 1 정답', c1X + cardW - 30, cardY + 170);
+    }
+    ctx.restore();
+
+    // --- 카드 2: ⑵ 5 - 2x (우측 x: 390) ---
+    const c2X = 390;
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    roundRect(ctx, c2X, cardY, cardW, cardH, 10, true, false);
+    ctx.strokeStyle = '#d97706'; // 앰버 테두리
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, c2X, cardY, cardW, cardH, 10, false, true);
+
+    // 카드 상단 헤더
+    ctx.fillStyle = '#d97706';
+    roundRect(ctx, c2X, cardY, cardW, 36, 10, true, false);
+    ctx.fillRect(c2X, cardY + 24, cardW, 12);
+
+    ctx.font = 'bold 13.5px Pretendard, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⑵ 식: 5 - 2x', c2X + 16, cardY + 18);
+    ctx.textAlign = 'right';
+    ctx.font = '600 12px Pretendard, sans-serif';
+    ctx.fillText(`현재 대입: x = ${x}`, c2X + cardW - 16, cardY + 18);
+
+    // 대입 연산 과정 단계별 박스
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = '#0f172a';
+    ctx.font = 'bold 13px Pretendard, sans-serif';
+    ctx.fillText('1단계: x 자리에 수 대입', c2X + 16, cardY + 48);
+
+    ctx.font = '600 14px "KaTeX_Math", Pretendard, sans-serif';
+    ctx.fillStyle = '#b45309';
+    ctx.fillText(`= 5 - 2 × (${x})`, c2X + 35, cardY + 70);
+
+    ctx.font = 'bold 13px Pretendard, sans-serif';
+    ctx.fillStyle = '#0f172a';
+    ctx.fillText('2단계: 곱셈 후 뺄셈 계산', c2X + 16, cardY + 98);
+
+    ctx.font = '600 14px "KaTeX_Math", Pretendard, sans-serif';
+    ctx.fillStyle = '#b45309';
+    ctx.fillText(`= 5 - (${v2_mult})`, c2X + 35, cardY + 120);
+
+    // 최종 결과 하이라이트 박스
+    ctx.fillStyle = '#fffbeb';
+    roundRect(ctx, c2X + 16, cardY + 148, cardW - 32, 44, 8, true, false);
+    ctx.strokeStyle = '#fde68a';
+    ctx.lineWidth = 1;
+    roundRect(ctx, c2X + 16, cardY + 148, cardW - 32, 44, 8, false, true);
+
+    ctx.font = 'bold 14px Pretendard, sans-serif';
+    ctx.fillStyle = '#b45309';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`🎯 식의 값 = `, c2X + 30, cardY + 170);
+
+    ctx.font = 'bold 20px Pretendard, sans-serif';
+    ctx.fillStyle = (x === 2) ? '#d97706' : '#b45309';
+    ctx.fillText(`${v2_final}`, c2X + 125, cardY + 170);
+
+    if (x === 2) {
+      ctx.font = 'bold 11.5px Pretendard, sans-serif';
+      ctx.fillStyle = '#059669';
+      ctx.textAlign = 'right';
+      ctx.fillText('✓ 교과서 문제 2 정답', c2X + cardW - 30, cardY + 170);
+    }
+    ctx.restore();
+
+    // 6. 하단 크기 비교 게이지 바 및 수학적 정리 (y: 318, h: 130)
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    roundRect(ctx, 25, 318, 712, 130, 10, true, false);
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 1;
+    roundRect(ctx, 25, 318, 712, 130, 10, false, true);
+
+    // 비교 분석 헤더
+    ctx.font = 'bold 13px Pretendard, sans-serif';
+    ctx.fillStyle = '#0f172a';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('📊 [두 식의 값 크기 비교 및 게이지 바]', 40, 332);
+
+    let compText = '';
+    if (v1_final > v2_final) {
+      compText = `x = ${x} 일 때: 3x - 4 (${v1_final}) > 5 - 2x (${v2_final}) ➔ ⑴ 식의 값이 더 큽니다!`;
+    } else if (v1_final < v2_final) {
+      compText = `x = ${x} 일 때: 3x - 4 (${v1_final}) < 5 - 2x (${v2_final}) ➔ ⑵ 식의 값이 더 큽니다!`;
+    } else {
+      compText = `x = ${x} 일 때: 3x - 4 (${v1_final}) = 5 - 2x (${v2_final}) ➔ 두 식의 값이 같습니다! (일차방정식의 해)`;
+    }
+
+    ctx.font = 'bold 12.5px Pretendard, sans-serif';
+    ctx.fillStyle = (x === 2) ? '#059669' : '#475569';
+    ctx.fillText(compText, 305, 332);
+
+    // 시각적 게이지 바 (값 범위 -10 ~ +15 정규화)
+    const barStartY = 362;
+    const barStartX = 80;
+    const barWidth = 600;
+    const barZeroX = barStartX + (10 / 25) * barWidth; // 0 위치: 320px
+
+    // 0 기준선
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(barZeroX, barStartY - 10);
+    ctx.lineTo(barZeroX, barStartY + 45);
+    ctx.stroke();
+
+    ctx.font = '600 11px Pretendard, sans-serif';
+    ctx.fillStyle = '#64748b';
+    ctx.textAlign = 'center';
+    ctx.fillText('0', barZeroX, barStartY - 15);
+
+    // ⑴ 바 (파랑)
+    const pxPerUnit = barWidth / 25;
+    const b1W = Math.max(2, Math.abs(v1_final) * pxPerUnit) * easeT;
+    const b1X = (v1_final >= 0) ? barZeroX : barZeroX - b1W;
+    ctx.fillStyle = '#0284c7';
+    roundRect(ctx, b1X, barStartY, b1W, 14, 3, true, false);
+
+    ctx.font = 'bold 11px Pretendard, sans-serif';
+    ctx.fillStyle = '#0284c7';
+    ctx.textAlign = 'right';
+    ctx.fillText('⑴ 3x - 4: ', barStartX - 8, barStartY + 7);
+    ctx.textAlign = (v1_final >= 0) ? 'left' : 'right';
+    ctx.fillText(` ${v1_final}`, (v1_final >= 0) ? b1X + b1W + 5 : b1X - 5, barStartY + 7);
+
+    // ⑵ 바 (주황)
+    const b2W = Math.max(2, Math.abs(v2_final) * pxPerUnit) * easeT;
+    const b2X = (v2_final >= 0) ? barZeroX : barZeroX - b2W;
+    ctx.fillStyle = '#d97706';
+    roundRect(ctx, b2X, barStartY + 20, b2W, 14, 3, true, false);
+
+    ctx.font = 'bold 11px Pretendard, sans-serif';
+    ctx.fillStyle = '#d97706';
+    ctx.textAlign = 'right';
+    ctx.fillText('⑵ 5 - 2x: ', barStartX - 8, barStartY + 27);
+    ctx.textAlign = (v2_final >= 0) ? 'left' : 'right';
+    ctx.fillText(` ${v2_final}`, (v2_final >= 0) ? b2X + b2W + 5 : b2X - 5, barStartY + 27);
+
+    // 하단 핵심 팁
+    ctx.font = '500 11.5px Pretendard, sans-serif';
+    ctx.fillStyle = '#64748b';
+    ctx.textAlign = 'center';
+    ctx.fillText('💡 문자에 수를 대입할 때는 생략된 곱셈 기호(×)를 되살려 곱셈을 먼저 계산한 후 덧셈/뺄셈을 계산합니다.', 380, 430);
+    ctx.restore();
+
+    canvas._step0_2_animId = requestAnimationFrame(render);
+  }
+
+  render();
+}
+
+window.drawCanvas0_2 = drawIneqStep0_2Canvas;
+
+
     // =========================================================================
     // 🎯 채점 바인딩 & 공통 평가 엔진
     // =========================================================================
     window.gradeStep_0_1 = function() { executeStepGrade('0-1'); };
+    window.gradeStep_0_2 = function() { executeStepGrade('0-2'); };
 
     async function executeStepGrade(code, forcePass = false) {
       const item = SUBSTEPS_DATA[code];
