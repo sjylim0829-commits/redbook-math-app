@@ -1157,15 +1157,23 @@
       state.isTeacherLoggedIn = (user.role === 'teacher' || ['950420', '661227', '260523', '260831'].includes(user.id));
 
       localStorage.setItem('redbook_g2_current_user', JSON.stringify(user));
-      document.getElementById('current-user-info').innerText = `👤 ${state.studentName} (${state.studentId})`;
+      const userInfoEl = document.getElementById('current-user-info');
+      if (userInfoEl) userInfoEl.innerText = `👤 ${state.studentName} (${state.studentId})`;
 
       if (state.isTeacherLoggedIn) {
-        document.getElementById('btn-header-unlock-boundary').style.display = 'inline-flex';
-        document.getElementById('btn-header-teacher-dashboard').style.display = 'inline-flex';
+        const btnB = document.getElementById('btn-header-unlock-boundary');
+        if (btnB) btnB.style.display = 'inline-flex';
+        const btnD = document.getElementById('btn-header-teacher-dashboard');
+        if (btnD) btnD.style.display = 'inline-flex';
         state.unlockedTabs = [0, 1, 2, 3, 4, 5];
       }
 
-      // DB 진도 로드
+      // 즉각적 뷰 전환 (0초 즉시 반응)
+      renderMainTabs();
+      switchView('activity');
+      loadSubStep(state.subStep || '0-1');
+
+      // 백그라운드 DB 진도 로드
       if (typeof LMSIntegration !== 'undefined' && LMSIntegration.loadStudentProgress) {
         try {
           const prog = await LMSIntegration.loadStudentProgress(user.id);
@@ -1175,6 +1183,8 @@
               const tab = parseInt(code.split('-')[0]);
               if (!state.unlockedTabs.includes(tab)) state.unlockedTabs.push(tab);
             });
+            renderMainTabs();
+            populateSubStepDropdown();
           }
         } catch (e) {
           console.warn("DB progress load note:", e);
@@ -1192,10 +1202,6 @@
           };
         }, 15000);
       }
-
-      renderMainTabs();
-      switchView('activity');
-      loadSubStep(state.subStep || '0-1');
     }
 
     function handleLogout() {
