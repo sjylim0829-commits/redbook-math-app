@@ -886,6 +886,13 @@
           hoverTab: null,
           hoverBtn: false,
           hoverTimeBtn: null
+        },
+        // 1-3 스스로 해결하기 지수법칙 복합 연산 인터랙터 상태
+        expSolve: {
+          selectedTab: 0, // 0: ⑴, 1: ⑵, 2: ⑶, 3: ⑷
+          stages: [0, 0, 0, 0], // 각 탭별 단계 (0: 원식, 1: 괄호 풀기/밑 묶기, 2: 지수 덧셈 완성)
+          hoverTab: null,
+          hoverBtn: false
         }
       }
     };
@@ -1501,6 +1508,111 @@
           return {
             success: false,
             hint: hints.join("<br>") || "⚠️ 다시 한번 지수의 곱셈과 덧셈 순서를 점검해 보세요!"
+          };
+        }
+      },
+
+      '1-3': {
+        tab: 1,
+        tbPage: 35,
+        pdfPage: 37,
+        title: '1-3. [스스로 해결하기] 지수법칙 복합 연산',
+        missionText: '지수법칙 ⑴과 ⑵를 함께 활용하여 거듭제곱의 거듭제곱과 밑이 같은 곱셈이 혼합된 식을 차근차근 간단히 해봅시다.',
+        drawer: 'drawExpSolveStep1_3Canvas',
+        formHtml: `
+          <div class="card">
+            <h4 style="font-size:0.92rem; font-weight:800; color:#1e293b; margin-bottom:10px;">✏️ 교과서 35쪽 [스스로 해결하기 1번]</h4>
+            <p style="font-size:0.86rem; color:#475569; margin-bottom:12px;">지수법칙을 이용하여 다음 식을 간단히 하시오.</p>
+            
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+              <div style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
+                <p style="font-weight:700; font-size:0.9rem; margin-bottom:6px; color:#1e293b;">
+                  ⑴ $a^5 \\times a \\times a^3$ =
+                </p>
+                <input type="text" id="ans-1-3-1" class="proof-input-text" style="width:100%; max-width:none;" placeholder="예: a^n 형식으로 입력">
+                <span style="font-size:0.75rem; color:#64748b; margin-top:4px; display:block;">💡 a는 a^1과 같습니다 (지수 1 주의)</span>
+              </div>
+
+              <div style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
+                <p style="font-weight:700; font-size:0.9rem; margin-bottom:6px; color:#1e293b;">
+                  ⑵ $(a^3)^2 \\times a^4$ =
+                </p>
+                <input type="text" id="ans-1-3-2" class="proof-input-text" style="width:100%; max-width:none;" placeholder="예: a^n 형식으로 입력">
+                <span style="font-size:0.75rem; color:#64748b; margin-top:4px; display:block;">💡 (a^3)^2을 먼저 계산한 뒤 곱셈</span>
+              </div>
+
+              <div style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
+                <p style="font-weight:700; font-size:0.9rem; margin-bottom:6px; color:#1e293b;">
+                  ⑶ $(x^4)^3 \\times (y^2)^5 \\times y$ =
+                </p>
+                <input type="text" id="ans-1-3-3" class="proof-input-text" style="width:100%; max-width:none;" placeholder="예: x^m y^n 형식으로 입력">
+                <span style="font-size:0.75rem; color:#64748b; margin-top:4px; display:block;">💡 x는 x끼리, y는 y끼리 지수 정리 (y = y^1)</span>
+              </div>
+
+              <div style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
+                <p style="font-weight:700; font-size:0.9rem; margin-bottom:6px; color:#1e293b;">
+                  ⑷ $x^2 \\times (y^6)^2 \\times (x^5)^3$ =
+                </p>
+                <input type="text" id="ans-1-3-4" class="proof-input-text" style="width:100%; max-width:none;" placeholder="예: x^m y^n 형식으로 입력">
+                <span style="font-size:0.75rem; color:#64748b; margin-top:4px; display:block;">💡 괄호의 거듭제곱 먼저 계산 후 같은 밑끼리 모으기</span>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" style="width:100%; padding:11px; font-size:0.95rem; font-weight:800;" onclick="gradeStep_1_3()">정답 확인 및 채점</button>
+          </div>
+        `,
+        grader: function() {
+          const a1 = normTxt(document.getElementById('ans-1-3-1')?.value);
+          const a2 = normTxt(document.getElementById('ans-1-3-2')?.value);
+          const a3 = normTxt(document.getElementById('ans-1-3-3')?.value);
+          const a4 = normTxt(document.getElementById('ans-1-3-4')?.value);
+
+          // ⑴ a^5 × a × a^3 = a^(5+1+3) = a^9
+          const ok1 = (a1 === 'a^9');
+
+          // ⑵ (a^3)^2 × a^4 = a^(3*2) × a^4 = a^6 × a^4 = a^(6+4) = a^10
+          const ok2 = (a2 === 'a^10');
+
+          // ⑶ (x^4)^3 × (y^2)^5 × y = x^12 × y^10 × y^1 = x^12 y^11
+          const normA3 = a3.replace(/\s+/g, '');
+          const ok3 = (
+            normA3 === 'x^12y^11' ||
+            normA3 === 'x^12*y^11' ||
+            normA3 === 'y^11x^12' ||
+            normA3 === 'y^11*x^12'
+          );
+
+          // ⑷ x^2 × (y^6)^2 × (x^5)^3 = x^2 × y^12 × x^15 = (x^2 × x^15) × y^12 = x^17 y^12
+          const normA4 = a4.replace(/\s+/g, '');
+          const ok4 = (
+            normA4 === 'x^17y^12' ||
+            normA4 === 'x^17*y^12' ||
+            normA4 === 'y^12x^17' ||
+            normA4 === 'y^12*x^17'
+          );
+
+          if (ok1 && ok2 && ok3 && ok4) {
+            return {
+              success: true,
+              score: 100,
+              answerText: "⑴ a^9, ⑵ a^10, ⑶ x^12 y^11, ⑷ x^17 y^12",
+              explanation: "지수법칙 ⑴, ⑵의 복합 계산 원리:<br>" +
+                           "• ⑴ $a = a^1$이므로 밑이 같은 $a$의 세 지수를 더합니다: $a^5 \\times a^1 \\times a^3 = a^{5+1+3} = a^9$<br>" +
+                           "• ⑵ 괄호의 거듭제곱을 먼저 계산 ($(a^3)^2 = a^{3 \\times 2} = a^6$)한 뒤 곱셈: $a^6 \\times a^4 = a^{6+4} = a^{10}$<br>" +
+                           "• ⑶ 괄호를 먼저 정리 ($(x^4)^3 = x^{12}, (y^2)^5 = y^{10}$)한 뒤 $y$끼리 지수를 더합니다 ($y = y^1$): $x^{12} \\times (y^{10} \\times y^1) = x^{12} y^{11}$<br>" +
+                           "• ⑷ 괄호 정리 ($(y^6)^2 = y^{12}, (x^5)^3 = x^{15}$) 후 $x$끼리 모아 계산: $(x^2 \\times x^{15}) \\times y^{12} = x^{2+15} y^{12} = x^{17} y^{12}$"
+            };
+          }
+
+          let hints = [];
+          if (!ok1) hints.push("⑴ 가운데 $a$는 $a^1$이므로 지수 5, 1, 3을 모두 더해 보세요: $a^{5+1+3}$.");
+          if (!ok2) hints.push("⑵ 먼저 $(a^3)^2 = a^{3 \\times 2} = a^6$으로 지수를 곱한 뒤, $a^6 \\times a^4 = a^{6+4}$ 지수를 더해 보세요.");
+          if (!ok3) hints.push("⑶ $(x^4)^3 = x^{12}$, $(y^2)^5 = y^{10}$으로 정리한 후, $y^{10} \\times y^1 = y^{11}$로 $y$의 지수를 더해 보세요.");
+          if (!ok4) hints.push("⑷ 먼저 괄호를 풀어 $x^2 \\times y^{12} \\times x^{15}$로 나타낸 뒤, $x$항끼리 모아 $x^{2+15} = x^{17}$을 계산해 보세요.");
+
+          return {
+            success: false,
+            hint: hints.join("<br>") || "⚠️ 다시 한번 괄호 지수 곱셈과 같은 밑 지수 덧셈 순서를 점검해 보세요!"
           };
         }
       }
@@ -5532,6 +5644,549 @@
       render();
     }
 
+    // -------------------------------------------------------------------------
+    // [캔버스 1-3] 교과서 35쪽 [스스로 해결하기 1: 지수법칙 복합 연산] 60fps 3단계 순차 모핑 인터랙터
+    // -------------------------------------------------------------------------
+    function drawExpSolveStep1_3Canvas() {
+      const container = document.getElementById('two-container');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const canvas = document.createElement('canvas');
+      canvas.id = 'canvas-1-3';
+      container.appendChild(canvas);
+
+      const resp = setupResponsiveCanvas(canvas, 760, 460);
+      if (!resp) return;
+      const ctx = resp.ctx;
+      const baseW = 760;
+      const baseH = 460;
+
+      if (!state.tab1) state.tab1 = {};
+      if (!state.tab1.expSolve) {
+        state.tab1.expSolve = {
+          selectedTab: 0,
+          stages: [0, 0, 0, 0],
+          hoverTab: null,
+          hoverBtn: false
+        };
+      }
+      const pState = state.tab1.expSolve;
+
+      const tabs = [
+        { idx: 0, label: '⑴ a⁵ · a · a³', x: 20, y: 14, w: 165, h: 36 },
+        { idx: 1, label: '⑵ (a³)² · a⁴', x: 195, y: 14, w: 165, h: 36 },
+        { idx: 2, label: '⑶ (x⁴)³ · (y²)⁵ · y', x: 370, y: 14, w: 175, h: 36 },
+        { idx: 3, label: '⑷ x² · (y⁶)² · (x⁵)³', x: 555, y: 14, w: 185, h: 36 }
+      ];
+
+      const stepBtn = { x: 570, y: 64, w: 170, h: 38 };
+
+      function render() {
+        ctx.clearRect(0, 0, baseW, baseH);
+
+        // 1. 깨끗한 캔버스 배경
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, baseW, baseH);
+
+        // 도트 그리드 배경
+        ctx.fillStyle = '#f1f5f9';
+        for (let gx = 15; gx < baseW; gx += 20) {
+          for (let gy = 15; gy < baseH; gy += 20) {
+            ctx.fillRect(gx, gy, 2, 2);
+          }
+        }
+
+        // 2. 상단 4개 탭
+        tabs.forEach(t => {
+          const isSelected = (pState.selectedTab === t.idx);
+          const isHover = (pState.hoverTab === t.idx);
+
+          ctx.fillStyle = isSelected ? '#4f46e5' : (isHover ? '#f5f3ff' : '#f8fafc');
+          ctx.strokeStyle = isSelected ? '#4338ca' : (isHover ? '#c7d2fe' : '#e2e8f0');
+          ctx.lineWidth = isSelected ? 2 : 1;
+          roundRect(ctx, t.x, t.y, t.w, t.h, 8, true, true);
+
+          ctx.fillStyle = isSelected ? '#ffffff' : (isHover ? '#4f46e5' : '#334155');
+          ctx.font = isSelected ? 'bold 12.5px Pretendard, sans-serif' : '500 12.5px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(t.label, t.x + t.w / 2, t.y + t.h / 2);
+        });
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+
+        // 3. 본문 렌더링
+        renderSolveTab(ctx, pState.selectedTab);
+
+        // 4. 하단 고정 가이드: 지수법칙 복합 4단계 전략
+        renderSummaryRules(ctx, 20, 335, 720, 110, pState.selectedTab);
+      }
+
+      function renderSolveTab(c, qIdx) {
+        const stage = pState.stages[qIdx] || 0;
+
+        const stageNames = [
+          '1단계: 원식 및 괄호(거듭제곱 거듭제곱) 확인',
+          '2단계: 괄호 풀기 & 같은 밑끼리 자석 묶기',
+          '3단계: 지수법칙 ⑴ 덧셈으로 최종 완성'
+        ];
+        c.fillStyle = '#eef2ff';
+        c.strokeStyle = '#c7d2fe';
+        c.lineWidth = 1;
+        roundRect(c, 20, 64, 280, 32, 6, true, true);
+
+        c.fillStyle = '#4338ca';
+        c.font = 'bold 12px Pretendard, sans-serif';
+        c.fillText(`📍 ${stageNames[stage]}`, 32, 85);
+
+        // 단계 전환 버튼
+        const btnLabels = ['묶기 및 전개 ▶', '지수 덧셈 완성 ▶', '처음 단계로 ↺'];
+        const isBtnHover = pState.hoverBtn;
+        c.fillStyle = isBtnHover ? '#4338ca' : '#4f46e5';
+        c.strokeStyle = '#3730a3';
+        c.lineWidth = 1.5;
+        roundRect(c, stepBtn.x, stepBtn.y, stepBtn.w, stepBtn.h, 8, true, true);
+
+        c.fillStyle = '#ffffff';
+        c.font = 'bold 12.5px Pretendard, sans-serif';
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.fillText(btnLabels[stage], stepBtn.x + stepBtn.w / 2, stepBtn.y + stepBtn.h / 2);
+        c.textAlign = 'left';
+        c.textBaseline = 'alphabetic';
+
+        if (qIdx === 0) {
+          renderQ1Solve(c, stage);
+        } else if (qIdx === 1) {
+          renderQ2Solve(c, stage);
+        } else if (qIdx === 2) {
+          renderQ3Solve(c, stage);
+        } else if (qIdx === 3) {
+          renderQ4Solve(c, stage);
+        }
+      }
+
+      // ⑴ a^5 × a × a^3
+      function renderQ1Solve(c, stage) {
+        if (stage === 0) {
+          drawMiniCard(c, 100, 120, 150, 125, 'a⁵', '밑: a (지수 5)', '#4f46e5');
+          c.fillStyle = '#64748b'; c.font = 'bold 24px Pretendard, sans-serif'; c.textAlign = 'center';
+          c.fillText('×', 285, 185);
+
+          drawMiniCard(c, 310, 120, 150, 125, 'a', 'a = a¹ (지수 1 주의!)', '#d97706');
+          c.fillText('×', 495, 185);
+
+          drawMiniCard(c, 520, 120, 150, 125, 'a³', '밑: a (지수 3)', '#4f46e5');
+          c.textAlign = 'left';
+
+          c.fillStyle = '#475569'; c.font = '13px Pretendard, sans-serif';
+          c.fillText('💡 가운데 a는 지수 1이 생략된 a¹입니다! 세 거듭제곱의 밑이 모두 a로 같습니다.', 140, 285);
+        } else if (stage === 1) {
+          c.fillStyle = '#f5f3ff';
+          c.strokeStyle = '#818cf8';
+          c.lineWidth = 2;
+          roundRect(c, 150, 110, 460, 145, 14, true, true);
+
+          c.fillStyle = '#4338ca'; c.font = 'bold 14.5px Pretendard, sans-serif';
+          c.fillText('🧲 세 거듭제곱의 자석 융합: a⁵ × a¹ × a³', 220, 138);
+
+          c.fillStyle = '#1e293b'; c.font = 'bold 44px Pretendard, sans-serif';
+          c.fillText('a', 270, 205);
+
+          // 윗첨자 지수 합산 5 + 1 + 3
+          c.fillStyle = '#7c3aed'; c.font = 'bold 26px Pretendard, sans-serif';
+          c.fillText('5 + 1 + 3', 302, 175);
+
+          c.fillStyle = '#d97706'; c.font = 'bold 12px Pretendard, sans-serif';
+          c.fillText('▲ 지수 1 생략 주의!', 335, 200);
+
+          c.fillStyle = '#4f46e5'; c.font = '13px Pretendard, sans-serif';
+          c.fillText('➔ 밑이 같으므로 지수 3개를 한 번에 더합니다: a⁵⁺¹⁺³', 220, 235);
+        } else {
+          c.fillStyle = '#f0fdf4';
+          c.strokeStyle = '#10b981';
+          c.lineWidth = 2.5;
+          roundRect(c, 210, 110, 340, 150, 14, true, true);
+
+          c.fillStyle = '#065f46'; c.font = 'bold 16px Pretendard, sans-serif';
+          c.fillText('🎉 계산 완성: 지수 덧셈 합산', 255, 142);
+
+          c.fillStyle = '#047857'; c.font = 'bold 50px Pretendard, sans-serif';
+          c.fillText('a', 330, 210);
+          c.font = 'bold 28px Pretendard, sans-serif';
+          c.fillText('9', 360, 180);
+
+          c.fillStyle = '#e0f2fe';
+          c.strokeStyle = '#38bdf8';
+          c.lineWidth = 1.2;
+          roundRect(c, 150, 280, 460, 36, 8, true, true);
+          c.fillStyle = '#0369a1'; c.font = 'bold 13px Pretendard, sans-serif'; c.textAlign = 'center';
+          c.fillText('지수법칙 ⑴ : a⁵ × a¹ × a³ = a⁵⁺¹⁺³ = a⁹ (지수 1 생략 주의!)', 380, 303);
+          c.textAlign = 'left';
+        }
+      }
+
+      // ⑵ (a^3)^2 × a^4
+      function renderQ2Solve(c, stage) {
+        if (stage === 0) {
+          drawMiniCard(c, 150, 120, 200, 125, '(a³)² = ?', '앞의 항: 거듭제곱의 거듭제곱', '#4f46e5');
+          c.fillStyle = '#64748b'; c.font = 'bold 26px Pretendard, sans-serif'; c.textAlign = 'center';
+          c.fillText('×', 380, 185);
+          drawMiniCard(c, 410, 120, 200, 125, 'a⁴', '뒤의 항: 문자 거듭제곱', '#059669');
+          c.textAlign = 'left';
+
+          c.fillStyle = '#475569'; c.font = '13px Pretendard, sans-serif';
+          c.fillText('💡 연산 우선순위: 앞 괄호 (a³)²을 지수법칙 ⑵로 먼저 계산한 뒤 a⁴와 곱합니다.', 120, 285);
+        } else if (stage === 1) {
+          c.fillStyle = '#eef2ff';
+          c.strokeStyle = '#818cf8';
+          c.lineWidth = 2;
+          roundRect(c, 110, 110, 540, 145, 14, true, true);
+
+          c.fillStyle = '#312e81'; c.font = 'bold 14.5px Pretendard, sans-serif';
+          c.fillText('⚡ 1단계: 앞 괄호 (a³)² 지수 곱셈 계산 ➔ a³ˣ² = a⁶', 180, 138);
+
+          c.fillStyle = '#4f46e5'; c.font = 'bold 40px Pretendard, sans-serif';
+          c.fillText('a⁶', 230, 200);
+
+          c.fillStyle = '#64748b'; c.font = 'bold 26px Pretendard, sans-serif';
+          c.fillText('×', 315, 195);
+
+          c.fillStyle = '#059669'; c.font = 'bold 40px Pretendard, sans-serif';
+          c.fillText('a⁴', 370, 200);
+
+          c.fillStyle = '#64748b'; c.font = 'bold 26px Pretendard, sans-serif';
+          c.fillText('=', 445, 195);
+
+          c.fillStyle = '#047857'; c.font = 'bold 40px Pretendard, sans-serif';
+          c.fillText('a⁶⁺⁴', 490, 200);
+
+          c.fillStyle = '#4338ca'; c.font = '13px Pretendard, sans-serif';
+          c.fillText('➔ (a³)² = a⁶으로 변환된 후 밑이 같은 두 거듭제곱의 지수를 더합니다.', 170, 235);
+        } else {
+          c.fillStyle = '#f0fdf4';
+          c.strokeStyle = '#10b981';
+          c.lineWidth = 2.5;
+          roundRect(c, 210, 110, 340, 150, 14, true, true);
+
+          c.fillStyle = '#065f46'; c.font = 'bold 16px Pretendard, sans-serif';
+          c.fillText('🎉 계산 완성: 거듭제곱 복합 연산', 235, 142);
+
+          c.fillStyle = '#047857'; c.font = 'bold 50px Pretendard, sans-serif';
+          c.fillText('a', 320, 210);
+          c.font = 'bold 28px Pretendard, sans-serif';
+          c.fillText('10', 350, 180);
+
+          c.fillStyle = '#e0f2fe';
+          c.strokeStyle = '#38bdf8';
+          c.lineWidth = 1.2;
+          roundRect(c, 150, 280, 460, 36, 8, true, true);
+          c.fillStyle = '#0369a1'; c.font = 'bold 13px Pretendard, sans-serif'; c.textAlign = 'center';
+          c.fillText('순서: (a³)² = a⁶ (지수의 곱) ➔ a⁶ × a⁴ = a⁶⁺⁴ = a¹⁰ (지수의 합)', 380, 303);
+          c.textAlign = 'left';
+        }
+      }
+
+      // ⑶ (x^4)^3 × (y^2)^5 × y
+      function renderQ3Solve(c, stage) {
+        if (stage === 0) {
+          drawMiniCard(c, 70, 120, 180, 125, '(x⁴)³', '지수 곱: 4 × 3 = 12', '#4f46e5');
+          drawMiniCard(c, 290, 120, 180, 125, '(y²)⁵', '지수 곱: 2 × 5 = 10', '#059669');
+          drawMiniCard(c, 510, 120, 180, 125, 'y', 'y = y¹ (지수 1 주의!)', '#d97706');
+
+          c.fillStyle = '#475569'; c.font = '13px Pretendard, sans-serif';
+          c.fillText('💡 문자 x와 y가 섞인 복합 식입니다. 괄호를 먼저 풀고 같은 문자끼리 지수를 정리합니다.', 100, 285);
+        } else if (stage === 1) {
+          c.fillStyle = '#eef2ff';
+          c.strokeStyle = '#818cf8';
+          c.lineWidth = 2;
+          roundRect(c, 80, 110, 600, 145, 14, true, true);
+
+          c.fillStyle = '#312e81'; c.font = 'bold 14.5px Pretendard, sans-serif';
+          c.fillText('⚡ 1단계: 두 괄호 풀기 ➔ x¹² × y¹⁰ × y¹', 180, 138);
+
+          // x^12
+          c.fillStyle = '#4f46e5'; c.font = 'bold 36px Pretendard, sans-serif';
+          c.fillText('x¹²', 150, 195);
+
+          c.fillStyle = '#64748b'; c.font = 'bold 24px Pretendard, sans-serif';
+          c.fillText('×', 240, 192);
+
+          // (y^10 × y^1) 묶음
+          c.fillStyle = '#f0fdf4'; c.strokeStyle = '#34d399'; c.lineWidth = 1.5;
+          roundRect(c, 280, 150, 230, 62, 8, true, true);
+          c.fillStyle = '#065f46'; c.font = 'bold 12px Pretendard, sans-serif';
+          c.fillText('y끼리 지수 덧셈 (y = y¹)', 320, 168);
+          c.fillStyle = '#047857'; c.font = 'bold 26px Pretendard, sans-serif';
+          c.fillText('y¹⁰ × y¹ = y¹⁰⁺¹', 305, 198);
+
+          c.fillStyle = '#64748b'; c.font = 'bold 24px Pretendard, sans-serif';
+          c.fillText('=', 530, 192);
+
+          c.fillStyle = '#047857'; c.font = 'bold 32px Pretendard, sans-serif';
+          c.fillText('x¹²y¹¹', 560, 195);
+
+          c.fillStyle = '#4338ca'; c.font = '13px Pretendard, sans-serif';
+          c.fillText('➔ (x⁴)³ = x¹², (y²)⁵ = y¹⁰ 으로 정리 후 y항끼리 지수를 더합니다: 10 + 1 = 11', 130, 238);
+        } else {
+          c.fillStyle = '#f0fdf4';
+          c.strokeStyle = '#10b981';
+          c.lineWidth = 2.5;
+          roundRect(c, 180, 110, 400, 150, 14, true, true);
+
+          c.fillStyle = '#065f46'; c.font = 'bold 16px Pretendard, sans-serif';
+          c.fillText('🎉 계산 완성: 다문자 복합 연산 완성', 235, 142);
+
+          // x^12 y^11
+          c.fillStyle = '#4338ca'; c.font = 'bold 46px Pretendard, sans-serif';
+          c.fillText('x', 270, 205);
+          c.font = 'bold 26px Pretendard, sans-serif';
+          c.fillText('12', 296, 178);
+
+          c.fillStyle = '#047857'; c.font = 'bold 46px Pretendard, sans-serif';
+          c.fillText('y', 360, 205);
+          c.font = 'bold 26px Pretendard, sans-serif';
+          c.fillText('11', 386, 178);
+
+          c.fillStyle = '#e0f2fe';
+          c.strokeStyle = '#38bdf8';
+          c.lineWidth = 1.2;
+          roundRect(c, 120, 280, 520, 36, 8, true, true);
+          c.fillStyle = '#0369a1'; c.font = 'bold 13px Pretendard, sans-serif'; c.textAlign = 'center';
+          c.fillText('지수법칙 복합 : (x⁴)³ = x¹², (y²)⁵ × y = y¹⁰⁺¹ = y¹¹ ➔ x¹²y¹¹', 380, 303);
+          c.textAlign = 'left';
+        }
+      }
+
+      // ⑷ x^2 × (y^6)^2 × (x^5)^3
+      function renderQ4Solve(c, stage) {
+        if (stage === 0) {
+          drawMiniCard(c, 70, 120, 180, 125, 'x²', '항 1: x²', '#4f46e5');
+          drawMiniCard(c, 290, 120, 180, 125, '(y⁶)² = y¹²', '항 2: 지수 6 × 2 = 12', '#059669');
+          drawMiniCard(c, 510, 120, 180, 125, '(x⁵)³ = x¹⁵', '항 3: 지수 5 × 3 = 15', '#4f46e5');
+
+          c.fillStyle = '#475569'; c.font = '13px Pretendard, sans-serif';
+          c.fillText('💡 괄호 2개를 먼저 풀고, 교환법칙으로 x항(x²와 x¹⁵)을 모아서 지수를 더합니다.', 110, 285);
+        } else if (stage === 1) {
+          c.fillStyle = '#eef2ff';
+          c.strokeStyle = '#818cf8';
+          c.lineWidth = 2;
+          roundRect(c, 80, 110, 600, 145, 14, true, true);
+
+          c.fillStyle = '#312e81'; c.font = 'bold 14.5px Pretendard, sans-serif';
+          c.fillText('⚡ 1단계: 괄호 풀기 ➔ x² × y¹² × x¹⁵ ➔ 같은 밑끼리 교환·결합', 140, 138);
+
+          // (x^2 × x^15)
+          c.fillStyle = '#f8fafc'; c.strokeStyle = '#6366f1'; c.lineWidth = 1.5;
+          roundRect(c, 120, 152, 230, 58, 8, true, true);
+          c.fillStyle = '#4f46e5'; c.font = 'bold 12px Pretendard, sans-serif';
+          c.fillText('x끼리 모아서 지수 덧셈', 150, 170);
+          c.font = 'bold 24px Pretendard, sans-serif';
+          c.fillText('x² × x¹⁵ = x¹⁷', 155, 198);
+
+          c.fillStyle = '#64748b'; c.font = 'bold 24px Pretendard, sans-serif';
+          c.fillText('×', 380, 185);
+
+          // y^12
+          c.fillStyle = '#f0fdf4'; c.strokeStyle = '#34d399'; c.lineWidth = 1.5;
+          roundRect(c, 420, 152, 170, 58, 8, true, true);
+          c.fillStyle = '#059669'; c.font = 'bold 12px Pretendard, sans-serif';
+          c.fillText('y항 단독 유지', 465, 170);
+          c.font = 'bold 24px Pretendard, sans-serif';
+          c.fillText('y¹²', 480, 198);
+
+          c.fillStyle = '#4338ca'; c.font = '13px Pretendard, sans-serif';
+          c.fillText('➔ (x² × x¹⁵) × y¹² = x²⁺¹⁵ y¹² = x¹⁷ y¹²', 210, 238);
+        } else {
+          c.fillStyle = '#f0fdf4';
+          c.strokeStyle = '#10b981';
+          c.lineWidth = 2.5;
+          roundRect(c, 180, 110, 400, 150, 14, true, true);
+
+          c.fillStyle = '#065f46'; c.font = 'bold 16px Pretendard, sans-serif';
+          c.fillText('🎉 계산 완성: 지수법칙 복합 4단계 완료', 230, 142);
+
+          // x^17 y^12
+          c.fillStyle = '#4338ca'; c.font = 'bold 46px Pretendard, sans-serif';
+          c.fillText('x', 270, 205);
+          c.font = 'bold 26px Pretendard, sans-serif';
+          c.fillText('17', 296, 178);
+
+          c.fillStyle = '#047857'; c.font = 'bold 46px Pretendard, sans-serif';
+          c.fillText('y', 360, 205);
+          c.font = 'bold 26px Pretendard, sans-serif';
+          c.fillText('12', 386, 178);
+
+          c.fillStyle = '#e0f2fe';
+          c.strokeStyle = '#38bdf8';
+          c.lineWidth = 1.2;
+          roundRect(c, 110, 280, 540, 36, 8, true, true);
+          c.fillStyle = '#0369a1'; c.font = 'bold 13px Pretendard, sans-serif'; c.textAlign = 'center';
+          c.fillText('지수법칙 복합 : (y⁶)² = y¹², (x⁵)³ = x¹⁵ ➔ (x² × x¹⁵) × y¹² = x¹⁷y¹²', 380, 303);
+          c.textAlign = 'left';
+        }
+      }
+
+      function drawMiniCard(c, x, y, w, h, mainTxt, subTxt, color) {
+        c.fillStyle = '#ffffff';
+        c.strokeStyle = color;
+        c.lineWidth = 1.8;
+        roundRect(c, x, y, w, h, 10, true, true);
+
+        c.fillStyle = color;
+        c.font = 'bold 11px Pretendard, sans-serif';
+        c.fillText(subTxt, x + 10, y + 20);
+
+        c.font = 'bold 28px Pretendard, sans-serif';
+        c.textAlign = 'center';
+        c.fillText(mainTxt, x + w / 2, y + 72);
+        c.textAlign = 'left';
+      }
+
+      function renderSummaryRules(c, x, y, w, h, activeTab) {
+        c.fillStyle = '#ffffff';
+        c.strokeStyle = '#cbd5e1';
+        c.lineWidth = 1;
+        roundRect(c, x, y, w, h, 10, true, true);
+
+        c.fillStyle = '#1e293b';
+        c.font = 'bold 13px Pretendard, sans-serif';
+        c.fillText('📖 지수법칙 복합 연산 핵심 4대 전략 [스스로 해결하기]', x + 16, y + 22);
+
+        const rules = [
+          { no: '1', title: '괄호 먼저 풀기', desc: '거듭제곱의 거듭제곱 (aᵐ)ⁿ = aᵐⁿ 을 가장 먼저 계산하여 괄호를 제거합니다.', active: (activeTab >= 1) },
+          { no: '2', title: '지수 1 생략 주의', desc: '⚠️ 지수가 쓰여 있지 않은 문자(a, x, y)는 지수가 1입니다! (a = a¹)', active: (activeTab === 0 || activeTab === 2) },
+          { no: '3', title: '같은 밑끼리 모으기', desc: '곱셈의 교환·결합법칙으로 같은 밑을 가진 문자끼리 이웃하도록 재배열합니다.', active: (activeTab >= 2) },
+          { no: '4', title: '지수 덧셈 합산', desc: '밑이 같은 거듭제곱끼리 지수를 모두 더하여 알파벳 순서(xᵃ yᵇ)로 정리합니다.', active: true }
+        ];
+
+        const boxW = (w - 32 - 18) / 4;
+        rules.forEach((r, idx) => {
+          const bx = x + 16 + idx * (boxW + 6);
+          const by = y + 34;
+          const bh = h - 46;
+
+          c.fillStyle = r.active ? '#eef2ff' : '#f8fafc';
+          c.strokeStyle = r.active ? '#6366f1' : '#e2e8f0';
+          c.lineWidth = r.active ? 1.8 : 1;
+          roundRect(c, bx, by, boxW, bh, 8, true, true);
+
+          c.fillStyle = r.active ? '#4f46e5' : '#64748b';
+          roundRect(c, bx + 6, by + 6, 20, 18, 4, true, false);
+          c.fillStyle = '#ffffff';
+          c.font = 'bold 11px Pretendard, sans-serif';
+          c.textAlign = 'center';
+          c.textBaseline = 'middle';
+          c.fillText(r.no, bx + 16, by + 15);
+
+          c.fillStyle = r.active ? '#312e81' : '#334155';
+          c.font = 'bold 12px Pretendard, sans-serif';
+          c.textAlign = 'left';
+          c.fillText(r.title, bx + 32, by + 16);
+
+          c.fillStyle = r.active ? '#4338ca' : '#64748b';
+          c.font = '11px Pretendard, sans-serif';
+          wrapText(c, r.desc, bx + 8, by + 42, boxW - 16, 15);
+        });
+
+        c.textAlign = 'left';
+        c.textBaseline = 'alphabetic';
+      }
+
+      function wrapText(c, text, x, y, maxW, lineH) {
+        const words = text.split(' ');
+        let line = '';
+        let curY = y;
+        for (let n = 0; n < words.length; n++) {
+          const testLine = line + words[n] + ' ';
+          const metrics = c.measureText(testLine);
+          if (metrics.width > maxW && n > 0) {
+            c.fillText(line, x, curY);
+            line = words[n] + ' ';
+            curY += lineH;
+          } else {
+            line = testLine;
+          }
+        }
+        c.fillText(line, x, curY);
+      }
+
+      function roundRect(c, x, y, w, h, r, fill, stroke) {
+        c.beginPath();
+        c.moveTo(x + r, y);
+        c.lineTo(x + w - r, y);
+        c.quadraticCurveTo(x + w, y, x + w, y + r);
+        c.lineTo(x + w, y + h - r);
+        c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        c.lineTo(x + r, y + h);
+        c.quadraticCurveTo(x, y + h, x, y + h - r);
+        c.lineTo(x, y + r);
+        c.quadraticCurveTo(x, y, x + r, y);
+        c.closePath();
+        if (fill) c.fill();
+        if (stroke) c.stroke();
+      }
+
+      function handleCanvasClick(e) {
+        const pos = getCanvasLogicalPos(canvas, e, baseW, baseH);
+
+        // 1. 탭 클릭
+        for (let i = 0; i < tabs.length; i++) {
+          const t = tabs[i];
+          if (pos.mx >= t.x && pos.mx <= t.x + t.w && pos.my >= t.y && pos.my <= t.y + t.h) {
+            pState.selectedTab = t.idx;
+            requestAnimationFrame(render);
+            return;
+          }
+        }
+
+        // 2. 단계 버튼 클릭
+        if (pos.mx >= stepBtn.x && pos.mx <= stepBtn.x + stepBtn.w &&
+            pos.my >= stepBtn.y && pos.my <= stepBtn.y + stepBtn.h) {
+          const tIdx = pState.selectedTab;
+          pState.stages[tIdx] = (pState.stages[tIdx] + 1) % 3;
+          requestAnimationFrame(render);
+          return;
+        }
+      }
+
+      function handleCanvasMouseMove(e) {
+        const pos = getCanvasLogicalPos(canvas, e, baseW, baseH);
+        let cursor = 'default';
+        pState.hoverTab = null;
+        pState.hoverBtn = false;
+
+        // 탭 호버
+        for (let i = 0; i < tabs.length; i++) {
+          const t = tabs[i];
+          if (pos.mx >= t.x && pos.mx <= t.x + t.w && pos.my >= t.y && pos.my <= t.y + t.h) {
+            cursor = 'pointer';
+            pState.hoverTab = t.idx;
+            break;
+          }
+        }
+
+        // 버튼 호버
+        if (pos.mx >= stepBtn.x && pos.mx <= stepBtn.x + stepBtn.w &&
+            pos.my >= stepBtn.y && pos.my <= stepBtn.y + stepBtn.h) {
+          cursor = 'pointer';
+          pState.hoverBtn = true;
+        }
+
+        canvas.style.cursor = cursor;
+        requestAnimationFrame(render);
+      }
+
+      canvas.addEventListener('click', handleCanvasClick);
+      canvas.addEventListener('mousemove', handleCanvasMouseMove);
+      canvas.addEventListener('touchstart', (e) => {
+        handleCanvasClick(e);
+      }, { passive: true });
+
+      render();
+    }
+
     // =========================================================================
     // 🎯 채점 바인딩 & 공통 평가 엔진
     // =========================================================================
@@ -5541,6 +6196,7 @@
     window.gradeStep_0_4 = function() { executeStepGrade('0-4'); };
     window.gradeStep_1_1 = function() { executeStepGrade('1-1'); };
     window.gradeStep_1_2 = function() { executeStepGrade('1-2'); };
+    window.gradeStep_1_3 = function() { executeStepGrade('1-3'); };
 
     async function executeStepGrade(code, forcePass = false) {
       const item = SUBSTEPS_DATA[code];
