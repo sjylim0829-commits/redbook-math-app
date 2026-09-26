@@ -942,6 +942,18 @@
           flipProgress: 0.0, // 0.0 (분리) ~ 1.0 (맞붙이기 완성)
           isFlipping: false,
           hoverBtn: null
+        },
+        bisectorLab: {
+          selectedMode: 0, // 0: 문제 3번 6개 직각삼각형 짝맞추기 갤러리 랩, 1: 생각 넓히기 각의 이등분선 동적 증명 랩
+          activePair: 1, // 1: (1)과 (3) [RHS], 2: (2)와 (4) [RHA], 3: (5)와 (6) [RHS]
+          overlapProgress: 0.0, // 0.0 ~ 1.0 (포개어지기 애니메이션)
+          isOverlapping: false,
+          angleDeg: 56, // 반직선 OX와 OY 사이 각도 (56°)
+          tParam: 0.68, // 반직선 OP 위 점 P 위치 비율 (0.25 ~ 0.92)
+          isDraggingP: false,
+          showProofStep: 0, // 0: 기본, 1: 직각 수선, 2: 공통 빗변, 3: RHA 합동 & PA=PB
+          animT: 1.0,
+          hoverBtn: null
         }
       }
     };
@@ -2596,6 +2608,295 @@
               success: false,
               score: score,
               hint: `💡 3개 문항 중 ${correctCount}개를 맞혔습니다 (${score}점).\\n다시 확인해 보세요:\\n` + hints.join('\\n')
+            };
+          }
+        }
+      },
+
+      '2-2': {
+        tab: 2,
+        title: "2-2. [개념 2 / 생각 넓히기] 직각삼각형 합동 판별 & 각의 이등분선의 성질",
+        tbPage: 161,
+        pdfPage: 167,
+        missionText: "교과서 161쪽: 6개의 직각삼각형 중 서로 합동인 쌍과 그 조건(RHA, RHS)을 찾고, 각의 이등분선 위의 점에서 두 변에 이르는 거리가 같음을 RHA 합동으로 증명해 보세요.",
+        drawer: "drawFuncStep2_2Canvas",
+        formHtml: `
+          <div style="display:flex; flex-direction:column; gap:14px;">
+            <!-- 상단 배너 -->
+            <div style="background:linear-gradient(135deg, rgba(16,185,129,0.08), rgba(6,182,212,0.08)); border:1.5px solid #a7f3d0; border-radius:12px; padding:14px;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                <span style="font-size:1.15rem;">📐</span>
+                <span style="font-size:0.94rem; font-weight:800; color:#047857;">직각삼각형의 합동 판별 & 각의 이등분선의 성질 (교과서 161쪽)</span>
+              </div>
+              <p style="font-size:0.83rem; color:#065f46; line-height:1.55;">
+                • <b>직각삼각형 합동 판별</b>: 빗변의 길이가 같은지 확인 후, <b>한 예각의 크기</b>가 같으면 <b>RHA 합동</b>, <b>다른 한 변의 길이</b>가 같으면 <b>RHS 합동</b>입니다.<br>
+                • <b>각의 이등분선의 성질</b>: 각의 이등분선 위의 한 점에서 그 각을 이루는 두 변까지의 거리는 같습니다. (\\(\\triangle POA \\equiv \\triangle POB\\) [RHA 합동] ➡ \\(PA = PB\\))
+              </p>
+            </div>
+
+            <!-- 문항 1 [문제 3번 (교과서 161쪽)] -->
+            <div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:10px; padding:14px;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                <span style="background:#059669; color:#fff; font-size:0.75rem; font-weight:800; padding:2px 7px; border-radius:6px;">문제 3</span>
+                <span style="font-size:0.88rem; font-weight:700; color:#1e293b;">다음 6개의 직각삼각형 중 서로 합동인 직각삼각형끼리 짝을 짓고, 그 합동 조건(RHA, RHS)을 쓰시오.</span>
+              </div>
+              <p style="font-size:0.8rem; color:#64748b; margin-bottom:8px; line-height:1.5;">
+                캔버스의 <b>[문제 3번 갤러리 랩]</b>에서 ⑴~⑹ 삼각형의 제원과 겹치기 애니메이션을 확인해 보세요.
+              </p>
+
+              <!-- 쌍 1: ⑴과 짝 -->
+              <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-bottom:8px;">
+                <div style="font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:4px;">
+                  ① <b>삼각형 ⑴</b> (빗변 6cm, 한 변 3cm)과 합동인 삼각형 및 조건:
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                  <div>
+                    <label style="font-size:0.78rem; color:#64748b;">합동인 삼각형 번호:</label>
+                    <input type="text" id="q2-2-q3-1-pair" class="proof-input-text" placeholder="삼각형 번호 입력" style="width:100%; box-sizing:border-box; margin-top:2px;">
+                    <div style="display:flex; gap:3px; margin-top:4px; flex-wrap:wrap;">
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-1-pair', '2')">2</button>
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-1-pair', '3')">3</button>
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-1-pair', '4')">4</button>
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-1-pair', '5')">5</button>
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-1-pair', '6')">6</button>
+                    </div>
+                  </div>
+                  <div>
+                    <label style="font-size:0.78rem; color:#64748b;">합동 조건:</label>
+                    <input type="text" id="q2-2-q3-1-cond" class="proof-input-text" placeholder="직각삼각형 합동 조건 입력" style="width:100%; box-sizing:border-box; margin-top:2px;">
+                    <div style="display:flex; gap:3px; margin-top:4px; flex-wrap:wrap;">
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-1-cond', 'RHA')">RHA</button>
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-1-cond', 'RHS')">RHS</button>
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-1-cond', 'ASA')">ASA</button>
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-1-cond', 'SAS')">SAS</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 쌍 2: ⑵와 짝 -->
+              <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-bottom:8px;">
+                <div style="font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:4px;">
+                  ② <b>삼각형 ⑵</b> (빗변 6cm, 한 예각 50°)와 합동인 삼각형 및 조건:
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                  <div>
+                    <label style="font-size:0.78rem; color:#64748b;">합동인 삼각형 번호:</label>
+                    <input type="text" id="q2-2-q3-2-pair" class="proof-input-text" placeholder="삼각형 번호 입력" style="width:100%; box-sizing:border-box; margin-top:2px;">
+                    <div style="display:flex; gap:3px; margin-top:4px; flex-wrap:wrap;">
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-2-pair', '1')">1</button>
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-2-pair', '3')">3</button>
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-2-pair', '4')">4</button>
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-2-pair', '5')">5</button>
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-2-pair', '6')">6</button>
+                    </div>
+                  </div>
+                  <div>
+                    <label style="font-size:0.78rem; color:#64748b;">합동 조건:</label>
+                    <input type="text" id="q2-2-q3-2-cond" class="proof-input-text" placeholder="직각삼각형 합동 조건 입력" style="width:100%; box-sizing:border-box; margin-top:2px;">
+                    <div style="display:flex; gap:3px; margin-top:4px; flex-wrap:wrap;">
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-2-cond', 'RHA')">RHA</button>
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-2-cond', 'RHS')">RHS</button>
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-2-cond', 'ASA')">ASA</button>
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-2-cond', 'SAS')">SAS</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 쌍 3: ⑸와 짝 -->
+              <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px;">
+                <div style="font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:4px;">
+                  ③ <b>삼각형 ⑸</b> (빗변 6cm, 한 변 4cm)와 합동인 삼각형 및 조건:
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                  <div>
+                    <label style="font-size:0.78rem; color:#64748b;">합동인 삼각형 번호:</label>
+                    <input type="text" id="q2-2-q3-3-pair" class="proof-input-text" placeholder="삼각형 번호 입력" style="width:100%; box-sizing:border-box; margin-top:2px;">
+                    <div style="display:flex; gap:3px; margin-top:4px; flex-wrap:wrap;">
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-3-pair', '1')">1</button>
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-3-pair', '2')">2</button>
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-3-pair', '3')">3</button>
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-3-pair', '4')">4</button>
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-3-pair', '6')">6</button>
+                    </div>
+                  </div>
+                  <div>
+                    <label style="font-size:0.78rem; color:#64748b;">합동 조건:</label>
+                    <input type="text" id="q2-2-q3-3-cond" class="proof-input-text" placeholder="직각삼각형 합동 조건 입력" style="width:100%; box-sizing:border-box; margin-top:2px;">
+                    <div style="display:flex; gap:3px; margin-top:4px; flex-wrap:wrap;">
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-3-cond', 'RHA')">RHA</button>
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-3-cond', 'RHS')">RHS</button>
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-3-cond', 'ASA')">ASA</button>
+                      <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-q3-3-cond', 'SAS')">SAS</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 문항 2 [생각 넓히기 (교과서 161쪽)] -->
+            <div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:10px; padding:14px;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                <span style="background:#0d9488; color:#fff; font-size:0.75rem; font-weight:800; padding:2px 7px; border-radius:6px;">생각 넓히기</span>
+                <span style="font-size:0.88rem; font-weight:700; color:#1e293b;">\\(\\angle XOY\\)의 이등분선 위의 한 점 \\(P\\)에서 두 변에 내린 수선의 발 \\(A, B\\)에 대한 증명 빈칸을 완성하시오.</span>
+              </div>
+              <div style="background:#f8fafc; border-left:3px solid #0d9488; padding:10px 12px; margin-bottom:10px; font-size:0.82rem; line-height:1.6; color:#334155;">
+                두 직각삼각형 \\(\\triangle POA\\)와 \\(\\triangle POB\\)에서<br>
+                • \\(\\angle PAO = \\angle PBO = 90^\\circ\\)<br>
+                • 선분 \\(OP\\)는 [ <b>(1)</b> ] (공통인 빗변)<br>
+                • \\(\\angle POA = \\angle POB\\) (각의 이등분선)<br>
+                따라서 \\(\\triangle POA \\equiv \\triangle POB\\) ( [ <b>(2)</b> ] 합동 )<br>
+                그러므로 선분 \\(PA\\)와 길이가 같은 선분은 선분 [ <b>(3)</b> ]이다.
+              </div>
+
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <div>
+                  <label style="font-size:0.8rem; font-weight:700; color:#334155;">빈칸 (1) - \\(OP\\)의 기하학적 관계:</label>
+                  <input type="text" id="q2-2-proof-1" class="proof-input-text" placeholder="기하학적 관계 용어 입력" style="width:100%; box-sizing:border-box; margin-top:2px;">
+                  <div style="display:flex; gap:4px; margin-top:4px; flex-wrap:wrap;">
+                    <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-proof-1', '공통')">공통</button>
+                    <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-proof-1', '대변')">대변</button>
+                    <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-proof-1', '이등분선')">이등분선</button>
+                    <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-proof-1', '수선')">수선</button>
+                  </div>
+                </div>
+
+                <div>
+                  <label style="font-size:0.8rem; font-weight:700; color:#334155;">빈칸 (2) - 두 직각삼각형의 합동 조건:</label>
+                  <input type="text" id="q2-2-proof-2" class="proof-input-text" placeholder="직각삼각형 합동 조건 입력" style="width:100%; box-sizing:border-box; margin-top:2px;">
+                  <div style="display:flex; gap:4px; margin-top:4px; flex-wrap:wrap;">
+                    <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-proof-2', 'RHA')">RHA</button>
+                    <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-proof-2', 'RHS')">RHS</button>
+                    <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-proof-2', 'ASA')">ASA</button>
+                    <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-proof-2', 'SAS')">SAS</button>
+                  </div>
+                </div>
+
+                <div>
+                  <label style="font-size:0.8rem; font-weight:700; color:#334155;">빈칸 (3) - \\(PA\\)와 길이가 같은 선분:</label>
+                  <input type="text" id="q2-2-proof-3" class="proof-input-text" placeholder="대응 선분 기호 입력" style="width:100%; box-sizing:border-box; margin-top:2px;">
+                  <div style="display:flex; gap:4px; margin-top:4px; flex-wrap:wrap;">
+                    <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-proof-3', 'PB')">PB</button>
+                    <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-proof-3', 'OB')">OB</button>
+                    <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-proof-3', 'OP')">OP</button>
+                    <button type="button" class="tool-btn" onclick="selectInputVal('q2-2-proof-3', 'AB')">AB</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 피드백 카드 (#card-feedback-2-2) -->
+            <div id="card-feedback-2-2" class="card bounceInCard" style="display:none; border-left:5px solid #059669; background:#f0fdf4;">
+              <div id="feedback-title-2-2" style="font-size:0.95rem; font-weight:800; margin-bottom:4px; color:#15803d;"></div>
+              <p id="feedback-desc-2-2" style="font-size:0.85rem; line-height:1.5; color:#334155; white-space:pre-line;"></p>
+            </div>
+
+            <!-- 채점 버튼 -->
+            <button id="btn-grade-2-2" class="btn btn-primary" style="width:100%; height:44px; font-size:0.95rem; font-weight:800;" onclick="executeStepGrade('2-2');">
+              🎯 2-2 정답 확인 및 채점하기
+            </button>
+          </div>
+        `,
+        grader: function() {
+          const ids = [
+            'q2-2-q3-1-pair', 'q2-2-q3-1-cond',
+            'q2-2-q3-2-pair', 'q2-2-q3-2-cond',
+            'q2-2-q3-3-pair', 'q2-2-q3-3-cond',
+            'q2-2-proof-1', 'q2-2-proof-2', 'q2-2-proof-3'
+          ];
+          const v = {};
+          ids.forEach(id => {
+            const el = document.getElementById(id);
+            v[id] = el ? el.value.trim() : '';
+          });
+
+          // 교사 마스터 비밀번호 바이패스
+          const masterPws = ['260523', '260831', '661227'];
+          const isMaster = ids.some(id => masterPws.includes(v[id]));
+          if (isMaster) {
+            const answers = {
+              'q2-2-q3-1-pair': '3',
+              'q2-2-q3-1-cond': 'RHS',
+              'q2-2-q3-2-pair': '4',
+              'q2-2-q3-2-cond': 'RHA',
+              'q2-2-q3-3-pair': '6',
+              'q2-2-q3-3-cond': 'RHS',
+              'q2-2-proof-1': '공통',
+              'q2-2-proof-2': 'RHA',
+              'q2-2-proof-3': 'PB'
+            };
+            Object.keys(answers).forEach(k => {
+              if (document.getElementById(k)) document.getElementById(k).value = answers[k];
+            });
+
+            return {
+              success: true,
+              score: 100,
+              answerText: "문제 3: ⑴-⑶ (RHS), ⑵-⑷ (RHA), ⑸-⑹ (RHS) || 생각 넓히기: (1) 공통, (2) RHA, (3) PB",
+              explanation: "교사 마스터 패스로 2-2단계 [직각삼각형 합동 판별 & 각의 이등분선의 성질]이 100점 승인되었습니다!"
+            };
+          }
+
+          // 1. 문제 3번 채점
+          // ⑴과 ⑶ RHS
+          const ok1_pair = v['q2-2-q3-1-pair'].replace(/[^0-9]/g, '') === '3';
+          const ok1_cond = v['q2-2-q3-1-cond'].toUpperCase().replace(/\\s+/g, '').includes('RHS');
+
+          // ⑵와 ⑷ RHA
+          const ok2_pair = v['q2-2-q3-2-pair'].replace(/[^0-9]/g, '') === '4';
+          const ok2_cond = v['q2-2-q3-2-cond'].toUpperCase().replace(/\\s+/g, '').includes('RHA');
+
+          // ⑸와 ⑹ RHS
+          const ok3_pair = v['q2-2-q3-3-pair'].replace(/[^0-9]/g, '') === '6';
+          const ok3_cond = v['q2-2-q3-3-cond'].toUpperCase().replace(/\\s+/g, '').includes('RHS');
+
+          // 2. 생각 넓히기 증명 빈칸 채점
+          // (1) 공통 (또는 공통변)
+          const ok_p1 = v['q2-2-proof-1'].replace(/\\s+/g, '').includes('공통');
+
+          // (2) RHA 합동
+          const ok_p2 = v['q2-2-proof-2'].toUpperCase().replace(/\\s+/g, '').includes('RHA');
+
+          // (3) 선분 PB (또는 BP)
+          const p3_clean = v['q2-2-proof-3'].toUpperCase().replace(/[^A-Z]/g, '');
+          const ok_p3 = p3_clean === 'PB' || p3_clean === 'BP' || v['q2-2-proof-3'].includes('PB') || v['q2-2-proof-3'].includes('BP');
+
+          const checks = [ok1_pair, ok1_cond, ok2_pair, ok2_cond, ok3_pair, ok3_cond, ok_p1, ok_p2, ok_p3];
+          const correctCount = checks.filter(Boolean).length;
+
+          if (correctCount === 9) {
+            return {
+              success: true,
+              score: 100,
+              answerText: "문제 3: ⑴-⑶ (RHS), ⑵-⑷ (RHA), ⑸-⑹ (RHS) || 생각 넓히기: (1) 공통, (2) RHA, (3) PB",
+              explanation: "완벽합니다! 👏 직각삼각형의 합동 판별과 각의 이등분선의 핵심 성질을 완벽하게 마스터했습니다.\\n\\n• 문제 3번 ⑴과 ⑶: 빗변 6cm, 다른 한 변 3cm ➡ RHS 합동\\n• 문제 3번 ⑵와 ⑷: 빗변 6cm, 한 예각 50°와 40°(90°-50°=40°) ➡ RHA 합동\\n• 문제 3번 ⑸와 ⑹: 빗변 6cm, 다른 한 변 4cm ➡ RHS 합동\\n• 생각 넓히기: △POA와 △POB에서 직각, 빗변 OP는 공통, 한 예각 ∠AOP = ∠BOP이므로 △POA ≡ △POB (RHA 합동) ➡ 따라서 대응변 PA = PB!\\n\\n💡 핵심 정리: 『각의 이등분선 위의 임의의 한 점에서 그 각의 두 변에 이르는 거리는 항상 같다』는 성질은 앞으로 배울 삼각형의 내심의 핵심 밑거름이 됩니다!"
+            };
+          } else {
+            const score = Math.round((correctCount / 9) * 100);
+            let hints = [];
+            if (!ok1_pair || !ok1_cond) {
+              hints.push("• [문제 3번 ①]: ⑴은 빗변이 6cm, 한 변이 3cm입니다. ⑶과 빗변 및 한 변의 길이가 같으므로 RHS 합동입니다.");
+            }
+            if (!ok2_pair || !ok2_cond) {
+              hints.push("• [문제 3번 ②]: ⑵는 빗변 6cm, 한 각이 50°이므로 다른 각은 40°입니다. ⑷는 빗변 6cm, 한 각이 40°이므로 RHA 합동입니다.");
+            }
+            if (!ok3_pair || !ok3_cond) {
+              hints.push("• [문제 3번 ③]: ⑸는 빗변 6cm, 한 변 4cm입니다. ⑹과 빗변 및 한 변의 길이가 같으므로 RHS 합동입니다.");
+            }
+            if (!ok_p1) {
+              hints.push("• [생각 넓히기 (1)]: 선분 OP는 두 직각삼각형 모두에 속해 있으므로 '공통'인 빗변입니다.");
+            }
+            if (!ok_p2) {
+              hints.push("• [생각 넓히기 (2)]: 빗변(H)이 공통이고 각의 이등분선에 의해 한 예각(A)이 같으므로 'RHA' 합동입니다.");
+            }
+            if (!ok_p3) {
+              hints.push("• [생각 넓히기 (3)]: RHA 합동이므로 대응변인 선분 'PB'와 길이가 같습니다.");
+            }
+            return {
+              success: false,
+              score: score,
+              hint: `💡 9개 채점 항목 중 ${correctCount}개를 맞혔습니다 (${score}점).\\n다시 확인해 보세요:\\n` + hints.join('\\n')
             };
           }
         }
@@ -8655,6 +8956,925 @@
     if (typeof window !== 'undefined') {
       window.drawFuncStep2_1Canvas = drawFuncStep2_1Canvas;
     }
+
+    // --- 2-2 서브스텝 Drawer (Tab 2: 직각삼각형 합동 판별 & 각의 이등분선의 성질) ---
+    function drawFuncStep2_2Canvas() {
+      const canvas = document.getElementById('canvas-2-2');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const W = 760;
+      const H = 460;
+      canvas.width = W;
+      canvas.height = H;
+      canvas.style.width = '100%';
+      canvas.style.maxWidth = '760px';
+      canvas.style.aspectRatio = '760 / 460';
+
+      const s = state.tab2.bisectorLab;
+
+      // 헬퍼: 직각 표시 (A-B-C에서 B가 꼭짓점, 각 ABC = 90도)
+      function drawRightAngleMark(c, b, a, size, strokeStyle) {
+        const v1x = a.x - b.x, v1y = a.y - b.y;
+        const v2x = c.x - b.x, v2y = c.y - b.y;
+        const l1 = Math.hypot(v1x, v1y), l2 = Math.hypot(v2x, v2y);
+        if (l1 < 1e-4 || l2 < 1e-4) return;
+        const u1x = v1x / l1, u1y = v1y / l1;
+        const u2x = v2x / l2, u2y = v2y / l2;
+        const p1x = b.x + u1x * size, p1y = b.y + u1y * size;
+        const p2x = b.x + u2x * size, p2y = b.y + u2y * size;
+        const p3x = p1x + u2x * size, p3y = p1y + u2y * size;
+
+        ctx.beginPath();
+        ctx.moveTo(p1x, p1y);
+        ctx.lineTo(p3x, p3y);
+        ctx.lineTo(p2x, p2y);
+        ctx.strokeStyle = strokeStyle || '#0284c7';
+        ctx.lineWidth = 1.8;
+        ctx.stroke();
+      }
+
+      // 헬퍼: 둥근 사각형
+      function drawRoundRect(x, y, w, h, r, fill, stroke, strokeW) {
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, r);
+        if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+        if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = strokeW || 1; ctx.stroke(); }
+      }
+
+      function render() {
+        ctx.clearRect(0, 0, W, H);
+
+        // 1. 프리미엄 배경
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+        bgGrad.addColorStop(0, '#f8fafc');
+        bgGrad.addColorStop(1, '#f1f5f9');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, W, H);
+
+        // 그리드 패턴
+        ctx.strokeStyle = 'rgba(203, 213, 225, 0.4)';
+        ctx.lineWidth = 1;
+        for (let x = 30; x < W; x += 30) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+        }
+        for (let y = 30; y < H; y += 30) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+        }
+
+        // 2. 상단 메인 모드 탭 바
+        const modeTabs = [
+          { mode: 0, label: '🔍 문제 3번: 6개 직각삼각형 합동 판별 갤러리' },
+          { mode: 1, label: '📐 생각 넓히기: 각의 이등분선의 성질 동적 증명' }
+        ];
+        modeTabs.forEach((tab, idx) => {
+          const tx = 20 + idx * 360;
+          const ty = 12;
+          const tw = 350;
+          const th = 34;
+          const isActive = s.selectedMode === tab.mode;
+          const isHover = s.hoverBtn === `mode_${tab.mode}`;
+
+          drawRoundRect(
+            tx, ty, tw, th, 8,
+            isActive ? '#0284c7' : (isHover ? '#e0f2fe' : '#ffffff'),
+            isActive ? '#0369a1' : '#cbd5e1',
+            isActive ? 2 : 1
+          );
+
+          ctx.fillStyle = isActive ? '#ffffff' : (isHover ? '#0369a1' : '#475569');
+          ctx.font = 'bold 12.5px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(tab.label, tx + tw / 2, ty + th / 2);
+        });
+
+        // =====================================================================
+        // 모드 0: 문제 3번 6개 직각삼각형 짝맞추기 갤러리 랩
+        // =====================================================================
+        if (s.selectedMode === 0) {
+          // 서브 컨트롤 바 (쌍 선택 3종 & 애니메이션 토글)
+          const pairTabs = [
+            { id: 1, label: '⑴ & ⑶ [RHS]' },
+            { id: 2, label: '⑵ & ⑷ [RHA]' },
+            { id: 3, label: '⑸ & ⑹ [RHS]' }
+          ];
+
+          pairTabs.forEach((pt, idx) => {
+            const px = 20 + idx * 140;
+            const py = 54;
+            const pw = 130;
+            const ph = 30;
+            const isActive = s.activePair === pt.id;
+            const isHover = s.hoverBtn === `pair_${pt.id}`;
+
+            drawRoundRect(
+              px, py, pw, ph, 6,
+              isActive ? '#059669' : (isHover ? '#d1fae5' : '#ffffff'),
+              isActive ? '#047857' : '#cbd5e1',
+              isActive ? 2 : 1
+            );
+            ctx.fillStyle = isActive ? '#ffffff' : (isHover ? '#047857' : '#334155');
+            ctx.font = 'bold 12px Pretendard, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(pt.label, px + pw / 2, py + ph / 2);
+          });
+
+          // 애니메이션 토글 버튼
+          const animBtnX = 460;
+          const animBtnY = 54;
+          const animBtnW = 150;
+          const animBtnH = 30;
+          const isAnimActive = s.isOverlapping;
+          const isAnimHover = s.hoverBtn === 'toggle_overlap';
+
+          drawRoundRect(
+            animBtnX, animBtnY, animBtnW, animBtnH, 6,
+            isAnimActive ? '#8b5cf6' : (isAnimHover ? '#ede9fe' : '#ffffff'),
+            isAnimActive ? '#7c3aed' : '#cbd5e1',
+            isAnimActive ? 2 : 1
+          );
+          ctx.fillStyle = isAnimActive ? '#ffffff' : (isAnimHover ? '#6d28d9' : '#334155');
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(isAnimActive ? '⏸ 포개기 초기화' : '▶ 겹쳐서 합동 확인', animBtnX + animBtnW / 2, animBtnY + animBtnH / 2);
+
+          // 초기화 버튼
+          const resetBtnX = 620;
+          const resetBtnY = 54;
+          const resetBtnW = 120;
+          const resetBtnH = 30;
+          const isResetHover = s.hoverBtn === 'reset_overlap';
+          drawRoundRect(
+            resetBtnX, resetBtnY, resetBtnW, resetBtnH, 6,
+            isResetHover ? '#fee2e2' : '#ffffff',
+            isResetHover ? '#ef4444' : '#cbd5e1',
+            1
+          );
+          ctx.fillStyle = isResetHover ? '#b91c1c' : '#475569';
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('🔄 분리 위치로', resetBtnX + resetBtnW / 2, resetBtnY + resetBtnH / 2);
+
+          // 메인 인터랙션 뷰포트
+          // s.overlapProgress 애니메이션 갱신
+          if (s.isOverlapping && s.overlapProgress < 1.0) {
+            s.overlapProgress = Math.min(1.0, s.overlapProgress + 0.025);
+          } else if (!s.isOverlapping && s.overlapProgress > 0.0) {
+            s.overlapProgress = Math.max(0.0, s.overlapProgress - 0.04);
+          }
+
+          const prog = s.overlapProgress; // 0.0 (분리) ~ 1.0 (중앙 합체)
+
+          // 중앙 뷰포트 영역: y = 92 ~ 340
+          drawRoundRect(20, 92, 720, 246, 12, '#ffffff', '#e2e8f0', 1.5);
+
+          // 각 쌍별 기하 도형 좌표 및 렌더링
+          // 쌍 1: ⑴과 ⑶ (RHS: 빗변 6, 한 변 3)
+          // 쌍 2: ⑵와 ⑷ (RHA: 빗변 6, 한 각 50°, 40°)
+          // 쌍 3: ⑸와 ⑹ (RHS: 빗변 6, 한 변 4)
+          const scale = 25; // 1cm = 25px
+
+          if (s.activePair === 1) {
+            // ⑴: 빗변 6cm, 밑변 3cm, 높이 sqrt(27) = 5.196cm
+            // ⑶: 빗변 6cm, 높이 3cm, 밑변 sqrt(27) = 5.196cm
+            const b = 3.0 * scale; // 75px
+            const h = Math.sqrt(36 - 9) * scale; // 129.9px
+            const cX = 380, cY = 270;
+
+            // 좌측 ⑴ 기준 위치: (180, 270), 중앙: (380, 270)
+            const x1 = 180 + (cX - 180) * prog;
+            const y1 = cY;
+
+            // 우측 ⑶ 기준 위치: (580, 270), 중앙: (380, 270)
+            const x2 = 580 + (cX - 580) * prog;
+            const y2 = cY;
+
+            // ⑴ 드로잉: 밑변 b(오른쪽), 직각은 (x1, y1), 위로 높이 h
+            const p1_right = { x: x1, y: y1 };
+            const p1_base = { x: x1 + b, y: y1 };
+            const p1_top = { x: x1, y: y1 - h };
+
+            // ⑴ 삼각형
+            ctx.beginPath();
+            ctx.moveTo(p1_right.x, p1_right.y);
+            ctx.lineTo(p1_base.x, p1_base.y);
+            ctx.lineTo(p1_top.x, p1_top.y);
+            ctx.closePath();
+            ctx.fillStyle = `rgba(59, 130, 246, ${0.25 + prog * 0.15})`;
+            ctx.fill();
+            ctx.strokeStyle = '#2563eb';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            drawRightAngleMark(p1_base, p1_right, p1_top, 14, '#2563eb');
+
+            // ⑴ 라벨
+            ctx.fillStyle = '#1e3a8a';
+            ctx.font = 'bold 13px Pretendard, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('⑴', x1 - 18, y1 - h / 2);
+            ctx.fillText('3 cm', (p1_right.x + p1_base.x) / 2, y1 + 18);
+            ctx.fillText('6 cm', (p1_base.x + p1_top.x) / 2 + 18, (p1_base.y + p1_top.y) / 2 - 6);
+
+            // ⑶ 드로잉: prog에 따라 회전/반전되어 ⑴과 완벽히 포개어지도록 보간
+            // ⑶ 원본: 높이 3cm, 밑변 h, 직각은 (x2, y2)
+            // 포개질 때 ⑴의 밑변 3cm와 맞추기 위해 90도 회전
+            const angle3 = (Math.PI / 2) * prog;
+            ctx.save();
+            ctx.translate(x2, y2);
+            ctx.rotate(-angle3);
+
+            // 원본 ⑶: 밑변 h, 높이 b
+            const p3_r = { x: 0, y: 0 };
+            const p3_b = { x: prog > 0.5 ? b : h, y: 0 };
+            const p3_t = { x: 0, y: prog > 0.5 ? -h : -b };
+
+            // 부드러운 포개기를 위한 직접 정점 보간:
+            ctx.restore();
+
+            // 프로그레스에 따른 직접 정점 보간 (⑴과 완벽 일치하도록):
+            const p3_base_x = (x2 + h) + (p1_base.x - (x2 + h)) * prog;
+            const p3_base_y = y2 + (p1_base.y - y2) * prog;
+            const p3_top_x = x2 + (p1_top.x - x2) * prog;
+            const p3_top_y = (y2 - b) + (p1_top.y - (y2 - b)) * prog;
+            const p3_rt_x = x2 + (p1_right.x - x2) * prog;
+            const p3_rt_y = y2 + (p1_right.y - y2) * prog;
+
+            ctx.beginPath();
+            ctx.moveTo(p3_rt_x, p3_rt_y);
+            ctx.lineTo(p3_base_x, p3_base_y);
+            ctx.lineTo(p3_top_x, p3_top_y);
+            ctx.closePath();
+            ctx.fillStyle = `rgba(245, 158, 11, ${0.25 + prog * 0.15})`;
+            ctx.fill();
+            ctx.strokeStyle = '#d97706';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            drawRightAngleMark({ x: p3_base_x, y: p3_base_y }, { x: p3_rt_x, y: p3_rt_y }, { x: p3_top_x, y: p3_top_y }, 14, '#d97706');
+
+            if (prog < 0.6) {
+              ctx.fillStyle = '#92400e';
+              ctx.font = 'bold 13px Pretendard, sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText('⑶', x2 + 18, y2 - b / 2);
+              ctx.fillText('3 cm', x2 - 20, y2 - b / 2);
+              ctx.fillText('6 cm', (p3_base_x + p3_top_x) / 2 + 10, (p3_base_y + p3_top_y) / 2 - 12);
+            }
+
+            // 완전 포개졌을 때 축하 배너
+            if (prog > 0.85) {
+              drawRoundRect(140, 110, 480, 42, 8, 'rgba(5, 150, 105, 0.95)', '#047857', 1.5);
+              ctx.fillStyle = '#ffffff';
+              ctx.font = 'bold 14px Pretendard, sans-serif';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText('🎉 ⑴과 ⑶ 합동 완성: RHS 합동 (빗변 6cm, 한 변 3cm 일치!)', 380, 131);
+            }
+          } else if (s.activePair === 2) {
+            // 쌍 2: ⑵와 ⑷ (RHA: 빗변 6cm, ⑵는 50°, ⑷는 40°)
+            // 90° - 50° = 40°이므로 두 삼각형의 한 예각은 40°로 일치!
+            const rad50 = (50 * Math.PI) / 180;
+            const b = 6.0 * scale * Math.cos(rad50); // 밑변 (약 96.4px)
+            const h = 6.0 * scale * Math.sin(rad50); // 높이 (약 114.9px)
+            const cX = 380, cY = 270;
+
+            const x1 = 180 + (cX - 180) * prog;
+            const y1 = cY;
+            const x2 = 580 + (cX - 580) * prog;
+            const y2 = cY;
+
+            // ⑵ 삼각형 (좌측)
+            const p1_r = { x: x1, y: y1 };
+            const p1_b = { x: x1 + b, y: y1 };
+            const p1_t = { x: x1, y: y1 - h };
+
+            ctx.beginPath();
+            ctx.moveTo(p1_r.x, p1_r.y);
+            ctx.lineTo(p1_b.x, p1_b.y);
+            ctx.lineTo(p1_t.x, p1_t.y);
+            ctx.closePath();
+            ctx.fillStyle = `rgba(16, 185, 129, ${0.25 + prog * 0.15})`;
+            ctx.fill();
+            ctx.strokeStyle = '#059669';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            drawRightAngleMark(p1_b, p1_r, p1_t, 14, '#059669');
+
+            // ⑵ 라벨
+            ctx.fillStyle = '#065f46';
+            ctx.font = 'bold 13px Pretendard, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('⑵', x1 - 18, y1 - h / 2);
+            ctx.fillText('50°', p1_b.x - 22, p1_b.y - 12);
+            ctx.fillText('6 cm', (p1_b.x + p1_t.x) / 2 + 18, (p1_b.y + p1_t.y) / 2 - 8);
+
+            // ⑷ 삼각형 (우측, 40° 각도 제공)
+            // 포개어지면 ⑵와 완전히 일치하도록 정점 보간
+            const p4_rt_x = x2 + (p1_r.x - x2) * prog;
+            const p4_rt_y = y2 + (p1_r.y - y2) * prog;
+            const p4_b_x = (x2 + b) + (p1_b.x - (x2 + b)) * prog;
+            const p4_b_y = y2 + (p1_b.y - y2) * prog;
+            const p4_t_x = x2 + (p1_t.x - x2) * prog;
+            const p4_t_y = (y2 - h) + (p1_t.y - (y2 - h)) * prog;
+
+            ctx.beginPath();
+            ctx.moveTo(p4_rt_x, p4_rt_y);
+            ctx.lineTo(p4_b_x, p4_b_y);
+            ctx.lineTo(p4_t_x, p4_t_y);
+            ctx.closePath();
+            ctx.fillStyle = `rgba(139, 92, 246, ${0.25 + prog * 0.15})`;
+            ctx.fill();
+            ctx.strokeStyle = '#7c3aed';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            drawRightAngleMark({ x: p4_b_x, y: p4_b_y }, { x: p4_rt_x, y: p4_rt_y }, { x: p4_t_x, y: p4_t_y }, 14, '#7c3aed');
+
+            if (prog < 0.6) {
+              ctx.fillStyle = '#5b21b6';
+              ctx.font = 'bold 13px Pretendard, sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText('⑷', x2 - 18, y2 - h / 2);
+              ctx.fillText('40°', p4_t_x + 16, p4_t_y + 24);
+              ctx.fillText('6 cm', (p4_b_x + p4_t_x) / 2 + 18, (p4_b_y + p4_t_y) / 2 - 8);
+            }
+
+            if (prog > 0.85) {
+              drawRoundRect(130, 110, 500, 42, 8, 'rgba(5, 150, 105, 0.95)', '#047857', 1.5);
+              ctx.fillStyle = '#ffffff';
+              ctx.font = 'bold 14px Pretendard, sans-serif';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText('🎉 ⑵와 ⑷ 합동 완성: RHA 합동 (빗변 6cm, 한 예각 40°·50° 일치!)', 380, 131);
+            }
+          } else if (s.activePair === 3) {
+            // 쌍 3: ⑸와 ⑹ (RHS: 빗변 6cm, 한 변 4cm, 다른 한 변 sqrt(20) = 4.47cm)
+            const b = Math.sqrt(36 - 16) * scale; // 111.8px
+            const h = 4.0 * scale; // 100px
+            const cX = 380, cY = 270;
+
+            const x1 = 180 + (cX - 180) * prog;
+            const y1 = cY;
+            const x2 = 580 + (cX - 580) * prog;
+            const y2 = cY;
+
+            // ⑸ 삼각형 (좌측)
+            const p1_r = { x: x1, y: y1 };
+            const p1_b = { x: x1 + b, y: y1 };
+            const p1_t = { x: x1, y: y1 - h };
+
+            ctx.beginPath();
+            ctx.moveTo(p1_r.x, p1_r.y);
+            ctx.lineTo(p1_b.x, p1_b.y);
+            ctx.lineTo(p1_t.x, p1_t.y);
+            ctx.closePath();
+            ctx.fillStyle = `rgba(236, 72, 153, ${0.25 + prog * 0.15})`;
+            ctx.fill();
+            ctx.strokeStyle = '#db2777';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            drawRightAngleMark(p1_b, p1_r, p1_t, 14, '#db2777');
+
+            // ⑸ 라벨
+            ctx.fillStyle = '#9d174d';
+            ctx.font = 'bold 13px Pretendard, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('⑸', x1 - 18, y1 - h / 2);
+            ctx.fillText('4 cm', x1 - 20, y1 - h / 2 + 16);
+            ctx.fillText('6 cm', (p1_b.x + p1_t.x) / 2 + 18, (p1_b.y + p1_t.y) / 2 - 8);
+
+            // ⑹ 삼각형 (우측, 변 4cm 위치가 다름)
+            const p6_rt_x = x2 + (p1_r.x - x2) * prog;
+            const p6_rt_y = y2 + (p1_r.y - y2) * prog;
+            const p6_b_x = (x2 + b) + (p1_b.x - (x2 + b)) * prog;
+            const p6_b_y = y2 + (p1_b.y - y2) * prog;
+            const p6_t_x = x2 + (p1_t.x - x2) * prog;
+            const p6_t_y = (y2 - h) + (p1_t.y - (y2 - h)) * prog;
+
+            ctx.beginPath();
+            ctx.moveTo(p6_rt_x, p6_rt_y);
+            ctx.lineTo(p6_b_x, p6_b_y);
+            ctx.lineTo(p6_t_x, p6_t_y);
+            ctx.closePath();
+            ctx.fillStyle = `rgba(14, 165, 233, ${0.25 + prog * 0.15})`;
+            ctx.fill();
+            ctx.strokeStyle = '#0284c7';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            drawRightAngleMark({ x: p6_b_x, y: p6_b_y }, { x: p6_rt_x, y: p6_rt_y }, { x: p6_t_x, y: p6_t_y }, 14, '#0284c7');
+
+            if (prog < 0.6) {
+              ctx.fillStyle = '#0369a1';
+              ctx.font = 'bold 13px Pretendard, sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText('⑹', x2 + 18, y2 - h / 2);
+              ctx.fillText('4 cm', (p6_rt_x + p6_b_x) / 2, p6_rt_y + 18);
+              ctx.fillText('6 cm', (p6_b_x + p6_t_x) / 2 + 18, (p6_b_y + p6_t_y) / 2 - 8);
+            }
+
+            if (prog > 0.85) {
+              drawRoundRect(140, 110, 480, 42, 8, 'rgba(5, 150, 105, 0.95)', '#047857', 1.5);
+              ctx.fillStyle = '#ffffff';
+              ctx.font = 'bold 14px Pretendard, sans-serif';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText('🎉 ⑸와 ⑹ 합동 완성: RHS 합동 (빗변 6cm, 한 변 4cm 일치!)', 380, 131);
+            }
+          }
+
+          // 하단 6개 미니 갤러리 프리뷰 바 (y = 350 ~ 446)
+          drawRoundRect(20, 348, 720, 98, 10, '#f8fafc', '#cbd5e1', 1);
+          ctx.fillStyle = '#475569';
+          ctx.font = 'bold 11.5px Pretendard, sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText('📌 교과서 161쪽 문제 3번 6개 직각삼각형 제원 요약표 (클릭하여 해당 쌍 바로 보기)', 32, 366);
+
+          const miniItems = [
+            { num: '⑴', desc: '빗변 6, 한변 3', pair: 1, color: '#2563eb' },
+            { num: '⑵', desc: '빗변 6, 예각 50°', pair: 2, color: '#059669' },
+            { num: '⑶', desc: '빗변 6, 한변 3', pair: 1, color: '#d97706' },
+            { num: '⑷', desc: '빗변 6, 예각 40°', pair: 2, color: '#7c3aed' },
+            { num: '⑸', desc: '빗변 6, 한변 4', pair: 3, color: '#db2777' },
+            { num: '⑹', desc: '빗변 6, 한변 4', pair: 3, color: '#0284c7' }
+          ];
+
+          miniItems.forEach((item, idx) => {
+            const mx = 32 + idx * 116;
+            const my = 376;
+            const mw = 108;
+            const mh = 58;
+            const isPairSelected = s.activePair === item.pair;
+
+            drawRoundRect(
+              mx, my, mw, mh, 6,
+              isPairSelected ? '#ffffff' : '#f1f5f9',
+              isPairSelected ? item.color : '#e2e8f0',
+              isPairSelected ? 2 : 1
+            );
+
+            ctx.fillStyle = item.color;
+            ctx.font = 'bold 13px Pretendard, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(item.num, mx + mw / 2, my + 18);
+
+            ctx.fillStyle = '#334155';
+            ctx.font = '10px Pretendard, sans-serif';
+            ctx.fillText(item.desc, mx + mw / 2, my + 34);
+
+            ctx.fillStyle = isPairSelected ? '#047857' : '#94a3b8';
+            ctx.font = 'bold 10px Pretendard, sans-serif';
+            ctx.fillText(isPairSelected ? '선택됨 ✔' : '대응쌍', mx + mw / 2, my + 48);
+          });
+        }
+
+        // =====================================================================
+        // 모드 1: 생각 넓히기 각의 이등분선의 성질 동적 증명 랩
+        // =====================================================================
+        else if (s.selectedMode === 1) {
+          // 기하 파라미터 계산
+          const Ox = 110, Oy = 370; // 각의 꼭짓점 O
+          const radX = (-10 * Math.PI) / 180; // 반직선 OX 각도 (-10도)
+          const radY = (-66 * Math.PI) / 180; // 반직선 OY 각도 (-66도)
+          const radP = (-38 * Math.PI) / 180; // 이등분선 OP 각도 (-38도, 양각 28도)
+          const halfAngle = (28 * Math.PI) / 180;
+
+          // 점 P의 위치: r = 130 + s.tParam * 250 (130 ~ 380px)
+          const r = 130 + s.tParam * 250;
+          const Px = Ox + r * Math.cos(radP);
+          const Py = Oy + r * Math.sin(radP);
+
+          // 수선의 발 A (반직선 OX 위)
+          // OA = r * cos(28도)
+          const dOA = r * Math.cos(halfAngle);
+          const Ax = Ox + dOA * Math.cos(radX);
+          const Ay = Oy + dOA * Math.sin(radX);
+
+          // 수선의 발 B (반직선 OY 위)
+          // OB = r * cos(28도)
+          const dOB = r * Math.cos(halfAngle);
+          const Bx = Ox + dOB * Math.cos(radY);
+          const By = Oy + dOB * Math.sin(radY);
+
+          // 수선의 길이 PA = PB = r * sin(28도)
+          const dDist = r * Math.sin(halfAngle);
+          const cmDist = (dDist / 28).toFixed(1); // 28px = 1cm
+
+          // 1. 증명 단계 버튼 바 (4스텝)
+          const proofSteps = [
+            { step: 0, label: '① 각의 이등분선' },
+            { step: 1, label: '② 수선 직각 (90°)' },
+            { step: 2, label: '③ 공통 빗변 OP' },
+            { step: 3, label: '④ RHA 합동 ➡ PA = PB' }
+          ];
+
+          proofSteps.forEach((ps, idx) => {
+            const bx = 20 + idx * 180;
+            const by = 54;
+            const bw = 170;
+            const bh = 28;
+            const isActive = s.showProofStep === ps.step;
+            const isHover = s.hoverBtn === `pstep_${ps.step}`;
+
+            drawRoundRect(
+              bx, by, bw, bh, 6,
+              isActive ? '#0d9488' : (isHover ? '#ccfbf1' : '#ffffff'),
+              isActive ? '#0f766e' : '#cbd5e1',
+              isActive ? 2 : 1
+            );
+            ctx.fillStyle = isActive ? '#ffffff' : (isHover ? '#0f766e' : '#334155');
+            ctx.font = 'bold 11.5px Pretendard, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(ps.label, bx + bw / 2, by + bh / 2);
+          });
+
+          // 2. 직각삼각형 2개 채우기
+          // △POA
+          ctx.beginPath();
+          ctx.moveTo(Ox, Oy);
+          ctx.lineTo(Ax, Ay);
+          ctx.lineTo(Px, Py);
+          ctx.closePath();
+          ctx.fillStyle = s.showProofStep >= 3 ? 'rgba(56, 189, 248, 0.35)' : 'rgba(56, 189, 248, 0.18)';
+          ctx.fill();
+          ctx.strokeStyle = '#0284c7';
+          ctx.lineWidth = 1.8;
+          ctx.stroke();
+
+          // △POB
+          ctx.beginPath();
+          ctx.moveTo(Ox, Oy);
+          ctx.lineTo(Bx, By);
+          ctx.lineTo(Px, Py);
+          ctx.closePath();
+          ctx.fillStyle = s.showProofStep >= 3 ? 'rgba(168, 85, 247, 0.35)' : 'rgba(168, 85, 247, 0.18)';
+          ctx.fill();
+          ctx.strokeStyle = '#7c3aed';
+          ctx.lineWidth = 1.8;
+          ctx.stroke();
+
+          // 3. 반직선 OX, OY
+          // OX
+          const rayLen = 420;
+          ctx.beginPath();
+          ctx.moveTo(Ox, Oy);
+          ctx.lineTo(Ox + rayLen * Math.cos(radX), Oy + rayLen * Math.sin(radX));
+          ctx.strokeStyle = '#334155';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // OY
+          ctx.beginPath();
+          ctx.moveTo(Ox, Oy);
+          ctx.lineTo(Ox + rayLen * Math.cos(radY), Oy + rayLen * Math.sin(radY));
+          ctx.strokeStyle = '#334155';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // 반직선 화살표 라벨
+          ctx.fillStyle = '#0f172a';
+          ctx.font = 'bold 14px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('X', Ox + (rayLen + 15) * Math.cos(radX), Oy + (rayLen + 15) * Math.sin(radX));
+          ctx.fillText('Y', Ox + (rayLen + 15) * Math.cos(radY), Oy + (rayLen + 15) * Math.sin(radY));
+          ctx.fillText('O', Ox - 16, Oy + 10);
+
+          // 4. 각의 이등분선 OP
+          ctx.beginPath();
+          ctx.moveTo(Ox, Oy);
+          ctx.lineTo(Ox + (rayLen + 20) * Math.cos(radP), Oy + (rayLen + 20) * Math.sin(radP));
+          ctx.strokeStyle = s.showProofStep >= 2 ? '#eab308' : '#64748b';
+          ctx.lineWidth = s.showProofStep >= 2 ? 3.5 : 2;
+          ctx.setLineDash(s.showProofStep >= 2 ? [] : [6, 4]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // 5. 각의 크기 일치 호 및 점 표시 (O 주변)
+          const arcR = 48;
+          // OX ~ OP 호 (아래쪽 각)
+          ctx.beginPath();
+          ctx.arc(Ox, Oy, arcR, radP, radX, false);
+          ctx.strokeStyle = '#0284c7';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // OP ~ OY 호 (위쪽 각)
+          ctx.beginPath();
+          ctx.arc(Ox, Oy, arcR, radY, radP, false);
+          ctx.strokeStyle = '#7c3aed';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // 각의 이등분점 기호 •
+          const dotR = 34;
+          const dot1X = Ox + dotR * Math.cos((radX + radP) / 2);
+          const dot1Y = Oy + dotR * Math.sin((radX + radP) / 2);
+          const dot2X = Ox + dotR * Math.cos((radY + radP) / 2);
+          const dot2Y = Oy + dotR * Math.sin((radY + radP) / 2);
+
+          ctx.fillStyle = '#0284c7';
+          ctx.beginPath(); ctx.arc(dot1X, dot1Y, 3.5, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#7c3aed';
+          ctx.beginPath(); ctx.arc(dot2X, dot2Y, 3.5, 0, Math.PI * 2); ctx.fill();
+
+          // 6. 직각 표시 (A와 B)
+          drawRightAngleMark({ x: Px, y: Py }, { x: Ax, y: Ay }, { x: Ox, y: Oy }, 14, '#0284c7');
+          drawRightAngleMark({ x: Px, y: Py }, { x: Bx, y: By }, { x: Ox, y: Oy }, 14, '#7c3aed');
+
+          // 7. 수선 PA, PB 드로잉
+          ctx.beginPath();
+          ctx.moveTo(Px, Py);
+          ctx.lineTo(Ax, Ay);
+          ctx.strokeStyle = s.showProofStep >= 3 ? '#ef4444' : '#0284c7';
+          ctx.lineWidth = s.showProofStep >= 3 ? 3 : 2;
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(Px, Py);
+          ctx.lineTo(Bx, By);
+          ctx.strokeStyle = s.showProofStep >= 3 ? '#ef4444' : '#7c3aed';
+          ctx.lineWidth = s.showProofStep >= 3 ? 3 : 2;
+          ctx.stroke();
+
+          // 8. 꼭짓점 점 및 라벨
+          // 점 A
+          ctx.fillStyle = '#0284c7';
+          ctx.beginPath(); ctx.arc(Ax, Ay, 5, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#0f172a';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('A', Ax + 6, Ay + 18);
+
+          // 점 B
+          ctx.fillStyle = '#7c3aed';
+          ctx.beginPath(); ctx.arc(Bx, By, 5, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#0f172a';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.fillText('B', Bx - 14, By - 10);
+
+          // 점 P (드래그 가능 핸들)
+          const isPHover = s.hoverBtn === 'point_P' || s.isDraggingP;
+          ctx.fillStyle = 'rgba(239, 68, 68, 0.2)';
+          ctx.beginPath();
+          ctx.arc(Px, Py, isPHover ? 18 : 14, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#ef4444';
+          ctx.beginPath();
+          ctx.arc(Px, Py, isPHover ? 8 : 6.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          ctx.fillStyle = '#b91c1c';
+          ctx.font = 'bold 14px Pretendard, sans-serif';
+          ctx.fillText('P (드래그)', Px + 36, Py - 6);
+
+          // 9. 거리 측정 배지 (실시간 동적)
+          // PA 거리
+          const midPAx = (Px + Ax) / 2 + 16;
+          const midPAy = (Py + Ay) / 2 + 6;
+          drawRoundRect(midPAx - 30, midPAy - 12, 60, 22, 5, '#ffffff', '#0284c7', 1.5);
+          ctx.fillStyle = '#0369a1';
+          ctx.font = 'bold 11px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`PA=${cmDist}cm`, midPAx, midPAy);
+
+          // PB 거리
+          const midPBx = (Px + Bx) / 2 - 20;
+          const midPBy = (Py + By) / 2 - 16;
+          drawRoundRect(midPBx - 30, midPBy - 12, 60, 22, 5, '#ffffff', '#7c3aed', 1.5);
+          ctx.fillStyle = '#6d28d9';
+          ctx.font = 'bold 11px Pretendard, sans-serif';
+          ctx.fillText(`PB=${cmDist}cm`, midPBx, midPBy);
+
+          // 10. 우상단 실시간 증명 인터랙션 카드 (x: 470, y: 92, w: 270, h: 340)
+          drawRoundRect(470, 92, 270, 348, 10, '#ffffff', '#cbd5e1', 1.5);
+
+          // 카드 헤더
+          drawRoundRect(470, 92, 270, 36, 10, '#f0fdfa', '#99f6e4', 1);
+          ctx.fillStyle = '#0f766e';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('💡 각의 이등분선의 성질 증명', 484, 110);
+
+          // 단계별 설명 텍스트
+          ctx.textBaseline = 'top';
+          const lines = [
+            { text: '1. ∠PAO = ∠PBO = 90° (수선)', hl: s.showProofStep >= 1 },
+            { text: '2. 선분 OP는 공통 (빗변 H)', hl: s.showProofStep >= 2 },
+            { text: '3. ∠AOP = ∠BOP (각의 이등분선 A)', hl: s.showProofStep >= 0 },
+            { text: '➡ △POA ≡ △POB (RHA 합동)', hl: s.showProofStep >= 3, bold: true },
+            { text: '➡ 대응변: 선분 PA = 선분 PB', hl: s.showProofStep >= 3, bold: true, color: '#ef4444' }
+          ];
+
+          let curY = 140;
+          lines.forEach(line => {
+            if (line.hl) {
+              drawRoundRect(480, curY - 3, 250, 26, 5, '#f0fdf4', '#86efac', 1);
+            }
+            ctx.fillStyle = line.color || (line.hl ? '#15803d' : '#64748b');
+            ctx.font = line.bold ? 'bold 11.5px Pretendard, sans-serif' : '11px Pretendard, sans-serif';
+            ctx.fillText(line.text, 488, curY + 2);
+            curY += 32;
+          });
+
+          // 실시간 측정 비교 박스
+          curY += 10;
+          drawRoundRect(480, curY, 250, 72, 8, '#f8fafc', '#e2e8f0', 1);
+          ctx.fillStyle = '#334155';
+          ctx.font = 'bold 11px Pretendard, sans-serif';
+          ctx.fillText('실시간 거리 측정 일치 확인:', 490, curY + 8);
+
+          ctx.fillStyle = '#0284c7';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.fillText(`PA = ${cmDist} cm`, 496, curY + 28);
+
+          ctx.fillStyle = '#7c3aed';
+          ctx.fillText(`PB = ${cmDist} cm`, 496, curY + 48);
+
+          ctx.fillStyle = '#ef4444';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.fillText('PA ＝ PB (항상 일치!)', 600, curY + 38);
+
+          // 드래그 안내
+          drawRoundRect(480, curY + 82, 250, 36, 6, '#fef3c7', '#fde68a', 1);
+          ctx.fillStyle = '#92400e';
+          ctx.font = 'bold 10.5px Pretendard, sans-serif';
+          ctx.fillText('🖐️ 점 P를 드래그하여 움직여 보세요!', 490, curY + 92);
+          ctx.font = '10px Pretendard, sans-serif';
+          ctx.fillText('위치가 변해도 두 변까지의 거리는 항상 같습니다.', 490, curY + 106);
+        }
+      }
+
+      // 이벤트 핸들러 등록
+      function getCanvasPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        return {
+          x: (e.clientX - rect.left) * scaleX,
+          y: (e.clientY - rect.top) * scaleY
+        };
+      }
+
+      canvas.onmousedown = function(e) {
+        const { x: mx, y: my } = getCanvasPos(e);
+
+        // 상단 메인 모드 탭 클릭
+        if (my >= 12 && my <= 46) {
+          if (mx >= 20 && mx <= 370) {
+            s.selectedMode = 0;
+            return;
+          } else if (mx >= 380 && mx <= 730) {
+            s.selectedMode = 1;
+            return;
+          }
+        }
+
+        // 모드 0: 쌍 선택 & 겹치기
+        if (s.selectedMode === 0) {
+          if (my >= 54 && my <= 84) {
+            if (mx >= 20 && mx <= 150) { s.activePair = 1; s.overlapProgress = 0.0; s.isOverlapping = false; }
+            else if (mx >= 160 && mx <= 290) { s.activePair = 2; s.overlapProgress = 0.0; s.isOverlapping = false; }
+            else if (mx >= 300 && mx <= 430) { s.activePair = 3; s.overlapProgress = 0.0; s.isOverlapping = false; }
+            else if (mx >= 460 && mx <= 610) {
+              s.isOverlapping = !s.isOverlapping;
+            }
+            else if (mx >= 620 && mx <= 740) {
+              s.isOverlapping = false;
+              s.overlapProgress = 0.0;
+            }
+          }
+          // 하단 미니 갤러리 클릭으로 쌍 선택
+          if (my >= 376 && my <= 434) {
+            const miniPairMap = [1, 2, 1, 2, 3, 3];
+            miniItemsLoop: for (let i = 0; i < 6; i++) {
+              const ix = 32 + i * 116;
+              if (mx >= ix && mx <= ix + 108) {
+                s.activePair = miniPairMap[i];
+                s.overlapProgress = 0.0;
+                s.isOverlapping = false;
+                break miniItemsLoop;
+              }
+            }
+          }
+        }
+
+        // 모드 1: 점 P 드래그 & 증명 스텝 버튼
+        else if (s.selectedMode === 1) {
+          if (my >= 54 && my <= 82) {
+            for (let i = 0; i < 4; i++) {
+              const bx = 20 + i * 180;
+              if (mx >= bx && mx <= bx + 170) {
+                s.showProofStep = i;
+                return;
+              }
+            }
+          }
+
+          // 점 P 클릭 체크
+          const Ox = 110, Oy = 370;
+          const radP = (-38 * Math.PI) / 180;
+          const r = 130 + s.tParam * 250;
+          const Px = Ox + r * Math.cos(radP);
+          const Py = Oy + r * Math.sin(radP);
+          const distToP = Math.hypot(mx - Px, my - Py);
+          if (distToP <= 24) {
+            s.isDraggingP = true;
+          }
+        }
+      };
+
+      canvas.onmousemove = function(e) {
+        const { x: mx, y: my } = getCanvasPos(e);
+        let hover = null;
+
+        // 상단 모드 탭 호버
+        if (my >= 12 && my <= 46) {
+          if (mx >= 20 && mx <= 370) hover = 'mode_0';
+          else if (mx >= 380 && mx <= 730) hover = 'mode_1';
+        }
+
+        if (s.selectedMode === 0) {
+          if (my >= 54 && my <= 84) {
+            if (mx >= 20 && mx <= 150) hover = 'pair_1';
+            else if (mx >= 160 && mx <= 290) hover = 'pair_2';
+            else if (mx >= 300 && mx <= 430) hover = 'pair_3';
+            else if (mx >= 460 && mx <= 610) hover = 'toggle_overlap';
+            else if (mx >= 620 && mx <= 740) hover = 'reset_overlap';
+          }
+        } else if (s.selectedMode === 1) {
+          if (my >= 54 && my <= 82) {
+            for (let i = 0; i < 4; i++) {
+              const bx = 20 + i * 180;
+              if (mx >= bx && mx <= bx + 170) {
+                hover = `pstep_${i}`;
+              }
+            }
+          }
+
+          const Ox = 110, Oy = 370;
+          const radP = (-38 * Math.PI) / 180;
+          const r = 130 + s.tParam * 250;
+          const Px = Ox + r * Math.cos(radP);
+          const Py = Oy + r * Math.sin(radP);
+          const distToP = Math.hypot(mx - Px, my - Py);
+          if (distToP <= 24) {
+            hover = 'point_P';
+          }
+
+          // 드래그 중 점 P 이동
+          if (s.isDraggingP) {
+            // 마우스 좌표를 반직선 OP (각도 -38도)에 사영
+            const vx = mx - Ox;
+            const vy = my - Oy;
+            const ux = Math.cos(radP);
+            const uy = Math.sin(radP);
+            const projR = vx * ux + vy * uy; // O로부터의 투영 거리
+            // 130 ~ 380 범위로 클램프
+            const clampedR = Math.max(130, Math.min(370, projR));
+            s.tParam = (clampedR - 130) / 240;
+          }
+        }
+
+        s.hoverBtn = hover;
+        canvas.style.cursor = (hover || s.isDraggingP) ? 'pointer' : 'default';
+      };
+
+      canvas.onmouseup = function() {
+        s.isDraggingP = false;
+      };
+
+      canvas.onmouseleave = function() {
+        s.isDraggingP = false;
+        s.hoverBtn = null;
+      };
+
+      function loop() {
+        if (state.subStep !== '2-2') return;
+        render();
+        requestAnimationFrame(loop);
+      }
+      loop();
+    }
+
+    if (typeof window !== 'undefined') {
+      window.drawFuncStep2_2Canvas = drawFuncStep2_2Canvas;
+    }
+
 
     // =========================================================================
     // 🧭 내비게이션 & 탭 / 서브스텝 제어 로직
