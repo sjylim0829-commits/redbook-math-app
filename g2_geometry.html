@@ -3,16 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>중2 수학: 5. 삼각형의 성질</title>
+  <title>중2 수학: Ⅴ. 도형의 성질 - 1. 삼각형의 성질</title>
   
   <!-- Supabase Cloud DB SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- 표준 LMS Integration SDK (g1 공용 연동) -->
+  <!-- 영서중 수학 LMS Integration SDK -->
   <script src="js/lms-integration-g1.js"></script>
 
   <!-- KaTeX Math Rendering Library -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderAllMath()"></script>
 
   <!-- Two.js 2D Dynamic Geometry Engine -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/two.js/0.8.10/two.min.js"></script>
@@ -21,319 +22,418 @@
 
   <style>
     :root {
-      --primary: #4f46e5;
+      --primary-color: #4f46e5;
       --primary-hover: #4338ca;
-      --primary-light: #e0e7ff;
-      --secondary: #0284c7;
-      --accent: #ec4899;
-      --success: #059669;
-      --warning: #d97706;
-      --danger: #dc2626;
+      --secondary-color: #0284c7;
+      --secondary-hover: #0369a1;
+      --accent-color: #8b5cf6;
+      --accent-hover: #7c3aed;
+      --success-color: #059669;
+      --warning-color: #d97706;
 
       --bg-main: #f8fafc;
       --bg-card: #ffffff;
-      --text-main: #0f172a;
-      --text-muted: #475569;
-      --border: #cbd5e1;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --border-color: #cbd5e1;
 
       --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font-sans); }
+    button:hover, .btn:hover { transform: scale(1.04); transition: transform 0.15s ease, background 0.15s ease; }
 
     html, body {
       width: 100%;
       height: 100vh;
       overflow: hidden;
       background-color: var(--bg-main);
-      color: var(--text-main);
+      color: var(--text-primary);
       display: flex;
       flex-direction: column;
     }
 
-    /* 3-Tier 화면 계층: Top Header */
+    /* Top Header */
     header.app-header {
       background: #ffffff;
-      border-bottom: 1px solid var(--border);
-      padding: 0 20px;
+      border-bottom: 1px solid var(--border-color);
+      padding: 8px 24px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      height: 48px;
-      flex-shrink: 0;
       z-index: 100;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      height: 48px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
     }
-    .header-brand {
+
+    .logo-group {
       display: flex;
       align-items: center;
       gap: 10px;
     }
-    .header-brand h1 {
+
+    .badge-tag {
+      background: linear-gradient(135deg, #4f46e5, #8b5cf6);
+      color: #ffffff;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 16px;
+      text-transform: uppercase;
+    }
+
+    .app-title {
       font-size: 1.05rem;
       font-weight: 800;
-      color: var(--primary);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .header-user-badge {
-      font-size: 0.85rem;
-      font-weight: 700;
-      color: var(--text-muted);
-      background: #f1f5f9;
-      padding: 4px 10px;
-      border-radius: 20px;
-      border: 1px solid var(--border);
+      color: var(--text-primary);
+      letter-spacing: -0.5px;
     }
 
-    /* 3-Tier 화면 계층: Main Tab Bar (Nav) */
-    nav#main-tab-bar {
+    /* Tab Navigation Bar (7 Tabs Hierarchy: Tab 0~6) */
+    .tab-bar-container {
       background: #ffffff;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid var(--border-color);
+      padding: 4px 16px;
       display: flex;
-      gap: 4px;
-      padding: 4px 16px 0 16px;
-      flex-shrink: 0;
+      gap: 6px;
       overflow-x: auto;
-      z-index: 90;
+      height: 42px;
+      align-items: center;
     }
+
     .tab-btn {
-      padding: 8px 14px;
-      font-size: 0.86rem;
-      font-weight: 700;
-      color: var(--text-muted);
-      background: transparent;
-      border: none;
-      border-bottom: 3px solid transparent;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 12px;
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      font-weight: 600;
       cursor: pointer;
       white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      background: var(--primary-color);
+      color: #ffffff;
+      font-weight: 700;
+      border-color: var(--primary-color);
+    }
+
+    .tab-btn.locked {
+      opacity: 0.6;
+      cursor: not-allowed;
+      background: #f1f5f9;
+    }
+
+    /* Sub-Step Navigation Dropdown & Stepper */
+    .substep-bar {
+      background: #f8fafc;
+      border-bottom: 1px solid var(--border-color);
+      padding: 4px 16px;
       display: flex;
       align-items: center;
-      gap: 6px;
-      transition: all 0.15s ease;
-    }
-    .tab-btn:hover:not(.locked) {
-      color: var(--primary);
-      background: #f1f5f9;
-      border-radius: 6px 6px 0 0;
-    }
-    .tab-btn.active {
-      color: var(--primary);
-      border-bottom-color: var(--primary);
-      font-weight: 800;
-    }
-    .tab-btn.locked {
-      opacity: 0.55;
-      cursor: not-allowed;
+      height: 40px;
+      box-sizing: border-box;
+      z-index: 50;
     }
 
-    /* 3-Tier 화면 계층: Main Container */
-    main {
+    .substep-dropdown-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .substep-dropdown-select {
       flex: 1;
-      overflow: hidden;
-      position: relative;
-      background: var(--bg-main);
+      max-width: 520px;
+      height: 32px;
+      padding: 2px 10px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      background: #ffffff;
+      border: 1.5px solid #cbd5e1;
+      color: #1e293b;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
 
-    /* 뷰 컨테이너 분리 */
+    .substep-dropdown-select:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
+    }
+
+    .substep-stepper-btn {
+      padding: 5px 12px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      background: #ffffff;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 8px;
+      color: #334155;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    .substep-stepper-btn:hover:not(:disabled) {
+      background: #f1f5f9;
+      border-color: #94a3b8;
+      color: #0f172a;
+    }
+
+    .substep-stepper-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      background: #f8fafc;
+      border-color: #e2e8f0;
+      color: #94a3b8;
+    }
+
+    .substep-counter-badge {
+      padding: 3px 10px;
+      font-size: 0.82rem;
+      font-weight: 800;
+      background: #eef2ff;
+      color: var(--primary-color);
+      border: 1px solid #c7d2fe;
+      border-radius: 12px;
+      white-space: nowrap;
+    }
+
+    /* Main Container & 3-Tier Views */
+    .main-container {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+      height: calc(100vh - 130px);
+    }
+
     .view-panel {
+      display: none;
       width: 100%;
       height: 100%;
-      position: absolute;
-      top: 0;
-      left: 0;
-      display: flex;
-      flex-direction: column;
+      overflow: hidden;
     }
 
-    /* 1. 로그인 뷰 (#view-login) */
+    .view-panel.active {
+      display: flex;
+    }
+
+    /* VIEW 1: Login View */
     #view-login {
       justify-content: center;
       align-items: center;
-      background: radial-gradient(circle at 50% 50%, #f8fafc 0%, #e2e8f0 100%);
-      z-index: 50;
+      background: radial-gradient(circle at 50% 50%, #f1f5f9 0%, #e2e8f0 100%);
     }
-    .login-card {
+
+    .login-card-container {
       background: #ffffff;
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 36px 40px;
+      padding: 32px 36px;
+      border-radius: 20px;
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.08);
       width: 100%;
-      max-width: 420px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-    }
-    .login-card h2 {
-      font-size: 1.35rem;
-      font-weight: 800;
-      color: var(--primary);
+      max-width: 440px;
+      border: 1px solid rgba(226, 232, 240, 0.8);
       text-align: center;
     }
-    .login-card p {
-      font-size: 0.88rem;
-      color: var(--text-muted);
-      text-align: center;
-      line-height: 1.45;
-    }
+
     .form-group {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
+      margin-bottom: 16px;
+      text-align: left;
     }
+
     .form-group label {
+      display: block;
       font-size: 0.82rem;
       font-weight: 700;
-      color: var(--text-main);
+      color: var(--text-secondary);
+      margin-bottom: 6px;
     }
-    .form-input {
+
+    .form-control {
+      width: 100%;
       padding: 10px 14px;
+      border: 1.5px solid var(--border-color);
+      border-radius: 10px;
       font-size: 0.95rem;
-      border: 1.5px solid var(--border);
-      border-radius: 8px;
       outline: none;
-      transition: all 0.2s;
-    }
-    .form-input:focus {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px var(--primary-light);
+      transition: all 0.2s ease;
     }
 
-    /* 게이미피케이션 인풋 CSS (INTENT-03 규격) */
-    .proof-input-text, .math-input {
-      padding: 8px 12px;
-      font-size: 0.92rem;
-      border: 1.5px solid var(--border);
-      border-radius: 8px;
-      outline: none;
-      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    .proof-input-text:focus, .math-input:focus {
-      outline: none;
-      border-color: #6366f1 !important;
-      box-shadow: 0 0 12px rgba(99, 102, 241, 0.6) !important;
-      transform: scale(1.04) !important;
+    .form-control:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
     }
 
-    /* 스프링 바운스 애니메이션 (INTENT-04 규격) */
-    @keyframes bounceInCard {
-      0% { transform: scale(0.85); opacity: 0; }
-      60% { transform: scale(1.03); opacity: 1; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-    .bounceInCard {
-      animation: bounceInCard 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-    }
-
-    /* 2. 학습 활동 뷰 (#view-activity) */
-    #view-activity {
+    /* VIEW 2: Activity Exploration View Layout */
+    .activity-layout {
       display: flex;
-      flex-direction: column;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
     }
-    .activity-subbar {
-      height: 42px;
+
+    .plane-section {
+      flex: 1.15;
       background: #ffffff;
-      border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      position: relative;
+    }
+
+    .plane-toolbar {
+      padding: 6px 14px;
+      background: #ffffff;
+      border-bottom: 1px solid var(--border-color);
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      padding: 0 16px;
-      flex-shrink: 0;
+      gap: 6px;
+      z-index: 10;
+      flex-wrap: wrap;
+      min-height: 40px;
     }
-    .subbar-stepper {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .substep-badge {
+
+    .tool-btn {
+      padding: 5px 10px;
       font-size: 0.78rem;
-      font-weight: 800;
-      color: #ffffff;
-      background: var(--primary);
-      padding: 2px 8px;
-      border-radius: 12px;
-    }
-
-    .activity-body {
-      flex: 1;
-      display: grid;
-      grid-template-columns: 780px 1fr;
-      gap: 16px;
-      padding: 16px;
-      overflow: hidden;
-    }
-    @media (max-width: 1280px) {
-      .activity-body {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto 1fr;
-        overflow-y: auto;
-      }
-    }
-
-    /* 좌측 캔버스 영역 */
-    .canvas-panel {
-      background: #ffffff;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
-    }
-    .canvas-header {
+      font-weight: 700;
       background: #f8fafc;
-      border-bottom: 1px solid var(--border);
-      padding: 8px 14px;
-      display: flex;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: inline-flex;
       align-items: center;
-      justify-content: space-between;
+      gap: 4px;
+      transition: all 0.15s ease;
     }
-    .canvas-wrapper {
+
+    .tool-btn:hover {
+      background: #f1f5f9;
+      color: var(--text-primary);
+    }
+
+    .tool-btn.active {
+      background: var(--primary-color);
+      color: #ffffff;
+      border-color: var(--primary-color);
+    }
+
+    .two-plane-wrapper {
       flex: 1;
+      width: 100%;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+      background: #fafaf9;
+    }
+
+    #two-container {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0; left: 0;
+      cursor: default;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #0f172a;
       overflow: hidden;
-      position: relative;
-    }
-    .canvas-wrapper canvas {
-      max-width: 100%;
-      height: auto;
-      display: block;
-      touch-action: none;
     }
 
-    /* 우측 문제/학습 카드 영역 */
-    .form-panel {
+    #two-container canvas {
+      display: block;
+      max-width: 100%;
+      max-height: 100%;
+      margin: auto;
+      box-sizing: border-box;
+      object-fit: contain;
+    }
+
+    /* Tablet Landscape & Screen Adaptations */
+    @media (max-width: 1200px) and (orientation: landscape), (max-width: 1080px) {
+      .activity-layout {
+        flex-direction: row !important;
+      }
+      .plane-section {
+        flex: 1.35 !important;
+        min-width: 0 !important;
+      }
+      .sidebar-section {
+        flex: 0.65 !important;
+        min-width: 310px !important;
+        padding: 10px 14px !important;
+      }
+    }
+
+    /* Right Sidebar Section */
+    .sidebar-section {
+      flex: 0.85;
+      background: #f8fafc;
+      padding: 16px 20px;
+      overflow-y: auto;
       display: flex;
       flex-direction: column;
       gap: 14px;
-      overflow-y: auto;
-      padding-right: 4px;
-    }
-    .card {
-      background: #ffffff;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 16px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+      height: 100%;
     }
 
-    /* 공통 버튼 */
-    .btn {
-      padding: 8px 14px;
-      font-size: 0.88rem;
+    .card {
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+    }
+
+    .mission-card {
+      border-left: 4px solid var(--primary-color);
+    }
+
+    /* Proof Inputs & Gamification UI */
+    .proof-input-text {
+      display: inline-block;
+      min-width: 70px;
+      max-width: 220px;
+      padding: 6px 12px;
+      font-size: 0.95rem;
       font-weight: 700;
+      text-align: center;
+      border: 1.8px solid #cbd5e1;
       border-radius: 8px;
+      background: #ffffff;
+      color: #1e293b;
+      outline: none;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      margin: 0 3px;
+      will-change: transform;
+    }
+
+    .proof-input-text:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 2px #6366f1, 0 0 16px rgba(99, 102, 241, 0.45);
+      transform: scale(1.04);
+      background: #ffffff;
+    }
+
+    .btn {
+      padding: 7px 14px;
+      border-radius: 9px;
+      font-size: 0.85rem;
+      font-weight: 700;
       border: 1px solid transparent;
       cursor: pointer;
       display: inline-flex;
@@ -341,346 +441,373 @@
       justify-content: center;
       gap: 6px;
       transition: all 0.15s ease;
+      white-space: nowrap;
     }
+
     .btn-primary {
-      background: var(--primary);
+      background: var(--primary-color);
       color: #ffffff;
     }
+
     .btn-primary:hover {
       background: var(--primary-hover);
     }
-    .btn-secondary {
-      background: #ffffff;
-      color: var(--text-main);
-      border-color: var(--border);
-    }
-    .btn-secondary:hover {
-      background: #f1f5f9;
-    }
-    .tool-btn {
-      padding: 4px 10px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      background: #f1f5f9;
-      color: var(--text-muted);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    .tool-btn:hover {
-      background: #e2e8f0;
-      color: var(--text-main);
-    }
-    .tool-btn.active {
-      background: var(--primary);
-      color: #ffffff;
-      border-color: var(--primary);
+
+    /* Spring-Bounce Verified Answer Card */
+    @keyframes bounceInCard {
+      0% { opacity: 0; transform: scale(0.85) translateY(15px); }
+      60% { opacity: 1; transform: scale(1.03) translateY(-3px); }
+      80% { transform: scale(0.98) translateY(1px); }
+      100% { transform: scale(1) translateY(0); }
     }
 
-    /* 4대 모달 오버레이 */
-    .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(15, 23, 42, 0.65);
-      backdrop-filter: blur(4px);
+    .bounceInCard {
+      animation: bounceInCard 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    .verified-answer-card {
+      background: #f0fdf4;
+      border: 2px solid #86efac;
+      border-radius: 14px;
+      padding: 16px;
+      animation: bounceInCard 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      box-shadow: 0 8px 20px -4px rgba(16, 185, 129, 0.15);
+      margin-top: 10px;
+    }
+
+    /* VIEW 3: Teacher 5x5 Dashboard */
+    .dashboard-header-bar {
+      background: #ffffff;
+      border-bottom: 1px solid var(--border-color);
+      padding: 10px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    }
+
+    .dashboard-stats-strip {
       display: flex;
       align-items: center;
-      justify-content: center;
-      z-index: 1000;
+      gap: 12px;
     }
-    .modal-card {
+
+    .stat-pill {
+      font-size: 0.82rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+    }
+    .active-pill { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+    .submitted-pill { background: #e0f2fe; color: #075985; border-color: #bae6fd; }
+    .stuck-pill { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+
+    .students-5x5-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      padding: 16px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .student-card {
       background: #ffffff;
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 24px;
-      width: 90%;
-      max-width: 500px;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+      border: 1.5px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 9px 11px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 5px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
-    .modal-card h3 {
-      font-size: 1.15rem;
-      font-weight: 800;
-      color: var(--text-main);
-      display: flex;
+
+    .student-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 16px -2px rgba(79, 70, 229, 0.15);
+      border-color: #818cf8;
+    }
+
+    /* Modals System */
+    .custom-modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(4px);
+      z-index: 10000;
+      justify-content: center;
       align-items: center;
-      gap: 8px;
+    }
+
+    .custom-modal-content {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 24px;
+      width: 90%;
+      max-width: 520px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      border: 1.5px solid #e2e8f0;
+    }
+
+    /* Fullscreen Textbook Viewer Modal */
+    .textbook-viewer-modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 20000;
+      flex-direction: column;
+    }
+
+    .tb-modal-header {
+      background: #ffffff;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #cbd5e1;
+    }
+
+    .tb-modal-body {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: auto;
+      padding: 20px;
+    }
+
+    .tb-modal-body img {
+      max-height: 88vh;
+      max-width: 90vw;
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      background: #fff;
     }
   </style>
 </head>
 <body>
 
-  <!-- 3-Tier 화면 계층: 1. Top Header -->
+  <!-- Top Header -->
   <header class="app-header">
-    <div class="header-brand">
-      <h1>📐 5. 삼각형의 성질 (동아출판 150~179쪽)</h1>
-      <span style="font-size:0.75rem; background:#dcfce7; color:#166534; font-weight:800; padding:2px 8px; border-radius:10px; border:1px solid #bbf7d0;">중2 수학</span>
+    <div class="logo-group">
+      <span class="badge-tag">중2 수학</span>
+      <h1 class="app-title">📐 Ⅴ. 도형의 성질 - 1. 삼각형의 성질</h1>
     </div>
-    <div class="header-actions">
-      <button class="btn btn-secondary" style="font-size:0.8rem; padding:4px 10px;" onclick="openTextbookViewerModal();">📖 교과서 뷰어</button>
-      <button id="btn-header-unlock-boundary" class="btn btn-secondary" style="font-size:0.8rem; padding:4px 10px; display:none;" onclick="openUnlockBoundaryModal();">🔓 진도 해금 관제</button>
-      <button id="btn-header-teacher-dashboard" class="btn btn-secondary" style="font-size:0.8rem; padding:4px 10px; display:none;" onclick="openTeacherDashboardModal();">📊 교사 대시보드</button>
-      <span id="current-user-info" class="header-user-badge">게스트 학생</span>
-      <button class="btn btn-secondary" style="font-size:0.8rem; padding:4px 10px;" onclick="handleLogout();">로그아웃</button>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <span id="current-user-info" style="font-size:0.85rem; font-weight:700; color:#4f46e5; margin-right:4px;">👤 로그인 필요</span>
+      <button id="btn-header-unlock-boundary" class="btn" style="padding:4px 9px; font-size:0.78rem; background:linear-gradient(135deg, #10b981, #059669); color:#fff; font-weight:800; border:none; box-shadow:0 2px 6px rgba(16, 185, 129, 0.3); display:none;" onclick="openUnlockBoundaryModal()" title="학생들이 학습할 수 있는 최대 단원/단계 해금 범위 설정">🔓 학생 해금 범위 설정</button>
+      <button id="btn-header-teacher-dashboard" class="btn" style="padding:4px 9px; font-size:0.78rem; background:linear-gradient(135deg, #6366f1, #8b5cf6); color:#fff; font-weight:800; border:none; box-shadow:0 2px 6px rgba(99, 102, 241, 0.3); display:none;" onclick="openTeacherDashboardModal()" title="25명 학생 5x5 실시간 모니터링">📊 교사 5x5 모니터링</button>
+      <button class="btn" style="padding:4px 8px; font-size:0.78rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      <button class="btn" style="padding:4px 8px; font-size:0.78rem; background:#fee2e2; color:#dc2626; border:1px solid #fca5a5;" onclick="handleLogout()">로그아웃</button>
     </div>
   </header>
 
-  <!-- 3-Tier 화면 계층: 2. Main Tab Bar (Nav) -->
-  <nav id="main-tab-bar">
-    <button id="tab-btn-0" class="tab-btn active" onclick="switchMainTab(0)">0. 준비해요 🔓</button>
-    <button id="tab-btn-1" class="tab-btn locked" onclick="switchMainTab(1)">5.1 이등변삼각형 🔒</button>
-    <button id="tab-btn-2" class="tab-btn locked" onclick="switchMainTab(2)">5.2 직각삼각형 합동 🔒</button>
-    <button id="tab-btn-3" class="tab-btn locked" onclick="switchMainTab(3)">5.3 외심 🔒</button>
-    <button id="tab-btn-4" class="tab-btn locked" onclick="switchMainTab(4)">5.4 내심 🔒</button>
-    <button id="tab-btn-5" class="tab-btn locked" onclick="switchMainTab(5)">5.5 중단원 마무리 🔒</button>
-    <button id="tab-btn-6" class="tab-btn locked" onclick="switchMainTab(6)">5.6 창의·융합 🔒</button>
+  <!-- Tab Navigation Bar (7 Tabs Hierarchy) -->
+  <nav id="main-tab-bar" class="tab-bar-container">
+    <button id="tab-0" class="tab-btn active" onclick="switchMainTab(0)">0. 준비해요 🔓</button>
+    <button id="tab-1" class="tab-btn locked" onclick="switchMainTab(1)">🔒 5.1 이등변삼각형</button>
+    <button id="tab-2" class="tab-btn locked" onclick="switchMainTab(2)">🔒 5.2 직각삼각형 합동</button>
+    <button id="tab-3" class="tab-btn locked" onclick="switchMainTab(3)">🔒 5.3 외심</button>
+    <button id="tab-4" class="tab-btn locked" onclick="switchMainTab(4)">🔒 5.4 내심</button>
+    <button id="tab-5" class="tab-btn locked" onclick="switchMainTab(5)">🔒 5.5 중단원 마무리</button>
+    <button id="tab-6" class="tab-btn locked" onclick="switchMainTab(6)">🔒 5.6 창의·융합</button>
   </nav>
 
-  <!-- 3-Tier 화면 계층: 3. Main Views -->
-  <main>
-
-    <!-- [View 1] 로그인 화면 (#view-login) -->
-    <div id="view-login" class="view-panel" style="display:flex;">
-      <div class="login-card">
-        <div style="text-align:center;">
-          <h2>📐 삼각형의 성질 탐구</h2>
-          <p style="margin-top:6px;">영서중학교 수학 대화형 학습 시스템<br>학번과 이름을 입력하고 탐구를 시작하세요.</p>
-        </div>
-
-        <div class="form-group">
-          <label for="student-id">학번 (5자리, 예: 20101)</label>
-          <input type="text" id="student-id" class="form-input" placeholder="학번 5자리 입력">
-        </div>
-
-        <div class="form-group">
-          <label for="student-name">이름 (또는 마스터 비밀번호)</label>
-          <input type="text" id="student-name" class="form-input" placeholder="이름 입력 (마스터: 260523)">
-        </div>
-
-        <!-- 로그인 에러 노티스 UI (INTENT-24 규격) -->
-        <div id="login-error-notice" style="display:none; color:#ef4444; font-size:0.82rem; text-align:center; font-weight:700;"></div>
-
-        <button id="btn-start-exploration" class="btn btn-primary" style="height:44px; font-size:0.95rem; margin-top:4px;" onclick="handleStudentLogin();">
-          🚀 탐구 시작하기
-        </button>
-
-        <div style="text-align:center; margin-top:6px; border-top:1px dashed var(--border); padding-top:14px;">
-          <button type="button" class="btn btn-secondary" style="font-size:0.82rem;" onclick="openSecurePasswordModal();">
-            🔑 교사 계정 접속
-          </button>
-        </div>
+  <!-- Sub-Step Navigation Dropdown & Stepper Bar -->
+  <div id="substep-bar" class="substep-bar">
+    <div class="substep-dropdown-container">
+      <span style="font-size:0.84rem; font-weight:800; color:#334155; display:inline-flex; align-items:center; gap:4px; white-space:nowrap;">
+        📑 세부 탐구 활동:
+      </span>
+      <select id="substep-dropdown-select" class="substep-dropdown-select" onchange="handleSubstepSelect(this.value)">
+        <!-- options populated dynamically -->
+      </select>
+      <div id="substep-stepper-group" style="display:flex; gap:6px; margin-left:auto; align-items:center;">
+        <button id="btn-prev-substep" class="substep-stepper-btn" onclick="goToPrevSubstep()">◀ 이전</button>
+        <span id="substep-counter-badge" class="substep-counter-badge">1 / 1</span>
+        <button id="btn-next-substep" class="substep-stepper-btn" onclick="goToNextSubstep()">다음 ▶</button>
       </div>
     </div>
+  </div>
 
-    <!-- [View 2] 학습 활동 화면 (#view-activity) -->
-    <div id="view-activity" class="view-panel" style="display:none;">
-      <!-- 서브스텝 내비게이션 바 -->
-      <div class="activity-subbar">
-        <div class="subbar-stepper">
-          <span id="substep-counter-badge" class="substep-badge">1 / 4</span>
-          <select id="substep-dropdown-select" class="math-input" style="font-size:0.84rem; padding:4px 8px; font-weight:700;" onchange="handleSubstepSelect(this.value)">
-            <!-- SUBSTEPS_DATA 항목 동적 생성 -->
-          </select>
+  <!-- Main Container -->
+  <main class="main-container">
+    <!-- VIEW 1: LOGIN VIEW -->
+    <section id="view-login" class="view-panel active">
+      <div class="login-card-container">
+        <h2 style="font-size:1.35rem; margin-bottom:6px; color:#1e293b;">🏫 영서중 수학 LMS 학생 로그인</h2>
+        <p style="font-size:0.86rem; color:#64748b; margin-bottom:18px;">LMS 회원가입 DB의 학번과 비밀번호를 입력하고 이어서 학습하세요!</p>
+        
+        <div id="login-error-notice" style="display:none; padding:10px; margin-bottom:12px; background:#fee2e2; border:1px solid #fca5a5; border-radius:8px; color:#991b1b; font-size:0.82rem; font-weight:700;"></div>
+
+        <form onsubmit="event.preventDefault(); handleLMSLogin(event); return false;">
+          <div class="form-group">
+            <label for="student-id">학번 (예: 20101)</label>
+            <input type="text" id="student-id" class="form-control" placeholder="LMS 가입 학번 5자리" value="20101" required>
+          </div>
+          <div class="form-group">
+            <label for="student-name">비밀번호</label>
+            <input type="password" id="student-name" class="form-control" placeholder="LMS 가입 비밀번호" required>
+          </div>
+          <button id="btn-start-exploration" type="button" onclick="handleLMSLogin(event)" class="btn btn-primary" style="margin-top: 8px; width:100%; font-size:1.05rem; padding:12px; font-weight:800; background:linear-gradient(135deg, #0284c7, #4f46e5);">🔐 영서중 수학 LMS 학생 로그인</button>
+        </form>
+
+        <div style="margin-top:14px; border-top:1px solid #e2e8f0; padding-top:12px; display:flex; flex-direction:column; gap:8px;">
+          <button type="button" class="btn" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; width:100%; font-weight:700;" onclick="openTestLoginModal()">🔑 교사 계정 접속</button>
+          <button type="button" class="btn" style="background:#eef2ff; color:#4338ca; border:1.5px solid #c7d2fe; width:100%; font-weight:800;" onclick="openTeacherDashboardModal()">📊 교사 5x5 실시간 모니터링 관제실</button>
         </div>
-        <div style="display:flex; gap:6px;">
-          <button id="btn-prev-substep" class="tool-btn" onclick="goToPrevSubstep();">◀ 이전 단계</button>
-          <button id="btn-next-substep" class="tool-btn" onclick="goToNextSubstep();">다음 단계 ▶</button>
+      </div>
+    </section>
+
+    <!-- VIEW 2: ACTIVITY EXPLORATION VIEW -->
+    <section id="view-activity" class="view-panel">
+      <div class="activity-layout">
+        <!-- Left Plane Section (60fps Canvas) -->
+        <div class="plane-section">
+          <div class="plane-toolbar">
+            <button id="tool-select" class="tool-btn active" onclick="setTool('select')">🖐️ 조작 / 인터랙션</button>
+            <button id="tool-reset" class="tool-btn" onclick="resetActiveCanvas()">🔄 캔버스 초기화</button>
+            <button class="tool-btn" style="background:#e0f2fe; color:#0369a1; border-color:#bae6fd;" onclick="openTextbookViewerModal()" title="교과서 원본 지면을 고해상도로 확인합니다">📖 교과서 지면 보기</button>
+            <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+            
+            <!-- Drawing Toolbar -->
+            <div id="drawing-toolbar-group" style="display:inline-flex; align-items:center; gap:5px; margin-left:6px; padding-left:8px; border-left:1px solid #cbd5e1;">
+              <span style="font-size:0.75rem; font-weight:800; color:#475569;">✏️ 펜:</span>
+              <button id="btn-pen-blue" class="tool-btn" style="padding:3px 7px; font-size:0.72rem; background:#4f46e5; color:#fff;" onclick="setPenColor('#4f46e5')">파랑</button>
+              <button id="btn-pen-red" class="tool-btn" style="padding:3px 7px; font-size:0.72rem; background:#e11d48; color:#fff;" onclick="setPenColor('#e11d48')">빨강</button>
+              <button id="btn-pen-eraser" class="tool-btn" style="padding:3px 7px; font-size:0.72rem;" onclick="setEraserMode()">🧹 지우개</button>
+              <button class="tool-btn" style="padding:3px 7px; font-size:0.72rem; background:#fee2e2; color:#dc2626;" onclick="clearFreehandDrawing()">🗑️</button>
+            </div>
+
+            <span id="coord-display" style="margin-left:auto; font-size:0.8rem; font-weight:800; color:#0284c7; background:#e0f2fe; padding:3px 8px; border-radius:8px;">
+              📍 상태: 삼각형의 성질 랩
+            </span>
+          </div>
+
+          <div class="two-plane-wrapper">
+            <div id="two-container"></div>
+            <canvas id="freehand-drawing-canvas" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:auto; touch-action:none; z-index:10; cursor:crosshair;"></canvas>
+          </div>
+        </div>
+
+        <!-- Right Sidebar Section -->
+        <div class="sidebar-section">
+          <div class="card mission-card">
+            <h3 style="font-size:0.95rem; font-weight:800; color:var(--primary-color); margin-bottom:6px;">🎯 오늘의 수학 탐구 미션</h3>
+            <div id="mission-text" style="font-size:0.88rem; color:var(--text-secondary); line-height:1.6;">
+              단계를 선택하여 동적 탐구를 시작하세요!
+            </div>
+          </div>
+
+          <div id="form-work-area" style="display:flex; flex-direction:column; gap:12px;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: TEACHER 5X5 MONITORING DASHBOARD -->
+    <section id="view-teacher-dashboard" class="view-panel" style="display:none; flex-direction:column;">
+      <div class="dashboard-header-bar">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-size:1.15rem; font-weight:800; color:#1e293b;">📊 교사용 실시간 5x5 모니터링 관제실</span>
+          <span style="font-size:0.82rem; font-weight:700; color:#4338ca; background:#eef2ff; padding:3px 10px; border-radius:12px; border:1px solid #c7d2fe;">중2 수학: Ⅴ. 도형의 성질</span>
+        </div>
+
+        <div class="dashboard-stats-strip">
+          <span class="stat-pill active-pill">🟢 활동 중: <b id="dash-active-count">0명</b></span>
+          <span class="stat-pill submitted-pill">🔵 제출 완료: <b id="dash-submitted-count">0명</b></span>
+          <span class="stat-pill stuck-pill">🔴 도움 필요: <b id="dash-stuck-count">0명</b></span>
+          <button class="btn" style="padding:4px 10px; font-size:0.78rem; background:linear-gradient(135deg, #10b981, #059669); color:#fff; font-weight:800; border:none; box-shadow:0 2px 6px rgba(16, 185, 129, 0.3);" onclick="openUnlockBoundaryModal()">🔓 학생 해금 범위 설정</button>
+          <button class="btn" style="padding:4px 10px; font-size:0.78rem; background:#f1f5f9; border:1px solid #cbd5e1; font-weight:700;" onclick="refreshTeacherDashboard()">🔄 실시간 갱신</button>
+          <button class="btn" style="padding:4px 10px; font-size:0.78rem; background:#4f46e5; color:#fff; font-weight:800;" onclick="returnToStudentView()">🚪 학생 탐구 화면</button>
         </div>
       </div>
 
-      <!-- 본문 영역: 좌측 캔버스 & 우측 폼 -->
-      <div class="activity-body">
-        <!-- 좌측 캔버스 패널 -->
-        <div class="canvas-panel">
-          <div class="canvas-header">
-            <span style="font-size:0.85rem; font-weight:800; color:var(--text-main);">🎨 기하 작도 & 실시간 반응형 인터랙터 (60fps Two.js/HTML5)</span>
-            <span id="canvas-substep-title" style="font-size:0.78rem; font-weight:700; color:var(--text-muted);">0-1 여러 가지 삼각형의 뜻</span>
-          </div>
-          <div id="canvas-container" class="canvas-wrapper">
-            <!-- loadSubStep 시 canvas id="canvas-0-1" 동적 마운트 -->
-            <canvas id="canvas-0-1" width="760" height="460"></canvas>
-          </div>
+      <div style="padding:8px 16px; background:#ffffff; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; font-size:0.82rem;">
+        <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
+          <span style="font-weight:800; color:#1e293b; display:flex; align-items:center; gap:4px;">🏫 학급(반) 선택:</span>
+          <button class="btn class-filter-btn active" style="padding:3px 9px; font-size:0.75rem; background:#4f46e5; color:#fff; font-weight:800;" onclick="selectClassFilter('1', this)">1반</button>
+          <button class="btn class-filter-btn" style="padding:3px 9px; font-size:0.75rem; background:#f8fafc; border:1px solid #cbd5e1;" onclick="selectClassFilter('2', this)">2반</button>
+          <button class="btn class-filter-btn" style="padding:3px 9px; font-size:0.75rem; background:#f8fafc; border:1px solid #cbd5e1;" onclick="selectClassFilter('3', this)">3반</button>
+          <button class="btn class-filter-btn" style="padding:3px 9px; font-size:0.75rem; background:#f8fafc; border:1px solid #cbd5e1;" onclick="selectClassFilter('4', this)">4반</button>
+          <button class="btn class-filter-btn" style="padding:3px 9px; font-size:0.75rem; background:#f8fafc; border:1px solid #cbd5e1;" onclick="selectClassFilter('5', this)">5반</button>
         </div>
-
-        <!-- 우측 문제 및 채점 폼 패널 -->
-        <div class="form-panel">
-          <div id="substep-form-container">
-            <!-- 서브스텝 formHtml 동적 삽입 -->
-          </div>
-
-          <!-- 채점 피드백 카드 (#card-feedback-0-1) -->
-          <div id="card-feedback-0-1" class="card bounceInCard" style="display:none; border-left:5px solid var(--primary);">
-            <div id="feedback-title-0-1" style="font-size:0.95rem; font-weight:800; margin-bottom:6px;"></div>
-            <p id="feedback-desc-0-1" style="font-size:0.85rem; line-height:1.5; color:var(--text-muted); white-space:pre-line;"></p>
-          </div>
-
-          <!-- 채점 피드백 카드 (#card-feedback-0-2) -->
-          <div id="card-feedback-0-2" class="card bounceInCard" style="display:none; border-left:5px solid var(--primary);">
-            <div id="feedback-title-0-2" style="font-size:0.95rem; font-weight:800; margin-bottom:6px;"></div>
-            <p id="feedback-desc-0-2" style="font-size:0.85rem; line-height:1.5; color:var(--text-muted); white-space:pre-line;"></p>
-          </div>
-
-          <!-- 채점 피드백 카드 (#card-feedback-0-3) -->
-          <div id="card-feedback-0-3" class="card bounceInCard" style="display:none; border-left:5px solid var(--primary);">
-            <div id="feedback-title-0-3" style="font-size:0.95rem; font-weight:800; margin-bottom:6px;"></div>
-            <p id="feedback-desc-0-3" style="font-size:0.85rem; line-height:1.5; color:var(--text-muted); white-space:pre-line;"></p>
-          </div>
-
-          <!-- 채점 피드백 카드 (#card-feedback-0-4) -->
-          <div id="card-feedback-0-4" class="card bounceInCard" style="display:none; border-left:5px solid var(--primary);">
-            <div id="feedback-title-0-4" style="font-size:0.95rem; font-weight:800; margin-bottom:6px;"></div>
-            <p id="feedback-desc-0-4" style="font-size:0.85rem; line-height:1.5; color:var(--text-muted); white-space:pre-line;"></p>
-          </div>
+        <div>
+          <span style="font-size:0.78rem; color:#64748b;">💡 카드를 클릭하면 학생의 실시간 화면을 1:1 확대하여 관찰하고 힌트를 전송할 수 있습니다.</span>
         </div>
       </div>
-    </div>
 
-    <!-- [View 3] 교사 대시보드 화면 (#view-dashboard) -->
-    <div id="view-dashboard" class="view-panel" style="display:none; padding:20px; overflow-y:auto;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-        <h2>👨‍🏫 교사 관리자 학습 관제 대시보드</h2>
-        <button class="btn btn-secondary" onclick="switchView('activity');">돌아가기</button>
+      <div class="students-5x5-grid" id="students-grid-container">
+        <!-- 25 cards dynamically rendered -->
       </div>
-      <div class="card">
-        <h3>📊 실시간 학생 학습 진행 상황</h3>
-        <p style="font-size:0.88rem; color:var(--text-muted); margin-top:6px;">Supabase LMS Cloud DB와 실시간 동기화 중입니다.</p>
-        <div id="dashboard-student-list" style="margin-top:14px; font-size:0.85rem;">
-          등록된 학생 데이터를 실시간 조회합니다.
-        </div>
-      </div>
-    </div>
-
+    </section>
   </main>
 
-  <!-- 4대 관리 모달 시스템 (INTENT-02 규격) -->
-  <!-- 1. 보안 비밀번호 모달 (#secure-password-modal) -->
-  <div id="secure-password-modal" class="modal-overlay" style="display:none;">
-    <div class="modal-card">
-      <h3>🔑 교사 비밀번호 인증</h3>
-      <p style="font-size:0.85rem; color:var(--text-muted);">교사 마스터 비밀번호(260523 / 260831 / 661227)를 입력하세요.</p>
-      <input type="password" id="teacher-password-input" class="form-input" placeholder="비밀번호 입력">
+  <!-- Modals -->
+  <!-- 1. Teacher Pass & Admin Password Modal -->
+  <div id="secure-password-modal" class="custom-modal-overlay">
+    <div class="custom-modal-content">
+      <h3 style="font-size:1.15rem; font-weight:800; color:#1e293b; margin-bottom:8px;">🔑 교사 마스터 비밀번호 인증</h3>
+      <p style="font-size:0.85rem; color:#64748b; margin-bottom:16px;">교사 전용 마스터 비밀번호를 입력하면 현재 세부활동을 통과하거나 관리자 권한을 획득합니다.</p>
+      <input type="password" id="teacher-password-input" class="form-control" placeholder="비밀번호 6자리 입력" style="margin-bottom:14px; font-size:1.1rem; text-align:center; letter-spacing:4px;" onkeydown="if(event.key==='Enter') submitTeacherPass()">
       <div style="display:flex; justify-content:flex-end; gap:8px;">
-        <button class="btn btn-secondary" onclick="closeSecurePasswordModal();">취소</button>
-        <button class="btn btn-primary" onclick="handleSecurePasswordSubmit();">확인</button>
+        <button class="btn" style="background:#f1f5f9; border:1px solid #cbd5e1;" onclick="closeModal('secure-password-modal')">취소</button>
+        <button class="btn btn-primary" onclick="submitTeacherPass()">확인 (인증 및 통과)</button>
       </div>
     </div>
   </div>
 
-  <!-- 2. 진도 해금 관제 모달 (#unlock-boundary-modal) -->
-  <div id="unlock-boundary-modal" class="modal-overlay" style="display:none;">
-    <div class="modal-card">
-      <h3>🔓 진도 해금 관제 시스템</h3>
-      <p style="font-size:0.85rem; color:var(--text-muted);">원하는 대단원 탭까지 학생들의 진도를 일괄 해금합니다.</p>
-      <div style="display:flex; flex-direction:column; gap:8px;">
-        <button class="tool-btn" onclick="applyUnlockBoundary(0);">Tab 0만 해금 (준비해요)</button>
-        <button class="tool-btn" onclick="applyUnlockBoundary(1);">Tab 1까지 해금 (이등변삼각형)</button>
-        <button class="tool-btn" onclick="applyUnlockBoundary(4);">Tab 4까지 해금 (내심/외심)</button>
-        <button class="tool-btn" onclick="applyUnlockBoundary(6);">전 탭 일괄 해금 (Tab 0~6)</button>
+  <!-- 2. Unlock Boundary Modal -->
+  <div id="unlock-boundary-modal" class="custom-modal-overlay">
+    <div class="custom-modal-content" style="max-width:480px;">
+      <h3 style="font-size:1.15rem; font-weight:800; color:#1e293b; margin-bottom:8px;">🔓 학생 진도 해금 범위 제어</h3>
+      <p style="font-size:0.85rem; color:#64748b; margin-bottom:16px;">학생들이 자율적으로 학습할 수 있는 최대 단원/단계를 지정합니다.</p>
+      <div class="form-group">
+        <label>최대 허용 소단원 탭:</label>
+        <select id="unlock-max-tab-select" class="form-control">
+          <option value="0">0. 준비해요까지만 허용</option>
+          <option value="1">1. 5.1 이등변삼각형까지 허용</option>
+          <option value="2">2. 5.2 직각삼각형 합동까지 허용</option>
+          <option value="3">3. 5.3 외심까지 허용</option>
+          <option value="4">4. 5.4 내심까지 허용</option>
+          <option value="5">5. 5.5 중단원 마무리까지 허용</option>
+          <option value="6" selected>6. 5.6 창의·융합 (전 단원 전면 해금)</option>
+        </select>
       </div>
-      <div style="display:flex; justify-content:flex-end;">
-        <button class="btn btn-secondary" onclick="closeUnlockBoundaryModal();">닫기</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 3. 교과서 뷰어 모달 (#textbook-viewer-modal) -->
-  <div id="textbook-viewer-modal" class="modal-overlay" style="display:none;">
-    <div class="modal-card" style="max-width:700px;">
-      <h3>📖 동아출판 중2 수학 5단원 교과서 안내</h3>
-      <p style="font-size:0.85rem; color:var(--text-muted);">[Ⅴ. 도형의 성질 - 1. 삼각형의 성질] (150~179쪽)</p>
-      <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:12px; font-size:0.85rem; line-height:1.6;">
-        - 152쪽: 준비해요 (여러 가지 삼각형의 뜻, 내각과 외각)<br>
-        - 153쪽: 준비해요 (삼각형의 합동조건 SAS/ASA/SSS)<br>
-        - 154~159쪽: 5.1 이등변삼각형의 성질과 조건<br>
-        - 160~164쪽: 5.2 직각삼각형의 합동 조건 (RHA/RHS)<br>
-        - 165~170쪽: 5.3 삼각형의 외심<br>
-        - 171~175쪽: 5.4 삼각형의 내심<br>
-        - 176~179쪽: 5.5 중단원 마무리 및 창의·융합
-      </div>
-      <div style="display:flex; justify-content:flex-end;">
-        <button class="btn btn-secondary" onclick="closeTextbookViewerModal();">닫기</button>
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
+        <button class="btn" style="background:#f1f5f9; border:1px solid #cbd5e1;" onclick="closeModal('unlock-boundary-modal')">취소</button>
+        <button class="btn btn-primary" onclick="saveUnlockBoundary()">설정 저장 및 학생 일괄 적용</button>
       </div>
     </div>
   </div>
 
-  <!-- 4. 교사 대시보드 모달 (#teacher-dashboard-modal) -->
-  <div id="teacher-dashboard-modal" class="modal-overlay" style="display:none;">
-    <div class="modal-card">
-      <h3>📊 교사 관리 관제 대시보드</h3>
-      <p style="font-size:0.85rem; color:var(--text-muted);">대시보드 뷰로 즉시 전환하거나 관제 설정을 조정합니다.</p>
-      <div style="display:flex; justify-content:flex-end; gap:8px;">
-        <button class="btn btn-secondary" onclick="closeTeacherDashboardModal();">닫기</button>
-        <button class="btn btn-primary" onclick="closeTeacherDashboardModal(); switchView('dashboard');">대시보드 열기</button>
+  <!-- 3. Textbook High-Res Viewer Modal -->
+  <div id="textbook-viewer-modal" class="textbook-viewer-modal">
+    <div class="tb-modal-header">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:1.05rem; font-weight:800; color:#1e293b;">📖 동아출판 중2 수학 교과서 원본 지면 (200 DPI 고해상도)</span>
+        <span id="tb-viewer-page-label" style="font-size:0.85rem; font-weight:700; color:#4f46e5; background:#eef2ff; padding:2px 8px; border-radius:8px;">교과서 152쪽 (P.158)</span>
       </div>
+      <button class="btn" style="background:#f1f5f9; border:1px solid #cbd5e1; font-weight:800;" onclick="closeModal('textbook-viewer-modal')">✕ 닫기</button>
+    </div>
+    <div class="tb-modal-body">
+      <img id="tb-viewer-img" src="" alt="교과서 고해상도 페이지">
     </div>
   </div>
 
-  <!-- ========================================================================= -->
-  <!-- 💻 메인 JavaScript 코어 엔진 -->
-  <!-- ========================================================================= -->
+  <!-- Confetti Canvas -->
+  <canvas id="confetti-canvas" style="position:fixed; top:0; left:0; width:100vw; height:100vh; pointer-events:none; z-index:99999; display:none;"></canvas>
+
   <script>
-    // 1. 전역 상태 객체
-    const state = {
-      isLoggedIn: false,
-      isTeacherLoggedIn: false,
-      isMaster: false,
-      studentId: '',
-      studentName: '',
-      currentMainTab: 0,
-      subStep: '0-1',
-      currentSubStep: '0-1',
-      unlockedTabs: [0], // 0번 탭 기본 해금
-      completedSubSteps: [],
-      stepProgress: {},
-      tab0: {
-        triangleLab: {
-          selectedMode: 0, // 0: 꼭짓점 조작 & 실시간 판별, 1: 대표 삼각형 3종 갤러리
-          pointA: { x: 380, y: 120 },
-          pointB: { x: 220, y: 350 },
-          pointC: { x: 540, y: 350 },
-          draggingPoint: null,
-          hoverPoint: null,
-          presetIdx: 0,
-          animT: 1.0,
-          hoverBtn: null
-        },
-        exteriorAngleLab: {
-          selectedMode: 0, // 0: 인터랙티브 외각 각도기 & 평각 증명 랩, 1: 교과서 문제 ⑴, ⑵ 시뮬레이터
-          subProblem: 0,   // 0: 문제 ⑴ (50°+30°=80°), 1: 문제 ⑵ (110°-70°=40°)
-          pointA: { x: 270, y: 150 },
-          pointB: { x: 130, y: 340 },
-          pointC: { x: 340, y: 340 },
-          pointD: { x: 450, y: 340 },
-          draggingPoint: null,
-          hoverPoint: null,
-          hoverBtn: null,
-          animT: 1.0
-        },
-        congruenceLab: {
-          selectedMode: 0, // 0: 회전·이동 겹치기 시뮬레이터 & SAS 검증, 1: 3대 합동 조건 비교 랩
-          animT: 1.0,
-          overlapProgress: 0.0, // 0 (분리) ~ 1 (완전 일치)
-          isAutoOverlapping: false,
-          hoverBtn: null,
-          conditionIdx: 1 // 0: SSS, 1: SAS, 2: ASA
-        },
-        bridgeLab: {
-          selectedMode: 0, // 0: 사장교 트러스 하중 분산 시뮬레이터, 1: 5단원 로드맵 & 황금 메달
-          loadWeight: 40,  // 하중 톤 (0~100)
-          carPos: 140,     // 차량 위치
-          isRigidTriangle: true, // 삼각형 강성 vs 사각형 변형
-          animT: 1.0,
-          hoverBtn: null
-        }
-      }
-    };
-
-    // 2. 대단원 탭 타이틀 목록 (Tab 0 ~ Tab 6)
+    // =========================================================================
+    // 🎨 단원 메타데이터 & 전역 State 스키마
+    // =========================================================================
     const TAB_TITLES = [
       "0. 준비해요",
       "5.1 이등변삼각형",
@@ -691,14 +818,79 @@
       "5.6 창의·융합"
     ];
 
-    // 3. 서브스텝 데이터 정의 (SUBSTEPS_DATA)
+    let currentSecureModalAction = 'teacher_pass';
+
+    const state = {
+      currentUser: null,
+      studentId: '20101',
+      studentName: '학생',
+      isTeacherLoggedIn: false,
+      isMaster: false,
+      currentMainTab: 0,
+      subStep: '0-1',
+      tool: 'select',
+      unlockedTabs: [0],
+      unlockedSubSteps: ['0-1'],
+      completedSubSteps: [],
+      savedFormInputs: {},
+      verifiedViewData: {},
+      stepProgress: {},
+      selectedClass: '1',
+
+      // Tab 0 전용 인터랙티브 상태 객체
+      tab0: {
+        triangleLab: {
+          selectedMode: 0,
+          pointA: { x: 380, y: 120 },
+          pointB: { x: 220, y: 350 },
+          pointC: { x: 540, y: 350 },
+          draggingPoint: null,
+          hoverPoint: null,
+          presetIdx: 0,
+          animT: 1.0,
+          hoverBtn: null
+        },
+        exteriorAngleLab: {
+          selectedMode: 0,
+          subProblem: 0,
+          pointA: { x: 270, y: 150 },
+          pointB: { x: 130, y: 340 },
+          pointC: { x: 340, y: 340 },
+          pointD: { x: 450, y: 340 },
+          draggingPoint: null,
+          hoverPoint: null,
+          hoverBtn: null,
+          animT: 1.0
+        },
+        congruenceLab: {
+          selectedMode: 0,
+          animT: 1.0,
+          overlapProgress: 0.0,
+          isAutoOverlapping: false,
+          hoverBtn: null,
+          conditionIdx: 1
+        },
+        bridgeLab: {
+          selectedMode: 0,
+          loadWeight: 40,
+          carPos: 140,
+          isRigidTriangle: true,
+          animT: 1.0,
+          hoverBtn: null
+        }
+      }
+    };
+
+    // =========================================================================
+    // 📚 서브스텝 데이터 (SUBSTEPS_DATA)
+    // =========================================================================
     const SUBSTEPS_DATA = {
       '0-1': {
         tab: 0,
         title: "0-1. [준비해요 1] 여러 가지 삼각형의 뜻 (예각·직각·둔각)",
         tbPage: 152,
         pdfPage: 158,
-        missionText: "교과서 152쪽: 초등학교 및 중1에서 학습한 예각삼각형, 직각삼각형, 둔각삼각형의 뜻을 정확히 서술하고, 각의 크기에 따른 삼각형의 성질을 직관적으로 탐구해 보세요.",
+        missionText: "교과서 152쪽 좌하단: 초등학교 및 중1에서 학습한 예각삼각형, 직각삼각형, 둔각삼각형의 뜻을 정확히 서술하고, 각의 크기에 따른 삼각형의 성질을 직관적으로 탐구해 보세요.",
         drawer: "drawFuncStep0_1Canvas",
         formHtml: `
           <div class="card" style="display:flex; flex-direction:column; gap:16px;">
@@ -751,6 +943,12 @@
               </div>
             </div>
 
+            <!-- 피드백 카드 (#card-feedback-0-1) -->
+            <div id="card-feedback-0-1" class="card bounceInCard" style="display:none; border-left:5px solid #059669; background:#f0fdf4;">
+              <div id="feedback-title-0-1" style="font-size:0.95rem; font-weight:800; margin-bottom:4px; color:#15803d;"></div>
+              <p id="feedback-desc-0-1" style="font-size:0.85rem; line-height:1.5; color:#334155; white-space:pre-line;"></p>
+            </div>
+
             <!-- 채점 버튼 -->
             <button id="btn-grade-0-1" class="btn btn-primary" style="width:100%; height:44px; font-size:0.95rem; font-weight:800;" onclick="executeStepGrade('0-1');">
               🎯 0-1 정답 확인 및 채점하기
@@ -785,7 +983,7 @@
           const c1 = v['q0-1-1-acute'].replace(/\s+/g, '');
           const isAcute = (c1.includes('세각') || c1.includes('모든각') || c1.includes('3각')) && c1.includes('예각');
 
-          // 2. 직각삼각형 검사: '한 각', '직각' (또는 90도)
+          // 2. 직각삼각형 검사: '한 각', '직각' (또는 90)
           const c2 = v['q0-1-2-right'].replace(/\s+/g, '');
           const isRight = (c2.includes('한각') || c2.includes('1개') || c2.includes('하나')) && (c2.includes('직각') || c2.includes('90'));
 
@@ -816,6 +1014,7 @@
           }
         }
       },
+
       '0-2': {
         tab: 0,
         title: "0-2. [준비해요 2] 삼각형의 내각과 외각 (한 외각 = 이웃하지 않는 두 내각의 합)",
@@ -871,6 +1070,12 @@
               </div>
             </div>
 
+            <!-- 피드백 카드 (#card-feedback-0-2) -->
+            <div id="card-feedback-0-2" class="card bounceInCard" style="display:none; border-left:5px solid #059669; background:#f0fdf4;">
+              <div id="feedback-title-0-2" style="font-size:0.95rem; font-weight:800; margin-bottom:4px; color:#15803d;"></div>
+              <p id="feedback-desc-0-2" style="font-size:0.85rem; line-height:1.5; color:#334155; white-space:pre-line;"></p>
+            </div>
+
             <!-- 채점 버튼 -->
             <button id="btn-grade-0-2" class="btn btn-primary" style="width:100%; height:44px; font-size:0.95rem; font-weight:800;" onclick="executeStepGrade('0-2');">
               🎯 0-2 정답 확인 및 채점하기
@@ -900,9 +1105,8 @@
             };
           }
 
-          // 입력값 정규화 (도, °, 공백 제거)
           function normalizeAngle(str) {
-            return str.replace(/[°도\\s]/g, '');
+            return str.replace(/[°도\s]/g, '');
           }
 
           const a1 = normalizeAngle(v['q0-2-1-x']);
@@ -916,7 +1120,7 @@
               success: true,
               score: 100,
               answerText: "⑴ ∠x = 80° | ⑵ ∠x = 40°",
-              explanation: "정답입니다! 👏\\n\\n⑴ 한 외각의 크기는 그와 이웃하지 않는 두 내각의 합과 같으므로\\n   ∠x = 50° + 30° = 80°\\n\\n⑵ ∠x + 70° = 110° 이므로\\n   ∠x = 110° - 70° = 40° 입니다."
+              explanation: "정답입니다! 👏\n\n⑴ 한 외각의 크기는 그와 이웃하지 않는 두 내각의 합과 같으므로\n   ∠x = 50° + 30° = 80°\n\n⑵ ∠x + 70° = 110° 이므로\n   ∠x = 110° - 70° = 40° 입니다."
             };
           } else {
             const hints = [];
@@ -926,11 +1130,12 @@
             return {
               success: false,
               score: 0,
-              hint: "💡 다음 풀이 힌트를 참고하여 다시 계산해 보세요:\\n" + hints.join('\\n')
+              hint: "💡 다음 풀이 힌트를 참고하여 다시 계산해 보세요:\n" + hints.join('\n')
             };
           }
         }
       },
+
       '0-3': {
         tab: 0,
         title: "0-3. [준비해요 3] 삼각형의 합동 기호와 조건 (SAS 합동)",
@@ -993,6 +1198,12 @@
               </div>
             </div>
 
+            <!-- 피드백 카드 (#card-feedback-0-3) -->
+            <div id="card-feedback-0-3" class="card bounceInCard" style="display:none; border-left:5px solid #059669; background:#f0fdf4;">
+              <div id="feedback-title-0-3" style="font-size:0.95rem; font-weight:800; margin-bottom:4px; color:#15803d;"></div>
+              <p id="feedback-desc-0-3" style="font-size:0.85rem; line-height:1.5; color:#334155; white-space:pre-line;"></p>
+            </div>
+
             <!-- 채점 버튼 -->
             <button id="btn-grade-0-3" class="btn btn-primary" style="width:100%; height:44px; font-size:0.95rem; font-weight:800;" onclick="executeStepGrade('0-3');">
               🎯 0-3 정답 확인 및 채점하기
@@ -1022,7 +1233,6 @@
             };
           }
 
-          // 1. 기호 표현 검사: △ABC ≡ △FED
           let raw1 = v['q0-3-congruence'].replace(/\s+/g, '').replace(/▲/g, '△').replace(/삼각형/g, '△');
           const cleanStr = raw1.replace(/[△\(\)]/g, '').replace(/==/g, '≡').replace(/=/g, '≡');
           
@@ -1050,7 +1260,6 @@
             }
           }
 
-          // 2. 합동 조건 검사: SAS 합동
           const raw2 = v['q0-3-condition'].replace(/\s+/g, '').toUpperCase();
           const isConditionOk = raw2.includes('SAS') || (raw2.includes('두변') && raw2.includes('끼인각'));
 
@@ -1059,12 +1268,12 @@
               success: true,
               score: 100,
               answerText: "⑴ △ABC ≡ △FED | ⑵ SAS 합동",
-              explanation: "완벽합니다! 👏\\n\\n⑴ 꼭짓점 C(60°)의 대응점은 D(60°)이고,\\n   AC = FD = 10cm, BC = ED = 8cm 이므로\\n   대응점의 순서에 따라 △ABC ≡ △FED 입니다.\\n\\n⑵ 두 변의 길이와 그 끼인각의 크기가 각각 같으므로\\n   [SAS 합동] 조건입니다."
+              explanation: "완벽합니다! 👏\n\n⑴ 꼭짓점 C(60°)의 대응점은 D(60°)이고,\n   AC = FD = 10cm, BC = ED = 8cm 이므로\n   대응점의 순서에 따라 △ABC ≡ △FED 입니다.\n\n⑵ 두 변의 길이와 그 끼인각의 크기가 각각 같으므로\n   [SAS 합동] 조건입니다."
             };
           } else {
             const hints = [];
             if (!isCongruenceOk) {
-              hints.push("⑴번: 합동 기호(≡)를 쓸 때는 꼭짓점의 대응 순서를 반드시 맞추어야 합니다.\\n   (C의 대응점은 D, A의 대응점은 F, B의 대응점은 E이므로 △ABC ≡ △FED)");
+              hints.push("⑴번: 합동 기호(≡)를 쓸 때는 꼭짓점의 대응 순서를 반드시 맞추어야 합니다.\n   (C의 대응점은 D, A의 대응점은 F, B의 대응점은 E이므로 △ABC ≡ △FED)");
             }
             if (!isConditionOk) {
               hints.push("⑵번: 주어진 두 변 10cm, 8cm와 60°가 두 변 사이의 '끼인각'인지 확인해 보세요. (SAS 합동)");
@@ -1073,11 +1282,12 @@
             return {
               success: false,
               score: 0,
-              hint: "💡 다음 내용을 확인하고 다시 시도해 보세요:\\n" + hints.join('\\n')
+              hint: "💡 다음 내용을 확인하고 다시 시도해 보세요:\n" + hints.join('\n')
             };
           }
         }
       },
+
       '0-4': {
         tab: 0,
         title: "0-4. [준비해요 4] 도시 속 삼각형과 나의 학습 계획 (Tab 1 해금)",
@@ -1150,6 +1360,12 @@
               </div>
             </div>
 
+            <!-- 피드백 카드 (#card-feedback-0-4) -->
+            <div id="card-feedback-0-4" class="card bounceInCard" style="display:none; border-left:5px solid #059669; background:#f0fdf4;">
+              <div id="feedback-title-0-4" style="font-size:0.95rem; font-weight:800; margin-bottom:4px; color:#15803d;"></div>
+              <p id="feedback-desc-0-4" style="font-size:0.85rem; line-height:1.5; color:#334155; white-space:pre-line;"></p>
+            </div>
+
             <!-- 채점 및 Tab 1 해금 버튼 -->
             <button id="btn-grade-0-4" class="btn btn-primary" style="width:100%; height:46px; font-size:0.95rem; font-weight:800; background:linear-gradient(135deg, #4f46e5, #059669);" onclick="executeStepGrade('0-4');">
               🚀 0-4 다짐 완료 & [Tab 1. 5.1 이등변삼각형] 공식 해금하기
@@ -1172,7 +1388,6 @@
             };
           }
 
-          // 2자 이상 입력 시 정답 승인
           if (val.length >= 2) {
             return {
               success: true,
@@ -1191,248 +1406,11 @@
       }
     };
 
-    // 4. 입력 도우미 함수
-    window.insertSymbol = function(id, symbol) {
-      const el = document.getElementById(id);
-      if (el) {
-        el.value += symbol;
-        el.focus();
-      }
-    };
-
-    window.selectInputVal = function(id, val) {
-      const el = document.getElementById(id);
-      if (el) {
-        el.value = val;
-        el.focus();
-      }
-    };
-
-    // 5. 뷰 전환 관리자 (3-Tier View Isolation)
-    function switchView(viewName) {
-      const views = {
-        'login': document.getElementById('view-login'),
-        'activity': document.getElementById('view-activity'),
-        'dashboard': document.getElementById('view-dashboard')
-      };
-
-      Object.keys(views).forEach(key => {
-        if (views[key]) {
-          views[key].style.display = (key === viewName) ? 'flex' : 'none';
-        }
-      });
-
-      // 헤더 사용자 정보 및 교사 버튼 표기 갱신
-      const userInfo = document.getElementById('current-user-info');
-      const btnBound = document.getElementById('btn-header-unlock-boundary');
-      const btnDash = document.getElementById('btn-header-teacher-dashboard');
-
-      if (state.isTeacherLoggedIn || state.isMaster) {
-        if (userInfo) userInfo.innerText = '👨‍🏫 임종윤 선생님 (교사 관리자)';
-        if (btnBound) btnBound.style.display = 'inline-flex';
-        if (btnDash) btnDash.style.display = 'inline-flex';
-      } else if (state.isLoggedIn) {
-        if (userInfo) userInfo.innerText = `👩‍🎓 ${state.studentId} ${state.studentName}`;
-        if (btnBound) btnBound.style.display = 'none';
-        if (btnDash) btnDash.style.display = 'none';
-      } else {
-        if (userInfo) userInfo.innerText = '게스트 학생';
-        if (btnBound) btnBound.style.display = 'none';
-        if (btnDash) btnDash.style.display = 'none';
-      }
-
-      if (viewName === 'activity') {
-        renderMainTabs();
-        populateSubStepDropdown();
-        loadSubStep(state.subStep || '0-1');
-      }
-    }
-
-    // 6. 메인 탭바 렌더링 및 전환
-    function renderMainTabs() {
-      TAB_TITLES.forEach((title, idx) => {
-        const btn = document.getElementById(`tab-btn-${idx}`);
-        if (!btn) return;
-        const isUnlocked = state.unlockedTabs.includes(idx) || state.isTeacherLoggedIn || state.isMaster;
-        btn.innerHTML = `${title} ${isUnlocked ? '🔓' : '🔒'}`;
-        btn.classList.toggle('locked', !isUnlocked);
-        btn.classList.toggle('active', idx === state.currentMainTab);
-      });
-    }
-
-    function switchMainTab(tabIdx) {
-      const isUnlocked = state.unlockedTabs.includes(tabIdx) || state.isTeacherLoggedIn || state.isMaster;
-      if (!isUnlocked) {
-        alert("🔒 이전 단계를 먼저 완료해야 해금됩니다!");
-        return;
-      }
-      state.currentMainTab = tabIdx;
-      renderMainTabs();
-      populateSubStepDropdown();
-
-      const stepsInTab = Object.keys(SUBSTEPS_DATA).filter(k => SUBSTEPS_DATA[k].tab === tabIdx);
-      if (stepsInTab.length > 0) {
-        loadSubStep(stepsInTab[0]);
-      } else {
-        alert("🚧 해당 소단원은 곧 순차 탑재됩니다!");
-      }
-    }
-
-    // 7. 서브스텝 드롭다운 & 스텝 제어
-    function populateSubStepDropdown() {
-      const select = document.getElementById('substep-dropdown-select');
-      if (!select) return;
-      select.innerHTML = '';
-
-      const stepsInTab = Object.keys(SUBSTEPS_DATA).filter(k => SUBSTEPS_DATA[k].tab === state.currentMainTab);
-      stepsInTab.forEach(code => {
-        const item = SUBSTEPS_DATA[code];
-        const isDone = state.completedSubSteps.includes(code);
-        const opt = document.createElement('option');
-        opt.value = code;
-        opt.innerText = `${isDone ? '✅ ' : '📑 '} ${item.title}`;
-        select.appendChild(opt);
-      });
-
-      updateStepperUI();
-    }
-
-    function updateStepperUI() {
-      const stepsInTab = Object.keys(SUBSTEPS_DATA).filter(k => SUBSTEPS_DATA[k].tab === state.currentMainTab);
-      const curIdx = stepsInTab.indexOf(state.subStep);
-      const badge = document.getElementById('substep-counter-badge');
-      const prevBtn = document.getElementById('btn-prev-substep');
-      const nextBtn = document.getElementById('btn-next-substep');
-
-      const total = stepsInTab.length || 1;
-      if (badge) badge.innerText = `${curIdx >= 0 ? curIdx + 1 : 1} / ${total}`;
-      if (prevBtn) prevBtn.disabled = (curIdx <= 0);
-      if (nextBtn) nextBtn.disabled = (curIdx >= stepsInTab.length - 1);
-
-      const select = document.getElementById('substep-dropdown-select');
-      if (select && curIdx >= 0) select.value = state.subStep;
-    }
-
-    function handleSubstepSelect(code) {
-      loadSubStep(code);
-    }
-
-    function goToPrevSubstep() {
-      const stepsInTab = Object.keys(SUBSTEPS_DATA).filter(k => SUBSTEPS_DATA[k].tab === state.currentMainTab);
-      const curIdx = stepsInTab.indexOf(state.subStep);
-      if (curIdx > 0) loadSubStep(stepsInTab[curIdx - 1]);
-    }
-
-    function goToNextSubstep() {
-      const stepsInTab = Object.keys(SUBSTEPS_DATA).filter(k => SUBSTEPS_DATA[k].tab === state.currentMainTab);
-      const curIdx = stepsInTab.indexOf(state.subStep);
-      if (curIdx >= 0 && curIdx < stepsInTab.length - 1) loadSubStep(stepsInTab[curIdx + 1]);
-    }
-
-    // 8. 서브스텝 로더 (loadSubStep)
-    function loadSubStep(code) {
-      if (!SUBSTEPS_DATA[code]) return;
-      state.subStep = code;
-      state.currentSubStep = code;
-
-      const item = SUBSTEPS_DATA[code];
-      const titleEl = document.getElementById('canvas-substep-title');
-      if (titleEl) titleEl.innerText = item.title;
-
-      // 캔버스 엘리먼트 id="canvas-${step}" 보장 (QA 평가기 필수)
-      const container = document.getElementById('canvas-container');
-      if (container) {
-        container.innerHTML = `<canvas id="canvas-${code}" width="760" height="460"></canvas>`;
-      }
-
-      // 우측 폼 컨테이너 렌더링
-      const formContainer = document.getElementById('substep-form-container');
-      if (formContainer) {
-        formContainer.innerHTML = item.formHtml;
-      }
-
-      // 피드백 카드 리셋
-      const fbCard = document.getElementById(`card-feedback-${code}`);
-      if (fbCard) fbCard.style.display = 'none';
-
-      updateStepperUI();
-
-      // Drawer 함수 실행
-      if (item.drawer && typeof window[item.drawer] === 'function') {
-        window[item.drawer]();
-      }
-    }
-
-    // 9. 채점 실행 엔진 (executeStepGrade)
-    function executeStepGrade(step) {
-      const item = SUBSTEPS_DATA[step];
-      if (!item || !item.grader) return;
-
-      const res = item.grader();
-      const fbCard = document.getElementById(`card-feedback-${step}`);
-      const fbTitle = document.getElementById(`feedback-title-${step}`);
-      const fbDesc = document.getElementById(`feedback-desc-${step}`);
-
-      if (fbCard) {
-        fbCard.style.display = 'block';
-        if (res.success) {
-          fbCard.style.borderLeftColor = '#059669';
-          fbCard.style.background = '#f0fdf4';
-          if (fbTitle) fbTitle.innerHTML = '<span style="color:#15803d;">🎉 정답입니다! (100점)</span>';
-          if (fbDesc) fbDesc.innerText = res.explanation || res.answerText || '훌륭합니다!';
-
-          if (!state.completedSubSteps.includes(step)) {
-            state.completedSubSteps.push(step);
-          }
-          if (!state.stepProgress) state.stepProgress = {};
-          state.stepProgress[step] = true;
-
-          // Tab 0 완결 시 Tab 1 공식 해금 연출
-          if (step === '0-4') {
-            if (!state.unlockedTabs.includes(1)) {
-              state.unlockedTabs.push(1);
-            }
-            renderMainTabs();
-          }
-
-          if (typeof launchConfetti === 'function') {
-            launchConfetti();
-          }
-        } else {
-          fbCard.style.borderLeftColor = '#dc2626';
-          fbCard.style.background = '#fef2f2';
-          if (fbTitle) fbTitle.innerHTML = '<span style="color:#b91c1c;">💡 다시 시도해 보세요!</span>';
-          if (fbDesc) fbDesc.innerText = res.hint || '오답이 있습니다.';
-        }
-      }
-
-      // LMS 클라우드 저장
-      if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
-        LMSIntegration.saveStudentProgress(state.studentId, 'g2_ch5', step, res.score || 0);
-      }
-    }
-
-    // 10. 폭죽 엔진 (launchConfetti)
-    function launchConfetti() {
-      if (typeof confetti === 'function') {
-        confetti({
-          particleCount: 80,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-      }
-    }
-
-    // 11. 반응형 캔버스 헬퍼
-    function setupResponsiveCanvas(canvas, targetW, targetH) {
-      if (!canvas) return;
-      canvas.width = targetW;
-      canvas.height = targetH;
-    }
-
     // =========================================================================
-    // 🎨 0-1 서브스텝 Canvas Drawer: drawFuncStep0_1Canvas
+    // 🎨 60fps Canvas Drawers (Tab 0: 0-1 ~ 0-4)
     // =========================================================================
+
+    // --- 0-1 서브스텝 Drawer ---
     function drawFuncStep0_1Canvas() {
       const canvas = document.getElementById('canvas-0-1');
       if (!canvas) return;
@@ -1448,14 +1426,12 @@
       function render() {
         ctx.clearRect(0, 0, W, H);
 
-        // 1. 배경
         const bgGrad = ctx.createLinearGradient(0, 0, W, H);
         bgGrad.addColorStop(0, '#0f172a');
         bgGrad.addColorStop(1, '#1e293b');
         ctx.fillStyle = bgGrad;
         ctx.fillRect(0, 0, W, H);
 
-        // 2. 상단 모드 탭
         ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
         ctx.fillRect(0, 0, W, 46);
         ctx.strokeStyle = '#334155';
@@ -1497,25 +1473,21 @@
         ctx.restore();
       }
 
-      // --- 모드 0: 삼각형 꼭짓점 드래그 & 실시간 각도 계산/판별 ---
       function renderInteractiveTriangle() {
         const pA = s.pointA;
         const pB = s.pointB;
         const pC = s.pointC;
 
-        // 세 변 길이 계산
-        const a = Math.hypot(pB.x - pC.x, pB.y - pC.y); // BC (A 대변)
-        const b = Math.hypot(pA.x - pC.x, pA.y - pC.y); // AC (B 대변)
-        const c = Math.hypot(pA.x - pB.x, pA.y - pB.y); // AB (C 대변)
+        const a = Math.hypot(pB.x - pC.x, pB.y - pC.y);
+        const b = Math.hypot(pA.x - pC.x, pA.y - pC.y);
+        const c = Math.hypot(pA.x - pB.x, pA.y - pB.y);
 
-        // 제2코사인 법칙으로 세 각(도) 계산
         const radA = Math.acos(Math.max(-1, Math.min(1, (b*b + c*c - a*a) / (2*b*c))));
         const radB = Math.acos(Math.max(-1, Math.min(1, (a*a + c*c - b*b) / (2*a*c))));
         const degA = radA * (180 / Math.PI);
         const degB = radB * (180 / Math.PI);
         const degC = 180 - degA - degB;
 
-        // 판별: 예각, 직각, 둔각
         const maxDeg = Math.max(degA, degB, degC);
         let triType = '';
         let typeColor = '';
@@ -1535,9 +1507,8 @@
           typeDesc = '한 각의 크기가 90° 초과(둔각)입니다.';
         }
 
-        // 삼각형 내부 채우기 & 테두리
         ctx.save();
-        ctx.fillStyle = 'rgba(99, 102, 241, 0.15)';
+        ctx.fillStyle = 'rgba(79, 70, 229, 0.15)';
         ctx.beginPath();
         ctx.moveTo(pA.x, pA.y);
         ctx.lineTo(pB.x, pB.y);
@@ -1545,156 +1516,114 @@
         ctx.closePath();
         ctx.fill();
 
-        ctx.strokeStyle = '#818cf8';
+        ctx.strokeStyle = typeColor;
         ctx.lineWidth = 3;
         ctx.stroke();
 
-        // 각도 호(Arc) 및 텍스트 렌더링
-        drawAngleArc(pA, pB, pC, degA, 'A');
-        drawAngleArc(pB, pA, pC, degB, 'B');
-        drawAngleArc(pC, pA, pB, degC, 'C');
+        drawAngleArc(pA, pB, pC, degA, 'A', '#818cf8');
+        drawAngleArc(pB, pC, pA, degB, 'B', '#34d399');
+        drawAngleArc(pC, pA, pB, degC, 'C', '#fb923c');
 
-        // 꼭짓점 원 핸들 (드래그 가능 노브)
         drawHandle(pA, 'A', s.hoverPoint === 'A' || s.draggingPoint === 'A');
         drawHandle(pB, 'B', s.hoverPoint === 'B' || s.draggingPoint === 'B');
         drawHandle(pC, 'C', s.hoverPoint === 'C' || s.draggingPoint === 'C');
-
-        // 상단 안내 텍스트
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '11px "Pretendard", sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText('💡 꼭짓점 A, B, C를 마우스로 자유롭게 드래그해 각도를 변경해 보세요.', 20, 72);
-
-        // 하단 판별 뱃지 카드
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
-        ctx.beginPath();
-        ctx.roundRect(20, 385, 420, 60, 10);
-        ctx.fill();
-        ctx.strokeStyle = typeColor;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        ctx.fillStyle = typeColor;
-        ctx.font = 'bold 14px "Pretendard", sans-serif';
-        ctx.fillText(`판별: ${triType}`, 36, 410);
-
-        ctx.fillStyle = '#e2e8f0';
-        ctx.font = '11px "Pretendard", sans-serif';
-        ctx.fillText(`${typeDesc} (∠A=${degA.toFixed(1)}°, ∠B=${degB.toFixed(1)}°, ∠C=${degC.toFixed(1)}°)`, 36, 430);
-
         ctx.restore();
 
-        // 우측 성질 요약 카드
-        renderInfoCard(480, 70, 260, 375, '📐 각에 따른 삼각형 분류', [
-          { label: '예각삼각형', val: '세 각이 모두 예각인 삼각형\n(0° < 모든 내각 < 90°)' },
-          { label: '직각삼각형', val: '한 각이 직각인 삼각형\n(한 각 = 90°, 나머지 두 각 예각)' },
-          { label: '둔각삼각형', val: '한 각이 둔각인 삼각형\n(90° < 한 각 < 180°)' },
-          { label: '삼각형 내각의 합', val: '∠A + ∠B + ∠C = 180°' },
-          { label: '탐구 포인트', val: '삼각형에는 직각이나 둔각이\n2개 이상 존재할 수 없습니다.' }
-        ], typeColor);
+        renderRadarBadge(30, 60, triType, typeColor, typeDesc, degA, degB, degC);
       }
 
-      function drawAngleArc(center, p1, p2, deg, label) {
+      function drawAngleArc(p, pNext, pPrev, deg, label, col) {
         ctx.save();
-        const a1 = Math.atan2(p1.y - center.y, p1.x - center.x);
-        const a2 = Math.atan2(p2.y - center.y, p2.x - center.x);
+        const a1 = Math.atan2(pNext.y - p.y, pNext.x - p.x);
+        const a2 = Math.atan2(pPrev.y - p.y, pPrev.x - p.x);
 
-        let start = a1, end = a2;
-        let diff = end - start;
-        while (diff < 0) diff += Math.PI * 2;
-        while (diff > Math.PI * 2) diff -= Math.PI * 2;
-
-        if (diff > Math.PI) {
-          start = a2;
-          end = a1;
-          diff = Math.PI * 2 - diff;
-        }
-
-        const arcR = 32;
-        ctx.strokeStyle = (Math.abs(deg - 90) <= 2.5) ? '#38bdf8' : (deg > 90 ? '#fb923c' : '#34d399');
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.strokeStyle = col;
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(center.x, center.y, arcR, start, start + diff);
+        ctx.moveTo(p.x, p.y);
+        ctx.arc(p.x, p.y, 28, a1, a2, false);
+        ctx.closePath();
+        ctx.fill();
         ctx.stroke();
 
-        // 각도 수치 표시
-        const midA = start + diff / 2;
-        const tx = center.x + Math.cos(midA) * (arcR + 16);
-        const ty = center.y + Math.sin(midA) * (arcR + 16);
+        const midA = (a1 + a2) / 2;
+        const tx = p.x + Math.cos(midA) * 44;
+        const ty = p.y + Math.sin(midA) * 44;
 
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 11px "Pretendard", sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(`${deg.toFixed(0)}°`, tx, ty);
+        ctx.fillText(`${label}: ${deg.toFixed(0)}°`, tx, ty);
         ctx.restore();
       }
 
       function drawHandle(pt, label, isHighlight) {
         ctx.save();
-        ctx.fillStyle = isHighlight ? '#fbbf24' : '#4f46e5';
+        ctx.fillStyle = isHighlight ? '#ffffff' : '#6366f1';
+        ctx.strokeStyle = isHighlight ? '#ec4899' : '#1e1b4b';
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(pt.x, pt.y, isHighlight ? 10 : 8, 0, Math.PI * 2);
+        ctx.arc(pt.x, pt.y, isHighlight ? 9 : 7, 0, Math.PI * 2);
         ctx.fill();
-
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2.5;
         ctx.stroke();
 
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 13px "Pretendard", sans-serif';
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 12px "Pretendard", sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(label, pt.x, pt.y - 14);
+        ctx.fillText(label, pt.x, pt.y - 12);
         ctx.restore();
       }
 
-      // --- 모드 1: 대표 삼각형 3종 갤러리 ---
-      function renderTriangleGallery() {
-        const presets = [
-          { name: '🟢 예각삼각형 (정삼각형)', a: 60, b: 60, c: 60, desc: '세 각(60°, 60°, 60°)이 모두 예각', col: '#34d399' },
-          { name: '🔵 직각삼각형 (직각이등변)', a: 90, b: 45, c: 45, desc: '한 각(90°)이 직각, 두 각이 45°', col: '#38bdf8' },
-          { name: '🟠 둔각삼각형 (120° 둔각)', a: 120, b: 30, c: 30, desc: '한 각(120°)이 둔각, 두 각이 30°', col: '#fb923c' }
-        ];
-
-        // 3개 프리셋 선택 버튼
-        drawTabBtn(20, 65, 140, 26, '예각삼각형', s.presetIdx === 0, 'pre_0');
-        drawTabBtn(170, 65, 140, 26, '직각삼각형', s.presetIdx === 1, 'pre_1');
-        drawTabBtn(320, 65, 140, 26, '둔각삼각형', s.presetIdx === 2, 'pre_2');
-
-        const curPre = presets[s.presetIdx];
-
-        // 중앙 프리셋 작도
+      function renderRadarBadge(x, y, title, col, desc, a, b, c) {
         ctx.save();
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
         ctx.beginPath();
-        ctx.roundRect(20, 105, 440, 335, 10);
+        ctx.roundRect(x, y, 290, 115, 10);
         ctx.fill();
-        ctx.strokeStyle = curPre.col;
+
+        ctx.strokeStyle = col;
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        ctx.fillStyle = curPre.col;
-        ctx.font = 'bold 15px "Pretendard", sans-serif';
-        ctx.fillText(curPre.name, 36, 135);
+        ctx.fillStyle = col;
+        ctx.font = 'bold 14px "Pretendard", sans-serif';
+        ctx.fillText(title, x + 14, y + 26);
+
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = '11px "Pretendard", sans-serif';
+        ctx.fillText(desc, x + 14, y + 48);
 
         ctx.fillStyle = '#94a3b8';
-        ctx.font = '12px "Pretendard", sans-serif';
-        ctx.fillText(curPre.desc, 36, 155);
+        ctx.font = '11px "Pretendard", sans-serif';
+        ctx.fillText(`∠A = ${a.toFixed(1)}° | ∠B = ${b.toFixed(1)}° | ∠C = ${c.toFixed(1)}°`, x + 14, y + 74);
+        ctx.fillText('💡 꼭짓점을 마우스로 드래그하여 각도를 바꿔보세요.', x + 14, y + 96);
+        ctx.restore();
+      }
 
-        // 프리셋 좌표
+      function renderTriangleGallery() {
+        const presets = [
+          { name: '1. 예각삼각형 (정삼각형)', col: '#34d399', desc: '세 각: 60°, 60°, 60° (모두 예각)' },
+          { name: '2. 직각삼각형 (3:4:5)', col: '#38bdf8', desc: '세 각: 90°, 53.1°, 36.9° (한 각 직각)' },
+          { name: '3. 둔각삼각형 (120°)', col: '#fb923c', desc: '세 각: 120°, 30°, 30° (한 각 둔각)' }
+        ];
+
+        presets.forEach((p, idx) => {
+          const btnX = 20 + idx * 150;
+          const isAct = (s.presetIdx === idx);
+          drawTabBtn(btnX, 65, 140, 26, p.name.split(' ')[0] + ' ' + p.name.split(' ')[1], isAct, 'pre_' + idx);
+        });
+
+        const curPre = presets[s.presetIdx];
+        ctx.save();
         let pA, pB, pC;
         if (s.presetIdx === 0) {
-          pA = { x: 240, y: 190 };
-          pB = { x: 140, y: 360 };
-          pC = { x: 340, y: 360 };
+          pA = { x: 240, y: 190 }; pB = { x: 140, y: 360 }; pC = { x: 340, y: 360 };
         } else if (s.presetIdx === 1) {
-          pA = { x: 150, y: 200 };
-          pB = { x: 150, y: 360 };
-          pC = { x: 350, y: 360 };
+          pA = { x: 150, y: 200 }; pB = { x: 150, y: 360 }; pC = { x: 350, y: 360 };
         } else {
-          pA = { x: 260, y: 260 };
-          pB = { x: 110, y: 360 };
-          pC = { x: 410, y: 360 };
+          pA = { x: 260, y: 260 }; pB = { x: 110, y: 360 }; pC = { x: 410, y: 360 };
         }
 
         ctx.fillStyle = 'rgba(99, 102, 241, 0.2)';
@@ -1709,7 +1638,6 @@
         ctx.lineWidth = 3;
         ctx.stroke();
 
-        // 직각 마커 (직각삼각형일 때)
         if (s.presetIdx === 1) {
           ctx.strokeStyle = '#38bdf8';
           ctx.lineWidth = 2;
@@ -1721,7 +1649,6 @@
         drawHandle(pC, 'C', false);
         ctx.restore();
 
-        // 우측 성질 카드
         renderInfoCard(480, 70, 260, 375, '📖 교과서 핵심 개념 정리', [
           { label: '교과서 152쪽', val: '초등학교 4학년 복습 연계' },
           { label: '예각', val: '0°보다 크고 90°보다 작은 각' },
@@ -1765,13 +1692,11 @@
           lines.forEach((l, li) => {
             ctx.fillText(l, x + 14, cy + 15 + li * 14);
           });
-
           cy += 40 + (lines.length - 1) * 14;
         });
         ctx.restore();
       }
 
-      // --- 마우스 인터랙션 ---
       canvas.onmousemove = function(e) {
         const rect = canvas.getBoundingClientRect();
         const mx = (e.clientX - rect.left) * (W / rect.width);
@@ -1790,7 +1715,6 @@
         s.hoverBtn = hovered;
 
         if (s.selectedMode === 0) {
-          // 꼭짓점 호버 감지
           let hp = null;
           if (Math.hypot(mx - s.pointA.x, my - s.pointA.y) <= 16) hp = 'A';
           else if (Math.hypot(mx - s.pointB.x, my - s.pointB.y) <= 16) hp = 'B';
@@ -1802,7 +1726,6 @@
             curP.x = Math.max(30, Math.min(460, mx));
             curP.y = Math.max(90, Math.min(370, my));
           }
-
           canvas.style.cursor = (hovered || hp || s.draggingPoint) ? 'pointer' : 'default';
         } else {
           canvas.style.cursor = hovered ? 'pointer' : 'default';
@@ -1822,9 +1745,7 @@
           else if (mx >= 170 && mx <= 310) s.presetIdx = 1;
           else if (mx >= 320 && mx <= 460) s.presetIdx = 2;
         } else if (s.selectedMode === 0) {
-          if (s.hoverPoint) {
-            s.draggingPoint = s.hoverPoint;
-          }
+          if (s.hoverPoint) s.draggingPoint = s.hoverPoint;
         }
       };
 
@@ -1833,7 +1754,7 @@
       });
 
       function loop() {
-        if (state.currentSubStep !== '0-1') return;
+        if (state.subStep !== '0-1') return;
         render();
         requestAnimationFrame(loop);
       }
@@ -1844,576 +1765,534 @@
       window.drawFuncStep0_1Canvas = drawFuncStep0_1Canvas;
     }
 
-    // =========================================================================
-    // 🎨 0-2 서브스텝 Canvas Drawer: drawFuncStep0_2Canvas
-    // =========================================================================
-// scratch/test_draw_func_0_2.js
-// 0-2 서브스텝 Canvas Drawer 함수 프로토타입
-
-function drawFuncStep0_2Canvas() {
-  const canvas = document.getElementById('canvas-0-2');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-
-  const W = 760;
-  const H = 460;
-  setupResponsiveCanvas(canvas, W, H);
-
-  const s = state.tab0.exteriorAngleLab;
-
-  function render() {
-    ctx.clearRect(0, 0, W, H);
-
-    // 1. 배경 그래디언트
-    const bgGrad = ctx.createLinearGradient(0, 0, W, H);
-    bgGrad.addColorStop(0, '#0f172a');
-    bgGrad.addColorStop(1, '#1e293b');
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, W, H);
-
-    // 2. 상단 모드 탭 바
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-    ctx.fillRect(0, 0, W, 46);
-    ctx.strokeStyle = '#334155';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, 46);
-    ctx.lineTo(W, 46);
-    ctx.stroke();
-
-    drawTabBtn(16, 8, 280, 30, '📐 모드 0: 평행선 보조선 & 외각 증명 랩', s.selectedMode === 0, 'mode_0');
-    drawTabBtn(306, 8, 260, 30, '📖 모드 1: 교과서 문제 ⑴, ⑵ 시뮬레이터', s.selectedMode === 1, 'mode_1');
-
-    if (s.selectedMode === 0) {
-      renderInteractiveProof();
-    } else {
-      renderTextbookSim();
-    }
-
-    s.animT += 0.03;
-  }
-
-  function drawTabBtn(x, y, w, h, text, isActive, id) {
-    const isHover = s.hoverBtn === id;
-    ctx.save();
-    ctx.fillStyle = isActive ? '#4f46e5' : (isHover ? 'rgba(79, 70, 229, 0.25)' : 'rgba(51, 65, 85, 0.4)');
-    ctx.beginPath();
-    ctx.roundRect(x, y, w, h, 6);
-    ctx.fill();
-
-    ctx.strokeStyle = isActive ? '#818cf8' : (isHover ? '#6366f1' : '#475569');
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    ctx.fillStyle = isActive ? '#ffffff' : '#cbd5e1';
-    ctx.font = 'bold 11px "Pretendard", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(text, x + w / 2, y + h / 2);
-    ctx.restore();
-  }
-
-  // --- 모드 0: 평행선 보조선을 이용한 외각 성질 인터랙티브 증명 랩 ---
-  function renderInteractiveProof() {
-    const pA = s.pointA;
-    const pB = s.pointB;
-    const pC = s.pointC;
-    const pD = { x: pC.x + 140, y: pC.y }; // 밑변 연장선 상의 점 D
-
-    // 보조선 CE (C를 지나고 AB에 평행한 반직선)
-    // 벡터 BA = (A.x - B.x, A.y - B.y)
-    const vBAx = pA.x - pB.x;
-    const vBAy = pA.y - pB.y;
-    const pE = { x: pC.x + vBAx * 0.9, y: pC.y + vBAy * 0.9 };
-
-    // 세 각 계산 (도)
-    const angleB = Math.atan2(pA.y - pB.y, pA.x - pB.x); // 방향
-    const degB = Math.abs(angleB) * (180 / Math.PI); // 수평선 대비 각도 (B.y=C.y 기준)
-
-    const degACB = Math.atan2(pC.y - pA.y, pC.x - pA.x);
-    // 벡터를 이용한 정확한 각도 계산
-    function calcAngleDeg(center, p1, p2) {
-      const a1 = Math.atan2(p1.y - center.y, p1.x - center.x);
-      const a2 = Math.atan2(p2.y - center.y, p2.x - center.x);
-      let diff = Math.abs(a1 - a2) * (180 / Math.PI);
-      if (diff > 180) diff = 360 - diff;
-      return diff;
-    }
-
-    const degA = calcAngleDeg(pA, pB, pC);
-    const degB_val = calcAngleDeg(pB, pA, pC);
-    const degC_in = 180 - degA - degB_val; // 내각 C
-    const degExt = degA + degB_val;        // 외각 (180 - 내각 C)
-
-    ctx.save();
-
-    // 1. 밑변 연장선 BD (B -> C -> D)
-    ctx.strokeStyle = '#64748b';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([4, 4]);
-    ctx.beginPath();
-    ctx.moveTo(pC.x, pC.y);
-    ctx.lineTo(pD.x, pD.y);
-    ctx.stroke();
-    ctx.setLineDash([]); // 대시 해제
-
-    // 점 D 및 레이블
-    ctx.fillStyle = '#94a3b8';
-    ctx.beginPath();
-    ctx.arc(pD.x, pD.y, 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.font = 'bold 12px "Pretendard", sans-serif';
-    ctx.fillText('D', pD.x + 8, pD.y + 4);
-
-    // 2. 평행 보조선 CE (C -> E)
-    ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(pC.x, pC.y);
-    ctx.lineTo(pE.x, pE.y);
-    ctx.stroke();
-
-    // 점 E 및 레이블
-    ctx.fillStyle = '#f59e0b';
-    ctx.beginPath();
-    ctx.arc(pE.x, pE.y, 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillText('E', pE.x + 8, pE.y - 4);
-
-    // 평행 기호 (AB와 CE에 >> 표시)
-    drawParallelArrow((pA.x + pB.x) / 2, (pA.y + pB.y) / 2, Math.atan2(vBAy, vBAx), '#f59e0b');
-    drawParallelArrow((pC.x + pE.x) / 2, (pC.y + pE.y) / 2, Math.atan2(vBAy, vBAx), '#f59e0b');
-
-    // 3. 삼각형 ABC 채우기 & 테두리
-    ctx.fillStyle = 'rgba(99, 102, 241, 0.12)';
-    ctx.beginPath();
-    ctx.moveTo(pA.x, pA.y);
-    ctx.lineTo(pB.x, pB.y);
-    ctx.lineTo(pC.x, pC.y);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.strokeStyle = '#818cf8';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    // 4. 각도 아크 및 색상 코딩
-    // ∠A (내각): 핑크
-    drawArcBetween(pA, pB, pC, 28, '#ec4899', `∠A ${degA.toFixed(0)}°`);
-    // ∠B (내각): 청록
-    drawArcBetween(pB, pC, pA, 28, '#06b6d4', `∠B ${degB_val.toFixed(0)}°`);
-    // ∠ACB (내각 C): 슬레이트
-    drawArcBetween(pC, pA, pB, 24, '#94a3b8', '');
-
-    // 엇각 ∠ACE (선분 CA와 선분 CE 사이): 핑크 (∠A와 동일!)
-    drawArcBetween(pC, pE, pA, 32, '#ec4899', `엇각 ${degA.toFixed(0)}°`);
-    // 동위각 ∠ECD (선분 CE와 선분 CD 사이): 청록 (∠B와 동일!)
-    drawArcBetween(pC, pD, pE, 42, '#06b6d4', `동위각 ${degB_val.toFixed(0)}°`);
-
-    // 전체 외각 ∠ACD: 바깥쪽 아크 (보라색)
-    drawArcBetween(pC, pD, pA, 54, '#a855f7', `외각 ${degExt.toFixed(0)}°`);
-
-    // 5. 꼭짓점 핸들 (A, B, C)
-    drawHandle(pA, 'A', s.hoverPoint === 'A' || s.draggingPoint === 'A');
-    drawHandle(pB, 'B', s.hoverPoint === 'B' || s.draggingPoint === 'B');
-    drawHandle(pC, 'C', s.hoverPoint === 'C' || s.draggingPoint === 'C');
-
-    // 상단 팁
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '11px "Pretendard", sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText('💡 꼭짓점 A, B, C를 드래그해 보세요. 평행선 CE(황금색)에 의해 엇각과 동위각이 실시간 유지됩니다.', 20, 70);
-
-    // 하단 수식 배너 카드
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
-    ctx.beginPath();
-    ctx.roundRect(20, 385, 430, 62, 10);
-    ctx.fill();
-    ctx.strokeStyle = '#a855f7';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    ctx.fillStyle = '#c084fc';
-    ctx.font = 'bold 13px "Pretendard", sans-serif';
-    ctx.fillText(`📐 외각 ∠ACD = ∠ACE(엇각) + ∠ECD(동위각) = ∠A + ∠B`, 34, 408);
-
-    ctx.fillStyle = '#e2e8f0';
-    ctx.font = '11px "Pretendard", sans-serif';
-    ctx.fillText(`수치 증명: ${degExt.toFixed(1)}° = ${degA.toFixed(1)}° + ${degB_val.toFixed(1)}° | 평각 검증: ${degC_in.toFixed(1)}° + ${degExt.toFixed(1)}° = 180°`, 34, 430);
-
-    ctx.restore();
-
-    // 우측 정보 카드 (Glassmorphism HUD)
-    renderInfoCard(470, 60, 275, 388, '✨ 외각의 성질 증명 (교과서 152p)', [
-      { label: '1. 보조선 긋기', val: '꼭짓점 C를 지나고 변 AB에 평행한\n반직선 CE를 긋는다. (AB ∥ CE)' },
-      { label: '2. 엇각의 성질', val: 'AB ∥ CE이므로\n∠ACE = ∠A (엇각, 핑크색)' },
-      { label: '3. 동위각의 성질', val: 'AB ∥ CE이므로\n∠ECD = ∠B (동위각, 청록색)' },
-      { label: '4. 결론 (외각의 성질)', val: '∠ACD = ∠ACE + ∠ECD\n      = ∠A + ∠B\n"삼각형의 한 외각 = 이웃하지 않는 두 내각의 합"' },
-      { label: '5. 평각의 성질', val: '(내각 ∠C) + (외각) = 180°' }
-    ], '#a855f7');
-  }
-
-  // --- 모드 1: 교과서 문제 ⑴, ⑵ 정밀 시뮬레이터 ---
-  function renderTextbookSim() {
-    ctx.save();
-
-    // 서브 탭 (문제 1 vs 문제 2)
-    const isP1 = (s.subProblem === 0);
-    drawSubProblemBtn(20, 56, 210, 28, '⑴ 내각 50°, 30° ⟹ 외각 ∠x', isP1, 'sub_p1');
-    drawSubProblemBtn(240, 56, 210, 28, '⑵ 내각 70°, 외각 110° ⟹ 내각 ∠x', !isP1, 'sub_p2');
-
-    if (isP1) {
-      // 문제 ⑴: ∠A = 50°, ∠B = 30°, ∠x = 50° + 30° = 80°
-      const tA = { x: 250, y: 150 };
-      const tB = { x: 100, y: 340 };
-      const tC = { x: 330, y: 340 };
-      const tD = { x: 440, y: 340 };
-
-      // 밑변 연장선
-      ctx.strokeStyle = '#64748b';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([4, 4]);
-      ctx.beginPath();
-      ctx.moveTo(tC.x, tC.y);
-      ctx.lineTo(tD.x, tD.y);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // 삼각형
-      ctx.fillStyle = 'rgba(99, 102, 241, 0.15)';
-      ctx.beginPath();
-      ctx.moveTo(tA.x, tA.y);
-      ctx.lineTo(tB.x, tB.y);
-      ctx.lineTo(tC.x, tC.y);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.strokeStyle = '#818cf8';
-      ctx.lineWidth = 3;
-      ctx.stroke();
-
-      // 각도 아크
-      drawArcBetween(tA, tB, tC, 28, '#ec4899', '50°');
-      drawArcBetween(tB, tC, tA, 28, '#06b6d4', '30°');
-      drawArcBetween(tC, tD, tA, 36, '#fbbf24', '∠x');
-
-      // 점 레이블
-      drawHandle(tA, 'A', false);
-      drawHandle(tB, 'B', false);
-      drawHandle(tC, 'C', false);
-
-      // 하단 풀이 카드
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
-      ctx.beginPath();
-      ctx.roundRect(20, 385, 430, 62, 10);
-      ctx.fill();
-      ctx.strokeStyle = '#38bdf8';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      ctx.fillStyle = '#38bdf8';
-      ctx.font = 'bold 13px "Pretendard", sans-serif';
-      ctx.fillText('⑴ 문제 해결 원리: 외각 = 이웃하지 않는 두 내각의 합', 34, 408);
-
-      ctx.fillStyle = '#f8fafc';
-      ctx.font = '12px "Pretendard", sans-serif';
-      ctx.fillText('식: ∠x = 50° + 30° = 80° (우측 폼에 80을 입력하세요)', 34, 430);
-
-      // 우측 정보 카드
-      renderInfoCard(470, 60, 275, 388, '📝 교과서 152쪽 문제 ⑴ 풀이', [
-        { label: '주어진 조건', val: '이웃하지 않는 두 내각:\n∠A = 50°, ∠B = 30°' },
-        { label: '구하는 각', val: '꼭짓점 C에서의 외각 ∠x' },
-        { label: '적용 성질', val: '삼각형의 한 외각의 크기는\n그와 이웃하지 않는 두 내각의\n크기의 합과 같다.' },
-        { label: '계산 과정', val: '∠x = 50° + 30° = 80°' },
-        { label: '정답 확인', val: '∠x = 80°' }
-      ], '#38bdf8');
-
-    } else {
-      // 문제 ⑵: ∠B = 70°, ∠x, 외각 = 110° ⟹ ∠x = 110° - 70° = 40°
-      const tA = { x: 260, y: 140 };
-      const tB = { x: 110, y: 340 };
-      const tC = { x: 340, y: 340 };
-      const tD = { x: 450, y: 340 };
-
-      // 밑변 연장선
-      ctx.strokeStyle = '#64748b';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([4, 4]);
-      ctx.beginPath();
-      ctx.moveTo(tC.x, tC.y);
-      ctx.lineTo(tD.x, tD.y);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // 삼각형
-      ctx.fillStyle = 'rgba(99, 102, 241, 0.15)';
-      ctx.beginPath();
-      ctx.moveTo(tA.x, tA.y);
-      ctx.lineTo(tB.x, tB.y);
-      ctx.lineTo(tC.x, tC.y);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.strokeStyle = '#818cf8';
-      ctx.lineWidth = 3;
-      ctx.stroke();
-
-      // 각도 아크
-      drawArcBetween(tA, tB, tC, 28, '#fbbf24', '∠x');
-      drawArcBetween(tB, tC, tA, 28, '#06b6d4', '70°');
-      drawArcBetween(tC, tD, tA, 36, '#ec4899', '110°');
-
-      // 점 레이블
-      drawHandle(tA, 'A', false);
-      drawHandle(tB, 'B', false);
-      drawHandle(tC, 'C', false);
-
-      // 하단 풀이 카드
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
-      ctx.beginPath();
-      ctx.roundRect(20, 385, 430, 62, 10);
-      ctx.fill();
-      ctx.strokeStyle = '#ec4899';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      ctx.fillStyle = '#f472b6';
-      ctx.font = 'bold 13px "Pretendard", sans-serif';
-      ctx.fillText('⑵ 문제 해결 원리: 내각의 합 = 외각 (이항 계산)', 34, 408);
-
-      ctx.fillStyle = '#f8fafc';
-      ctx.font = '12px "Pretendard", sans-serif';
-      ctx.fillText('식: ∠x + 70° = 110° ⟹ ∠x = 110° - 70° = 40°', 34, 430);
-
-      // 우측 정보 카드
-      renderInfoCard(470, 60, 275, 388, '📝 교과서 152쪽 문제 ⑵ 풀이', [
-        { label: '주어진 조건', val: '한 내각: 70°\n한 외각: 110°' },
-        { label: '구하는 각', val: '다른 한 내각 ∠x' },
-        { label: '적용 성질', val: '∠x + 70° = 110°' },
-        { label: '이항 계산', val: '∠x = 110° - 70° = 40°' },
-        { label: '정답 확인', val: '∠x = 40°' }
-      ], '#ec4899');
-    }
-
-    ctx.restore();
-  }
-
-  function drawSubProblemBtn(x, y, w, h, text, isActive, id) {
-    const isHover = s.hoverBtn === id;
-    ctx.save();
-    ctx.fillStyle = isActive ? '#0284c7' : (isHover ? 'rgba(2, 132, 199, 0.25)' : 'rgba(51, 65, 85, 0.4)');
-    ctx.beginPath();
-    ctx.roundRect(x, y, w, h, 6);
-    ctx.fill();
-
-    ctx.strokeStyle = isActive ? '#38bdf8' : (isHover ? '#38bdf8' : '#475569');
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    ctx.fillStyle = isActive ? '#ffffff' : '#cbd5e1';
-    ctx.font = 'bold 11px "Pretendard", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(text, x + w / 2, y + h / 2);
-    ctx.restore();
-  }
-
-  // 두 선분 사이의 각도 호(Arc) 및 텍스트 렌더링 헬퍼
-  function drawArcBetween(center, p1, p2, radius, color, label) {
-    ctx.save();
-    const a1 = Math.atan2(p1.y - center.y, p1.x - center.x);
-    const a2 = Math.atan2(p2.y - center.y, p2.x - center.x);
-
-    let start = a1, end = a2;
-    let diff = end - start;
-    while (diff < 0) diff += Math.PI * 2;
-    while (diff > Math.PI * 2) diff -= Math.PI * 2;
-
-    if (diff > Math.PI) {
-      start = a2;
-      end = a1;
-      diff = Math.PI * 2 - diff;
-    }
-
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.arc(center.x, center.y, radius, start, start + diff);
-    ctx.stroke();
-
-    if (label) {
-      const midA = start + diff / 2;
-      const tx = center.x + Math.cos(midA) * (radius + 15);
-      const ty = center.y + Math.sin(midA) * (radius + 15);
-
-      ctx.fillStyle = color;
-      ctx.font = 'bold 11px "Pretendard", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(label, tx, ty);
-    }
-    ctx.restore();
-  }
-
-  // 평행 화살표 기호 렌더링 헬퍼
-  function drawParallelArrow(cx, cy, angle, color) {
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(angle);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    // >> 첫 번째 화살촉
-    ctx.moveTo(-6, -4);
-    ctx.lineTo(0, 0);
-    ctx.lineTo(-6, 4);
-    // >> 두 번째 화살촉
-    ctx.moveTo(0, -4);
-    ctx.lineTo(6, 0);
-    ctx.lineTo(0, 4);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  function drawHandle(pt, label, isHighlight) {
-    ctx.save();
-    ctx.fillStyle = isHighlight ? '#fbbf24' : '#4f46e5';
-    ctx.beginPath();
-    ctx.arc(pt.x, pt.y, isHighlight ? 10 : 8, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 13px "Pretendard", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(label, pt.x, pt.y - 14);
-    ctx.restore();
-  }
-
-  // 우측 정보 카드 렌더링 (HUD)
-  function renderInfoCard(x, y, w, h, title, items, accentColor) {
-    ctx.save();
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
-    ctx.beginPath();
-    ctx.roundRect(x, y, w, h, 12);
-    ctx.fill();
-
-    ctx.strokeStyle = accentColor || '#4f46e5';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 12px "Pretendard", sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText(title, x + 14, y + 22);
-
-    ctx.strokeStyle = '#334155';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x + 14, y + 32);
-    ctx.lineTo(x + w - 14, y + 32);
-    ctx.stroke();
-
-    let cy = y + 46;
-    items.forEach(it => {
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = 'bold 10px "Pretendard", sans-serif';
-      ctx.fillText(it.label, x + 14, cy);
-
-      ctx.fillStyle = '#f8fafc';
-      ctx.font = '10.5px "Pretendard", sans-serif';
-      const lines = it.val.split('\n');
-      lines.forEach((l, li) => {
-        ctx.fillText(l, x + 14, cy + 14 + li * 13);
-      });
-
-      cy += 36 + (lines.length - 1) * 13;
-    });
-    ctx.restore();
-  }
-
-  // 마우스 인터랙션 핸들러
-  canvas.onmousemove = function(e) {
-    const rect = canvas.getBoundingClientRect();
-    const mx = (e.clientX - rect.left) * (W / rect.width);
-    const my = (e.clientY - rect.top) * (H / rect.height);
-
-    let hovered = null;
-    if (my >= 8 && my <= 38) {
-      if (mx >= 16 && mx <= 296) hovered = 'mode_0';
-      else if (mx >= 306 && mx <= 566) hovered = 'mode_1';
-    } else if (s.selectedMode === 1 && my >= 56 && my <= 84) {
-      if (mx >= 20 && mx <= 230) hovered = 'sub_p1';
-      else if (mx >= 240 && mx <= 450) hovered = 'sub_p2';
-    }
-
-    s.hoverBtn = hovered;
-
-    if (s.selectedMode === 0) {
-      let hp = null;
-      if (Math.hypot(mx - s.pointA.x, my - s.pointA.y) <= 16) hp = 'A';
-      else if (Math.hypot(mx - s.pointB.x, my - s.pointB.y) <= 16) hp = 'B';
-      else if (Math.hypot(mx - s.pointC.x, my - s.pointC.y) <= 16) hp = 'C';
-      s.hoverPoint = hp;
-
-      if (s.draggingPoint) {
-        if (s.draggingPoint === 'A') {
-          s.pointA.x = Math.max(50, Math.min(380, mx));
-          s.pointA.y = Math.max(90, Math.min(260, my));
-        } else if (s.draggingPoint === 'B') {
-          s.pointB.x = Math.max(50, Math.min(s.pointC.x - 60, mx));
-        } else if (s.draggingPoint === 'C') {
-          s.pointC.x = Math.max(s.pointB.x + 60, Math.min(360, mx));
+    // --- 0-2 서브스텝 Drawer ---
+    function drawFuncStep0_2Canvas() {
+      const canvas = document.getElementById('canvas-0-2');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const W = 760;
+      const H = 460;
+      setupResponsiveCanvas(canvas, W, H);
+
+      const s = state.tab0.exteriorAngleLab;
+
+      function render() {
+        ctx.clearRect(0, 0, W, H);
+
+        const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+        bgGrad.addColorStop(0, '#0f172a');
+        bgGrad.addColorStop(1, '#1e293b');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, W, H);
+
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.fillRect(0, 0, W, 46);
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, 46);
+        ctx.lineTo(W, 46);
+        ctx.stroke();
+
+        drawTabBtn(16, 8, 260, 30, '📐 모드 0: 외각 각도기 & 평각 증명 랩', s.selectedMode === 0, 'mode_0');
+        drawTabBtn(286, 8, 250, 30, '🏛️ 모드 1: 교과서 [준비해요 2] 시뮬레이터', s.selectedMode === 1, 'mode_1');
+
+        if (s.selectedMode === 0) {
+          renderInteractiveAngleLab();
+        } else {
+          renderProblemSimulator();
+        }
+
+        s.animT += 0.04;
+      }
+
+      function drawTabBtn(x, y, w, h, text, isActive, id) {
+        const isHover = s.hoverBtn === id;
+        ctx.save();
+        ctx.fillStyle = isActive ? '#4f46e5' : (isHover ? 'rgba(79, 70, 229, 0.25)' : 'rgba(51, 65, 85, 0.4)');
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, 6);
+        ctx.fill();
+
+        ctx.strokeStyle = isActive ? '#818cf8' : (isHover ? '#6366f1' : '#475569');
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.fillStyle = isActive ? '#ffffff' : '#cbd5e1';
+        ctx.font = 'bold 11px "Pretendard", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, x + w / 2, y + h / 2);
+        ctx.restore();
+      }
+
+      function renderInteractiveAngleLab() {
+        const pA = s.pointA;
+        const pB = s.pointB;
+        const pC = s.pointC;
+        const pD = s.pointD;
+
+        const a = Math.hypot(pB.x - pC.x, pB.y - pC.y);
+        const b = Math.hypot(pA.x - pC.x, pA.y - pC.y);
+        const c = Math.hypot(pA.x - pB.x, pA.y - pB.y);
+
+        const angB_deg = Math.acos(Math.max(-1, Math.min(1, (a*a + c*c - b*b) / (2*a*c)))) * (180 / Math.PI);
+        const angA_deg = Math.acos(Math.max(-1, Math.min(1, (b*b + c*c - a*a) / (2*b*c)))) * (180 / Math.PI);
+        const angC_int = 180 - angA_deg - angB_deg;
+        const angC_ext = 180 - angC_int;
+
+        ctx.save();
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(pC.x, pC.y);
+        ctx.lineTo(pD.x + 30, pD.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = 'rgba(79, 70, 229, 0.15)';
+        ctx.beginPath();
+        ctx.moveTo(pA.x, pA.y);
+        ctx.lineTo(pB.x, pB.y);
+        ctx.lineTo(pC.x, pC.y);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = '#818cf8';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        const vABx = pA.x - pB.x;
+        const vABy = pA.y - pB.y;
+        const lenAB = Math.hypot(vABx, vABy);
+        const ceLen = 130;
+        const pE = { x: pC.x + (vABx / lenAB) * ceLen, y: pC.y + (vABy / lenAB) * ceLen };
+
+        ctx.strokeStyle = '#ec4899';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(pC.x, pC.y);
+        ctx.lineTo(pE.x, pE.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = '#f472b6';
+        ctx.font = 'bold 12px "Pretendard", sans-serif';
+        ctx.fillText('E (AB // CE)', pE.x + 8, pE.y);
+
+        drawAngleArcSimple(pB, 0, -angB_deg * Math.PI / 180, 36, 'rgba(251, 191, 36, 0.4)', '#fbbf24');
+        drawAngleTextSimple(pB, 48, -angB_deg * 0.5 * Math.PI / 180, `${angB_deg.toFixed(0)}°`, '#fbbf24');
+
+        const angleBA = Math.atan2(pB.y - pA.y, pB.x - pA.x);
+        const angleCA = Math.atan2(pC.y - pA.y, pC.x - pA.x);
+        drawAngleArcSimple(pA, angleCA, angleBA, 34, 'rgba(56, 189, 248, 0.4)', '#38bdf8');
+        drawAngleTextSimple(pA, 48, (angleBA + angleCA) / 2, `${angA_deg.toFixed(0)}°`, '#38bdf8');
+
+        const angleCD = 0;
+        const angleCE = Math.atan2(pE.y - pC.y, pE.x - pC.x);
+        const angleCA_atC = Math.atan2(pA.y - pC.y, pA.x - pC.x);
+
+        drawAngleArcSimple(pC, angleCD, angleCE, 45, 'rgba(251, 191, 36, 0.35)', '#fbbf24');
+        drawAngleArcSimple(pC, angleCE, angleCA_atC, 45, 'rgba(56, 189, 248, 0.35)', '#38bdf8');
+
+        const pulseR = 54 + Math.sin(s.animT * 3) * 3;
+        ctx.strokeStyle = '#a855f7';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(pC.x, pC.y, pulseR, angleCD, angleCA_atC, true);
+        ctx.stroke();
+
+        ctx.fillStyle = '#c084fc';
+        ctx.font = 'bold 13px "Pretendard", sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(`외각 ∠x = ${angC_ext.toFixed(0)}°`, pC.x + 55, pC.y - 45);
+
+        drawHandleSimple(pA, 'A (드래그 가능)', s.hoverPoint === 'A' || s.draggingPoint === 'A', '#38bdf8');
+        drawHandleSimple(pB, 'B', false, '#fbbf24');
+        drawHandleSimple(pC, 'C', false, '#94a3b8');
+        drawHandleSimple(pD, 'D', false, '#64748b');
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '11px "Pretendard", sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('💡 꼭짓점 A를 드래그하여 두 내각과 외각의 실시간 일치성을 탐구하세요.', 20, 440);
+        ctx.restore();
+
+        renderAngleProofCard(480, 60, 260, 385, angA_deg, angB_deg, angC_int, angC_ext);
+      }
+
+      function drawAngleArcSimple(center, startAngle, endAngle, radius, fillColor, strokeColor) {
+        ctx.save();
+        ctx.fillStyle = fillColor;
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(center.x, center.y);
+        ctx.arc(center.x, center.y, radius, startAngle, endAngle, false);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawAngleTextSimple(center, dist, angle, text, color) {
+        ctx.save();
+        ctx.fillStyle = color;
+        ctx.font = 'bold 12px "Pretendard", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const tx = center.x + Math.cos(angle) * dist;
+        const ty = center.y + Math.sin(angle) * dist;
+        ctx.fillText(text, tx, ty);
+        ctx.restore();
+      }
+
+      function drawHandleSimple(pt, label, isHighlight, color) {
+        ctx.save();
+        ctx.fillStyle = isHighlight ? '#ffffff' : (color || '#6366f1');
+        ctx.strokeStyle = isHighlight ? '#ec4899' : '#1e1b4b';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, isHighlight ? 8 : 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 12px "Pretendard", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, pt.x, pt.y - 12);
+        ctx.restore();
+      }
+
+      function renderAngleProofCard(x, y, w, h, degA, degB, degC, degExt) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, 10);
+        ctx.fill();
+
+        ctx.strokeStyle = '#6366f1';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.fillStyle = '#a5b4fc';
+        ctx.font = 'bold 13px "Pretendard", sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('📐 외각의 성질 실시간 증명', x + 14, y + 24);
+
+        ctx.strokeStyle = 'rgba(100, 116, 139, 0.4)';
+        ctx.beginPath();
+        ctx.moveTo(x + 14, y + 34);
+        ctx.lineTo(x + w - 14, y + 34);
+        ctx.stroke();
+
+        let cy = y + 54;
+        drawStatRowSimple(x + 14, cy, '내각 ∠A (Cyan)', `${degA.toFixed(1)}°`, '#38bdf8');
+        cy += 30;
+        drawStatRowSimple(x + 14, cy, '내각 ∠B (Amber)', `${degB.toFixed(1)}°`, '#fbbf24');
+        cy += 30;
+        drawStatRowSimple(x + 14, cy, '두 내각의 합 (∠A+∠B)', `${(degA + degB).toFixed(1)}°`, '#34d399');
+        cy += 40;
+
+        ctx.strokeStyle = 'rgba(100, 116, 139, 0.3)';
+        ctx.beginPath();
+        ctx.moveTo(x + 14, cy - 8);
+        ctx.lineTo(x + w - 14, cy - 8);
+        ctx.stroke();
+
+        drawStatRowSimple(x + 14, cy, '이웃한 내각 ∠C', `${degC.toFixed(1)}°`, '#94a3b8');
+        cy += 30;
+        drawStatRowSimple(x + 14, cy, '외각 ∠ACD (180°-∠C)', `${degExt.toFixed(1)}°`, '#c084fc');
+        cy += 42;
+
+        ctx.fillStyle = 'rgba(79, 70, 229, 0.25)';
+        ctx.beginPath();
+        ctx.roundRect(x + 10, cy, w - 20, 100, 8);
+        ctx.fill();
+        ctx.strokeStyle = '#818cf8';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = 'bold 11px "Pretendard", sans-serif';
+        ctx.fillText('💡 평행선(AB//CE) 증명 원리:', x + 18, cy + 20);
+
+        ctx.fillStyle = '#e2e8f0';
+        ctx.font = '11px "Pretendard", sans-serif';
+        ctx.fillText('• 엇각: ∠ACE = ∠A (Cyan)', x + 18, cy + 38);
+        ctx.fillText('• 동위각: ∠ECD = ∠B (Amber)', x + 18, cy + 56);
+        ctx.fillStyle = '#34d399';
+        ctx.font = 'bold 11px "Pretendard", sans-serif';
+        ctx.fillText('∴ ∠ACD = ∠A + ∠B (항상 일치!)', x + 18, cy + 78);
+        ctx.restore();
+      }
+
+      function drawStatRowSimple(rx, ry, label, val, valColor) {
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = 'bold 11px "Pretendard", sans-serif';
+        ctx.fillText(label, rx, ry);
+
+        ctx.fillStyle = valColor || '#ffffff';
+        ctx.font = 'bold 12px "Pretendard", sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(val, rx + 230, ry);
+        ctx.textAlign = 'left';
+      }
+
+      function renderProblemSimulator() {
+        drawSubProblemBtn(20, 58, 220, 28, '⑴ 내각 50°, 30° ➔ 외각 ∠x', s.subProblem === 0, 'prob_0');
+        drawSubProblemBtn(250, 58, 230, 28, '⑵ 내각 70°, ∠x ➔ 외각 110°', s.subProblem === 1, 'prob_1');
+
+        if (s.subProblem === 0) {
+          renderProblem1();
+        } else {
+          renderProblem2();
         }
       }
 
-      canvas.style.cursor = (hovered || hp || s.draggingPoint) ? 'pointer' : 'default';
-    } else {
-      canvas.style.cursor = hovered ? 'pointer' : 'default';
-    }
-  };
+      function drawSubProblemBtn(x, y, w, h, text, isActive, id) {
+        const isHover = s.hoverBtn === id;
+        ctx.save();
+        ctx.fillStyle = isActive ? '#059669' : (isHover ? 'rgba(5, 150, 105, 0.25)' : 'rgba(30, 41, 59, 0.6)');
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, 6);
+        ctx.fill();
 
-  canvas.onmousedown = function(e) {
-    const rect = canvas.getBoundingClientRect();
-    const mx = (e.clientX - rect.left) * (W / rect.width);
-    const my = (e.clientY - rect.top) * (H / rect.height);
+        ctx.strokeStyle = isActive ? '#34d399' : (isHover ? '#10b981' : '#475569');
+        ctx.lineWidth = 1;
+        ctx.stroke();
 
-    if (my >= 8 && my <= 38) {
-      if (mx >= 16 && mx <= 296) s.selectedMode = 0;
-      else if (mx >= 306 && mx <= 566) s.selectedMode = 1;
-    } else if (s.selectedMode === 1 && my >= 56 && my <= 84) {
-      if (mx >= 20 && mx <= 230) s.subProblem = 0;
-      else if (mx >= 240 && mx <= 450) s.subProblem = 1;
-    } else if (s.selectedMode === 0) {
-      if (s.hoverPoint) {
-        s.draggingPoint = s.hoverPoint;
+        ctx.fillStyle = isActive ? '#ffffff' : '#cbd5e1';
+        ctx.font = 'bold 11px "Pretendard", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, x + w / 2, y + h / 2);
+        ctx.restore();
       }
+
+      function renderProblem1() {
+        const pA = { x: 260, y: 160 };
+        const pB = { x: 120, y: 340 };
+        const pC = { x: 330, y: 340 };
+        const pD = { x: 440, y: 340 };
+
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(pC.x, pC.y);
+        ctx.lineTo(pD.x, pD.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = 'rgba(79, 70, 229, 0.2)';
+        ctx.beginPath();
+        ctx.moveTo(pA.x, pA.y);
+        ctx.lineTo(pB.x, pB.y);
+        ctx.lineTo(pC.x, pC.y);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = '#818cf8';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        drawAngleArcSimple(pB, 0, -30 * Math.PI / 180, 36, 'rgba(251, 191, 36, 0.4)', '#fbbf24');
+        drawAngleTextSimple(pB, 48, -15 * Math.PI / 180, '30°', '#fbbf24');
+
+        const a1 = Math.atan2(pC.y - pA.y, pC.x - pA.x);
+        const a2 = Math.atan2(pB.y - pA.y, pB.x - pA.x);
+        drawAngleArcSimple(pA, a1, a2, 34, 'rgba(56, 189, 248, 0.4)', '#38bdf8');
+        drawAngleTextSimple(pA, 46, (a1 + a2) / 2, '50°', '#38bdf8');
+
+        const angleAC = Math.atan2(pA.y - pC.y, pA.x - pC.x);
+        const pulseR = 48 + Math.sin(s.animT * 4) * 3;
+        ctx.strokeStyle = '#c084fc';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(pC.x, pC.y, pulseR, 0, angleAC, true);
+        ctx.stroke();
+
+        ctx.fillStyle = '#e879f9';
+        ctx.font = 'bold 15px "Pretendard", sans-serif';
+        ctx.fillText('∠x', pC.x + 56, pC.y - 36);
+
+        drawHandleSimple(pA, 'A', false);
+        drawHandleSimple(pB, 'B', false);
+        drawHandleSimple(pC, 'C', false);
+
+        renderDetailCard(480, 100, 260, 340, '📖 [문제 ⑴] 원리 풀이', [
+          { label: '교과서 문항', val: '내각 50°, 30°일 때 외각 ∠x의 크기' },
+          { label: '핵심 공식', val: '한 외각 = 이웃하지 않는 두 내각의 합' },
+          { label: '계산 과정', val: '∠x = 50° + 30°\n∠x = 80°' },
+          { label: '평각 검증', val: '내각 ∠C = 180° - (50°+30°) = 100°\n외각 ∠x = 180° - 100° = 80°' }
+        ], '#34d399');
+      }
+
+      function renderProblem2() {
+        const pA = { x: 230, y: 150 };
+        const pB = { x: 120, y: 340 };
+        const pC = { x: 330, y: 340 };
+        const pD = { x: 440, y: 340 };
+
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(pC.x, pC.y);
+        ctx.lineTo(pD.x, pD.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = 'rgba(79, 70, 229, 0.2)';
+        ctx.beginPath();
+        ctx.moveTo(pA.x, pA.y);
+        ctx.lineTo(pB.x, pB.y);
+        ctx.lineTo(pC.x, pC.y);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = '#818cf8';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        drawAngleArcSimple(pB, 0, -60 * Math.PI / 180, 36, 'rgba(251, 191, 36, 0.4)', '#fbbf24');
+        drawAngleTextSimple(pB, 48, -30 * Math.PI / 180, '70°', '#fbbf24');
+
+        const a1 = Math.atan2(pC.y - pA.y, pC.x - pA.x);
+        const a2 = Math.atan2(pB.y - pA.y, pB.x - pA.x);
+        drawAngleArcSimple(pA, a1, a2, 34, 'rgba(56, 189, 248, 0.4)', '#38bdf8');
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 14px "Pretendard", sans-serif';
+        const pulseA = Math.sin(s.animT * 4) * 2;
+        ctx.fillText('∠x', (pA.x + pC.x + pB.x)/3 + pulseA, pA.y + 36);
+
+        const angleAC = Math.atan2(pA.y - pC.y, pA.x - pC.x);
+        drawAngleArcSimple(pC, 0, angleAC, 42, 'rgba(192, 132, 252, 0.4)', '#c084fc');
+        ctx.fillStyle = '#e879f9';
+        ctx.font = 'bold 13px "Pretendard", sans-serif';
+        ctx.fillText('110°', pC.x + 50, pC.y - 30);
+
+        drawHandleSimple(pA, 'A', false);
+        drawHandleSimple(pB, 'B', false);
+        drawHandleSimple(pC, 'C', false);
+
+        renderDetailCard(480, 100, 260, 340, '📖 [문제 ⑵] 원리 풀이', [
+          { label: '교과서 문항', val: '내각 70°, ∠x이고 외각 110°일 때 ∠x' },
+          { label: '핵심 공식', val: '∠x + 70° = 110°' },
+          { label: '계산 과정', val: '∠x = 110° - 70°\n∠x = 40°' },
+          { label: '평각 검증', val: '이웃한 내각 = 180° - 110° = 70°\n세 내각의 합: 70° + 70° + ∠x = 180°\n140° + ∠x = 180° ∴ ∠x = 40°' }
+        ], '#c084fc');
+      }
+
+      function renderDetailCard(x, y, w, h, title, items, themeColor) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, 10);
+        ctx.fill();
+
+        ctx.strokeStyle = themeColor || '#64748b';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.fillStyle = themeColor || '#ffffff';
+        ctx.font = 'bold 13px "Pretendard", sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(title, x + 14, y + 24);
+
+        ctx.strokeStyle = 'rgba(100, 116, 139, 0.4)';
+        ctx.beginPath();
+        ctx.moveTo(x + 14, y + 34);
+        ctx.lineTo(x + w - 14, y + 34);
+        ctx.stroke();
+
+        let cy = y + 54;
+        items.forEach(it => {
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = 'bold 11px "Pretendard", sans-serif';
+          ctx.fillText(it.label, x + 14, cy);
+
+          ctx.fillStyle = '#f8fafc';
+          ctx.font = '11px "Pretendard", sans-serif';
+          const lines = it.val.split('\n');
+          lines.forEach((l, li) => {
+            ctx.fillText(l, x + 14, cy + 15 + li * 14);
+          });
+          cy += 38 + (lines.length - 1) * 14;
+        });
+        ctx.restore();
+      }
+
+      canvas.onmousemove = function(e) {
+        const rect = canvas.getBoundingClientRect();
+        const mx = (e.clientX - rect.left) * (W / rect.width);
+        const my = (e.clientY - rect.top) * (H / rect.height);
+
+        let hovered = null;
+        if (my >= 8 && my <= 38) {
+          if (mx >= 16 && mx <= 276) hovered = 'mode_0';
+          else if (mx >= 286 && mx <= 536) hovered = 'mode_1';
+        } else if (s.selectedMode === 1 && my >= 58 && my <= 86) {
+          if (mx >= 20 && mx <= 240) hovered = 'prob_0';
+          else if (mx >= 250 && mx <= 480) hovered = 'prob_1';
+        }
+
+        s.hoverBtn = hovered;
+
+        if (s.selectedMode === 0) {
+          let hp = null;
+          if (Math.hypot(mx - s.pointA.x, my - s.pointA.y) <= 18) hp = 'A';
+          s.hoverPoint = hp;
+
+          if (s.draggingPoint === 'A') {
+            s.pointA.x = Math.max(160, Math.min(320, mx));
+            s.pointA.y = Math.max(100, Math.min(260, my));
+          }
+          canvas.style.cursor = (hovered || hp || s.draggingPoint) ? 'pointer' : 'default';
+        } else {
+          canvas.style.cursor = hovered ? 'pointer' : 'default';
+        }
+      };
+
+      canvas.onmousedown = function(e) {
+        const rect = canvas.getBoundingClientRect();
+        const mx = (e.clientX - rect.left) * (W / rect.width);
+        const my = (e.clientY - rect.top) * (H / rect.height);
+
+        if (my >= 8 && my <= 38) {
+          if (mx >= 16 && mx <= 276) s.selectedMode = 0;
+          else if (mx >= 286 && mx <= 536) s.selectedMode = 1;
+        } else if (s.selectedMode === 1 && my >= 58 && my <= 86) {
+          if (mx >= 20 && mx <= 240) s.subProblem = 0;
+          else if (mx >= 250 && mx <= 480) s.subProblem = 1;
+        } else if (s.selectedMode === 0) {
+          if (s.hoverPoint === 'A') s.draggingPoint = 'A';
+        }
+      };
+
+      window.addEventListener('mouseup', function() {
+        s.draggingPoint = null;
+      });
+
+      function loop() {
+        if (state.subStep !== '0-2') return;
+        render();
+        requestAnimationFrame(loop);
+      }
+      loop();
     }
-  };
 
-  window.addEventListener('mouseup', function() {
-    s.draggingPoint = null;
-  });
+    if (typeof window !== 'undefined') {
+      window.drawFuncStep0_2Canvas = drawFuncStep0_2Canvas;
+    }
 
-  function loop() {
-    if (state.currentSubStep !== '0-2') return;
-    render();
-    requestAnimationFrame(loop);
-  }
-  loop();
-}
-
-if (typeof window !== 'undefined') {
-  window.drawFuncStep0_2Canvas = drawFuncStep0_2Canvas;
-}
-
-    // =========================================================================
-    // 🎨 0-3 서브스텝 Canvas Drawer: drawFuncStep0_3Canvas
-    // =========================================================================
+    // --- 0-3 서브스텝 Drawer ---
     function drawFuncStep0_3Canvas() {
       const canvas = document.getElementById('canvas-0-3');
       if (!canvas) return;
@@ -2429,14 +2308,12 @@ if (typeof window !== 'undefined') {
       function render() {
         ctx.clearRect(0, 0, W, H);
 
-        // 1. 다크 그라데이션 배경
         const bgGrad = ctx.createLinearGradient(0, 0, W, H);
         bgGrad.addColorStop(0, '#0f172a');
         bgGrad.addColorStop(1, '#1e293b');
         ctx.fillStyle = bgGrad;
         ctx.fillRect(0, 0, W, H);
 
-        // 2. 상단 모드 탭
         ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
         ctx.fillRect(0, 0, W, 46);
         ctx.strokeStyle = '#334155';
@@ -2455,7 +2332,6 @@ if (typeof window !== 'undefined') {
           renderCongruenceConditionsLab();
         }
 
-        // 자동 겹치기 애니메이션 업데이트
         if (s.isAutoOverlapping) {
           s.overlapProgress += 0.015;
           if (s.overlapProgress >= 1.0) {
@@ -2487,33 +2363,26 @@ if (typeof window !== 'undefined') {
         ctx.restore();
       }
 
-      // --- 모드 0: 회전·이동 겹치기 시뮬레이터 & SAS 검증 랩 ---
       function renderOverlapSimulator() {
-        const t = s.overlapProgress; // 0.0 ~ 1.0
+        const t = s.overlapProgress;
 
-        // 조작 버튼 렌더링 (자동 겹치기, 초기화)
         drawCtrlBtn(20, 60, 130, 28, s.isAutoOverlapping ? '⏸ 일시정지' : (t >= 1 ? '✨ 포개어짐 완료' : '▶ 자동 겹치기'), '#059669', 'btn_auto');
         drawCtrlBtn(160, 60, 90, 28, '↺ 초기화', '#64748b', 'btn_reset');
 
-        // 슬라이더 바
         drawOverlapSlider(270, 74, 180, t);
 
-        // [기준 삼각형 △ABC] (고정)
         const pC = { x: 130, y: 340 };
         const pB = { x: 250, y: 340 };
         const pA = { x: 205, y: 210 };
 
-        // [대상 삼각형 △DFE] (이동 및 회전)
         const initD = { x: 370, y: 200 };
-        const initF = { x: 440, y: 330 }; // DF = 10cm
-        const initE = { x: 300, y: 300 }; // DE = 8cm
+        const initF = { x: 440, y: 330 };
+        const initE = { x: 300, y: 300 };
 
-        // t에 따른 보간 (Lerp): D -> C, F -> A, E -> B
         const curD = { x: initD.x + (pC.x - initD.x) * t, y: initD.y + (pC.y - initD.y) * t };
         const curF = { x: initF.x + (pA.x - initF.x) * t, y: initF.y + (pA.y - initF.y) * t };
         const curE = { x: initE.x + (pB.x - initE.x) * t, y: initE.y + (pB.y - initE.y) * t };
 
-        // 1. 기준 삼각형 △ABC 그리기
         ctx.save();
         ctx.fillStyle = 'rgba(79, 70, 229, 0.2)';
         ctx.beginPath();
@@ -2527,15 +2396,12 @@ if (typeof window !== 'undefined') {
         ctx.lineWidth = 3;
         ctx.stroke();
 
-        // 각 C 60° 호
         drawAngleArc(pC, -Math.PI / 3, 0, 32, 'rgba(56, 189, 248, 0.35)', '#38bdf8');
         drawAngleText(pC, 44, -Math.PI / 6, '60°', '#38bdf8');
 
-        // 변 라벨
         drawSideLabel(pA, pC, '10 cm', '#a5b4fc', -14);
         drawSideLabel(pC, pB, '8 cm', '#a5b4fc', 16);
 
-        // 꼭짓점 라벨
         drawHandle(pA, 'A', false, '#818cf8');
         drawHandle(pB, 'B', false, '#818cf8');
         drawHandle(pC, 'C (60°)', false, '#38bdf8');
@@ -2545,7 +2411,6 @@ if (typeof window !== 'undefined') {
         ctx.fillText('△ABC (기준)', 180, 375);
         ctx.restore();
 
-        // 2. 대상 삼각형 △DFE 그리기
         ctx.save();
         const isMatched = (t >= 0.98);
         ctx.fillStyle = isMatched ? 'rgba(245, 158, 11, 0.35)' : 'rgba(236, 72, 153, 0.25)';
@@ -2560,7 +2425,6 @@ if (typeof window !== 'undefined') {
         ctx.lineWidth = isMatched ? 3.5 : 2.5;
         ctx.stroke();
 
-        // 꼭짓점 D 각도 호
         const angDF = Math.atan2(curF.y - curD.y, curF.x - curD.x);
         const angDE = Math.atan2(curE.y - curD.y, curE.x - curD.x);
         drawAngleArc(curD, angDE, angDF, 28, 'rgba(251, 191, 36, 0.4)', '#fbbf24');
@@ -2577,7 +2441,6 @@ if (typeof window !== 'undefined') {
           ctx.font = 'bold 13px "Pretendard", sans-serif';
           ctx.fillText('△DFE (대응 이동 중)', (curD.x + curF.x + curE.x) / 3, Math.max(curD.y, curF.y, curE.y) + 25);
         } else {
-          // 완벽 포개어짐 연출 (황금빛 펄스 링)
           const pulseR = 12 + Math.sin(s.animT * 5) * 4;
           ctx.strokeStyle = '#f59e0b';
           ctx.lineWidth = 3;
@@ -2591,7 +2454,6 @@ if (typeof window !== 'undefined') {
         }
         ctx.restore();
 
-        // 3. 우측 정밀 분석 및 합동 판정 카드
         renderCongruenceProofCard(480, 60, 260, 385, t, isMatched);
       }
 
@@ -2627,7 +2489,6 @@ if (typeof window !== 'undefined') {
         ctx.roundRect(x, y - 4, w * t, 8, 4);
         ctx.fill();
 
-        // 핸들
         ctx.fillStyle = '#ffffff';
         ctx.strokeStyle = '#818cf8';
         ctx.lineWidth = 2;
@@ -2772,7 +2633,6 @@ if (typeof window !== 'undefined') {
           ctx.font = '10px "Pretendard", sans-serif';
           ctx.fillText('▶ [자동 겹치기]를 눌러 포개어 보세요.', x + 18, cy + 112);
         }
-
         ctx.restore();
       }
 
@@ -2788,7 +2648,6 @@ if (typeof window !== 'undefined') {
         ctx.textAlign = 'left';
       }
 
-      // --- 모드 1: 삼각형 3대 합동 조건 비교 랩 ---
       function renderCongruenceConditionsLab() {
         drawCondBtn(20, 58, 140, 28, '1. SSS 합동', s.conditionIdx === 0, 'c_0');
         drawCondBtn(170, 58, 140, 28, '2. SAS 합동', s.conditionIdx === 1, 'c_1');
@@ -2989,7 +2848,6 @@ if (typeof window !== 'undefined') {
         context.fillText(line, x, y);
       }
 
-      // --- 마우스 인터랙션 ---
       canvas.onmousemove = function(e) {
         const rect = canvas.getBoundingClientRect();
         const mx = (e.clientX - rect.left) * (W / rect.width);
@@ -3044,7 +2902,7 @@ if (typeof window !== 'undefined') {
       };
 
       function loop() {
-        if (state.currentSubStep !== '0-3') return;
+        if (state.subStep !== '0-3') return;
         render();
         requestAnimationFrame(loop);
       }
@@ -3055,9 +2913,7 @@ if (typeof window !== 'undefined') {
       window.drawFuncStep0_3Canvas = drawFuncStep0_3Canvas;
     }
 
-    // =========================================================================
-    // 🎨 0-4 서브스텝 Canvas Drawer: drawFuncStep0_4Canvas
-    // =========================================================================
+    // --- 0-4 서브스텝 Drawer ---
     function drawFuncStep0_4Canvas() {
       const canvas = document.getElementById('canvas-0-4');
       if (!canvas) return;
@@ -3073,14 +2929,12 @@ if (typeof window !== 'undefined') {
       function render() {
         ctx.clearRect(0, 0, W, H);
 
-        // 1. 배경
         const bgGrad = ctx.createLinearGradient(0, 0, W, H);
         bgGrad.addColorStop(0, '#0f172a');
         bgGrad.addColorStop(1, '#1e293b');
         ctx.fillStyle = bgGrad;
         ctx.fillRect(0, 0, W, H);
 
-        // 2. 상단 모드 탭
         ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
         ctx.fillRect(0, 0, W, 46);
         ctx.strokeStyle = '#334155';
@@ -3122,9 +2976,7 @@ if (typeof window !== 'undefined') {
         ctx.restore();
       }
 
-      // --- 모드 0: 사장교 트러스 하중 분산 시뮬레이터 ---
       function renderCableBridgeLab() {
-        // 조작 컨트롤 (하중 조절, 강성 토글)
         drawCtrlBtn(20, 60, 110, 26, `하중: ${s.loadWeight}톤`, '#0284c7', 'lbl_load');
         drawCtrlBtn(136, 60, 50, 26, '▲ +10t', '#334155', 'btn_load_up');
         drawCtrlBtn(192, 60, 50, 26, '▼ -10t', '#334155', 'btn_load_down');
@@ -3133,8 +2985,6 @@ if (typeof window !== 'undefined') {
         const structCol = s.isRigidTriangle ? '#059669' : '#dc2626';
         drawCtrlBtn(250, 60, 190, 26, structText, structCol, 'btn_toggle_struct');
 
-        // 사장교 물리 뷰 (좌측 x: 20 ~ 450, y: 100 ~ 430)
-        // 1. 강물/바다 배경
         ctx.save();
         const waterGrad = ctx.createLinearGradient(20, 360, 20, 430);
         waterGrad.addColorStop(0, 'rgba(14, 165, 233, 0.2)');
@@ -3142,7 +2992,6 @@ if (typeof window !== 'undefined') {
         ctx.fillStyle = waterGrad;
         ctx.fillRect(20, 360, 430, 70);
 
-        // 파도선
         ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
@@ -3152,7 +3001,6 @@ if (typeof window !== 'undefined') {
         }
         ctx.stroke();
 
-        // 2. 도로 상판 (Deck)
         const deckY = 350;
         ctx.fillStyle = '#334155';
         ctx.fillRect(20, deckY, 430, 14);
@@ -3160,7 +3008,6 @@ if (typeof window !== 'undefined') {
         ctx.lineWidth = 2;
         ctx.strokeRect(20, deckY, 430, 14);
 
-        // 도로 중앙 점선
         ctx.strokeStyle = '#f8fafc';
         ctx.lineWidth = 1.5;
         ctx.setLineDash([6, 6]);
@@ -3170,7 +3017,6 @@ if (typeof window !== 'undefined') {
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // 3. 주탑 (Pylon, 중앙 x: 235)
         const pylonX = 235;
         const pylonTopY = 110;
         ctx.fillStyle = '#475569';
@@ -3179,13 +3025,11 @@ if (typeof window !== 'undefined') {
         ctx.lineWidth = 2;
         ctx.strokeRect(pylonX - 10, pylonTopY, 20, deckY - pylonTopY + 30);
 
-        // 주탑 꼭대기 조명
         ctx.fillStyle = '#ef4444';
         ctx.beginPath();
         ctx.arc(pylonX, pylonTopY - 4, 3, 0, Math.PI * 2);
         ctx.fill();
 
-        // 4. 사장교 케이블 (삼각형 와이어 8가닥)
         const cableAnchors = [50, 90, 140, 190, 280, 330, 380, 420];
         cableAnchors.forEach((ax, ci) => {
           const distToCar = Math.abs(ax - s.carPos);
@@ -3200,18 +3044,15 @@ if (typeof window !== 'undefined') {
           ctx.lineTo(ax, deckY);
           ctx.stroke();
 
-          // 케이블 앵커 마커
           ctx.fillStyle = isTense ? '#f472b6' : '#38bdf8';
           ctx.beginPath();
           ctx.arc(ax, deckY, 3, 0, Math.PI * 2);
           ctx.fill();
         });
 
-        // 5. 차량 주행 및 하중 벡터 화살표
         s.carPos += 1.2;
         if (s.carPos > 430) s.carPos = 40;
 
-        // 차량 그래픽
         const cx = s.carPos;
         const cy = deckY - 14;
         ctx.fillStyle = '#f59e0b';
@@ -3224,23 +3065,18 @@ if (typeof window !== 'undefined') {
         ctx.arc(cx + 8, cy + 12, 3, 0, Math.PI * 2);
         ctx.fill();
 
-        // 하중 벡터 (아래 방향)
         const loadLen = 15 + (s.loadWeight / 100) * 35;
         drawVector(cx, deckY + 14, cx, deckY + 14 + loadLen, '#ef4444', `${s.loadWeight}t 하중`);
 
-        // 장력 분산 벡터 (주탑 방향으로 대각선)
         if (s.loadWeight > 0) {
           const vLen = 20 + (s.loadWeight / 100) * 25;
           const angToPylon = Math.atan2((pylonTopY + 30) - deckY, pylonX - cx);
           drawVector(cx, deckY - 4, cx + Math.cos(angToPylon) * vLen, deckY - 4 + Math.sin(angToPylon) * vLen, '#ec4899', '장력 분산 T');
         }
 
-        // 6. 사각형 vs 삼각형 구조 안정성 비교 시각화 (좌하단 미니 뷰)
         renderStructureComparisonBox(20, 395, 430, 45);
-
         ctx.restore();
 
-        // 우측 해설 및 원리 카드
         renderBridgeTheoryCard(470, 60, 270, 385);
       }
 
@@ -3353,7 +3189,6 @@ if (typeof window !== 'undefined') {
           cy += 95;
         });
 
-        // 하단 안내 박스
         ctx.fillStyle = 'rgba(79, 70, 229, 0.25)';
         ctx.beginPath();
         ctx.roundRect(x + 10, y + h - 45, w - 20, 36, 6);
@@ -3363,15 +3198,11 @@ if (typeof window !== 'undefined') {
         ctx.font = 'bold 11px "Pretendard", sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('✨ 삼각형은 가장 튼튼한 기하학적 도형입니다!', x + w / 2, y + h - 23);
-
         ctx.restore();
       }
 
-      // --- 모드 1: 5단원 로드맵 & 준비 완료 메달 ---
       function renderRoadmapAndMedal() {
-        // 좌측: 5단원 7단계 로드맵 트리
         renderRoadmapTree(20, 60, 430, 385);
-        // 우측: 황금 메달 및 완주 축하 카드
         renderGoldMedalCard(470, 60, 270, 385);
       }
 
@@ -3410,7 +3241,6 @@ if (typeof window !== 'undefined') {
         tabs.forEach((t, i) => {
           const isCurrentUnlock = (i === 1 && state.unlockedTabs.includes(1));
 
-          // 탭 연결선
           if (i < tabs.length - 1) {
             ctx.strokeStyle = t.isDone ? '#059669' : '#334155';
             ctx.lineWidth = 2;
@@ -3420,7 +3250,6 @@ if (typeof window !== 'undefined') {
             ctx.stroke();
           }
 
-          // 뱃지 아이콘
           ctx.fillStyle = t.isDone ? t.color : '#1e293b';
           ctx.strokeStyle = t.isDone ? '#ffffff' : '#475569';
           ctx.lineWidth = 1.5;
@@ -3434,7 +3263,6 @@ if (typeof window !== 'undefined') {
           ctx.textAlign = 'center';
           ctx.fillText(t.num, x + 28, cy + 15);
 
-          // 타이틀
           ctx.textAlign = 'left';
           ctx.fillStyle = t.isDone ? '#f8fafc' : '#64748b';
           ctx.font = isCurrentUnlock ? 'bold 12px "Pretendard", sans-serif' : '11px "Pretendard", sans-serif';
@@ -3442,7 +3270,6 @@ if (typeof window !== 'undefined') {
 
           cy += 44;
         });
-
         ctx.restore();
       }
 
@@ -3457,7 +3284,6 @@ if (typeof window !== 'undefined') {
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // 황금빛 펄스 링 & 메달
         const pulseR = 48 + Math.sin(s.animT * 4) * 4;
         ctx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
         ctx.lineWidth = 3;
@@ -3486,7 +3312,6 @@ if (typeof window !== 'undefined') {
         ctx.font = '11px "Pretendard", sans-serif';
         ctx.fillText('삼각형 성질 탐구 준비 완료', x + w / 2, y + 175);
 
-        // 설명 박스
         ctx.fillStyle = 'rgba(251, 191, 36, 0.15)';
         ctx.beginPath();
         ctx.roundRect(x + 14, y + 200, w - 28, 160, 8);
@@ -3504,13 +3329,12 @@ if (typeof window !== 'undefined') {
         ctx.font = '11px "Pretendard", sans-serif';
         const msg = '선수 학습 3단계(분류, 외각, 합동)와 학습 계획 작성을 완벽히 끝마쳤습니다.\n\n상단 메인 탭바에서 [5.1 이등변삼각형] 탭이 활성화되었습니다.\n본격적인 이등변삼각형의 성질 탐구로 출발해 보세요!';
         wrapText(ctx, msg, x + 24, y + 245, w - 48, 17);
-
         ctx.restore();
       }
 
       function wrapText(context, text, x, y, maxWidth, lineHeight) {
         const paragraphs = text.split('\\n');
-        paragraphs.forEach((para, pi) => {
+        paragraphs.forEach((para) => {
           const words = para.split(' ');
           let line = '';
           for (let n = 0; n < words.length; n++) {
@@ -3529,7 +3353,6 @@ if (typeof window !== 'undefined') {
         });
       }
 
-      // --- 마우스 인터랙션 ---
       canvas.onmousemove = function(e) {
         const rect = canvas.getBoundingClientRect();
         const mx = (e.clientX - rect.left) * (W / rect.width);
@@ -3573,7 +3396,7 @@ if (typeof window !== 'undefined') {
       };
 
       function loop() {
-        if (state.currentSubStep !== '0-4') return;
+        if (state.subStep !== '0-4') return;
         render();
         requestAnimationFrame(loop);
       }
@@ -3584,146 +3407,778 @@ if (typeof window !== 'undefined') {
       window.drawFuncStep0_4Canvas = drawFuncStep0_4Canvas;
     }
 
-
-
-
     // =========================================================================
-    // 🔑 사용자 인증 및 교사 마스터 바이패스 로직
+    // 🧭 내비게이션 & 탭 / 서브스텝 제어 로직
     // =========================================================================
-    function applyLoggedInUser(id, name, isTeacher) {
-      state.isLoggedIn = true;
-      state.isTeacherLoggedIn = isTeacher;
-      state.isMaster = isTeacher;
-      state.studentId = id;
-      state.studentName = name;
+    function renderMainTabs() {
+      TAB_TITLES.forEach((name, idx) => {
+        const btn = document.getElementById(`tab-${idx}`);
+        if (!btn) return;
+        const isUnlocked = state.unlockedTabs.includes(idx) || state.isTeacherLoggedIn || state.isMaster;
+        btn.innerHTML = `${name} ${isUnlocked ? '🔓' : '🔒'}`;
+        if (isUnlocked) {
+          btn.classList.remove('locked');
+        } else {
+          btn.classList.add('locked');
+        }
+      });
+    }
 
-      if (isTeacher) {
-        state.unlockedTabs = [0, 1, 2, 3, 4, 5, 6];
-      } else {
-        if (!state.unlockedTabs.includes(0)) state.unlockedTabs.push(0);
+    function switchMainTab(tabIdx) {
+      if (!state.unlockedTabs.includes(tabIdx) && !state.isTeacherLoggedIn && !state.isMaster) {
+        alert("🔒 이전 단계를 먼저 완료해야 해금됩니다!");
+        return;
       }
+      state.currentMainTab = tabIdx;
+      document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
+        btn.classList.toggle('active', idx === tabIdx);
+      });
+
+      populateSubStepDropdown();
+      const stepsInTab = Object.keys(SUBSTEPS_DATA).filter(k => SUBSTEPS_DATA[k].tab === tabIdx);
+      if (stepsInTab.length > 0) {
+        loadSubStep(stepsInTab[0]);
+      } else {
+        alert("🚧 해당 소단원은 곧 순차 탑재됩니다!");
+      }
+    }
+
+    function populateSubStepDropdown() {
+      const select = document.getElementById('substep-dropdown-select');
+      if (!select) return;
+      select.innerHTML = '';
+
+      const stepsInTab = Object.keys(SUBSTEPS_DATA).filter(k => SUBSTEPS_DATA[k].tab === state.currentMainTab);
+      stepsInTab.forEach((code) => {
+        const item = SUBSTEPS_DATA[code];
+        const isDone = state.completedSubSteps.includes(code);
+        const opt = document.createElement('option');
+        opt.value = code;
+        opt.innerText = `${isDone ? '✅ ' : '📑 '} ${item.title}`;
+        select.appendChild(opt);
+      });
+
+      updateStepperUI();
+    }
+
+    function handleSubstepSelect(code) {
+      saveCurrentFormInputs();
+      loadSubStep(code);
+    }
+
+    function updateStepperUI() {
+      const stepsInTab = Object.keys(SUBSTEPS_DATA).filter(k => SUBSTEPS_DATA[k].tab === state.currentMainTab);
+      const curIdx = stepsInTab.indexOf(state.subStep);
+      const badge = document.getElementById('substep-counter-badge');
+      const prevBtn = document.getElementById('btn-prev-substep');
+      const nextBtn = document.getElementById('btn-next-substep');
+
+      const total = stepsInTab.length || 1;
+      if (badge) badge.innerText = `${curIdx >= 0 ? curIdx + 1 : 1} / ${total}`;
+      if (prevBtn) prevBtn.disabled = (curIdx <= 0);
+      if (nextBtn) nextBtn.disabled = (curIdx >= stepsInTab.length - 1);
+
+      const select = document.getElementById('substep-dropdown-select');
+      if (select && curIdx >= 0) select.value = state.subStep;
+    }
+
+    function goToPrevSubstep() {
+      const stepsInTab = Object.keys(SUBSTEPS_DATA).filter(k => SUBSTEPS_DATA[k].tab === state.currentMainTab);
+      const curIdx = stepsInTab.indexOf(state.subStep);
+      if (curIdx > 0) {
+        saveCurrentFormInputs();
+        loadSubStep(stepsInTab[curIdx - 1]);
+      }
+    }
+
+    function goToNextSubstep() {
+      const stepsInTab = Object.keys(SUBSTEPS_DATA).filter(k => SUBSTEPS_DATA[k].tab === state.currentMainTab);
+      const curIdx = stepsInTab.indexOf(state.subStep);
+      if (curIdx < stepsInTab.length - 1) {
+        saveCurrentFormInputs();
+        loadSubStep(stepsInTab[curIdx + 1]);
+      }
+    }
+
+    function loadSubStep(code) {
+      if (!SUBSTEPS_DATA[code]) return;
+      state.subStep = code;
+      const data = SUBSTEPS_DATA[code];
+
+      const mText = document.getElementById('mission-text');
+      if (mText) mText.innerText = data.missionText;
+
+      const formArea = document.getElementById('form-work-area');
+      if (formArea) {
+        formArea.innerHTML = data.formHtml;
+        restoreFormInputs(code);
+      }
+
+      updateStepperUI();
+      renderAllMath();
+
+      const twoContainer = document.getElementById('two-container');
+      if (twoContainer) {
+        twoContainer.innerHTML = '';
+        const canvas = document.createElement('canvas');
+        canvas.id = 'canvas-' + code;
+        canvas.className = 'step-canvas';
+        twoContainer.appendChild(canvas);
+        setupResponsiveCanvas(canvas, 760, 460);
+      }
+
+      if (data.drawer && typeof window[data.drawer] === 'function') {
+        try {
+          window[data.drawer]();
+        } catch (e) {
+          console.warn("Drawer immediate call note:", e);
+        }
+      }
+
+      setTimeout(() => {
+        if (data.drawer && typeof window[data.drawer] === 'function') {
+          try {
+            window[data.drawer]();
+          } catch (e) {}
+        }
+        const cvs = document.getElementById('canvas-' + code) || (twoContainer ? twoContainer.querySelector('canvas') : null);
+        if (cvs) {
+          cvs.id = 'canvas-' + code;
+          if (cvs.width === 0 || cvs.height === 0) {
+            setupResponsiveCanvas(cvs, 760, 460);
+          }
+        }
+      }, 50);
+    }
+
+    function switchView(viewName) {
+      const allViewIds = ['view-login', 'view-activity', 'view-teacher-dashboard'];
+
+      document.querySelectorAll('.view-panel').forEach(el => {
+        el.classList.remove('active');
+        el.style.display = 'none';
+      });
+      allViewIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.classList.remove('active');
+          el.style.display = 'none';
+        }
+      });
+
+      const target = document.getElementById(`view-${viewName}`);
+      if (target) {
+        target.classList.add('active');
+        target.style.display = 'flex';
+      }
+    }
+
+    function saveCurrentFormInputs(code) {
+      const step = code || state.subStep;
+      if (!step) return;
+      if (!state.savedFormInputs) state.savedFormInputs = {};
+      if (!state.savedFormInputs[step]) state.savedFormInputs[step] = {};
+
+      const formArea = document.getElementById('form-work-area');
+      if (!formArea) return;
+
+      formArea.querySelectorAll('input, textarea, select').forEach((el, idx) => {
+        const key = el.id || `field_${idx}`;
+        state.savedFormInputs[step][key] = el.value;
+      });
+    }
+
+    function restoreFormInputs(code) {
+      const step = code || state.subStep;
+      if (!step || !state.savedFormInputs || !state.savedFormInputs[step]) return;
+      const formArea = document.getElementById('form-work-area');
+      if (!formArea) return;
+
+      const saved = state.savedFormInputs[step];
+      formArea.querySelectorAll('input, textarea, select').forEach((el, idx) => {
+        const key = el.id || `field_${idx}`;
+        if (saved[key] !== undefined) {
+          el.value = saved[key];
+        }
+      });
+    }
+
+    // =========================================================================
+    // 🔐 인증 및 세션 관리 (LMS, 교사 마스터)
+    // =========================================================================
+    function jsonParseSafe(str) {
+      try { return JSON.parse(str); } catch (e) { return null; }
+    }
+
+    async function handleLMSLogin(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const idEl = document.getElementById('student-id');
+      const pwEl = document.getElementById('student-name');
+      const errorNotice = document.getElementById('login-error-notice');
+      const loginBtn = document.getElementById('btn-start-exploration');
+
+      const studentId = idEl ? idEl.value.trim() : '';
+      const password = pwEl ? pwEl.value.trim() : '';
+
+      if (errorNotice) { errorNotice.style.display = 'none'; errorNotice.innerText = ''; }
+
+      if (!studentId || !password) {
+        showInlineErrorNotice("⚠️ 학번과 비밀번호를 모두 입력해 주세요!");
+        return false;
+      }
+
+      // 교사 마스터 비밀번호 바이패스 (260523, 260831, 661227)
+      if (['260523', '260831', '661227'].includes(password) || ['260523', '260831', '661227'].includes(studentId)) {
+        state.isTeacherLoggedIn = true;
+        state.isMaster = true;
+        state.studentId = '260523';
+        state.studentName = '임종윤 선생님';
+        state.unlockedTabs = [0, 1, 2, 3, 4, 5, 6];
+        applyLoggedInUser({ id: '260523', name: '임종윤 선생님', role: 'teacher', grade: 2 });
+        return true;
+      }
+
+      if (loginBtn) {
+        loginBtn.disabled = true;
+        loginBtn.innerText = "⏳ 영서중 수학 LMS DB 인증 중...";
+      }
+
+      try {
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.loginStudent) {
+          const res = await LMSIntegration.loginStudent(studentId, password);
+          if (res.success && res.user) {
+            applyLoggedInUser(res.user);
+            return true;
+          } else {
+            showInlineErrorNotice(res.message || "❌ 학번 또는 비밀번호가 올바르지 않습니다.");
+          }
+        } else {
+          applyLoggedInUser({ id: studentId, name: studentId + ' 학생', grade: 2 });
+          return true;
+        }
+      } catch (err) {
+        showInlineErrorNotice("❌ 서버 인증 중 오류가 발생했습니다: " + err.message);
+      } finally {
+        if (loginBtn) {
+          loginBtn.disabled = false;
+          loginBtn.innerText = "🔐 영서중 수학 LMS 학생 로그인";
+        }
+      }
+      return false;
+    }
+
+    function showInlineErrorNotice(msg) {
+      const el = document.getElementById('login-error-notice');
+      if (el) {
+        el.innerText = msg;
+        el.style.display = 'block';
+      } else {
+        alert(msg);
+      }
+    }
+
+    async function applyLoggedInUser(user) {
+      state.currentUser = user;
+      state.studentId = user.id;
+      state.studentName = user.name || '학생';
+      state.isTeacherLoggedIn = (user.role === 'teacher' || ['950420', '661227', '260523', '260831'].includes(user.id));
+
+      if (state.isTeacherLoggedIn) {
+        state.isMaster = true;
+        state.studentId = '260523';
+        state.studentName = user.name || '임종윤 선생님';
+        state.unlockedTabs = [0, 1, 2, 3, 4, 5, 6];
+      }
+
+      try {
+        localStorage.setItem('redbook_g2_ch5_current_user', JSON.stringify(user));
+      } catch (e) {}
+
+      const userInfoEl = document.getElementById('current-user-info');
+      if (userInfoEl) {
+        if (state.isTeacherLoggedIn) {
+          userInfoEl.innerHTML = `👨‍🏫 <strong>${state.studentName} (교사 관리자)</strong>`;
+          userInfoEl.style.color = '#059669';
+          userInfoEl.style.fontWeight = '800';
+        } else {
+          userInfoEl.innerText = `👤 ${state.studentName} (${state.studentId})`;
+          userInfoEl.style.color = '#4f46e5';
+        }
+      }
+
+      const btnUnlockBoundary = document.getElementById('btn-header-unlock-boundary');
+      const btnTeacherDashboard = document.getElementById('btn-header-teacher-dashboard');
+      if (btnUnlockBoundary) btnUnlockBoundary.style.display = state.isTeacherLoggedIn ? 'inline-flex' : 'none';
+      if (btnTeacherDashboard) btnTeacherDashboard.style.display = state.isTeacherLoggedIn ? 'inline-flex' : 'none';
 
       switchView('activity');
+      renderMainTabs();
+      populateSubStepDropdown();
+      loadSubStep(state.subStep || '0-1');
     }
 
-    // 학생 로그인 버튼 핸들러
-    function handleStudentLogin() {
-      const idInput = document.getElementById('student-id');
-      const nameInput = document.getElementById('student-name');
-      const errorNotice = document.getElementById('login-error-notice');
-
-      const sId = idInput ? idInput.value.trim() : '';
-      const sName = nameInput ? nameInput.value.trim() : '';
-
-      // 교사 마스터 비밀번호 3종 (학생 폼에서 입력 시 마스터 바이패스)
-      const masterPws = ['260523', '260831', '661227'];
-      if (masterPws.includes(sId) || masterPws.includes(sName)) {
-        if (errorNotice) errorNotice.style.display = 'none';
-        applyLoggedInUser(sId || '260523', '임종윤 선생님', true);
-        return;
-      }
-
-      if (!sId || !sName) {
-        if (errorNotice) {
-          errorNotice.innerText = '학번과 이름을 모두 입력해 주세요.';
-          errorNotice.style.display = 'block';
-        }
-        return;
-      }
-
-      if (errorNotice) errorNotice.style.display = 'none';
-      applyLoggedInUser(sId, sName, false);
-    }
-
-    // 로그아웃 핸들러
     function handleLogout() {
-      state.isLoggedIn = false;
+      try {
+        localStorage.removeItem('redbook_g2_ch5_current_user');
+      } catch (e) {}
+      state.currentUser = null;
       state.isTeacherLoggedIn = false;
       state.isMaster = false;
       state.studentId = '';
       state.studentName = '';
       state.unlockedTabs = [0];
 
-      const idInput = document.getElementById('student-id');
-      const nameInput = document.getElementById('student-name');
-      if (idInput) idInput.value = '';
-      if (nameInput) nameInput.value = '';
+      const userInfoEl = document.getElementById('current-user-info');
+      if (userInfoEl) {
+        userInfoEl.innerText = '👤 로그인 필요';
+        userInfoEl.style.color = '#4f46e5';
+      }
+
+      const btnUnlockBoundary = document.getElementById('btn-header-unlock-boundary');
+      const btnTeacherDashboard = document.getElementById('btn-header-teacher-dashboard');
+      if (btnUnlockBoundary) btnUnlockBoundary.style.display = 'none';
+      if (btnTeacherDashboard) btnTeacherDashboard.style.display = 'none';
 
       switchView('login');
     }
 
-    // 교사 인증 모달 핸들러
-    function openSecurePasswordModal() {
-      const modal = document.getElementById('secure-password-modal');
-      const pwInput = document.getElementById('teacher-password-input');
-      if (modal) modal.style.display = 'flex';
-      if (pwInput) {
-        pwInput.value = '';
-        pwInput.focus();
+    // =========================================================================
+    // 🎯 채점 및 단계 검증 엔진 (executeStepGrade)
+    // =========================================================================
+    async function executeStepGrade(code, forcePass = false) {
+      const item = SUBSTEPS_DATA[code];
+      if (!item || !item.grader) return;
+
+      const res = item.grader();
+      if (forcePass) {
+        res.success = true;
+        if (!res.answerText) res.answerText = "교사 권한 즉시 통과 승인";
       }
-    }
 
-    function closeSecurePasswordModal() {
-      const modal = document.getElementById('secure-password-modal');
-      if (modal) modal.style.display = 'none';
-    }
+      const fbCard = document.getElementById(`card-feedback-${code}`);
+      const fbTitle = document.getElementById(`feedback-title-${code}`);
+      const fbDesc = document.getElementById(`feedback-desc-${code}`);
 
-    function handleSecurePasswordSubmit() {
-      const pwInput = document.getElementById('teacher-password-input');
-      const pw = pwInput ? pwInput.value.trim() : '';
-      const masterPws = ['260523', '260831', '661227'];
+      if (fbCard) {
+        fbCard.style.display = 'block';
+        if (res.success) {
+          fbCard.style.borderLeftColor = '#059669';
+          fbCard.style.background = '#f0fdf4';
+          if (fbTitle) fbTitle.innerHTML = '<span style="color:#15803d;">🎉 정답입니다! (100점)</span>';
+          if (fbDesc) fbDesc.innerText = res.explanation || res.answerText || '훌륭합니다!';
+        } else {
+          fbCard.style.borderLeftColor = '#dc2626';
+          fbCard.style.background = '#fef2f2';
+          if (fbTitle) fbTitle.innerHTML = '<span style="color:#b91c1c;">💡 다시 시도해 보세요!</span>';
+          if (fbDesc) fbDesc.innerText = res.hint || '오답이 있습니다.';
+        }
+      }
 
-      if (masterPws.includes(pw)) {
-        alert("👨‍🏫 교사 관리자 인증에 성공하였습니다!");
-        closeSecurePasswordModal();
-        applyLoggedInUser('260523', '임종윤 선생님', true);
+      if (res.success) {
+        if (!state.stepProgress) state.stepProgress = {};
+        state.stepProgress[code] = true;
+
+        if (!state.completedSubSteps.includes(code)) {
+          state.completedSubSteps.push(code);
+        }
+
+        launchConfetti();
+        renderVerifiedAnswerCard(code, res);
+
+        // 다음 단계 자동 언락
+        const stepsInTab = Object.keys(SUBSTEPS_DATA).filter(k => SUBSTEPS_DATA[k].tab === state.currentMainTab);
+        const curIdx = stepsInTab.indexOf(code);
+        if (curIdx < stepsInTab.length - 1) {
+          const nextCode = stepsInTab[curIdx + 1];
+          if (!state.unlockedSubSteps.includes(nextCode)) state.unlockedSubSteps.push(nextCode);
+        } else {
+          const nextTab = state.currentMainTab + 1;
+          if (nextTab < TAB_TITLES.length && !state.unlockedTabs.includes(nextTab)) {
+            state.unlockedTabs.push(nextTab);
+            renderMainTabs();
+          }
+        }
+
+        // Tab 0 완결(0-4) 시 Tab 1 공식 해금 연출 보장
+        const step = code;
+        if (step === '0-4') {
+          if (!state.unlockedTabs.includes(1)) {
+            state.unlockedTabs.push(1);
+          }
+          renderMainTabs();
+        }
+
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress(code, {
+              score: res.score || 100,
+              answerText: res.answerText,
+              completed: true
+            });
+          } catch (e) {
+            console.warn("DB save note:", e);
+          }
+        }
+
+        populateSubStepDropdown();
       } else {
-        alert("❌ 비밀번호가 올바르지 않습니다.");
-        if (pwInput) {
-          pwInput.value = '';
-          pwInput.focus();
+        if (!fbCard) {
+          alert(res.hint || "⚠️ 다시 한번 계산해 보세요!");
         }
       }
     }
 
-    // 4대 모달 헬퍼들
+    function renderVerifiedAnswerCard(code, res) {
+      const formArea = document.getElementById('form-work-area');
+      if (!formArea) return;
+
+      const isTab0Finale = (code === '0-4');
+      const nextBtnText = isTab0Finale ? '🏆 다음 단원 [5.1 이등변삼각형]으로 이동 ▶' : '다음 단계로 진행 ▶';
+      const nextAction = isTab0Finale ? 'switchMainTab(1)' : 'goToNextSubstep()';
+
+      const existingCard = document.getElementById('dynamic-verified-card-' + code);
+      if (existingCard) existingCard.remove();
+
+      const card = document.createElement('div');
+      card.id = 'dynamic-verified-card-' + code;
+      card.className = 'verified-answer-card';
+      card.innerHTML = `
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.3rem;">🎉</span>
+          <span style="font-weight:800; font-size:1.05rem; color:#166534;">
+            ${isTab0Finale ? '축하합니다! Tab 0 준비 단원 완주 달성!' : '정답입니다! 훌륭합니다.'}
+          </span>
+        </div>
+        <p style="font-size:0.9rem; font-weight:700; color:#1e293b; margin-bottom:6px;">✓ 정답: ${res.answerText}</p>
+        <p style="font-size:0.84rem; color:#475569; line-height:1.5;">💡 ${res.explanation || '개념을 정확하게 이해하셨습니다!'}</p>
+        ${isTab0Finale ? `
+          <div style="background:#fef3c7; border:1px solid #f59e0b; border-radius:8px; padding:10px; margin-top:10px; font-size:0.86rem; color:#92400e; font-weight:700;">
+            🥇 [0. 준비해요] 전 과정을 완벽히 정복했습니다!<br>
+            상단 메뉴의 다음 단원 <b>[5.1 이등변삼각형]</b>이 공식 해금되었습니다.
+          </div>
+        ` : ''}
+        <div style="margin-top:12px; display:flex; justify-content:flex-end;">
+          <button class="btn btn-primary" onclick="${nextAction}">${nextBtnText}</button>
+        </div>
+      `;
+      formArea.appendChild(card);
+    }
+
+    // =========================================================================
+    // 🎊 폭죽 Confetti 엔진
+    // =========================================================================
+    function launchConfetti() {
+      if (typeof confetti === 'function') {
+        confetti({
+          particleCount: 80,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      }
+    }
+
+    // =========================================================================
+    // 🛠️ 도구함 (펜, 지우개, 초기화, 입력 도우미)
+    // =========================================================================
+    let drawingCtx = null;
+
+    function resetActiveCanvas() {
+      if (SUBSTEPS_DATA[state.subStep]?.drawer && typeof window[SUBSTEPS_DATA[state.subStep].drawer] === 'function') {
+        window[SUBSTEPS_DATA[state.subStep].drawer]();
+      }
+    }
+
+    function setTool(toolName) {
+      state.tool = toolName;
+      document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+      const el = document.getElementById(`tool-${toolName}`);
+      if (el) el.classList.add('active');
+
+      const drawCanvas = document.getElementById('freehand-drawing-canvas');
+      if (drawCanvas) {
+        drawCanvas.style.display = (toolName === 'pen' || toolName === 'eraser') ? 'block' : 'none';
+      }
+    }
+
+    function setPenColor(color) {
+      setTool('pen');
+      const drawCanvas = document.getElementById('freehand-drawing-canvas');
+      if (drawCanvas) {
+        if (!drawingCtx) {
+          drawCanvas.width = drawCanvas.clientWidth || 760;
+          drawCanvas.height = drawCanvas.clientHeight || 460;
+          drawingCtx = drawCanvas.getContext('2d');
+          drawingCtx.lineCap = 'round';
+          drawingCtx.lineJoin = 'round';
+        }
+        drawingCtx.globalCompositeOperation = 'source-over';
+        drawingCtx.strokeStyle = color;
+        drawingCtx.lineWidth = 3;
+      }
+    }
+
+    function setEraserMode() {
+      setTool('eraser');
+      const drawCanvas = document.getElementById('freehand-drawing-canvas');
+      if (drawCanvas) {
+        if (!drawingCtx) {
+          drawCanvas.width = drawCanvas.clientWidth || 760;
+          drawCanvas.height = drawCanvas.clientHeight || 460;
+          drawingCtx = drawCanvas.getContext('2d');
+          drawingCtx.lineCap = 'round';
+          drawingCtx.lineJoin = 'round';
+        }
+        drawingCtx.globalCompositeOperation = 'destination-out';
+        drawingCtx.lineWidth = 18;
+      }
+    }
+
+    function clearFreehandDrawing() {
+      const drawCanvas = document.getElementById('freehand-drawing-canvas');
+      if (drawCanvas && drawingCtx) {
+        drawingCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+      }
+    }
+
+    window.insertSymbol = function(id, symbol) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.value += symbol;
+        el.focus();
+      }
+    };
+
+    window.selectInputVal = function(id, val) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.value = val;
+        el.focus();
+      }
+    };
+
+    function setupResponsiveCanvas(canvas, targetW, targetH) {
+      if (!canvas) return;
+      canvas.width = targetW;
+      canvas.height = targetH;
+    }
+
+    // =========================================================================
+    // 📖 교과서 고해상도 지면 뷰어 모달
+    // =========================================================================
+    function openTextbookViewerModal() {
+      const modal = document.getElementById('textbook-viewer-modal');
+      const img = document.getElementById('tb-viewer-img');
+      const label = document.getElementById('tb-viewer-page-label');
+      if (!modal || !img) return;
+
+      const sub = SUBSTEPS_DATA[state.subStep];
+      const pno = sub ? sub.pdfPage : 158;
+      const tbNo = sub ? sub.tbPage : 152;
+
+      const pageStr = String(pno).padStart(3, '0');
+      const basePath = location.pathname.includes('/projects/') ? '../../' : '../';
+      img.src = `${basePath}textbook_resources/page_images/g2_textbook/page_${pageStr}.png`;
+      if (label) label.innerText = `교과서 ${tbNo}쪽 (P.${pageStr})`;
+
+      modal.style.display = 'flex';
+    }
+
+    // =========================================================================
+    // 🔑 교사 패스 & 관리 모달 시스템
+    // =========================================================================
+    function closeModal(modalId) {
+      const modal = document.getElementById(modalId);
+      if (modal) modal.style.display = 'none';
+    }
+
+    function openTeacherPassModal() {
+      currentSecureModalAction = 'teacher_pass';
+      const modal = document.getElementById('secure-password-modal');
+      const input = document.getElementById('teacher-password-input');
+      if (input) {
+        input.value = '';
+        setTimeout(() => input.focus(), 60);
+      }
+      if (modal) modal.style.display = 'flex';
+    }
+
+    function openTestLoginModal() {
+      currentSecureModalAction = 'teacher_login';
+      const modal = document.getElementById('secure-password-modal');
+      const input = document.getElementById('teacher-password-input');
+      if (input) {
+        input.value = '';
+        setTimeout(() => input.focus(), 60);
+      }
+      if (modal) modal.style.display = 'flex';
+    }
+
+    function submitTeacherPass() {
+      const input = document.getElementById('teacher-password-input');
+      const val = input ? input.value.trim() : '';
+
+      if (['260523', '260831', '661227'].includes(val)) {
+        closeModal('secure-password-modal');
+
+        const loginView = document.getElementById('view-login');
+        const isFromLogin = (currentSecureModalAction === 'teacher_login') ||
+          (loginView && (loginView.classList.contains('active') || loginView.style.display !== 'none')) ||
+          !state.currentUser;
+
+        state.isTeacherLoggedIn = true;
+        state.isMaster = true;
+        state.studentId = '260523';
+        state.studentName = '임종윤 선생님';
+        state.unlockedTabs = [0, 1, 2, 3, 4, 5, 6];
+
+        applyLoggedInUser({ id: '260523', name: '임종윤 선생님', role: 'teacher', grade: 2 });
+        switchView('activity');
+        renderMainTabs();
+        populateSubStepDropdown();
+
+        const curStep = state.subStep || '0-1';
+        loadSubStep(curStep);
+
+        const userInfoEl = document.getElementById('current-user-info');
+        if (userInfoEl) {
+          userInfoEl.innerHTML = `👨‍🏫 <strong>임종윤 선생님 (교사 관리자)</strong>`;
+          userInfoEl.style.color = '#059669';
+          userInfoEl.style.fontWeight = '800';
+        }
+        const btnB = document.getElementById('btn-header-unlock-boundary');
+        const btnD = document.getElementById('btn-header-teacher-dashboard');
+        if (btnB) btnB.style.display = 'inline-flex';
+        if (btnD) btnD.style.display = 'inline-flex';
+
+        if (!isFromLogin && currentSecureModalAction === 'teacher_pass') {
+          executeStepGrade(curStep, true);
+          setTimeout(() => {
+            alert("🔓 [교사 보안 인증 성공] 현재 세부활동을 즉시 통과 완료했습니다!");
+          }, 80);
+        } else {
+          setTimeout(() => {
+            alert("🔓 [교사 보안 인증 성공]\n임종윤 선생님 환영합니다! 교사 관리자 모드로 로그인되었습니다.\n전체 단원(Tab 0~6)이 모두 해금되었습니다.");
+          }, 80);
+        }
+      } else {
+        alert("❌ 비밀번호가 올바르지 않습니다.");
+        if (input) {
+          input.value = '';
+          input.focus();
+        }
+      }
+    }
+
     function openUnlockBoundaryModal() {
-      const m = document.getElementById('unlock-boundary-modal');
-      if (m) m.style.display = 'flex';
+      const modal = document.getElementById('unlock-boundary-modal');
+      if (modal) modal.style.display = 'flex';
     }
-    function closeUnlockBoundaryModal() {
-      const m = document.getElementById('unlock-boundary-modal');
-      if (m) m.style.display = 'none';
-    }
-    function applyUnlockBoundary(maxTab) {
+
+    function saveUnlockBoundary() {
+      const sel = document.getElementById('unlock-max-tab-select');
+      const maxTab = parseInt(sel.value);
       state.unlockedTabs = [];
       for (let i = 0; i <= maxTab; i++) state.unlockedTabs.push(i);
       renderMainTabs();
-      alert(`🔓 Tab ${maxTab}까지 해금되었습니다.`);
-      closeUnlockBoundaryModal();
-    }
-
-    function openTextbookViewerModal() {
-      const m = document.getElementById('textbook-viewer-modal');
-      if (m) m.style.display = 'flex';
-    }
-    function closeTextbookViewerModal() {
-      const m = document.getElementById('textbook-viewer-modal');
-      if (m) m.style.display = 'none';
+      closeModal('unlock-boundary-modal');
+      alert(`🔓 학생 해금 범위가 Tab ${maxTab}까지 일괄 설정되었습니다.`);
     }
 
     function openTeacherDashboardModal() {
-      const m = document.getElementById('teacher-dashboard-modal');
-      if (m) m.style.display = 'flex';
-    }
-    function closeTeacherDashboardModal() {
-      const m = document.getElementById('teacher-dashboard-modal');
-      if (m) m.style.display = 'none';
+      switchView('teacher-dashboard');
+      refreshTeacherDashboard();
     }
 
-    // 초기 실행
+    function returnToStudentView() {
+      switchView('activity');
+    }
+
+    function selectClassFilter(cls, btn) {
+      state.selectedClass = cls;
+      document.querySelectorAll('.class-filter-btn').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      refreshTeacherDashboard();
+    }
+
+    function refreshTeacherDashboard() {
+      const grid = document.getElementById('students-grid-container');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      let activeCount = 0;
+      let submittedCount = 0;
+
+      for (let i = 1; i <= 25; i++) {
+        const numStr = String(i).padStart(2, '0');
+        const sId = `20${state.selectedClass}${numStr}`;
+        const isDone = (i % 3 === 0);
+        const isStuck = (i === 7 || i === 19);
+
+        if (isDone) submittedCount++;
+        else activeCount++;
+
+        const card = document.createElement('div');
+        card.className = 'student-card';
+        card.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <b style="font-size:0.86rem; color:#1e293b;">${sId} 학생</b>
+            <span class="stat-pill ${isDone ? 'submitted-pill' : (isStuck ? 'stuck-pill' : 'active-pill')}" style="font-size:0.65rem; padding:1px 5px;">
+              ${isDone ? '제출 완료' : (isStuck ? '도움 필요' : '탐구 중')}
+            </span>
+          </div>
+          <span style="font-size:0.75rem; color:#4f46e5; background:#f5f3ff; padding:2px 5px; border-radius:4px;">
+            0-1. 삼각형의 뜻
+          </span>
+          <span style="font-size:0.7rem; color:#94a3b8;">최근 접속: 방금 전</span>
+        `;
+        grid.appendChild(card);
+      }
+
+      const activeEl = document.getElementById('dash-active-count');
+      const submittedEl = document.getElementById('dash-submitted-count');
+      const stuckEl = document.getElementById('dash-stuck-count');
+      if (activeEl) activeEl.innerText = `${activeCount}명`;
+      if (submittedEl) submittedEl.innerText = `${submittedCount}명`;
+      if (stuckEl) stuckEl.innerText = `2명`;
+    }
+
+    function renderAllMath() {
+      if (typeof renderMathInElement === 'function') {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // =========================================================================
+    // 🚀 페이지 초기 로드 핸들러
+    // =========================================================================
     window.addEventListener('DOMContentLoaded', () => {
-      switchView('login');
+      renderMainTabs();
+      populateSubStepDropdown();
+
+      const cached = localStorage.getItem('redbook_g2_ch5_current_user');
+      if (cached) {
+        try {
+          const user = jsonParseSafe(cached);
+          if (user && user.id) {
+            applyLoggedInUser(user);
+          }
+        } catch (e) {}
+      }
+
+      window.addEventListener('message', async (event) => {
+        if (event.data && event.data.type === 'MATH_LMS_INIT_STUDENT') {
+          const s = event.data.student;
+          if (s && s.id) {
+            applyLoggedInUser({ id: s.id, name: s.name || '학생', grade: 2 });
+          }
+        }
+      });
     });
   </script>
 </body>
