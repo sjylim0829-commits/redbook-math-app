@@ -693,6 +693,20 @@
             </div>
           </div>
 
+          <!-- Step 1-4 Interactive Control Strip -->
+          <div id="canvas-control-panel-1-4" style="display:none; align-items:center; justify-content:space-between; padding:8px 16px; background:#f5f3ff; border-bottom:1px solid #ddd6fe; gap:10px; flex-shrink:0;">
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <span style="font-size:0.75rem; font-weight:800; color:#5b21b6;">탐구 모드:</span>
+              <button type="button" class="btn step1-4-mode-btn active" id="btn-mode-1-4-seta" style="padding:3px 10px; font-size:0.74rem; background:#7c3aed; color:#fff; font-weight:700; border-radius:6px; border:none;" onclick="setMode1_4('seta')">🎴 세트 A (1~4: 12개)</button>
+              <button type="button" class="btn step1-4-mode-btn" id="btn-mode-1-4-setb" style="padding:3px 10px; font-size:0.74rem; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; font-weight:700; border-radius:6px;" onclick="setMode1_4('setb')">🎴 세트 B (0~3: 9개)</button>
+              <button type="button" class="btn step1-4-mode-btn" id="btn-mode-1-4-reps" style="padding:3px 10px; font-size:0.74rem; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; font-weight:700; border-radius:6px;" onclick="setMode1_4('reps')">👥 대표 뽑기 (12 vs 6)</button>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <button type="button" class="btn" style="padding:4px 12px; font-weight:800; font-size:0.8rem; background:#ffffff; color:#6d28d9; border:1px solid #8b5cf6; border-radius:6px;" onclick="resetCards1_4()">🔄 슬롯 리셋</button>
+              <span id="badge-digits-result-1-4" style="font-weight:800; font-size:0.8rem; color:#5b21b6; background:#ede9fe; padding:3px 10px; border-radius:6px; border:1px solid #c4b5fd;">상태: 카드를 클릭하여 슬롯에 배치해 보세요</span>
+            </div>
+          </div>
+
           <div class="two-plane-wrapper">
             <div id="two-container">
               <canvas id="main-interactive-canvas" width="760" height="460"></canvas>
@@ -908,6 +922,12 @@
           fruit: 'strawberry', // 'strawberry', 'kiwi', 'banana'
           trailA: 1, // 1 or 2
           trailB: 1  // 1, 2, 3, 4
+        },
+        step1_4: {
+          mode: 'seta', // 'seta', 'setb', or 'reps'
+          tensCard: null,
+          onesCard: null,
+          selectedReps: []
         }
       }
     };
@@ -1619,7 +1639,102 @@
           }
         }
       },
-      '1-4': { tab: 1, title: '1-4. 여러 가지 경우의 수 탐구', tbPage: 258, missionText: '🎯 순서대로 나열하거나 대표를 뽑는 다양한 실생활 경우의 수를 계산해 봅시다.', drawer: 'drawFuncStep1_4Canvas', formHtml: '<div class="card"><p>1-4 활동 준비 중</p><button class="btn btn-primary" onclick="executeStepGrade(\'1-4\')">제출</button><div id="card-feedback-1-4" style="display:none;"></div></div>', grader: () => ({ success: true, score: 100 }) },
+      '1-4': {
+        tab: 1,
+        title: '1-4. 여러 가지 경우의 수 (수 카드와 대표 뽑기)',
+        tbPage: 255,
+        missionText: "🎯 0이 포함된 수 카드로 두 자리 수를 만드는 원리와 자격이 같은 대표를 뽑는 경우의 수의 차이점을 탐구해 봅시다!",
+        drawer: 'drawFuncStep1_4Canvas',
+        formHtml: `
+          <div class="card" style="padding:14px; background:#ffffff; border:1px solid #e2e8f0; border-radius:10px;">
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
+              <span style="background:#ede9fe; color:#6d28d9; font-weight:800; font-size:0.75rem; padding:2px 7px; border-radius:6px;">개념 4</span>
+              <span style="font-weight:800; font-size:0.88rem; color:#1e293b;">여러 가지 경우의 수 탐구 (P.255)</span>
+            </div>
+            <div style="background:#f5f3ff; border:1px solid #ddd6fe; border-radius:8px; padding:10px 12px; margin-bottom:14px; font-size:0.84rem; color:#5b21b6; line-height:1.5;">
+              🎴 <strong>교과서 핵심 포인트:</strong> 두 자리 수를 만들 때 <strong>0은 십의 자리에 올 수 없음</strong>에 유의해야 합니다. 또한 회장과 부회장은 자격이 다르므로 순서가 있지만, <strong>자격이 같은 대표 2명</strong>은 순서가 없으므로 2로 나누어 줍니다!
+            </div>
+
+            <!-- Q1 -->
+            <div style="margin-bottom:12px; padding:10px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="display:block; font-size:0.82rem; font-weight:800; color:#334155; margin-bottom:6px;">
+                1. [교과서 예제 1] 1, 2, 3, 4가 적힌 4장의 카드 중 2장을 뽑아 만들 수 있는 <strong>두 자리 자연수</strong>의 개수는?
+              </label>
+              <input type="text" id="q1-4-digits-seta" class="form-control" placeholder="개수 입력">
+              <div style="font-size:0.75rem; color:#64748b; margin-top:3px;">※ 십의 자리에 올 수 있는 수 4가지 × 일의 자리 3가지</div>
+            </div>
+
+            <!-- Q2 -->
+            <div style="margin-bottom:12px; padding:10px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="display:block; font-size:0.82rem; font-weight:800; color:#334155; margin-bottom:6px;">
+                2. [교과서 문제 5] 0, 1, 2, 3이 적힌 4장의 카드 중 2장을 뽑아 만들 수 있는 <strong>두 자리 자연수</strong>의 개수는?
+              </label>
+              <input type="text" id="q1-4-digits-setb" class="form-control" placeholder="개수 입력">
+              <div style="font-size:0.75rem; color:#64748b; margin-top:3px;">※ 십의 자리에는 0이 올 수 없으므로 3가지(1, 2, 3) × 일의 자리 3가지(0 포함)</div>
+            </div>
+
+            <!-- Q3 -->
+            <div style="margin-bottom:12px; padding:10px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="display:block; font-size:0.82rem; font-weight:800; color:#334155; margin-bottom:6px;">
+                3. [생각 넓히기 1] 4명의 후보(A, B, C, D) 중 <strong>회장 1명, 부회장 1명</strong>을 뽑는 경우의 수는?
+              </label>
+              <input type="text" id="q1-4-president-cases" class="form-control" placeholder="가짓수 입력">
+              <div style="font-size:0.75rem; color:#64748b; margin-top:3px;">※ 회장 4가지 × 부회장 3가지 (자격이 다르므로 순서 고려)</div>
+            </div>
+
+            <!-- Q4 -->
+            <div style="margin-bottom:14px; padding:10px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="display:block; font-size:0.82rem; font-weight:800; color:#334155; margin-bottom:6px;">
+                4. [생각 넓히기 2] 위 4명의 후보 중 <strong>자격이 같은 대표 2명</strong>을 뽑는 경우의 수는?
+              </label>
+              <input type="text" id="q1-4-reps-cases" class="form-control" placeholder="가짓수 입력">
+              <div style="font-size:0.75rem; color:#64748b; margin-top:3px;">※ AB와 BA가 같으므로 (4 × 3) ÷ 2가지</div>
+            </div>
+
+            <button id="btn-submit-step" class="btn btn-primary" style="width:100%; padding:11px; font-size:0.95rem; font-weight:800; margin-top:4px;" onclick="executeStepGrade('1-4')">
+              📝 정답 제출 및 채점하기
+            </button>
+
+            <!-- Feedback Card -->
+            <div id="card-feedback-1-4" class="card bounceInCard" style="display:none; padding:14px; margin-top:8px; border-left:4px solid #059669; background:#f0fdf4;">
+              <div id="feedback-title-1-4" style="font-weight:800; font-size:0.92rem; margin-bottom:4px;"></div>
+              <div id="feedback-desc-1-4" style="font-size:0.84rem; line-height:1.5; color:#334155;"></div>
+            </div>
+          </div>
+        `,
+        grader: function() {
+          const a1 = (document.getElementById('q1-4-digits-seta')?.value || '').trim().replace(/\s+/g, '');
+          const a2 = (document.getElementById('q1-4-digits-setb')?.value || '').trim().replace(/\s+/g, '');
+          const a3 = (document.getElementById('q1-4-president-cases')?.value || '').trim().replace(/\s+/g, '');
+          const a4 = (document.getElementById('q1-4-reps-cases')?.value || '').trim().replace(/\s+/g, '');
+
+          const ok1 = (a1 === '12' || a1 === '12개' || a1 === '12가지');
+          const ok2 = (a2 === '9' || a2 === '9개' || a2 === '9가지');
+          const ok3 = (a3 === '12' || a3 === '12가지' || a3 === '12개');
+          const ok4 = (a4 === '6' || a4 === '6가지' || a4 === '6개');
+
+          if (ok1 && ok2 && ok3 && ok4) {
+            return {
+              success: true,
+              score: 100,
+              title: '🎉 100점 만점! 여러 가지 경우의 수 마스터!',
+              desc: "1~4 카드는 4×3=12개, 0이 포함된 0~3 카드는 십의 자리에 0이 올 수 없으므로 3×3=9개입니다. 회장·부회장 선출은 4×3=12가지, 자격이 같은 대표 2명은 순서가 없으므로 (4×3)÷2=6가지로 완벽하게 풀이하셨습니다!"
+            };
+          } else {
+            const errs = [];
+            if (!ok1) errs.push('세트 A 두 자리 수(12개)');
+            if (!ok2) errs.push('세트 B 두 자리 수(0 제외 9개)');
+            if (!ok3) errs.push('회장·부회장 선출(12가지)');
+            if (!ok4) errs.push('자격이 같은 대표 2명(6가지)');
+            return {
+              success: false,
+              score: 0,
+              title: '💡 다시 확인해 보세요!',
+              desc: `확인이 필요한 문항: ${errs.join(', ')}. 0은 십의 자리에 올 수 없고, 자격이 같은 대표는 중복 순서를 2로 나누어 준다는 점을 기억하세요!`
+            };
+          }
+        }
+      },
       '1-5': { tab: 1, title: '1-5. 스스로 확인하기 (8.1 경우의 수)', tbPage: 260, missionText: '🎯 8.1단원 학습 성취도를 확인하는 문제를 1문항 1페이지로 풀어봅시다.', drawer: 'drawFuncStep1_5Canvas', formHtml: '<div class="card"><p>1-5 활동 준비 중</p><button class="btn btn-primary" onclick="executeStepGrade(\'1-5\')">제출</button><div id="card-feedback-1-5" style="display:none;"></div></div>', grader: () => ({ success: true, score: 100 }) },
 
       // -----------------------------------------------------------------------
@@ -5206,6 +5321,828 @@
     window.selectTrail1_3 = selectTrail1_3;
     window.resetCombination1_3 = resetCombination1_3;
 
+    // =========================================================================
+    // 🎨 Step 1-4 Interactive Canvas Lab (수 카드 자리수 및 대표 뽑기)
+    // =========================================================================
+    let animFrame1_4 = null;
+    let clickBound1_4 = false;
+
+    function setMode1_4(mode) {
+      if (!state.tab1) state.tab1 = {};
+      if (!state.tab1.step1_4) state.tab1.step1_4 = {};
+      state.tab1.step1_4.mode = mode;
+      state.tab1.step1_4.tensCard = null;
+      state.tab1.step1_4.onesCard = null;
+      state.tab1.step1_4.warning = null;
+
+      const btnA = document.getElementById('btn-mode-1-4-seta');
+      const btnB = document.getElementById('btn-mode-1-4-setb');
+      const btnR = document.getElementById('btn-mode-1-4-reps');
+      [btnA, btnB, btnR].forEach(b => {
+        if (b) {
+          b.style.background = '#f1f5f9';
+          b.style.color = '#334155';
+          b.style.border = '1px solid #cbd5e1';
+        }
+      });
+
+      if (mode === 'seta' && btnA) {
+        btnA.style.background = '#7c3aed'; btnA.style.color = '#fff'; btnA.style.border = 'none';
+      } else if (mode === 'setb' && btnB) {
+        btnB.style.background = '#d97706'; btnB.style.color = '#fff'; btnB.style.border = 'none';
+      } else if (mode === 'reps' && btnR) {
+        btnR.style.background = '#0284c7'; btnR.style.color = '#fff'; btnR.style.border = 'none';
+      }
+
+      updateBadge1_4();
+      drawFuncStep1_4Canvas();
+    }
+
+    function pickCard1_4(val) {
+      if (!state.tab1) state.tab1 = {};
+      if (!state.tab1.step1_4) state.tab1.step1_4 = { mode: 'seta' };
+      const s = state.tab1.step1_4;
+
+      if (s.mode === 'reps') return;
+
+      if (s.tensCard === null) {
+        if (s.mode === 'setb' && val === 0) {
+          s.warning = '⚠️ 0은 십의 자리에 올 수 없습니다!';
+          updateBadge1_4();
+          return;
+        }
+        s.tensCard = val;
+        s.warning = null;
+      } else if (s.onesCard === null) {
+        if (s.tensCard === val) {
+          s.warning = '⚠️ 이미 십의 자리에 사용한 카드입니다!';
+          updateBadge1_4();
+          return;
+        }
+        s.onesCard = val;
+        s.warning = null;
+      } else {
+        // Both full, reset and place in tens
+        if (s.mode === 'setb' && val === 0) {
+          s.warning = '⚠️ 0은 십의 자리에 올 수 없습니다!';
+          updateBadge1_4();
+          return;
+        }
+        s.tensCard = val;
+        s.onesCard = null;
+        s.warning = null;
+      }
+      updateBadge1_4();
+    }
+
+    function resetCards1_4() {
+      if (!state.tab1) state.tab1 = {};
+      if (!state.tab1.step1_4) state.tab1.step1_4 = { mode: 'seta' };
+      state.tab1.step1_4.tensCard = null;
+      state.tab1.step1_4.onesCard = null;
+      state.tab1.step1_4.warning = null;
+      updateBadge1_4();
+    }
+
+    function updateBadge1_4() {
+      const badge = document.getElementById('badge-digits-result-1-4');
+      if (!badge) return;
+      const s = state.tab1?.step1_4 || { mode: 'seta', tensCard: null, onesCard: null };
+
+      if (s.warning) {
+        badge.textContent = s.warning;
+        badge.style.background = '#fee2e2';
+        badge.style.color = '#dc2626';
+        badge.style.borderColor = '#fca5a5';
+        return;
+      }
+
+      if (s.mode === 'seta') {
+        if (s.tensCard !== null && s.onesCard !== null) {
+          badge.textContent = `배치 완료: [ ${s.tensCard}${s.onesCard} ] (십의 자리 4가지 × 일의 자리 3가지 = 총 12개 중 1개)`;
+          badge.style.background = '#ede9fe'; badge.style.color = '#6d28d9'; badge.style.borderColor = '#c4b5fd';
+        } else if (s.tensCard !== null) {
+          badge.textContent = `십의 자리: [ ${s.tensCard} ] (일의 자리에 놓을 카드를 클릭하세요)`;
+          badge.style.background = '#ede9fe'; badge.style.color = '#6d28d9'; badge.style.borderColor = '#c4b5fd';
+        } else {
+          badge.textContent = '상태: 카드를 클릭하여 십의 자리에 배치해 보세요 (총 12개)';
+          badge.style.background = '#ede9fe'; badge.style.color = '#6d28d9'; badge.style.borderColor = '#c4b5fd';
+        }
+      } else if (s.mode === 'setb') {
+        if (s.tensCard !== null && s.onesCard !== null) {
+          badge.textContent = `배치 완료: [ ${s.tensCard}${s.onesCard} ] (십의 자리 3가지 × 일의 자리 3가지 = 총 9개 중 1개)`;
+          badge.style.background = '#fef3c7'; badge.style.color = '#92400e'; badge.style.borderColor = '#fcd34d';
+        } else if (s.tensCard !== null) {
+          badge.textContent = `십의 자리: [ ${s.tensCard} ] (일의 자리에 놓을 카드를 클릭하세요, 0 포함 가능)`;
+          badge.style.background = '#fef3c7'; badge.style.color = '#92400e'; badge.style.borderColor = '#fcd34d';
+        } else {
+          badge.textContent = '상태: 0을 제외한 카드로 십의 자리를 먼저 만드세요 (총 9개)';
+          badge.style.background = '#fef3c7'; badge.style.color = '#92400e'; badge.style.borderColor = '#fcd34d';
+        }
+      } else {
+        badge.textContent = '대표 뽑기: 회장·부회장(12가지, 순서 O) vs 대표 2명(6가지, 순서 X)';
+        badge.style.background = '#e0f2fe'; badge.style.color = '#0369a1'; badge.style.borderColor = '#7dd3fc';
+      }
+    }
+
+    function drawFuncStep1_4Canvas() {
+      const cvs = document.getElementById('main-interactive-canvas');
+      if (!cvs) return;
+      const ctx = cvs.getContext('2d');
+      if (!ctx) return;
+
+      if (!state.tab1) state.tab1 = {};
+      if (!state.tab1.step1_4) {
+        state.tab1.step1_4 = { mode: 'seta', tensCard: null, onesCard: null, warning: null };
+      }
+
+      if (animFrame1_4) {
+        cancelAnimationFrame(animFrame1_4);
+        animFrame1_4 = null;
+      }
+
+      if (!clickBound1_4) {
+        cvs.addEventListener('click', (evt) => {
+          if (state.currentSubStep !== '1-4') return;
+          const rect = cvs.getBoundingClientRect();
+          const scaleX = cvs.width / rect.width;
+          const scaleY = cvs.height / rect.height;
+          const mx = (evt.clientX - rect.left) * scaleX;
+          const my = (evt.clientY - rect.top) * scaleY;
+
+          const mode = state.tab1?.step1_4?.mode || 'seta';
+
+          if (mode === 'seta' || mode === 'setb') {
+            // Check Card Deck clicks (y: 80 ~ 145)
+            // 4 cards at cx: 85, 175, 265, 355
+            const cards = (mode === 'seta') ? [1, 2, 3, 4] : [0, 1, 2, 3];
+            const cX = [85, 175, 265, 355];
+            for (let i = 0; i < 4; i++) {
+              if (mx >= cX[i] - 30 && mx <= cX[i] + 30 && my >= 80 && my <= 145) {
+                pickCard1_4(cards[i]);
+                return;
+              }
+            }
+
+            // Check Slot clicks to reset
+            // Tens slot: 130, 215, w: 75, h: 75
+            // Ones slot: 235, 215, w: 75, h: 75
+            if (mx >= 130 - 38 && mx <= 130 + 38 && my >= 215 - 38 && my <= 215 + 38) {
+              state.tab1.step1_4.tensCard = null;
+              updateBadge1_4();
+              return;
+            }
+            if (mx >= 235 - 38 && mx <= 235 + 38 && my >= 215 - 38 && my <= 215 + 38) {
+              state.tab1.step1_4.onesCard = null;
+              updateBadge1_4();
+              return;
+            }
+          }
+        });
+        clickBound1_4 = true;
+      }
+
+      let animTick = 0;
+
+      function renderFrame() {
+        if (state.currentSubStep !== '1-4') {
+          cancelAnimationFrame(animFrame1_4);
+          animFrame1_4 = null;
+          return;
+        }
+
+        animTick++;
+        const mode = state.tab1?.step1_4?.mode || 'seta';
+        const tensCard = state.tab1?.step1_4?.tensCard;
+        const onesCard = state.tab1?.step1_4?.onesCard;
+
+        ctx.clearRect(0, 0, 760, 460);
+
+        // Background
+        const bgGrad = ctx.createLinearGradient(0, 0, 760, 460);
+        bgGrad.addColorStop(0, '#0f0c1b');
+        bgGrad.addColorStop(1, '#0f172a');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, 760, 460);
+
+        // Header Top Bar
+        ctx.fillStyle = 'rgba(30, 41, 59, 0.7)';
+        ctx.fillRect(15, 12, 730, 42);
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(15, 12, 730, 42);
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.textAlign = 'left';
+        if (mode === 'seta') {
+          ctx.fillText('🎴 [교과서 예제 1] 수 카드 {1, 2, 3, 4}로 두 자리 자연수 만들기 랩', 28, 38);
+        } else if (mode === 'setb') {
+          ctx.fillText('🎴 [교과서 문제 5] 수 카드 {0, 1, 2, 3}으로 두 자리 자연수 만들기 랩 (0 주의!)', 28, 38);
+        } else {
+          ctx.fillText('👥 [교과서 생각 넓히기] 회장·부회장 선출(순서 O) vs 대표 2명 선출(순서 X) 비교 랩', 28, 38);
+        }
+
+        ctx.fillStyle = '#c084fc';
+        ctx.font = 'bold 12px Pretendard, sans-serif';
+        ctx.textAlign = 'right';
+        if (mode === 'seta') ctx.fillText('공식: 십의 자리(4) × 일의 자리(3) = 12개', 732, 38);
+        else if (mode === 'setb') ctx.fillText('공식: 십의 자리(3, 0제외) × 일의 자리(3) = 9개', 732, 38);
+        else ctx.fillText('원리: 순서가 없으면 중복 개수(2)로 나눈다: (4×3)÷2 = 6', 732, 38);
+
+        if (mode === 'seta' || mode === 'setb') {
+          // ===================================================================
+          // MODE 1 & 2: DIGIT CARDS LAB (seta & setb)
+          // ===================================================================
+
+          // 1. Deck Box (x: 25 ~ 470, y: 65 ~ 160)
+          ctx.save();
+          ctx.fillStyle = 'rgba(30, 41, 59, 0.5)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(25, 65, 445, 95, 10);
+          else ctx.rect(25, 65, 445, 95);
+          ctx.fill();
+          ctx.strokeStyle = (mode === 'seta') ? '#7c3aed' : '#d97706';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          ctx.fillStyle = (mode === 'seta') ? '#c4b5fd' : '#fde68a';
+          ctx.font = 'bold 11.5px Pretendard, sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText((mode === 'seta') ? '🎴 수 카드 4장 덱 [ 1, 2, 3, 4 ] (카드를 클릭하여 슬롯에 배치)' : '🎴 수 카드 4장 덱 [ 0, 1, 2, 3 ] (⚠️ 0은 십의 자리에 올 수 없음!)', 38, 84);
+
+          const cards = (mode === 'seta') ? [1, 2, 3, 4] : [0, 1, 2, 3];
+          const cX = [85, 175, 265, 355];
+
+          cards.forEach((num, idx) => {
+            const isUsed = (tensCard === num || onesCard === num);
+            const x = cX[idx], y = 118;
+            ctx.save();
+            ctx.translate(x, y);
+
+            if (isUsed) {
+              ctx.fillStyle = 'rgba(51, 65, 85, 0.4)';
+              ctx.strokeStyle = '#475569';
+              ctx.lineWidth = 1;
+            } else {
+              ctx.fillStyle = (num === 0) ? '#451a03' : '#1e1b4b';
+              ctx.strokeStyle = (num === 0) ? '#f59e0b' : '#a855f7';
+              ctx.lineWidth = 2;
+            }
+
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(-28, -26, 56, 52, 8);
+            else ctx.rect(-28, -26, 56, 52);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = isUsed ? '#64748b' : ((num === 0) ? '#fbbf24' : '#f8fafc');
+            ctx.font = 'bold 22px Pretendard, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(num, 0, 8);
+            ctx.restore();
+          });
+          ctx.restore();
+
+          // 2. Slot Placement Area (x: 25 ~ 470, y: 170 ~ 275)
+          ctx.save();
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(25, 170, 445, 105, 10);
+          else ctx.rect(25, 170, 445, 105);
+          ctx.fill();
+          ctx.strokeStyle = '#475569';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          // Tens Slot (cx: 110, cy: 228)
+          ctx.fillStyle = tensCard !== null ? '#4c1d95' : 'rgba(30, 41, 59, 0.6)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(80, 190, 68, 68, 8);
+          else ctx.rect(80, 190, 68, 68);
+          ctx.fill();
+          ctx.strokeStyle = tensCard !== null ? '#a855f7' : '#64748b';
+          ctx.lineWidth = tensCard !== null ? 2.5 : 1;
+          if (tensCard === null) ctx.setLineDash([4, 4]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = tensCard !== null ? '#ffffff' : '#94a3b8';
+          ctx.font = tensCard !== null ? 'bold 30px Pretendard, sans-serif' : '11px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          if (tensCard !== null) ctx.fillText(tensCard, 114, 234);
+          else ctx.fillText('십의 자리', 114, 228);
+
+          // Multiply symbol
+          ctx.fillStyle = '#64748b';
+          ctx.font = 'bold 20px Pretendard, sans-serif';
+          ctx.fillText('와', 165, 230);
+
+          // Ones Slot (cx: 215, cy: 228)
+          ctx.fillStyle = onesCard !== null ? '#1e3a8a' : 'rgba(30, 41, 59, 0.6)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(185, 190, 68, 68, 8);
+          else ctx.rect(185, 190, 68, 68);
+          ctx.fill();
+          ctx.strokeStyle = onesCard !== null ? '#3b82f6' : '#64748b';
+          ctx.lineWidth = onesCard !== null ? 2.5 : 1;
+          if (onesCard === null) ctx.setLineDash([4, 4]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = onesCard !== null ? '#ffffff' : '#94a3b8';
+          ctx.font = onesCard !== null ? 'bold 30px Pretendard, sans-serif' : '11px Pretendard, sans-serif';
+          if (onesCard !== null) ctx.fillText(onesCard, 219, 234);
+          else ctx.fillText('일의 자리', 219, 228);
+
+          // Result arrow and box
+          ctx.fillStyle = '#f8fafc';
+          ctx.font = 'bold 22px Pretendard, sans-serif';
+          ctx.fillText('➔', 280, 232);
+
+          // Combined Result Display
+          const hasCompleteNum = (tensCard !== null && onesCard !== null);
+          ctx.fillStyle = hasCompleteNum ? '#065f46' : 'rgba(30, 41, 59, 0.4)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(310, 190, 140, 68, 8);
+          else ctx.rect(310, 190, 140, 68);
+          ctx.fill();
+          ctx.strokeStyle = hasCompleteNum ? '#10b981' : '#334155';
+          ctx.lineWidth = hasCompleteNum ? 2 : 1;
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          if (hasCompleteNum) {
+            ctx.fillStyle = '#34d399';
+            ctx.font = 'bold 32px Pretendard, sans-serif';
+            ctx.fillText(`${tensCard}${onesCard}`, 380, 236);
+          } else {
+            ctx.fillStyle = '#64748b';
+            ctx.font = '12px Pretendard, sans-serif';
+            ctx.fillText('두 자리 수 완성', 380, 230);
+          }
+          ctx.restore();
+
+          // 3. Matrix of All Possible Numbers (x: 25 ~ 470, y: 285 ~ 445)
+          ctx.save();
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(25, 285, 445, 160, 10);
+          else ctx.rect(25, 285, 445, 160);
+          ctx.fill();
+          ctx.strokeStyle = '#334155';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          ctx.fillStyle = '#c4b5fd';
+          ctx.font = 'bold 11.5px Pretendard, sans-serif';
+          ctx.textAlign = 'left';
+          const listTitle = (mode === 'seta')
+            ? '📋 만들 수 있는 두 자리 자연수 전체 목록 (총 12개)'
+            : '📋 만들 수 있는 두 자리 자연수 전체 목록 (0 제외 ➔ 총 9개)';
+          ctx.fillText(listTitle, 38, 305);
+
+          // Render Number Badges
+          const allNums = (mode === 'seta')
+            ? [12, 13, 14, 21, 23, 24, 31, 32, 34, 41, 42, 43]
+            : [10, 12, 13, 20, 21, 23, 30, 31, 32];
+
+          const startX = 42, colGap = 70, rowGap = 34, startY = 325;
+          const colsPerRow = (mode === 'seta') ? 6 : 5;
+
+          allNums.forEach((n, idx) => {
+            const col = idx % colsPerRow;
+            const row = Math.floor(idx / colsPerRow);
+            const bx = startX + col * colGap;
+            const by = startY + row * rowGap;
+
+            const isCurrent = (hasCompleteNum && (tensCard * 10 + onesCard) === n);
+
+            ctx.fillStyle = isCurrent ? '#059669' : '#1e293b';
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(bx, by, 58, 26, 6);
+            else ctx.rect(bx, by, 58, 26);
+            ctx.fill();
+            ctx.strokeStyle = isCurrent ? '#34d399' : '#475569';
+            ctx.lineWidth = isCurrent ? 2 : 1;
+            ctx.stroke();
+
+            ctx.fillStyle = isCurrent ? '#ffffff' : '#e2e8f0';
+            ctx.font = isCurrent ? 'bold 13px Pretendard, sans-serif' : '12px Pretendard, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(n, bx + 29, by + 18);
+          });
+          ctx.restore();
+
+        } else {
+          // ===================================================================
+          // MODE 3: REPRESENTATIVES COMPARISON LAB (reps)
+          // ===================================================================
+          ctx.save();
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(25, 65, 445, 380, 10);
+          else ctx.rect(25, 65, 445, 380);
+          ctx.fill();
+          ctx.strokeStyle = '#0284c7';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          // 4 Candidates Avatars
+          ctx.fillStyle = '#38bdf8';
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText('👥 4명의 후보: A, B, C, D (자격에 따른 경우의 수 차이)', 38, 86);
+
+          const cands = [
+            { id: 'A', name: 'A (민준)', color: '#3b82f6' },
+            { id: 'B', name: 'B (서연)', color: '#ec4899' },
+            { id: 'C', name: 'C (도윤)', color: '#10b981' },
+            { id: 'D', name: 'D (지우)', color: '#f59e0b' }
+          ];
+
+          cands.forEach((c, idx) => {
+            const cx = 75 + idx * 105, cy = 118;
+            ctx.fillStyle = c.color;
+            ctx.beginPath();
+            ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 12px Pretendard, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(c.id, cx, cy + 4);
+
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '10px Pretendard, sans-serif';
+            ctx.fillText(c.name, cx, cy + 28);
+          });
+
+          // Comparison 2 Columns
+          // Left: President & Vice (Order Matters)
+          ctx.fillStyle = 'rgba(30, 58, 138, 0.3)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(35, 155, 205, 275, 8);
+          else ctx.rect(35, 155, 205, 275);
+          ctx.fill();
+          ctx.strokeStyle = '#3b82f6';
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+
+          ctx.fillStyle = '#93c5fd';
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('👑 회장 1명 & 부회장 1명', 137, 175);
+          ctx.fillStyle = '#38bdf8';
+          ctx.font = '10.5px Pretendard, sans-serif';
+          ctx.fillText('(자격 다름 ➔ 순서 있음: 4×3 = 12)', 137, 192);
+
+          const pvList = [
+            'AB', 'AC', 'AD',
+            'BA', 'BC', 'BD',
+            'CA', 'CB', 'CD',
+            'DA', 'DB', 'DC'
+          ];
+
+          pvList.forEach((pair, idx) => {
+            const px = 55 + (idx % 3) * 55;
+            const py = 215 + Math.floor(idx / 3) * 50;
+            ctx.fillStyle = '#1e293b';
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(px - 22, py - 14, 44, 26, 4);
+            else ctx.rect(px - 22, py - 14, 44, 26);
+            ctx.fill();
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = 'bold 11px Pretendard, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(pair, px, py + 4);
+          });
+
+          // Right: 2 Representatives (Order DOES NOT Matter)
+          ctx.fillStyle = 'rgba(6, 78, 59, 0.3)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(255, 155, 205, 275, 8);
+          else ctx.rect(255, 155, 205, 275);
+          ctx.fill();
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+
+          ctx.fillStyle = '#a7f3d0';
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('🤝 자격이 같은 대표 2명', 357, 175);
+          ctx.fillStyle = '#34d399';
+          ctx.font = '10.5px Pretendard, sans-serif';
+          ctx.fillText('(AB=BA 같음 ➔ (4×3)÷2 = 6)', 357, 192);
+
+          const repList = [
+            { name: '{ A, B }', dup: 'AB = BA' },
+            { name: '{ A, C }', dup: 'AC = CA' },
+            { name: '{ A, D }', dup: 'AD = DA' },
+            { name: '{ B, C }', dup: 'BC = CB' },
+            { name: '{ B, D }', dup: 'BD = DB' },
+            { name: '{ C, D }', dup: 'CD = DC' }
+          ];
+
+          repList.forEach((rep, idx) => {
+            const rx = 357;
+            const ry = 220 + idx * 34;
+
+            ctx.fillStyle = '#064e3b';
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(rx - 85, ry - 13, 170, 26, 4);
+            else ctx.rect(rx - 85, ry - 13, 170, 26);
+            ctx.fill();
+            ctx.strokeStyle = '#059669';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.fillStyle = '#6ee7b7';
+            ctx.font = 'bold 12px Pretendard, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText(rep.name, rx - 75, ry + 4);
+
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '10px Pretendard, sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(rep.dup, rx + 75, ry + 4);
+          });
+
+          ctx.restore();
+        }
+
+        // =====================================================================
+        // 우측 HUD 수학 분석 카드 (485, 65, 255, 380)
+        // =====================================================================
+        const hudX = 485, hudY = 65, hudW = 255, hudH = 380;
+        ctx.save();
+        const hudGrad = ctx.createLinearGradient(hudX, hudY, hudX + hudW, hudY + hudH);
+        hudGrad.addColorStop(0, 'rgba(15, 23, 42, 0.95)');
+        hudGrad.addColorStop(1, 'rgba(30, 41, 59, 0.95)');
+        ctx.fillStyle = hudGrad;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(hudX, hudY, hudW, hudH, 12);
+        else ctx.rect(hudX, hudY, hudW, hudH);
+        ctx.fill();
+
+        ctx.strokeStyle = (mode === 'reps') ? '#38bdf8' : ((mode === 'seta') ? '#a855f7' : '#f59e0b');
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('📊 여러 가지 경우의 수 분석 HUD', hudX + 14, hudY + 26);
+
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(hudX + 12, hudY + 38);
+        ctx.lineTo(hudX + hudW - 12, hudY + 38);
+        ctx.stroke();
+
+        if (mode === 'seta') {
+          // Set A Analysis
+          ctx.fillStyle = 'rgba(124, 58, 237, 0.15)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(hudX + 14, hudY + 48, hudW - 28, 48, 8);
+          else ctx.rect(hudX + 14, hudY + 48, hudW - 28, 48);
+          ctx.fill();
+          ctx.strokeStyle = '#8b5cf6';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          ctx.fillStyle = '#c4b5fd';
+          ctx.font = '11px Pretendard, sans-serif';
+          ctx.fillText('십의 자리: {1, 2, 3, 4}', hudX + 24, hudY + 67);
+          ctx.fillStyle = '#a78bfa';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillText('4가지', hudX + hudW - 24, hudY + 77);
+          ctx.textAlign = 'left';
+
+          ctx.fillStyle = '#f59e0b';
+          ctx.font = 'bold 16px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('✖ (남은 카드 중 1장 선택)', hudX + hudW / 2, hudY + 114);
+
+          ctx.fillStyle = 'rgba(124, 58, 237, 0.15)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(hudX + 14, hudY + 124, hudW - 28, 48, 8);
+          else ctx.rect(hudX + 14, hudY + 124, hudW - 28, 48);
+          ctx.fill();
+          ctx.strokeStyle = '#8b5cf6';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          ctx.fillStyle = '#c4b5fd';
+          ctx.font = '11px Pretendard, sans-serif';
+          ctx.fillText('일의 자리: (사용한 1장 제외)', hudX + 24, hudY + 143);
+          ctx.fillStyle = '#a78bfa';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillText('3가지', hudX + hudW - 24, hudY + 153);
+
+          // Highlight
+          ctx.fillStyle = 'rgba(168, 85, 247, 0.15)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(hudX + 14, hudY + 185, hudW - 28, 70, 8);
+          else ctx.rect(hudX + 14, hudY + 185, hudW - 28, 70);
+          ctx.fill();
+          ctx.strokeStyle = '#c084fc';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          ctx.fillStyle = '#f8fafc';
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText('두 자리 수 총 개수:', hudX + 24, hudY + 208);
+
+          ctx.fillStyle = '#34d399';
+          ctx.font = 'bold 18px Pretendard, sans-serif';
+          ctx.fillText('4 × 3 =', hudX + 24, hudY + 238);
+
+          ctx.fillStyle = '#fbbf24';
+          ctx.font = 'bold 22px Pretendard, sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillText('총 12개', hudX + hudW - 24, hudY + 240);
+
+        } else if (mode === 'setb') {
+          // Set B Analysis (with 0)
+          ctx.fillStyle = 'rgba(217, 119, 6, 0.15)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(hudX + 14, hudY + 48, hudW - 28, 48, 8);
+          else ctx.rect(hudX + 14, hudY + 48, hudW - 28, 48);
+          ctx.fill();
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          ctx.fillStyle = '#fde68a';
+          ctx.font = '11px Pretendard, sans-serif';
+          ctx.fillText('십의 자리: (0 제외 {1,2,3})', hudX + 24, hudY + 67);
+          ctx.fillStyle = '#fbbf24';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillText('3가지', hudX + hudW - 24, hudY + 77);
+          ctx.textAlign = 'left';
+
+          ctx.fillStyle = '#f59e0b';
+          ctx.font = 'bold 16px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('✖ (0 포함 남은 3장)', hudX + hudW / 2, hudY + 114);
+
+          ctx.fillStyle = 'rgba(217, 119, 6, 0.15)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(hudX + 14, hudY + 124, hudW - 28, 48, 8);
+          else ctx.rect(hudX + 14, hudY + 124, hudW - 28, 48);
+          ctx.fill();
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          ctx.fillStyle = '#fde68a';
+          ctx.font = '11px Pretendard, sans-serif';
+          ctx.fillText('일의 자리: (0 포함 3장)', hudX + 24, hudY + 143);
+          ctx.fillStyle = '#fbbf24';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillText('3가지', hudX + hudW - 24, hudY + 153);
+
+          // Highlight
+          ctx.fillStyle = 'rgba(245, 158, 11, 0.15)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(hudX + 14, hudY + 185, hudW - 28, 70, 8);
+          else ctx.rect(hudX + 14, hudY + 185, hudW - 28, 70);
+          ctx.fill();
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          ctx.fillStyle = '#f8fafc';
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText('두 자리 수 총 개수 (0제외):', hudX + 24, hudY + 208);
+
+          ctx.fillStyle = '#34d399';
+          ctx.font = 'bold 18px Pretendard, sans-serif';
+          ctx.fillText('3 × 3 =', hudX + 24, hudY + 238);
+
+          ctx.fillStyle = '#fbbf24';
+          ctx.font = 'bold 22px Pretendard, sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillText('총 9개', hudX + hudW - 24, hudY + 240);
+
+        } else {
+          // Reps Analysis
+          ctx.fillStyle = 'rgba(2, 132, 199, 0.15)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(hudX + 14, hudY + 48, hudW - 28, 48, 8);
+          else ctx.rect(hudX + 14, hudY + 48, hudW - 28, 48);
+          ctx.fill();
+          ctx.strokeStyle = '#0284c7';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          ctx.fillStyle = '#7dd3fc';
+          ctx.font = '11px Pretendard, sans-serif';
+          ctx.fillText('회장 1명, 부회장 1명 (순서 O):', hudX + 24, hudY + 67);
+          ctx.fillStyle = '#38bdf8';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillText('4×3 = 12가지', hudX + hudW - 24, hudY + 77);
+          ctx.textAlign = 'left';
+
+          ctx.fillStyle = '#f59e0b';
+          ctx.font = 'bold 14px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('÷ 2 (AB, BA 순서 중복 제거)', hudX + hudW / 2, hudY + 114);
+
+          ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(hudX + 14, hudY + 124, hudW - 28, 48, 8);
+          else ctx.rect(hudX + 14, hudY + 124, hudW - 28, 48);
+          ctx.fill();
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          ctx.fillStyle = '#a7f3d0';
+          ctx.font = '11px Pretendard, sans-serif';
+          ctx.fillText('자격 같은 대표 2명 (순서 X):', hudX + 24, hudY + 143);
+          ctx.fillStyle = '#34d399';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillText('12 ÷ 2 = 6가지', hudX + hudW - 24, hudY + 153);
+
+          // Highlight
+          ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(hudX + 14, hudY + 185, hudW - 28, 70, 8);
+          else ctx.rect(hudX + 14, hudY + 185, hudW - 28, 70);
+          ctx.fill();
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          ctx.fillStyle = '#f8fafc';
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText('자격 같은 대표 공식:', hudX + 24, hudY + 208);
+
+          ctx.fillStyle = '#34d399';
+          ctx.font = 'bold 18px Pretendard, sans-serif';
+          ctx.fillText('(4 × 3) / 2 =', hudX + 24, hudY + 238);
+
+          ctx.fillStyle = '#fbbf24';
+          ctx.font = 'bold 22px Pretendard, sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillText('총 6가지', hudX + hudW - 24, hudY + 240);
+        }
+
+        // Summary Box
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(hudX + 14, hudY + 268, hudW - 28, 98, 8);
+        else ctx.rect(hudX + 14, hudY + 268, hudW - 28, 98);
+        ctx.fill();
+
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = 'bold 11px Pretendard, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('💡 [핵심 정리] 자리수와 대표', hudX + 22, hudY + 288);
+
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = '10.5px Pretendard, sans-serif';
+        ctx.fillText('1. 자연수 십의 자리에는 0이 불가!', hudX + 22, hudY + 308);
+        ctx.fillText('2. 자격이 다르면 순서 고려 (n × (n-1))', hudX + 22, hudY + 325);
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 11.5px Pretendard, sans-serif';
+        ctx.fillText('3. 자격 같으면 순서 없음 (÷ 2)', hudX + 22, hudY + 348);
+
+        ctx.restore();
+
+        animFrame1_4 = requestAnimationFrame(renderFrame);
+      }
+
+      renderFrame();
+    }
+
+    window.drawFuncStep1_4Canvas = drawFuncStep1_4Canvas;
+    window.drawStep1_4 = drawFuncStep1_4Canvas;
+    window.setMode1_4 = setMode1_4;
+    window.pickCard1_4 = pickCard1_4;
+    window.resetCards1_4 = resetCards1_4;
+
     // Stub Drawers for other steps
     function createGenericStepDrawer(code) {
       return function() {
@@ -5237,7 +6174,7 @@
 
     // Register all stub drawers
     Object.keys(SUBSTEPS_DATA).forEach(code => {
-      if (code !== '0-1' && code !== '0-2' && code !== '0-3' && code !== '0-4' && code !== '1-1' && code !== '1-2' && code !== '1-3') {
+      if (code !== '0-1' && code !== '0-2' && code !== '0-3' && code !== '0-4' && code !== '1-1' && code !== '1-2' && code !== '1-3' && code !== '1-4') {
         const fnName = 'drawFuncStep' + code.replace('-', '_') + 'Canvas';
         window[fnName] = createGenericStepDrawer(code);
       }
@@ -5505,7 +6442,7 @@
         }
       }
 
-      // Step 0-1, Step 0-2, Step 0-3, Step 0-4, Step 1-1, Step 1-2, Step 1-3 전용 컨트롤 패널 표시 여부
+      // Step 0-1, Step 0-2, Step 0-3, Step 0-4, Step 1-1, Step 1-2, Step 1-3, Step 1-4 전용 컨트롤 패널 표시 여부
       const ctrlPanel01 = document.getElementById('canvas-control-panel');
       const ctrlPanel02 = document.getElementById('canvas-control-panel-0-2');
       const ctrlPanel03 = document.getElementById('canvas-control-panel-0-3');
@@ -5513,6 +6450,7 @@
       const ctrlPanel11 = document.getElementById('canvas-control-panel-1-1');
       const ctrlPanel12 = document.getElementById('canvas-control-panel-1-2');
       const ctrlPanel13 = document.getElementById('canvas-control-panel-1-3');
+      const ctrlPanel14 = document.getElementById('canvas-control-panel-1-4');
       if (ctrlPanel01) ctrlPanel01.style.display = (code === '0-1') ? 'flex' : 'none';
       if (ctrlPanel02) ctrlPanel02.style.display = (code === '0-2') ? 'flex' : 'none';
       if (ctrlPanel03) ctrlPanel03.style.display = (code === '0-3') ? 'flex' : 'none';
@@ -5520,6 +6458,7 @@
       if (ctrlPanel11) ctrlPanel11.style.display = (code === '1-1') ? 'flex' : 'none';
       if (ctrlPanel12) ctrlPanel12.style.display = (code === '1-2') ? 'flex' : 'none';
       if (ctrlPanel13) ctrlPanel13.style.display = (code === '1-3') ? 'flex' : 'none';
+      if (ctrlPanel14) ctrlPanel14.style.display = (code === '1-4') ? 'flex' : 'none';
 
       restoreFormInputs(code);
 
