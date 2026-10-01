@@ -28409,34 +28409,550 @@ function checkStep_1_12() {
     }
 
     // 3-12 (p.21): 스스로 확인하기 3: 범위 내 서로소 찾기
-    function drawCanvas_3_12(container) { createDefaultCanvas_3(container, '🎨 [3-12] 15와 서로소인 수 필터'); }
+    function drawCanvas_3_12(container) {
+      if (container._animId_3_12) {
+        cancelAnimationFrame(container._animId_3_12);
+        container._animId_3_12 = null;
+      }
+      container.innerHTML = '';
+
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; height:100%; box-sizing:border-box;">
+          <!-- 상단 컨트롤러 및 상태 안내 바 -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+            <div id="badge-3-12" style="font-size:0.86rem; font-weight:700; color:#1e293b; background:#f1f5f9; padding:6px 14px; border-radius:20px; border:1px solid #cbd5e1; flex:1; min-width:240px;">
+              버튼을 클릭하여 15와 서로소인 수를 걸러내는 필터링 과정을 확인해 보세요!
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button id="btn-prime15-3-12" class="btn btn-sm btn-outline-primary" style="font-weight:700;">➊ 15 소인수분해 (3×5)</button>
+              <button id="btn-mul3-3-12" class="btn btn-sm btn-outline-primary" style="font-weight:700;">➋ 3의 배수 걸러내기</button>
+              <button id="btn-mul5-3-12" class="btn btn-sm btn-outline-primary" style="font-weight:700;">➌ 5의 배수 걸러내기</button>
+              <button id="btn-coprime-3-12" class="btn btn-sm btn-warning" style="font-weight:800; color:#1e293b;">⚡ 서로소 카드 추출</button>
+              <button id="btn-reset-3-12" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">⟲ 초기화</button>
+            </div>
+          </div>
+          <!-- Canvas 렌더링 영역 -->
+          <div style="flex:1; min-height:370px; position:relative;">
+            <canvas id="canvas-3-12" style="width:100%; height:100%; display:block; border-radius:12px; background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); border:1px solid #e2e8f0;"></canvas>
+          </div>
+        </div>
+      `;
+
+      const canvas = container.querySelector('#canvas-3-12');
+      const badgeStatus = container.querySelector('#badge-3-12');
+      const btnPrime15 = container.querySelector('#btn-prime15-3-12');
+      const btnMul3 = container.querySelector('#btn-mul3-3-12');
+      const btnMul5 = container.querySelector('#btn-mul5-3-12');
+      const btnCoprime = container.querySelector('#btn-coprime-3-12');
+      const btnReset = container.querySelector('#btn-reset-3-12');
+
+      const ctx = canvas.getContext('2d');
+      let w = 560, h = 400;
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        w = rect.width || 560;
+        h = rect.height || 400;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+
+      const ro = new ResizeObserver(() => {
+        resize();
+      });
+      ro.observe(canvas);
+
+      // 모드: 0: 초기, 1: 15 소인수분해, 2: 3의 배수 제외, 3: 5의 배수 제외, 4: 서로소 추출 완료
+      let currentMode = 0;
+      let particles = [];
+      let hoveredNum = null;
+
+      // 20부터 30까지 11개 수
+      const allNumbers = [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30];
+
+      function spawnConfetti(count = 60) {
+        const colors = ['#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#f43f5e'];
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: w / 2 + (Math.random() - 0.5) * 140,
+            y: 195 + (Math.random() - 0.5) * 40,
+            vx: (Math.random() - 0.5) * 11,
+            vy: (Math.random() - 0.85) * 10 - 2,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.01
+          });
+        }
+      }
+
+      function setMode(mode) {
+        currentMode = mode;
+
+        if (btnPrime15) btnPrime15.className = `btn btn-sm ${mode === 1 ? 'btn-primary' : 'btn-outline-primary'}`;
+        if (btnMul3) btnMul3.className = `btn btn-sm ${mode === 2 ? 'btn-primary' : 'btn-outline-primary'}`;
+        if (btnMul5) btnMul5.className = `btn btn-sm ${mode === 3 ? 'btn-primary' : 'btn-outline-primary'}`;
+        if (btnCoprime) btnCoprime.className = `btn btn-sm ${mode === 4 ? 'btn-warning text-dark font-weight-bold' : 'btn-warning text-dark'}`;
+
+        if (badgeStatus) {
+          if (mode === 0) {
+            badgeStatus.innerText = '버튼을 클릭하여 15와 서로소인 수를 걸러내는 필터링 과정을 확인해 보세요!';
+          } else if (mode === 1) {
+            badgeStatus.innerHTML = '➊ <b>15 = 3 × 5</b>: 15와 서로소이려면 <b>3의 배수도 아니고 5의 배수도 아니어야 함</b>!';
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          } else if (mode === 2) {
+            badgeStatus.innerHTML = '➋ <b>3의 배수 걸러내기</b>: 21, 24, 27, 30은 최대공약수가 3(또는 15)이 되므로 ❌ 제외!';
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          } else if (mode === 3) {
+            badgeStatus.innerHTML = '➌ <b>5의 배수 걸러내기</b>: 20, 25, 30은 최대공약수가 5(또는 15)가 되므로 ❌ 제외!';
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          } else if (mode === 4) {
+            badgeStatus.innerHTML = '👑 <b>서로소 카드 추출 완료!</b> 15와 서로소인 수: <b>22, 23, 26, 28, 29</b> (총 5개)';
+            spawnConfetti(60);
+            if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+          }
+        }
+      }
+
+      window._step3_12_triggerSuccess = function() {
+        setMode(4);
+        setTimeout(() => spawnConfetti(60), 400);
+      };
+
+      btnPrime15?.addEventListener('click', () => setMode(1));
+      btnMul3?.addEventListener('click', () => setMode(2));
+      btnMul5?.addEventListener('click', () => setMode(3));
+      btnCoprime?.addEventListener('click', () => setMode(4));
+      btnReset?.addEventListener('click', () => setMode(0));
+
+      // 11개 수 카드 위치 계산 헬퍼
+      function getCardPos(n) {
+        const cardW = 58;
+        const cardH = 50;
+        const gap = 12;
+
+        if (n <= 25) {
+          // 1행: 20, 21, 22, 23, 24, 25 (6개)
+          const row1Count = 6;
+          const totalW = row1Count * cardW + (row1Count - 1) * gap;
+          const startX = (w - totalW) / 2 + cardW / 2;
+          const idx = n - 20;
+          return { x: startX + idx * (cardW + gap), y: 78, w: cardW, h: cardH };
+        } else {
+          // 2행: 26, 27, 28, 29, 30 (5개)
+          const row2Count = 5;
+          const totalW = row2Count * cardW + (row2Count - 1) * gap;
+          const startX = (w - totalW) / 2 + cardW / 2;
+          const idx = n - 26;
+          return { x: startX + idx * (cardW + gap), y: 138, w: cardW, h: cardH };
+        }
+      }
+
+      // 마우스 호버 감지
+      canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        hoveredNum = null;
+        for (let n of allNumbers) {
+          const pos = getCardPos(n);
+          if (Math.abs(mx - pos.x) <= pos.w / 2 && Math.abs(my - pos.y) <= pos.h / 2) {
+            hoveredNum = n;
+            break;
+          }
+        }
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        hoveredNum = null;
+      });
+
+      let pulseTimer = 0;
+
+      // 렌더링 루프
+      function render() {
+        ctx.clearRect(0, 0, w, h);
+        pulseTimer += 0.05;
+
+        // 상단 타이틀
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.fillStyle = '#0f172a';
+        ctx.fillText('🔍 20 이상 30 이하 자연수 중 15(=3×5)와 서로소인 수 필터', w / 2, 24);
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillStyle = (currentMode >= 1) ? '#0284c7' : '#64748b';
+        ctx.fillText('15 = 3 × 5 이므로, 15와 서로소인 수는 3의 배수도 아니고 5의 배수도 아니어야 함!', w / 2, 42);
+        ctx.restore();
+
+        // 11개 카드 렌더링
+        for (let n of allNumbers) {
+          const pos = getCardPos(n);
+
+          const isMul3 = (n % 3 === 0);
+          const isMul5 = (n % 5 === 0);
+          const isCoprime = (!isMul3 && !isMul5);
+
+          let isEliminated3 = (currentMode >= 2 && isMul3);
+          let isEliminated5 = (currentMode >= 3 && isMul5);
+          let isHighlightCoprime = (currentMode >= 3 && isCoprime);
+
+          ctx.save();
+
+          // 배경 및 테두리 설정
+          if (isHighlightCoprime) {
+            ctx.fillStyle = '#ecfdf5';
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = (currentMode === 4) ? 2.5 : 2;
+            if (currentMode === 4) {
+              ctx.shadowColor = 'rgba(16, 185, 129, 0.45)';
+              ctx.shadowBlur = 10 + Math.sin(pulseTimer) * 3;
+            }
+          } else if (isEliminated3 || isEliminated5) {
+            ctx.fillStyle = '#f8fafc';
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 1;
+          } else if (currentMode === 1) {
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#93c5fd';
+            ctx.lineWidth = 1.5;
+          } else {
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 1.5;
+          }
+
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(pos.x - pos.w / 2, pos.y - pos.h / 2, pos.w, pos.h, 8);
+          else ctx.rect(pos.x - pos.w / 2, pos.y - pos.h / 2, pos.w, pos.h);
+          ctx.fill();
+          ctx.stroke();
+
+          // 숫자
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 17px Pretendard, sans-serif';
+
+          if (isHighlightCoprime) {
+            ctx.fillStyle = '#059669';
+            ctx.fillText(n, pos.x, pos.y - 7);
+          } else if (isEliminated3 || isEliminated5) {
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText(n, pos.x, pos.y - 7);
+          } else {
+            ctx.fillStyle = '#1e293b';
+            ctx.fillText(n, pos.x, pos.y - 7);
+          }
+
+          // 하단 라벨 및 취소선
+          ctx.font = 'bold 9.5px Pretendard, sans-serif';
+          if (isEliminated3) {
+            ctx.fillStyle = '#ef4444';
+            ctx.fillText('3의배수(X)', pos.x, pos.y + 14);
+
+            // 취소선
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(pos.x - pos.w / 2 + 6, pos.y - 7);
+            ctx.lineTo(pos.x + pos.w / 2 - 6, pos.y - 7);
+            ctx.stroke();
+          } else if (isEliminated5) {
+            ctx.fillStyle = '#f97316';
+            ctx.fillText('5의배수(X)', pos.x, pos.y + 14);
+
+            // 취소선
+            ctx.strokeStyle = '#f97316';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(pos.x - pos.w / 2 + 6, pos.y - 7);
+            ctx.lineTo(pos.x + pos.w / 2 - 6, pos.y - 7);
+            ctx.stroke();
+          } else if (isHighlightCoprime) {
+            ctx.fillStyle = '#059669';
+            ctx.fillText('서로소 👑', pos.x, pos.y + 14);
+          } else {
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText('후보', pos.x, pos.y + 14);
+          }
+
+          ctx.restore();
+        }
+
+        // 마우스 호버 시 툴팁
+        if (hoveredNum !== null) {
+          ctx.save();
+          let tipText = '';
+          if (hoveredNum === 20) tipText = '20 = 2²×5 ➔ 5의 배수이므로 gcd(20, 15) = 5 (서로소 아님 ❌)';
+          else if (hoveredNum === 21) tipText = '21 = 3×7 ➔ 3의 배수이므로 gcd(21, 15) = 3 (서로소 아님 ❌)';
+          else if (hoveredNum === 22) tipText = '22 = 2×11 ➔ 3과 5의 배수가 아니므로 gcd(22, 15) = 1 (서로소! 👑)';
+          else if (hoveredNum === 23) tipText = '23은 소수 ➔ 3과 5의 배수가 아니므로 gcd(23, 15) = 1 (서로소! 👑)';
+          else if (hoveredNum === 24) tipText = '24 = 2³×3 ➔ 3의 배수이므로 gcd(24, 15) = 3 (서로소 아님 ❌)';
+          else if (hoveredNum === 25) tipText = '25 = 5² ➔ 5의 배수이므로 gcd(25, 15) = 5 (서로소 아님 ❌)';
+          else if (hoveredNum === 26) tipText = '26 = 2×13 ➔ 3과 5의 배수가 아니므로 gcd(26, 15) = 1 (서로소! 👑)';
+          else if (hoveredNum === 27) tipText = '27 = 3³ ➔ 3의 배수이므로 gcd(27, 15) = 3 (서로소 아님 ❌)';
+          else if (hoveredNum === 28) tipText = '28 = 2²×7 ➔ 3과 5의 배수가 아니므로 gcd(28, 15) = 1 (서로소! 👑)';
+          else if (hoveredNum === 29) tipText = '29는 소수 ➔ 3과 5의 배수가 아니므로 gcd(29, 15) = 1 (서로소! 👑)';
+          else if (hoveredNum === 30) tipText = '30 = 2×3×5 ➔ 3과 5의 공배수이므로 gcd(30, 15) = 15 (서로소 아님 ❌)';
+
+          ctx.font = '12px Pretendard, sans-serif';
+          const tipW = ctx.measureText(tipText).width + 20;
+          const tipX = w / 2;
+          const tipY = 175;
+
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(tipX - tipW / 2, tipY, tipW, 26, 6);
+          else ctx.rect(tipX - tipW / 2, tipY, tipW, 26);
+          ctx.fill();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(tipText, tipX, tipY + 13);
+          ctx.restore();
+        }
+
+        // 모드 4: 최종 서로소 추출 트레이 (y: 195 ~ 240)
+        if (currentMode === 4) {
+          const trayW = Math.min(w - 36, 480);
+          const trayX = (w - trayW) / 2;
+          const trayY = 188;
+
+          ctx.save();
+          ctx.fillStyle = '#ecfdf5';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2;
+          ctx.shadowColor = 'rgba(16, 185, 129, 0.35)';
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(trayX, trayY, trayW, 46, 10);
+          else ctx.rect(trayX, trayY, trayW, 46);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.fillStyle = '#065f46';
+          ctx.fillText('👑 15와 서로소인 자연수: 22, 23, 26, 28, 29 (총 5개)', w / 2, trayY + 23);
+          ctx.restore();
+        }
+
+        // 하단 핵심 정리 박스
+        const sumW = Math.min(w - 36, 510);
+        const sumX = (w - sumW) / 2;
+        const sumY = (currentMode === 4) ? 245 : 216;
+        const sumH = (currentMode === 4) ? 122 : 142;
+
+        ctx.save();
+        ctx.fillStyle = (currentMode === 4) ? '#fef3c7' : '#f8fafc';
+        ctx.strokeStyle = (currentMode === 4) ? '#f59e0b' : '#cbd5e1';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(sumX, sumY, sumW, sumH, 10);
+        else ctx.rect(sumX, sumY, sumW, sumH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('📌 15와 서로소인 수 판별 원리 (p.21 스스로 확인하기 3):', sumX + 16, sumY + 22);
+
+        if (currentMode === 0) {
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#475569';
+          ctx.fillText('• 서로소의 정의: 최대공약수가 1뿐인 두 수를 서로소라고 합니다.', sumX + 16, sumY + 44);
+          ctx.fillText('• 판별 전략: 15를 소인수분해하여 어떤 배수를 제외해야 할지 추론해 보세요.', sumX + 16, sumY + 66);
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillStyle = '#0284c7';
+          ctx.fillText('💡 상단 버튼을 클릭하거나 정답을 입력하면 배수 탈락 필터링 및 서로소 카드가 추출됩니다.', sumX + 16, sumY + 92);
+        } else {
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#0284c7';
+          ctx.fillText('• 서로소: 최대공약수가 1뿐인 두 수 ➔ 15 = 3 × 5 이므로,', sumX + 16, sumY + 44);
+          ctx.fillText('  15와 서로소인 수는 3의 배수도 아니고 5의 배수도 아닌 수이어야 함!', sumX + 28, sumY + 64);
+
+          ctx.fillStyle = (currentMode >= 2) ? '#ef4444' : '#94a3b8';
+          ctx.fillText('• 3의 배수 제외: 21, 24, 27, 30 / 5의 배수 제외: 20, 25, 30', sumX + 16, sumY + 86);
+
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillStyle = (currentMode === 4) ? '#059669' : '#94a3b8';
+          ctx.fillText((currentMode === 4) ? '👑 남은 5개 수: 22, 23, 26, 28, 29 가 15와 서로소입니다.' : '💡 상단 [⚡ 서로소 카드 추출] 버튼을 눌러 최종 서로소를 확인하세요.', sumX + 16, sumY + 108);
+        }
+        ctx.restore();
+
+        // 콘페티 애니메이션
+        if (particles.length > 0) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.22;
+            p.rot += p.vRot;
+            p.life -= p.decay;
+
+            if (p.life <= 0) {
+              particles.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+            ctx.restore();
+          }
+        }
+
+        container._animId_3_12 = requestAnimationFrame(render);
+      }
+
+      render();
+    }
+
     function renderForm_3_12(box) {
       box.innerHTML = `
-        <div class="card">
+        <div class="card" style="padding:16px 20px;">
           <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
-            ✏️ [스스로 확인하기 3] 15와 서로소인 수 (p.21)
+            ✏️ [스스로 확인하기 3] 15와 서로소인 수 구하기 (p.21)
           </div>
           <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
             20 이상 30 이하의 자연수 중에서 15와 서로소인 자연수를 모두 구하시오. (쉼표로 구분)
           </p>
-          <div style="margin-bottom:12px;">
-            <input type="text" id="ans-3-12" class="input-text" placeholder="수 입력 (쉼표 구분)" style="width:100%;">
+
+          <!-- 20~30 퀵 입력 바 (Zero-Spoiler: 11개 후보 수 전체 제공으로 직접 탐색) -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; background:#f1f5f9; padding:8px 10px; border-radius:8px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; line-height:28px;">후보 수:</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-12" data-val="20" style="font-weight:700; min-width:32px;">20</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-12" data-val="21" style="font-weight:700; min-width:32px;">21</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-12" data-val="22" style="font-weight:700; min-width:32px;">22</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-12" data-val="23" style="font-weight:700; min-width:32px;">23</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-12" data-val="24" style="font-weight:700; min-width:32px;">24</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-12" data-val="25" style="font-weight:700; min-width:32px;">25</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-12" data-val="26" style="font-weight:700; min-width:32px;">26</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-12" data-val="27" style="font-weight:700; min-width:32px;">27</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-12" data-val="28" style="font-weight:700; min-width:32px;">28</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-12" data-val="29" style="font-weight:700; min-width:32px;">29</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-12" data-val="30" style="font-weight:700; min-width:32px;">30</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-12" data-val="," style="font-weight:700; min-width:30px;">,</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-backspace-3-12" style="font-weight:700;">⌫</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-clear-3-12" style="font-weight:700;">초기화</button>
           </div>
-          <button class="btn btn-primary" onclick="checkStep_3_12()" style="width:100%;">정답 확인 및 채점</button>
+
+          <!-- 입력창 -->
+          <div style="margin-bottom:14px;">
+            <label for="ans-3-12" style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+              15와 서로소인 모든 자연수 (쉼표로 구분):
+            </label>
+            <input type="text" id="ans-3-12" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off">
+          </div>
+
+          <button class="btn btn-primary" onclick="checkStep_3_12()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
+
       const input = box.querySelector('#ans-3-12');
-      if (input) input.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkStep_3_12(); });
+      if (input) {
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') checkStep_3_12();
+        });
+      }
+
+      // 퀵 버튼 이벤트 연동
+      box.querySelectorAll('.btn-num-insert-3-12').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = btn.getAttribute('data-val');
+          if (input) {
+            let cur = input.value.trim();
+            if (val === ',') {
+              if (cur && !cur.endsWith(',')) input.value = cur + ', ';
+            } else {
+              if (!cur) {
+                input.value = val;
+              } else if (cur.endsWith(',') || cur.endsWith(', ')) {
+                input.value = cur + (cur.endsWith(' ') ? '' : ' ') + val;
+              } else {
+                input.value = cur + ', ' + val;
+              }
+            }
+            input.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      });
+
+      const backBtn = box.querySelector('.btn-num-backspace-3-12');
+      if (backBtn) {
+        backBtn.addEventListener('click', () => {
+          if (input) {
+            let cur = input.value.trim();
+            if (cur) {
+              const parts = cur.split(/,\s*/);
+              parts.pop();
+              input.value = parts.join(', ');
+              input.focus();
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+            }
+          }
+        });
+      }
+
+      const clearBtn = box.querySelector('.btn-num-clear-3-12');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          if (input) {
+            input.value = '';
+            input.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      }
     }
+
     function checkStep_3_12() {
-      const list = parseNumList(document.getElementById('ans-3-12')?.value);
-      if (areListsEqual(list, [22, 23, 26, 28, 29])) {
-        completeSubStep('3-12', '🎉 <b>정답입니다!</b> 15(3×5)와 서로소인 수는 3의 배수와 5의 배수를 제외한 <b>22, 23, 26, 28, 29</b>입니다.');
+      const raw = document.getElementById('ans-3-12')?.value || '';
+      const list = parseNumList(raw);
+
+      const targetList = [22, 23, 26, 28, 29];
+      const isCorrect = areListsEqual(list, targetList);
+
+      if (isCorrect) {
+        if (window._step3_12_triggerSuccess) {
+          window._step3_12_triggerSuccess();
+        }
+        completeSubStep('3-12', '🎉 <b>정답입니다!</b><br>• 15 = 3 × 5 이므로 15와 서로소인 수는 3의 배수도 아니고 5의 배수도 아닌 수입니다.<br>• 20부터 30까지 중 3의 배수(21, 24, 27, 30)와 5의 배수(20, 25, 30)를 제외하면 <b>22, 23, 26, 28, 29</b>입니다.');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 20부터 30까지 중에서 3의 배수와 5의 배수를 걸러내 보세요.');
+
+        const mul3 = [21, 24, 27, 30];
+        const mul5 = [20, 25, 30];
+        const hasMul3 = list.some(n => mul3.includes(n));
+        const hasMul5 = list.some(n => mul5.includes(n));
+        const outOfRange = list.some(n => n < 20 || n > 30);
+
+        if (outOfRange) {
+          showFeedback(false, '❌ <b>범위를 확인해 보세요.</b> 20 이상 30 이하의 자연수만 고려해야 합니다.');
+        } else if (hasMul3) {
+          showFeedback(false, '❌ <b>3의 배수를 확인해 보세요.</b> 21, 24, 27, 30은 3의 배수이므로 15와의 최대공약수가 3(또는 15)이 되어 서로소가 아닙니다.');
+        } else if (hasMul5) {
+          showFeedback(false, '❌ <b>5의 배수를 확인해 보세요.</b> 20, 25, 30은 5의 배수이므로 15와의 최대공약수가 5(또는 15)가 되어 서로소가 아닙니다.');
+        } else if (list.length > 0 && list.every(n => targetList.includes(n)) && list.length < targetList.length) {
+          showFeedback(false, '❌ <b>만족하는 수가 더 있습니다.</b> 총 5개의 수가 있습니다. 다른 수도 점검해 보세요.');
+        } else {
+          showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 15 = 3 × 5 이므로 20부터 30까지의 자연수 중 3의 배수와 5의 배수를 모두 제외한 수를 쉼표로 구분해 입력해 보세요.');
+        }
       }
     }
 
