@@ -41436,85 +41436,442 @@ function checkStep_1_12() {
     // ==========================================
     function drawCanvas_4_16(container) {
       if (!container) return;
-      container.innerHTML = '';
-      const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 500;
-      canvas.height = container.clientHeight || 450;
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      canvas.style.display = 'block';
-      container.appendChild(canvas);
+      if (container._animId_4_16) {
+        cancelAnimationFrame(container._animId_4_16);
+        container._animId_4_16 = null;
+      }
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; height:100%; gap:10px;">
+          <!-- 상단 컨트롤러 및 설명 뱃지 바 -->
+          <div style="background:#ffffff; padding:12px 14px; border-radius:10px; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+              <span id="badge-4-16" style="font-size:0.88rem; font-weight:700; color:#1e293b;">
+                단계별 버튼을 눌러 □ 안에 들어갈 수 있는 자연수를 찾는 원리를 확인해 보세요!
+              </span>
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+              <button id="btn-step1-4-16" class="btn btn-sm btn-outline-primary" style="font-weight:700;">1단계: 소인수 범위</button>
+              <button id="btn-step2-4-16" class="btn btn-sm btn-outline-primary" style="font-weight:700;">2단계: 18의 약수</button>
+              <button id="btn-step3-4-16" class="btn btn-sm btn-outline-danger" style="font-weight:700;">3단계: 중복 탈락(X)</button>
+              <button id="btn-step4-4-16" class="btn btn-sm btn-warning" style="font-weight:800; color:#1e293b;">4단계: 최종 통과</button>
+              <button id="btn-reset-4-16" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">⟲ 초기화</button>
+            </div>
+          </div>
+          <!-- Canvas 영역 -->
+          <div style="flex:1; min-height:370px; position:relative;">
+            <canvas id="canvas-4-16" style="width:100%; height:100%; display:block; border-radius:12px; background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); border:1px solid #e2e8f0;"></canvas>
+          </div>
+        </div>
+      `;
+
+      const canvas = container.querySelector('#canvas-4-16');
+      const badgeStatus = container.querySelector('#badge-4-16');
+      const btnStep1 = container.querySelector('#btn-step1-4-16');
+      const btnStep2 = container.querySelector('#btn-step2-4-16');
+      const btnStep3 = container.querySelector('#btn-step3-4-16');
+      const btnStep4 = container.querySelector('#btn-step4-4-16');
+      const btnReset = container.querySelector('#btn-reset-4-16');
+
       const ctx = canvas.getContext('2d');
+      let w = 560, h = 400;
 
-      let animId;
-      let angle = 0;
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        w = rect.width || 560;
+        h = rect.height || 400;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+
+      const ro = new ResizeObserver(() => resize());
+      ro.observe(canvas);
+
+      let currentStep = 0;
+      let pulseTimer = 0;
+      let particles = [];
+      let hoveredCandidate = null;
+
+      function spawnConfetti(count = 60) {
+        const colors = ['#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#f43f5e'];
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: w / 2 + (Math.random() - 0.5) * 180,
+            y: 200 + (Math.random() - 0.5) * 60,
+            vx: (Math.random() - 0.5) * 12,
+            vy: (Math.random() - 0.85) * 11 - 2,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.01
+          });
+        }
+      }
+
+      function updateUI() {
+        if (btnStep1) btnStep1.className = `btn btn-sm ${currentStep === 1 ? 'btn-primary text-white' : 'btn-outline-primary'}`;
+        if (btnStep2) btnStep2.className = `btn btn-sm ${currentStep === 2 ? 'btn-primary text-white' : 'btn-outline-primary'}`;
+        if (btnStep3) btnStep3.className = `btn btn-sm ${currentStep === 3 ? 'btn-danger text-white' : 'btn-outline-danger'}`;
+        if (btnStep4) btnStep4.className = `btn btn-sm ${currentStep === 4 ? 'btn-warning text-dark font-weight-bold shadow-sm' : 'btn-outline-warning text-dark'}`;
+
+        if (badgeStatus) {
+          if (currentStep === 0) {
+            badgeStatus.innerText = '단계별 버튼을 눌러 □ 안에 들어갈 수 있는 자연수를 찾는 원리를 확인해 보세요!';
+          } else if (currentStep === 1) {
+            badgeStatus.innerHTML = '1️⃣ <b>소인수 범위</b>: 최소공배수가 2 × 3² × 5³ 이므로 □는 <b>2 × 3² = 18 의 약수</b>이어야 합니다!';
+          } else if (currentStep === 2) {
+            badgeStatus.innerHTML = '2️⃣ <b>약수 후보</b>: 18의 약수는 <b>1, 2, 3, 6, 9, 18</b> 의 6개 후보가 있습니다.';
+          } else if (currentStep === 3) {
+            badgeStatus.innerHTML = '3️⃣ <b>중복 탈락(X)</b>: "서로 다른 세 수"이므로 □ = 2 이면 수 B(2 × 5³)와 같아져 <b>2는 제외</b>됩니다!';
+          } else if (currentStep === 4) {
+            badgeStatus.innerHTML = '👑 <b>최종 통과</b>: 조건을 만족하는 자연수는 <b>1, 3, 6, 9, 18</b> 총 5개입니다!';
+          }
+        }
+      }
+
+      btnStep1?.addEventListener('click', () => { currentStep = 1; updateUI(); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+      btnStep2?.addEventListener('click', () => { currentStep = 2; updateUI(); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+      btnStep3?.addEventListener('click', () => { currentStep = 3; updateUI(); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+      btnStep4?.addEventListener('click', () => { currentStep = 4; spawnConfetti(60); updateUI(); if (window.SoundFX && window.SoundFX.success) SoundFX.success(); });
+      btnReset?.addEventListener('click', () => { currentStep = 0; updateUI(); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+
+      window._step4_16_triggerSuccess = function() {
+        currentStep = 4;
+        updateUI();
+        spawnConfetti(70);
+      };
+
+      // 마우스 포인터 인터랙션
+      canvas.addEventListener('pointermove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        hoveredCandidate = null;
+        if (my >= 160 && my <= 230) {
+          const candidates = [1, 2, 3, 6, 9, 18];
+          const totalW = candidates.length * 68 - 12;
+          const startX = (w - totalW) / 2;
+          candidates.forEach((val, idx) => {
+            const cx = startX + idx * 68 + 28;
+            if (Math.abs(mx - cx) < 28) {
+              hoveredCandidate = val;
+            }
+          });
+        }
+      });
+
+      canvas.addEventListener('pointerleave', () => { hoveredCandidate = null; });
+      canvas.addEventListener('pointerdown', () => {
+        if (hoveredCandidate === 2) {
+          currentStep = 3;
+          updateUI();
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        } else if (hoveredCandidate !== null) {
+          if (currentStep < 2) currentStep = 2;
+          updateUI();
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        }
+      });
+
       function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, w, h);
+        pulseTimer += 0.05;
 
-        // Grid lines
-        ctx.strokeStyle = '#1e293b';
-        ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 40) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-        }
-        for (let y = 0; y < canvas.height; y += 40) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-        }
-
-        // Badge & Title
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 16px "Pretendard", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('[4-16] 스스로 확인하기 5: 빈칸에 들어갈 수 있는 수 (p.22)', canvas.width / 2, 40);
-
-        // Interactive visual placeholder
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
+        // 상단 제목 뱃지
+        const badgeW = Math.min(w - 36, 520);
+        const badgeX = (w - badgeW) / 2;
         ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.strokeStyle = '#6366f1';
-        ctx.lineWidth = 3;
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(0, 0, 70, 0, Math.PI * 2);
+        if (ctx.roundRect) ctx.roundRect(badgeX, 10, badgeW, 32, 8);
+        else ctx.rect(badgeX, 10, badgeW, 32);
+        ctx.fill();
         ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 12.5px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('스스로 확인하기 5: 서로 다른 세 자연수와 최소공배수 만족하는 □ 구하기', w / 2, 26);
         ctx.restore();
 
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '13px "Pretendard", sans-serif';
-        ctx.fillText('최소공배수 시각화 인터랙터', cx, cy + 110);
+        // 1. 상단 세 수 및 최소공배수 카드
+        const rowStartY = 54;
+        const rowH = 26;
+        const cardBoxW = Math.min(w - 36, 500);
+        const cardBoxX = (w - cardBoxW) / 2;
 
-        angle += 0.02;
-        animId = requestAnimationFrame(render);
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(cardBoxX, rowStartY, cardBoxW, 94, 10);
+        else ctx.rect(cardBoxX, rowStartY, cardBoxW, 94);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+
+        // 수 A
+        ctx.fillStyle = '#475569';
+        ctx.fillText('• 수 A = 3² × 5²', cardBoxX + 16, rowStartY + 18);
+        // 수 B
+        ctx.fillText('• 수 B = 2 × 5³', cardBoxX + 16, rowStartY + 42);
+        // 수 C
+        ctx.fillStyle = '#2563eb';
+        ctx.fillText('• 수 C = □ × 5³', cardBoxX + 16, rowStartY + 66);
+
+        // 우측 최소공배수 표기
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#b45309';
+        ctx.font = 'bold 14px Pretendard, sans-serif';
+        ctx.fillText('최소공배수 = 2 × 3² × 5³ (1350)', cardBoxX + cardBoxW - 16, rowStartY + 42);
+        ctx.restore();
+
+        // 2. 중앙 18의 약수 후보 카드 6종 (1, 2, 3, 6, 9, 18)
+        const candidates = [1, 2, 3, 6, 9, 18];
+        const cardW = 56;
+        const cardH = 50;
+        const gap = 12;
+        const totalW = candidates.length * (cardW + gap) - gap;
+        const startCandX = (w - totalW) / 2;
+        const candY = 168;
+
+        candidates.forEach((val, idx) => {
+          const cx = startCandX + idx * (cardW + gap) + cardW / 2;
+          const cy = candY + cardH / 2;
+          const isTwo = (val === 2);
+          const isHovered = (hoveredCandidate === val);
+
+          ctx.save();
+          let bgCol = '#f8fafc';
+          let borderCol = '#cbd5e1';
+          let textCol = '#64748b';
+          let lineW = 1.5;
+
+          if (currentStep >= 1) {
+            bgCol = '#eff6ff';
+            borderCol = '#93c5fd';
+            textCol = '#1e40af';
+          }
+
+          // 3단계 이상: 2는 탈락(X) 처리
+          if (currentStep >= 3 && isTwo) {
+            bgCol = '#fef2f2';
+            borderCol = '#ef4444';
+            textCol = '#dc2626';
+            lineW = 2.2;
+          } else if (currentStep === 4 && !isTwo) {
+            // 4단계: 통과한 5개 골드 글로우
+            bgCol = '#fefce8';
+            borderCol = '#eab308';
+            textCol = '#854d0e';
+            lineW = 2.2;
+            ctx.shadowColor = '#facc15';
+            ctx.shadowBlur = 8;
+          }
+
+          if (isHovered) {
+            lineW += 1;
+          }
+
+          ctx.fillStyle = bgCol;
+          ctx.strokeStyle = borderCol;
+          ctx.lineWidth = lineW;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(cx - cardW / 2, cy - cardH / 2, cardW, cardH, 8);
+          else ctx.rect(cx - cardW / 2, cy - cardH / 2, cardW, cardH);
+          ctx.fill();
+          ctx.stroke();
+
+          // 숫자 텍스트
+          ctx.font = 'bold 18px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = textCol;
+          ctx.fillText(String(val), cx, cy - 4);
+
+          // 하단 서브 라벨
+          ctx.font = '10.5px Pretendard, sans-serif';
+          if (currentStep >= 3 && isTwo) {
+            ctx.fillStyle = '#ef4444';
+            ctx.fillText('중복제외', cx, cy + 15);
+
+            // 빨간색 큰 X 그리기
+            ctx.strokeStyle = '#dc2626';
+            ctx.lineWidth = 2.8;
+            ctx.beginPath();
+            ctx.moveTo(cx - 18, cy - 18);
+            ctx.lineTo(cx + 18, cy + 18);
+            ctx.moveTo(cx + 18, cy - 18);
+            ctx.lineTo(cx - 18, cy + 18);
+            ctx.stroke();
+          } else if (currentStep === 4) {
+            ctx.fillStyle = '#16a34a';
+            ctx.fillText('통과 ✅', cx, cy + 15);
+          } else if (currentStep >= 2) {
+            ctx.fillStyle = '#64748b';
+            ctx.fillText('후보', cx, cy + 15);
+          }
+          ctx.restore();
+        });
+
+        // 3. 하단 단계별 해설 안내 박스
+        const infoY = 244;
+        const infoW = Math.min(w - 36, 500);
+        const infoX = (w - infoW) / 2;
+
+        ctx.save();
+        ctx.fillStyle = (currentStep === 4) ? '#f0fdf4' : '#f8fafc';
+        ctx.strokeStyle = (currentStep === 4) ? '#86efac' : '#e2e8f0';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(infoX, infoY, infoW, 114, 10);
+        else ctx.rect(infoX, infoY, infoW, 114);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+
+        if (currentStep === 0) {
+          ctx.fillStyle = '#334155';
+          ctx.fillText('💡 문제 핵심 조건 파악:', infoX + 16, infoY + 12);
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#64748b';
+          ctx.fillText('• 세 수는 모두 서로 다른 자연수이어야 합니다.', infoX + 16, infoY + 36);
+          ctx.fillText('• 최소공배수의 소인수 거듭제곱 2 × 3² × 5³ 을 넘을 수 없습니다.', infoX + 16, infoY + 58);
+          ctx.fillText('• 위의 단계별 버튼을 눌러 □가 될 수 있는 수를 단계별로 찾아보세요!', infoX + 16, infoY + 82);
+        } else if (currentStep === 1) {
+          ctx.fillStyle = '#0369a1';
+          ctx.fillText('1️⃣ 소인수 범위 분석:', infoX + 16, infoY + 12);
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('• 수 C = □ × 5³ 에서 이미 5³이 포함되어 있습니다.', infoX + 16, infoY + 36);
+          ctx.fillText('• 최소공배수(2 × 3² × 5³)를 만족하려면 □는 2와 3으로만 구성되어야 합니다.', infoX + 16, infoY + 58);
+          ctx.fillText('➔ 따라서 □는 2 × 3² = 18 의 약수이어야 합니다!', infoX + 16, infoY + 82);
+        } else if (currentStep === 2) {
+          ctx.fillStyle = '#0369a1';
+          ctx.fillText('2️⃣ 18의 약수 6개 나열:', infoX + 16, infoY + 12);
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('• 18의 약수: 1, 2, 3, 6, 9, 18', infoX + 16, infoY + 36);
+          ctx.fillText('• 이제 "서로 다른 세 자연수"라는 문제의 핵심 조건을 적용해야 합니다.', infoX + 16, infoY + 58);
+          ctx.fillText('➔ 다음 단계에서 중복되는 수가 있는지 검증해 보세요!', infoX + 16, infoY + 82);
+        } else if (currentStep === 3) {
+          ctx.fillStyle = '#b91c1c';
+          ctx.fillText('3️⃣ "서로 다른 세 자연수" 조건 필터링:', infoX + 16, infoY + 12);
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('• □ = 2 이면 수 C는 2 × 5³ 이 됩니다.', infoX + 16, infoY + 36);
+          ctx.fillText('• 이는 이미 주어진 수 B(2 × 5³)와 똑같아져 "서로 다른"에 위배됩니다!', infoX + 16, infoY + 58);
+          ctx.fillStyle = '#dc2626';
+          ctx.fillText('➔ 따라서 □ = 2 는 탈락하여 제외됩니다!', infoX + 16, infoY + 82);
+        } else if (currentStep === 4) {
+          ctx.fillStyle = '#166534';
+          ctx.fillText('👑 최종 정답 확인: 1, 3, 6, 9, 18 (총 5개)', infoX + 16, infoY + 12);
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('• 18의 약수 6개 중 수 B와 겹치는 2를 제외한 5개가 모두 정답입니다.', infoX + 16, infoY + 36);
+          ctx.fillText('• 각 경우 수 C는 125, 375, 750, 1125, 2250 으로 모두 서로 다릅니다.', infoX + 16, infoY + 58);
+          ctx.fillStyle = '#059669';
+          ctx.fillText('➔ 정답 입력창에 1, 3, 6, 9, 18 을 입력해 보세요!', infoX + 16, infoY + 82);
+        }
+        ctx.restore();
+
+        // 파티클 렌더링
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.35;
+          p.rot += p.vRot;
+          p.life -= p.decay;
+
+          if (p.life <= 0) {
+            particles.splice(i, 1);
+            continue;
+          }
+
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.globalAlpha = Math.max(0, p.life);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+          ctx.restore();
+        }
+
+        container._animId_4_16 = requestAnimationFrame(render);
       }
+
       render();
 
       window._cleanup_step_4_16 = () => {
-        if (animId) cancelAnimationFrame(animId);
+        if (container._animId_4_16) {
+          cancelAnimationFrame(container._animId_4_16);
+          container._animId_4_16 = null;
+        }
+        ro.disconnect();
       };
     }
 
     function renderForm_4_16(box) {
       if (!box) return;
       box.innerHTML = `
-        <div class="question-card" style="padding:16px; background:#1e293b; border-radius:10px; margin-bottom:15px; border:1px solid #334155;">
-          <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 4-16. 스스로 확인하기 5: 빈칸에 들어갈 수 있는 수 (p.22)</div>
-          <p style="font-size:14px; color:#cbd5e1; line-height:1.6; margin-bottom:12px;">
-            문제를 해결하고 최소공배수 또는 답을 입력창에 작성하세요.
+        <div class="card" style="padding:16px 20px;">
+          <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
+            ✏️ [스스로 확인하기 5] 빈칸에 들어갈 수 있는 수 (p.22)
+          </div>
+
+          <!-- 문제 안내 카드 -->
+          <div style="background:#f8fafc; border-left:4px solid #3b82f6; padding:10px 14px; border-radius:6px; margin-bottom:14px;">
+            <div style="font-weight:700; font-size:0.86rem; color:#1e40af; margin-bottom:4px;">
+              문제 조건
+            </div>
+            <div style="font-size:0.88rem; color:#1e293b; line-height:1.6; font-family:'Pretendard', sans-serif;">
+              서로 다른 세 자연수 <b>3² × 5²</b>, <b>2 × 5³</b>, <b>□ × 5³</b> 의 최소공배수가 <b>2 × 3² × 5³</b> 일 때, □ 안에 들어갈 수 있는 자연수를 모두 구하시오.
+            </div>
+          </div>
+
+          <p style="font-size:0.88rem; color:#334155; line-height:1.6; margin-bottom:12px;">
+            □ 안에 들어갈 수 있는 모든 자연수를 쉼표(,)로 구분하여 입력하세요. (예: 1, 3, ...)
           </p>
-          <div style="margin-bottom:12px;">
-            <input type="text" id="ans-4-16" class="form-control" placeholder="수 또는 식 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
+
+          <!-- 입력 필드 (Zero-Spoiler) -->
+          <div style="background:#fefce8; padding:12px 14px; border-radius:8px; border:1px solid #fef08a; margin-bottom:14px;">
+            <label for="ans-4-16" style="font-size:0.85rem; font-weight:700; color:#854d0e; display:block; margin-bottom:6px;">
+              □ 안에 들어갈 수 있는 자연수:
+            </label>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="text" id="ans-4-16" class="form-control" style="width:100%; font-size:1rem;" placeholder="수 입력 (쉼표 구분)" autocomplete="off">
+            </div>
           </div>
-          <div style="display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap;">
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_16" data-char="²">²</button>
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_16" data-char="³">³</button>
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_16" data-char="⁴">⁴</button>
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_16" data-char="×">×</button>
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_16" data-char="^">^</button>
-            <button type="button" class="btn btn-sm btn-outline-danger btn-pow-clear-4_16">지우기</button>
+
+          <!-- 퀵 숫자/쉼표 키패드 -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; background:#f1f5f9; padding:8px 10px; border-radius:8px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; line-height:28px;">빠른 입력:</span>
+            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4-16" data-char="1" style="font-weight:700; min-width:30px;">1</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4-16" data-char="2" style="font-weight:700; min-width:30px;">2</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4-16" data-char="3" style="font-weight:700; min-width:30px;">3</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4-16" data-char="6" style="font-weight:700; min-width:30px;">6</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4-16" data-char="9" style="font-weight:700; min-width:30px;">9</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4-16" data-char="18" style="font-weight:700; min-width:30px;">18</button>
+            <button type="button" class="btn btn-sm btn-info text-white btn-pow-insert-4-16" data-char=", " style="font-weight:700; min-width:30px;">, (쉼표)</button>
+            <button type="button" class="btn btn-sm btn-outline-danger btn-pow-clear-4-16" style="font-weight:700;">지우기</button>
           </div>
+
           <button class="btn btn-primary" onclick="checkStep_4_16()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
@@ -41525,7 +41882,8 @@ function checkStep_1_12() {
           if (e.key === 'Enter') checkStep_4_16();
         });
       }
-      box.querySelectorAll('.btn-pow-insert-4_16').forEach(btn => {
+
+      box.querySelectorAll('.btn-pow-insert-4-16').forEach(btn => {
         btn.addEventListener('click', () => {
           const char = btn.getAttribute('data-char');
           if (input) {
@@ -41535,27 +41893,55 @@ function checkStep_1_12() {
           }
         });
       });
-      const clearBtn = box.querySelector('.btn-pow-clear-4_16');
+
+      const clearBtn = box.querySelector('.btn-pow-clear-4-16');
       if (clearBtn) {
         clearBtn.addEventListener('click', () => {
           if (input) {
             input.value = '';
             input.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
           }
         });
       }
     }
 
     function checkStep_4_16() {
-      const v = normTxt(document.getElementById('ans-4-16')?.value);
-      const isCorrect = (v.length > 0);
+      const raw = document.getElementById('ans-4-16')?.value || '';
+      const v = (raw || '').trim();
+
+      if (!v || v.length === 0) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>값을 입력해 주세요.</b> □ 안에 들어갈 수 있는 자연수들을 쉼표로 구분하여 입력해 보세요.');
+        return;
+      }
+
+      // 숫자 배열 파싱 (쉼표 또는 공백 구분)
+      const nums = v.split(/[,\s]+/).map(s => parseInt(s, 10)).filter(n => !isNaN(n));
+      const uniqueSorted = Array.from(new Set(nums)).sort((a, b) => a - b);
+
+      const target = [1, 3, 6, 9, 18];
+      const isCorrect = (uniqueSorted.length === target.length && uniqueSorted.every((val, idx) => val === target[idx]));
+
       if (isCorrect) {
-        completeSubStep('4-16', '🎉 <b>정답입니다!</b><br>• 정답 및 풀이: 1, 3, 6, 9, 18');
+        if (window._step4_16_triggerSuccess) {
+          window._step4_16_triggerSuccess();
+        }
+        completeSubStep('4-16', '🎉 <b>정답입니다!</b><br>• 최소공배수가 2 × 3² × 5³ 이므로 □는 18의 약수(1, 2, 3, 6, 9, 18)가 될 수 있습니다.<br>• 단, "서로 다른 세 자연수"이므로 2는 두 번째 수(2 × 5³)와 같아져 제외됩니다.<br>• 따라서 가능한 자연수: <b>1, 3, 6, 9, 18</b>');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>값을 입력해 주세요.</b>');
+        const has2 = uniqueSorted.includes(2);
+        if (uniqueSorted.length === 6 && [1, 2, 3, 6, 9, 18].every((val, idx) => val === uniqueSorted[idx])) {
+          showFeedback(false, '❌ <b>"서로 다른 세 자연수" 조건을 확인하세요!</b> □ = 2 이면 세 번째 수가 2 × 5³ 이 되어 두 번째 수와 같아집니다. 2를 제외해 보세요!');
+        } else if (has2) {
+          showFeedback(false, '❌ <b>2는 들어갈 수 없습니다!</b> □ = 2 이면 두 번째 수(2 × 5³)와 같아지므로 "서로 다른 세 자연수" 조건에 어긋납니다.');
+        } else if (uniqueSorted.every(n => target.includes(n)) && uniqueSorted.length < 5) {
+          showFeedback(false, '❌ <b>빠진 수가 있습니다!</b> 가능한 자연수는 총 5개입니다. 18의 약수 중 빠진 수가 없는지 확인해 보세요.');
+        } else {
+          showFeedback(false, '❌ <b>다시 확인해 보세요.</b> □는 2 × 3² = 18의 약수 중 "서로 다른 세 자연수"를 만족하는 수여야 합니다. (예: 1, 3, 6, 9, 18)');
+        }
       }
     }
 
