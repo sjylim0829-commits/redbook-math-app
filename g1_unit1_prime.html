@@ -7549,119 +7549,239 @@ function checkStep_1_3() {
 // 1-4 (p.11): 에라토스테네스의 체
 // -------------------------------------------------------------
 function drawCanvas_1_4(container) {
+  if (container._animId_1_4) {
+    cancelAnimationFrame(container._animId_1_4);
+    container._animId_1_4 = null;
+  }
   container.innerHTML = '';
+
+  const wrapper = document.createElement('div');
+  wrapper.style.position = 'relative';
+  wrapper.style.width = '100%';
+  wrapper.style.height = '100%';
+  wrapper.style.minHeight = '520px';
+  wrapper.style.overflow = 'hidden';
+  wrapper.style.background = 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)';
+  wrapper.style.borderRadius = '12px';
+  wrapper.style.userSelect = 'none';
+  wrapper.style.webkitUserSelect = 'none';
+  container.appendChild(wrapper);
+
   const canvas = document.createElement('canvas');
-  canvas.width = container.clientWidth || 560;
-  canvas.height = container.clientHeight || 460;
+  canvas.style.display = 'block';
   canvas.style.width = '100%';
   canvas.style.height = '100%';
-  canvas.style.display = 'block';
-  container.appendChild(canvas);
+  canvas.style.touchAction = 'none';
+  wrapper.appendChild(canvas);
 
   const ctx = canvas.getContext('2d');
-  // 1 to 50 grid
-  const cells = [];
-  for (let i = 1; i <= 50; i++) {
-    cells.push({ num: i, state: 'normal' }); // normal, crossed, prime
+
+  let w = 560;
+  let h = 520;
+  let dpr = window.devicePixelRatio || 1;
+
+  let maxNum = 100; // 1~100 (교과서 p.11 기준)
+  let cells = [];
+
+  function initCells() {
+    cells = [];
+    for (let i = 1; i <= maxNum; i++) {
+      cells.push({
+        num: i,
+        state: 'normal', // 'normal' | 'crossed' | 'prime'
+        shake: 0,
+        glow: 0,
+        hover: false
+      });
+    }
+  }
+  initCells();
+
+  // 상단 툴바 UI
+  const topBar = document.createElement('div');
+  topBar.style.position = 'absolute';
+  topBar.style.top = '10px';
+  topBar.style.left = '12px';
+  topBar.style.right = '12px';
+  topBar.style.display = 'flex';
+  topBar.style.justifyContent = 'space-between';
+  topBar.style.alignItems = 'center';
+  topBar.style.zIndex = '10';
+  topBar.style.gap = '8px';
+  wrapper.appendChild(topBar);
+
+  const titleBadge = document.createElement('div');
+  titleBadge.style.display = 'inline-flex';
+  titleBadge.style.alignItems = 'center';
+  titleBadge.style.gap = '6px';
+  titleBadge.style.background = 'rgba(255, 255, 255, 0.94)';
+  titleBadge.style.padding = '6px 14px';
+  titleBadge.style.borderRadius = '20px';
+  titleBadge.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.05)';
+  titleBadge.style.fontSize = '12px';
+  titleBadge.style.fontWeight = '700';
+  titleBadge.style.color = '#1e293b';
+  titleBadge.innerHTML = '🏛️ <b>[생각 나누기]</b> 에라토스테네스의 체 (1~100)';
+  topBar.appendChild(titleBadge);
+
+  const rightActions = document.createElement('div');
+  rightActions.style.display = 'flex';
+  rightActions.style.alignItems = 'center';
+  rightActions.style.gap = '6px';
+  topBar.appendChild(rightActions);
+
+  // 1~100 / 1~50 토글 버튼
+  const toggleBtn = document.createElement('button');
+  toggleBtn.style.padding = '5px 10px';
+  toggleBtn.style.fontSize = '11px';
+  toggleBtn.style.fontWeight = '700';
+  toggleBtn.style.color = '#4338ca';
+  toggleBtn.style.background = '#eef2ff';
+  toggleBtn.style.border = '1px solid #c7d2fe';
+  toggleBtn.style.borderRadius = '8px';
+  toggleBtn.style.cursor = 'pointer';
+  toggleBtn.innerHTML = '범위: 1~100';
+  toggleBtn.onclick = () => {
+    maxNum = (maxNum === 100) ? 50 : 100;
+    toggleBtn.innerHTML = `범위: 1~${maxNum}`;
+    titleBadge.innerHTML = `🏛️ <b>[생각 나누기]</b> 에라토스테네스의 체 (1~${maxNum})`;
+    initCells();
+    particles = [];
+    allCompleted = false;
+    showToast(`범위가 1~${maxNum}으로 설정되었습니다.`);
+    if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+  };
+  rightActions.appendChild(toggleBtn);
+
+  const resetBtn = document.createElement('button');
+  resetBtn.style.padding = '5px 10px';
+  resetBtn.style.fontSize = '11px';
+  resetBtn.style.fontWeight = '600';
+  resetBtn.style.color = '#475569';
+  resetBtn.style.background = '#ffffff';
+  resetBtn.style.border = '1px solid #cbd5e1';
+  resetBtn.style.borderRadius = '8px';
+  resetBtn.style.cursor = 'pointer';
+  resetBtn.innerHTML = '⟲ 체 리셋';
+  resetBtn.onclick = () => {
+    applyStep('reset');
+  };
+  rightActions.appendChild(resetBtn);
+
+  // 하단 컨트롤 바 (단계별 소거 버튼)
+  const bottomBar = document.createElement('div');
+  bottomBar.style.position = 'absolute';
+  bottomBar.style.bottom = '10px';
+  bottomBar.style.left = '8px';
+  bottomBar.style.right = '8px';
+  bottomBar.style.display = 'flex';
+  bottomBar.style.justifyContent = 'center';
+  bottomBar.style.flexWrap = 'wrap';
+  bottomBar.style.gap = '6px';
+  bottomBar.style.zIndex = '10';
+  wrapper.appendChild(bottomBar);
+
+  const stepsConfig = [
+    { label: '➊ 1 지우기', step: 1, color: '#64748b', bg: '#ffffff' },
+    { label: '➋ 2 남기고 배수 소거', step: 2, color: '#dc2626', bg: '#fef2f2' },
+    { label: '➌ 3 남기고 배수 소거', step: 3, color: '#d97706', bg: '#fffbeb' },
+    { label: '➍ 5 남기고 배수 소거', step: 5, color: '#059669', bg: '#ecfdf5' },
+    { label: '➎ 7 남기고 배수 소거', step: 7, color: '#2563eb', bg: '#eff6ff' },
+    { label: '🚀 자동 완성', step: 'all', color: '#ffffff', bg: '#4f46e5', primary: true }
+  ];
+
+  stepsConfig.forEach(cfg => {
+    const btn = document.createElement('button');
+    btn.style.padding = '6px 10px';
+    btn.style.fontSize = '11.5px';
+    btn.style.fontWeight = '700';
+    btn.style.color = cfg.color;
+    btn.style.background = cfg.bg;
+    btn.style.border = cfg.primary ? 'none' : `1px solid ${cfg.color}44`;
+    btn.style.borderRadius = '8px';
+    btn.style.cursor = 'pointer';
+    btn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
+    btn.style.transition = 'all 0.15s ease';
+    btn.innerHTML = cfg.label;
+    btn.onmouseenter = () => {
+      btn.style.transform = 'translateY(-1px)';
+      btn.style.boxShadow = '0 3px 6px rgba(0, 0, 0, 0.1)';
+    };
+    btn.onmouseleave = () => {
+      btn.style.transform = 'none';
+      btn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
+    };
+    btn.onclick = () => {
+      applyStep(cfg.step);
+    };
+    bottomBar.appendChild(btn);
+  });
+
+  // 안내 토스트 바
+  let toastMessage = '';
+  let toastTimer = 0;
+  function showToast(msg) {
+    toastMessage = msg;
+    toastTimer = 180;
   }
 
-  function draw() {
-    const w = canvas.width;
-    const h = canvas.height;
-    ctx.clearRect(0, 0, w, h);
+  // 축하 파티클
+  let particles = [];
+  let allCompleted = false;
 
-    // Title
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 15px Pretendard, sans-serif';
-    ctx.fillStyle = '#1e293b';
-    ctx.fillText('🏛️ 에라토스테네스의 체 (1부터 50까지 소수 걸러내기)', w / 2, 30);
-
-    // Grid: 5 rows x 10 cols
-    const cols = 10;
-    const rows = 5;
-    const cellW = (w - 60) / cols;
-    const cellH = 46;
-    const startX = 30;
-    const startY = 55;
-
-    cells.forEach((c, idx) => {
-      const col = idx % cols;
-      const row = Math.floor(idx / cols);
-      const x = startX + col * cellW;
-      const y = startY + row * cellH;
-
-      ctx.fillStyle = (c.state === 'prime') ? '#e0e7ff' : (c.state === 'crossed' ? '#f1f5f9' : '#ffffff');
-      ctx.strokeStyle = (c.state === 'prime') ? '#4f46e5' : '#cbd5e1';
-      ctx.lineWidth = (c.state === 'prime') ? 2 : 1;
-      ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(x + 2, y + 2, cellW - 4, cellH - 4, 6) : ctx.rect(x + 2, y + 2, cellW - 4, cellH - 4);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.font = 'bold 13px Pretendard, sans-serif';
-      ctx.fillStyle = (c.state === 'prime') ? '#4f46e5' : (c.state === 'crossed' ? '#94a3b8' : '#1e293b');
-      ctx.fillText(String(c.num), x + cellW / 2, y + cellH / 2);
-
-      if (c.state === 'crossed') {
-        // Red cross
-        ctx.strokeStyle = '#ef4444';
-        ctx.lineWidth = 1.8;
-        ctx.beginPath();
-        ctx.moveTo(x + 8, y + 8);
-        ctx.lineTo(x + cellW - 8, y + cellH - 8);
-        ctx.moveTo(x + cellW - 8, y + 8);
-        ctx.lineTo(x + 8, y + cellH - 8);
-        ctx.stroke();
-      } else if (c.state === 'prime') {
-        // Circle around prime
-        ctx.strokeStyle = '#4f46e5';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(x + cellW / 2, y + cellH / 2, 14, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-    });
-
-    // Count primes
-    const primeCount = cells.filter(c => c.state === 'prime').length;
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 13px Pretendard, sans-serif';
-    ctx.fillStyle = '#059669';
-    ctx.fillText(`현재 걸러진 소수 개수: ${primeCount}개`, w / 2, startY + rows * cellH + 30);
+  function createConfetti() {
+    particles = [];
+    const colors = ['#f59e0b', '#fbbf24', '#4f46e5', '#10b981', '#ec4899', '#3b82f6'];
+    for (let i = 0; i < 70; i++) {
+      particles.push({
+        x: w / 2 + (Math.random() - 0.5) * 260,
+        y: h / 2 - 50,
+        vx: (Math.random() - 0.5) * 14,
+        vy: -Math.random() * 12 - 4,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        size: Math.random() * 8 + 4,
+        rotation: Math.random() * Math.PI * 2,
+        vRot: (Math.random() - 0.5) * 0.25,
+        life: 1.0,
+        decay: Math.random() * 0.008 + 0.005
+      });
+    }
   }
-
-  // Stepper controls
-  const ctrlRow = document.createElement('div');
-  ctrlRow.style.position = 'absolute';
-  ctrlRow.style.bottom = '12px';
-  ctrlRow.style.left = '50%';
-  ctrlRow.style.transform = 'translateX(-50%)';
-  ctrlRow.style.display = 'flex';
-  ctrlRow.style.gap = '6px';
-  ctrlRow.style.zIndex = '20';
 
   function applyStep(step) {
     if (step === 1) {
-      // 1 is not prime
       cells[0].state = 'crossed';
+      cells[0].shake = 0.8;
+      if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(380, 'sine', 0.1);
+      showToast('➊ 1은 약수가 1개뿐이므로 지웁니다.');
     } else if (step === 2) {
-      // 2 is prime, cross multiples of 2
       cells[1].state = 'prime';
-      for (let i = 4; i <= 50; i += 2) cells[i - 1].state = 'crossed';
+      for (let i = 4; i <= maxNum; i += 2) {
+        cells[i - 1].state = 'crossed';
+      }
+      if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(460, 'sine', 0.1);
+      showToast('➋ 2는 소수로 남기고 2의 배수를 모두 지웠습니다.');
     } else if (step === 3) {
-      // 3 is prime, cross multiples of 3
       cells[2].state = 'prime';
-      for (let i = 6; i <= 50; i += 3) cells[i - 1].state = 'crossed';
+      for (let i = 6; i <= maxNum; i += 3) {
+        cells[i - 1].state = 'crossed';
+      }
+      if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(520, 'sine', 0.1);
+      showToast('➌ 3은 소수로 남기고 3의 배수를 모두 지웠습니다.');
     } else if (step === 5) {
-      // 5 is prime, cross multiples of 5
       cells[4].state = 'prime';
-      for (let i = 10; i <= 50; i += 5) cells[i - 1].state = 'crossed';
+      for (let i = 10; i <= maxNum; i += 5) {
+        cells[i - 1].state = 'crossed';
+      }
+      if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(580, 'sine', 0.1);
+      showToast('➍ 5는 소수로 남기고 5의 배수를 모두 지웠습니다.');
     } else if (step === 7) {
-      // 7 is prime, cross multiples of 7
       cells[6].state = 'prime';
-      for (let i = 14; i <= 50; i += 7) cells[i - 1].state = 'crossed';
+      for (let i = 14; i <= maxNum; i += 7) {
+        cells[i - 1].state = 'crossed';
+      }
+      if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(660, 'sine', 0.1);
+      showToast('➎ 7은 소수로 남기고 7의 배수를 모두 지웠습니다.');
     } else if (step === 'all') {
       applyStep(1);
       applyStep(2);
@@ -7669,66 +7789,284 @@ function drawCanvas_1_4(container) {
       applyStep(5);
       applyStep(7);
       cells.forEach(c => {
-        if (c.state === 'normal') c.state = 'prime';
+        if (c.state === 'normal') {
+          c.state = 'prime';
+          c.glow = 1.0;
+        }
       });
+      const pCount = cells.filter(c => c.state === 'prime').length;
+      allCompleted = true;
+      createConfetti();
+      if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+      showToast(`🎉 1부터 ${maxNum}까지 체 완료! 걸러진 소수는 총 ${pCount}개입니다.`);
     } else if (step === 'reset') {
-      cells.forEach(c => c.state = 'normal');
+      initCells();
+      particles = [];
+      allCompleted = false;
+      showToast('⟲ 에라토스테네스의 체가 초기화되었습니다.');
+      if (window.SoundFX && window.SoundFX.click) SoundFX.click();
     }
-    if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(520, 'sine', 0.08);
-    draw();
   }
 
-  const btnStep1 = document.createElement('button');
-  btnStep1.className = 'btn';
-  btnStep1.style.background = '#ffffff';
-  btnStep1.style.border = '1px solid #cbd5e1';
-  btnStep1.style.padding = '4px 8px';
-  btnStep1.style.fontSize = '0.78rem';
-  btnStep1.textContent = '1 지우기';
-  btnStep1.onclick = () => applyStep(1);
+  function resize() {
+    const rect = wrapper.getBoundingClientRect();
+    w = rect.width || 560;
+    h = rect.height || 520;
+    dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
 
-  const btnStep2 = document.createElement('button');
-  btnStep2.className = 'btn';
-  btnStep2.style.background = '#ffffff';
-  btnStep2.style.border = '1px solid #cbd5e1';
-  btnStep2.style.padding = '4px 8px';
-  btnStep2.style.fontSize = '0.78rem';
-  btnStep2.textContent = '2 배수 지우기';
-  btnStep2.onclick = () => applyStep(2);
+  resize();
 
-  const btnStep3 = document.createElement('button');
-  btnStep3.className = 'btn';
-  btnStep3.style.background = '#ffffff';
-  btnStep3.style.border = '1px solid #cbd5e1';
-  btnStep3.style.padding = '4px 8px';
-  btnStep3.style.fontSize = '0.78rem';
-  btnStep3.textContent = '3 배수 지우기';
-  btnStep3.onclick = () => applyStep(3);
+  // 셀 좌표 및 레이아웃
+  let pointerX = -1;
+  let pointerY = -1;
 
-  const btnAll = document.createElement('button');
-  btnAll.className = 'btn btn-primary';
-  btnAll.style.padding = '4px 10px';
-  btnAll.style.fontSize = '0.78rem';
-  btnAll.textContent = '✨ 전체 체 완성';
-  btnAll.onclick = () => applyStep('all');
+  function getGridLayout() {
+    const cols = 10;
+    const rows = Math.ceil(maxNum / cols);
+    const startX = 14;
+    const startY = 48;
+    const availW = w - startX * 2;
+    const availH = h - startY - 80;
+    const gap = 3;
+    const cellW = (availW - (cols - 1) * gap) / cols;
+    const cellH = Math.min(36, (availH - (rows - 1) * gap) / rows);
 
-  const btnReset = document.createElement('button');
-  btnReset.className = 'btn';
-  btnReset.style.background = '#f1f5f9';
-  btnReset.style.border = '1px solid #cbd5e1';
-  btnReset.style.padding = '4px 8px';
-  btnReset.style.fontSize = '0.78rem';
-  btnReset.textContent = '🔄 초기화';
-  btnReset.onclick = () => applyStep('reset');
+    return cells.map((c, idx) => {
+      const col = idx % cols;
+      const row = Math.floor(idx / cols);
+      const x = startX + col * (cellW + gap);
+      const y = startY + row * (cellH + gap);
 
-  ctrlRow.appendChild(btnStep1);
-  ctrlRow.appendChild(btnStep2);
-  ctrlRow.appendChild(btnStep3);
-  ctrlRow.appendChild(btnAll);
-  ctrlRow.appendChild(btnReset);
-  container.appendChild(ctrlRow);
+      return {
+        cell: c,
+        idx,
+        x,
+        y,
+        w: cellW,
+        h: cellH
+      };
+    });
+  }
 
-  draw();
+  function handlePointer(e, type) {
+    const rect = canvas.getBoundingClientRect();
+    pointerX = e.clientX - rect.left;
+    pointerY = e.clientY - rect.top;
+
+    const layouts = getGridLayout();
+
+    if (type === 'move') {
+      let anyHover = false;
+      layouts.forEach(l => {
+        const inCell = (pointerX >= l.x && pointerX <= l.x + l.w && pointerY >= l.y && pointerY <= l.y + l.h);
+        l.cell.hover = inCell;
+        if (inCell) anyHover = true;
+      });
+      canvas.style.cursor = anyHover ? 'pointer' : 'default';
+    } else if (type === 'down') {
+      layouts.forEach(l => {
+        if (pointerX >= l.x && pointerX <= l.x + l.w && pointerY >= l.y && pointerY <= l.y + l.h) {
+          if (l.cell.state === 'normal') {
+            l.cell.state = 'crossed';
+            if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(360, 'sine', 0.08);
+          } else if (l.cell.state === 'crossed') {
+            l.cell.state = 'prime';
+            if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(600, 'sine', 0.08);
+          } else {
+            l.cell.state = 'normal';
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        }
+      });
+    }
+  }
+
+  canvas.addEventListener('pointermove', (e) => handlePointer(e, 'move'));
+  canvas.addEventListener('pointerdown', (e) => handlePointer(e, 'down'));
+  canvas.addEventListener('pointerleave', () => {
+    pointerX = -1;
+    pointerY = -1;
+    cells.forEach(c => c.hover = false);
+  });
+
+  // 애니메이션 루프
+  let t = 0;
+  function animate() {
+    t += 0.05;
+    ctx.clearRect(0, 0, w, h);
+
+    const layouts = getGridLayout();
+
+    // 격자 렌더링
+    layouts.forEach(l => {
+      const { cell, x, y, w: cw, h: ch } = l;
+
+      let ox = 0;
+      if (cell.shake > 0) {
+        ox = Math.sin(cell.shake * Math.PI * 6) * 4 * cell.shake;
+        cell.shake -= 0.05;
+        if (cell.shake < 0) cell.shake = 0;
+      }
+
+      const dx = x + ox;
+      const dy = y;
+
+      let bg = '#ffffff';
+      let stroke = '#e2e8f0';
+      let txtColor = '#1e293b';
+
+      if (cell.state === 'prime') {
+        bg = '#ede9fe';
+        stroke = '#818cf8';
+        txtColor = '#4338ca';
+      } else if (cell.state === 'crossed') {
+        bg = '#f1f5f9';
+        stroke = '#cbd5e1';
+        txtColor = '#94a3b8';
+      } else if (cell.hover) {
+        bg = '#f8fafc';
+        stroke = '#94a3b8';
+      }
+
+      ctx.save();
+      if (cell.state === 'prime' && (allCompleted || cell.glow > 0)) {
+        ctx.shadowColor = 'rgba(245, 158, 11, 0.45)';
+        ctx.shadowBlur = 8 + Math.sin(t * 3) * 3;
+      }
+
+      ctx.fillStyle = bg;
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = (cell.state === 'prime') ? 1.8 : 1;
+
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(dx, dy, cw, ch, 6);
+      } else {
+        ctx.rect(dx, dy, cw, ch);
+      }
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      // 소수 원형 링
+      if (cell.state === 'prime') {
+        ctx.save();
+        ctx.strokeStyle = '#6366f1';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        const r = Math.min(cw, ch) * 0.42;
+        ctx.arc(dx + cw / 2, dy + ch / 2, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 숫자
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = (cell.state === 'prime') ? 'bold 12.5px Pretendard, sans-serif' : '11.5px Pretendard, sans-serif';
+      ctx.fillStyle = txtColor;
+      ctx.fillText(String(cell.num), dx + cw / 2, dy + ch / 2);
+
+      // 소거된 수 (붉은 대각선 X)
+      if (cell.state === 'crossed') {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.85)';
+        ctx.lineWidth = 1.5;
+        const padL = 4;
+        ctx.beginPath();
+        ctx.moveTo(dx + padL, dy + padL);
+        ctx.lineTo(dx + cw - padL, dy + ch - padL);
+        ctx.moveTo(dx + cw - padL, dy + padL);
+        ctx.lineTo(dx + padL, dy + ch - padL);
+        ctx.stroke();
+        ctx.restore();
+      }
+    });
+
+    // 상태 요약 바 (실시간 진행 상황 집계 - Zero Spoiler)
+    const crossedCount = cells.filter(c => c.state === 'crossed').length;
+    const primeCount = cells.filter(c => c.state === 'prime').length;
+    const remainingCount = cells.filter(c => c.state === 'normal').length;
+
+    const summaryY = h - 68;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 12px Pretendard, sans-serif';
+
+    if (allCompleted) {
+      ctx.fillStyle = '#059669';
+      ctx.fillText(`✨ 1~${maxNum} 에라토스테네스의 체 완성! 걸러진 소수 총 ${primeCount}개`, w / 2, summaryY);
+    } else {
+      ctx.fillStyle = '#475569';
+      ctx.fillText(`📊 소거된 수: ${crossedCount}개  |  확정 소수: ${primeCount}개  |  남은 수: ${remainingCount}개`, w / 2, summaryY);
+    }
+
+    // 토스트 메시지
+    if (toastTimer > 0) {
+      toastTimer--;
+      const alpha = Math.min(1.0, toastTimer / 20);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+      const toastW = Math.min(w - 30, ctx.measureText(toastMessage).width + 48);
+      const toastH = 34;
+      const toastX = (w - toastW) / 2;
+      const toastY = summaryY - 38;
+
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(toastX, toastY, toastW, toastH, 17);
+      } else {
+        ctx.rect(toastX, toastY, toastW, toastH);
+      }
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 12px Pretendard, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(toastMessage, w / 2, toastY + toastH / 2);
+      ctx.restore();
+    }
+
+    // 축하 파티클
+    if (particles.length > 0) {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.32;
+        p.rotation += p.vRot;
+        p.life -= p.decay;
+
+        if (p.life <= 0 || p.y > h + 20) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+        ctx.restore();
+      }
+    }
+
+    container._animId_1_4 = requestAnimationFrame(animate);
+  }
+
+  container._animId_1_4 = requestAnimationFrame(animate);
+
+  const ro = new ResizeObserver(() => {
+    resize();
+  });
+  ro.observe(wrapper);
 }
 
 function renderForm_1_4(box) {
@@ -7738,30 +8076,61 @@ function renderForm_1_4(box) {
         🔍 [생각 나누기] 에라토스테네스의 체 (p.11)
       </div>
       <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
-        고대 그리스 수학자 에라토스테네스의 체 방법을 이용하여 1부터 50까지의 자연수 중에서 소수를 모두 걸러낼 때,
-        찾아낸 <b>소수의 총 개수</b>는 몇 개인지 구하시오.
+        에라토스테네스의 체 방법(1을 지우고, 2·3·5·7은 남기고 그 배수들을 차례로 지우기)을 이용하여 다음 물음에 답하시오.
       </p>
 
-      <div style="margin-bottom:14px;">
-        <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">소수의 총 개수:</label>
-        <div style="display:flex; align-items:center; gap:6px;">
-          <input type="text" id="ans-1-4-cnt" class="form-control" style="max-width:140px;" placeholder="수 입력" autocomplete="off">
-          <span style="font-weight:700; font-size:0.9rem;">개</span>
+      <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:14px;">
+        <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0;">
+          <label style="font-size:0.86rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+            ⑴ 1부터 100까지의 자연수 중 체로 걸러내고 남은 소수의 총 개수는 몇 개입니까?
+          </label>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="text" id="ans-1-4-cnt" class="form-control" style="max-width:140px; font-weight:700;" placeholder="개수 입력" autocomplete="off">
+            <span style="font-weight:700; font-size:0.9rem; color:#475569;">개</span>
+          </div>
+        </div>
+
+        <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0;">
+          <label style="font-size:0.86rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+            ⑵ 지우고 남은 수들의 공통적인 수학적 명칭(성질)은 무엇입니까?
+          </label>
+          <input type="text" id="ans-1-4-prop" class="form-control" placeholder="용어 입력" autocomplete="off">
         </div>
       </div>
 
-      <button class="btn btn-primary" onclick="checkStep_1_4()">정답 확인 및 채점</button>
+      <button class="btn btn-primary" onclick="checkStep_1_4()" style="width:100%;">정답 확인 및 채점</button>
     </div>
   `;
+
+  const inputs = box.querySelectorAll('input[type="text"]');
+  inputs.forEach(input => {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        checkStep_1_4();
+      }
+    });
+  });
 }
 
 function checkStep_1_4() {
-  const val = normTxt(document.getElementById('ans-1-4-cnt')?.value);
-  if (val === '15') {
-    completeSubStep('1-4', '🎉 <b>정답입니다!</b> 1부터 50까지의 소수는 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47로 총 <b>15개</b>입니다.');
+  const valCnt = normTxt(document.getElementById('ans-1-4-cnt')?.value);
+  const valProp = normTxt(document.getElementById('ans-1-4-prop')?.value);
+
+  const okCnt = (valCnt === '25' || valCnt === '15');
+  const okProp = valProp.includes('소수');
+
+  if (okCnt && okProp) {
+    completeSubStep('1-4', '🎉 <b>정답입니다!</b> 1부터 100까지의 수 중 합성수가 모두 걸러지고 남은 <b>25개</b>의 수는 1과 자기 자신만을 약수로 갖는 <b>소수</b>입니다.');
+    const nextBtn = document.getElementById('btn-next-step');
+    if (nextBtn) {
+      nextBtn.style.display = 'inline-flex';
+    }
   } else {
+    let wrong = [];
+    if (!okCnt) wrong.push('⑴ 소수의 총 개수');
+    if (!okProp) wrong.push('⑵ 남은 수들의 공통 명칭');
     if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-    showFeedback(false, '❌ <b>다시 세어보세요.</b> 50 이하의 자연수 중 1과 자기 자신만을 약수로 갖는 소수의 총 개수입니다.');
+    showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>에라토스테네스의 체로 지우고 남은 1보다 큰 수들의 개수와 그 수학적 이름을 확인해 보세요.`);
   }
 }
 
