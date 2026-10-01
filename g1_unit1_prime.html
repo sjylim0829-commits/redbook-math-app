@@ -16390,112 +16390,662 @@ function checkStep_1_12() {
     // 2-8 (p.16): 예제 2 & 수학봇: 63의 약수 구하기
     // -------------------------------------------------------------
     function drawCanvas_2_8(container) {
+      if (container._animId_2_8) {
+        cancelAnimationFrame(container._animId_2_8);
+      }
       container.innerHTML = '';
-      const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 560;
-      canvas.height = container.clientHeight || 460;
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      canvas.style.display = 'block';
-      container.appendChild(canvas);
 
+      const wrapper = document.createElement('div');
+      wrapper.style.display = 'flex';
+      wrapper.style.flexDirection = 'column';
+      wrapper.style.height = '100%';
+      wrapper.style.width = '100%';
+
+      wrapper.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button id="btn-2-8-tab-grid" class="btn btn-sm btn-primary" style="font-weight:700; border-radius:6px; font-size:0.82rem;">📊 63의 약수 격자표</button>
+            <button id="btn-2-8-tab-bot" class="btn btn-sm btn-outline-secondary" style="font-weight:700; border-radius:6px; font-size:0.82rem;">🤖 수학봇: 수의 크기와 약수 개수</button>
+          </div>
+          <div id="controls-2-8-grid" style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button id="btn-2-8-step" class="btn btn-sm btn-outline-primary" style="font-weight:700; border-radius:6px; font-size:0.82rem;">⏩ 하나씩 곱하기</button>
+            <button id="btn-2-8-fill" class="btn btn-sm btn-outline-warning" style="font-weight:700; color:#d97706; border-color:#f59e0b; border-radius:6px; font-size:0.82rem;">⚡ 표 전체 곱셈 완성</button>
+            <button id="btn-2-8-reset" class="btn btn-sm btn-outline-secondary" style="font-weight:600; border-radius:6px; font-size:0.82rem;">⟲ 표 리셋</button>
+          </div>
+          <div id="controls-2-8-bot" style="display:none; gap:6px; flex-wrap:wrap;">
+            <button id="btn-2-8-weigh" class="btn btn-sm btn-outline-danger" style="font-weight:700; border-radius:6px; font-size:0.82rem;">⚖️ 약수 무게 비교 달기</button>
+            <button id="btn-2-8-explain" class="btn btn-sm btn-outline-info" style="font-weight:700; border-radius:6px; font-size:0.82rem;">💡 반례 핵심 정리</button>
+          </div>
+          <div id="badge-2-8-status" style="font-size:0.82rem; font-weight:700; color:#475569; background:#f1f5f9; padding:4px 10px; border-radius:12px; border:1px solid #e2e8f0; width:100%; margin-top:2px;">
+            63 = 3² × 7의 소인수분해 곱셈표입니다. [하나씩 곱하기]를 눌러 6개의 약수를 구해 보세요!
+          </div>
+        </div>
+        <div style="flex:1; min-height:360px; position:relative;">
+          <canvas style="width:100%; height:100%; display:block; border-radius:12px; background:#f8fafc; border:1px solid #e2e8f0;"></canvas>
+        </div>
+      `;
+
+      container.appendChild(wrapper);
+
+      const canvas = wrapper.querySelector('canvas');
       const ctx = canvas.getContext('2d');
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
+      const badgeStatus = wrapper.querySelector('#badge-2-8-status');
+      const tabGrid = wrapper.querySelector('#btn-2-8-tab-grid');
+      const tabBot = wrapper.querySelector('#btn-2-8-tab-bot');
+      const controlsGrid = wrapper.querySelector('#controls-2-8-grid');
+      const controlsBot = wrapper.querySelector('#controls-2-8-bot');
 
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 15px Pretendard, sans-serif';
-      ctx.fillStyle = '#1e293b';
-      ctx.fillText('📊 [예제 2] 표를 이용한 63의 약수 구하기 (p.16)', w / 2, 35);
+      const btnStep = wrapper.querySelector('#btn-2-8-step');
+      const btnFill = wrapper.querySelector('#btn-2-8-fill');
+      const btnReset = wrapper.querySelector('#btn-2-8-reset');
+      const btnWeigh = wrapper.querySelector('#btn-2-8-weigh');
+      const btnExplain = wrapper.querySelector('#btn-2-8-explain');
 
-      ctx.font = '12px Pretendard, sans-serif';
-      ctx.fillStyle = '#64748b';
-      ctx.fillText('63 = 3² × 7 ➔ 3²의 약수(1, 3, 9)와 7의 약수(1, 7)의 곱셈표', w / 2, 60);
+      let w = 560;
+      let h = 420;
 
-      // 3x2 곱셈 격자표
-      const startX = w / 2 - 160;
-      const startY = 100;
-      const cellW = 80;
-      const cellH = 50;
+      let currentMode = 'grid';
+      let gridStep = 0;
+      let cellPulses = [0, 0, 0, 0, 0, 0];
+      let celebrationTriggered = false;
+      let particles = [];
 
-      // 표 데이터
-      const grid = [
-        ['×', '1', '7'],
-        ['1', '1', '7'],
-        ['3', '3', '21'],
-        ['9', '9', '63']
+      let seesawTilt = 0;
+      let targetTilt = 0;
+      let seesawWeighing = false;
+      let showBotSummary = false;
+
+      const cells = [
+        { r: 0, c: 0, rVal: 1, cVal: 1, val: 1, expr: '1 × 1 = 1', labelR: '1', labelC: '1' },
+        { r: 0, c: 1, rVal: 1, cVal: 7, val: 7, expr: '1 × 7 = 7', labelR: '1', labelC: '7' },
+        { r: 1, c: 0, rVal: 3, cVal: 1, val: 3, expr: '3 × 1 = 3', labelR: '3', labelC: '1' },
+        { r: 1, c: 1, rVal: 3, cVal: 7, val: 21, expr: '3 × 7 = 21', labelR: '3', labelC: '7' },
+        { r: 2, c: 0, rVal: 9, cVal: 1, val: 9, expr: '9 × 1 = 9', labelR: '3²(9)', labelC: '1' },
+        { r: 2, c: 1, rVal: 9, cVal: 7, val: 63, expr: '9 × 7 = 63', labelR: '3²(9)', labelC: '7' }
       ];
 
-      grid.forEach((row, rIdx) => {
-        row.forEach((val, cIdx) => {
-          const cx = startX + cIdx * cellW;
-          const cy = startY + rIdx * cellH;
+      function createConfetti() {
+        const colors = ['#f59e0b', '#ef4444', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
+        for (let i = 0; i < 50; i++) {
+          particles.push({
+            x: w * 0.5 + (Math.random() - 0.5) * 160,
+            y: h * 0.45 + (Math.random() - 0.5) * 60,
+            vx: (Math.random() - 0.5) * 10,
+            vy: -Math.random() * 8 - 4,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.012
+          });
+        }
+      }
 
+      function resize() {
+        w = canvas.clientWidth || 560;
+        h = canvas.clientHeight || 420;
+        canvas.width = w;
+        canvas.height = h;
+      }
+      resize();
+
+      function switchMode(m) {
+        currentMode = m;
+        if (m === 'grid') {
+          tabGrid.className = 'btn btn-sm btn-primary';
+          tabBot.className = 'btn btn-sm btn-outline-secondary';
+          controlsGrid.style.display = 'flex';
+          controlsBot.style.display = 'none';
+          badgeStatus.innerHTML = gridStep >= 6
+            ? '🎉 63의 6개 약수(1, 3, 7, 9, 21, 63)가 완벽하게 구해졌습니다!'
+            : '63 = 3² × 7의 소인수분해 곱셈표입니다. [하나씩 곱하기]를 눌러 약수를 채워보세요.';
+        } else {
+          tabGrid.className = 'btn btn-sm btn-outline-secondary';
+          tabBot.className = 'btn btn-sm btn-primary';
+          controlsGrid.style.display = 'none';
+          controlsBot.style.display = 'flex';
+          badgeStatus.innerHTML = '🤖 [수학봇] 큰 수가 항상 약수가 많을까요? 63과 65의 반례를 비교해 보세요!';
+        }
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      }
+
+      tabGrid.addEventListener('click', () => switchMode('grid'));
+      tabBot.addEventListener('click', () => switchMode('bot'));
+
+      btnStep.addEventListener('click', () => {
+        if (gridStep < 6) {
+          cellPulses[gridStep] = 1.0;
+          gridStep++;
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          if (gridStep === 6) {
+            if (!celebrationTriggered) {
+              celebrationTriggered = true;
+              createConfetti();
+              if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+            }
+            badgeStatus.innerHTML = '🎉 63의 모든 약수 6개(1, 3, 7, 9, 21, 63)가 완성되었습니다!';
+          } else {
+            badgeStatus.innerHTML = `곱셈 진행: ${gridStep}/6개 약수 완성 (${cells[gridStep - 1].expr})`;
+          }
+        }
+      });
+
+      btnFill.addEventListener('click', () => {
+        gridStep = 6;
+        for (let i = 0; i < 6; i++) cellPulses[i] = 1.0;
+        if (!celebrationTriggered) {
+          celebrationTriggered = true;
+          createConfetti();
+          if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        } else {
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        }
+        badgeStatus.innerHTML = '⚡ 63의 모든 약수 6개가 표에 채워졌습니다!';
+      });
+
+      btnReset.addEventListener('click', () => {
+        gridStep = 0;
+        celebrationTriggered = false;
+        cellPulses = [0, 0, 0, 0, 0, 0];
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        badgeStatus.innerHTML = '표가 리셋되었습니다. [하나씩 곱하기]를 눌러보세요.';
+      });
+
+      btnWeigh.addEventListener('click', () => {
+        seesawWeighing = !seesawWeighing;
+        targetTilt = seesawWeighing ? -0.18 : 0;
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        badgeStatus.innerHTML = seesawWeighing
+          ? '⚖️ 저울 기울어짐! 63(약수 6개)이 65(약수 4개)보다 약수가 더 많아 63 쪽으로 기웁니다!'
+          : '저울이 평형 상태로 돌아왔습니다.';
+      });
+
+      btnExplain.addEventListener('click', () => {
+        showBotSummary = !showBotSummary;
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        badgeStatus.innerHTML = showBotSummary
+          ? '💡 핵심: 수의 크기는 65 > 63이지만, 약수의 개수는 4개 < 6개로 큰 수가 항상 약수가 많은 것은 아닙니다!'
+          : '반례 요약창이 닫혔습니다.';
+      });
+
+      window._step2_8_completeTable = function() {
+        gridStep = 6;
+        for (let i = 0; i < 6; i++) cellPulses[i] = 1.0;
+        if (!celebrationTriggered) {
+          celebrationTriggered = true;
+          createConfetti();
+        }
+        if (badgeStatus) badgeStatus.innerHTML = '🎉 정답! 63의 약수 6개 완비!';
+      };
+
+      function render() {
+        ctx.clearRect(0, 0, w, h);
+
+        if (currentMode === 'grid') {
+          renderGridMode();
+        } else {
+          renderBotMode();
+        }
+
+        if (particles.length > 0) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.22;
+            p.rot += p.vRot;
+            p.life -= p.decay;
+
+            if (p.life <= 0) {
+              particles.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+            ctx.restore();
+          }
+        }
+
+        container._animId_2_8 = requestAnimationFrame(render);
+      }
+
+      function renderGridMode() {
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.fillText('📊 [예제 2] 소인수분해를 이용한 63의 약수 구하기 (p.16)', w / 2, 28);
+
+        ctx.fillStyle = '#475569';
+        ctx.font = '13px Pretendard, sans-serif';
+        ctx.fillText('63을 소인수분해하면 63 = 3² × 7 ➔ 3²의 약수(1, 3, 9)와 7의 약수(1, 7)의 곱', w / 2, 50);
+
+        const startX = Math.max(20, w / 2 - 180);
+        const startY = 75;
+        const colW = Math.min(110, (w - startX * 2) / 3);
+        const rowH = 46;
+
+        const colHeaders = ['×', '1', '7 (7의 약수)'];
+        const rowHeaders = ['1', '3', '9 (3²)'];
+
+        for (let r = 0; r < 4; r++) {
+          for (let c = 0; c < 3; c++) {
+            const x = startX + c * colW;
+            const y = startY + r * rowH;
+
+            ctx.save();
+
+            if (r === 0 || c === 0) {
+              ctx.fillStyle = (r === 0 && c === 0) ? '#e2e8f0' : '#f1f5f9';
+              ctx.fillRect(x, y, colW, rowH);
+              ctx.strokeStyle = '#cbd5e1';
+              ctx.lineWidth = 1.5;
+              ctx.strokeRect(x, y, colW, rowH);
+
+              ctx.fillStyle = '#1e293b';
+              ctx.font = 'bold 13px Pretendard, sans-serif';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+
+              let text = '';
+              if (r === 0) text = colHeaders[c];
+              else text = rowHeaders[r - 1];
+              ctx.fillText(text, x + colW / 2, y + rowH / 2);
+
+            } else {
+              const cellIndex = (r - 1) * 2 + (c - 1);
+              const cell = cells[cellIndex];
+              const isRevealed = cellIndex < gridStep;
+
+              if (cellPulses[cellIndex] > 0) {
+                cellPulses[cellIndex] = Math.max(0, cellPulses[cellIndex] - 0.03);
+              }
+              const pulse = cellPulses[cellIndex];
+
+              if (isRevealed) {
+                const grad = ctx.createLinearGradient(x, y, x + colW, y + rowH);
+                grad.addColorStop(0, '#ecfdf5');
+                grad.addColorStop(1, '#d1fae5');
+                ctx.fillStyle = grad;
+                ctx.fillRect(x, y, colW, rowH);
+
+                ctx.strokeStyle = pulse > 0 ? '#10b981' : '#059669';
+                ctx.lineWidth = pulse > 0 ? 3 : 1.5;
+                ctx.strokeRect(x, y, colW, rowH);
+
+                if (pulse > 0) {
+                  ctx.fillStyle = 'rgba(16, 185, 129, 0.2)';
+                  ctx.fillRect(x, y, colW, rowH);
+                }
+
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                ctx.fillStyle = '#047857';
+                ctx.font = '11px Pretendard, sans-serif';
+                ctx.fillText(`${cell.rVal} × ${cell.cVal}`, x + colW / 2, y + 15);
+
+                ctx.fillStyle = '#065f46';
+                ctx.font = 'bold 17px Pretendard, sans-serif';
+                ctx.fillText(cell.val, x + colW / 2, y + 32);
+
+              } else {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(x, y, colW, rowH);
+
+                ctx.save();
+                ctx.setLineDash([4, 4]);
+                ctx.strokeStyle = '#94a3b8';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(x, y, colW, rowH);
+                ctx.restore();
+
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = 'bold 15px Pretendard, sans-serif';
+                ctx.fillText('?', x + colW / 2, y + rowH / 2);
+              }
+            }
+
+            ctx.restore();
+          }
+        }
+
+        const bannerY = startY + 4 * rowH + 20;
+        if (gridStep >= 6) {
           ctx.save();
-          ctx.fillStyle = (rIdx === 0 || cIdx === 0) ? '#f1f5f9' : '#ffffff';
-          ctx.strokeStyle = '#cbd5e1';
-          ctx.lineWidth = 1;
+          const bw = Math.min(colW * 3 + 20, w - 40);
+          const bx = w / 2 - bw / 2;
+          ctx.fillStyle = '#eff6ff';
+          ctx.strokeStyle = '#3b82f6';
+          ctx.lineWidth = 1.5;
           ctx.beginPath();
-          ctx.rect(cx, cy, cellW, cellH);
+          if (ctx.roundRect) {
+            ctx.roundRect(bx, bannerY, bw, 62, 10);
+          } else {
+            ctx.rect(bx, bannerY, bw, 62);
+          }
           ctx.fill();
           ctx.stroke();
 
           ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.font = (rIdx === 0 || cIdx === 0) ? 'bold 14px Pretendard, sans-serif' : '15px Pretendard, sans-serif';
-          ctx.fillStyle = (rIdx === 0 || cIdx === 0) ? '#475569' : '#1e293b';
-          if (rIdx > 0 && cIdx > 0) ctx.fillStyle = '#059669';
-          ctx.fillText(val, cx + cellW / 2, cy + cellH / 2);
-          ctx.restore();
-        });
-      });
+          ctx.fillStyle = '#1e3a8a';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.fillText('✨ 63의 약수 (작은 수부터 차례대로):', w / 2, bannerY + 22);
 
-      // 하단 결론
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 14px Pretendard, sans-serif';
-      ctx.fillStyle = '#1d4ed8';
-      ctx.fillText('따라서 63의 약수는 1, 3, 7, 9, 21, 63 (총 6개)입니다.', w / 2, h - 35);
+          ctx.fillStyle = '#2563eb';
+          ctx.font = 'bold 17px Pretendard, sans-serif';
+          ctx.fillText('1, 3, 7, 9, 21, 63 (총 6개)', w / 2, bannerY + 46);
+          ctx.restore();
+        } else {
+          ctx.save();
+          const bw = Math.min(colW * 3 + 20, w - 40);
+          const bx = w / 2 - bw / 2;
+          ctx.fillStyle = '#f8fafc';
+          ctx.strokeStyle = '#e2e8f0';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          if (ctx.roundRect) {
+            ctx.roundRect(bx, bannerY, bw, 46, 8);
+          } else {
+            ctx.rect(bx, bannerY, bw, 46);
+          }
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#64748b';
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillText(`현재 진행: ${gridStep}/6 완료. [⏩ 하나씩 곱하기]를 누르면 약수가 채워집니다.`, w / 2, bannerY + 27);
+          ctx.restore();
+        }
+      }
+
+      function renderBotMode() {
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.fillText('🤖 [수학봇 탐구] 큰 수는 작은 수보다 항상 약수가 많을까? (p.16)', w / 2, 28);
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillText('두 수 63과 65를 비교해 봅시다! 과연 어느 쪽의 약수가 더 많을까요?', w / 2, 48);
+
+        seesawTilt += (targetTilt - seesawTilt) * 0.12;
+
+        const pivotX = w / 2;
+        const pivotY = 190;
+        const beamLen = Math.min(280, w * 0.55);
+
+        // 1. 시소 받침대
+        ctx.save();
+        ctx.fillStyle = '#64748b';
+        ctx.beginPath();
+        ctx.moveTo(pivotX, pivotY);
+        ctx.lineTo(pivotX - 24, pivotY + 45);
+        ctx.lineTo(pivotX + 24, pivotY + 45);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#334155';
+        ctx.beginPath();
+        ctx.arc(pivotX, pivotY, 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 바닥선
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(pivotX - beamLen * 0.7, pivotY + 45);
+        ctx.lineTo(pivotX + beamLen * 0.7, pivotY + 45);
+        ctx.stroke();
+        ctx.restore();
+
+        // 2. 시소 회전 빔
+        ctx.save();
+        ctx.translate(pivotX, pivotY);
+        ctx.rotate(seesawTilt);
+
+        ctx.fillStyle = '#475569';
+        ctx.fillRect(-beamLen / 2, -5, beamLen, 10);
+
+        const leftX = -beamLen / 2 + 15;
+        const rightX = beamLen / 2 - 15;
+
+        // 접시
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(leftX - 45, 5, 90, 4);
+        ctx.fillRect(rightX - 45, 5, 90, 4);
+
+        // 왼쪽 추 블록 (63: 약수 6개)
+        const d63 = [1, 3, 7, 9, 21, 63];
+        const bw = 26;
+        const bh = 18;
+        for (let i = 0; i < 6; i++) {
+          const col = i % 3;
+          const row = Math.floor(i / 3);
+          const bx = leftX - 40 + col * 28;
+          const by = -6 - (row + 1) * 20;
+
+          ctx.fillStyle = '#3b82f6';
+          ctx.strokeStyle = '#1d4ed8';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          if (ctx.roundRect) {
+            ctx.roundRect(bx, by, bw, bh, 3);
+          } else {
+            ctx.rect(bx, by, bw, bh);
+          }
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 9px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(d63[i], bx + bw / 2, by + bh / 2);
+        }
+
+        // 오른쪽 추 블록 (65: 약수 4개)
+        const d65 = [1, 5, 13, 65];
+        for (let i = 0; i < 4; i++) {
+          const col = i % 2;
+          const row = Math.floor(i / 2);
+          const bx = rightX - 28 + col * 28;
+          const by = -6 - (row + 1) * 20;
+
+          ctx.fillStyle = '#f59e0b';
+          ctx.strokeStyle = '#d97706';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          if (ctx.roundRect) {
+            ctx.roundRect(bx, by, bw, bh, 3);
+          } else {
+            ctx.rect(bx, by, bw, bh);
+          }
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 9px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(d65[i], bx + bw / 2, by + bh / 2);
+        }
+
+        ctx.restore();
+
+        // 3. 양측 라벨 표시
+        const labelY = pivotY + 65;
+
+        // 왼쪽 (63)
+        ctx.save();
+        ctx.fillStyle = '#eff6ff';
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(pivotX - 200, labelY, 170, 72, 8);
+        } else {
+          ctx.rect(pivotX - 200, labelY, 170, 72);
+        }
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#1e40af';
+        ctx.font = 'bold 14px Pretendard, sans-serif';
+        ctx.fillText('수 63 (3² × 7)', pivotX - 115, labelY + 20);
+
+        ctx.fillStyle = '#3b82f6';
+        ctx.font = 'bold 16px Pretendard, sans-serif';
+        ctx.fillText('약수 개수: 6개', pivotX - 115, labelY + 44);
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = '11px Pretendard, sans-serif';
+        ctx.fillText('1, 3, 7, 9, 21, 63', pivotX - 115, labelY + 62);
+        ctx.restore();
+
+        // 오른쪽 (65)
+        ctx.save();
+        ctx.fillStyle = '#fffbeb';
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(pivotX + 30, labelY, 170, 72, 8);
+        } else {
+          ctx.rect(pivotX + 30, labelY, 170, 72);
+        }
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#92400e';
+        ctx.font = 'bold 14px Pretendard, sans-serif';
+        ctx.fillText('수 65 (5 × 13)', pivotX + 115, labelY + 20);
+
+        ctx.fillStyle = '#d97706';
+        ctx.font = 'bold 16px Pretendard, sans-serif';
+        ctx.fillText('약수 개수: 4개', pivotX + 115, labelY + 44);
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = '11px Pretendard, sans-serif';
+        ctx.fillText('1, 5, 13, 65', pivotX + 115, labelY + 62);
+        ctx.restore();
+
+        // 4. 하단 핵심 결론 카드
+        const summaryY = labelY + 85;
+        ctx.save();
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1;
+        const sumW = Math.min(420, w - 30);
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(w / 2 - sumW / 2, summaryY, sumW, 58, 8);
+        } else {
+          ctx.rect(w / 2 - sumW / 2, summaryY, sumW, 58);
+        }
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.fillText('💡 수의 크기는 65 > 63 이지만, 약수 개수는 4개 < 6개!', w / 2, summaryY + 24);
+
+        ctx.fillStyle = '#dc2626';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.fillText('따라서 큰 수가 항상 약수가 많은 것은 아닙니다! (아니다)', w / 2, summaryY + 46);
+        ctx.restore();
+      }
+
+      render();
     }
 
     function renderForm_2_8(box) {
       box.innerHTML = `
         <div class="card">
           <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
-            ✏️ [예제 2] 표를 이용한 63의 약수 구하기 (p.16)
+            ✏️ [예제 2 & 수학봇] 표를 이용한 63의 약수 구하기 (p.16)
           </div>
           <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
-            소인수분해를 이용하여 63의 약수를 작은 것부터 차례대로 모두 쓰시오.
+            소인수분해와 곱셈표를 이용하여 63의 약수를 구하고, 수학봇의 질문에 답해 보세요.
           </p>
 
-          <div style="margin-bottom:14px;">
-            <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">63의 약수 (쉼표 구분):</label>
-            <input type="text" id="ans-2-8" class="form-control" placeholder="약수 입력 (쉼표 구분)" autocomplete="off">
+          <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:16px;">
+            <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
+              <div style="font-size:0.86rem; font-weight:700; color:#1e293b; margin-bottom:4px;">
+                ⑴ 63을 소인수분해하면 다음과 같습니다:
+              </div>
+              <div style="font-size:0.92rem; color:#334155;">
+                63 = 3² × [ <input type="text" id="ans-2-8-1" style="width:90px; text-align:center; font-weight:700; display:inline-block;" class="form-control" placeholder="수 입력" autocomplete="off"> ]
+              </div>
+            </div>
+
+            <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
+              <div style="font-size:0.86rem; font-weight:700; color:#1e293b; margin-bottom:4px;">
+                ⑵ 소인수분해를 이용하여 구한 63의 약수를 작은 수부터 쉼표로 구분하여 모두 쓰시오:
+              </div>
+              <div>
+                👉 [ <input type="text" id="ans-2-8-2" style="width:230px; text-align:center; font-weight:700; display:inline-block;" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off"> ]
+              </div>
+            </div>
+
+            <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
+              <div style="font-size:0.86rem; font-weight:700; color:#1e293b; margin-bottom:4px;">
+                ⑶ 🤖 [수학봇] 큰 수는 작은 수보다 항상 약수의 개수가 더 많은가요? (그렇다 / 아니다 중 입력):
+              </div>
+              <div>
+                👉 [ <input type="text" id="ans-2-8-3" style="width:180px; text-align:center; font-weight:700; display:inline-block;" class="form-control" placeholder="그렇다 또는 아니다 입력" autocomplete="off"> ]
+              </div>
+            </div>
           </div>
 
-          <button class="btn btn-primary" onclick="checkStep_2_8()" style="width:100%;">정답 확인 및 채점</button>
+          <button class="btn btn-primary" onclick="checkStep_2_8()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
 
-      const input = box.querySelector('#ans-2-8');
-      if (input) {
-        input.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') checkStep_2_8();
-        });
-      }
+      ['ans-2-8-1', 'ans-2-8-2', 'ans-2-8-3'].forEach(id => {
+        const input = box.querySelector('#' + id);
+        if (input) {
+          input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') checkStep_2_8();
+          });
+        }
+      });
     }
 
     function checkStep_2_8() {
-      const list = parseNumList(document.getElementById('ans-2-8')?.value);
-      const ok = areListsEqual(list, [1, 3, 7, 9, 21, 63]);
+      const v1 = document.getElementById('ans-2-8-1')?.value?.trim();
+      const v2 = document.getElementById('ans-2-8-2')?.value;
+      const v3 = normTxt(document.getElementById('ans-2-8-3')?.value);
 
-      if (ok) {
-        completeSubStep('2-8', '🎉 <b>정답입니다!</b> 63의 약수는 <b>1, 3, 7, 9, 21, 63</b>입니다.');
+      const ok1 = parseInt(v1, 10) === 7;
+      const ok2 = areListsEqual(parseNumList(v2), [1, 3, 7, 9, 21, 63]);
+      const ok3 = (v3 === '아니다' || v3 === '아니오' || v3 === '아닙니다' || v3 === '아니' || v3 === 'x' || v3.toLowerCase() === 'false' || v3.includes('아니'));
+
+      if (ok1 && ok2 && ok3) {
+        if (window._step2_8_completeTable) {
+          window._step2_8_completeTable();
+        }
+        completeSubStep('2-8', '🎉 <b>모두 정답입니다!</b><br>⑴ 63 = 3² × <b>7</b><br>⑵ 63의 약수: <b>1, 3, 7, 9, 21, 63</b> (총 6개)<br>⑶ 큰 수가 항상 약수가 많은 것은 <b>아니다</b> (반례: 65의 약수는 4개, 63의 약수는 6개)');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 3²의 약수(1, 3, 9)와 7의 약수(1, 7)의 곱셈표에서 빠진 수가 있는지 살펴보세요.');
+        const errs = [];
+        if (!ok1) errs.push('⑴ 63 = 3² × 빈칸: 63을 9로 나누면 어떤 소수가 남는지 확인해 보세요.');
+        if (!ok2) errs.push('⑵ 3²의 약수(1, 3, 9)와 7의 약수(1, 7)를 각각 곱한 6개의 약수를 빠짐없이 적어보세요.');
+        if (!ok3) errs.push('⑶ [수학봇] 65(약수 4개)와 63(약수 6개)처럼 큰 수가 반드시 약수가 많은 것은 아닙니다. ("그렇다" 또는 "아니다" 중 입력)');
+        showFeedback(false, '❌ <b>다시 확인해 보세요.</b><br>' + errs.join('<br>'));
       }
     }
 
