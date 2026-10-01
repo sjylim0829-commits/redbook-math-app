@@ -20063,92 +20063,554 @@ function checkStep_1_12() {
     // 2-15 (p.17): 스스로 확인하기 4: 제곱수 만들기
     // -------------------------------------------------------------
     function drawCanvas_2_15(container) {
+      if (container._animId_2_15) {
+        cancelAnimationFrame(container._animId_2_15);
+        container._animId_2_15 = null;
+      }
       container.innerHTML = '';
-      const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 560;
-      canvas.height = container.clientHeight || 460;
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      canvas.style.display = 'block';
-      container.appendChild(canvas);
+
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; height:100%; box-sizing:border-box;">
+          <!-- 상단 상태 알림 및 인터랙터 조작 바 -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+            <div id="badge-2-15" style="font-size:0.86rem; font-weight:700; color:#1e293b; background:#f1f5f9; padding:6px 14px; border-radius:20px; border:1px solid #cbd5e1; flex:1; min-width:240px;">
+              56 = 2³ × 7 에서 모든 지수를 짝수로 만들어 저울의 균형을 맞춰 보세요!
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button id="btn-add2-2-15" class="btn btn-sm btn-outline-primary" style="font-weight:700;">➕ 2 추가 (+0)</button>
+              <button id="btn-add7-2-15" class="btn btn-sm btn-outline-primary" style="font-weight:700;">➕ 7 추가 (+0)</button>
+              <button id="btn-opt14-2-15" class="btn btn-sm btn-primary" style="font-weight:700;">⚡ 최적수(14) 곱하기</button>
+              <button id="btn-reset-2-15" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">⟲ 초기화</button>
+            </div>
+          </div>
+          <!-- Canvas 렌더링 영역 -->
+          <div style="flex:1; min-height:360px; position:relative;">
+            <canvas id="canvas-2-15" style="width:100%; height:100%; display:block; border-radius:12px; background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); border:1px solid #e2e8f0;"></canvas>
+          </div>
+        </div>
+      `;
+
+      const canvas = container.querySelector('#canvas-2-15');
+      const badgeStatus = container.querySelector('#badge-2-15');
+      const btnAdd2 = container.querySelector('#btn-add2-2-15');
+      const btnAdd7 = container.querySelector('#btn-add7-2-15');
+      const btnOpt14 = container.querySelector('#btn-opt14-2-15');
+      const btnReset = container.querySelector('#btn-reset-2-15');
 
       const ctx = canvas.getContext('2d');
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
+      let w = 560, h = 390;
+      let added2 = 0; // 0 or 1
+      let added7 = 0; // 0 or 1
+      let currentAngle = -0.22;
+      let targetAngle = -0.22;
+      let celebrated = false;
+      let particles = [];
 
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 15px Pretendard, sans-serif';
-      ctx.fillStyle = '#1e293b';
-      ctx.fillText('⚖️ [스스로 확인하기 4] 자연수의 제곱수 만들기 (p.17)', w / 2, 35);
+      function createConfetti() {
+        const colors = ['#10b981', '#6366f1', '#f59e0b', '#ec4899', '#3b82f6', '#8b5cf6', '#eab308'];
+        particles = [];
+        for (let i = 0; i < 55; i++) {
+          particles.push({
+            x: w * 0.5 + (Math.random() - 0.5) * 180,
+            y: 130 + (Math.random() - 0.5) * 40,
+            vx: (Math.random() - 0.5) * 9,
+            vy: -Math.random() * 7 - 3,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.012
+          });
+        }
+      }
 
-      ctx.font = '12px Pretendard, sans-serif';
-      ctx.fillStyle = '#64748b';
-      ctx.fillText('어떤 자연수의 제곱이 되려면 모든 소인수의 지수가 짝수이어야 합니다.', w / 2, 60);
+      function resize() {
+        w = canvas.clientWidth || 560;
+        h = canvas.clientHeight || 390;
+        canvas.width = w;
+        canvas.height = h;
+      }
+      resize();
 
-      ctx.save();
-      ctx.fillStyle = '#ffffff';
-      ctx.strokeStyle = '#f59e0b';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(30, 80, w - 60, 180, 12) : ctx.rect(30, 80, w - 60, 180);
-      ctx.fill();
-      ctx.stroke();
+      function updateUI() {
+        const isBalanced = (added2 === 1 && added7 === 1);
+        if (added2 === 1) {
+          btnAdd2.className = 'btn btn-sm btn-success';
+          btnAdd2.innerHTML = '➖ 2 취소 (+1)';
+        } else {
+          btnAdd2.className = 'btn btn-sm btn-outline-primary';
+          btnAdd2.innerHTML = '➕ 2 추가 (+0)';
+        }
 
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 16px Pretendard, sans-serif';
-      ctx.fillStyle = '#b45309';
-      ctx.fillText('56 = 2³ × 7¹', w / 2, 115);
+        if (added7 === 1) {
+          btnAdd7.className = 'btn btn-sm btn-success';
+          btnAdd7.innerHTML = '➖ 7 취소 (+1)';
+        } else {
+          btnAdd7.className = 'btn btn-sm btn-outline-primary';
+          btnAdd7.innerHTML = '➕ 7 추가 (+0)';
+        }
 
-      ctx.font = '13px Pretendard, sans-serif';
-      ctx.fillStyle = '#475569';
-      ctx.fillText('• 2의 지수: 3 (홀수) ➔ 2를 1개 더 곱해야 짝수(4)가 됨', w / 2, 150);
-      ctx.fillText('• 7의 지수: 1 (홀수) ➔ 7을 1개 더 곱해야 짝수(2)가 됨', w / 2, 180);
+        // Set target angle based on balance
+        if (isBalanced) {
+          targetAngle = 0.0;
+          badgeStatus.innerHTML = '🎉 균형 달성! 56 × <b>14</b> = 2⁴ × 7² = <b>28²</b> (완전 제곱수)';
+          if (!celebrated) {
+            celebrated = true;
+            createConfetti();
+            if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+          }
+        } else {
+          celebrated = false;
+          if (added2 === 0 && added7 === 0) {
+            targetAngle = -0.22;
+            badgeStatus.innerHTML = '56 = 2³ × 7¹ (2의 지수 3, 7의 지수 1 ➔ 둘 다 홀수이므로 불균형)';
+          } else if (added2 === 1 && added7 === 0) {
+            targetAngle = -0.14;
+            badgeStatus.innerHTML = '2 추가 완료 (2⁴으로 짝수) ➔ 하지만 7의 지수가 1(홀수)이라 여전히 불균형!';
+          } else {
+            targetAngle = -0.10;
+            badgeStatus.innerHTML = '7 추가 완료 (7²으로 짝수) ➔ 하지만 2의 지수가 3(홀수)이라 여전히 불균형!';
+          }
+        }
+      }
 
-      ctx.font = 'bold 16px Pretendard, sans-serif';
-      ctx.fillStyle = '#059669';
-      ctx.fillText('곱할 가장 작은 자연수 = 2 × 7 = 14', w / 2, 225);
-      ctx.restore();
+      btnAdd2.addEventListener('click', () => {
+        added2 = added2 === 0 ? 1 : 0;
+        updateUI();
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      });
+
+      btnAdd7.addEventListener('click', () => {
+        added7 = added7 === 0 ? 1 : 0;
+        updateUI();
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      });
+
+      btnOpt14.addEventListener('click', () => {
+        added2 = 1;
+        added7 = 1;
+        updateUI();
+      });
+
+      btnReset.addEventListener('click', () => {
+        added2 = 0;
+        added7 = 0;
+        updateUI();
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      });
+
+      window._step2_15_completeAll = function() {
+        added2 = 1;
+        added7 = 1;
+        updateUI();
+      };
+
+      function drawMiniBlock(x, y, text, isGold) {
+        ctx.save();
+        if (isGold) {
+          ctx.shadowColor = '#f59e0b';
+          ctx.shadowBlur = 8;
+        }
+        ctx.fillStyle = isGold ? '#fef3c7' : '#ffffff';
+        ctx.strokeStyle = isGold ? '#d97706' : '#cbd5e1';
+        ctx.lineWidth = isGold ? 2 : 1.5;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(x - 16, y - 16, 32, 32, 6);
+        else ctx.rect(x - 16, y - 16, 32, 32);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.shadowBlur = 0;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.fillStyle = isGold ? '#b45309' : '#1e293b';
+        ctx.fillText(text, x, y + 1);
+        ctx.restore();
+      }
+
+      function render() {
+        ctx.clearRect(0, 0, w, h);
+
+        // Smooth angle interpolation
+        currentAngle += (targetAngle - currentAngle) * 0.12;
+
+        const isBalanced = (added2 === 1 && added7 === 1);
+
+        // Title and description
+        ctx.save();
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('⚖️ [제곱수 만들기 밸런서] 56에 수를 곱해 A² 만들기 (p.17)', w / 2, 22);
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillText('모든 소인수를 좌우 두 바구니(A × A = A²)에 똑같이 나누어 담아야 제곱수가 됩니다.', w / 2, 40);
+        ctx.restore();
+
+        // 1. Fulcrum Stand (중앙 받침대)
+        const pivotX = w / 2;
+        const pivotY = 135;
+        const standBottomY = 240;
+
+        ctx.save();
+        // Triangular Fulcrum Base
+        ctx.fillStyle = '#94a3b8';
+        ctx.beginPath();
+        ctx.moveTo(pivotX, pivotY + 10);
+        ctx.lineTo(pivotX - 35, standBottomY);
+        ctx.lineTo(pivotX + 35, standBottomY);
+        ctx.closePath();
+        ctx.fill();
+
+        // Bottom platform plate
+        ctx.fillStyle = '#64748b';
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(pivotX - 55, standBottomY - 4, 110, 8, 4);
+        else ctx.rect(pivotX - 55, standBottomY - 4, 110, 8);
+        ctx.fill();
+
+        // Balance Indicator Needle & Arc
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(pivotX, pivotY, 32, -Math.PI * 0.75, -Math.PI * 0.25);
+        ctx.stroke();
+
+        // Central Notch (0 deg)
+        ctx.strokeStyle = isBalanced ? '#10b981' : '#f59e0b';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(pivotX, pivotY - 26);
+        ctx.lineTo(pivotX, pivotY - 36);
+        ctx.stroke();
+
+        // Needle pointing along angle
+        ctx.strokeStyle = isBalanced ? '#10b981' : '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(pivotX, pivotY);
+        ctx.lineTo(pivotX + 28 * Math.sin(currentAngle), pivotY - 28 * Math.cos(currentAngle));
+        ctx.stroke();
+        ctx.restore();
+
+        // 2. Balance Beam (시소 회전 바)
+        const beamHalf = Math.min(w * 0.36, 175);
+        const cosA = Math.cos(currentAngle);
+        const sinA = Math.sin(currentAngle);
+
+        const xL = pivotX - beamHalf * cosA;
+        const yL = pivotY - beamHalf * sinA;
+        const xR = pivotX + beamHalf * cosA;
+        const yR = pivotY + beamHalf * sinA;
+
+        ctx.save();
+        ctx.strokeStyle = isBalanced ? '#10b981' : '#475569';
+        ctx.lineWidth = 6;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(xL, yL);
+        ctx.lineTo(xR, yR);
+        ctx.stroke();
+
+        // Center Pivot Bolt
+        ctx.fillStyle = isBalanced ? '#10b981' : '#334155';
+        ctx.beginPath();
+        ctx.arc(pivotX, pivotY, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // 3. Left Pan (바구니 A: 2 × 2 × 7 = 28)
+        const cordLen = 50;
+        const panLY = yL + cordLen;
+        const panW = 100;
+
+        ctx.save();
+        // Suspension cords
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(xL, yL);
+        ctx.lineTo(xL - panW / 2 + 10, panLY);
+        ctx.moveTo(xL, yL);
+        ctx.lineTo(xL + panW / 2 - 10, panLY);
+        ctx.stroke();
+
+        // Pan bowl
+        ctx.fillStyle = '#f1f5f9';
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(xL - panW / 2, panLY);
+        ctx.quadraticCurveTo(xL, panLY + 26, xL + panW / 2, panLY);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Left Pan Blocks: [ 2 ], [ 2 ], [ 7 ]
+        drawMiniBlock(xL - 24, panLY - 18, '2', false);
+        drawMiniBlock(xL + 10, panLY - 18, '2', false);
+        drawMiniBlock(xL - 7, panLY - 46, '7', false);
+
+        // Left Pan Label
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 12px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('묶음 A: 2 × 2 × 7', xL, panLY + 38);
+        ctx.font = 'bold 14px Pretendard, sans-serif';
+        ctx.fillStyle = '#4f46e5';
+        ctx.fillText('= 28', xL, panLY + 54);
+        ctx.restore();
+
+        // 4. Right Pan (바구니 B: 2 + [added2] + [added7])
+        const panRY = yR + cordLen;
+
+        ctx.save();
+        // Suspension cords
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(xR, yR);
+        ctx.lineTo(xR - panW / 2 + 10, panRY);
+        ctx.moveTo(xR, yR);
+        ctx.lineTo(xR + panW / 2 - 10, panRY);
+        ctx.stroke();
+
+        // Pan bowl
+        ctx.fillStyle = isBalanced ? '#ecfdf5' : '#f1f5f9';
+        ctx.strokeStyle = isBalanced ? '#10b981' : '#64748b';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(xR - panW / 2, panRY);
+        ctx.quadraticCurveTo(xR, panRY + 26, xR + panW / 2, panRY);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Existing Block [ 2 ]
+        drawMiniBlock(xR - 24, panRY - 18, '2', false);
+
+        // Added Block 2 if present
+        if (added2 === 1) {
+          drawMiniBlock(xR + 10, panRY - 18, '2', true);
+        } else {
+          // Empty slot placeholder
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(xR + 10 - 16, panRY - 18 - 16, 32, 32, 6);
+          else ctx.rect(xR + 10 - 16, panRY - 18 - 16, 32, 32);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = '10px Pretendard, sans-serif';
+          ctx.fillText('2 부족', xR + 10, panRY - 18 + 3);
+        }
+
+        // Added Block 7 if present
+        if (added7 === 1) {
+          drawMiniBlock(xR - 7, panRY - 46, '7', true);
+        } else {
+          // Empty slot placeholder
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(xR - 7 - 16, panRY - 46 - 16, 32, 32, 6);
+          else ctx.rect(xR - 7 - 16, panRY - 46 - 16, 32, 32);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = '10px Pretendard, sans-serif';
+          ctx.fillText('7 부족', xR - 7, panRY - 46 + 3);
+        }
+
+        // Right Pan Label
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 12px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        if (isBalanced) {
+          ctx.fillText('묶음 B: 2 × 2 × 7', xR, panRY + 38);
+          ctx.font = 'bold 14px Pretendard, sans-serif';
+          ctx.fillStyle = '#059669';
+          ctx.fillText('= 28 (수평 균형!)', xR, panRY + 54);
+        } else {
+          ctx.fillText('묶음 B: 짝수 짝 부족', xR, panRY + 38);
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#dc2626';
+          ctx.fillText('⚠️ 불균형 상태', xR, panRY + 54);
+        }
+        ctx.restore();
+
+        // 5. Bottom Parity & Equation Summary Card
+        const sumY = h - 72;
+        const sumW = Math.min(w - 30, 500);
+        const sumX = (w - sumW) / 2;
+
+        ctx.save();
+        ctx.fillStyle = isBalanced ? '#ecfdf5' : '#f8fafc';
+        ctx.strokeStyle = isBalanced ? '#10b981' : '#e2e8f0';
+        ctx.lineWidth = isBalanced ? 1.5 : 1;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(sumX, sumY, sumW, 60, 8);
+        else ctx.rect(sumX, sumY, sumW, 60);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        if (isBalanced) {
+          ctx.fillStyle = '#065f46';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.fillText('✨ 완전 제곱수 완성: 56 × (2 × 7) = 2⁴ × 7²', w / 2, sumY + 22);
+
+          ctx.fillStyle = '#059669';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.fillText('= (2² × 7)² = 28²  ➔  곱할 가장 작은 수는 2 × 7 = 14!', w / 2, sumY + 44);
+        } else {
+          ctx.fillStyle = '#1e293b';
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillText('56 = 2³ × 7¹ (2의 지수: 3 홀수, 7의 지수: 1 홀수)', w / 2, sumY + 22);
+
+          ctx.fillStyle = '#64748b';
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillText('지수가 홀수인 소인수에 1개씩 더 곱해야 지수가 짝수가 됩니다.', w / 2, sumY + 42);
+        }
+        ctx.restore();
+
+        // Particles rendering
+        if (particles.length > 0) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.22;
+            p.rot += p.vRot;
+            p.life -= p.decay;
+
+            if (p.life <= 0) {
+              particles.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+            ctx.restore();
+          }
+        }
+
+        container._animId_2_15 = requestAnimationFrame(render);
+      }
+
+      render();
     }
 
     function renderForm_2_15(box) {
       box.innerHTML = `
-        <div class="card">
+        <div class="card" style="padding:16px 20px;">
           <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
             ✏️ [스스로 확인하기 4] 제곱수 만들기 (p.17)
           </div>
           <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
-            56에 자연수를 곱하여 어떤 자연수의 제곱이 되도록 할 때, 곱할 수 있는 가장 작은 자연수를 구하시오.
+            56에 자연수를 곱하여 어떤 자연수의 제곱이 되도록 할 때, 물음에 답하시오.
           </p>
 
-          <div style="margin-bottom:14px;">
-            <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">곱할 가장 작은 자연수:</label>
-            <input type="text" id="ans-2-15" style="width:120px;" class="form-control" placeholder="수 입력" autocomplete="off">
+          <!-- 거듭제곱 퀵 입력 바 -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; background:#f1f5f9; padding:8px 10px; border-radius:8px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; line-height:28px;">기호 입력:</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-2-15" data-char="^" style="font-weight:700; min-width:32px;">^</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-2-15" data-char="²" style="font-weight:700; min-width:32px;">²</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-2-15" data-char="³" style="font-weight:700; min-width:32px;">³</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-2-15" data-char="⁴" style="font-weight:700; min-width:32px;">⁴</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-2-15" data-char="×" style="font-weight:700; min-width:32px;">×</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-2-15" data-char="*" style="font-weight:700; min-width:32px;">*</button>
           </div>
 
-          <button class="btn btn-primary" onclick="checkStep_2_15()" style="width:100%;">정답 확인 및 채점</button>
+          <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
+            <!-- ⑴ 56 소인수분해 -->
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+                ⑴ 56을 소인수분해하시오:
+              </label>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-weight:600; font-size:0.9rem;">$56 =$</span>
+                <input type="text" id="ans-2-15-1" class="form-control" placeholder="거듭제곱 식 입력" autocomplete="off">
+              </div>
+            </div>
+
+            <!-- ⑵ 지수의 조건 -->
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+                ⑵ 어떤 자연수의 제곱이 되려면 각 소인수의 지수가 모두 어떠해야 하나요? (짝수 / 홀수 중 입력):
+              </label>
+              <input type="text" id="ans-2-15-2" class="form-control" style="width:160px;" placeholder="짝수 또는 홀수 입력" autocomplete="off">
+            </div>
+
+            <!-- ⑶ 곱할 가장 작은 수 -->
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+                ⑶ 곱할 수 있는 가장 작은 자연수를 구하시오:
+              </label>
+              <input type="text" id="ans-2-15-3" class="form-control" style="width:120px;" placeholder="수 입력" autocomplete="off">
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="checkStep_2_15()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
 
-      const input = box.querySelector('#ans-2-15');
-      if (input) {
+      let lastFocusedInput = box.querySelector('#ans-2-15-1');
+      const inputs = box.querySelectorAll('input[type="text"]');
+      inputs.forEach(input => {
+        input.addEventListener('focus', () => {
+          lastFocusedInput = input;
+        });
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') checkStep_2_15();
         });
-      }
+      });
+
+      box.querySelectorAll('.btn-pow-insert-2-15').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const char = btn.getAttribute('data-char');
+          if (lastFocusedInput) {
+            lastFocusedInput.value += char;
+            lastFocusedInput.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      });
     }
 
     function checkStep_2_15() {
-      const v = normTxt(document.getElementById('ans-2-15')?.value);
-      const ok = (v === '14');
+      const v1 = document.getElementById('ans-2-15-1')?.value;
+      const v2 = normTxt(document.getElementById('ans-2-15-2')?.value);
+      const v3 = normTxt(document.getElementById('ans-2-15-3')?.value);
 
-      if (ok) {
-        completeSubStep('2-15', '🎉 <b>정답입니다!</b> 56 = 2³ × 7에서 지수가 홀수인 2와 7을 1개씩 곱해야 하므로 가장 작은 수는 2 × 7 = <b>14</b>입니다.');
+      const ok1 = comparePowerMaps(parsePowerProduct(v1), { 2: 3, 7: 1 });
+      const ok2 = (v2 === '짝수');
+      const ok3 = (v3 === '14');
+
+      if (ok1 && ok2 && ok3) {
+        if (window._step2_15_completeAll) {
+          window._step2_15_completeAll();
+        }
+        completeSubStep('2-15', '🎉 <b>모두 정답입니다!</b><br>⑴ 56 = <b>2³ × 7</b><br>⑵ 제곱수가 되려면 모든 소인수의 지수가 <b>짝수</b>여야 합니다.<br>⑶ 2와 7의 지수가 모두 홀수(3, 1)이므로 가장 작은 수는 2 × 7 = <b>14</b>입니다.');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
+        let wrong = [];
+        if (!ok1) wrong.push('⑴ 56의 소인수분해 ($2^3 \\times 7$)');
+        if (!ok2) wrong.push('⑵ 지수의 조건 (짝수 또는 홀수)');
+        if (!ok3) wrong.push('⑶ 곱할 가장 작은 자연수 ($2 \\times 7 = 14$)');
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 56을 소인수분해한 후 각 소인수의 지수를 짝수로 만들기 위해 부족한 소인수를 찾아보세요.');
+        showFeedback(false, `❌ <b>오답 항목이 있습니다:</b><br>• ${wrong.join('<br>• ')}<br>56을 소인수분해한 뒤 지수가 홀수인 소인수를 찾아보세요.`);
       }
     }
 
