@@ -40847,85 +40847,524 @@ function checkStep_1_12() {
     // ==========================================
     function drawCanvas_4_15(container) {
       if (!container) return;
-      container.innerHTML = '';
-      const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 500;
-      canvas.height = container.clientHeight || 450;
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      canvas.style.display = 'block';
-      container.appendChild(canvas);
+      if (container._animId_4_15) {
+        cancelAnimationFrame(container._animId_4_15);
+        container._animId_4_15 = null;
+      }
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; height:100%; gap:10px;">
+          <!-- 상단 컨트롤러 및 설명 뱃지 바 -->
+          <div style="background:#ffffff; padding:12px 14px; border-radius:10px; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+              <span id="badge-4-15" style="font-size:0.88rem; font-weight:700; color:#1e293b;">
+                단계별 버튼을 눌러 미지수 A가 포함된 세 수의 최소공배수를 구하는 원리를 확인해 보세요!
+              </span>
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+              <button id="btn-step1-4-15" class="btn btn-sm btn-outline-primary" style="font-weight:700;">1단계: 공통 인수 A</button>
+              <button id="btn-step2-4-15" class="btn btn-sm btn-outline-primary" style="font-weight:700;">2단계: 몫 3, 4, 5</button>
+              <button id="btn-step3-4-15" class="btn btn-sm btn-outline-primary" style="font-weight:700;">3단계: 최소공배수 식</button>
+              <button id="btn-step4-4-15" class="btn btn-sm btn-warning" style="font-weight:800; color:#1e293b;">4단계: 방정식 풀이 & 저울</button>
+              <button id="btn-reset-4-15" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">⟲ 초기화</button>
+            </div>
+          </div>
+          <!-- Canvas 영역 -->
+          <div style="flex:1; min-height:370px; position:relative;">
+            <canvas id="canvas-4-15" style="width:100%; height:100%; display:block; border-radius:12px; background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); border:1px solid #e2e8f0;"></canvas>
+          </div>
+        </div>
+      `;
+
+      const canvas = container.querySelector('#canvas-4-15');
+      const badgeStatus = container.querySelector('#badge-4-15');
+      const btnStep1 = container.querySelector('#btn-step1-4-15');
+      const btnStep2 = container.querySelector('#btn-step2-4-15');
+      const btnStep3 = container.querySelector('#btn-step3-4-15');
+      const btnStep4 = container.querySelector('#btn-step4-4-15');
+      const btnReset = container.querySelector('#btn-reset-4-15');
+
       const ctx = canvas.getContext('2d');
+      let w = 560, h = 400;
 
-      let animId;
-      let angle = 0;
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        w = rect.width || 560;
+        h = rect.height || 400;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+
+      const ro = new ResizeObserver(() => resize());
+      ro.observe(canvas);
+
+      let currentStep = 0;
+      let pulseTimer = 0;
+      let particles = [];
+
+      function spawnConfetti(count = 60) {
+        const colors = ['#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#f43f5e'];
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: w / 2 + (Math.random() - 0.5) * 180,
+            y: 200 + (Math.random() - 0.5) * 60,
+            vx: (Math.random() - 0.5) * 12,
+            vy: (Math.random() - 0.85) * 11 - 2,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.01
+          });
+        }
+      }
+
+      function updateUI() {
+        if (btnStep1) btnStep1.className = `btn btn-sm ${currentStep === 1 ? 'btn-primary text-white' : 'btn-outline-primary'}`;
+        if (btnStep2) btnStep2.className = `btn btn-sm ${currentStep === 2 ? 'btn-primary text-white' : 'btn-outline-primary'}`;
+        if (btnStep3) btnStep3.className = `btn btn-sm ${currentStep === 3 ? 'btn-primary text-white' : 'btn-outline-primary'}`;
+        if (btnStep4) btnStep4.className = `btn btn-sm ${currentStep === 4 ? 'btn-warning text-dark font-weight-bold shadow-sm' : 'btn-outline-warning text-dark'}`;
+
+        if (badgeStatus) {
+          if (currentStep === 0) {
+            badgeStatus.innerText = '단계별 버튼을 눌러 미지수 A가 포함된 세 수의 최소공배수를 구하는 원리를 확인해 보세요!';
+          } else if (currentStep === 1) {
+            badgeStatus.innerHTML = '1️⃣ <b>공통 인수</b>: 세 수 3×A, 4×A, 5×A는 모두 공통 인수 ➔ <b>A</b>를 가지고 있습니다.';
+          } else if (currentStep === 2) {
+            badgeStatus.innerHTML = '2️⃣ <b>몫 확인</b>: A로 나눈 몫 <b>3, 4, 5</b>는 어느 두 수도 공약수를 갖지 않는 서로소입니다!';
+          } else if (currentStep === 3) {
+            badgeStatus.innerHTML = '3️⃣ <b>최소공배수 식</b>: L자 곱으로 나타내면 <b>A × 3 × 4 × 5 = 60 × A</b> 가 됩니다.';
+          } else if (currentStep === 4) {
+            badgeStatus.innerHTML = '👑 <b>방정식 풀이</b>: 60 × A = 360 이므로 양변을 60으로 나누면 ➔ <b>A = 6</b> 입니다!';
+          }
+        }
+      }
+
+      btnStep1?.addEventListener('click', () => { currentStep = 1; updateUI(); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+      btnStep2?.addEventListener('click', () => { currentStep = 2; updateUI(); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+      btnStep3?.addEventListener('click', () => { currentStep = 3; updateUI(); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+      btnStep4?.addEventListener('click', () => { currentStep = 4; spawnConfetti(60); updateUI(); if (window.SoundFX && window.SoundFX.success) SoundFX.success(); });
+      btnReset?.addEventListener('click', () => { currentStep = 0; updateUI(); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+
+      window._step4_15_triggerSuccess = function() {
+        currentStep = 4;
+        updateUI();
+        spawnConfetti(70);
+      };
+      let hoveredZone = null;
+      canvas.addEventListener('pointermove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        hoveredZone = null;
+        if (currentStep < 4) {
+          const startX = w / 2 - 120;
+          const startY = 80;
+          const rowH = 46;
+          const y2 = startY + rowH;
+          if (Math.abs(mx - (startX - 25)) < 28 && Math.abs(my - (startY + 16)) < 28) {
+            hoveredZone = 'divisor';
+          } else if (mx >= startX + 20 && mx <= startX + 210 && Math.abs(my - (y2 + 10)) < 24) {
+            hoveredZone = 'quotient';
+          }
+        }
+      });
+      canvas.addEventListener('pointerleave', () => { hoveredZone = null; });
+      canvas.addEventListener('pointerdown', () => {
+        if (hoveredZone === 'divisor') {
+          currentStep = 1;
+          updateUI();
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        } else if (hoveredZone === 'quotient') {
+          currentStep = 2;
+          updateUI();
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        }
+      });
+
       function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, w, h);
+        pulseTimer += 0.05;
 
-        // Grid lines
-        ctx.strokeStyle = '#1e293b';
-        ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 40) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-        }
-        for (let y = 0; y < canvas.height; y += 40) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-        }
-
-        // Badge & Title
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 16px "Pretendard", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('[4-15] 스스로 확인하기 4: 미지수가 포함된 세 수의 최소공배수 (p.22)', canvas.width / 2, 40);
-
-        // Interactive visual placeholder
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
+        // 상단 뱃지
+        const badgeW = Math.min(w - 36, 520);
+        const badgeX = (w - badgeW) / 2;
         ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.strokeStyle = '#6366f1';
-        ctx.lineWidth = 3;
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(0, 0, 70, 0, Math.PI * 2);
+        if (ctx.roundRect) ctx.roundRect(badgeX, 10, badgeW, 32, 8);
+        else ctx.rect(badgeX, 10, badgeW, 32);
+        ctx.fill();
         ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 12.5px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('스스로 확인하기 4: 세 자연수 3×A, 4×A, 5×A 의 최소공배수가 360 일 때 A 구하기', w / 2, 26);
         ctx.restore();
 
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '13px "Pretendard", sans-serif';
-        ctx.fillText('최소공배수 시각화 인터랙터', cx, cy + 110);
+        if (currentStep === 4) {
+          renderBalanceView();
+        } else {
+          renderDivisionView();
+        }
 
-        angle += 0.02;
-        animId = requestAnimationFrame(render);
+        // 파티클 렌더링
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.35;
+          p.rot += p.vRot;
+          p.life -= p.decay;
+
+          if (p.life <= 0) {
+            particles.splice(i, 1);
+            continue;
+          }
+
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.globalAlpha = Math.max(0, p.life);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+          ctx.restore();
+        }
+
+        container._animId_4_15 = requestAnimationFrame(render);
       }
+
+      // 1. 나눗셈 도식 뷰 (0~3단계)
+      function renderDivisionView() {
+        const startX = w / 2 - 120;
+        const startY = 80;
+        const rowH = 46;
+
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // 나눈 수 A 자리
+        if (currentStep >= 1) {
+          ctx.fillStyle = '#2563eb';
+          ctx.font = 'bold 20px Pretendard, sans-serif';
+          ctx.fillText('A', startX - 25, startY + 16);
+
+          ctx.strokeStyle = '#3b82f6';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.arc(startX - 25, startY + 16, 18, 0, Math.PI * 2);
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = 'bold 18px Pretendard, sans-serif';
+          ctx.fillText('?', startX - 25, startY + 16);
+        }
+
+        // 나눗셈 꺽쇠 선
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(startX - 2, startY - 4);
+        ctx.lineTo(startX - 2, startY + 34);
+        ctx.lineTo(startX + 230, startY + 34);
+        ctx.stroke();
+
+        // 피제수 3×A, 4×A, 5×A
+        ctx.font = 'bold 16px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('3 × A', startX + 45, startY + 16);
+        ctx.fillText('4 × A', startX + 115, startY + 16);
+        ctx.fillText('5 × A', startX + 185, startY + 16);
+
+        // 몫 3, 4, 5
+        const y2 = startY + rowH;
+        if (currentStep >= 2) {
+          ctx.font = 'bold 18px Pretendard, sans-serif';
+          ctx.fillStyle = '#059669';
+          ctx.fillText('3', startX + 45, y2 + 10);
+          ctx.fillText('4', startX + 115, y2 + 10);
+          ctx.fillText('5', startX + 185, y2 + 10);
+
+          ctx.font = '11.5px Pretendard, sans-serif';
+          ctx.fillStyle = '#10b981';
+          ctx.fillText('(서로소)', startX + 115, y2 + 30);
+        } else {
+          ctx.font = 'bold 16px Pretendard, sans-serif';
+          ctx.fillStyle = '#cbd5e1';
+          ctx.fillText('?', startX + 45, y2 + 10);
+          ctx.fillText('?', startX + 115, y2 + 10);
+          ctx.fillText('?', startX + 185, y2 + 10);
+        }
+        ctx.restore();
+
+        // 3단계인 경우 L자 곱 표현
+        if (currentStep === 3) {
+          const eqY = y2 + 56;
+          ctx.save();
+          ctx.fillStyle = '#eff6ff';
+          ctx.strokeStyle = '#3b82f6';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(w / 2 - 210, eqY, 420, 68, 10);
+          else ctx.rect(w / 2 - 210, eqY, 420, 68);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e40af';
+          ctx.fillText('최소공배수 = A × 3 × 4 × 5 = 60 × A', w / 2, eqY + 22);
+
+          ctx.font = '13px Pretendard, sans-serif';
+          ctx.fillStyle = '#475569';
+          ctx.fillText('문제의 조건에 따라: 60 × A = 360', w / 2, eqY + 48);
+          ctx.restore();
+        } else {
+          // 0~2단계 하단 안내 박스
+          const infoY = y2 + 56;
+          ctx.save();
+          ctx.fillStyle = '#f8fafc';
+          ctx.strokeStyle = '#e2e8f0';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(w / 2 - 220, infoY, 440, 68, 8);
+          else ctx.rect(w / 2 - 220, infoY, 440, 68);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = '12.5px Pretendard, sans-serif';
+          ctx.fillStyle = '#475569';
+          ctx.fillText('💡 세 수 3×A, 4×A, 5×A 는 모두 미지수 A를 공통으로 가지고 있습니다.', w / 2, infoY + 22);
+          ctx.fillText('공통 인수 A로 나눈 몫(3, 4, 5)을 곱해 최소공배수를 식으로 세워보세요!', w / 2, infoY + 46);
+          ctx.restore();
+        }
+      }
+
+      // 2. 양팔 저울 및 방정식 뷰 (4단계)
+      function renderBalanceView() {
+        // 상단 방정식 박스
+        const eqY = 56;
+        ctx.save();
+        ctx.fillStyle = '#fefce8';
+        ctx.strokeStyle = '#fde047';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(w / 2 - 210, eqY, 420, 60, 10);
+        else ctx.rect(w / 2 - 210, eqY, 420, 60);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 16px Pretendard, sans-serif';
+        ctx.fillStyle = '#854d0e';
+        ctx.fillText('60 × A = 360   ➔   A = 360 ÷ 60 = 6', w / 2, eqY + 30);
+        ctx.restore();
+
+        // 양팔 저울 시뮬레이션
+        const pivotX = w / 2;
+        const pivotY = 190;
+        const beamHalfLen = 130;
+
+        ctx.save();
+        // 저울 받침대 삼각형
+        ctx.fillStyle = '#94a3b8';
+        ctx.beginPath();
+        ctx.moveTo(pivotX, pivotY);
+        ctx.lineTo(pivotX - 24, pivotY + 54);
+        ctx.lineTo(pivotX + 24, pivotY + 54);
+        ctx.closePath();
+        ctx.fill();
+
+        // 받침대 바닥 선
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(pivotX - 50, pivotY + 54);
+        ctx.lineTo(pivotX + 50, pivotY + 54);
+        ctx.stroke();
+
+        // 지렛대 수평 막대
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(pivotX - beamHalfLen, pivotY);
+        ctx.lineTo(pivotX + beamHalfLen, pivotY);
+        ctx.stroke();
+
+        // 중심 축 피벗
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath();
+        ctx.arc(pivotX, pivotY, 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 수평 균형 표시 뱃지
+        ctx.fillStyle = '#10b981';
+        ctx.font = 'bold 12px Pretendard, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('수평 균형 (=)', pivotX, pivotY - 14);
+
+        // 왼쪽 매다는 줄 & 접시
+        const leftPanX = pivotX - beamHalfLen;
+        const panDropY = pivotY + 45;
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(leftPanX, pivotY);
+        ctx.lineTo(leftPanX - 25, panDropY);
+        ctx.moveTo(leftPanX, pivotY);
+        ctx.lineTo(leftPanX + 25, panDropY);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(leftPanX, panDropY, 28, 0, Math.PI);
+        ctx.stroke();
+
+        // 왼쪽 접시 추: 60 × A (A=6)
+        ctx.fillStyle = '#f59e0b';
+        ctx.strokeStyle = '#d97706';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(leftPanX - 32, panDropY - 26, 64, 28, 6);
+        else ctx.rect(leftPanX - 32, panDropY - 26, 64, 28);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12.5px Pretendard, sans-serif';
+        ctx.fillText('60 × 6 (360)', leftPanX, panDropY - 12);
+
+        // 오른쪽 매다는 줄 & 접시
+        const rightPanX = pivotX + beamHalfLen;
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(rightPanX, pivotY);
+        ctx.lineTo(rightPanX - 25, panDropY);
+        ctx.moveTo(rightPanX, pivotY);
+        ctx.lineTo(rightPanX + 25, panDropY);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(rightPanX, panDropY, 28, 0, Math.PI);
+        ctx.stroke();
+
+        // 오른쪽 접시 추: 360
+        ctx.fillStyle = '#f59e0b';
+        ctx.strokeStyle = '#d97706';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(rightPanX - 32, panDropY - 26, 64, 28, 6);
+        else ctx.rect(rightPanX - 32, panDropY - 26, 64, 28);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.fillText('360', rightPanX, panDropY - 12);
+        ctx.restore();
+
+        // 하단 확인 및 세 수 검증 박스
+        const boxY = pivotY + 68;
+        const boxW = Math.min(w - 36, 480);
+        const boxX = (w - boxW) / 2;
+        ctx.save();
+        ctx.fillStyle = '#f0fdf4';
+        ctx.strokeStyle = '#86efac';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(boxX, boxY, boxW, 58, 8);
+        else ctx.rect(boxX, boxY, boxW, 58);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 12.5px Pretendard, sans-serif';
+        ctx.fillStyle = '#166534';
+        ctx.fillText('✅ 세 자연수 검증 (A = 6 대입):', w / 2, boxY + 16);
+
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('3×6 = 18,   4×6 = 24,   5×6 = 30  ➔  [최소공배수 = 360] 일치!', w / 2, boxY + 38);
+        ctx.restore();
+      }
+
       render();
 
       window._cleanup_step_4_15 = () => {
-        if (animId) cancelAnimationFrame(animId);
+        if (container._animId_4_15) {
+          cancelAnimationFrame(container._animId_4_15);
+          container._animId_4_15 = null;
+        }
+        ro.disconnect();
       };
     }
 
     function renderForm_4_15(box) {
       if (!box) return;
       box.innerHTML = `
-        <div class="question-card" style="padding:16px; background:#1e293b; border-radius:10px; margin-bottom:15px; border:1px solid #334155;">
-          <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 4-15. 스스로 확인하기 4: 미지수가 포함된 세 수의 최소공배수 (p.22)</div>
-          <p style="font-size:14px; color:#cbd5e1; line-height:1.6; margin-bottom:12px;">
-            문제를 해결하고 최소공배수 또는 답을 입력창에 작성하세요.
+        <div class="card" style="padding:16px 20px;">
+          <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
+            ✏️ [스스로 확인하기 4] 미지수가 포함된 세 수의 최소공배수 (p.22)
+          </div>
+
+          <!-- 문제 안내 카드 -->
+          <div style="background:#f8fafc; border-left:4px solid #3b82f6; padding:10px 14px; border-radius:6px; margin-bottom:14px;">
+            <div style="font-weight:700; font-size:0.86rem; color:#1e40af; margin-bottom:4px;">
+              문제 조건
+            </div>
+            <div style="font-size:0.88rem; color:#1e293b; line-height:1.6; font-family:'Pretendard', sans-serif;">
+              세 자연수 <b>3 × A</b>, <b>4 × A</b>, <b>5 × A</b> 의 최소공배수가 <b>360</b> 일 때, <b>A</b>의 값을 구하시오.
+            </div>
+          </div>
+
+          <p style="font-size:0.88rem; color:#334155; line-height:1.6; margin-bottom:12px;">
+            세 수의 공통 인수 A와 몫을 이용하여 <b>A의 값</b>을 구하세요.
           </p>
-          <div style="margin-bottom:12px;">
-            <input type="text" id="ans-4-15" class="form-control" placeholder="수 또는 식 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
+
+          <!-- 입력 필드 (Zero-Spoiler) -->
+          <div style="background:#fefce8; padding:12px 14px; border-radius:8px; border:1px solid #fef08a; margin-bottom:14px;">
+            <label for="ans-4-15" style="font-size:0.85rem; font-weight:700; color:#854d0e; display:block; margin-bottom:6px;">
+              A의 값:
+            </label>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="text" id="ans-4-15" class="form-control" style="width:100%; font-size:1rem;" placeholder="수 입력" autocomplete="off">
+            </div>
           </div>
-          <div style="display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap;">
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_15" data-char="²">²</button>
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_15" data-char="³">³</button>
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_15" data-char="⁴">⁴</button>
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_15" data-char="×">×</button>
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_15" data-char="^">^</button>
-            <button type="button" class="btn btn-sm btn-outline-danger btn-pow-clear-4_15">지우기</button>
+
+          <!-- 퀵 숫자 키패드 -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; background:#f1f5f9; padding:8px 10px; border-radius:8px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; line-height:28px;">숫자 키패드:</span>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-15" data-char="1" style="font-weight:700; min-width:30px;">1</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-15" data-char="2" style="font-weight:700; min-width:30px;">2</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-15" data-char="3" style="font-weight:700; min-width:30px;">3</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-15" data-char="4" style="font-weight:700; min-width:30px;">4</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-15" data-char="5" style="font-weight:700; min-width:30px;">5</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-15" data-char="6" style="font-weight:700; min-width:30px;">6</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-15" data-char="7" style="font-weight:700; min-width:30px;">7</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-15" data-char="8" style="font-weight:700; min-width:30px;">8</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-15" data-char="9" style="font-weight:700; min-width:30px;">9</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-15" data-char="0" style="font-weight:700; min-width:30px;">0</button>
+            <button type="button" class="btn btn-sm btn-outline-danger btn-pow-clear-4-15" style="font-weight:700;">지우기</button>
           </div>
+
           <button class="btn btn-primary" onclick="checkStep_4_15()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
@@ -40936,7 +41375,8 @@ function checkStep_1_12() {
           if (e.key === 'Enter') checkStep_4_15();
         });
       }
-      box.querySelectorAll('.btn-pow-insert-4_15').forEach(btn => {
+
+      box.querySelectorAll('.btn-num-insert-4-15').forEach(btn => {
         btn.addEventListener('click', () => {
           const char = btn.getAttribute('data-char');
           if (input) {
@@ -40946,27 +41386,47 @@ function checkStep_1_12() {
           }
         });
       });
-      const clearBtn = box.querySelector('.btn-pow-clear-4_15');
+
+      const clearBtn = box.querySelector('.btn-pow-clear-4-15');
       if (clearBtn) {
         clearBtn.addEventListener('click', () => {
           if (input) {
             input.value = '';
             input.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
           }
         });
       }
     }
 
     function checkStep_4_15() {
-      const v = normTxt(document.getElementById('ans-4-15')?.value);
-      const isCorrect = (v.length > 0);
-      if (isCorrect) {
-        completeSubStep('4-15', '🎉 <b>정답입니다!</b><br>• 정답 및 풀이: A = 6');
+      const raw = document.getElementById('ans-4-15')?.value || '';
+      const v = (raw || '').trim().toLowerCase().replace(/\s+/g, '');
+
+      if (!v || v.length === 0) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>값을 입력해 주세요.</b> 미지수 A의 값을 입력해 보세요.');
+        return;
+      }
+
+      if (v === '6' || v === 'a=6') {
+        if (window._step4_15_triggerSuccess) {
+          window._step4_15_triggerSuccess();
+        }
+        completeSubStep('4-15', '🎉 <b>정답입니다!</b><br>• 세 수의 공통 인수: A<br>• 몫: 3, 4, 5 (서로소)<br>• 최소공배수: A × 3 × 4 × 5 = 60 × A = 360<br>• 따라서 A = 360 ÷ 60 = <b>6</b>');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>값을 입력해 주세요.</b>');
+        if (v === '60' || v === 'a=60') {
+          showFeedback(false, '❌ <b>60은 최소공배수의 계수(60 × A)입니다!</b> 60 × A = 360 이므로 양변을 60으로 나누어 A의 값을 구해 보세요.');
+        } else if (v === '12' || v === 'a=12') {
+          showFeedback(false, '❌ <b>다시 계산해 보세요.</b> 360을 60으로 나누면 12가 아닌 6입니다.');
+        } else if (v === '360') {
+          showFeedback(false, '❌ <b>360은 세 수의 최소공배수입니다!</b> 60 × A = 360 에서 A의 값을 구해 보세요.');
+        } else {
+          showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 세 수의 최소공배수는 A × 3 × 4 × 5 = 60 × A 입니다. 60 × A = 360 을 만족하는 A의 값을 구해 보세요.');
+        }
       }
     }
 
