@@ -30855,129 +30855,691 @@ function checkStep_1_12() {
     // Step 4-1: 생각열기: 공배수와 최소공배수 (p.20)
     // ==========================================
     function drawCanvas_4_1(container) {
-      if (!container) return;
+      if (container._animId_4_1) {
+        cancelAnimationFrame(container._animId_4_1);
+        container._animId_4_1 = null;
+      }
       container.innerHTML = '';
-      const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 500;
-      canvas.height = container.clientHeight || 450;
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      canvas.style.display = 'block';
-      container.appendChild(canvas);
+
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; height:100%; box-sizing:border-box;">
+          <!-- 상단 컨트롤러 및 상태 안내 바 -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+            <div id="badge-4-1" style="font-size:0.86rem; font-weight:700; color:#1e293b; background:#f1f5f9; padding:6px 14px; border-radius:20px; border:1px solid #cbd5e1; flex:1; min-width:240px;">
+              수직선 위에서 8과 12의 배수가 점프하며 공배수와 최소공배수를 만나는 과정을 확인해 보세요!
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button id="btn-play-4-1" class="btn btn-sm btn-outline-primary" style="font-weight:700;">▶ 배수 점프 재생</button>
+              <button id="btn-common-4-1" class="btn btn-sm btn-outline-primary" style="font-weight:700;">🎯 공배수 탐색</button>
+              <button id="btn-lcm-4-1" class="btn btn-sm btn-warning" style="font-weight:800; color:#1e293b;">👑 최소공배수 하이라이트</button>
+              <button id="btn-reset-4-1" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">⟲ 처음부터</button>
+            </div>
+          </div>
+          <!-- Canvas 렌더링 영역 -->
+          <div style="flex:1; min-height:370px; position:relative;">
+            <canvas id="canvas-4-1" style="width:100%; height:100%; display:block; border-radius:12px; background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); border:1px solid #e2e8f0;"></canvas>
+          </div>
+        </div>
+      `;
+
+      const canvas = container.querySelector('#canvas-4-1');
+      const badgeStatus = container.querySelector('#badge-4-1');
+      const btnPlay = container.querySelector('#btn-play-4-1');
+      const btnCommon = container.querySelector('#btn-common-4-1');
+      const btnLcm = container.querySelector('#btn-lcm-4-1');
+      const btnReset = container.querySelector('#btn-reset-4-1');
+
       const ctx = canvas.getContext('2d');
+      let w = 560, h = 400;
 
-      let animId;
-      let angle = 0;
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        w = rect.width || 560;
+        h = rect.height || 400;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+
+      const ro = new ResizeObserver(() => {
+        resize();
+      });
+      ro.observe(canvas);
+
+      // 모드: 0: 초기, 1: 점프 애니메이션 진행, 2: 공배수 강조, 3: 최소공배수(24) 하이라이트
+      let currentMode = 0;
+      let isPlaying = false;
+      let animProgress = 0; // 0 ~ 60 (수직선 상의 최대 수)
+      let particles = [];
+      let hoveredNumber = null;
+
+      // 배수 리스트
+      const mult8 = [0, 8, 16, 24, 32, 40, 48, 56];
+      const mult12 = [0, 12, 24, 36, 48, 60];
+      const commonMult = [24, 48];
+
+      function spawnConfetti(count = 60) {
+        const colors = ['#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#f43f5e'];
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: w / 2 + (Math.random() - 0.5) * 160,
+            y: 180 + (Math.random() - 0.5) * 50,
+            vx: (Math.random() - 0.5) * 12,
+            vy: (Math.random() - 0.85) * 11 - 2,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.01
+          });
+        }
+      }
+
+      function setMode(mode) {
+        currentMode = mode;
+
+        if (btnPlay) {
+          if (mode === 1) {
+            btnPlay.innerText = isPlaying ? '⏸ 일시정지' : '▶ 계속 재생';
+            btnPlay.className = 'btn btn-sm btn-primary';
+          } else {
+            btnPlay.innerText = '▶ 배수 점프 재생';
+            btnPlay.className = 'btn btn-sm btn-outline-primary';
+          }
+        }
+        if (btnCommon) btnCommon.className = `btn btn-sm ${mode === 2 ? 'btn-info text-white' : 'btn-outline-primary'}`;
+        if (btnLcm) btnLcm.className = `btn btn-sm ${mode === 3 ? 'btn-warning text-dark font-weight-bold' : 'btn-warning text-dark'}`;
+
+        if (badgeStatus) {
+          if (mode === 0) {
+            badgeStatus.innerText = '수직선 위에서 8과 12의 배수가 점프하며 공배수와 최소공배수를 만나는 과정을 확인해 보세요!';
+          } else if (mode === 1) {
+            badgeStatus.innerHTML = '🏃 8은 8씩, 12는 12씩 듀얼 트랙을 따라 점프합니다!';
+          } else if (mode === 2) {
+            badgeStatus.innerHTML = '🎯 8과 12가 동시에 만나는 지점(공배수)은 <b>24, 48, ...</b> 입니다!';
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          } else if (mode === 3) {
+            badgeStatus.innerHTML = '👑 <b>최소공배수 확정!</b> 공배수 중 가장 작은 수는 <b>24</b>입니다!';
+            spawnConfetti(60);
+            if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+          }
+        }
+      }
+
+      btnPlay?.addEventListener('click', () => {
+        if (currentMode !== 1) {
+          currentMode = 1;
+          isPlaying = true;
+          if (animProgress >= 60) animProgress = 0;
+          setMode(1);
+        } else {
+          isPlaying = !isPlaying;
+          setMode(1);
+        }
+      });
+
+      btnCommon?.addEventListener('click', () => {
+        animProgress = 60;
+        isPlaying = false;
+        setMode(2);
+      });
+
+      btnLcm?.addEventListener('click', () => {
+        animProgress = 60;
+        isPlaying = false;
+        setMode(3);
+      });
+
+      btnReset?.addEventListener('click', () => {
+        animProgress = 0;
+        isPlaying = false;
+        setMode(0);
+      });
+
+      window._step4_1_triggerSuccess = function() {
+        animProgress = 60;
+        isPlaying = false;
+        setMode(3);
+        setTimeout(() => spawnConfetti(65), 350);
+      };
+
+      // 수직선 좌표 변환 헬퍼 (수직선 범위: 0 ~ 64)
+      const linePad = 45;
+      const maxVal = 64;
+
+      function valToX(v) {
+        const trackW = w - linePad * 2;
+        return linePad + (v / maxVal) * trackW;
+      }
+
+      function xToVal(x) {
+        const trackW = w - linePad * 2;
+        const v = ((x - linePad) / trackW) * maxVal;
+        return Math.round(Math.max(0, Math.min(maxVal, v)));
+      }
+
+      // 포인터 인터랙션 (호버 및 클릭/드래그 탐색)
+      canvas.addEventListener('pointermove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        hoveredNumber = null;
+        if (my >= 60 && my <= 210) {
+          const v = xToVal(mx);
+          // 가장 가까운 8 또는 12의 배수 체크
+          for (let num = 0; num <= 60; num++) {
+            if (num % 8 === 0 || num % 12 === 0) {
+              const nx = valToX(num);
+              if (Math.abs(mx - nx) < 14) {
+                hoveredNumber = num;
+                break;
+              }
+            }
+          }
+        }
+      });
+
+      canvas.addEventListener('pointerleave', () => {
+        hoveredNumber = null;
+      });
+
+      let pulseTimer = 0;
+
+      // 렌더링 루프
       function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, w, h);
+        pulseTimer += 0.05;
 
-        // Grid lines
-        ctx.strokeStyle = '#1e293b';
-        ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 40) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        // 점프 애니메이션 진행
+        if (isPlaying && currentMode === 1) {
+          animProgress += 0.28;
+          if (animProgress >= 60) {
+            animProgress = 60;
+            isPlaying = false;
+            setMode(2);
+          }
         }
-        for (let y = 0; y < canvas.height; y += 40) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-        }
 
-        // Badge & Title
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 16px "Pretendard", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('[4-1] 생각열기: 공배수와 최소공배수 (p.20)', canvas.width / 2, 40);
-
-        // Interactive visual placeholder
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
+        // -------------------------------------------------------------
+        // 1. 상단 인포그래픽 뱃지 (월드컵 4년 & 마술대회 3년 주기)
+        // -------------------------------------------------------------
+        const badgeW = Math.min(w - 36, 510);
+        const badgeX = (w - badgeW) / 2;
         ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.strokeStyle = '#6366f1';
-        ctx.lineWidth = 3;
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(0, 0, 70, 0, Math.PI * 2);
+        if (ctx.roundRect) ctx.roundRect(badgeX, 16, badgeW, 36, 8);
+        else ctx.rect(badgeX, 16, badgeW, 36);
+        ctx.fill();
         ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 12.5px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('🏆 월드컵(4년 주기) × 🪄 세계 마술대회(3년 주기) ➔ 12년마다 동시 개최!', w / 2, 34);
         ctx.restore();
 
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '13px "Pretendard", sans-serif';
-        ctx.fillText('최소공배수 시각화 인터랙터', cx, cy + 110);
+        // -------------------------------------------------------------
+        // 2. 듀얼 트랙 수직선 타임라인
+        // 트랙 8: y = 100, 트랙 12: y = 160
+        // -------------------------------------------------------------
+        const track8Y = 100;
+        const track12Y = 165;
+        const trackStartX = valToX(0);
+        const trackEndX = valToX(60);
 
-        angle += 0.02;
-        animId = requestAnimationFrame(render);
+        // 공배수 세로 연계 라인 (24, 48)
+        if (currentMode >= 2 || (currentMode === 1 && animProgress >= 24)) {
+          [24, 48].forEach(cm => {
+            if (currentMode >= 2 || animProgress >= cm) {
+              const cx = valToX(cm);
+              ctx.save();
+              ctx.strokeStyle = (cm === 24 && currentMode === 3) ? '#f59e0b' : '#10b981';
+              ctx.lineWidth = (cm === 24 && currentMode === 3) ? 3 : 2;
+              ctx.setLineDash([4, 4]);
+              ctx.beginPath();
+              ctx.moveTo(cx, track8Y - 14);
+              ctx.lineTo(cx, track12Y + 28);
+              ctx.stroke();
+              ctx.restore();
+
+              // 공배수 뱃지 (상단/하단)
+              ctx.save();
+              ctx.fillStyle = (cm === 24 && currentMode === 3) ? '#fef3c7' : '#ecfdf5';
+              ctx.strokeStyle = (cm === 24 && currentMode === 3) ? '#f59e0b' : '#10b981';
+              ctx.lineWidth = 1.5;
+              ctx.beginPath();
+              if (ctx.roundRect) ctx.roundRect(cx - 36, track12Y + 22, 72, 22, 6);
+              else ctx.rect(cx - 36, track12Y + 22, 72, 22);
+              ctx.fill();
+              ctx.stroke();
+
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.font = 'bold 11px Pretendard, sans-serif';
+              ctx.fillStyle = (cm === 24 && currentMode === 3) ? '#b45309' : '#047857';
+              ctx.fillText((cm === 24) ? '👑 최소공배수 24' : '공배수 48', cx, track12Y + 33);
+              ctx.restore();
+            }
+          });
+        }
+
+        // 트랙 8 라인
+        ctx.save();
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(trackStartX, track8Y);
+        ctx.lineTo(trackEndX + 15, track8Y);
+        ctx.stroke();
+
+        // 트랙 8 좌측 라벨
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.fillStyle = '#0284c7';
+        ctx.fillText('8의 배수  ', trackStartX - 6, track8Y);
+        ctx.restore();
+
+        // 트랙 12 라인
+        ctx.save();
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(trackStartX, track12Y);
+        ctx.lineTo(trackEndX + 15, track12Y);
+        ctx.stroke();
+
+        // 트랙 12 좌측 라벨
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.fillStyle = '#059669';
+        ctx.fillText('12의 배수  ', trackStartX - 6, track12Y);
+        ctx.restore();
+
+        // 수직선 눈금 (0, 8, 12, 16, 24, 32, 36, 40, 48, 56, 60 등)
+        // 8의 배수 마커 & 점프 아크
+        for (let i = 0; i < mult8.length; i++) {
+          const v = mult8[i];
+          const vx = valToX(v);
+          const isReached = (currentMode >= 2 || (currentMode === 1 && animProgress >= v) || currentMode === 0);
+          const isCommon = commonMult.includes(v);
+          const isLcm = (v === 24);
+
+          // 점프 아크 (이전 배수에서 현재 배수로)
+          if (i > 0 && isReached && (currentMode !== 0 || i <= 6)) {
+            const prevX = valToX(mult8[i - 1]);
+            const midX = (prevX + vx) / 2;
+            ctx.save();
+            ctx.strokeStyle = isCommon ? '#10b981' : '#38bdf8';
+            ctx.lineWidth = isCommon ? 2.5 : 1.5;
+            ctx.beginPath();
+            ctx.moveTo(prevX, track8Y);
+            ctx.quadraticCurveTo(midX, track8Y - 26, vx, track8Y);
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          // 8의 배수 마커 원
+          ctx.save();
+          if (isLcm && currentMode === 3) {
+            ctx.fillStyle = '#f59e0b';
+            ctx.shadowColor = 'rgba(245, 158, 11, 0.6)';
+            ctx.shadowBlur = 12 + Math.sin(pulseTimer) * 4;
+          } else if (isCommon && currentMode >= 2) {
+            ctx.fillStyle = '#10b981';
+            ctx.shadowColor = 'rgba(16, 185, 129, 0.5)';
+            ctx.shadowBlur = 8;
+          } else {
+            ctx.fillStyle = isReached ? '#0284c7' : '#cbd5e1';
+          }
+          ctx.beginPath();
+          ctx.arc(vx, track8Y, (isLcm && currentMode === 3) ? 8 : (isCommon && currentMode >= 2 ? 7 : 5), 0, Math.PI * 2);
+          ctx.fill();
+
+          // 마커 라벨
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.font = (isCommon && currentMode >= 2) ? 'bold 12px Pretendard, sans-serif' : '11px Pretendard, sans-serif';
+          ctx.fillStyle = isCommon && currentMode >= 2 ? '#047857' : (isReached ? '#1e293b' : '#94a3b8');
+          ctx.fillText(v, vx, track8Y - 8);
+          ctx.restore();
+        }
+
+        // 12의 배수 마커 & 점프 아크
+        for (let i = 0; i < mult12.length; i++) {
+          const v = mult12[i];
+          const vx = valToX(v);
+          const isReached = (currentMode >= 2 || (currentMode === 1 && animProgress >= v) || currentMode === 0);
+          const isCommon = commonMult.includes(v);
+          const isLcm = (v === 24);
+
+          // 점프 아크
+          if (i > 0 && isReached && (currentMode !== 0 || i <= 5)) {
+            const prevX = valToX(mult12[i - 1]);
+            const midX = (prevX + vx) / 2;
+            ctx.save();
+            ctx.strokeStyle = isCommon ? '#10b981' : '#34d399';
+            ctx.lineWidth = isCommon ? 2.5 : 1.5;
+            ctx.beginPath();
+            ctx.moveTo(prevX, track12Y);
+            ctx.quadraticCurveTo(midX, track12Y - 32, vx, track12Y);
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          // 12의 배수 마커 원
+          ctx.save();
+          if (isLcm && currentMode === 3) {
+            ctx.fillStyle = '#f59e0b';
+            ctx.shadowColor = 'rgba(245, 158, 11, 0.6)';
+            ctx.shadowBlur = 12 + Math.sin(pulseTimer) * 4;
+          } else if (isCommon && currentMode >= 2) {
+            ctx.fillStyle = '#10b981';
+            ctx.shadowColor = 'rgba(16, 185, 129, 0.5)';
+            ctx.shadowBlur = 8;
+          } else {
+            ctx.fillStyle = isReached ? '#059669' : '#cbd5e1';
+          }
+          ctx.beginPath();
+          ctx.arc(vx, track12Y, (isLcm && currentMode === 3) ? 8 : (isCommon && currentMode >= 2 ? 7 : 5), 0, Math.PI * 2);
+          ctx.fill();
+
+          // 마커 라벨
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.font = (isCommon && currentMode >= 2) ? 'bold 12px Pretendard, sans-serif' : '11px Pretendard, sans-serif';
+          ctx.fillStyle = isCommon && currentMode >= 2 ? '#047857' : (isReached ? '#1e293b' : '#94a3b8');
+          ctx.fillText(v, vx, track12Y + 8);
+          ctx.restore();
+        }
+
+        // 마우스 호버 가이드 툴팁
+        if (hoveredNumber !== null) {
+          ctx.save();
+          const n = hoveredNumber;
+          const is8 = (n % 8 === 0);
+          const is12 = (n % 12 === 0);
+          let tipText = '';
+          if (is8 && is12) {
+            tipText = `${n}: 8과 12의 공통 배수(공배수)! ${n === 24 ? '👑 가장 작은 최소공배수!' : ''}`;
+          } else if (is8) {
+            tipText = `${n}: 8의 배수 (8 × ${n / 8})`;
+          } else if (is12) {
+            tipText = `${n}: 12의 배수 (12 × ${n / 12})`;
+          }
+
+          ctx.font = '12px Pretendard, sans-serif';
+          const tipW = ctx.measureText(tipText).width + 20;
+          const tipX = Math.max(tipW / 2 + 10, Math.min(w - tipW / 2 - 10, valToX(n)));
+          const tipY = 62;
+
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(tipX - tipW / 2, tipY, tipW, 26, 6);
+          else ctx.rect(tipX - tipW / 2, tipY, tipW, 26);
+          ctx.fill();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(tipText, tipX, tipY + 13);
+          ctx.restore();
+        }
+
+        // -------------------------------------------------------------
+        // 3. 하단 핵심 정리 박스 (y: 220 ~ 362)
+        // -------------------------------------------------------------
+        const sumW = Math.min(w - 36, 510);
+        const sumX = (w - sumW) / 2;
+        const sumY = 222;
+        const sumH = 142;
+
+        ctx.save();
+        ctx.fillStyle = (currentMode === 3) ? '#fef3c7' : '#f8fafc';
+        ctx.strokeStyle = (currentMode === 3) ? '#f59e0b' : '#cbd5e1';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(sumX, sumY, sumW, sumH, 10);
+        else ctx.rect(sumX, sumY, sumW, sumH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('📌 8과 12의 배수 나열과 최소공배수 (p.20 생각열기):', sumX + 16, sumY + 22);
+
+        if (currentMode === 0) {
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#475569';
+          ctx.fillText('• 공배수: 두 개 이상의 자연수의 공통인 배수를 공배수라고 합니다.', sumX + 16, sumY + 44);
+          ctx.fillText('• 최소공배수: 공배수 중에서 가장 작은 수를 최소공배수라고 합니다.', sumX + 16, sumY + 66);
+          ctx.fillText('• 공배수의 성질: 두 수의 공배수는 그 두 수의 최소공배수의 배수입니다.', sumX + 16, sumY + 88);
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillStyle = '#0284c7';
+          ctx.fillText('💡 상단 [▶ 배수 점프 재생] 버튼을 누르면 수직선 위 점프와 공배수 만남이 시각화됩니다.', sumX + 16, sumY + 112);
+        } else {
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#0284c7';
+          ctx.fillText('• 8의 배수: 8, 16, 24, 32, 40, 48, 56, ...', sumX + 16, sumY + 44);
+
+          ctx.fillStyle = '#059669';
+          ctx.fillText('• 12의 배수: 12, 24, 36, 48, 60, ...', sumX + 16, sumY + 66);
+
+          ctx.fillStyle = (currentMode >= 2) ? '#047857' : '#94a3b8';
+          ctx.fillText((currentMode >= 2) ? '• 8과 12의 공배수: 24, 48, 72, ... (공배수는 최소공배수 24의 배수!)' : '• 상단 [🎯 공배수 탐색] 버튼을 눌러 두 배수가 만나는 지점을 확인하세요.', sumX + 16, sumY + 88);
+
+          ctx.font = 'bold 12.5px Pretendard, sans-serif';
+          ctx.fillStyle = (currentMode === 3) ? '#b45309' : '#94a3b8';
+          ctx.fillText((currentMode === 3) ? '👑 공배수 중 가장 작은 수(최소공배수): 24 ➔ 두 대회가 24년 뒤에 다시 동시 개최!' : '💡 상단 [👑 최소공배수 하이라이트] 버튼을 눌러 첫 번째 만남을 확인하세요.', sumX + 16, sumY + 112);
+        }
+        ctx.restore();
+
+        // 콘페티 애니메이션
+        if (particles.length > 0) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.22;
+            p.rot += p.vRot;
+            p.life -= p.decay;
+
+            if (p.life <= 0) {
+              particles.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+            ctx.restore();
+          }
+        }
+
+        container._animId_4_1 = requestAnimationFrame(render);
       }
-      render();
 
-      window._cleanup_step_4_1 = () => {
-        if (animId) cancelAnimationFrame(animId);
-      };
+      render();
     }
 
     function renderForm_4_1(box) {
-      if (!box) return;
       box.innerHTML = `
-        <div class="question-card" style="padding:16px; background:#1e293b; border-radius:10px; margin-bottom:15px; border:1px solid #334155;">
-          <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 4-1. 생각열기: 공배수와 최소공배수 (p.20)</div>
-          <p style="font-size:14px; color:#cbd5e1; line-height:1.6; margin-bottom:12px;">
-            문제를 해결하고 최소공배수 또는 답을 입력창에 작성하세요.
+        <div class="card" style="padding:16px 20px;">
+          <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
+            💡 [생각열기] 공배수와 최소공배수 (p.20)
+          </div>
+
+          <!-- 생각열기 상황 카드 -->
+          <div style="background:#f0fdf4; border-left:4px solid #10b981; padding:10px 14px; border-radius:6px; margin-bottom:14px;">
+            <div style="font-weight:700; font-size:0.86rem; color:#065f46; margin-bottom:4px;">
+              🏆 2022년 동시 개최 이야기
+            </div>
+            <p style="font-size:0.85rem; color:#1e293b; line-height:1.55; margin:0;">
+              4년마다 열리는 월드컵과 3년마다 열리는 세계 마술대회처럼, 주기가 다른 두 행사가 다시 동시에 열리는 시점을 공배수와 최소공배수로 탐구해 봅시다.
+            </p>
+          </div>
+
+          <p style="font-size:0.88rem; color:#334155; line-height:1.6; margin-bottom:12px;">
+            다음은 <b>8</b>과 <b>12</b>의 최소공배수를 구하는 과정이다. 빈칸에 알맞은 수를 써넣어 보자.
           </p>
-          <div style="margin-bottom:12px;">
-            <input type="text" id="ans-4-1" class="form-control" placeholder="수 또는 식 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
+
+          <!-- 8의 배수 안내 -->
+          <div style="background:#f8fafc; padding:8px 12px; border-radius:6px; border:1px solid #e2e8f0; margin-bottom:10px;">
+            <span style="font-size:0.85rem; font-weight:700; color:#0284c7;">8의 배수:</span>
+            <span style="font-size:0.85rem; color:#334155; margin-left:6px;">8, 16, 24, 32, 40, 48, ...</span>
           </div>
-          <div style="display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap;">
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_1" data-char="²">²</button>
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_1" data-char="³">³</button>
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_1" data-char="⁴">⁴</button>
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_1" data-char="×">×</button>
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_1" data-char="^">^</button>
-            <button type="button" class="btn btn-sm btn-outline-danger btn-pow-clear-4_1">지우기</button>
+
+          <!-- 12의 배수 빈칸 5개 (Zero-Spoiler: placeholder="수 입력") -->
+          <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:12px;">
+            <label style="font-size:0.85rem; font-weight:700; color:#059669; display:block; margin-bottom:6px;">
+              12의 배수를 가장 작은 수부터 차례대로 나타내면:
+            </label>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+              <input type="text" id="ans-4-1-m1" class="form-control" style="width:62px; text-align:center;" placeholder="수 입력" autocomplete="off">
+              <span>,</span>
+              <input type="text" id="ans-4-1-m2" class="form-control" style="width:62px; text-align:center;" placeholder="수 입력" autocomplete="off">
+              <span>,</span>
+              <input type="text" id="ans-4-1-m3" class="form-control" style="width:62px; text-align:center;" placeholder="수 입력" autocomplete="off">
+              <span>,</span>
+              <input type="text" id="ans-4-1-m4" class="form-control" style="width:62px; text-align:center;" placeholder="수 입력" autocomplete="off">
+              <span>,</span>
+              <input type="text" id="ans-4-1-m5" class="form-control" style="width:62px; text-align:center;" placeholder="수 입력" autocomplete="off">
+              <span>,  ...</span>
+            </div>
           </div>
+
+          <!-- 최소공배수 입력칸 -->
+          <div style="background:#fefce8; padding:10px 12px; border-radius:8px; border:1px solid #fef08a; margin-bottom:14px;">
+            <label for="ans-4-1" style="font-size:0.85rem; font-weight:700; color:#854d0e; display:block; margin-bottom:6px;">
+              따라서 두 수 8과 12의 최소공배수는:
+            </label>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:0.88rem; font-weight:700; color:#713f12;">최소공배수 =</span>
+              <input type="text" id="ans-4-1" class="form-control" style="width:120px;" placeholder="수 입력" autocomplete="off">
+            </div>
+          </div>
+
+          <!-- 숫자 퀵 입력 바 (Zero-Spoiler) -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; background:#f1f5f9; padding:8px 10px; border-radius:8px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; line-height:28px;">숫자 입력:</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-4-1" data-val="1" style="font-weight:700; min-width:30px;">1</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-4-1" data-val="2" style="font-weight:700; min-width:30px;">2</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-4-1" data-val="3" style="font-weight:700; min-width:30px;">3</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-4-1" data-val="4" style="font-weight:700; min-width:30px;">4</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-4-1" data-val="6" style="font-weight:700; min-width:30px;">6</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-4-1" data-val="8" style="font-weight:700; min-width:30px;">8</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-4-1" data-val="0" style="font-weight:700; min-width:30px;">0</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-backspace-4-1" style="font-weight:700;">⌫</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-clear-4-1" style="font-weight:700;">초기화</button>
+          </div>
+
           <button class="btn btn-primary" onclick="checkStep_4_1()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
 
-      const input = box.querySelector('#ans-4-1');
-      if (input) {
+      let lastFocusedInput = box.querySelector('#ans-4-1-m1');
+      const allInputs = box.querySelectorAll('input[type="text"]');
+      allInputs.forEach(input => {
+        input.addEventListener('focus', () => {
+          lastFocusedInput = input;
+        });
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') checkStep_4_1();
         });
-      }
-      box.querySelectorAll('.btn-pow-insert-4_1').forEach(btn => {
+      });
+
+      box.querySelectorAll('.btn-num-insert-4-1').forEach(btn => {
         btn.addEventListener('click', () => {
-          const char = btn.getAttribute('data-char');
-          if (input) {
-            input.value += char;
-            input.focus();
+          const val = btn.getAttribute('data-val');
+          if (lastFocusedInput) {
+            lastFocusedInput.value += val;
+            lastFocusedInput.focus();
             if (window.SoundFX && window.SoundFX.click) SoundFX.click();
           }
         });
       });
-      const clearBtn = box.querySelector('.btn-pow-clear-4_1');
+
+      const backBtn = box.querySelector('.btn-num-backspace-4-1');
+      if (backBtn) {
+        backBtn.addEventListener('click', () => {
+          if (lastFocusedInput) {
+            lastFocusedInput.value = lastFocusedInput.value.slice(0, -1);
+            lastFocusedInput.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      }
+
+      const clearBtn = box.querySelector('.btn-num-clear-4-1');
       if (clearBtn) {
         clearBtn.addEventListener('click', () => {
-          if (input) {
-            input.value = '';
-            input.focus();
+          if (lastFocusedInput) {
+            lastFocusedInput.value = '';
+            lastFocusedInput.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
           }
         });
       }
     }
 
     function checkStep_4_1() {
-      const v = normTxt(document.getElementById('ans-4-1')?.value);
-      const isCorrect = (v.length > 0);
-      if (isCorrect) {
-        completeSubStep('4-1', '🎉 <b>정답입니다!</b><br>• 정답 및 풀이: 12, 24, 36, 48, 60 / 최소공배수: 24');
+      const lcmVal = normTxt(document.getElementById('ans-4-1')?.value);
+      const m1 = normTxt(document.getElementById('ans-4-1-m1')?.value);
+      const m2 = normTxt(document.getElementById('ans-4-1-m2')?.value);
+      const m3 = normTxt(document.getElementById('ans-4-1-m3')?.value);
+      const m4 = normTxt(document.getElementById('ans-4-1-m4')?.value);
+      const m5 = normTxt(document.getElementById('ans-4-1-m5')?.value);
+
+      const okLcm = (parseInt(lcmVal, 10) === 24 || lcmVal === '24');
+      const okM1 = (parseInt(m1, 10) === 12 || m1 === '12');
+      const okM2 = (parseInt(m2, 10) === 24 || m2 === '24');
+      const okM3 = (parseInt(m3, 10) === 36 || m3 === '36');
+      const okM4 = (parseInt(m4, 10) === 48 || m4 === '48');
+      const okM5 = (parseInt(m5, 10) === 60 || m5 === '60');
+
+      // 빈칸 5개가 채워지지 않았더라도 최소공배수가 24로 맞으면 자동 보완 처리 지원
+      const allMultiplesFilled = (m1 || m2 || m3 || m4 || m5);
+      const allMultiplesCorrect = (okM1 && okM2 && okM3 && okM4 && okM5);
+
+      if (okLcm && (!allMultiplesFilled || allMultiplesCorrect)) {
+        // 빈칸 자동 보완 (학습자 편의)
+        if (document.getElementById('ans-4-1-m1') && !m1) document.getElementById('ans-4-1-m1').value = '12';
+        if (document.getElementById('ans-4-1-m2') && !m2) document.getElementById('ans-4-1-m2').value = '24';
+        if (document.getElementById('ans-4-1-m3') && !m3) document.getElementById('ans-4-1-m3').value = '36';
+        if (document.getElementById('ans-4-1-m4') && !m4) document.getElementById('ans-4-1-m4').value = '48';
+        if (document.getElementById('ans-4-1-m5') && !m5) document.getElementById('ans-4-1-m5').value = '60';
+
+        if (window._step4_1_triggerSuccess) {
+          window._step4_1_triggerSuccess();
+        }
+        completeSubStep('4-1', '🎉 <b>정답입니다!</b><br>• 12의 배수: 12, 24, 36, 48, 60, ...<br>• 8과 12의 공배수: 24, 48, 72, ...<br>• 가장 작은 공배수(최소공배수): <b>24</b>');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>값을 입력해 주세요.</b>');
+        if (!okLcm && allMultiplesCorrect) {
+          showFeedback(false, '❌ <b>최소공배수를 확인해 보세요.</b> 8의 배수와 12의 배수의 공통인 배수(공배수) 중 가장 작은 수를 구해 보세요.');
+        } else if (okLcm && !allMultiplesCorrect) {
+          showFeedback(false, '❌ <b>12의 배수 빈칸을 확인해 보세요.</b> 12의 1배, 2배, 3배, 4배, 5배를 순서대로 작성해 보세요.');
+        } else {
+          showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 12의 배수(12, 24, 36, ...)와 두 수의 최소공배수를 정확히 입력해 보세요.');
+        }
       }
     }
+
 
 
     // ==========================================
