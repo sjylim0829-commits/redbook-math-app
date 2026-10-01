@@ -17053,78 +17053,348 @@ function checkStep_1_12() {
     // 2-9 (p.16): 문제 3: 2³ × 3²의 약수 판별하기
     // -------------------------------------------------------------
     function drawCanvas_2_9(container) {
+      if (container._animId_2_9) {
+        cancelAnimationFrame(container._animId_2_9);
+      }
       container.innerHTML = '';
-      const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 560;
-      canvas.height = container.clientHeight || 460;
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      canvas.style.display = 'block';
-      container.appendChild(canvas);
 
+      const wrapper = document.createElement('div');
+      wrapper.style.display = 'flex';
+      wrapper.style.flexDirection = 'column';
+      wrapper.style.height = '100%';
+      wrapper.style.width = '100%';
+
+      wrapper.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button id="btn-2-9-test-all" class="btn btn-sm btn-outline-primary" style="font-weight:700; border-radius:6px; font-size:0.82rem;">⚡ 전체 판별 시뮬레이션</button>
+            <button id="btn-2-9-reset" class="btn btn-sm btn-outline-secondary" style="font-weight:600; border-radius:6px; font-size:0.82rem;">⟲ 카드 리셋</button>
+          </div>
+          <div id="badge-2-9-status" style="font-size:0.82rem; font-weight:700; color:#475569; background:#f1f5f9; padding:4px 10px; border-radius:12px; border:1px solid #e2e8f0; width:100%; margin-top:2px;">
+            기준 수 2³ × 3²의 약수 조건(2의 지수 ≤ 3, 3의 지수 ≤ 2)을 카드를 클릭하여 검증해 보세요!
+          </div>
+        </div>
+        <div style="flex:1; min-height:380px; position:relative;">
+          <canvas style="width:100%; height:100%; display:block; border-radius:12px; background:#f8fafc; border:1px solid #e2e8f0; cursor:pointer;"></canvas>
+        </div>
+      `;
+
+      container.appendChild(wrapper);
+
+      const canvas = wrapper.querySelector('canvas');
       const ctx = canvas.getContext('2d');
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
+      const badgeStatus = wrapper.querySelector('#badge-2-9-status');
+      const btnTestAll = wrapper.querySelector('#btn-2-9-test-all');
+      const btnReset = wrapper.querySelector('#btn-2-9-reset');
 
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 15px Pretendard, sans-serif';
-      ctx.fillStyle = '#1e293b';
-      ctx.fillText('🎰 [문제 3] 2³ × 3²의 약수 판별 슬롯 (p.16)', w / 2, 35);
+      let w = 560;
+      let h = 430;
 
-      ctx.font = '12px Pretendard, sans-serif';
-      ctx.fillStyle = '#64748b';
-      ctx.fillText('약수는 2의 지수가 3 이하, 3의 지수가 2 이하이어야 합니다. (2ᵃ × 3ᵇ, a ≤ 3, b ≤ 2)', w / 2, 60);
-
+      // 5개 보기 항목 데이터
       const items = [
-        { num: '⑴ 3²', ok: true, reason: '2⁰ × 3² (a=0, b=2 ➔ 통과)' },
-        { num: '⑵ 2⁴', ok: false, reason: '2의 지수가 4 > 3 (탈락 ❌)' },
-        { num: '⑶ 2² × 3²', ok: true, reason: 'a=2 ≤ 3, b=2 ≤ 2 (통과 ⭕)' },
-        { num: '⑷ 2³ × 3³', ok: false, reason: '3의 지수가 3 > 2 (탈락 ❌)' },
-        { num: '⑸ 2³ × 3', ok: true, reason: 'a=3 ≤ 3, b=1 ≤ 2 (통과 ⭕)' }
+        { id: 1, label: '⑴ 3²', a: 0, b: 2, ok: true, tested: false, pulse: 0, explain: '2⁰ × 3² ➔ a=0 ≤ 3, b=2 ≤ 2 (약수 ⭕)' },
+        { id: 2, label: '⑵ 2² × 3²', a: 2, b: 2, ok: true, tested: false, pulse: 0, explain: 'a=2 ≤ 3, b=2 ≤ 2 (약수 ⭕)' },
+        { id: 3, label: '⑶ 3³', a: 0, b: 3, ok: false, tested: false, pulse: 0, explain: '3의 지수가 3 > 2 (지수 초과 ❌)' },
+        { id: 4, label: '⑷ 2³ × 3', a: 3, b: 1, ok: true, tested: false, pulse: 0, explain: 'a=3 ≤ 3, b=1 ≤ 2 (약수 ⭕)' },
+        { id: 5, label: '⑸ 2⁴ × 3', a: 4, b: 1, ok: false, tested: false, pulse: 0, explain: '2의 지수가 4 > 3 (지수 초과 ❌)' }
       ];
 
-      items.forEach((it, idx) => {
-        const y = 90 + idx * 56;
+      let celebrationTriggered = false;
+      let particles = [];
+
+      function createConfetti() {
+        const colors = ['#f59e0b', '#ef4444', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
+        for (let i = 0; i < 50; i++) {
+          particles.push({
+            x: w * 0.5 + (Math.random() - 0.5) * 160,
+            y: h * 0.4 + (Math.random() - 0.5) * 60,
+            vx: (Math.random() - 0.5) * 10,
+            vy: -Math.random() * 8 - 4,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.012
+          });
+        }
+      }
+
+      function resize() {
+        w = canvas.clientWidth || 560;
+        h = canvas.clientHeight || 430;
+        canvas.width = w;
+        canvas.height = h;
+      }
+      resize();
+
+      function testCard(idx) {
+        if (idx < 0 || idx >= items.length) return;
+        const it = items[idx];
+        it.tested = true;
+        it.pulse = 1.0;
+
+        if (it.ok) {
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          badgeStatus.innerHTML = `✅ [통과] <b>${it.label}</b>은 기준 수 2³ × 3²의 지수 범위(a ≤ 3, b ≤ 2)를 만족하므로 약수입니다!`;
+        } else {
+          if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+          badgeStatus.innerHTML = `❌ [탈락] <b>${it.label}</b>은 ${it.explain}! 약수가 될 수 없습니다.`;
+        }
+
+        const foundAllDivisors = items.filter(x => x.ok).every(x => x.tested);
+        if (foundAllDivisors && !celebrationTriggered) {
+          celebrationTriggered = true;
+          createConfetti();
+          if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+          badgeStatus.innerHTML = '🎉 2³ × 3²의 모든 약수 3개(⑴ 3², ⑵ 2² × 3², ⑷ 2³ × 3)를 정확히 판별했습니다!';
+        }
+      }
+
+      canvas.addEventListener('click', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const cx = e.clientX - rect.left;
+        const cy = e.clientY - rect.top;
+
+        const cardYStart = 96;
+        const cardH = 48;
+        const cardGap = 8;
+        const cardW = Math.min(520, w - 40);
+        const cardX = w / 2 - cardW / 2;
+
+        for (let i = 0; i < items.length; i++) {
+          const y = cardYStart + i * (cardH + cardGap);
+          if (cx >= cardX && cx <= cardX + cardW && cy >= y && cy <= y + cardH) {
+            testCard(i);
+            break;
+          }
+        }
+      });
+
+      btnTestAll.addEventListener('click', () => {
+        items.forEach((it) => {
+          it.tested = true;
+          it.pulse = 1.0;
+        });
+        if (!celebrationTriggered) {
+          celebrationTriggered = true;
+          createConfetti();
+          if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        } else {
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        }
+        badgeStatus.innerHTML = '⚡ 전체 5개 보기의 약수 여부 지수 판별이 완료되었습니다!';
+      });
+
+      btnReset.addEventListener('click', () => {
+        items.forEach(it => {
+          it.tested = false;
+          it.pulse = 0;
+        });
+        celebrationTriggered = false;
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        badgeStatus.innerHTML = '카드 상태가 리셋되었습니다. 카드를 클릭하여 판별해 보세요!';
+      });
+
+      window._step2_9_revealAll = function() {
+        items.forEach(it => {
+          it.tested = true;
+          it.pulse = 1.0;
+        });
+        if (!celebrationTriggered) {
+          celebrationTriggered = true;
+          createConfetti();
+        }
+        if (badgeStatus) badgeStatus.innerHTML = '🎉 정답! 2³ × 3²의 약수는 ⑴ 3², ⑵ 2² × 3², ⑷ 2³ × 3 입니다.';
+      };
+
+      function render() {
+        ctx.clearRect(0, 0, w, h);
+
         ctx.save();
-        ctx.fillStyle = it.ok ? '#f0fdf4' : '#fef2f2';
-        ctx.strokeStyle = it.ok ? '#86efac' : '#fca5a5';
-        ctx.lineWidth = 1.5;
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🎰 [문제 3] 2³ × 3²의 약수 지수 판별 슬롯 (p.16)', w / 2, 24);
+
+        ctx.fillStyle = '#475569';
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillText('기준 수 2³ × 3²의 약수는 2ᵃ × 3ᵇ 꼴에서 2의 지수 a ≤ 3, 3의 지수 b ≤ 2 이어야 합니다.', w / 2, 44);
+
+        const gBoxW = Math.min(480, w - 40);
+        const gBoxX = w / 2 - gBoxW / 2;
+        const gBoxY = 54;
+        ctx.fillStyle = '#f1f5f9';
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.roundRect ? ctx.roundRect(30, y, w - 60, 46, 8) : ctx.rect(30, y, w - 60, 46);
+        if (ctx.roundRect) ctx.roundRect(gBoxX, gBoxY, gBoxW, 34, 6);
+        else ctx.rect(gBoxX, gBoxY, gBoxW, 34);
         ctx.fill();
         ctx.stroke();
 
-        ctx.textAlign = 'left';
-        ctx.font = 'bold 15px Pretendard, sans-serif';
-        ctx.fillStyle = it.ok ? '#166534' : '#991b1b';
-        ctx.fillText(it.num, 45, y + 28);
-
-        ctx.textAlign = 'right';
-        ctx.font = '12px Pretendard, sans-serif';
-        ctx.fillStyle = '#64748b';
-        ctx.fillText(it.reason, w - 45, y + 28);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e3a8a';
+        ctx.fillText('📌 약수 판별 기준: 2의 지수(a) ≤ 3  &  3의 지수(b) ≤ 2', w / 2, gBoxY + 17);
         ctx.restore();
-      });
+
+        const cardYStart = 96;
+        const cardH = 48;
+        const cardGap = 8;
+        const cardW = Math.min(520, w - 40);
+        const cardX = w / 2 - cardW / 2;
+
+        items.forEach((it, idx) => {
+          const y = cardYStart + idx * (cardH + cardGap);
+
+          if (it.pulse > 0) {
+            it.pulse = Math.max(0, it.pulse - 0.03);
+          }
+
+          ctx.save();
+
+          if (it.tested) {
+            if (it.ok) {
+              const grad = ctx.createLinearGradient(cardX, y, cardX + cardW, y + cardH);
+              grad.addColorStop(0, '#ecfdf5');
+              grad.addColorStop(1, '#d1fae5');
+              ctx.fillStyle = grad;
+              ctx.strokeStyle = it.pulse > 0 ? '#10b981' : '#059669';
+              ctx.lineWidth = it.pulse > 0 ? 2.5 : 1.5;
+            } else {
+              const grad = ctx.createLinearGradient(cardX, y, cardX + cardW, y + cardH);
+              grad.addColorStop(0, '#fef2f2');
+              grad.addColorStop(1, '#fee2e2');
+              ctx.fillStyle = grad;
+              ctx.strokeStyle = it.pulse > 0 ? '#ef4444' : '#dc2626';
+              ctx.lineWidth = it.pulse > 0 ? 2.5 : 1.5;
+            }
+          } else {
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 1;
+          }
+
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(cardX, y, cardW, cardH, 8);
+          else ctx.rect(cardX, y, cardW, cardH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          if (it.tested) {
+            ctx.fillStyle = it.ok ? '#065f46' : '#991b1b';
+          } else {
+            ctx.fillStyle = '#1e293b';
+          }
+          ctx.fillText(it.label, cardX + 16, y + cardH / 2);
+
+          ctx.textAlign = 'right';
+          ctx.textBaseline = 'middle';
+          if (it.tested) {
+            ctx.font = '12px Pretendard, sans-serif';
+            ctx.fillStyle = it.ok ? '#047857' : '#b91c1c';
+            ctx.fillText(it.explain, cardX + cardW - 16, y + cardH / 2);
+          } else {
+            ctx.font = '12px Pretendard, sans-serif';
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText('👆 클릭하여 지수 판별 검증', cardX + cardW - 16, y + cardH / 2);
+          }
+
+          ctx.restore();
+        });
+
+        const allTested = items.every(it => it.tested);
+        const summaryY = cardYStart + 5 * (cardH + cardGap) + 4;
+        if (summaryY + 44 <= h) {
+          ctx.save();
+          const sumW = cardW;
+          const sumX = cardX;
+          ctx.fillStyle = allTested ? '#eff6ff' : '#f8fafc';
+          ctx.strokeStyle = allTested ? '#3b82f6' : '#e2e8f0';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(sumX, summaryY, sumW, 40, 6);
+          else ctx.rect(sumX, summaryY, sumW, 40);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          if (allTested) {
+            ctx.fillStyle = '#1e40af';
+            ctx.font = 'bold 13px Pretendard, sans-serif';
+            ctx.fillText('✨ 2³ × 3²의 약수: ⑴ 3², ⑵ 2² × 3², ⑷ 2³ × 3 (총 3개)', w / 2, summaryY + 20);
+          } else {
+            ctx.fillStyle = '#64748b';
+            ctx.font = '12px Pretendard, sans-serif';
+            ctx.fillText('5개의 카드를 모두 클릭하여 약수와 비약수의 지수를 대조해 보세요.', w / 2, summaryY + 20);
+          }
+          ctx.restore();
+        }
+
+        if (particles.length > 0) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.22;
+            p.rot += p.vRot;
+            p.life -= p.decay;
+
+            if (p.life <= 0) {
+              particles.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+            ctx.restore();
+          }
+        }
+
+        container._animId_2_9 = requestAnimationFrame(render);
+      }
+
+      render();
     }
 
     function renderForm_2_9(box) {
       box.innerHTML = `
         <div class="card">
           <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
-            ✏️ [문제 3] 약수 판별하기 (p.16)
+            ✏️ [문제 3] 2³ × 3²의 약수 판별하기 (p.16)
           </div>
           <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
-            다음 보기 중에서 $2^3 \\times 3^2$의 약수인 것의 번호를 모두 고르시오.<br>
-            <span style="font-size:0.82rem; color:#64748b;">보기: ⑴ 3²  ⑵ 2⁴  ⑶ 2² × 3²  ⑷ 2³ × 3³  ⑸ 2³ × 3</span>
+            다음 보기 중에서 $2^3 \\times 3^2$의 약수인 것을 <b>모두</b> 고르시오. (번호 또는 수식 입력 가능)<br>
+            <span style="font-size:0.82rem; color:#64748b;">(2의 지수가 3 이하, 3의 지수가 2 이하인 수를 찾습니다.)</span>
           </p>
 
-          <div style="margin-bottom:14px;">
-            <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">약수의 번호 (예: 1, 3, 5):</label>
-            <input type="text" id="ans-2-9" class="form-control" placeholder="번호 입력 (쉼표 구분)" autocomplete="off">
+          <!-- 보기 선택 퀵 버튼 -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;">
+            <button type="button" class="btn btn-sm btn-outline-primary btn-step-choice" data-val="3²" style="font-weight:700;">⑴ 3²</button>
+            <button type="button" class="btn btn-sm btn-outline-primary btn-step-choice" data-val="2² × 3²" style="font-weight:700;">⑵ 2² × 3²</button>
+            <button type="button" class="btn btn-sm btn-outline-primary btn-step-choice" data-val="3³" style="font-weight:700;">⑶ 3³</button>
+            <button type="button" class="btn btn-sm btn-outline-primary btn-step-choice" data-val="2³ × 3" style="font-weight:700;">⑷ 2³ × 3</button>
+            <button type="button" class="btn btn-sm btn-outline-primary btn-step-choice" data-val="2⁴ × 3" style="font-weight:700;">⑸ 2⁴ × 3</button>
           </div>
 
-          <button class="btn btn-primary" onclick="checkStep_2_9()" style="width:100%;">정답 확인 및 채점</button>
+          <div style="margin-bottom:14px;">
+            <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+              약수인 것 모두 입력 (쉼표 구분):
+            </label>
+            <input type="text" id="ans-2-9" class="form-control" placeholder="약수인 것 모두 입력 (쉼표 구분)" autocomplete="off">
+          </div>
+
+          <button class="btn btn-primary" onclick="checkStep_2_9()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
 
@@ -17134,20 +17404,77 @@ function checkStep_1_12() {
           if (e.key === 'Enter') checkStep_2_9();
         });
       }
+
+      box.querySelectorAll('.btn-step-choice').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = btn.getAttribute('data-val');
+          if (!input) return;
+          let cur = input.value.split(',').map(s => s.trim()).filter(Boolean);
+          const idx = cur.indexOf(val);
+          if (idx !== -1) {
+            cur.splice(idx, 1);
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-outline-primary');
+          } else {
+            cur.push(val);
+            btn.classList.remove('btn-outline-primary');
+            btn.classList.add('btn-primary');
+          }
+          input.value = cur.join(', ');
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        });
+      });
+    }
+
+    function parseStep2_9(raw) {
+      if (!raw) return [];
+      const normalized = raw
+        .replace(/[⑴①]/g, '1')
+        .replace(/[⑵②]/g, '2')
+        .replace(/[⑶③]/g, '3')
+        .replace(/[⑷④]/g, '4')
+        .replace(/[⑸⑤]/g, '5')
+        .replace(/²/g, '^2')
+        .replace(/³/g, '^3')
+        .replace(/⁴/g, '^4')
+        .replace(/[×xX]/g, '*')
+        .replace(/\s+/g, '');
+
+      const tokens = normalized.split(',').filter(t => t.length > 0);
+      const matched = new Set();
+
+      tokens.forEach(tok => {
+        if (tok === '1' || tok === '3^2' || tok === '9') matched.add(1);
+        else if (tok === '2' || tok === '2^2*3^2' || tok === '3^2*2^2' || tok === '36') matched.add(2);
+        else if (tok === '3' || tok === '3^3' || tok === '27') matched.add(3);
+        else if (tok === '4' || tok === '2^3*3' || tok === '3*2^3' || tok === '24') matched.add(4);
+        else if (tok === '5' || tok === '2^4*3' || tok === '3*2^4' || tok === '48') matched.add(5);
+      });
+
+      return Array.from(matched).sort();
     }
 
     function checkStep_2_9() {
       const raw = document.getElementById('ans-2-9')?.value || '';
-      const list = parseNumList(raw.replace(/[⑴⑵⑶⑷⑸]/g, m => ({ '⑴': 1, '⑵': 2, '⑶': 3, '⑷': 4, '⑸': 5 }[m])));
-      const ok = areListsEqual(list, [1, 3, 5]);
+      const selected = parseStep2_9(raw);
+      const ok = areListsEqual(selected, [1, 2, 4]);
 
       if (ok) {
-        completeSubStep('2-9', '🎉 <b>정답입니다!</b> 2의 지수가 3 이하, 3의 지수가 2 이하인 <b>⑴, ⑶, ⑸</b>가 약수입니다.');
+        if (window._step2_9_revealAll) {
+          window._step2_9_revealAll();
+        }
+        completeSubStep('2-9', '🎉 <b>모두 정답입니다!</b><br>기준 수 2³ × 3²의 약수는 2의 지수가 3 이하이고 3의 지수가 2 이하이어야 하므로, <b>3², 2² × 3², 2³ × 3</b> (총 3개)입니다.');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 각 소인수의 지수가 원래 수의 지수보다 크면 약수가 될 수 없습니다.');
+        const errs = [];
+        if (selected.includes(3)) errs.push('• <b>3³</b>: 3의 지수가 3으로 원래 수의 지수 2보다 큽니다. (약수 탈락)');
+        if (selected.includes(5)) errs.push('• <b>2⁴ × 3</b>: 2의 지수가 4로 원래 수의 지수 3보다 큽니다. (약수 탈락)');
+        if (!selected.includes(1)) errs.push('• <b>3²</b>: 2⁰ × 3²로 지수 범위(a ≤ 3, b ≤ 2)를 만족하는 약수입니다.');
+        if (!selected.includes(2)) errs.push('• <b>2² × 3²</b>: a=2, b=2로 모두 기준 이하이므로 약수입니다.');
+        if (!selected.includes(4)) errs.push('• <b>2³ × 3</b>: a=3, b=1로 모두 기준 이하이므로 약수입니다.');
+        showFeedback(false, '❌ <b>다시 확인해 보세요.</b><br>' + (errs.length > 0 ? errs.join('<br>') : '약수인 것을 모두 골라 보세요. (보기를 클릭하거나 번호/수식을 입력할 수 있습니다)'));
       }
     }
 
