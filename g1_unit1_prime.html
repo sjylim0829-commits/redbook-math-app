@@ -8138,185 +8138,423 @@ function checkStep_1_4() {
 // 1-5 (p.12): 개념: 거듭제곱의 뜻
 // -------------------------------------------------------------
 function drawCanvas_1_5(container) {
+  if (container._animId_1_5) {
+    cancelAnimationFrame(container._animId_1_5);
+    container._animId_1_5 = null;
+  }
   container.innerHTML = '';
+
+  const wrapper = document.createElement('div');
+  wrapper.style.position = 'relative';
+  wrapper.style.width = '100%';
+  wrapper.style.height = '100%';
+  wrapper.style.minHeight = '480px';
+  wrapper.style.overflow = 'hidden';
+  wrapper.style.background = 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)';
+  wrapper.style.borderRadius = '12px';
+  wrapper.style.userSelect = 'none';
+  wrapper.style.webkitUserSelect = 'none';
+  container.appendChild(wrapper);
+
   const canvas = document.createElement('canvas');
-  canvas.width = container.clientWidth || 560;
-  canvas.height = container.clientHeight || 460;
+  canvas.style.display = 'block';
   canvas.style.width = '100%';
   canvas.style.height = '100%';
-  canvas.style.display = 'block';
-  container.appendChild(canvas);
+  canvas.style.touchAction = 'none';
+  wrapper.appendChild(canvas);
 
   const ctx = canvas.getContext('2d');
+
+  let w = 560;
+  let h = 480;
+  let dpr = window.devicePixelRatio || 1;
+
   let currentBase = 2;
   let currentExp = 3;
 
-  function draw() {
-    const w = canvas.width;
-    const h = canvas.height;
+  // 상단 툴바 UI
+  const topBar = document.createElement('div');
+  topBar.style.position = 'absolute';
+  topBar.style.top = '10px';
+  topBar.style.left = '12px';
+  topBar.style.right = '12px';
+  topBar.style.display = 'flex';
+  topBar.style.justifyContent = 'space-between';
+  topBar.style.alignItems = 'center';
+  topBar.style.zIndex = '10';
+  wrapper.appendChild(topBar);
+
+  const titleBadge = document.createElement('div');
+  titleBadge.style.display = 'inline-flex';
+  titleBadge.style.alignItems = 'center';
+  titleBadge.style.gap = '6px';
+  titleBadge.style.background = 'rgba(255, 255, 255, 0.94)';
+  titleBadge.style.padding = '6px 14px';
+  titleBadge.style.borderRadius = '20px';
+  titleBadge.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.05)';
+  titleBadge.style.fontSize = '12px';
+  titleBadge.style.fontWeight = '700';
+  titleBadge.style.color = '#1e293b';
+  titleBadge.innerHTML = '⚡ <b>[개념]</b> 거듭제곱과 밑·지수의 뜻 인터랙터 (p.12)';
+  topBar.appendChild(titleBadge);
+
+  const resetBtn = document.createElement('button');
+  resetBtn.style.padding = '5px 12px';
+  resetBtn.style.fontSize = '11.5px';
+  resetBtn.style.fontWeight = '600';
+  resetBtn.style.color = '#475569';
+  resetBtn.style.background = '#ffffff';
+  resetBtn.style.border = '1px solid #cbd5e1';
+  resetBtn.style.borderRadius = '8px';
+  resetBtn.style.cursor = 'pointer';
+  resetBtn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
+  resetBtn.innerHTML = '⟲ 시뮬레이터 리셋';
+  resetBtn.onclick = () => {
+    currentBase = 2;
+    currentExp = 3;
+    updateCtrlActive();
+    if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+  };
+  topBar.appendChild(resetBtn);
+
+  // 하단 컨트롤러 바
+  const ctrlRow = document.createElement('div');
+  ctrlRow.style.position = 'absolute';
+  ctrlRow.style.bottom = '10px';
+  ctrlRow.style.left = '10px';
+  ctrlRow.style.right = '10px';
+  ctrlRow.style.display = 'flex';
+  ctrlRow.style.justifyContent = 'center';
+  ctrlRow.style.alignItems = 'center';
+  ctrlRow.style.flexWrap = 'wrap';
+  ctrlRow.style.gap = '14px';
+  ctrlRow.style.zIndex = '10';
+  ctrlRow.style.background = 'rgba(255, 255, 255, 0.92)';
+  ctrlRow.style.padding = '8px 14px';
+  ctrlRow.style.borderRadius = '12px';
+  ctrlRow.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.06)';
+  ctrlRow.style.border = '1px solid #e2e8f0';
+  wrapper.appendChild(ctrlRow);
+
+  // 밑(Base) 컨트롤 그룹
+  const baseGroup = document.createElement('div');
+  baseGroup.style.display = 'flex';
+  baseGroup.style.alignItems = 'center';
+  baseGroup.style.gap = '6px';
+  ctrlRow.appendChild(baseGroup);
+
+  const baseLabel = document.createElement('span');
+  baseLabel.style.fontSize = '12px';
+  baseLabel.style.fontWeight = '800';
+  baseLabel.style.color = '#2563eb';
+  baseLabel.textContent = '밑:';
+  baseGroup.appendChild(baseLabel);
+
+  const baseButtons = [];
+  [2, 3, 5].forEach(b => {
+    const btn = document.createElement('button');
+    btn.style.padding = '4px 10px';
+    btn.style.fontSize = '12px';
+    btn.style.fontWeight = '700';
+    btn.style.borderRadius = '6px';
+    btn.style.cursor = 'pointer';
+    btn.style.transition = 'all 0.15s ease';
+    btn.textContent = String(b);
+    btn.onclick = () => {
+      currentBase = b;
+      updateCtrlActive();
+      if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(520, 'sine', 0.08);
+    };
+    baseGroup.appendChild(btn);
+    baseButtons.push({ b, btn });
+  });
+
+  // 지수(Exponent) 컨트롤 그룹
+  const expGroup = document.createElement('div');
+  expGroup.style.display = 'flex';
+  expGroup.style.alignItems = 'center';
+  expGroup.style.gap = '6px';
+  ctrlRow.appendChild(expGroup);
+
+  const expLabel = document.createElement('span');
+  expLabel.style.fontSize = '12px';
+  expLabel.style.fontWeight = '800';
+  expLabel.style.color = '#dc2626';
+  expLabel.textContent = '지수:';
+  expGroup.appendChild(expLabel);
+
+  const expButtons = [];
+  [1, 2, 3, 4, 5, 6].forEach(e => {
+    const btn = document.createElement('button');
+    btn.style.padding = '4px 10px';
+    btn.style.fontSize = '12px';
+    btn.style.fontWeight = '700';
+    btn.style.borderRadius = '6px';
+    btn.style.cursor = 'pointer';
+    btn.style.transition = 'all 0.15s ease';
+    btn.textContent = String(e);
+    btn.onclick = () => {
+      currentExp = e;
+      updateCtrlActive();
+      if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(620, 'sine', 0.08);
+    };
+    expGroup.appendChild(btn);
+    expButtons.push({ e, btn });
+  });
+
+  function updateCtrlActive() {
+    baseButtons.forEach(item => {
+      if (item.b === currentBase) {
+        item.btn.style.background = '#2563eb';
+        item.btn.style.color = '#ffffff';
+        item.btn.style.border = '1px solid #1d4ed8';
+        item.btn.style.boxShadow = '0 2px 4px rgba(37, 99, 235, 0.25)';
+      } else {
+        item.btn.style.background = '#f8fafc';
+        item.btn.style.color = '#334155';
+        item.btn.style.border = '1px solid #cbd5e1';
+        item.btn.style.boxShadow = 'none';
+      }
+    });
+
+    expButtons.forEach(item => {
+      if (item.e === currentExp) {
+        item.btn.style.background = '#dc2626';
+        item.btn.style.color = '#ffffff';
+        item.btn.style.border = '1px solid #b91c1c';
+        item.btn.style.boxShadow = '0 2px 4px rgba(220, 38, 38, 0.25)';
+      } else {
+        item.btn.style.background = '#f8fafc';
+        item.btn.style.color = '#334155';
+        item.btn.style.border = '1px solid #cbd5e1';
+        item.btn.style.boxShadow = 'none';
+      }
+    });
+  }
+
+  updateCtrlActive();
+
+  function resize() {
+    const rect = wrapper.getBoundingClientRect();
+    w = rect.width || 560;
+    h = rect.height || 480;
+    dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  resize();
+
+  let t = 0;
+  function animate() {
+    t += 0.04;
     ctx.clearRect(0, 0, w, h);
 
-    // Title
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 15px Pretendard, sans-serif';
-    ctx.fillStyle = '#1e293b';
-    ctx.fillText('⚡ 거듭제곱과 밑·지수의 시각화 인터랙터 (p.12)', w / 2, 35);
-
-    // Center Big Expression: Base^Exp
     const cx = w / 2;
-    const cy = 140;
+    const cy = 135;
 
-    // Base Box
+    // 1. 대형 거듭제곱 기호 a^n
+    // 밑 박스 (좌하단)
+    const baseBoxW = 74;
+    const baseBoxH = 86;
+    const baseBoxX = cx - 58;
+    const baseBoxY = cy - 42;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(37, 99, 235, 0.25)';
+    ctx.shadowBlur = 10 + Math.sin(t * 2) * 3;
+    ctx.shadowOffsetY = 4;
+
     ctx.fillStyle = '#eff6ff';
-    ctx.strokeStyle = '#3b82f6';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.roundRect ? ctx.roundRect(cx - 50, cy - 40, 70, 80, 12) : ctx.rect(cx - 50, cy - 40, 70, 80);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#1d4ed8';
-    ctx.font = 'bold 44px Pretendard, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(String(currentBase), cx - 15, cy + 16);
-
-    // Base Label Arrow
-    ctx.fillStyle = '#1d4ed8';
-    ctx.font = 'bold 14px Pretendard, sans-serif';
-    ctx.fillText('밑 (Base)', cx - 15, cy + 65);
-    ctx.font = '11px Pretendard, sans-serif';
-    ctx.fillStyle = '#64748b';
-    ctx.fillText('곱하는 수', cx - 15, cy + 82);
-
-    // Exponent Box
-    ctx.fillStyle = '#fef2f2';
-    ctx.strokeStyle = '#ef4444';
+    ctx.strokeStyle = '#2563eb';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.roundRect ? ctx.roundRect(cx + 30, cy - 55, 48, 55, 10) : ctx.rect(cx + 30, cy - 55, 48, 55);
+    if (ctx.roundRect) {
+      ctx.roundRect(baseBoxX, baseBoxY, baseBoxW, baseBoxH, 14);
+    } else {
+      ctx.rect(baseBoxX, baseBoxY, baseBoxW, baseBoxH);
+    }
     ctx.fill();
     ctx.stroke();
+    ctx.restore();
 
-    ctx.fillStyle = '#dc2626';
-    ctx.font = 'bold 28px Pretendard, sans-serif';
-    ctx.fillText(String(currentExp), cx + 54, cy - 16);
+    // 밑 숫자
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#1d4ed8';
+    ctx.font = 'bold 46px Pretendard, sans-serif';
+    ctx.fillText(String(currentBase), baseBoxX + baseBoxW / 2, baseBoxY + baseBoxH / 2);
 
-    // Exponent Label Arrow
-    ctx.fillStyle = '#dc2626';
-    ctx.font = 'bold 14px Pretendard, sans-serif';
-    ctx.fillText('지수 (Exponent)', cx + 54, cy - 70);
+    // 밑 설명 라벨 및 화살표
+    ctx.fillStyle = '#1d4ed8';
+    ctx.font = 'bold 13.5px Pretendard, sans-serif';
+    ctx.fillText('▲ 밑 (Base)', baseBoxX + baseBoxW / 2, baseBoxY + baseBoxH + 18);
     ctx.font = '11px Pretendard, sans-serif';
     ctx.fillStyle = '#64748b';
-    ctx.fillText('곱한 횟수', cx + 54, cy - 88);
+    ctx.fillText('거듭하여 곱하는 수', baseBoxX + baseBoxW / 2, baseBoxY + baseBoxH + 34);
 
-    // Expanded Multiplication Formula
+    // 지수 박스 (우상단)
+    const expBoxW = 54;
+    const expBoxH = 60;
+    const expBoxX = cx + 24;
+    const expBoxY = cy - 58;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(220, 38, 38, 0.25)';
+    ctx.shadowBlur = 10 + Math.cos(t * 2) * 3;
+    ctx.shadowOffsetY = 4;
+
+    ctx.fillStyle = '#fef2f2';
+    ctx.strokeStyle = '#dc2626';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(expBoxX, expBoxY, expBoxW, expBoxH, 12);
+    } else {
+      ctx.rect(expBoxX, expBoxY, expBoxW, expBoxH);
+    }
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    // 지수 숫자
+    ctx.fillStyle = '#dc2626';
+    ctx.font = 'bold 30px Pretendard, sans-serif';
+    ctx.fillText(String(currentExp), expBoxX + expBoxW / 2, expBoxY + expBoxH / 2);
+
+    // 지수 설명 라벨 및 화살표
+    ctx.fillStyle = '#dc2626';
+    ctx.font = 'bold 13.5px Pretendard, sans-serif';
+    ctx.fillText('▼ 지수 (Exponent)', expBoxX + expBoxW / 2, expBoxY - 24);
+    ctx.font = '11px Pretendard, sans-serif';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText('곱한 횟수', expBoxX + expBoxW / 2, expBoxY - 10);
+
+    // 2. 수식 전개 박스
     const factors = Array(currentExp).fill(currentBase);
     const expandedStr = factors.join(' × ');
     const computedVal = Math.pow(currentBase, currentExp);
 
+    const calcY = cy + 104;
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 1.5;
+    const calcBoxW = Math.min(w - 40, Math.max(300, expandedStr.length * 16 + 120));
+    const calcBoxH = 68;
+    const calcBoxX = (w - calcBoxW) / 2;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.04)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 2;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(calcBoxX, calcY, calcBoxW, calcBoxH, 12);
+    } else {
+      ctx.rect(calcBoxX, calcY, calcBoxW, calcBoxH);
+    }
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     ctx.fillStyle = '#0f172a';
-    ctx.font = 'bold 16px Pretendard, sans-serif';
-    ctx.fillText(`${expandedStr} = ${computedVal}`, w / 2, cy + 130);
+    ctx.font = 'bold 18px Pretendard, sans-serif';
+    ctx.fillText(`${currentBase}`, calcBoxX + 35, calcY + 24);
+    ctx.font = 'bold 11px Pretendard, sans-serif';
+    ctx.fillStyle = '#dc2626';
+    ctx.fillText(`${currentExp}`, calcBoxX + 46, calcY + 16);
 
-    ctx.font = '13px Pretendard, sans-serif';
-    ctx.fillStyle = '#64748b';
-    ctx.fillText(`${currentBase}를 ${currentExp}번 곱한 것을 통틀어 '${currentBase}의 거듭제곱'이라 부릅니다.`, w / 2, cy + 155);
+    ctx.fillStyle = '#475569';
+    ctx.font = 'bold 15px Pretendard, sans-serif';
+    ctx.fillText(`=  ${expandedStr}  =  ${computedVal.toLocaleString()}`, calcBoxX + calcBoxW / 2 + 15, calcY + 24);
 
-    // Bottom Controller Guide
     ctx.font = '12px Pretendard, sans-serif';
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText('👇 아래 버튼으로 밑과 지수를 조절해 보세요.', w / 2, h - 50);
+    ctx.fillStyle = '#64748b';
+    ctx.fillText(`${currentBase}를 ${currentExp}번 거듭 곱한 수 ➔ '${currentBase}의 거듭제곱'`, calcBoxX + calcBoxW / 2, calcY + 48);
+
+    // 3. 오개념 방지 비교 배너 (하단 배너)
+    const misY = calcY + 80;
+    const misW = Math.min(w - 36, 520);
+    const misH = 58;
+    const misX = (w - misW) / 2;
+
+    ctx.save();
+    ctx.fillStyle = '#fffbeb';
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(misX, misY, misW, misH, 10);
+    } else {
+      ctx.rect(misX, misY, misW, misH);
+    }
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 12px Pretendard, sans-serif';
+    ctx.fillStyle = '#b45309';
+    ctx.fillText('💡 [흔한 오개념 주의 경고!]', misX + 16, misY + 18);
+
+    const multVal = currentBase * currentExp;
+    ctx.font = '12px Pretendard, sans-serif';
+    ctx.fillStyle = '#78350f';
+    ctx.fillText(
+      `거듭제곱 ${currentBase}^${currentExp}은 ${currentBase} × ${currentExp} = ${multVal}이 아니라,  ${expandedStr} = ${computedVal}입니다!`,
+      misX + 16,
+      misY + 38
+    );
+    ctx.restore();
+
+    container._animId_1_5 = requestAnimationFrame(animate);
   }
 
-  // Controller Row
-  const ctrlRow = document.createElement('div');
-  ctrlRow.style.position = 'absolute';
-  ctrlRow.style.bottom = '12px';
-  ctrlRow.style.left = '50%';
-  ctrlRow.style.transform = 'translateX(-50%)';
-  ctrlRow.style.display = 'flex';
-  ctrlRow.style.gap = '10px';
-  ctrlRow.style.alignItems = 'center';
-  ctrlRow.style.zIndex = '20';
+  container._animId_1_5 = requestAnimationFrame(animate);
 
-  // Base buttons
-  const baseLabel = document.createElement('span');
-  baseLabel.style.fontSize = '0.82rem';
-  baseLabel.style.fontWeight = '700';
-  baseLabel.textContent = '밑:';
-  ctrlRow.appendChild(baseLabel);
-
-  [2, 3, 5].forEach(b => {
-    const btn = document.createElement('button');
-    btn.className = 'btn';
-    btn.style.padding = '3px 8px';
-    btn.style.fontSize = '0.78rem';
-    btn.style.background = (currentBase === b) ? '#3b82f6' : '#ffffff';
-    btn.style.color = (currentBase === b) ? '#ffffff' : '#1e293b';
-    btn.style.border = '1px solid #cbd5e1';
-    btn.textContent = String(b);
-    btn.onclick = () => {
-      currentBase = b;
-      draw();
-      if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(480, 'sine', 0.08);
-    };
-    ctrlRow.appendChild(btn);
+  const ro = new ResizeObserver(() => {
+    resize();
   });
-
-  // Exponent slider
-  const expLabel = document.createElement('span');
-  expLabel.style.fontSize = '0.82rem';
-  expLabel.style.fontWeight = '700';
-  expLabel.style.marginLeft = '10px';
-  expLabel.textContent = '지수:';
-  ctrlRow.appendChild(expLabel);
-
-  [1, 2, 3, 4, 5].forEach(e => {
-    const btn = document.createElement('button');
-    btn.className = 'btn';
-    btn.style.padding = '3px 8px';
-    btn.style.fontSize = '0.78rem';
-    btn.style.background = (currentExp === e) ? '#ef4444' : '#ffffff';
-    btn.style.color = (currentExp === e) ? '#ffffff' : '#1e293b';
-    btn.style.border = '1px solid #cbd5e1';
-    btn.textContent = String(e);
-    btn.onclick = () => {
-      currentExp = e;
-      draw();
-      if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(580, 'sine', 0.08);
-    };
-    ctrlRow.appendChild(btn);
-  });
-
-  container.appendChild(ctrlRow);
-  draw();
+  ro.observe(wrapper);
 }
 
 function renderForm_1_5(box) {
   box.innerHTML = `
     <div class="card">
       <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
-        📖 [개념 탐구] 거듭제곱의 뜻 (p.12)
+        📖 [개념 탐구] 거듭제곱의 뜻, 밑과 지수 (p.12)
       </div>
       <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
         다음 문장의 빈칸에 들어갈 알맞은 수학 용어를 쓰시오.
       </p>
 
       <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
-        <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.7;">
-          같은 수를 여러 번 곱한 것을 간단히 나타낸 것을 통틀어 그 수의 [ <input type="text" id="ans-1-5-1" style="width:90px; display:inline-block; padding:3px 6px; font-weight:700;" class="form-control" placeholder="용어 입력" autocomplete="off"> ](이)라고 합니다.
+        <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
+          ⑴ 같은 수를 여러 번 곱한 것을 간단히 나타낸 것을 통틀어 그 수의 [ <input type="text" id="ans-1-5-1" style="width:100px; display:inline-block; padding:4px 8px; font-weight:700;" class="form-control" placeholder="용어 입력" autocomplete="off"> ](이)라고 합니다.
         </div>
-        <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.7;">
-          예를 들어 $2^3$에서 거듭하여 곱하는 수 2를 거듭제곱의 [ <input type="text" id="ans-1-5-2" style="width:70px; display:inline-block; padding:3px 6px; font-weight:700;" class="form-control" placeholder="용어 입력" autocomplete="off"> ](이)라 하고,
+        <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
+          ⑵ 거듭하여 곱하는 수를 거듭제곱의 [ <input type="text" id="ans-1-5-2" style="width:80px; display:inline-block; padding:4px 8px; font-weight:700;" class="form-control" placeholder="용어 입력" autocomplete="off"> ](이)라 하고,
         </div>
-        <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.7;">
-          2를 곱한 횟수인 3을 거듭제곱의 [ <input type="text" id="ans-1-5-3" style="width:70px; display:inline-block; padding:3px 6px; font-weight:700;" class="form-control" placeholder="용어 입력" autocomplete="off"> ](이)라고 합니다.
+        <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
+          ⑶ 곱한 횟수를 나타내는 수를 거듭제곱의 [ <input type="text" id="ans-1-5-3" style="width:80px; display:inline-block; padding:4px 8px; font-weight:700;" class="form-control" placeholder="용어 입력" autocomplete="off"> ](이)라고 합니다.
         </div>
       </div>
 
-      <button class="btn btn-primary" onclick="checkStep_1_5()">정답 확인 및 채점</button>
+      <button class="btn btn-primary" onclick="checkStep_1_5()" style="width:100%;">정답 확인 및 채점</button>
     </div>
   `;
+
+  const inputs = box.querySelectorAll('input[type="text"]');
+  inputs.forEach(input => {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        checkStep_1_5();
+      }
+    });
+  });
 }
 
 function checkStep_1_5() {
@@ -8324,19 +8562,23 @@ function checkStep_1_5() {
   const v2 = normTxt(document.getElementById('ans-1-5-2')?.value);
   const v3 = normTxt(document.getElementById('ans-1-5-3')?.value);
 
-  const ok1 = (v1 === '거듭제곱' || v1 === '거듭^2');
+  const ok1 = (v1 === '거듭제곱');
   const ok2 = (v2 === '밑');
   const ok3 = (v3 === '지수');
 
   if (ok1 && ok2 && ok3) {
     completeSubStep('1-5', '🎉 <b>정답입니다!</b> 같은 수의 연속된 곱을 나타내는 <b>거듭제곱</b>, 곱하는 수인 <b>밑</b>, 곱한 횟수인 <b>지수</b>의 명칭을 완벽히 정복했습니다.');
+    const nextBtn = document.getElementById('btn-next-step');
+    if (nextBtn) {
+      nextBtn.style.display = 'inline-flex';
+    }
   } else {
     let wrong = [];
-    if (!ok1) wrong.push('거듭제곱');
-    if (!ok2) wrong.push('밑');
-    if (!ok3) wrong.push('지수');
+    if (!ok1) wrong.push('⑴ 첫 번째 빈칸');
+    if (!ok2) wrong.push('⑵ 두 번째 빈칸');
+    if (!ok3) wrong.push('⑶ 세 번째 빈칸');
     if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-    showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>교과서에 나온 수학적 용어를 정확히 입력해 보세요.`);
+    showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>교과서 p.12 본문에 나온 정확한 수학적 용어를 입력해 보세요.`);
   }
 }
 
