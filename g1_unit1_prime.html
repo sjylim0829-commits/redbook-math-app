@@ -42693,85 +42693,526 @@ function checkStep_1_12() {
     // ==========================================
     function drawCanvas_4_18(container) {
       if (!container) return;
-      container.innerHTML = '';
-      const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 500;
-      canvas.height = container.clientHeight || 450;
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      canvas.style.display = 'block';
-      container.appendChild(canvas);
+      if (container._animId_4_18) {
+        cancelAnimationFrame(container._animId_4_18);
+        container._animId_4_18 = null;
+      }
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; height:100%; gap:10px;">
+          <!-- 상단 컨트롤러 및 설명 뱃지 바 -->
+          <div style="background:#ffffff; padding:12px 14px; border-radius:10px; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+              <span id="badge-4-18" style="font-size:0.88rem; font-weight:700; color:#1e293b;">
+                단계별 버튼을 눌러 두 학생의 조건을 만족하는 두 자연수를 추론하는 과정을 확인해 보세요!
+              </span>
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+              <button id="btn-step1-4-18" class="btn btn-sm btn-outline-primary" style="font-weight:700;">1단계: 조건 수식화</button>
+              <button id="btn-step2-4-18" class="btn btn-sm btn-outline-primary" style="font-weight:700;">2단계: 후보 쌍 탐색</button>
+              <button id="btn-step3-4-18" class="btn btn-sm btn-outline-danger" style="font-weight:700;">3단계: 서로소&합 검증</button>
+              <button id="btn-step4-4-18" class="btn btn-sm btn-warning" style="font-weight:800; color:#1e293b;">4단계: 정답 확정</button>
+              <button id="btn-reset-4-18" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">⟲ 초기화</button>
+            </div>
+          </div>
+          <!-- Canvas 영역 -->
+          <div style="flex:1; min-height:370px; position:relative;">
+            <canvas id="canvas-4-18" style="width:100%; height:100%; display:block; border-radius:12px; background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); border:1px solid #e2e8f0;"></canvas>
+          </div>
+        </div>
+      `;
+
+      const canvas = container.querySelector('#canvas-4-18');
+      const badgeStatus = container.querySelector('#badge-4-18');
+      const btnStep1 = container.querySelector('#btn-step1-4-18');
+      const btnStep2 = container.querySelector('#btn-step2-4-18');
+      const btnStep3 = container.querySelector('#btn-step3-4-18');
+      const btnStep4 = container.querySelector('#btn-step4-4-18');
+      const btnReset = container.querySelector('#btn-reset-4-18');
+
       const ctx = canvas.getContext('2d');
+      let w = 560, h = 400;
 
-      let animId;
-      let angle = 0;
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        w = rect.width || 560;
+        h = rect.height || 400;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+
+      const ro = new ResizeObserver(() => resize());
+      ro.observe(canvas);
+
+      let currentStep = 0;
+      let pulseTimer = 0;
+      let particles = [];
+      let hoveredCardIdx = null;
+
+      function spawnConfetti(count = 60) {
+        const colors = ['#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#f43f5e'];
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: w / 2 + (Math.random() - 0.5) * 180,
+            y: 180 + (Math.random() - 0.5) * 60,
+            vx: (Math.random() - 0.5) * 12,
+            vy: (Math.random() - 0.85) * 11 - 2,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.01
+          });
+        }
+      }
+
+      function updateUI() {
+        if (btnStep1) btnStep1.className = `btn btn-sm ${currentStep === 1 ? 'btn-primary text-white' : 'btn-outline-primary'}`;
+        if (btnStep2) btnStep2.className = `btn btn-sm ${currentStep === 2 ? 'btn-primary text-white' : 'btn-outline-primary'}`;
+        if (btnStep3) btnStep3.className = `btn btn-sm ${currentStep === 3 ? 'btn-danger text-white' : 'btn-outline-danger'}`;
+        if (btnStep4) btnStep4.className = `btn btn-sm ${currentStep === 4 ? 'btn-warning text-dark font-weight-bold shadow-sm' : 'btn-outline-warning text-dark'}`;
+
+        if (badgeStatus) {
+          if (currentStep === 0) {
+            badgeStatus.innerText = '단계별 버튼을 눌러 두 학생의 조건을 만족하는 두 자연수를 추론하는 과정을 확인해 보세요!';
+          } else if (currentStep === 1) {
+            badgeStatus.innerHTML = '1️⃣ <b>조건 수식화</b>: 두 수를 <b>4a, 4b</b>(a, b는 서로소)라 하면 <b>ab = 18, a + b = 11</b>을 만족해야 합니다.';
+          } else if (currentStep === 2) {
+            badgeStatus.innerHTML = '2️⃣ <b>후보 쌍 탐색</b>: 곱이 18이 되는 자연수 쌍은 <b>(18, 1), (9, 2), (6, 3)</b>의 3가지가 있습니다.';
+          } else if (currentStep === 3) {
+            badgeStatus.innerHTML = '3️⃣ <b>서로소&합 검증</b>: (6, 3)은 서로소 탈락(X), (18, 1)은 합 76으로 탈락(X)! <b>(9, 2)</b>만 합격합니다.';
+          } else if (currentStep === 4) {
+            badgeStatus.innerHTML = '👑 <b>정답 확정</b>: a=9, b=2 이므로 두 자연수는 <b>4×9=36, 4×2=8</b> 입니다!';
+          }
+        }
+      }
+
+      btnStep1?.addEventListener('click', () => { currentStep = 1; updateUI(); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+      btnStep2?.addEventListener('click', () => { currentStep = 2; updateUI(); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+      btnStep3?.addEventListener('click', () => { currentStep = 3; updateUI(); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+      btnStep4?.addEventListener('click', () => { currentStep = 4; spawnConfetti(65); updateUI(); if (window.SoundFX && window.SoundFX.success) SoundFX.success(); });
+      btnReset?.addEventListener('click', () => { currentStep = 0; updateUI(); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+
+      window._step4_18_triggerSuccess = function() {
+        currentStep = 4;
+        updateUI();
+        spawnConfetti(70);
+      };
+
+      // 마우스 포인터 인터랙션
+      canvas.addEventListener('pointermove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        const cardBoxW = Math.min(w - 36, 520);
+        const cardBoxX = (w - cardBoxW) / 2;
+        const cardY = 118;
+        const cardH = 104;
+        const cardGap = 8;
+        const cardW = (cardBoxW - cardGap * 2) / 3;
+
+        hoveredCardIdx = null;
+        if (my >= cardY && my <= cardY + cardH) {
+          for (let i = 0; i < 3; i++) {
+            const cx = cardBoxX + i * (cardW + cardGap);
+            if (mx >= cx && mx <= cx + cardW) {
+              hoveredCardIdx = i;
+              break;
+            }
+          }
+        }
+        canvas.style.cursor = (hoveredCardIdx !== null) ? 'pointer' : 'default';
+      });
+
+      canvas.addEventListener('pointerleave', () => {
+        hoveredCardIdx = null;
+        canvas.style.cursor = 'default';
+      });
+
+      canvas.addEventListener('pointerdown', () => {
+        if (hoveredCardIdx === 1) { // Pair (9, 2)
+          currentStep = 4;
+          spawnConfetti(60);
+          updateUI();
+          if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        } else if (hoveredCardIdx === 0 || hoveredCardIdx === 2) {
+          currentStep = 3;
+          updateUI();
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        }
+      });
+
       function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, w, h);
+        pulseTimer += 0.05;
 
-        // Grid lines
-        ctx.strokeStyle = '#1e293b';
-        ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 40) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-        }
-        for (let y = 0; y < canvas.height; y += 40) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-        }
-
-        // Badge & Title
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 16px "Pretendard", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('[4-18] 생각 넓히기: 조건으로 두 수 추론하기 (p.22)', canvas.width / 2, 40);
-
-        // Interactive visual placeholder
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
+        // 상단 제목 뱃지
+        const badgeW = Math.min(w - 36, 520);
+        const badgeX = (w - badgeW) / 2;
         ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.strokeStyle = '#6366f1';
-        ctx.lineWidth = 3;
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(0, 0, 70, 0, Math.PI * 2);
+        if (ctx.roundRect) ctx.roundRect(badgeX, 10, badgeW, 30, 8);
+        else ctx.rect(badgeX, 10, badgeW, 30);
+        ctx.fill();
         ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 12.5px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('생각 넓히기: 조건으로 두 수 추론하기 (p.22)', w / 2, 25);
         ctx.restore();
 
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '13px "Pretendard", sans-serif';
-        ctx.fillText('최소공배수 시각화 인터랙터', cx, cy + 110);
+        // 1. 두 학생 말풍선 카드 (상단 가로 2단)
+        const bubbleStartY = 48;
+        const bubbleH = 62;
+        const cardBoxW = Math.min(w - 36, 520);
+        const cardBoxX = (w - cardBoxW) / 2;
+        const bubbleW = (cardBoxW - 8) / 2;
+        const b1X = cardBoxX;
+        const b2X = cardBoxX + bubbleW + 8;
 
-        angle += 0.02;
-        animId = requestAnimationFrame(render);
+        // 학생 1 말풍선 (민우)
+        ctx.save();
+        ctx.fillStyle = '#f0fdf4';
+        ctx.strokeStyle = '#bbf7d0';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(b1X, bubbleStartY, bubbleW, bubbleH, 8);
+        else ctx.rect(b1X, bubbleStartY, bubbleW, bubbleH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = 'bold 11.5px Pretendard, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = '#166534';
+        ctx.fillText('👦 학생 1 (최대공약수 & 최소공배수)', b1X + 10, bubbleStartY + 8);
+
+        ctx.font = '11px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('• 최대공약수 = 4, 최소공배수 = 72', b1X + 10, bubbleStartY + 26);
+        ctx.fillStyle = '#0284c7';
+        ctx.font = 'bold 11px Pretendard, sans-serif';
+        ctx.fillText('➔ 4a, 4b (서로소)  |  ab = 18', b1X + 10, bubbleStartY + 43);
+        ctx.restore();
+
+        // 학생 2 말풍선 (서연)
+        ctx.save();
+        ctx.fillStyle = '#eff6ff';
+        ctx.strokeStyle = '#bfdbfe';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(b2X, bubbleStartY, bubbleW, bubbleH, 8);
+        else ctx.rect(b2X, bubbleStartY, bubbleW, bubbleH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = 'bold 11.5px Pretendard, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = '#1e40af';
+        ctx.fillText('👧 학생 2 (두 수의 합)', b2X + 10, bubbleStartY + 8);
+
+        ctx.font = '11px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('• 두 자연수의 합 = 44', b2X + 10, bubbleStartY + 26);
+        ctx.fillStyle = '#b45309';
+        ctx.font = 'bold 11px Pretendard, sans-serif';
+        ctx.fillText('➔ 4(a + b) = 44  |  a + b = 11', b2X + 10, bubbleStartY + 43);
+        ctx.restore();
+
+        // 2. 중앙 (a, b) 후보 쌍 카드 3종
+        const cardY = 118;
+        const cardH = 104;
+        const cardGap = 8;
+        const cardW = (cardBoxW - cardGap * 2) / 3;
+
+        const candidates = [
+          { a: 18, b: 1, A: 72, B: 4, sum: 76, isCoprime: true, reason: '합 76 ≠ 44' },
+          { a: 9, b: 2, A: 36, B: 8, sum: 44, isCoprime: true, reason: '합 44 일치!' },
+          { a: 6, b: 3, A: 24, B: 12, sum: 36, isCoprime: false, reason: '서로소 아님(공약수 3)' }
+        ];
+
+        candidates.forEach((cand, idx) => {
+          const cx = cardBoxX + idx * (cardW + cardGap);
+          const isCorrect = (idx === 1);
+          const isHovered = (hoveredCardIdx === idx);
+
+          ctx.save();
+          let bgCol = '#ffffff';
+          let borderCol = '#e2e8f0';
+          let lineW = 1.2;
+
+          if (currentStep >= 2) {
+            bgCol = '#f8fafc';
+            borderCol = '#cbd5e1';
+          }
+
+          if (currentStep >= 3) {
+            if (isCorrect) {
+              bgCol = '#f0fdf4';
+              borderCol = '#22c55e';
+              lineW = 2;
+            } else {
+              bgCol = '#fef2f2';
+              borderCol = '#ef4444';
+              lineW = 1.5;
+            }
+          }
+
+          if (currentStep === 4 && isCorrect) {
+            bgCol = '#fefce8';
+            borderCol = '#eab308';
+            lineW = 2.5;
+
+            // 골드 펄스 글로우
+            const pulseGlow = 8 + Math.sin(pulseTimer) * 3;
+            ctx.shadowColor = '#facc15';
+            ctx.shadowBlur = pulseGlow;
+          }
+
+          if (isHovered) {
+            lineW += 1;
+          }
+
+          ctx.fillStyle = bgCol;
+          ctx.strokeStyle = borderCol;
+          ctx.lineWidth = lineW;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(cx, cardY, cardW, cardH, 8);
+          else ctx.rect(cx, cardY, cardW, cardH);
+          ctx.fill();
+          ctx.stroke();
+
+          // 카드 내부 텍스트
+          ctx.font = 'bold 12.5px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillStyle = '#0f172a';
+          ctx.fillText(`후보 ${idx + 1}: (${cand.a}, ${cand.b})`, cx + cardW / 2, cardY + 8);
+
+          ctx.font = '11px Pretendard, sans-serif';
+          ctx.fillStyle = '#475569';
+          ctx.fillText(`A=4×${cand.a}=${cand.A}`, cx + cardW / 2, cardY + 28);
+          ctx.fillText(`B=4×${cand.b}=${cand.B}`, cx + cardW / 2, cardY + 44);
+
+          // 상태 태그 / 검증 결과
+          ctx.beginPath();
+          const tagY = cardY + 64;
+          const tagH = 28;
+          let tagBg = '#f1f5f9';
+          let tagBorder = '#e2e8f0';
+          let tagText = `ab = 18`;
+          let tagColor = '#64748b';
+
+          if (currentStep === 2) {
+            tagText = cand.isCoprime ? '서로소 O' : '서로소 ?';
+            tagColor = cand.isCoprime ? '#0284c7' : '#d97706';
+          } else if (currentStep >= 3) {
+            if (isCorrect) {
+              tagBg = '#dcfce7';
+              tagBorder = '#86efac';
+              tagText = (currentStep === 4) ? '👑 정답 (36, 8)' : '합 44 일치! ✅';
+              tagColor = '#15803d';
+            } else {
+              tagBg = '#fee2e2';
+              tagBorder = '#fca5a5';
+              tagText = (idx === 0) ? '합 76 ≠ 44 ❌' : '서로소 X ❌';
+              tagColor = '#dc2626';
+            }
+          }
+
+          ctx.fillStyle = tagBg;
+          ctx.strokeStyle = tagBorder;
+          ctx.lineWidth = 1;
+          if (ctx.roundRect) ctx.roundRect(cx + 6, tagY, cardW - 12, tagH, 6);
+          else ctx.rect(cx + 6, tagY, cardW - 12, tagH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.font = 'bold 10.5px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = tagColor;
+          ctx.fillText(tagText, cx + cardW / 2, tagY + tagH / 2);
+
+          // 탈락 X 표기
+          if (currentStep >= 3 && !isCorrect) {
+            ctx.strokeStyle = '#dc2626';
+            ctx.lineWidth = 2.2;
+            ctx.beginPath();
+            ctx.moveTo(cx + 12, cardY + 12);
+            ctx.lineTo(cx + cardW - 12, cardY + cardH - 12);
+            ctx.stroke();
+          }
+
+          ctx.restore();
+        });
+
+        // 3. 하단 단계별 해설 안내 박스
+        const infoY = Math.min(232, h * 0.58);
+        const infoW = cardBoxW;
+        const infoX = cardBoxX;
+        const infoH = Math.min(134, h - infoY - 12);
+
+        ctx.save();
+        ctx.fillStyle = (currentStep === 4) ? '#f0fdf4' : '#f8fafc';
+        ctx.strokeStyle = (currentStep === 4) ? '#86efac' : '#e2e8f0';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(infoX, infoY, infoW, infoH, 10);
+        else ctx.rect(infoX, infoY, infoW, infoH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 12.5px Pretendard, sans-serif';
+
+        if (currentStep === 0) {
+          ctx.fillStyle = '#334155';
+          ctx.fillText('💡 문제 핵심 조건 파악:', infoX + 16, infoY + 12);
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#64748b';
+          ctx.fillText('• 최대공약수가 4이므로 두 자연수는 4의 배수: 4a, 4b (a, b는 서로소, a > b)', infoX + 16, infoY + 36);
+          ctx.fillText('• 최소공배수가 72이고 두 자연수의 합이 44이어야 합니다.', infoX + 16, infoY + 58);
+          ctx.fillText('• 상단의 단계별 버튼을 눌러 두 수를 찾아가는 논리적 과정을 확인해 보세요!', infoX + 16, infoY + 82);
+        } else if (currentStep === 1) {
+          ctx.fillStyle = '#0369a1';
+          ctx.fillText('1️⃣ 조건 수식화 - ab = 18 및 a + b = 11 도출:', infoX + 16, infoY + 12);
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('• 두 수를 4a, 4b (a > b, a와 b는 서로소)라 하면,', infoX + 16, infoY + 36);
+          ctx.fillText('• 최소공배수 = 4 × a × b = 72  ➔  a × b = 18', infoX + 16, infoY + 58);
+          ctx.fillText('• 두 수의 합 = 4a + 4b = 4(a + b) = 44  ➔  a + b = 11', infoX + 16, infoY + 82);
+        } else if (currentStep === 2) {
+          ctx.fillStyle = '#0369a1';
+          ctx.fillText('2️⃣ 곱이 18이 되는 자연수 (a, b) 후보 쌍 탐색:', infoX + 16, infoY + 12);
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('• 18 = 18 × 1  ➔  (18, 1) ➔ 두 수: 72, 4', infoX + 16, infoY + 36);
+          ctx.fillText('• 18 = 9 × 2   ➔  (9, 2)  ➔ 두 수: 36, 8', infoX + 16, infoY + 58);
+          ctx.fillText('• 18 = 6 × 3   ➔  (6, 3)  ➔ 두 수: 24, 12', infoX + 16, infoY + 80);
+          ctx.fillStyle = '#b45309';
+          ctx.fillText('➔ 다음 단계에서 "서로소"와 "합=44" 조건을 검증해 봅시다!', infoX + 16, infoY + 102);
+        } else if (currentStep === 3) {
+          ctx.fillStyle = '#b91c1c';
+          ctx.fillText('3️⃣ 서로소 및 합(44) 조건 필터링:', infoX + 16, infoY + 12);
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('• (6, 3): 6과 3은 공약수 3이 있어 서로소가 아니므로 탈락(X)!', infoX + 16, infoY + 36);
+          ctx.fillText('• (18, 1): 서로소이지만 두 수의 합 = 72 + 4 = 76 ≠ 44 이므로 탈락(X)!', infoX + 16, infoY + 58);
+          ctx.fillStyle = '#15803d';
+          ctx.fillText('• (9, 2): 서로소이고 두 수의 합 = 36 + 8 = 44 로 조건 완벽 만족! ✅', infoX + 16, infoY + 82);
+        } else if (currentStep === 4) {
+          ctx.fillStyle = '#166534';
+          ctx.fillText('👑 4단계: 두 자연수 확정 ➔ 36, 8 (또는 8, 36)', infoX + 16, infoY + 12);
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('• a = 9, b = 2 일 때 두 자연수는 4 × 9 = 36, 4 × 2 = 8 입니다!', infoX + 16, infoY + 36);
+          ctx.fillText('• 검산: 최대공약수 = 4, 최소공배수 = 72, 합 = 36 + 8 = 44 (완벽 일치)', infoX + 16, infoY + 58);
+          ctx.fillStyle = '#059669';
+          ctx.fillText('➔ 우측 정답 입력창에 36, 8 을 입력해 보세요!', infoX + 16, infoY + 82);
+        }
+        ctx.restore();
+
+        // 파티클 렌더링
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.35;
+          p.rot += p.vRot;
+          p.life -= p.decay;
+
+          if (p.life <= 0) {
+            particles.splice(i, 1);
+            continue;
+          }
+
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.globalAlpha = Math.max(0, p.life);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+          ctx.restore();
+        }
+
+        container._animId_4_18 = requestAnimationFrame(render);
       }
+
       render();
 
       window._cleanup_step_4_18 = () => {
-        if (animId) cancelAnimationFrame(animId);
+        if (container._animId_4_18) {
+          cancelAnimationFrame(container._animId_4_18);
+          container._animId_4_18 = null;
+        }
+        ro.disconnect();
       };
     }
 
     function renderForm_4_18(box) {
       if (!box) return;
       box.innerHTML = `
-        <div class="question-card" style="padding:16px; background:#1e293b; border-radius:10px; margin-bottom:15px; border:1px solid #334155;">
-          <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 4-18. 생각 넓히기: 조건으로 두 수 추론하기 (p.22)</div>
-          <p style="font-size:14px; color:#cbd5e1; line-height:1.6; margin-bottom:12px;">
-            문제를 해결하고 최소공배수 또는 답을 입력창에 작성하세요.
+        <div class="card" style="padding:16px 20px;">
+          <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
+            ✏️ [생각 넓히기] 조건으로 두 수 추론하기 (p.22)
+          </div>
+
+          <!-- 문제 안내 카드 -->
+          <div style="background:#f8fafc; border-left:4px solid #3b82f6; padding:10px 14px; border-radius:6px; margin-bottom:14px;">
+            <div style="font-weight:700; font-size:0.86rem; color:#1e40af; margin-bottom:4px;">
+              문제 조건
+            </div>
+            <div style="font-size:0.88rem; color:#1e293b; line-height:1.6; font-family:'Pretendard', sans-serif;">
+              다음 두 학생의 설명을 동시에 만족시키는 <b>두 자연수</b>를 구하시오.<br>
+              <span style="display:inline-block; margin-top:4px;">
+                • <b>학생 1</b>: "두 자연수의 최대공약수는 4이고, 최소공배수는 72야."<br>
+                • <b>학생 2</b>: "두 자연수의 합은 44야."
+              </span>
+            </div>
+          </div>
+
+          <p style="font-size:0.88rem; color:#334155; line-height:1.6; margin-bottom:12px;">
+            두 자연수를 쉼표(,)로 구분하여 입력창에 작성하세요. (예: 36, 8 또는 8, 36)
           </p>
-          <div style="margin-bottom:12px;">
-            <input type="text" id="ans-4-18" class="form-control" placeholder="수 또는 식 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
+
+          <!-- 입력 필드 (Zero-Spoiler) -->
+          <div style="background:#fefce8; padding:12px 14px; border-radius:8px; border:1px solid #fef08a; margin-bottom:14px;">
+            <label for="ans-4-18" style="font-size:0.85rem; font-weight:700; color:#854d0e; display:block; margin-bottom:6px;">
+              두 자연수:
+            </label>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="text" id="ans-4-18" class="form-control" style="width:100%; font-size:1rem;" placeholder="두 수 입력 (쉼표 구분)" autocomplete="off">
+            </div>
           </div>
-          <div style="display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap;">
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_18" data-char="²">²</button>
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_18" data-char="³">³</button>
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_18" data-char="⁴">⁴</button>
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_18" data-char="×">×</button>
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_18" data-char="^">^</button>
-            <button type="button" class="btn btn-sm btn-outline-danger btn-pow-clear-4_18">지우기</button>
+
+          <!-- 퀵 숫자 및 쉼표 키패드 -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; background:#f1f5f9; padding:8px 10px; border-radius:8px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; line-height:28px;">빠른 입력:</span>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-18" data-char="3" style="font-weight:700; min-width:30px;">3</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-18" data-char="6" style="font-weight:700; min-width:30px;">6</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-18" data-char="8" style="font-weight:700; min-width:30px;">8</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-18" data-char="9" style="font-weight:700; min-width:30px;">9</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-18" data-char="2" style="font-weight:700; min-width:30px;">2</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-18" data-char="4" style="font-weight:700; min-width:30px;">4</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-18" data-char="1" style="font-weight:700; min-width:30px;">1</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-18" data-char="7" style="font-weight:700; min-width:30px;">7</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-18" data-char="0" style="font-weight:700; min-width:30px;">0</button>
+            <button type="button" class="btn btn-sm btn-info text-white btn-num-insert-4-18" data-char=", " style="font-weight:700; min-width:30px;">, (쉼표)</button>
+            <button type="button" class="btn btn-sm btn-outline-danger btn-num-clear-4-18" style="font-weight:700;">지우기</button>
           </div>
+
           <button class="btn btn-primary" onclick="checkStep_4_18()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
@@ -42782,7 +43223,8 @@ function checkStep_1_12() {
           if (e.key === 'Enter') checkStep_4_18();
         });
       }
-      box.querySelectorAll('.btn-pow-insert-4_18').forEach(btn => {
+
+      box.querySelectorAll('.btn-num-insert-4-18').forEach(btn => {
         btn.addEventListener('click', () => {
           const char = btn.getAttribute('data-char');
           if (input) {
@@ -42792,27 +43234,53 @@ function checkStep_1_12() {
           }
         });
       });
-      const clearBtn = box.querySelector('.btn-pow-clear-4_18');
+
+      const clearBtn = box.querySelector('.btn-num-clear-4-18');
       if (clearBtn) {
         clearBtn.addEventListener('click', () => {
           if (input) {
             input.value = '';
             input.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
           }
         });
       }
     }
 
     function checkStep_4_18() {
-      const v = normTxt(document.getElementById('ans-4-18')?.value);
-      const isCorrect = (v.length > 0);
-      if (isCorrect) {
-        completeSubStep('4-18', '🎉 <b>정답입니다!</b><br>• 정답 및 풀이: 36, 8 (또는 8, 36)');
+      const raw = document.getElementById('ans-4-18')?.value || '';
+      const v = (raw || '').trim();
+
+      if (!v || v.length === 0) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>값을 입력해 주세요.</b> 두 자연수를 쉼표로 구분하여 입력해 보세요. (예: 36, 8)');
+        return;
+      }
+
+      // 숫자 배열 파싱
+      const nums = v.split(/[,\s]+/).map(s => parseInt(s, 10)).filter(n => !isNaN(n));
+      const sorted = [...nums].sort((a, b) => a - b);
+
+      if (sorted.length === 2 && sorted[0] === 8 && sorted[1] === 36) {
+        if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        if (window._step4_18_triggerSuccess) {
+          window._step4_18_triggerSuccess();
+        }
+        completeSubStep('4-18', '🎉 <b>정답입니다!</b><br>• 두 수를 4a, 4b (a, b는 서로소)라 하면 ab = 18<br>• 곱이 18이고 서로소인 쌍: (18, 1), (9, 2)<br>• 합이 44가 되는 쌍: a=9, b=2 ➔ 4×9 = <b>36</b>, 4×2 = <b>8</b><br>🎉 축하합니다! 4소단원 [4. 최소공배수]의 모든 탐구를 완수하였습니다!');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
+      } else if (sorted.length === 2 && sorted[0] === 4 && sorted[1] === 72) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>두 수의 합이 76으로 44가 되지 않습니다.</b> (학생 2의 조건을 확인하세요!)');
+      } else if (sorted.length === 2 && sorted[0] === 12 && sorted[1] === 24) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>24와 12는 최대공약수가 12가 되어 조건에 맞지 않습니다.</b> (학생 1의 최대공약수 4 조건을 확인하세요!)');
+      } else if (sorted.length !== 2) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>두 개의 자연수를 입력해야 합니다.</b> 쉼표로 구분하여 두 수를 입력해 보세요. (예: 36, 8)');
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>값을 입력해 주세요.</b>');
+        showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 두 수의 최대공약수가 4이므로 4a, 4b로 두고 ab=18, a+b=11 (a, b는 서로소)을 만족하는 쌍을 찾아보세요. (예: 36, 8)');
       }
     }
 
