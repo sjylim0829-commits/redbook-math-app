@@ -14429,70 +14429,434 @@ function checkStep_1_12() {
     // 2-4 (p.15): 개념 탐구: 소인수분해의 뜻과 유일성
     // -------------------------------------------------------------
     function drawCanvas_2_4(container) {
+      if (container._animId_2_4) {
+        cancelAnimationFrame(container._animId_2_4);
+      }
       container.innerHTML = '';
-      const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 560;
-      canvas.height = container.clientHeight || 460;
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      canvas.style.display = 'block';
-      container.appendChild(canvas);
 
+      const wrapper = document.createElement('div');
+      wrapper.style.display = 'flex';
+      wrapper.style.flexDirection = 'column';
+      wrapper.style.height = '100%';
+      wrapper.style.width = '100%';
+
+      wrapper.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button id="btn-2-4-pathA" class="btn btn-sm btn-outline-primary" style="font-weight:700; border-radius:6px; font-size:0.82rem;">🌿 경로 A (2×9) 가지치기</button>
+            <button id="btn-2-4-pathB" class="btn btn-sm btn-outline-success" style="font-weight:700; border-radius:6px; font-size:0.82rem;">🌿 경로 B (3×6) 가지치기</button>
+            <button id="btn-2-4-fuse" class="btn btn-sm btn-outline-warning" style="font-weight:700; color:#d97706; border-color:#f59e0b; border-radius:6px; font-size:0.82rem;">⚡ 소인수분해 결과 융합</button>
+            <button id="btn-2-4-reset" class="btn btn-sm btn-outline-secondary" style="font-weight:600; border-radius:6px; font-size:0.82rem;">⟲ 가지 리셋</button>
+          </div>
+          <div id="badge-2-4-status" style="font-size:0.82rem; font-weight:700; color:#475569; background:#f1f5f9; padding:4px 10px; border-radius:12px; border:1px solid #e2e8f0; width:100%; margin-top:2px;">
+            경로 A, B 버튼을 눌러 18의 두 가지 가지치기를 단계별로 진행해 보세요!
+          </div>
+        </div>
+        <div style="flex:1; min-height:360px; position:relative;">
+          <canvas style="width:100%; height:100%; display:block; border-radius:12px; background:#f8fafc; border:1px solid #e2e8f0;"></canvas>
+        </div>
+      `;
+
+      container.appendChild(wrapper);
+
+      const canvas = wrapper.querySelector('canvas');
       const ctx = canvas.getContext('2d');
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
+      const badgeStatus = wrapper.querySelector('#badge-2-4-status');
+      const btnPathA = wrapper.querySelector('#btn-2-4-pathA');
+      const btnPathB = wrapper.querySelector('#btn-2-4-pathB');
+      const btnFuse = wrapper.querySelector('#btn-2-4-fuse');
+      const btnReset = wrapper.querySelector('#btn-2-4-reset');
 
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 15px Pretendard, sans-serif';
-      ctx.fillStyle = '#1e293b';
-      ctx.fillText('🌿 [개념 탐구] 18의 소인수분해 경로 합성 (p.15)', w / 2, 35);
+      let w = 560;
+      let h = 420;
 
-      ctx.font = '12px Pretendard, sans-serif';
-      ctx.fillStyle = '#64748b';
-      ctx.fillText('어떤 경로로 쪼개도 소인수분해 결과는 거듭제곱으로 나타내면 오직 한 가지입니다!', w / 2, 60);
+      let stepA = 0; // 0: 루트만, 1: 2, 9 분기, 2: 9가 3, 3 분기
+      let stepB = 0; // 0: 루트만, 1: 3, 6 분기, 2: 6이 2, 3 분기
+      let isFused = false;
+      let fuseT = 0;
+      let selectedNode = null;
+      let celebrationTriggered = false;
+      let particles = [];
 
-      // 두 경로 다이어그램
-      const midY = 180;
-      ctx.font = 'bold 22px Pretendard, sans-serif';
-      ctx.fillStyle = '#1e293b';
-      ctx.fillText('18', w / 2, 100);
+      function createConfetti() {
+        const colors = ['#f59e0b', '#ef4444', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
+        for (let i = 0; i < 50; i++) {
+          particles.push({
+            x: w * 0.5 + (Math.random() - 0.5) * 140,
+            y: h * 0.7 + (Math.random() - 0.5) * 40,
+            vx: (Math.random() - 0.5) * 10,
+            vy: -Math.random() * 8 - 4,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.012
+          });
+        }
+      }
 
-      // 왼쪽 경로: 2 × 9 -> 2 × 3 × 3
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 15px Pretendard, sans-serif';
-      ctx.fillStyle = '#4f46e5';
-      ctx.fillText('경로 A: 2 × 9', w * 0.28, midY - 20);
-      ctx.font = '13px Pretendard, sans-serif';
-      ctx.fillStyle = '#64748b';
-      ctx.fillText('➔ 2 × 3 × 3 = 2 × 3²', w * 0.28, midY + 15);
+      // 노드 정의
+      let nodesA = [];
+      let nodesB = [];
 
-      // 오른쪽 경로: 3 × 6 -> 3 × 2 × 3
-      ctx.font = 'bold 15px Pretendard, sans-serif';
-      ctx.fillStyle = '#059669';
-      ctx.fillText('경로 B: 3 × 6', w * 0.72, midY - 20);
-      ctx.font = '13px Pretendard, sans-serif';
-      ctx.fillStyle = '#64748b';
-      ctx.fillText('➔ 3 × 2 × 3 = 2 × 3²', w * 0.72, midY + 15);
+      function initNodes() {
+        const ax = w * 0.28;
+        const bx = w * 0.72;
+        const rootY = 82;
+        const l1Y = 158;
+        const l2Y = 236;
 
-      // 최종 귀결 박스
-      ctx.save();
-      ctx.fillStyle = '#eff6ff';
-      ctx.strokeStyle = '#3b82f6';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(w / 2 - 140, 260, 280, 70, 12) : ctx.rect(w / 2 - 140, 260, 280, 70);
-      ctx.fill();
-      ctx.stroke();
+        // 경로 A 노드들
+        nodesA = [
+          { id: 'A_root', val: 18, isPrime: false, desc: '합성수 18에서 출발합니다.', x: ax, y: rootY, r: 22, level: 0, visible: true },
+          { id: 'A_2', val: 2, isPrime: true, desc: '2는 소수이므로 더 이상 쪼갤 수 없습니다.', x: ax - 45, y: l1Y, r: 19, level: 1, visible: false },
+          { id: 'A_9', val: 9, isPrime: false, desc: '9는 합성수(3×3)이므로 더 쪼갤 수 있습니다.', x: ax + 45, y: l1Y, r: 19, level: 1, visible: false },
+          { id: 'A_3_1', val: 3, isPrime: true, desc: '3은 소수입니다.', x: ax + 18, y: l2Y, r: 18, level: 2, visible: false },
+          { id: 'A_3_2', val: 3, isPrime: true, desc: '3은 소수입니다.', x: ax + 72, y: l2Y, r: 18, level: 2, visible: false }
+        ];
 
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 16px Pretendard, sans-serif';
-      ctx.fillStyle = '#1d4ed8';
-      ctx.fillText('18 = 2 × 3²', w / 2, 290);
-      ctx.font = '12px Pretendard, sans-serif';
-      ctx.fillStyle = '#475569';
-      ctx.fillText('✨ 소인수분해의 결과는 오직 한 가지!', w / 2, 314);
-      ctx.restore();
+        // 경로 B 노드들
+        nodesB = [
+          { id: 'B_root', val: 18, isPrime: false, desc: '합성수 18에서 출발합니다.', x: bx, y: rootY, r: 22, level: 0, visible: true },
+          { id: 'B_3', val: 3, isPrime: true, desc: '3은 소수이므로 더 이상 쪼갤 수 없습니다.', x: bx - 45, y: l1Y, r: 19, level: 1, visible: false },
+          { id: 'B_6', val: 6, isPrime: false, desc: '6은 합성수(2×3)이므로 더 쪼갤 수 있습니다.', x: bx + 45, y: l1Y, r: 19, level: 1, visible: false },
+          { id: 'B_2', val: 2, isPrime: true, desc: '2는 소수입니다.', x: bx + 18, y: l2Y, r: 18, level: 2, visible: false },
+          { id: 'B_3_2', val: 3, isPrime: true, desc: '3은 소수입니다.', x: bx + 72, y: l2Y, r: 18, level: 2, visible: false }
+        ];
+
+        // 말단 소인수 융합 목표 좌표
+        const fuseY = 320;
+        // 경로 A 말단 소수: A_2, A_3_1, A_3_2
+        nodesA[1].targetX = w * 0.5 - 46;
+        nodesA[1].targetY = fuseY;
+        nodesA[3].targetX = w * 0.5;
+        nodesA[3].targetY = fuseY;
+        nodesA[4].targetX = w * 0.5 + 46;
+        nodesA[4].targetY = fuseY;
+
+        // 경로 B 말단 소수: B_3, B_2, B_3_2
+        nodesB[1].targetX = w * 0.5 - 46;
+        nodesB[1].targetY = fuseY;
+        nodesB[3].targetX = w * 0.5;
+        nodesB[3].targetY = fuseY;
+        nodesB[4].targetX = w * 0.5 + 46;
+        nodesB[4].targetY = fuseY;
+      }
+
+      function resize() {
+        w = canvas.clientWidth || 560;
+        h = canvas.clientHeight || 420;
+        canvas.width = w;
+        canvas.height = h;
+        initNodes();
+      }
+
+      resize();
+
+      // 버튼 이벤트
+      btnPathA.addEventListener('click', () => {
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        if (stepA === 0) {
+          stepA = 1;
+          nodesA[1].visible = true;
+          nodesA[2].visible = true;
+          if (badgeStatus) badgeStatus.innerText = '경로 A: 18 = 2 × 9 로 가지치기했습니다. 9를 한 번 더 쪼개보세요!';
+        } else if (stepA === 1) {
+          stepA = 2;
+          nodesA[3].visible = true;
+          nodesA[4].visible = true;
+          if (badgeStatus) badgeStatus.innerHTML = '경로 A 완료! 말단 소수: <b>2, 3, 3</b> (즉, 2 × 3²)';
+        }
+      });
+
+      btnPathB.addEventListener('click', () => {
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        if (stepB === 0) {
+          stepB = 1;
+          nodesB[1].visible = true;
+          nodesB[2].visible = true;
+          if (badgeStatus) badgeStatus.innerText = '경로 B: 18 = 3 × 6 으로 가지치기했습니다. 6을 한 번 더 쪼개보세요!';
+        } else if (stepB === 1) {
+          stepB = 2;
+          nodesB[3].visible = true;
+          nodesB[4].visible = true;
+          if (badgeStatus) badgeStatus.innerHTML = '경로 B 완료! 말단 소수: <b>3, 2, 3</b> (즉, 2 × 3²)';
+        }
+      });
+
+      btnFuse.addEventListener('click', () => {
+        // 두 경로가 다 펴지지 않았다면 즉시 전개 후 융합
+        stepA = 2;
+        stepB = 2;
+        nodesA.forEach(n => n.visible = true);
+        nodesB.forEach(n => n.visible = true);
+        isFused = true;
+        fuseT = 0;
+
+        if (!celebrationTriggered) {
+          celebrationTriggered = true;
+          createConfetti();
+          if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+          if (badgeStatus) {
+            badgeStatus.innerHTML = '⚡ <b>융합 성공!</b> 두 경로 모두 결국 <b>2 × 3²</b>으로 귀결됩니다! (소인수분해의 유일성)';
+          }
+        } else {
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        }
+      });
+
+      btnReset.addEventListener('click', () => {
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        stepA = 0;
+        stepB = 0;
+        isFused = false;
+        fuseT = 0;
+        selectedNode = null;
+        celebrationTriggered = false;
+        initNodes();
+        if (badgeStatus) {
+          badgeStatus.innerText = '경로 A, B 버튼을 눌러 18의 두 가지 가지치기를 단계별로 진행해 보세요!';
+        }
+      });
+
+      // 마우스 인터랙션
+      canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        let hovering = false;
+        const allNodes = [...nodesA, ...nodesB];
+        allNodes.forEach(n => {
+          if (n.visible) {
+            const curX = isFused && n.targetX ? n.x + (n.targetX - n.x) * fuseT : n.x;
+            const curY = isFused && n.targetY ? n.y + (n.targetY - n.y) * fuseT : n.y;
+            if (Math.hypot(mx - curX, my - curY) <= n.r + 4) {
+              hovering = true;
+            }
+          }
+        });
+        canvas.style.cursor = hovering ? 'pointer' : 'default';
+      });
+
+      canvas.addEventListener('click', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        const allNodes = [...nodesA, ...nodesB];
+        allNodes.forEach(n => {
+          if (n.visible) {
+            const curX = isFused && n.targetX ? n.x + (n.targetX - n.x) * fuseT : n.x;
+            const curY = isFused && n.targetY ? n.y + (n.targetY - n.y) * fuseT : n.y;
+            if (Math.hypot(mx - curX, my - curY) <= n.r + 6) {
+              selectedNode = n;
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+              if (badgeStatus) {
+                badgeStatus.innerHTML = `노드 [<b>${n.val}</b>]: ${n.desc}`;
+              }
+            }
+          }
+        });
+      });
+
+      // 60fps 애니메이션 루프
+      function animate() {
+        ctx.clearRect(0, 0, w, h);
+
+        if (isFused && fuseT < 1) {
+          fuseT = Math.min(1, fuseT + 0.05);
+        }
+
+        // 1. 헤더 타이틀 (Zero-Spoiler)
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('🌿 [개념 탐구] 18의 두 갈래 소인수분해와 유일성 (p.15)', w / 2, 14);
+
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillStyle = '#64748b';
+        ctx.fillText('어떤 경로로 가지치기를 하더라도 소인수분해 결과는 오직 한 가지로 귀결됩니다.', w / 2, 38);
+
+        // 2. 경로 레이블
+        ctx.font = 'bold 14px Pretendard, sans-serif';
+        ctx.fillStyle = '#3b82f6';
+        ctx.fillText('경로 A: 18 = 2 × 9', w * 0.28, 56);
+
+        ctx.fillStyle = '#10b981';
+        ctx.fillText('경로 B: 18 = 3 × 6', w * 0.72, 56);
+
+        // 3. 나뭇가지 연결선 렌더링
+        function drawBranch(fromNode, toNode) {
+          if (!toNode.visible) return;
+          ctx.save();
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(fromNode.x, fromNode.y);
+          ctx.lineTo(toNode.x, toNode.y);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        if (!isFused) {
+          // 경로 A 가지
+          drawBranch(nodesA[0], nodesA[1]);
+          drawBranch(nodesA[0], nodesA[2]);
+          drawBranch(nodesA[2], nodesA[3]);
+          drawBranch(nodesA[2], nodesA[4]);
+
+          // 경로 B 가지
+          drawBranch(nodesB[0], nodesB[1]);
+          drawBranch(nodesB[0], nodesB[2]);
+          drawBranch(nodesB[2], nodesB[3]);
+          drawBranch(nodesB[2], nodesB[4]);
+        }
+
+        // 4. 노드 렌더링
+        function drawNode(n) {
+          if (!n.visible) return;
+
+          const curX = isFused && n.targetX ? n.x + (n.targetX - n.x) * fuseT : n.x;
+          const curY = isFused && n.targetY ? n.y + (n.targetY - n.y) * fuseT : n.y;
+
+          // 소수 노드 오라
+          if (n.isPrime) {
+            ctx.save();
+            const pulse = 1 + Math.sin(Date.now() * 0.006 + (n.val === 2 ? 1 : 2)) * 0.12;
+            ctx.shadowColor = 'rgba(245, 158, 11, 0.7)';
+            ctx.shadowBlur = 10 * pulse;
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 2.2;
+            ctx.beginPath();
+            ctx.arc(curX, curY, n.r + 3 * pulse, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(curX, curY, n.r, 0, Math.PI * 2);
+
+          let grad = ctx.createRadialGradient(curX - n.r * 0.3, curY - n.r * 0.3, n.r * 0.1, curX, curY, n.r);
+          if (n.isPrime) {
+            grad.addColorStop(0, '#fef08a');
+            grad.addColorStop(1, '#f59e0b');
+            ctx.strokeStyle = '#d97706';
+          } else {
+            grad.addColorStop(0, '#ffffff');
+            grad.addColorStop(1, '#e2e8f0');
+            ctx.strokeStyle = '#94a3b8';
+          }
+          ctx.fillStyle = grad;
+          ctx.fill();
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = `bold ${Math.round(n.r * 0.9)}px Pretendard, sans-serif`;
+          ctx.fillStyle = n.isPrime ? '#78350f' : '#1e293b';
+          ctx.fillText(String(n.val), curX, curY);
+
+          // 소수 라벨
+          if (n.isPrime && !isFused) {
+            ctx.font = 'bold 9px Pretendard, sans-serif';
+            ctx.fillStyle = '#d97706';
+            ctx.fillText('★소수', curX, curY + n.r + 11);
+          }
+          ctx.restore();
+        }
+
+        nodesA.forEach(drawNode);
+        nodesB.forEach(drawNode);
+
+        // 5. 융합 결과 배너 (소인수분해의 유일성)
+        if (isFused && fuseT > 0.8) {
+          const bannerW = Math.min(w - 40, 480);
+          const bannerX = (w - bannerW) / 2;
+          const bannerY = h - 68;
+
+          ctx.save();
+          ctx.globalAlpha = (fuseT - 0.8) / 0.2;
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 2;
+          ctx.shadowColor = 'rgba(245, 158, 11, 0.25)';
+          ctx.shadowBlur = 12;
+          ctx.beginPath();
+          ctx.roundRect ? ctx.roundRect(bannerX, bannerY, bannerW, 52, 10) : ctx.rect(bannerX, bannerY, bannerW, 52);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.fillStyle = '#b45309';
+          ctx.fillText('✨ 18 = 2 × 3² (소인수분해의 유일성)', w / 2, bannerY + 18);
+
+          ctx.font = '11px Pretendard, sans-serif';
+          ctx.fillStyle = '#475569';
+          ctx.fillText('어떤 경로로 분해하더라도 순서를 생각하지 않으면 결과는 오직 한 가지뿐입니다!', w / 2, bannerY + 36);
+          ctx.restore();
+        }
+
+        // 6. 하단 인터랙션 툴팁
+        if (selectedNode && !isFused) {
+          ctx.save();
+          const tipW = Math.min(w - 40, 500);
+          const tipX = (w - tipW) / 2;
+          const tipY = h - 18;
+
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+          ctx.beginPath();
+          ctx.roundRect ? ctx.roundRect(tipX, tipY - 24, tipW, 26, 6) : ctx.rect(tipX, tipY - 24, tipW, 26);
+          ctx.fill();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = '11px Pretendard, sans-serif';
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(`[노드 ${selectedNode.val}] ${selectedNode.desc}`, w / 2, tipY - 11);
+          ctx.restore();
+        }
+
+        // 7. 파티클 애니메이션
+        if (particles.length > 0) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.25;
+            p.rot += p.vRot;
+            p.life -= p.decay;
+
+            if (p.life <= 0 || p.y > h + 20) {
+              particles.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+            ctx.restore();
+          }
+        }
+
+        container._animId_2_4 = requestAnimationFrame(animate);
+      }
+
+      container._animId_2_4 = requestAnimationFrame(animate);
+
+      const ro = new ResizeObserver(() => {
+        resize();
+      });
+      ro.observe(wrapper);
     }
 
     function renderForm_2_4(box) {
@@ -14501,20 +14865,30 @@ function checkStep_1_12() {
           <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
             ✏️ [개념 탐구] 소인수분해의 뜻과 유일성 (p.15)
           </div>
-          <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
-            다음 빈칸에 알맞은 말을 써넣으시오.
+          <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:14px;">
+            교과서 개념을 읽고 다음 물음에 알맞은 용어, 답변 또는 식을 써넣으시오.
           </p>
 
-          <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:14px;">
+          <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:16px;">
             <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
-              ⑴ 1보다 큰 자연수를 그 수의 소인수들만의 곱으로 나타낸 것을 [ <input type="text" id="ans-2-4-1" style="width:110px; display:inline-block;" class="form-control" placeholder="용어 입력" autocomplete="off"> ]라고 한다.
+              ⑴ 1보다 큰 자연수를 소인수들만의 곱으로 나타내는 것을 무엇이라고 하나요?:<br>
+              👉 [ <input type="text" id="ans-2-4-1" style="width:130px; text-align:center; font-weight:700; display:inline-block;" class="form-control" placeholder="용어 입력" autocomplete="off"> ]
             </div>
             <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
-              ⑵ 곱하는 순서를 생각하지 않으면 자연수의 소인수분해 결과는 [ <input type="text" id="ans-2-4-2" style="width:120px; display:inline-block;" class="form-control" placeholder="표현 입력" autocomplete="off"> ]이다.
+              ⑵ 소인수분해한 결과에서 같은 소인수의 곱은 무엇을 사용하여 간단히 나타내나요?:<br>
+              👉 [ <input type="text" id="ans-2-4-2" style="width:130px; text-align:center; font-weight:700; display:inline-block;" class="form-control" placeholder="용어 입력" autocomplete="off"> ]
+            </div>
+            <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
+              ⑶ 1보다 큰 자연수를 소인수분해한 결과는 곱하는 순서를 생각하지 않으면 몇 가지뿐인가요?:<br>
+              👉 [ <input type="text" id="ans-2-4-3" style="width:130px; text-align:center; font-weight:700; display:inline-block;" class="form-control" placeholder="답변 입력" autocomplete="off"> ]
+            </div>
+            <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
+              ⑷ 18을 소인수분해한 최종 결과를 거듭제곱을 사용하여 나타내시오:<br>
+              👉 [ <input type="text" id="ans-2-4-4" style="width:160px; text-align:center; font-weight:700; display:inline-block;" class="form-control" placeholder="거듭제곱 식 입력" autocomplete="off"> ]
             </div>
           </div>
 
-          <button class="btn btn-primary" onclick="checkStep_2_4()" style="width:100%;">정답 확인 및 채점</button>
+          <button class="btn btn-primary" onclick="checkStep_2_4()" style="width:100%; font-weight:700; padding:10px 0;">정답 확인 및 채점</button>
         </div>
       `;
 
@@ -14529,20 +14903,35 @@ function checkStep_1_12() {
     function checkStep_2_4() {
       const v1 = normTxt(document.getElementById('ans-2-4-1')?.value);
       const v2 = normTxt(document.getElementById('ans-2-4-2')?.value);
+      const v3 = normTxt(document.getElementById('ans-2-4-3')?.value);
+      const raw4 = document.getElementById('ans-2-4-4')?.value || '';
 
       const ok1 = (v1 === '소인수분해');
-      const ok2 = (v2 === '오직한가지' || v2 === '한가지');
+      const ok2 = (v2 === '거듭제곱');
 
-      if (ok1 && ok2) {
-        completeSubStep('2-4', '🎉 <b>모두 정답입니다!</b> 소인수들만의 곱으로 나타내는 것을 <b>소인수분해</b>라 하며, 그 결과는 <b>오직 한 가지</b>입니다.');
+      const v3Clean = v3.replace(/\s+/g, '');
+      const ok3 = ['오직한가지', '한가지', '1가지', '오직1가지'].includes(v3Clean);
+
+      // 18 = 2 * 3^2 유연 판정
+      const normExpr4 = raw4.replace(/\s+/g, '')
+        .replace(/[×xX*]/g, '*')
+        .replace(/²/g, '^2')
+        .replace(/³/g, '^3');
+
+      const ok4 = (normExpr4 === '2*3^2' || normExpr4 === '3^2*2');
+
+      if (ok1 && ok2 && ok3 && ok4) {
+        completeSubStep('2-4', '🎉 <b>모두 정답입니다!</b><br>⑴ 1보다 큰 자연수를 소인수들의 곱으로 나타내는 것을 <b>소인수분해</b>라 합니다.<br>⑵ 같은 소인수의 곱은 <b>거듭제곱</b>으로 나타냅니다.<br>⑶ 소인수분해 결과는 순서를 무시하면 <b>오직 한 가지</b>뿐입니다.<br>⑷ 18의 소인수분해: $18 = 2 \\times 3^2$');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         let wrong = [];
-        if (!ok1) wrong.push('⑴ 소인수분해');
-        if (!ok2) wrong.push('⑵ 유일성 표현');
+        if (!ok1) wrong.push('⑴ 소인수분해 정의');
+        if (!ok2) wrong.push('⑵ 거듭제곱 표현');
+        if (!ok3) wrong.push('⑶ 결과의 유일성');
+        if (!ok4) wrong.push('⑷ 18의 거듭제곱 식');
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>교과서 p.15 본문 내용을 확인해 보세요.`);
+        showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>💡 힌트: 18 = 2 × 3 × 3을 거듭제곱으로 나타내면 2 × 3² 입니다.`);
       }
     }
 
