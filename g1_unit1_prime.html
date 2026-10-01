@@ -11131,69 +11131,493 @@ function checkStep_1_9() {
 // 1-10 (p.13): 스스로 확인하기 2: 거듭제곱으로 나타내기
 // -------------------------------------------------------------
 function drawCanvas_1_10(container) {
+  if (container._animId_1_10) {
+    cancelAnimationFrame(container._animId_1_10);
+  }
   container.innerHTML = '';
+
+  const wrapper = document.createElement('div');
+  wrapper.style.width = '100%';
+  wrapper.style.height = '100%';
+  wrapper.style.position = 'relative';
+  container.appendChild(wrapper);
+
+  // 상단 탭 및 컨트롤 바
+  const topBar = document.createElement('div');
+  topBar.style.position = 'absolute';
+  topBar.style.top = '10px';
+  topBar.style.left = '12px';
+  topBar.style.right = '12px';
+  topBar.style.display = 'flex';
+  topBar.style.justifyContent = 'space-between';
+  topBar.style.alignItems = 'center';
+  topBar.style.zIndex = '10';
+  topBar.style.flexWrap = 'wrap';
+  topBar.style.gap = '6px';
+  wrapper.appendChild(topBar);
+
+  const tabGroup = document.createElement('div');
+  tabGroup.style.display = 'flex';
+  tabGroup.style.gap = '6px';
+  tabGroup.style.flexWrap = 'wrap';
+  topBar.appendChild(tabGroup);
+
+  // 문제 데이터 모델 (4개 문항)
+  const problems = [
+    {
+      id: 1,
+      title: '⑴ 5 × 5 × 5 × 5',
+      shortTitle: '⑴ 5⁴ 탐구',
+      groups: [
+        { base: 5, count: 4, merged: false, mergeScale: 1, color: '#059669', bg: '#ecfdf5', border: '#a7f3d0' }
+      ]
+    },
+    {
+      id: 2,
+      title: '⑵ 2 × 3 × 3 × 5',
+      shortTitle: '⑵ 2×3²×5 탐구',
+      groups: [
+        { base: 2, count: 1, merged: false, mergeScale: 1, color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe' },
+        { base: 3, count: 2, merged: false, mergeScale: 1, color: '#8b5cf6', bg: '#f5f3ff', border: '#ddd6fe' },
+        { base: 5, count: 1, merged: false, mergeScale: 1, color: '#059669', bg: '#ecfdf5', border: '#a7f3d0' }
+      ]
+    },
+    {
+      id: 3,
+      title: '⑶ 3 × 3 × 7 × 7 × 7 × 7 × 7',
+      shortTitle: '⑶ 3²×7⁵ 탐구',
+      groups: [
+        { base: 3, count: 2, merged: false, mergeScale: 1, color: '#8b5cf6', bg: '#f5f3ff', border: '#ddd6fe' },
+        { base: 7, count: 5, merged: false, mergeScale: 1, color: '#ea580c', bg: '#fff7ed', border: '#fed7aa' }
+      ]
+    },
+    {
+      id: 4,
+      title: '⑷ 2 × 2 × 2 × 5 × 13 × 13 × 13',
+      shortTitle: '⑷ 2³×5×13³ 탐구',
+      groups: [
+        { base: 2, count: 3, merged: false, mergeScale: 1, color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe' },
+        { base: 5, count: 1, merged: false, mergeScale: 1, color: '#059669', bg: '#ecfdf5', border: '#a7f3d0' },
+        { base: 13, count: 3, merged: false, mergeScale: 1, color: '#db2777', bg: '#fdf2f8', border: '#fbcfe8' }
+      ]
+    }
+  ];
+
+  let currentTabIdx = 0;
+  function getActiveProb() {
+    return problems[currentTabIdx];
+  }
+
+  // 탭 버튼 생성
+  const tabBtns = [];
+  problems.forEach((prob, idx) => {
+    const btn = document.createElement('button');
+    btn.style.padding = '5px 10px';
+    btn.style.fontSize = '12px';
+    btn.style.fontWeight = '700';
+    btn.style.borderRadius = '8px';
+    btn.style.cursor = 'pointer';
+    btn.style.transition = 'all 0.15s ease';
+    btn.innerHTML = prob.shortTitle;
+    btn.onclick = () => {
+      currentTabIdx = idx;
+      updateTabButtons();
+      updateActionButtons();
+      if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+    };
+    tabGroup.appendChild(btn);
+    tabBtns.push(btn);
+  });
+
+  function updateTabButtons() {
+    tabBtns.forEach((btn, idx) => {
+      if (idx === currentTabIdx) {
+        btn.style.background = '#4f46e5';
+        btn.style.color = '#ffffff';
+        btn.style.border = 'none';
+        btn.style.boxShadow = '0 2px 4px rgba(79, 70, 229, 0.3)';
+      } else {
+        btn.style.background = '#ffffff';
+        btn.style.color = '#475569';
+        btn.style.border = '1px solid #cbd5e1';
+        btn.style.boxShadow = 'none';
+      }
+    });
+  }
+  updateTabButtons();
+
+  // 분해하기(초기화) 버튼
+  const resetBtn = document.createElement('button');
+  resetBtn.style.padding = '5px 10px';
+  resetBtn.style.fontSize = '11.5px';
+  resetBtn.style.fontWeight = '600';
+  resetBtn.style.color = '#475569';
+  resetBtn.style.background = '#ffffff';
+  resetBtn.style.border = '1px solid #cbd5e1';
+  resetBtn.style.borderRadius = '8px';
+  resetBtn.style.cursor = 'pointer';
+  resetBtn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
+  resetBtn.innerHTML = '⟲ 분해하기';
+  resetBtn.onclick = () => {
+    const prob = getActiveProb();
+    prob.groups.forEach(g => {
+      g.merged = false;
+      g.mergeScale = 1;
+    });
+    particles = [];
+    updateActionButtons();
+    if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+  };
+  topBar.appendChild(resetBtn);
+
+  // 하단 조작 컨트롤러 바
+  const bottomBar = document.createElement('div');
+  bottomBar.style.position = 'absolute';
+  bottomBar.style.bottom = '10px';
+  bottomBar.style.left = '12px';
+  bottomBar.style.right = '12px';
+  bottomBar.style.display = 'flex';
+  bottomBar.style.justifyContent = 'center';
+  bottomBar.style.alignItems = 'center';
+  bottomBar.style.gap = '8px';
+  bottomBar.style.zIndex = '10';
+  bottomBar.style.flexWrap = 'wrap';
+  wrapper.appendChild(bottomBar);
+
+  function updateActionButtons() {
+    bottomBar.innerHTML = '';
+    const prob = getActiveProb();
+
+    prob.groups.forEach(g => {
+      const bBtn = document.createElement('button');
+      bBtn.style.padding = '5px 12px';
+      bBtn.style.fontSize = '12px';
+      bBtn.style.fontWeight = '700';
+      bBtn.style.borderRadius = '8px';
+      bBtn.style.cursor = 'pointer';
+      bBtn.style.background = g.merged ? g.bg : '#ffffff';
+      bBtn.style.color = g.color;
+      bBtn.style.border = `1.5px solid ${g.color}`;
+      bBtn.style.transition = 'all 0.15s ease';
+      bBtn.innerHTML = g.merged ? `✓ [${g.base}] 합체 완료` : `🔗 [${g.base}] 블록 합체하기`;
+      bBtn.onclick = () => {
+        mergeGroup(g);
+      };
+      bottomBar.appendChild(bBtn);
+    });
+
+    const mergeAllBtn = document.createElement('button');
+    mergeAllBtn.style.padding = '5px 14px';
+    mergeAllBtn.style.fontSize = '12px';
+    mergeAllBtn.style.fontWeight = '700';
+    mergeAllBtn.style.borderRadius = '8px';
+    mergeAllBtn.style.cursor = 'pointer';
+    mergeAllBtn.style.background = '#4f46e5';
+    mergeAllBtn.style.color = '#ffffff';
+    mergeAllBtn.style.border = 'none';
+    mergeAllBtn.style.boxShadow = '0 2px 6px rgba(79, 70, 229, 0.3)';
+    mergeAllBtn.innerHTML = '⚡ 전체 거듭제곱 합체';
+    mergeAllBtn.onclick = () => {
+      prob.groups.forEach(g => mergeGroup(g, false));
+      checkAllCelebration();
+    };
+    bottomBar.appendChild(mergeAllBtn);
+  }
+
+  function mergeGroup(g, triggerCheck = true) {
+    if (!g.merged) {
+      g.merged = true;
+      g.mergeScale = 1.45;
+      if (window.SoundFX && window.SoundFX.click) {
+        SoundFX.click();
+      } else if (window.SoundFX && window.SoundFX.playTone) {
+        SoundFX.playTone(550 + g.base * 20, 'triangle', 0.12);
+      }
+      if (triggerCheck) {
+        checkAllCelebration();
+      }
+      updateActionButtons();
+    }
+  }
+
+  function checkAllCelebration() {
+    const prob = getActiveProb();
+    const allDone = prob.groups.every(g => g.merged);
+    if (allDone) {
+      createConfetti();
+      if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+    }
+  }
+
+  updateActionButtons();
+
+  // Canvas 엘리먼트 생성
   const canvas = document.createElement('canvas');
-  canvas.width = container.clientWidth || 560;
-  canvas.height = container.clientHeight || 460;
   canvas.style.width = '100%';
   canvas.style.height = '100%';
   canvas.style.display = 'block';
-  container.appendChild(canvas);
+  wrapper.appendChild(canvas);
 
   const ctx = canvas.getContext('2d');
+  let w = 560;
+  let h = 480;
+  let dpr = 1;
 
-  function draw() {
-    const w = canvas.width;
-    const h = canvas.height;
-    ctx.clearRect(0, 0, w, h);
-
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 15px Pretendard, sans-serif';
-    ctx.fillStyle = '#1e293b';
-    ctx.fillText('📦 [스스로 확인하기 2] 거듭제곱 압축 변환표 (p.13)', w / 2, 35);
-
-    const questions = [
-      { num: '⑴', expr: '5 × 5 × 5 × 5', res: '5⁴', desc: '5가 4개' },
-      { num: '⑵', expr: '2 × 3 × 3 × 5', res: '2 × 3² × 5', desc: '2 1개, 3 2개, 5 1개' },
-      { num: '⑶', expr: '3 × 3 × 7 × 7 × 7 × 7 × 7', res: '3² × 7⁵', desc: '3 2개, 7 5개' },
-      { num: '⑷', expr: '2 × 2 × 2 × 5 × 13 × 13 × 13', res: '2³ × 5 × 13³', desc: '2 3개, 5 1개, 13 3개' }
-    ];
-
-    const rowH = 75;
-    const startY = 65;
-
-    questions.forEach((q, idx) => {
-      const y = startY + idx * (rowH + 12);
-      ctx.fillStyle = '#ffffff';
-      ctx.strokeStyle = '#cbd5e1';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(25, y, w - 50, rowH, 8) : ctx.rect(25, y, w - 50, rowH);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.textAlign = 'left';
-      ctx.font = 'bold 14px Pretendard, sans-serif';
-      ctx.fillStyle = '#4f46e5';
-      ctx.fillText(`${q.num} ${q.expr}`, 40, y + 28);
-
-      ctx.font = '12px Pretendard, sans-serif';
-      ctx.fillStyle = '#64748b';
-      ctx.fillText(q.desc, 40, y + 54);
-
-      ctx.textAlign = 'right';
-      ctx.font = 'bold 18px Pretendard, sans-serif';
-      ctx.fillStyle = '#059669';
-      ctx.fillText(`➔  ${q.res}`, w - 45, y + 42);
-    });
-
-    ctx.textAlign = 'center';
-    ctx.font = '12px Pretendard, sans-serif';
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText('💡 같은 밑끼리 곱한 횟수를 지수로 묶어 표현합니다.', w / 2, h - 15);
+  // 파티클 (콘페티)
+  let particles = [];
+  function createConfetti() {
+    particles = [];
+    const colors = ['#4f46e5', '#10b981', '#f59e0b', '#ec4899', '#3b82f6'];
+    for (let i = 0; i < 50; i++) {
+      particles.push({
+        x: w / 2 + (Math.random() - 0.5) * 180,
+        y: h / 2 - 20,
+        vx: (Math.random() - 0.5) * 12,
+        vy: -Math.random() * 10 - 4,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        size: Math.random() * 7 + 4,
+        rotation: Math.random() * Math.PI * 2,
+        vRot: (Math.random() - 0.5) * 0.25,
+        life: 1.0,
+        decay: Math.random() * 0.01 + 0.008
+      });
+    }
   }
 
-  draw();
+  function resize() {
+    const rect = wrapper.getBoundingClientRect();
+    w = rect.width || 560;
+    h = Math.max(480, rect.height || 480);
+    dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  resize();
+
+  // 캔버스 클릭 시 해당 그룹 합체 지원
+  canvas.addEventListener('click', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const my = e.clientY - rect.top;
+    const prob = getActiveProb();
+    const groupCount = prob.groups.length;
+    const startY = 86;
+    const rowH = groupCount === 1 ? 170 : (groupCount === 2 ? 120 : 88);
+
+    prob.groups.forEach((g, gIdx) => {
+      const gy = startY + gIdx * (rowH + 10);
+      if (my >= gy && my <= gy + rowH) {
+        mergeGroup(g);
+      }
+    });
+  });
+
+  // 애니메이션 루프
+  function animate() {
+    ctx.clearRect(0, 0, w, h);
+
+    const prob = getActiveProb();
+
+    // 1. 헤더 안내 텍스트
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#1e293b';
+    ctx.font = 'bold 15px Pretendard, sans-serif';
+    ctx.fillText(`🧩 [스스로 확인하기 2] ${prob.title}`, w / 2, 50);
+
+    ctx.font = '11.5px Pretendard, sans-serif';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText('💡 같은 밑끼리 묶어 거듭제곱 블록으로 압축해 보세요! (카드나 아래 버튼 클릭)', w / 2, 68);
+
+    // 2. 그룹별 카드 박스 렌더링
+    const groupCount = prob.groups.length;
+    const startY = 86;
+    const rowH = groupCount === 1 ? 170 : (groupCount === 2 ? 120 : 88);
+
+    prob.groups.forEach((g, gIdx) => {
+      const gy = startY + gIdx * (rowH + 10);
+
+      // 스케일 이징
+      if (g.mergeScale > 1.0) {
+        g.mergeScale += (1.0 - g.mergeScale) * 0.18;
+        if (g.mergeScale < 1.01) g.mergeScale = 1.0;
+      }
+
+      ctx.save();
+      // 그룹 외곽 박스
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = g.merged ? g.color : '#e2e8f0';
+      ctx.lineWidth = g.merged ? 2 : 1;
+      const boxW = Math.min(w - 32, 520);
+      const boxX = (w - boxW) / 2;
+      const boxH = rowH;
+
+      ctx.shadowColor = g.merged ? 'rgba(79, 70, 229, 0.12)' : 'rgba(0, 0, 0, 0.03)';
+      ctx.shadowBlur = g.merged ? 10 : 4;
+      ctx.shadowOffsetY = 2;
+
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(boxX, gy, boxW, boxH, 12) : ctx.rect(boxX, gy, boxW, boxH);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      // 그룹 제목 라벨
+      ctx.textAlign = 'left';
+      ctx.font = 'bold 12px Pretendard, sans-serif';
+      ctx.fillStyle = g.color;
+      ctx.fillText(`밑 [ ${g.base} ] 그룹 (${g.count}번 곱함)`, boxX + 16, gy + 18);
+
+      if (!g.merged) {
+        // 합체 전: 펼쳐진 개별 카드들 나열
+        const cardW = Math.min(44, Math.floor((boxW - 60 - (g.count - 1) * 24) / g.count));
+        const cardH = groupCount === 1 ? 64 : (groupCount === 2 ? 52 : 42);
+        const gapW = Math.min(26, Math.max(14, (boxW - 60 - g.count * cardW) / Math.max(1, g.count - 1)));
+        const totalW = g.count * cardW + (g.count - 1) * gapW;
+        const cStartX = boxX + (boxW - totalW) / 2;
+        const cY = gy + 28 + (boxH - 36 - cardH) / 2;
+
+        for (let i = 0; i < g.count; i++) {
+          const cx = cStartX + i * (cardW + gapW);
+
+          ctx.save();
+          ctx.fillStyle = g.bg;
+          ctx.strokeStyle = g.border;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.roundRect ? ctx.roundRect(cx, cY, cardW, cardH, 8) : ctx.rect(cx, cY, cardW, cardH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = `bold ${groupCount === 3 ? 16 : 20}px Pretendard, sans-serif`;
+          ctx.fillStyle = g.color;
+          ctx.fillText(String(g.base), cx + cardW / 2, cY + cardH / 2);
+          ctx.restore();
+
+          if (i < g.count - 1) {
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 15px Pretendard, sans-serif';
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText('×', cx + cardW + gapW / 2, cY + cardH / 2);
+          }
+        }
+
+        // 미합체 힌트
+        ctx.textAlign = 'right';
+        ctx.font = '11px Pretendard, sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('탭하여 합체 ⚡', boxX + boxW - 16, gy + 18);
+      } else {
+        // 합체 완료: 거듭제곱 블록
+        ctx.save();
+        const centerX = boxX + boxW / 2;
+        const centerY = gy + boxH / 2 + 6;
+
+        ctx.translate(centerX, centerY);
+        ctx.scale(g.mergeScale, g.mergeScale);
+
+        // 거듭제곱 밑 박스
+        const bSize = groupCount === 1 ? 64 : (groupCount === 2 ? 52 : 44);
+        const bx = -bSize / 2;
+        const by = -bSize / 2;
+
+        ctx.fillStyle = g.color;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.roundRect ? ctx.roundRect(bx, by, bSize, bSize, 10) : ctx.rect(bx, by, bSize, bSize);
+        ctx.fill();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = `bold ${groupCount === 1 ? 32 : 24}px Pretendard, sans-serif`;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(String(g.base), 0, 1);
+
+        // 지수 뱃지 (count가 2 이상일 때)
+        if (g.count > 1) {
+          const ew = groupCount === 1 ? 30 : 26;
+          const eh = groupCount === 1 ? 30 : 26;
+          const ex = bSize / 2 - 8;
+          const ey = -bSize / 2 - 10;
+
+          ctx.fillStyle = '#fef2f2';
+          ctx.strokeStyle = '#dc2626';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.roundRect ? ctx.roundRect(ex, ey, ew, eh, 6) : ctx.rect(ex, ey, ew, eh);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#dc2626';
+          ctx.font = `bold ${groupCount === 1 ? 18 : 15}px Pretendard, sans-serif`;
+          ctx.fillText(String(g.count), ex + ew / 2, ey + eh / 2);
+        } else {
+          // 지수 1 생략 안내 뱃지
+          ctx.fillStyle = '#64748b';
+          ctx.font = 'bold 11px Pretendard, sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText('(지수 1 생략)', bSize / 2 + 8, 2);
+        }
+
+        ctx.restore();
+
+        // 합체 성공 뱃지
+        ctx.textAlign = 'right';
+        ctx.font = 'bold 11.5px Pretendard, sans-serif';
+        ctx.fillStyle = '#059669';
+        ctx.fillText('✨ 거듭제곱 압축 완성!', boxX + boxW - 16, gy + 18);
+      }
+    });
+
+    // 3. 전체 합체 완료 상태 결과 표시 배너
+    const allMerged = prob.groups.every(g => g.merged);
+    if (allMerged) {
+      const bannerY = h - 52;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = 'bold 13.5px Pretendard, sans-serif';
+      ctx.fillStyle = '#4f46e5';
+      ctx.fillText('🎉 모든 카드가 거듭제곱으로 합체되었습니다! 오른쪽 폼에 식을 입력해 보세요.', w / 2, bannerY);
+    }
+
+    // 4. 파티클 (콘페티)
+    if (particles.length > 0) {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.3;
+        p.rotation += p.vRot;
+        p.life -= p.decay;
+
+        if (p.life <= 0 || p.y > h + 20) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+        ctx.restore();
+      }
+    }
+
+    container._animId_1_10 = requestAnimationFrame(animate);
+  }
+
+  container._animId_1_10 = requestAnimationFrame(animate);
+
+  const ro = new ResizeObserver(() => {
+    resize();
+  });
+  ro.observe(wrapper);
 }
 
 function renderForm_1_10(box) {
@@ -11202,56 +11626,118 @@ function renderForm_1_10(box) {
       <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
         ✏️ [스스로 확인하기 2] 거듭제곱으로 나타내기 (p.13)
       </div>
-      <p style="font-size:0.88rem; color:#475569; line-height:1.5; margin-bottom:12px;">
-        다음을 거듭제곱을 사용하여 밑이 작은 것부터 차례대로 나타내시오.<br>
-        <span style="font-size:0.82rem; color:#64748b;">(지수는 <code>^</code> 기호, 곱셈은 <code>*</code> 기호 사용)</span>
+      <p style="font-size:0.88rem; color:#475569; line-height:1.5; margin-bottom:10px;">
+        다음을 거듭제곱을 사용하여 나타내시오.
       </p>
 
+      <div style="background:#f1f5f9; padding:10px 14px; border-radius:8px; margin-bottom:12px; font-size:0.82rem; color:#475569; line-height:1.6;">
+        💡 <b>입력 안내:</b> 지수는 <code>^</code> 기호 또는 위첨자(², ³, ⁴, ⁵)를 사용하고, 곱셈은 <code>*</code> 또는 <code>×</code>를 사용합니다.<br>
+        <span style="color:#64748b;">(예시: 2를 3번, 5를 2번 곱한 경우 <code>2^3 * 5^2</code> 또는 <code>2³ * 5²</code>로 입력)</span>
+      </div>
+
+      <div style="display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; align-items:center;">
+        <span style="font-size:0.78rem; font-weight:700; color:#64748b;">기호 입력:</span>
+        <button type="button" class="btn-sym-1-10" data-sym="^" style="padding:3px 8px; font-size:12px; font-weight:700; background:#ffffff; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;">^</button>
+        <button type="button" class="btn-sym-1-10" data-sym="*" style="padding:3px 8px; font-size:12px; font-weight:700; background:#ffffff; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;">*</button>
+        <button type="button" class="btn-sym-1-10" data-sym="²" style="padding:3px 8px; font-size:12px; font-weight:700; background:#ffffff; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;">²</button>
+        <button type="button" class="btn-sym-1-10" data-sym="³" style="padding:3px 8px; font-size:12px; font-weight:700; background:#ffffff; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;">³</button>
+        <button type="button" class="btn-sym-1-10" data-sym="⁴" style="padding:3px 8px; font-size:12px; font-weight:700; background:#ffffff; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;">⁴</button>
+        <button type="button" class="btn-sym-1-10" data-sym="⁵" style="padding:3px 8px; font-size:12px; font-weight:700; background:#ffffff; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;">⁵</button>
+      </div>
+
       <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
-        <div>
-          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑴ $5 \\times 5 \\times 5 \\times 5$:</label>
+        <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">
+            ⑴ $5 \\times 5 \\times 5 \\times 5$:
+          </label>
           <input type="text" id="ans-1-10-1" class="form-control" placeholder="거듭제곱 식 입력" autocomplete="off">
         </div>
-        <div>
-          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑵ $2 \\times 3 \\times 3 \\times 5$:</label>
+
+        <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">
+            ⑵ $2 \\times 3 \\times 3 \\times 5$:
+          </label>
           <input type="text" id="ans-1-10-2" class="form-control" placeholder="거듭제곱 식 입력" autocomplete="off">
         </div>
-        <div>
-          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑶ $3 \\times 3 \\times 7 \\times 7 \\times 7 \\times 7 \\times 7$:</label>
+
+        <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">
+            ⑶ $3 \\times 3 \\times 7 \\times 7 \\times 7 \\times 7 \\times 7$:
+          </label>
           <input type="text" id="ans-1-10-3" class="form-control" placeholder="거듭제곱 식 입력" autocomplete="off">
         </div>
-        <div>
-          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑷ $2 \\times 2 \\times 2 \\times 5 \\times 13 \\times 13 \\times 13$:</label>
+
+        <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">
+            ⑷ $2 \\times 2 \\times 2 \\times 5 \\times 13 \\times 13 \\times 13$:
+          </label>
           <input type="text" id="ans-1-10-4" class="form-control" placeholder="거듭제곱 식 입력" autocomplete="off">
         </div>
       </div>
 
-      <button class="btn btn-primary" onclick="checkStep_1_10()">정답 확인 및 채점</button>
+      <button class="btn btn-primary" onclick="checkStep_1_10()" style="width:100%;">정답 확인 및 채점</button>
     </div>
   `;
+
+  let lastActiveInput = document.getElementById('ans-1-10-1');
+  const inputs = box.querySelectorAll('input[type="text"]');
+  inputs.forEach(input => {
+    input.addEventListener('focus', () => {
+      lastActiveInput = input;
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        checkStep_1_10();
+      }
+    });
+  });
+
+  const symBtns = box.querySelectorAll('.btn-sym-1-10');
+  symBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const sym = btn.getAttribute('data-sym');
+      if (lastActiveInput) {
+        const start = lastActiveInput.selectionStart || lastActiveInput.value.length;
+        const end = lastActiveInput.selectionEnd || lastActiveInput.value.length;
+        const val = lastActiveInput.value;
+        lastActiveInput.value = val.substring(0, start) + sym + val.substring(end);
+        lastActiveInput.focus();
+        lastActiveInput.setSelectionRange(start + sym.length, start + sym.length);
+      }
+    });
+  });
 }
 
 function checkStep_1_10() {
-  const v1 = normTxt(document.getElementById('ans-1-10-1')?.value);
-  const v2 = normTxt(document.getElementById('ans-1-10-2')?.value);
-  const v3 = normTxt(document.getElementById('ans-1-10-3')?.value);
-  const v4 = normTxt(document.getElementById('ans-1-10-4')?.value);
+  const v1 = document.getElementById('ans-1-10-1')?.value;
+  const v2 = document.getElementById('ans-1-10-2')?.value;
+  const v3 = document.getElementById('ans-1-10-3')?.value;
+  const v4 = document.getElementById('ans-1-10-4')?.value;
 
-  const ok1 = (v1 === '5^4');
-  const ok2 = (v2 === '2*3^2*5' || v2 === '2*5*3^2');
-  const ok3 = (v3 === '3^2*7^5');
-  const ok4 = (v4 === '2^3*5*13^3');
+  const map1 = parsePowerProduct(v1);
+  const map2 = parsePowerProduct(v2);
+  const map3 = parsePowerProduct(v3);
+  const map4 = parsePowerProduct(v4);
+
+  const ok1 = comparePowerMaps(map1, { 5: 4 });
+  const ok2 = comparePowerMaps(map2, { 2: 1, 3: 2, 5: 1 });
+  const ok3 = comparePowerMaps(map3, { 3: 2, 7: 5 });
+  const ok4 = comparePowerMaps(map4, { 2: 3, 5: 1, 13: 3 });
 
   if (ok1 && ok2 && ok3 && ok4) {
-    completeSubStep('1-10', '🎉 <b>모두 정답입니다!</b> 4개 곱셈 식을 거듭제곱 꼴($5^4$, $2 \\times 3^2 \\times 5$, $3^2 \\times 7^5$, $2^3 \\times 5 \\times 13^3$)로 완벽하게 나타냈습니다.');
+    completeSubStep('1-10', '🎉 <b>모두 정답입니다!</b> 4개 곱셈 식을 거듭제곱 꼴(⑴ $5^4$, ⑵ $2 \\times 3^2 \\times 5$, ⑶ $3^2 \\times 7^5$, ⑷ $2^3 \\times 5 \\times 13^3$)로 완벽하게 나타냈습니다.');
+    const nextBtn = document.getElementById('btn-next-step');
+    if (nextBtn) {
+      nextBtn.style.display = 'inline-flex';
+    }
   } else {
     let wrong = [];
-    if (!ok1) wrong.push('⑴ 5^4');
-    if (!ok2) wrong.push('⑵ 2*3^2*5');
-    if (!ok3) wrong.push('⑶ 3^2*7^5');
-    if (!ok4) wrong.push('⑷ 2^3*5*13^3');
+    if (!ok1) wrong.push('⑴');
+    if (!ok2) wrong.push('⑵');
+    if (!ok3) wrong.push('⑶');
+    if (!ok4) wrong.push('⑷');
     if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-    showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>밑과 곱한 횟수(지수)를 정확히 세어 입력해 보세요.`);
+    showFeedback(false, `❌ <b>오답 문항이 있습니다:</b> [${wrong.join(', ')}]<br>밑과 곱한 횟수(지수)를 정확히 세어 거듭제곱으로 나타내 보세요. (예: 2^3 * 5)`);
   }
 }
 
