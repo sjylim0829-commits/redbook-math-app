@@ -4857,189 +4857,618 @@ function checkStep_0_5() {
 // 0-6 (p.9): 되짚어보기 3: 공배수와 최소공배수
 // -------------------------------------------------------------
 function drawCanvas_0_6(container) {
+  // 이전 애니메이션 정리
+  if (container._animId_0_6) {
+    cancelAnimationFrame(container._animId_0_6);
+    container._animId_0_6 = null;
+  }
   container.innerHTML = '';
+
+  const wrapper = document.createElement('div');
+  wrapper.style.position = 'relative';
+  wrapper.style.width = '100%';
+  wrapper.style.height = '100%';
+  wrapper.style.minHeight = '420px';
+  wrapper.style.overflow = 'hidden';
+  wrapper.style.background = 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)';
+  wrapper.style.borderRadius = '12px';
+  wrapper.style.userSelect = 'none';
+  wrapper.style.webkitUserSelect = 'none';
+  container.appendChild(wrapper);
+
   const canvas = document.createElement('canvas');
-  canvas.width = container.clientWidth || 560;
-  canvas.height = container.clientHeight || 460;
+  canvas.style.display = 'block';
   canvas.style.width = '100%';
   canvas.style.height = '100%';
-  canvas.style.display = 'block';
-  container.appendChild(canvas);
+  canvas.style.touchAction = 'none';
+  wrapper.appendChild(canvas);
 
   const ctx = canvas.getContext('2d');
-  let currentPair = 'pair1'; // pair1: (4, 6), pair2: (9, 12)
-  let isRunning = true;
-  let progress = 0;
-  let animId = null;
 
-  function draw() {
-    if (isRunning) {
-      progress += 0.008;
-      if (progress > 1) progress = 0;
+  // 데이터 세트
+  const pairsData = {
+    pair1: {
+      stepA: 4,
+      stepB: 6,
+      maxVal: 40,
+      lcm: 12,
+      common: [12, 24, 36],
+    },
+    pair2: {
+      stepA: 9,
+      stepB: 12,
+      maxVal: 120,
+      lcm: 36,
+      common: [36, 72, 108],
+    }
+  };
+
+  let currentKey = 'pair1';
+  let curData = pairsData[currentKey];
+
+  let isRunning = true;
+  let progress = 0; // 0.0 ~ 1.0
+  let isDraggingSlider = false;
+  let particles = [];
+  let triggeredCommon = {}; // 이미 트리거된 공배수 기록
+
+  let w = 560;
+  let h = 460;
+  let dpr = window.devicePixelRatio || 1;
+
+  function resize() {
+    const rect = wrapper.getBoundingClientRect();
+    w = rect.width || 560;
+    h = rect.height || 460;
+    dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  resize();
+
+  // 상단 컨트롤 바 생성
+  const topBar = document.createElement('div');
+  topBar.style.position = 'absolute';
+  topBar.style.top = '10px';
+  topBar.style.left = '12px';
+  topBar.style.right = '12px';
+  topBar.style.display = 'flex';
+  topBar.style.justifyContent = 'space-between';
+  topBar.style.alignItems = 'center';
+  topBar.style.pointerEvents = 'none';
+  topBar.style.zIndex = '10';
+
+  const titleBadge = document.createElement('div');
+  titleBadge.style.display = 'inline-flex';
+  titleBadge.style.alignItems = 'center';
+  titleBadge.style.gap = '6px';
+  titleBadge.style.background = 'rgba(255, 255, 255, 0.92)';
+  titleBadge.style.backdropFilter = 'blur(6px)';
+  titleBadge.style.padding = '5px 12px';
+  titleBadge.style.borderRadius = '20px';
+  titleBadge.style.border = '1px solid #cbd5e1';
+  titleBadge.style.fontSize = '0.84rem';
+  titleBadge.style.fontWeight = '700';
+  titleBadge.style.color = '#1e293b';
+  titleBadge.innerHTML = '<span>🐸 <b>개구리 점프 레이스</b> (하단 슬라이더로 탐색)</span>';
+
+  const btnGroup = document.createElement('div');
+  btnGroup.style.display = 'flex';
+  btnGroup.style.gap = '6px';
+  btnGroup.style.pointerEvents = 'auto';
+
+  const btnPair1 = document.createElement('button');
+  btnPair1.className = 'btn btn-primary';
+  btnPair1.style.padding = '5px 12px';
+  btnPair1.style.fontSize = '0.8rem';
+  btnPair1.style.fontWeight = '700';
+  btnPair1.style.borderRadius = '8px';
+  btnPair1.textContent = '⑴ 4와 6';
+
+  const btnPair2 = document.createElement('button');
+  btnPair2.className = 'btn';
+  btnPair2.style.background = '#ffffff';
+  btnPair2.style.border = '1px solid #cbd5e1';
+  btnPair2.style.color = '#334155';
+  btnPair2.style.padding = '5px 12px';
+  btnPair2.style.fontSize = '0.8rem';
+  btnPair2.style.fontWeight = '700';
+  btnPair2.style.borderRadius = '8px';
+  btnPair2.textContent = '⑵ 9와 12';
+
+  const btnPlay = document.createElement('button');
+  btnPlay.className = 'btn';
+  btnPlay.style.background = '#ffffff';
+  btnPlay.style.border = '1px solid #cbd5e1';
+  btnPlay.style.color = '#334155';
+  btnPlay.style.padding = '5px 10px';
+  btnPlay.style.fontSize = '0.8rem';
+  btnPlay.style.fontWeight = '600';
+  btnPlay.style.borderRadius = '8px';
+  btnPlay.textContent = '⏸ 일시정지';
+
+  const btnReset = document.createElement('button');
+  btnReset.className = 'btn';
+  btnReset.style.background = '#ffffff';
+  btnReset.style.border = '1px solid #cbd5e1';
+  btnReset.style.color = '#475569';
+  btnReset.style.padding = '5px 10px';
+  btnReset.style.fontSize = '0.8rem';
+  btnReset.style.fontWeight = '600';
+  btnReset.style.borderRadius = '8px';
+  btnReset.textContent = '⟲ 처음으로';
+
+  function updateTabs() {
+    if (currentKey === 'pair1') {
+      btnPair1.className = 'btn btn-primary';
+      btnPair1.style.background = '#4f46e5';
+      btnPair1.style.color = '#ffffff';
+      btnPair2.className = 'btn';
+      btnPair2.style.background = '#ffffff';
+      btnPair2.style.color = '#334155';
+    } else {
+      btnPair2.className = 'btn btn-primary';
+      btnPair2.style.background = '#4f46e5';
+      btnPair2.style.color = '#ffffff';
+      btnPair1.className = 'btn';
+      btnPair1.style.background = '#ffffff';
+      btnPair1.style.color = '#334155';
+    }
+  }
+
+  btnPair1.onclick = () => {
+    currentKey = 'pair1';
+    curData = pairsData.pair1;
+    progress = 0;
+    particles = [];
+    triggeredCommon = {};
+    updateTabs();
+    if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(520, 'sine', 0.08);
+  };
+
+  btnPair2.onclick = () => {
+    currentKey = 'pair2';
+    curData = pairsData.pair2;
+    progress = 0;
+    particles = [];
+    triggeredCommon = {};
+    updateTabs();
+    if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(580, 'sine', 0.08);
+  };
+
+  btnPlay.onclick = () => {
+    isRunning = !isRunning;
+    btnPlay.textContent = isRunning ? '⏸ 일시정지' : '▶ 재생';
+    btnPlay.style.background = isRunning ? '#ffffff' : '#e0e7ff';
+    if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(isRunning ? 600 : 400, 'sine', 0.05);
+  };
+
+  btnReset.onclick = () => {
+    progress = 0;
+    particles = [];
+    triggeredCommon = {};
+    if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(440, 'sine', 0.08);
+  };
+
+  btnGroup.appendChild(btnPair1);
+  btnGroup.appendChild(btnPair2);
+  btnGroup.appendChild(btnPlay);
+  btnGroup.appendChild(btnReset);
+
+  topBar.appendChild(titleBadge);
+  topBar.appendChild(btnGroup);
+  wrapper.appendChild(topBar);
+
+  // 리사이즈 옵저버
+  const ro = new ResizeObserver(() => {
+    resize();
+  });
+  ro.observe(wrapper);
+
+  // 슬라이더 및 포인터 인터랙션
+  function getCanvasPos(e) {
+    const r = canvas.getBoundingClientRect();
+    return {
+      x: e.clientX - r.left,
+      y: e.clientY - r.top
+    };
+  }
+
+  function handleSliderPointer(pos) {
+    const startX = 60;
+    const endX = w - 60;
+    const railLen = endX - startX;
+    let newProg = (pos.x - startX) / railLen;
+    newProg = Math.max(0, Math.min(1, newProg));
+    progress = newProg;
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    const pos = getCanvasPos(e);
+    const sliderY = h * 0.78;
+
+    if (Math.abs(pos.y - sliderY) <= 30 || pos.y > h * 0.7) {
+      isDraggingSlider = true;
+      canvas.setPointerCapture(e.pointerId);
+      handleSliderPointer(pos);
+      if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(480, 'sine', 0.04);
+    }
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    const pos = getCanvasPos(e);
+    const sliderY = h * 0.78;
+
+    if (isDraggingSlider) {
+      handleSliderPointer(pos);
     }
 
-    const w = canvas.width;
-    const h = canvas.height;
+    if (Math.abs(pos.y - sliderY) <= 25 || isDraggingSlider) {
+      canvas.style.cursor = 'ew-resize';
+    } else {
+      canvas.style.cursor = 'default';
+    }
+  });
+
+  function endDrag(e) {
+    if (isDraggingSlider) {
+      try { canvas.releasePointerCapture(e.pointerId); } catch (err) {}
+      isDraggingSlider = false;
+    }
+  }
+
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
+
+  // 파티클 스폰 함수
+  function spawnSparks(x, y, color, count = 16) {
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5;
+      const speed = 2 + Math.random() * 4;
+      particles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 1.5,
+        color,
+        size: 3 + Math.random() * 3,
+        alpha: 1.0,
+        decay: 0.02 + Math.random() * 0.02
+      });
+    }
+  }
+
+  // 60fps 렌더 루프
+  let lastTime = performance.now();
+
+  function animate(now) {
+    container._animId_0_6 = requestAnimationFrame(animate);
+
+    const dt = Math.min(0.05, (now - lastTime) / 1000);
+    lastTime = now;
+
+    if (isRunning && !isDraggingSlider) {
+      progress += dt * 0.12;
+      if (progress > 1.0) {
+        progress = 0;
+        triggeredCommon = {};
+      }
+    }
+
     ctx.clearRect(0, 0, w, h);
 
-    const is1 = (currentPair === 'pair1');
-    const stepA = is1 ? 4 : 9;
-    const stepB = is1 ? 6 : 12;
-    const maxVal = is1 ? 40 : 120;
-    const lcm = is1 ? 12 : 36;
-    const commonMults = is1 ? [12, 24, 36] : [36, 72, 108];
+    const stepA = curData.stepA;
+    const stepB = curData.stepB;
+    const maxVal = curData.maxVal;
+    const lcm = curData.lcm;
+    const common = curData.common;
 
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 15px Pretendard, sans-serif';
-    ctx.fillStyle = '#1e293b';
-    ctx.fillText(`🐸 개구리 수직선 점프 레이스 (${stepA}와 ${stepB}의 공배수)`, w / 2, 35);
-
-    // Number line rails
-    const railY1 = h * 0.38;
-    const railY2 = h * 0.65;
-    const startX = 50;
-    const endX = w - 50;
+    const startX = 60;
+    const endX = w - 60;
     const railLen = endX - startX;
 
-    // Draw rails
-    [railY1, railY2].forEach((ry, rIdx) => {
-      ctx.strokeStyle = '#e2e8f0';
-      ctx.lineWidth = 3;
+    function valToX(v) {
+      return startX + (v / maxVal) * railLen;
+    }
+
+    const railY1 = h * 0.32;
+    const railY2 = h * 0.54;
+    const sliderY = h * 0.78;
+
+    // 1. 배경 미세 그리드
+    ctx.strokeStyle = '#f1f5f9';
+    ctx.lineWidth = 1;
+    for (let x = startX; x <= endX; x += railLen / 10) {
       ctx.beginPath();
-      ctx.moveTo(startX, ry);
-      ctx.lineTo(endX, ry);
+      ctx.moveTo(x, 40);
+      ctx.lineTo(x, h - 45);
       ctx.stroke();
+    }
 
-      ctx.fillStyle = rIdx === 0 ? '#3b82f6' : '#f97316';
-      ctx.font = 'bold 13px Pretendard, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText(`${rIdx === 0 ? stepA : stepB}의 배수 레일`, startX, ry - 35);
-    });
-
-    // Draw Common Multiple Highlight Columns
-    commonMults.forEach(cm => {
-      const cx = startX + (cm / maxVal) * railLen;
+    // 2. 공배수 수직 컬럼 하이라이트 빔
+    common.forEach(cm => {
+      const cx = valToX(cm);
       const isLcm = (cm === lcm);
+      const curVal = progress * maxVal;
+      const isHit = Math.abs(curVal - cm) < 0.8;
 
-      // Light column
-      ctx.fillStyle = isLcm ? 'rgba(234, 179, 8, 0.15)' : 'rgba(16, 185, 129, 0.12)';
-      ctx.fillRect(cx - 16, railY1 - 25, 32, railY2 - railY1 + 50);
+      const baseAlpha = isHit ? 0.35 : (isLcm ? 0.18 : 0.12);
+      ctx.save();
+      ctx.fillStyle = isLcm ? `rgba(245, 158, 11, ${baseAlpha})` : `rgba(16, 185, 129, ${baseAlpha})`;
+      ctx.fillRect(cx - 18, railY1 - 35, 36, railY2 - railY1 + 70);
 
-      // Dotted line
-      ctx.strokeStyle = isLcm ? '#eab308' : '#10b981';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = isLcm ? '#f59e0b' : '#10b981';
+      ctx.lineWidth = isHit ? 3 : 2;
       ctx.setLineDash([4, 4]);
       ctx.beginPath();
-      ctx.moveTo(cx, railY1 - 25);
-      ctx.lineTo(cx, railY2 + 25);
+      ctx.moveTo(cx, railY1 - 35);
+      ctx.lineTo(cx, railY2 + 35);
       ctx.stroke();
       ctx.setLineDash([]);
 
       ctx.textAlign = 'center';
-      ctx.font = 'bold 12px Pretendard, sans-serif';
-      ctx.fillStyle = isLcm ? '#ca8a04' : '#059669';
-      ctx.fillText(isLcm ? `🏆 최소공배수 ${cm}` : `공배수 ${cm}`, cx, railY2 + 42);
+      ctx.textBaseline = 'bottom';
+      if (isLcm) {
+        ctx.fillStyle = '#b45309';
+        ctx.font = 'bold 12px Pretendard, sans-serif';
+        ctx.fillText(`🏆 최소공배수 ${cm}`, cx, railY1 - 40);
+      } else {
+        ctx.fillStyle = '#059669';
+        ctx.font = 'bold 11px Pretendard, sans-serif';
+        ctx.fillText(`공배수 ${cm}`, cx, railY1 - 40);
+      }
+
+      ctx.restore();
+
+      if (isHit && !triggeredCommon[cm]) {
+        triggeredCommon[cm] = true;
+        spawnSparks(cx, railY1, isLcm ? '#fbbf24' : '#34d399', 14);
+        spawnSparks(cx, railY2, isLcm ? '#fbbf24' : '#34d399', 14);
+        if (window.SoundFX && window.SoundFX.playTone) {
+          SoundFX.playTone(isLcm ? 880 : 660, 'triangle', 0.1);
+        }
+      }
     });
 
-    // Frog A (stepA)
-    const curValA = progress * maxVal;
-    const hopsA = Math.floor(curValA / stepA);
-    const hopProgressA = (curValA % stepA) / stepA;
-    const hopX1 = startX + ((hopsA * stepA) / maxVal) * railLen;
-    const hopX2 = startX + (((hopsA + 1) * stepA) / maxVal) * railLen;
-    const curXA = hopX1 + (hopX2 - hopX1) * hopProgressA;
-    const jumpH_A = Math.sin(hopProgressA * Math.PI) * 28;
-    const curYA = railY1 - jumpH_A;
-
-    // Draw Frog A
-    ctx.fillStyle = '#3b82f6';
+    // 3. 수직선 레일 A & B 드로잉
+    // 레일 A (블루)
+    ctx.save();
+    ctx.strokeStyle = '#93c5fd';
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(curXA, curYA, 14, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '12px Pretendard, sans-serif';
-    ctx.fillText('🐸', curXA, curYA + 4);
+    ctx.moveTo(startX, railY1);
+    ctx.lineTo(endX, railY1);
+    ctx.stroke();
 
-    // Frog B (stepB)
-    const curValB = progress * maxVal;
-    const hopsB = Math.floor(curValB / stepB);
-    const hopProgressB = (curValB % stepB) / stepB;
-    const hopX1_B = startX + ((hopsB * stepB) / maxVal) * railLen;
-    const hopX2_B = startX + (((hopsB + 1) * stepB) / maxVal) * railLen;
-    const curXB = hopX1_B + (hopX2_B - hopX1_B) * hopProgressB;
-    const jumpH_B = Math.sin(hopProgressB * Math.PI) * 28;
-    const curYB = railY2 - jumpH_B;
-
-    // Draw Frog B
-    ctx.fillStyle = '#f97316';
-    ctx.beginPath();
-    ctx.arc(curXB, curYB, 14, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '12px Pretendard, sans-serif';
-    ctx.fillText('🐸', curXB, curYB + 4);
-
-    // Current Value Banner
     ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.font = '11px Pretendard, sans-serif';
+    ctx.fillStyle = '#1e40af';
+    for (let v = 0; v <= maxVal; v += stepA) {
+      const tx = valToX(v);
+      ctx.beginPath();
+      ctx.moveTo(tx, railY1 - 5);
+      ctx.lineTo(tx, railY1 + 5);
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillText(String(v), tx, railY1 + 7);
+    }
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
     ctx.font = 'bold 13px Pretendard, sans-serif';
-    ctx.fillStyle = '#334155';
-    ctx.fillText(`두 개구리가 동시에 착지하는 위치 = 공배수 { ${commonMults.join(', ')} ... }`, w / 2, h - 25);
+    ctx.fillStyle = '#1d4ed8';
+    ctx.fillText(`🔵 ${stepA}의 배수 레일 (+${stepA})`, startX, railY1 - 12);
+    ctx.restore();
 
-    animId = requestAnimationFrame(draw);
+    // 레일 B (오렌지)
+    ctx.save();
+    ctx.strokeStyle = '#fdba74';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(startX, railY2);
+    ctx.lineTo(endX, railY2);
+    ctx.stroke();
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.font = '11px Pretendard, sans-serif';
+    ctx.fillStyle = '#c2410c';
+    for (let v = 0; v <= maxVal; v += stepB) {
+      const tx = valToX(v);
+      ctx.beginPath();
+      ctx.moveTo(tx, railY2 - 5);
+      ctx.lineTo(tx, railY2 + 5);
+      ctx.strokeStyle = '#f97316';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillText(String(v), tx, railY2 + 7);
+    }
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.font = 'bold 13px Pretendard, sans-serif';
+    ctx.fillStyle = '#ea580c';
+    ctx.fillText(`🟠 ${stepB}의 배수 레일 (+${stepB})`, startX, railY2 - 12);
+    ctx.restore();
+
+    // 4. 개구리 궤적 호(Arc Trail) 드로잉
+    const curVal = progress * maxVal;
+
+    // A 궤적
+    const maxHopsA = Math.floor(curVal / stepA);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(59, 130, 246, 0.45)';
+    ctx.lineWidth = 2;
+    for (let hIdx = 0; hIdx < maxHopsA; hIdx++) {
+      const x1 = valToX(hIdx * stepA);
+      const x2 = valToX((hIdx + 1) * stepA);
+      const midX = (x1 + x2) / 2;
+      ctx.beginPath();
+      ctx.moveTo(x1, railY1);
+      ctx.quadraticCurveTo(midX, railY1 - 32, x2, railY1);
+      ctx.stroke();
+    }
+    const curHopPhaseA = (curVal % stepA) / stepA;
+    const curHopStartX_A = valToX(maxHopsA * stepA);
+    const curHopEndX_A = valToX((maxHopsA + 1) * stepA);
+    const frogXA = curHopStartX_A + (curHopEndX_A - curHopStartX_A) * curHopPhaseA;
+    const jumpHA = Math.sin(curHopPhaseA * Math.PI) * 32;
+    const frogYA = railY1 - jumpHA;
+
+    ctx.beginPath();
+    ctx.moveTo(curHopStartX_A, railY1);
+    ctx.quadraticCurveTo((curHopStartX_A + frogXA) / 2, railY1 - jumpHA * 1.1, frogXA, frogYA);
+    ctx.stroke();
+    ctx.restore();
+
+    // B 궤적
+    const maxHopsB = Math.floor(curVal / stepB);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(249, 115, 22, 0.45)';
+    ctx.lineWidth = 2;
+    for (let hIdx = 0; hIdx < maxHopsB; hIdx++) {
+      const x1 = valToX(hIdx * stepB);
+      const x2 = valToX((hIdx + 1) * stepB);
+      const midX = (x1 + x2) / 2;
+      ctx.beginPath();
+      ctx.moveTo(x1, railY2);
+      ctx.quadraticCurveTo(midX, railY2 - 32, x2, railY2);
+      ctx.stroke();
+    }
+    const curHopPhaseB = (curVal % stepB) / stepB;
+    const curHopStartX_B = valToX(maxHopsB * stepB);
+    const curHopEndX_B = valToX((maxHopsB + 1) * stepB);
+    const frogXB = curHopStartX_B + (curHopEndX_B - curHopStartX_B) * curHopPhaseB;
+    const jumpHB = Math.sin(curHopPhaseB * Math.PI) * 32;
+    const frogYB = railY2 - jumpHB;
+
+    ctx.beginPath();
+    ctx.moveTo(curHopStartX_B, railY2);
+    ctx.quadraticCurveTo((curHopStartX_B + frogXB) / 2, railY2 - jumpHB * 1.1, frogXB, frogYB);
+    ctx.stroke();
+    ctx.restore();
+
+    // 5. 개구리 캐릭터 렌더링
+    // 개구리 A (블루)
+    ctx.save();
+    ctx.shadowColor = 'rgba(37, 99, 235, 0.4)';
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = '#2563eb';
+    ctx.beginPath();
+    ctx.arc(frogXA, frogYA, 15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '13px Pretendard, sans-serif';
+    ctx.fillText('🐸', frogXA, frogYA);
+
+    ctx.fillStyle = '#1e293b';
+    ctx.font = 'bold 11px Pretendard, sans-serif';
+    ctx.fillText(`${curVal.toFixed(1)}`, frogXA, frogYA - 22);
+    ctx.restore();
+
+    // 개구리 B (오렌지)
+    ctx.save();
+    ctx.shadowColor = 'rgba(234, 88, 12, 0.4)';
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = '#ea580c';
+    ctx.beginPath();
+    ctx.arc(frogXB, frogYB, 15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '13px Pretendard, sans-serif';
+    ctx.fillText('🐸', frogXB, frogYB);
+
+    ctx.fillStyle = '#1e293b';
+    ctx.font = 'bold 11px Pretendard, sans-serif';
+    ctx.fillText(`${curVal.toFixed(1)}`, frogXB, frogYB - 22);
+    ctx.restore();
+
+    // 6. 타임라인 스크러버 슬라이더 트랙 & 핸들
+    ctx.save();
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(startX, sliderY);
+    ctx.lineTo(endX, sliderY);
+    ctx.stroke();
+
+    const knobX = startX + progress * railLen;
+    ctx.strokeStyle = '#4f46e5';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(startX, sliderY);
+    ctx.lineTo(knobX, sliderY);
+    ctx.stroke();
+
+    ctx.shadowColor = 'rgba(79, 70, 229, 0.4)';
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = isDraggingSlider ? '#4338ca' : '#4f46e5';
+    ctx.beginPath();
+    ctx.arc(knobX, sliderY, isDraggingSlider ? 13 : 11, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 12px Pretendard, sans-serif';
+    ctx.fillStyle = '#475569';
+    ctx.fillText('⏱ 타임라인 슬라이더 (드래그하여 탐색)', startX, sliderY - 18);
+
+    ctx.textAlign = 'right';
+    ctx.font = 'bold 12px Pretendard, sans-serif';
+    ctx.fillStyle = '#4f46e5';
+    ctx.fillText(`현재 수: ${curVal.toFixed(1)} / ${maxVal}`, endX, sliderY - 18);
+    ctx.restore();
+
+    // 7. 파티클 업데이트 및 렌더링
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.12;
+      p.alpha -= p.decay;
+
+      if (p.alpha <= 0) {
+        particles.splice(i, 1);
+        continue;
+      }
+
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 8. 하단 실시간 결과 바
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 13px Pretendard, sans-serif';
+    ctx.fillStyle = '#0f172a';
+    ctx.fillText(`✨ ${stepA}와 ${stepB}의 공배수: { ${common.join(', ')} ... }  ➔  🏆 최소공배수(LCM): ${lcm}`, w / 2, h - 18);
+    ctx.restore();
   }
 
-  // Toggle buttons
-  const tabRow = document.createElement('div');
-  tabRow.style.position = 'absolute';
-  tabRow.style.top = '10px';
-  tabRow.style.right = '10px';
-  tabRow.style.display = 'flex';
-  tabRow.style.gap = '6px';
-  tabRow.style.zIndex = '20';
-
-  const b1 = document.createElement('button');
-  b1.className = 'btn btn-primary';
-  b1.style.padding = '4px 10px';
-  b1.style.fontSize = '0.8rem';
-  b1.textContent = '⑴ 4와 6';
-
-  const b2 = document.createElement('button');
-  b2.className = 'btn';
-  b2.style.background = '#ffffff';
-  b2.style.border = '1px solid #cbd5e1';
-  b2.style.padding = '4px 10px';
-  b2.style.fontSize = '0.8rem';
-  b2.textContent = '⑵ 9와 12';
-
-  b1.onclick = () => {
-    currentPair = 'pair1';
-    progress = 0;
-    b1.className = 'btn btn-primary';
-    b1.style.background = '#4f46e5';
-    b1.style.color = '#ffffff';
-    b2.className = 'btn';
-    b2.style.background = '#ffffff';
-    b2.style.color = '#334155';
-    if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(520, 'sine', 0.08);
-  };
-
-  b2.onclick = () => {
-    currentPair = 'pair2';
-    progress = 0;
-    b2.className = 'btn btn-primary';
-    b2.style.background = '#4f46e5';
-    b2.style.color = '#ffffff';
-    b1.className = 'btn';
-    b1.style.background = '#ffffff';
-    b1.style.color = '#334155';
-    if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(580, 'sine', 0.08);
-  };
-
-  tabRow.appendChild(b1);
-  tabRow.appendChild(b2);
-  container.appendChild(tabRow);
-
-  draw();
+  container._animId_0_6 = requestAnimationFrame(animate);
 }
 
 function renderForm_0_6(box) {
@@ -5053,38 +5482,60 @@ function renderForm_0_6(box) {
       </p>
 
       <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:14px;">
-        <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
-          <div style="font-weight:700; font-size:0.9rem; color:#1e293b; margin-bottom:6px;">⑴ 4와 6</div>
-          <div style="display:grid; grid-template-columns:1.2fr 0.8fr; gap:8px;">
+        <div style="background:#f8fafc; padding:12px 14px; border-radius:10px; border:1px solid #e2e8f0;">
+          <div style="font-weight:700; font-size:0.9rem; color:#1e293b; margin-bottom:8px;">
+            ⑴ 4와 6
+          </div>
+          <div style="display:grid; grid-template-columns:1.2fr 0.8fr; gap:10px;">
             <div>
-              <label style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">공배수 3개 (쉼표 구분):</label>
+              <label for="ans-0-6-1-cm" style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">
+                공배수 3개 (쉼표 구분):
+              </label>
               <input type="text" id="ans-0-6-1-cm" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off">
             </div>
             <div>
-              <label style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">최소공배수:</label>
+              <label for="ans-0-6-1-lcm" style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">
+                최소공배수:
+              </label>
               <input type="text" id="ans-0-6-1-lcm" class="form-control" placeholder="수 입력" autocomplete="off">
             </div>
           </div>
         </div>
 
-        <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
-          <div style="font-weight:700; font-size:0.9rem; color:#1e293b; margin-bottom:6px;">⑵ 9와 12</div>
-          <div style="display:grid; grid-template-columns:1.2fr 0.8fr; gap:8px;">
+        <div style="background:#f8fafc; padding:12px 14px; border-radius:10px; border:1px solid #e2e8f0;">
+          <div style="font-weight:700; font-size:0.9rem; color:#1e293b; margin-bottom:8px;">
+            ⑵ 9와 12
+          </div>
+          <div style="display:grid; grid-template-columns:1.2fr 0.8fr; gap:10px;">
             <div>
-              <label style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">공배수 3개 (쉼표 구분):</label>
+              <label for="ans-0-6-2-cm" style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">
+                공배수 3개 (쉼표 구분):
+              </label>
               <input type="text" id="ans-0-6-2-cm" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off">
             </div>
             <div>
-              <label style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">최소공배수:</label>
+              <label for="ans-0-6-2-lcm" style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">
+                최소공배수:
+              </label>
               <input type="text" id="ans-0-6-2-lcm" class="form-control" placeholder="수 입력" autocomplete="off">
             </div>
           </div>
         </div>
       </div>
 
-      <button class="btn btn-primary" onclick="checkStep_0_6()">정답 확인 및 채점</button>
+      <button class="btn btn-primary" onclick="checkStep_0_6()" style="width:100%;">정답 확인 및 채점</button>
     </div>
   `;
+
+  // Enter 키 이벤트 연동
+  const inputs = box.querySelectorAll('input[type="text"]');
+  inputs.forEach(input => {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        checkStep_0_6();
+      }
+    });
+  });
 }
 
 function checkStep_0_6() {
@@ -5098,12 +5549,16 @@ function checkStep_0_6() {
 
   if (ok1 && ok2) {
     completeSubStep('0-6', '🎉 <b>모두 정답입니다!</b> 4와 6의 공배수(12, 24, 36)와 최소공배수(12), 9와 12의 공배수(36, 72, 108)와 최소공배수(36)를 완벽하게 구했습니다.');
+    const nextBtn = document.getElementById('btn-next-step');
+    if (nextBtn) {
+      nextBtn.style.display = 'inline-flex';
+    }
   } else {
     let wrong = [];
     if (!ok1) wrong.push('⑴ 4와 6');
     if (!ok2) wrong.push('⑵ 9와 12');
     if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-    showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>공배수 3개와 최소공배수를 다시 확인해 보세요.`);
+    showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>왼쪽 점프 레이스에서 두 개구리가 동시에 착지하는 공배수 3개와 가장 작은 최소공배수(🏆)를 확인해 보세요.`);
   }
 }
 
