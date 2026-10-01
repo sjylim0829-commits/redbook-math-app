@@ -444,8 +444,9 @@
         </form>
         <div id="login-error-notice" style="display:none; color:#dc2626; font-size:0.88rem; font-weight:700; margin-top:12px; background:#fef2f2; padding:10px 14px; border-radius:8px; border:1.5px solid #fca5a5;"></div>
         <div style="margin-top:14px; border-top:1px solid #e2e8f0; padding-top:12px; display:flex; flex-direction:column; gap:8px;">
-          <button type="button" class="btn" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; width:100%; font-weight:700;" onclick="openTestLoginModal()">🔑 교사 계정 접속</button>
-          <button type="button" class="btn" style="background:#eef2ff; color:#4338ca; border:1.5px solid #c7d2fe; width:100%; font-weight:800;" onclick="openTeacherDashboardModal()">📊 교사 5x5 실시간 모니터링 관제실</button>
+          <button type="button" class="btn" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; width:100%; font-weight:700; padding:10px;" onclick="quickTeacherLogin()">⚡ 교사 마스터 1초 즉시 접속</button>
+          <button type="button" class="btn" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; width:100%; font-weight:700; padding:8px; font-size:0.85rem;" onclick="openTestLoginModal()">🔑 교사 비밀번호 인증 접속</button>
+          <button type="button" class="btn" style="background:#eef2ff; color:#4338ca; border:1.5px solid #c7d2fe; width:100%; font-weight:800; padding:10px;" onclick="openTeacherDashboardModal()">📊 교사 5x5 실시간 모니터링 관제실</button>
         </div>
       </div>
     </section>
@@ -543,7 +544,7 @@
       <form id="secure-password-form" onsubmit="handleSecurePasswordSubmit(event)">
         <div style="margin-bottom:16px; text-align:left;">
           <label for="secure-modal-input" style="font-size:0.85rem; font-weight:700; color:#334155; margin-bottom:6px; display:block;">비밀번호</label>
-          <input type="password" id="secure-modal-input" class="form-control" placeholder="비밀번호 입력" style="letter-spacing:3px; font-size:1.1rem; width:100%;" autocomplete="off" required>
+          <input type="password" id="secure-modal-input" class="form-control" placeholder="비밀번호 입력 (예: 260523)" style="letter-spacing:3px; font-size:1.1rem; width:100%;" autocomplete="off" required>
         </div>
         <div id="secure-modal-error" style="display:none; color:#dc2626; font-size:0.82rem; font-weight:700; margin-bottom:12px; background:#fef2f2; padding:8px 10px; border-radius:6px; border:1px solid #fca5a5;"></div>
         <div style="display:flex; gap:8px;">
@@ -855,6 +856,21 @@
     // ==========================================
     // 4. LMS Login & Teacher Auth
     // ==========================================
+    function quickTeacherLogin() {
+      const masterUser = {
+        id: '260523',
+        name: '임종윤 선생님',
+        role: 'teacher',
+        grade: 1,
+        classNum: 1
+      };
+      if (typeof LMSIntegration !== 'undefined' && LMSIntegration.setCurrentUser) {
+        LMSIntegration.setCurrentUser(masterUser);
+      }
+      applyLoggedInUser(masterUser);
+    }
+    window.quickTeacherLogin = quickTeacherLogin;
+
     async function handleLMSLogin(e) {
       if (e && e.preventDefault) e.preventDefault();
       const idInput = document.getElementById('student-id');
@@ -870,15 +886,9 @@
         return false;
       }
 
-      // Check Teacher Master PIN directly
+      // Check Teacher Master PIN directly (프리패스 교사 관리자 접속)
       if (TEACHER_MASTER_PASSWORDS.includes(password) || TEACHER_MASTER_PASSWORDS.includes(val)) {
-        applyLoggedInUser({
-          id: val,
-          name: '임종윤 선생님',
-          role: 'teacher',
-          grade: 1,
-          classNum: parseInt(val[2] || '1', 10)
-        });
+        quickTeacherLogin();
         return true;
       }
 
@@ -895,26 +905,38 @@
       }
 
       try {
-        let res = null;
-        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.loginStudent) {
-          res = await LMSIntegration.loginStudent(val, password);
-        } else {
-          res = {
-            success: true,
-            user: { id: val, name: `학생(${val})`, grade: val[0], classNum: val[2], role: 'student' }
-          };
+        if (typeof LMSIntegration === 'undefined' || !LMSIntegration.loginStudent) {
+          showLoginError('❌ LMS Integration SDK가 준비되지 않았습니다. 페이지를 새로고침해 주세요.');
+          return false;
         }
+
+        const res = await LMSIntegration.loginStudent(val, password);
 
         if (res && res.success) {
           applyLoggedInUser(res.user);
+
+          // Supabase DB에서 학생 진도 실시간 로드 및 복원
+          try {
+            const progressData = await LMSIntegration.loadStudentProgress(res.user.id, 'u1');
+            if (progressData && Array.isArray(progressData.completedSteps)) {
+              progressData.completedSteps.forEach(s => state.completedSteps.add(s));
+              if (typeof renderSubstepDropdown === 'function') renderSubstepDropdown();
+              if (progressData.lastSubStep && typeof selectSubstepByCode === 'function') {
+                selectSubstepByCode(progressData.lastSubStep);
+              }
+            }
+          } catch (loadErr) {
+            console.warn('[LMS] Progress load warning:', loadErr);
+          }
+
           return true;
         } else {
-          showLoginError(`❌ ${res ? res.message : '학번 또는 비밀번호가 일치하지 않습니다.'}`);
+          showLoginError(`❌ ${res && res.message ? res.message : '학번 또는 비밀번호가 일치하지 않습니다.'}`);
           return false;
         }
       } catch (err) {
         console.error(err);
-        showLoginError('❌ 영서중 수학 LMS DB 연결 중 오류가 발생했습니다.');
+        showLoginError('❌ 영서중 수학 LMS DB 연결 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
         return false;
       } finally {
         if (loginBtn) {
@@ -941,6 +963,7 @@
       state.studentName = user.name;
       state.studentClass = parseInt(user.classNum || user.id[2] || '1', 10);
       state.isTeacherLoggedIn = (user.role === 'teacher' || TEACHER_MASTER_PASSWORDS.includes(user.id));
+      state.isMaster = state.isTeacherLoggedIn;
 
       const infoSpan = document.getElementById('current-user-info');
       if (infoSpan) {
@@ -969,7 +992,11 @@
     window.applyLoggedInUser = applyLoggedInUser;
 
     function handleLogout() {
+      if (typeof LMSIntegration !== 'undefined' && LMSIntegration.logout) {
+        LMSIntegration.logout();
+      }
       state.isTeacherLoggedIn = false;
+      state.isMaster = false;
       state.studentId = '10101';
       state.studentName = '학생';
       state.unlockedTabs = [0];
@@ -1007,14 +1034,18 @@
       if (TEACHER_MASTER_PASSWORDS.includes(pin)) {
         closeSecurePasswordModal();
         SoundFX.unlock();
+        const masterUser = { id: '260523', name: '임종윤 선생님', role: 'teacher', grade: 1, classNum: 1 };
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.setCurrentUser) {
+          LMSIntegration.setCurrentUser(masterUser);
+        }
+        applyLoggedInUser(masterUser);
         if (pendingSecureAction === 'teacherDashboard') {
-          applyLoggedInUser({ id: '260523', name: '임종윤 선생님', role: 'teacher', grade: 1 });
           switchView('teacher-dashboard');
           renderTeacherDashboard();
-        } else if (pendingSecureAction === 'testLogin') {
-          applyLoggedInUser({ id: '260523', name: '임종윤 선생님', role: 'teacher', grade: 1 });
         } else if (pendingSecureAction === 'teacherPass') {
           executeTeacherPass(state.currentSubStep);
+        } else {
+          switchView('activity');
         }
       } else {
         const err = document.getElementById('secure-modal-error');
@@ -1217,6 +1248,15 @@ function completeSubStep(code, successMsg) {
   const nextBtn = document.getElementById('btn-next-step');
   if (nextBtn) nextBtn.style.display = 'block';
   if (typeof renderSubstepDropdown === 'function') renderSubstepDropdown();
+
+  // Supabase Cloud DB 실시간 진도 저장
+  if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+    LMSIntegration.saveStudentProgress(code, {
+      unitId: 'u1',
+      completedSteps: Array.from(state.completedSteps),
+      lastSubStep: code
+    }).catch(err => console.warn('[LMS] Save progress error:', err));
+  }
 }
 
 // -------------------------------------------------------------
@@ -7611,7 +7651,15 @@ function checkStep_1_12() {
 
     // Initial setup on load
     window.addEventListener('DOMContentLoaded', () => {
+      if (typeof LMSIntegration !== 'undefined' && LMSIntegration.init) {
+        LMSIntegration.init({ unitId: 'u1' });
+      }
       renderSubstepDropdown();
+    });
+    window.addEventListener('load', () => {
+      if (typeof LMSIntegration !== 'undefined' && LMSIntegration.init && !LMSIntegration.initialized) {
+        LMSIntegration.init({ unitId: 'u1' });
+      }
     });
   </script>
 </body>
