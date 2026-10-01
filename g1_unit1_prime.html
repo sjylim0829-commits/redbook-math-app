@@ -20618,69 +20618,463 @@ function checkStep_1_12() {
     // 2-16 (p.17): 스스로 확인하기 5: 조건 만족 수 찾기
     // -------------------------------------------------------------
     function drawCanvas_2_16(container) {
+      if (container._animId_2_16) {
+        cancelAnimationFrame(container._animId_2_16);
+        container._animId_2_16 = null;
+      }
       container.innerHTML = '';
-      const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 560;
-      canvas.height = container.clientHeight || 460;
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      canvas.style.display = 'block';
-      container.appendChild(canvas);
+
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; height:100%; box-sizing:border-box;">
+          <!-- 상단 상태 알림 및 인터랙터 조작 바 -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+            <div id="badge-2-16" style="font-size:0.86rem; font-weight:700; color:#1e293b; background:#f1f5f9; padding:6px 14px; border-radius:20px; border:1px solid #cbd5e1; flex:1; min-width:240px;">
+              선우(100 미만)와 은서(두 소인수의 합 18)의 조건을 만족시키는 수를 탐구해 보세요!
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button id="btn-pairs-2-16" class="btn btn-sm btn-primary" style="font-weight:700;">🔍 합 18 소수 쌍 탐색</button>
+              <button id="btn-filter-2-16" class="btn btn-sm btn-outline-secondary" style="font-weight:700;" disabled>🎯 100 미만 필터 적용</button>
+              <button id="btn-reset-2-16" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">⟲ 초기화</button>
+            </div>
+          </div>
+          <!-- Canvas 렌더링 영역 -->
+          <div style="flex:1; min-height:360px; position:relative;">
+            <canvas id="canvas-2-16" style="width:100%; height:100%; display:block; border-radius:12px; background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); border:1px solid #e2e8f0;"></canvas>
+          </div>
+        </div>
+      `;
+
+      const canvas = container.querySelector('#canvas-2-16');
+      const badgeStatus = container.querySelector('#badge-2-16');
+      const btnPairs = container.querySelector('#btn-pairs-2-16');
+      const btnFilter = container.querySelector('#btn-filter-2-16');
+      const btnReset = container.querySelector('#btn-reset-2-16');
 
       const ctx = canvas.getContext('2d');
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
+      let w = 560, h = 390;
+      let mode = 0; // 0: initial, 1: pairs found, 2: filtered < 100
+      let selectedPrime = null;
+      let celebrated = false;
+      let particles = [];
 
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 15px Pretendard, sans-serif';
-      ctx.fillStyle = '#1e293b';
-      ctx.fillText('🎯 [스스로 확인하기 5] 두 조건을 만족시키는 수 찾기 (p.17)', w / 2, 35);
+      const primes = [2, 3, 5, 7, 11, 13, 17];
 
-      ctx.save();
-      ctx.fillStyle = '#ffffff';
-      ctx.strokeStyle = '#6366f1';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(30, 70, w - 60, 200, 12) : ctx.rect(30, 70, w - 60, 200);
-      ctx.fill();
-      ctx.stroke();
+      function createConfetti() {
+        const colors = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#3b82f6', '#8b5cf6', '#eab308'];
+        particles = [];
+        for (let i = 0; i < 55; i++) {
+          particles.push({
+            x: w * 0.5 + (Math.random() - 0.5) * 180,
+            y: 120 + (Math.random() - 0.5) * 40,
+            vx: (Math.random() - 0.5) * 9,
+            vy: -Math.random() * 7 - 3,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.012
+          });
+        }
+      }
 
-      ctx.textAlign = 'left';
-      ctx.font = 'bold 14px Pretendard, sans-serif';
-      ctx.fillStyle = '#4f46e5';
-      ctx.fillText('선우: 100보다 작은 자연수이다.', 50, 105);
-      ctx.fillText('은서: 서로 다른 두 소인수의 합이 18이다.', 50, 135);
+      function resize() {
+        w = canvas.clientWidth || 560;
+        h = canvas.clientHeight || 390;
+        canvas.width = w;
+        canvas.height = h;
+      }
+      resize();
 
-      ctx.font = '13px Pretendard, sans-serif';
-      ctx.fillStyle = '#475569';
-      ctx.fillText('• 합이 18인 서로 다른 두 소수 쌍: {5, 13}, {7, 11}', 50, 175);
+      btnPairs.addEventListener('click', () => {
+        mode = 1;
+        selectedPrime = null;
+        btnPairs.disabled = true;
+        btnFilter.disabled = false;
+        btnFilter.className = 'btn btn-sm btn-primary';
+        badgeStatus.innerHTML = '🔍 합이 18인 소수 쌍: <b>{5, 13}</b>과 <b>{7, 11}</b>을 발견했습니다! [🎯 100 미만 필터 적용]을 눌러보세요.';
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      });
 
-      ctx.font = 'bold 15px Pretendard, sans-serif';
-      ctx.fillStyle = '#059669';
-      ctx.fillText('➔ 5 × 13 = 65  (< 100 ⭕)', 50, 210);
-      ctx.fillText('➔ 7 × 11 = 77  (< 100 ⭕)', 50, 240);
-      ctx.restore();
+      btnFilter.addEventListener('click', () => {
+        mode = 2;
+        btnFilter.disabled = true;
+        btnFilter.className = 'btn btn-sm btn-outline-secondary';
+        badgeStatus.innerHTML = '🎉 100보다 작은 두 수는 <b>65</b>(5×13)와 <b>77</b>(7×11)입니다!';
+        if (!celebrated) {
+          celebrated = true;
+          createConfetti();
+          if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        }
+      });
 
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 14px Pretendard, sans-serif';
-      ctx.fillStyle = '#1d4ed8';
-      ctx.fillText('따라서 두 조건을 만족시키는 자연수는 65, 77입니다.', w / 2, 310);
+      btnReset.addEventListener('click', () => {
+        mode = 0;
+        selectedPrime = null;
+        celebrated = false;
+        btnPairs.disabled = false;
+        btnFilter.disabled = true;
+        btnFilter.className = 'btn btn-sm btn-outline-secondary';
+        badgeStatus.innerHTML = '초기화되었습니다. [🔍 합 18 소수 쌍 탐색]을 눌러보세요.';
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      });
+
+      window._step2_16_completeAll = function() {
+        mode = 2;
+        if (btnPairs) btnPairs.disabled = true;
+        if (btnFilter) {
+          btnFilter.disabled = true;
+          btnFilter.className = 'btn btn-sm btn-outline-secondary';
+        }
+        if (badgeStatus) {
+          badgeStatus.innerHTML = '🎉 정답! 조건을 만족시키는 수는 <b>65</b>와 <b>77</b>입니다!';
+        }
+        createConfetti();
+      };
+
+      // Mouse click on prime nodes
+      canvas.addEventListener('click', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        const stepX = (w - 70) / 6;
+        for (let i = 0; i < primes.length; i++) {
+          const cx = 35 + i * stepX;
+          const cy = 115 - Math.sin((i / 6) * Math.PI) * 20;
+          const dist = Math.hypot(mx - cx, my - cy);
+          if (dist <= 20) {
+            selectedPrime = primes[i];
+            const comp = 18 - selectedPrime;
+            const isCompPrime = primes.includes(comp);
+            if (isCompPrime) {
+              badgeStatus.innerHTML = `소수 ${selectedPrime}의 짝꿍: 18 - ${selectedPrime} = <b>${comp}</b> (소수 ⭕) ➔ 유효한 쌍 {${selectedPrime}, ${comp}}!`;
+            } else {
+              badgeStatus.innerHTML = `소수 ${selectedPrime}의 짝꿍: 18 - ${selectedPrime} = ${comp} (소수가 아님 ❌)`;
+            }
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+            break;
+          }
+        }
+      });
+
+      function render() {
+        ctx.clearRect(0, 0, w, h);
+
+        // Title and description
+        ctx.save();
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🎯 [조건 만족 수 탐구] 선우와 은서의 조건 (p.17)', w / 2, 22);
+
+        // Character condition tags
+        const tagW = Math.min((w - 40) / 2, 230);
+        // Sunwoo Tag
+        ctx.fillStyle = '#eff6ff';
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(w / 2 - tagW - 8, 32, tagW, 30, 6);
+        else ctx.rect(w / 2 - tagW - 8, 32, tagW, 30);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#1e40af';
+        ctx.font = 'bold 11px Pretendard, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('👦 선우: 100보다 작은 자연수', w / 2 - tagW / 2 - 8, 51);
+
+        // Eunseo Tag
+        ctx.fillStyle = '#fdf2f8';
+        ctx.strokeStyle = '#ec4899';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(w / 2 + 8, 32, tagW, 30, 6);
+        else ctx.rect(w / 2 + 8, 32, tagW, 30);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#9d174d';
+        ctx.fillText('👧 은서: 소인수 2개, 합 = 18', w / 2 + tagW / 2 + 8, 51);
+        ctx.restore();
+
+        // Prime Nodes Arch
+        const stepX = (w - 70) / 6;
+        const nodePositions = [];
+        for (let i = 0; i < primes.length; i++) {
+          const cx = 35 + i * stepX;
+          const cy = 115 - Math.sin((i / 6) * Math.PI) * 20;
+          nodePositions.push({ x: cx, y: cy, p: primes[i] });
+        }
+
+        // Draw connecting curves if mode >= 1
+        if (mode >= 1) {
+          ctx.save();
+          // Pair 1: 5 (idx 2) and 13 (idx 5)
+          const p5 = nodePositions[2];
+          const p13 = nodePositions[5];
+
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 3;
+          ctx.shadowColor = 'rgba(245, 158, 11, 0.5)';
+          ctx.shadowBlur = 8;
+          ctx.beginPath();
+          ctx.moveTo(p5.x, p5.y);
+          ctx.bezierCurveTo(p5.x + 30, p5.y - 45, p13.x - 30, p13.y - 45, p13.x, p13.y);
+          ctx.stroke();
+
+          // Arc label: 5 + 13 = 18
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = '#d97706';
+          ctx.font = 'bold 11px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('5 + 13 = 18 ⭕', (p5.x + p13.x) / 2, 70);
+
+          // Pair 2: 7 (idx 3) and 11 (idx 4)
+          const p7 = nodePositions[3];
+          const p11 = nodePositions[4];
+
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 3;
+          ctx.shadowColor = 'rgba(16, 185, 129, 0.5)';
+          ctx.shadowBlur = 8;
+          ctx.beginPath();
+          ctx.moveTo(p7.x, p7.y);
+          ctx.bezierCurveTo(p7.x + 15, p7.y + 40, p11.x - 15, p11.y + 40, p11.x, p11.y);
+          ctx.stroke();
+
+          // Arc label: 7 + 11 = 18
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = '#059669';
+          ctx.fillText('7 + 11 = 18 ⭕', (p7.x + p11.x) / 2, 160);
+          ctx.restore();
+        }
+
+        // Draw individual prime nodes
+        for (let i = 0; i < primes.length; i++) {
+          const np = nodePositions[i];
+          const p = np.p;
+
+          const isPair5_13 = (p === 5 || p === 13);
+          const isPair7_11 = (p === 7 || p === 11);
+          const isMatch = isPair5_13 || isPair7_11;
+          const isSelected = (selectedPrime === p);
+
+          ctx.save();
+          if (mode >= 1) {
+            if (isMatch) {
+              ctx.shadowColor = isPair5_13 ? '#f59e0b' : '#10b981';
+              ctx.shadowBlur = 10;
+              ctx.fillStyle = isPair5_13 ? '#fef3c7' : '#ecfdf5';
+              ctx.strokeStyle = isPair5_13 ? '#d97706' : '#059669';
+              ctx.lineWidth = 2.5;
+            } else {
+              ctx.globalAlpha = 0.35;
+              ctx.fillStyle = '#f8fafc';
+              ctx.strokeStyle = '#cbd5e1';
+              ctx.lineWidth = 1;
+            }
+          } else {
+            if (isSelected) {
+              ctx.shadowColor = '#6366f1';
+              ctx.shadowBlur = 8;
+              ctx.fillStyle = '#ede9fe';
+              ctx.strokeStyle = '#4f46e5';
+              ctx.lineWidth = 2.5;
+            } else {
+              ctx.fillStyle = '#ffffff';
+              ctx.strokeStyle = '#94a3b8';
+              ctx.lineWidth = 1.5;
+            }
+          }
+
+          ctx.beginPath();
+          ctx.arc(np.x, np.y, 18, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.shadowBlur = 0;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.fillStyle = isMatch && mode >= 1 ? '#0f172a' : (isSelected ? '#4338ca' : '#1e293b');
+          ctx.fillText(p, np.x, np.y);
+
+          // Subtext for eliminated primes
+          if (mode >= 1 && !isMatch) {
+            ctx.font = '10px Pretendard, sans-serif';
+            ctx.fillStyle = '#94a3b8';
+            if (p === 2) ctx.fillText('16합성수', np.x, np.y + 26);
+            if (p === 3) ctx.fillText('15합성수', np.x, np.y + 26);
+            if (p === 17) ctx.fillText('1소수X', np.x, np.y + 26);
+          }
+          ctx.restore();
+        }
+
+        // Mode 2: Multiplied Results Card Area (y = 190 ~ 290)
+        if (mode === 2) {
+          const cardW = Math.min((w - 50) / 2, 235);
+          const cardH = 95;
+          const cardY = 190;
+
+          // Card 1: 5 × 13 = 65
+          const card1X = w / 2 - cardW - 8;
+          ctx.save();
+          ctx.fillStyle = '#ecfdf5';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2;
+          ctx.shadowColor = 'rgba(16, 185, 129, 0.3)';
+          ctx.shadowBlur = 8;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(card1X, cardY, cardW, cardH, 10);
+          else ctx.rect(card1X, cardY, cardW, cardH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.shadowBlur = 0;
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#065f46';
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillText('첫 번째 소수 쌍: {5, 13}', card1X + cardW / 2, cardY + 22);
+
+          ctx.fillStyle = '#059669';
+          ctx.font = 'bold 20px Pretendard, sans-serif';
+          ctx.fillText('5 × 13 = 65', card1X + cardW / 2, cardY + 52);
+
+          ctx.fillStyle = '#047857';
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillText('✅ 100보다 작음 (선우 조건 통과!)', card1X + cardW / 2, cardY + 78);
+          ctx.restore();
+
+          // Card 2: 7 × 11 = 77
+          const card2X = w / 2 + 8;
+          ctx.save();
+          ctx.fillStyle = '#ecfdf5';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2;
+          ctx.shadowColor = 'rgba(16, 185, 129, 0.3)';
+          ctx.shadowBlur = 8;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(card2X, cardY, cardW, cardH, 10);
+          else ctx.rect(card2X, cardY, cardW, cardH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.shadowBlur = 0;
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#065f46';
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillText('두 번째 소수 쌍: {7, 11}', card2X + cardW / 2, cardY + 22);
+
+          ctx.fillStyle = '#059669';
+          ctx.font = 'bold 20px Pretendard, sans-serif';
+          ctx.fillText('7 × 11 = 77', card2X + cardW / 2, cardY + 52);
+
+          ctx.fillStyle = '#047857';
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillText('✅ 100보다 작음 (선우 조건 통과!)', card2X + cardW / 2, cardY + 78);
+          ctx.restore();
+        }
+
+        // Bottom Summary Card (y = 305 ~ 370)
+        const sumY = h - 72;
+        const sumW = Math.min(w - 30, 500);
+        const sumX = (w - sumW) / 2;
+
+        ctx.save();
+        ctx.fillStyle = mode === 2 ? '#fffbeb' : '#f8fafc';
+        ctx.strokeStyle = mode === 2 ? '#f59e0b' : '#e2e8f0';
+        ctx.lineWidth = mode === 2 ? 1.5 : 1;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(sumX, sumY, sumW, 60, 8);
+        else ctx.rect(sumX, sumY, sumW, 60);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        if (mode === 2) {
+          ctx.fillStyle = '#92400e';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.fillText('✨ 두 조건을 동시에 만족시키는 자연수 완성!', w / 2, sumY + 22);
+
+          ctx.fillStyle = '#b45309';
+          ctx.font = 'bold 16px Pretendard, sans-serif';
+          ctx.fillText('정답: 65, 77 (쉼표로 구분하여 입력)', w / 2, sumY + 44);
+        } else if (mode === 1) {
+          ctx.fillStyle = '#1e293b';
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillText('은서의 조건: 합이 18인 소수 쌍 ➔ {5, 13}, {7, 11}', w / 2, sumY + 22);
+
+          ctx.fillStyle = '#4f46e5';
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillText('[🎯 100 미만 필터 적용]을 눌러 곱이 100보다 작은지 확인해 보세요.', w / 2, sumY + 42);
+        } else {
+          ctx.fillStyle = '#64748b';
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillText('소수 노드를 클릭하거나 [🔍 합 18 소수 쌍 탐색] 버튼을 눌러보세요.', w / 2, sumY + 24);
+          ctx.fillText('18보다 작은 소수: 2, 3, 5, 7, 11, 13, 17', w / 2, sumY + 44);
+        }
+        ctx.restore();
+
+        // Confetti animation
+        if (particles.length > 0) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.22;
+            p.rot += p.vRot;
+            p.life -= p.decay;
+
+            if (p.life <= 0) {
+              particles.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+            ctx.restore();
+          }
+        }
+
+        container._animId_2_16 = requestAnimationFrame(render);
+      }
+
+      render();
     }
 
     function renderForm_2_16(box) {
       box.innerHTML = `
-        <div class="card">
+        <div class="card" style="padding:16px 20px;">
           <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
             ✏️ [스스로 확인하기 5] 조건 만족 수 찾기 (p.17)
           </div>
           <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
-            선우와 은서의 대화를 보고 두 조건을 동시에 만족시키는 자연수를 모두 구하시오. (쉼표로 구분)
+            다음 선우와 은서의 설명을 동시에 만족시키는 자연수를 모두 구하시오. (쉼표로 구분)
           </p>
 
-          <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:14px; line-height:1.7; font-size:0.88rem;">
-            <b>선우:</b> 100보다 작은 자연수야.<br>
-            <b>은서:</b> 서로 다른 두 소인수의 합이 18이야.
+          <!-- 대화 말풍선 UI -->
+          <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:14px;">
+            <div style="background:#eff6ff; border-left:4px solid #3b82f6; padding:8px 12px; border-radius:6px; font-size:0.88rem; color:#1e3a8a;">
+              👦 <b>선우:</b> "100보다 작은 자연수야."
+            </div>
+            <div style="background:#fdf2f8; border-left:4px solid #ec4899; padding:8px 12px; border-radius:6px; font-size:0.88rem; color:#831843;">
+              👧 <b>은서:</b> "두 개의 소인수를 갖는 수이고, 두 소인수의 합은 18이야."
+            </div>
+          </div>
+
+          <!-- 숫자 퀵 입력 바 -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; background:#f1f5f9; padding:8px 10px; border-radius:8px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; line-height:28px;">퀵 입력:</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-insert-2-16" data-char="65" style="font-weight:700;">65</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-insert-2-16" data-char="77" style="font-weight:700;">77</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-insert-2-16" data-char="," style="font-weight:700; min-width:32px;">,</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-clear-2-16" style="font-weight:700;">초기화</button>
           </div>
 
           <div style="margin-bottom:14px;">
@@ -20688,7 +21082,7 @@ function checkStep_1_12() {
             <input type="text" id="ans-2-16" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off">
           </div>
 
-          <button class="btn btn-primary" onclick="checkStep_2_16()" style="width:100%;">정답 확인 및 채점</button>
+          <button class="btn btn-primary" onclick="checkStep_2_16()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
 
@@ -20698,6 +21092,30 @@ function checkStep_1_12() {
           if (e.key === 'Enter') checkStep_2_16();
         });
       }
+
+      box.querySelectorAll('.btn-quick-insert-2-16').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const char = btn.getAttribute('data-char');
+          if (input) {
+            if (input.value && !input.value.endsWith(' ') && !input.value.endsWith(',')) {
+              input.value += (char === ',' ? ',' : ', ' + char);
+            } else {
+              input.value += char;
+            }
+            input.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      });
+
+      const clearBtn = box.querySelector('.btn-quick-clear-2-16');
+      if (clearBtn && input) {
+        clearBtn.addEventListener('click', () => {
+          input.value = '';
+          input.focus();
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        });
+      }
     }
 
     function checkStep_2_16() {
@@ -20705,12 +21123,21 @@ function checkStep_1_12() {
       const ok = areListsEqual(list, [65, 77]);
 
       if (ok) {
-        completeSubStep('2-16', '🎉 <b>정답입니다!</b> 합이 18인 소수 쌍 {5, 13}, {7, 11}의 곱인 <b>65, 77</b>이 100보다 작은 자연수입니다.');
+        if (window._step2_16_completeAll) {
+          window._step2_16_completeAll();
+        }
+        completeSubStep('2-16', '🎉 <b>정답입니다!</b><br>두 소인수의 합이 18인 소수 쌍은 <b>{5, 13}</b>과 <b>{7, 11}</b>입니다.<br>• 5 × 13 = <b>65</b> (< 100)<br>• 7 × 11 = <b>77</b> (< 100)<br>따라서 두 조건을 동시에 만족시키는 자연수는 <b>65, 77</b>입니다.');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 더해서 18이 되는 서로 다른 두 소수를 찾은 후 그 두 소수의 곱을 계산해 보세요.');
+        if (list.length === 1 && (list[0] === 65 || list[0] === 77)) {
+          showFeedback(false, `❌ <b>한 가지 수를 더 찾아보세요!</b> ${list[0]} 외에 합이 18이 되는 또 다른 소수 쌍을 찾아 곱해 보세요.`);
+        } else if (list.length === 0) {
+          showFeedback(false, '❌ <b>답을 입력해 주세요.</b> 합이 18이 되는 서로 다른 두 소수를 찾아 그 곱을 쉼표로 구분하여 입력하세요.');
+        } else {
+          showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 18보다 작은 소수(2, 3, 5, 7, 11, 13, 17) 중 두 소수의 합이 18이 되는 쌍 {p, q}를 찾고, p × q가 100보다 작은지 계산해 보세요.');
+        }
       }
     }
 
