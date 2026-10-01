@@ -9795,168 +9795,616 @@ function checkStep_1_7() {
 // 1-8 (p.13): 생각열기: 열차 배수 승객 내리기
 // -------------------------------------------------------------
 function drawCanvas_1_8(container) {
+  if (container._animId_1_8) {
+    cancelAnimationFrame(container._animId_1_8);
+    container._animId_1_8 = null;
+  }
   container.innerHTML = '';
+
+  const wrapper = document.createElement('div');
+  wrapper.style.position = 'relative';
+  wrapper.style.width = '100%';
+  wrapper.style.height = '100%';
+  wrapper.style.minHeight = '500px';
+  wrapper.style.overflow = 'hidden';
+  wrapper.style.background = 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)';
+  wrapper.style.borderRadius = '12px';
+  wrapper.style.userSelect = 'none';
+  wrapper.style.webkitUserSelect = 'none';
+  container.appendChild(wrapper);
+
   const canvas = document.createElement('canvas');
-  canvas.width = container.clientWidth || 560;
-  canvas.height = container.clientHeight || 460;
+  canvas.style.display = 'block';
   canvas.style.width = '100%';
   canvas.style.height = '100%';
-  canvas.style.display = 'block';
-  container.appendChild(canvas);
+  canvas.style.touchAction = 'none';
+  wrapper.appendChild(canvas);
 
   const ctx = canvas.getContext('2d');
-  let selectedStation = 25;
 
-  function draw() {
-    const w = canvas.width;
-    const h = canvas.height;
-    ctx.clearRect(0, 0, w, h);
+  let w = 560;
+  let h = 500;
+  let dpr = window.devicePixelRatio || 1;
 
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 15px Pretendard, sans-serif';
-    ctx.fillStyle = '#1e293b';
-    ctx.fillText('🚆 열차 배수 승객 하차 시뮬레이터 (1번부터 30번 역)', w / 2, 30);
+  let currentTrain = 0; // 0 ~ 30
+  let selectedStation = 25; // 기본 포커스 25번 역
+  let allRunDone = false;
 
-    // Draw Stations grid: 3 rows of 10
-    const cols = 10;
-    const rows = 3;
-    const cellW = (w - 50) / cols;
-    const cellH = 40;
-    const startX = 25;
-    const startY = 55;
-
-    for (let i = 1; i <= 30; i++) {
-      const col = (i - 1) % cols;
-      const row = Math.floor((i - 1) / cols);
-      const x = startX + col * cellW;
-      const y = startY + row * cellH;
-      const isSel = (i === selectedStation);
-
-      ctx.fillStyle = isSel ? '#eff6ff' : '#ffffff';
-      ctx.strokeStyle = isSel ? '#3b82f6' : '#cbd5e1';
-      ctx.lineWidth = isSel ? 2.5 : 1;
-      ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(x + 2, y + 2, cellW - 4, cellH - 4, 6) : ctx.rect(x + 2, y + 2, cellW - 4, cellH - 4);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.font = isSel ? 'bold 13px Pretendard, sans-serif' : '12px Pretendard, sans-serif';
-      ctx.fillStyle = isSel ? '#1d4ed8' : '#334155';
-      ctx.fillText(String(i), x + cellW / 2, y + cellH / 2);
-    }
-
-    // Detail for selected station
-    const divs = [];
-    for (let d = 1; d <= selectedStation; d++) {
-      if (selectedStation % d === 0) divs.push(d);
-    }
-
-    const dy = startY + rows * cellH + 30;
-    ctx.fillStyle = '#ffffff';
-    ctx.strokeStyle = '#4f46e5';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect ? ctx.roundRect(30, dy, w - 60, 130, 12) : ctx.rect(30, dy, w - 60, 130);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 16px Pretendard, sans-serif';
-    ctx.fillStyle = '#1e293b';
-    ctx.fillText(`📍 ${selectedStation}번 역 하차 분석`, w / 2, dy + 30);
-
-    ctx.font = '13px Pretendard, sans-serif';
-    ctx.fillStyle = '#475569';
-    ctx.fillText(`정차한 열차(약수): [ ${divs.join('번째, ')}번째 열차 ]`, w / 2, dy + 60);
-
-    ctx.font = 'bold 15px Pretendard, sans-serif';
-    ctx.fillStyle = '#4f46e5';
-    ctx.fillText(`총 하차 승객 수: ${divs.length}명 (${selectedStation}의 약수의 개수)`, w / 2, dy + 90);
-
-    ctx.font = '12px Pretendard, sans-serif';
-    ctx.fillStyle = divs.length === 2 ? '#059669' : '#64748b';
-    ctx.fillText(divs.length === 2 ? '★ 내린 승객이 2명인 역 ➔ 약수가 2개뿐인 소수(Prime) 역!' : '내린 승객 수 = 역 번호의 약수의 개수', w / 2, dy + 115);
-
-    // Guide
-    ctx.font = '11px Pretendard, sans-serif';
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText('💡 위의 역 번호 타일을 클릭하여 각 역의 승객 수를 탐색해 보세요.', w / 2, h - 15);
+  // 1부터 30까지 역 데이터
+  const stations = [];
+  for (let i = 1; i <= 30; i++) {
+    stations.push({
+      id: i,
+      passengers: [], // 내린 열차 번호들
+      pulse: 0,
+      hover: false
+    });
   }
 
-  canvas.addEventListener('click', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-    const w = canvas.width;
-    const cols = 10;
-    const cellW = (w - 50) / cols;
-    const cellH = 40;
-    const startX = 25;
-    const startY = 55;
+  // 상단 툴바 UI
+  const topBar = document.createElement('div');
+  topBar.style.position = 'absolute';
+  topBar.style.top = '10px';
+  topBar.style.left = '12px';
+  topBar.style.right = '12px';
+  topBar.style.display = 'flex';
+  topBar.style.justifyContent = 'space-between';
+  topBar.style.alignItems = 'center';
+  topBar.style.zIndex = '10';
+  wrapper.appendChild(topBar);
 
-    for (let i = 1; i <= 30; i++) {
-      const col = (i - 1) % cols;
-      const row = Math.floor((i - 1) / cols);
-      const x = startX + col * cellW;
-      const y = startY + row * cellH;
-      if (mx >= x && mx <= x + cellW && my >= y && my <= y + cellH) {
-        selectedStation = i;
-        if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(500, 'sine', 0.08);
-        draw();
-        break;
-      }
+  const titleBadge = document.createElement('div');
+  titleBadge.style.display = 'inline-flex';
+  titleBadge.style.alignItems = 'center';
+  titleBadge.style.gap = '6px';
+  titleBadge.style.background = 'rgba(255, 255, 255, 0.94)';
+  titleBadge.style.padding = '6px 14px';
+  titleBadge.style.borderRadius = '20px';
+  titleBadge.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.05)';
+  titleBadge.style.fontSize = '12px';
+  titleBadge.style.fontWeight = '700';
+  titleBadge.style.color = '#1e293b';
+  titleBadge.innerHTML = '🚆 <b>[생각열기]</b> 열차 배수 승객 내리기 노선도 (1~30번 역)';
+  topBar.appendChild(titleBadge);
+
+  const resetBtn = document.createElement('button');
+  resetBtn.style.padding = '5px 12px';
+  resetBtn.style.fontSize = '11.5px';
+  resetBtn.style.fontWeight = '600';
+  resetBtn.style.color = '#475569';
+  resetBtn.style.background = '#ffffff';
+  resetBtn.style.border = '1px solid #cbd5e1';
+  resetBtn.style.borderRadius = '8px';
+  resetBtn.style.cursor = 'pointer';
+  resetBtn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
+  resetBtn.innerHTML = '⟲ 노선 리셋';
+  resetBtn.onclick = () => {
+    resetSimulation();
+  };
+  topBar.appendChild(resetBtn);
+
+  // 하단 컨트롤러 바
+  const ctrlRow = document.createElement('div');
+  ctrlRow.style.position = 'absolute';
+  ctrlRow.style.bottom = '10px';
+  ctrlRow.style.left = '10px';
+  ctrlRow.style.right = '10px';
+  ctrlRow.style.display = 'flex';
+  ctrlRow.style.justifyContent = 'center';
+  ctrlRow.style.alignItems = 'center';
+  ctrlRow.style.flexWrap = 'wrap';
+  ctrlRow.style.gap = '8px';
+  ctrlRow.style.zIndex = '10';
+  wrapper.appendChild(ctrlRow);
+
+  function createBtn(label, onClick, isPrimary = false, isAccent = false) {
+    const btn = document.createElement('button');
+    btn.style.padding = '6px 12px';
+    btn.style.fontSize = '12px';
+    btn.style.fontWeight = '700';
+    btn.style.borderRadius = '8px';
+    btn.style.cursor = 'pointer';
+    btn.style.transition = 'all 0.15s ease';
+    if (isPrimary) {
+      btn.style.background = '#4f46e5';
+      btn.style.color = '#ffffff';
+      btn.style.border = 'none';
+      btn.style.boxShadow = '0 2px 6px rgba(79, 70, 229, 0.3)';
+    } else if (isAccent) {
+      btn.style.background = '#fef3c7';
+      btn.style.color = '#92400e';
+      btn.style.border = '1px solid #fde68a';
+    } else {
+      btn.style.background = '#ffffff';
+      btn.style.color = '#334155';
+      btn.style.border = '1px solid #cbd5e1';
     }
+    btn.innerHTML = label;
+    btn.onclick = onClick;
+    return btn;
+  }
+
+  const nextTrainBtn = createBtn('🚂 다음 열차 운행 (+1호차)', () => runNextTrain());
+  const allTrainBtn = createBtn('⚡ 30호차까지 전체 운행', () => runAllTrains(), true);
+  const focus25Btn = createBtn('🔍 25번 역 포커스', () => {
+    selectedStation = 25;
+    stations[24].pulse = 1.2;
+    if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(650, 'sine', 0.1);
+  }, false, true);
+
+  ctrlRow.appendChild(nextTrainBtn);
+  ctrlRow.appendChild(allTrainBtn);
+  ctrlRow.appendChild(focus25Btn);
+
+  function runNextTrain() {
+    if (currentTrain >= 30) return;
+    currentTrain++;
+    stations.forEach(st => {
+      if (st.id % currentTrain === 0) {
+        st.passengers.push(currentTrain);
+        st.pulse = 1.0;
+      }
+    });
+
+    if (window.SoundFX && window.SoundFX.playTone) {
+      SoundFX.playTone(380 + currentTrain * 14, 'sine', 0.08);
+    }
+
+    if (currentTrain === 30 && !allRunDone) {
+      allRunDone = true;
+      createConfetti();
+      if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+    }
+  }
+
+  function runAllTrains() {
+    stations.forEach(st => {
+      st.passengers = [];
+      for (let tNum = 1; tNum <= 30; tNum++) {
+        if (st.id % tNum === 0) {
+          st.passengers.push(tNum);
+        }
+      }
+      st.pulse = 1.0;
+    });
+    currentTrain = 30;
+    allRunDone = true;
+    createConfetti();
+    if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+  }
+
+  function resetSimulation() {
+    stations.forEach(st => {
+      st.passengers = [];
+      st.pulse = 0;
+    });
+    currentTrain = 0;
+    allRunDone = false;
+    particles = [];
+    if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+  }
+
+  // 파티클
+  let particles = [];
+  function createConfetti() {
+    particles = [];
+    const colors = ['#f59e0b', '#fbbf24', '#4f46e5', '#10b981', '#ec4899', '#3b82f6'];
+    for (let i = 0; i < 50; i++) {
+      particles.push({
+        x: w / 2 + (Math.random() - 0.5) * 200,
+        y: 120 + (Math.random() - 0.5) * 60,
+        vx: (Math.random() - 0.5) * 12,
+        vy: -Math.random() * 10 - 3,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        size: Math.random() * 7 + 4,
+        rotation: Math.random() * Math.PI * 2,
+        vRot: (Math.random() - 0.5) * 0.25,
+        life: 1.0,
+        decay: Math.random() * 0.01 + 0.007
+      });
+    }
+  }
+
+  function resize() {
+    const rect = wrapper.getBoundingClientRect();
+    w = rect.width || 560;
+    h = rect.height || 500;
+    dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  resize();
+
+  // 역 클릭 이벤트
+  let pointerX = -1;
+  let pointerY = -1;
+
+  function getStationLayouts() {
+    const cols = 10;
+    const rows = 3;
+    const startX = 14;
+    const startY = 56;
+    const availW = w - startX * 2;
+    const gapX = 4;
+    const gapY = 16;
+    const cellW = (availW - (cols - 1) * gapX) / cols;
+    const cellH = 50;
+
+    return stations.map((st, idx) => {
+      const col = idx % cols;
+      const row = Math.floor(idx / cols);
+      const x = startX + col * (cellW + gapX);
+      const y = startY + row * (cellH + gapY);
+
+      return {
+        st,
+        idx,
+        x,
+        y,
+        w: cellW,
+        h: cellH,
+        row
+      };
+    });
+  }
+
+  function handlePointer(e, type) {
+    const rect = canvas.getBoundingClientRect();
+    pointerX = e.clientX - rect.left;
+    pointerY = e.clientY - rect.top;
+
+    const layouts = getStationLayouts();
+
+    if (type === 'move') {
+      let anyHover = false;
+      layouts.forEach(l => {
+        const inBox = (pointerX >= l.x && pointerX <= l.x + l.w && pointerY >= l.y && pointerY <= l.y + l.h);
+        l.st.hover = inBox;
+        if (inBox) anyHover = true;
+      });
+      canvas.style.cursor = anyHover ? 'pointer' : 'default';
+    } else if (type === 'down') {
+      layouts.forEach(l => {
+        if (pointerX >= l.x && pointerX <= l.x + l.w && pointerY >= l.y && pointerY <= l.y + l.h) {
+          selectedStation = l.st.id;
+          l.st.pulse = 1.0;
+          if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(520, 'sine', 0.08);
+        }
+      });
+    }
+  }
+
+  canvas.addEventListener('pointermove', (e) => handlePointer(e, 'move'));
+  canvas.addEventListener('pointerdown', (e) => handlePointer(e, 'down'));
+  canvas.addEventListener('pointerleave', () => {
+    pointerX = -1;
+    pointerY = -1;
+    stations.forEach(s => s.hover = false);
   });
 
-  draw();
+  let t = 0;
+  function animate() {
+    t += 0.04;
+    ctx.clearRect(0, 0, w, h);
+
+    const layouts = getStationLayouts();
+
+    // 1. 철로 레일 배경 라인
+    ctx.save();
+    for (let r = 0; r < 3; r++) {
+      const rowLayouts = layouts.filter(l => l.row === r);
+      if (rowLayouts.length > 0) {
+        const ry = rowLayouts[0].y + rowLayouts[0].h / 2;
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(rowLayouts[0].x, ry);
+        ctx.lineTo(rowLayouts[rowLayouts.length - 1].x + rowLayouts[0].w, ry);
+        ctx.stroke();
+
+        // 침목(Sleeper) 효과
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1.5;
+        rowLayouts.forEach(l => {
+          ctx.beginPath();
+          ctx.moveTo(l.x + l.w / 2, ry - 14);
+          ctx.lineTo(l.x + l.w / 2, ry + 14);
+          ctx.stroke();
+        });
+      }
+    }
+    ctx.restore();
+
+    // 2. 30개 역 타일 렌더링
+    layouts.forEach(l => {
+      const { st, x, y, w: cw, h: ch } = l;
+
+      // 펄스 이징
+      if (st.pulse > 0) {
+        st.pulse -= 0.04;
+        if (st.pulse < 0) st.pulse = 0;
+      }
+
+      const isSel = (st.id === selectedStation);
+      const isPrime = (allRunDone && st.passengers.length === 2);
+
+      ctx.save();
+      // 그림자
+      if (isSel) {
+        ctx.shadowColor = 'rgba(79, 70, 229, 0.35)';
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetY = 2;
+      } else if (isPrime) {
+        ctx.shadowColor = 'rgba(245, 158, 11, 0.45)';
+        ctx.shadowBlur = 8 + Math.sin(t * 3) * 3;
+      }
+
+      // 배경 및 테두리
+      ctx.fillStyle = isSel ? '#eef2ff' : (isPrime ? '#fefce8' : (st.hover ? '#f8fafc' : '#ffffff'));
+      ctx.strokeStyle = isSel ? '#4f46e5' : (isPrime ? '#f59e0b' : '#cbd5e1');
+      ctx.lineWidth = isSel ? 2.5 : (isPrime ? 2 : 1);
+
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(x, y, cw, ch, 8);
+      } else {
+        ctx.rect(x, y, cw, ch);
+      }
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      // 역 번호 (상단)
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = isSel ? 'bold 13px Pretendard, sans-serif' : 'bold 12px Pretendard, sans-serif';
+      ctx.fillStyle = isSel ? '#4338ca' : (isPrime ? '#b45309' : '#1e293b');
+      ctx.fillText(String(st.id), x + cw / 2, y + 16);
+
+      // 내린 승객 수 배지 (하단)
+      const count = st.passengers.length;
+      ctx.save();
+      ctx.fillStyle = isPrime ? '#f59e0b' : (count > 0 ? '#3b82f6' : '#e2e8f0');
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(x + 3, y + 28, cw - 6, 17, 4);
+      } else {
+        ctx.rect(x + 3, y + 28, cw - 6, 17);
+      }
+      ctx.fill();
+
+      ctx.fillStyle = count > 0 ? '#ffffff' : '#64748b';
+      ctx.font = 'bold 9.5px Pretendard, sans-serif';
+      ctx.fillText(`${count}명`, x + cw / 2, y + 36.5);
+      ctx.restore();
+
+      // 펄스 하이라이트 링
+      if (st.pulse > 0) {
+        ctx.save();
+        ctx.strokeStyle = `rgba(79, 70, 229, ${st.pulse})`;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x - 2, y - 2, cw + 4, ch + 4);
+        ctx.restore();
+      }
+    });
+
+    // 3. 하단 상세 분석 정보 카드
+    const cardY = 270;
+    const cardW = Math.min(w - 28, 524);
+    const cardH = 168;
+    const cardX = (w - cardW) / 2;
+
+    const curSt = stations[selectedStation - 1];
+    const isPrimeStation = (allRunDone && curSt.passengers.length === 2);
+
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = isPrimeStation ? '#f59e0b' : '#4f46e5';
+    ctx.lineWidth = 1.8;
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.05)';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetY = 3;
+
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(cardX, cardY, cardW, cardH, 14);
+    } else {
+      ctx.rect(cardX, cardY, cardW, cardH);
+    }
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    // 카드 헤더
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 14px Pretendard, sans-serif';
+    ctx.fillStyle = isPrimeStation ? '#b45309' : '#1e293b';
+    ctx.fillText(`📍 [ ${selectedStation}번 역 ] 승객 하차 정밀 분석`, cardX + 18, cardY + 24);
+
+    // 진행 상태 안내 배지
+    ctx.textAlign = 'right';
+    ctx.font = 'bold 11px Pretendard, sans-serif';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText(`현재 운행: ${currentTrain} / 30호차`, cardX + cardW - 18, cardY + 24);
+
+    // 내린 열차 목록
+    ctx.textAlign = 'left';
+    ctx.font = '12px Pretendard, sans-serif';
+    ctx.fillStyle = '#475569';
+    ctx.fillText('정차한 열차(역 번호의 약수):', cardX + 18, cardY + 54);
+
+    // 열차 번호 태그 칩
+    let tagX = cardX + 18;
+    const tagY = cardY + 70;
+    if (curSt.passengers.length === 0) {
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '11.5px Pretendard, sans-serif';
+      ctx.fillText('아직 정차한 열차가 없습니다. 아래 [다음 열차 운행]을 눌러보세요.', tagX, tagY + 10);
+    } else {
+      curSt.passengers.forEach(p => {
+        ctx.fillStyle = '#eff6ff';
+        ctx.strokeStyle = '#93c5fd';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(tagX, tagY, 36, 22, 6);
+        } else {
+          ctx.rect(tagX, tagY, 36, 22);
+        }
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#1d4ed8';
+        ctx.font = 'bold 11px Pretendard, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${p}호`, tagX + 18, tagY + 11);
+        ctx.textAlign = 'left';
+
+        tagX += 42;
+      });
+    }
+
+    // 총 승객 수 강조
+    const countY = cardY + 115;
+    ctx.font = 'bold 13px Pretendard, sans-serif';
+    ctx.fillStyle = '#1e293b';
+    ctx.fillText(`총 내린 승객 수:`, cardX + 18, countY);
+
+    ctx.font = 'bold 16px Pretendard, sans-serif';
+    ctx.fillStyle = isPrimeStation ? '#d97706' : '#4f46e5';
+    ctx.fillText(`${curSt.passengers.length}명`, cardX + 120, countY);
+
+    ctx.font = '12px Pretendard, sans-serif';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText(`(${selectedStation}의 약수의 개수와 동일)`, cardX + 160, countY);
+
+    // 수학적 성질 결론 배너
+    const noteY = cardY + 144;
+    ctx.font = 'bold 11.5px Pretendard, sans-serif';
+    if (selectedStation === 25) {
+      ctx.fillStyle = '#2563eb';
+      ctx.fillText('💡 25번 역: 1, 5, 25번 열차가 정차하여 총 3명이 내립니다! (25는 5²인 합성수)', cardX + 18, noteY);
+    } else if (isPrimeStation) {
+      ctx.fillStyle = '#d97706';
+      ctx.fillText('★ 승객이 2명인 역: 약수가 1과 자기 자신뿐인 [소수(Prime)] 역입니다!', cardX + 18, noteY);
+    } else if (curSt.passengers.length > 2) {
+      ctx.fillStyle = '#059669';
+      ctx.fillText(`약수가 3개 이상인 합성수 역입니다. (승객 ${curSt.passengers.length}명)`, cardX + 18, noteY);
+    } else {
+      ctx.fillStyle = '#64748b';
+      ctx.fillText('1번 역은 약수가 1개뿐이므로 승객이 1명만 내립니다.', cardX + 18, noteY);
+    }
+
+    // 4. 파티클
+    if (particles.length > 0) {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.3;
+        p.rotation += p.vRot;
+        p.life -= p.decay;
+
+        if (p.life <= 0 || p.y > h + 20) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+        ctx.restore();
+      }
+    }
+
+    container._animId_1_8 = requestAnimationFrame(animate);
+  }
+
+  container._animId_1_8 = requestAnimationFrame(animate);
+
+  const ro = new ResizeObserver(() => {
+    resize();
+  });
+  ro.observe(wrapper);
 }
 
 function renderForm_1_8(box) {
   box.innerHTML = `
     <div class="card">
       <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
-        🚆 [생각열기] 열차 배수 승객 내리기 (p.13)
+        🚆 [생각 넓히기] 열차 배수 승객 내리기 (p.13)
       </div>
       <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
-        출발역을 출발한 1번째 열차는 1의 배수역에서 1명씩, 2번째 열차는 2의 배수역에서 1명씩 내립니다. 이와 같은 규칙으로 열차가 운행할 때 물음에 답하시오.
+        출발역을 출발한 1번째 열차는 1의 배수 역에서, 2번째 열차는 2의 배수 역에서, $n$번째 열차는 $n$의 배수 역에서 1명씩 내립니다. 30호차까지 운행할 때 물음에 답하시오.
       </p>
 
-      <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
-        <div>
-          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑴ 25가 적혀 있는 역에서 내린 승객은 모두 몇 명인지 구하시오:</label>
-          <div style="display:flex; align-items:center; gap:6px;">
-            <input type="text" id="ans-1-8-1" class="form-control" style="max-width:140px;" placeholder="수 입력" autocomplete="off">
-            <span style="font-weight:700; font-size:0.9rem;">명</span>
+      <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:14px;">
+        <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
+          ⑴ 25가 적혀 있는 역에서 내린 승객은 모두 몇 명인가요?<br>
+          <div style="margin-top:4px;">
+            [ <input type="text" id="ans-1-8-1" style="width:110px; display:inline-block; padding:4px 8px; font-weight:700;" class="form-control" placeholder="승객 수 입력" autocomplete="off"> ] 명
           </div>
         </div>
-        <div>
-          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑵ 내린 승객이 2명인 역은 어떤 수의 성질을 가진 역일까요?</label>
-          <input type="text" id="ans-1-8-2" class="form-control" placeholder="용어 입력" autocomplete="off">
+
+        <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
+          ⑵ 내린 승객이 정확히 2명인 역에 적혀 있는 번호를 모두 구하시오.<br>
+          <div style="margin-top:4px;">
+            <input type="text" id="ans-1-8-2" class="form-control" placeholder="역 번호 입력 (쉼표 구분)" autocomplete="off">
+          </div>
+        </div>
+
+        <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
+          ⑶ 내린 승객이 2명인 역 번호의 공통적인 수학적 성질(용어)은 무엇인가요?<br>
+          <div style="margin-top:4px;">
+            [ <input type="text" id="ans-1-8-3" style="width:110px; display:inline-block; padding:4px 8px; font-weight:700;" class="form-control" placeholder="용어 입력" autocomplete="off"> ]
+          </div>
         </div>
       </div>
 
-      <button class="btn btn-primary" onclick="checkStep_1_8()">정답 확인 및 채점</button>
+      <button class="btn btn-primary" onclick="checkStep_1_8()" style="width:100%;">정답 확인 및 채점</button>
     </div>
   `;
+
+  const inputs = box.querySelectorAll('input[type="text"]');
+  inputs.forEach(input => {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        checkStep_1_8();
+      }
+    });
+  });
 }
 
 function checkStep_1_8() {
   const v1 = normTxt(document.getElementById('ans-1-8-1')?.value);
-  const v2 = normTxt(document.getElementById('ans-1-8-2')?.value);
+  const list2 = parseNumList(document.getElementById('ans-1-8-2')?.value);
+  const v3 = normTxt(document.getElementById('ans-1-8-3')?.value);
 
   const ok1 = (v1 === '3' || v1 === '3명');
-  const ok2 = (v2 === '소수' || v2 === '소수인수');
+  // 30 이하의 소수: 2, 3, 5, 7, 11, 13, 17, 19, 23, 29 (총 10개)
+  const targetPrimes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29];
+  const ok2 = areListsEqual(list2, targetPrimes);
+  const ok3 = (v3 === '소수');
 
-  if (ok1 && ok2) {
-    completeSubStep('1-8', '🎉 <b>정답입니다!</b> 25번 역은 1, 5, 25번째 열차가 서므로 <b>3명</b>이 내리고, 내린 승객이 2명인 역은 약수가 2개뿐인 <b>소수</b> 역입니다.');
+  if (ok1 && ok2 && ok3) {
+    completeSubStep('1-8', '🎉 <b>정답입니다!</b> 25번 역은 1, 5, 25번째 열차가 서므로 승객이 <b>3명</b> 내리고, 내린 승객이 2명인 역(2, 3, 5, 7, 11, 13, 17, 19, 23, 29)은 약수가 2개뿐인 <b>소수</b>입니다.');
+    const nextBtn = document.getElementById('btn-next-step');
+    if (nextBtn) {
+      nextBtn.style.display = 'inline-flex';
+    }
   } else {
     let wrong = [];
-    if (!ok1) wrong.push('⑴ 승객 수');
-    if (!ok2) wrong.push('⑵ 수의 성질');
+    if (!ok1) wrong.push('⑴ 25번 역 승객 수');
+    if (!ok2) wrong.push('⑵ 승객 2명인 역 목록');
+    if (!ok3) wrong.push('⑶ 역 번호들의 공통 성질');
     if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-    showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>25의 약수의 개수와 약수가 2개뿐인 수의 명칭을 확인해 보세요.`);
+    showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>25의 약수 개수와 약수가 1과 자기 자신 2개뿐인 30 이하의 수들을 확인해 보세요.`);
   }
 }
 
