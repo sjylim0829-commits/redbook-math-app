@@ -2156,113 +2156,401 @@ function drawCanvas_0_2(container) {
   canvas.style.width = '100%';
   canvas.style.height = '100%';
   canvas.style.display = 'block';
+  canvas.style.touchAction = 'none';
   container.appendChild(canvas);
 
   const ctx = canvas.getContext('2d');
   let animId = null;
   let t = 0;
 
-  // Atoms
-  const palette = [
-    { type: 'atom', label: 'H', sub: '수소', color: '#0284c7', r: 24 },
-    { type: 'atom', label: 'O', sub: '산소', color: '#dc2626', r: 28 },
-    { type: 'prime', label: '2', sub: '소수', color: '#4f46e5', r: 26 },
-    { type: 'prime', label: '3', sub: '소수', color: '#7c3aed', r: 26 },
-    { type: 'prime', label: '5', sub: '소수', color: '#d97706', r: 26 }
+  // Default atom slots (chem & prime)
+  const defaultAtoms = [
+    { id: 1, type: 'chem', label: 'H', sub: '수소', color: '#0284c7', r: 22, slotX: 0.10, slotY: 0.16 },
+    { id: 2, type: 'chem', label: 'H', sub: '수소', color: '#0284c7', r: 22, slotX: 0.20, slotY: 0.16 },
+    { id: 3, type: 'chem', label: 'O', sub: '산소', color: '#dc2626', r: 26, slotX: 0.31, slotY: 0.16 },
+    { id: 4, type: 'prime', label: '2', sub: '소수', color: '#4f46e5', r: 24, slotX: 0.46, slotY: 0.16 },
+    { id: 5, type: 'prime', label: '2', sub: '소수', color: '#4f46e5', r: 24, slotX: 0.57, slotY: 0.16 },
+    { id: 6, type: 'prime', label: '3', sub: '소수', color: '#059669', r: 24, slotX: 0.68, slotY: 0.16 },
+    { id: 7, type: 'prime', label: '5', sub: '소수', color: '#d97706', r: 24, slotX: 0.79, slotY: 0.16 },
+    { id: 8, type: 'prime', label: '7', sub: '소수', color: '#ec4899', r: 24, slotX: 0.90, slotY: 0.16 }
   ];
 
-  let activeAtoms = [
-    { id: 1, type: 'atom', label: 'H', color: '#0284c7', r: 22, x: 80, y: 70 },
-    { id: 2, type: 'atom', label: 'H', color: '#0284c7', r: 22, x: 140, y: 70 },
-    { id: 3, type: 'atom', label: 'O', color: '#dc2626', r: 26, x: 210, y: 70 },
-    { id: 4, type: 'prime', label: '2', color: '#4f46e5', r: 24, x: 300, y: 70 },
-    { id: 5, type: 'prime', label: '2', color: '#4f46e5', r: 24, x: 360, y: 70 },
-    { id: 6, type: 'prime', label: '3', color: '#7c3aed', r: 24, x: 420, y: 70 },
-    { id: 7, type: 'prime', label: '5', color: '#d97706', r: 24, x: 480, y: 70 }
-  ];
+  let atoms = defaultAtoms.map(a => ({
+    ...a,
+    x: a.slotX * canvas.width,
+    y: a.slotY * canvas.height,
+    isHovered: false,
+    isDragging: false
+  }));
 
+  function resetAtoms() {
+    atoms.forEach(a => {
+      a.x = a.slotX * canvas.width;
+      a.y = a.slotY * canvas.height;
+    });
+    particles = [];
+    lastComboKey = '';
+    if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(380, 'sine', 0.08);
+  }
+
+  function resize() {
+    if (!container || !canvas) return;
+    const newW = container.clientWidth || 560;
+    const newH = container.clientHeight || 460;
+    if (canvas.width !== newW || canvas.height !== newH) {
+      canvas.width = newW;
+      canvas.height = newH;
+      resetAtoms();
+    }
+  }
+  window.addEventListener('resize', resize);
+
+  // Particles for energy bond burst
+  let particles = [];
+  function spawnBondParticles(cx, cy, color) {
+    for (let i = 0; i < 30; i++) {
+      const angle = (Math.PI * 2 * i) / 30 + (Math.random() - 0.5) * 0.3;
+      const speed = 2.0 + Math.random() * 4.0;
+      particles.push({
+        x: cx,
+        y: cy,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        radius: 3 + Math.random() * 3,
+        color: color || '#4f46e5',
+        life: 1.0,
+        decay: 0.02 + Math.random() * 0.02
+      });
+    }
+    if (window.SoundFX && window.SoundFX.unlock) SoundFX.unlock();
+  }
+
+  let lastComboKey = '';
+
+  // Pointer drag handling
   let draggedAtom = null;
   let dragOffset = { x: 0, y: 0 };
+  let isDragging = false;
+
+  function getCanvasPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / (rect.width || 1);
+    const scaleY = canvas.height / (rect.height || 1);
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY
+    };
+  }
+
+  function hitTestAtom(pos) {
+    for (let i = atoms.length - 1; i >= 0; i--) {
+      const a = atoms[i];
+      if (Math.hypot(pos.x - a.x, pos.y - a.y) <= a.r + 5) return a;
+    }
+    return null;
+  }
+
+  function hitTestResetBtn(pos) {
+    return (pos.x >= canvas.width - 105 && pos.x <= canvas.width - 15 && pos.y >= 10 && pos.y <= 36);
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    try { canvas.setPointerCapture(e.pointerId); } catch(err) {}
+    const pos = getCanvasPos(e);
+
+    if (hitTestResetBtn(pos)) {
+      resetAtoms();
+      return;
+    }
+
+    const a = hitTestAtom(pos);
+    if (a) {
+      draggedAtom = a;
+      isDragging = true;
+      dragOffset.x = pos.x - a.x;
+      dragOffset.y = pos.y - a.y;
+      a.isDragging = true;
+      if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(520, 'sine', 0.06);
+    }
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    const pos = getCanvasPos(e);
+    if (isDragging && draggedAtom) {
+      draggedAtom.x = Math.max(draggedAtom.r, Math.min(canvas.width - draggedAtom.r, pos.x - dragOffset.x));
+      draggedAtom.y = Math.max(draggedAtom.r + 10, Math.min(canvas.height - draggedAtom.r - 20, pos.y - dragOffset.y));
+      canvas.style.cursor = 'grabbing';
+    } else {
+      const a = hitTestAtom(pos);
+      atoms.forEach(atom => atom.isHovered = (atom === a));
+      canvas.style.cursor = (a || hitTestResetBtn(pos)) ? 'pointer' : 'default';
+    }
+  });
+
+  function stopDrag(e) {
+    if (draggedAtom) {
+      draggedAtom.isDragging = false;
+      draggedAtom = null;
+      isDragging = false;
+      canvas.style.cursor = 'default';
+    }
+    try {
+      if (canvas.hasPointerCapture(e.pointerId)) {
+        canvas.releasePointerCapture(e.pointerId);
+      }
+    } catch(err) {}
+  }
+
+  canvas.addEventListener('pointerup', stopDrag);
+  canvas.addEventListener('pointercancel', stopDrag);
 
   function draw() {
-    t += 0.02;
+    if (!container.isConnected || !container.contains(canvas)) {
+      if (animId) cancelAnimationFrame(animId);
+      window.removeEventListener('resize', resize);
+      return;
+    }
+
+    t += 0.025;
     const w = canvas.width;
     const h = canvas.height;
     ctx.clearRect(0, 0, w, h);
 
+    // Subtle background grid
+    ctx.strokeStyle = '#f8fafc';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < w; x += 30) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+      ctx.stroke();
+    }
+    for (let y = 0; y < h; y += 30) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+
+    // Top Header: Title & Reset Button
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.font = '800 15px Pretendard, sans-serif';
+    ctx.fillStyle = '#0f172a';
+    ctx.fillText('⚗️ 원소 & 소수 결합 연구소 (p.7)', 20, 24);
+
+    // Reset Button (Top Right)
+    ctx.save();
+    ctx.fillStyle = '#f1f5f9';
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(w - 105, 10, 90, 26, 6);
+    else ctx.rect(w - 105, 10, 90, 26);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#475569';
+    ctx.font = 'bold 11px Pretendard, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('⟲ 원자 초기화', w - 60, 23);
+    ctx.restore();
+
+    // Top Docks (Two labeled shelves)
+    const dockY = 48;
+    const dockH = 68;
+
+    // Chemical shelf
+    const chemW = w * 0.38;
+    ctx.fillStyle = '#f0fdf4';
+    ctx.strokeStyle = '#bbf7d0';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(14, dockY, chemW, dockH, 8);
+    else ctx.rect(14, dockY, chemW, dockH);
+    ctx.fill();
+    ctx.stroke();
+    ctx.font = 'bold 10px Pretendard, sans-serif';
+    ctx.fillStyle = '#166534';
+    ctx.textAlign = 'left';
+    ctx.fillText('🧪 화학 원소 (물질의 기본)', 24, dockY + 12);
+
+    // Prime shelf
+    const primeX = 22 + chemW;
+    const primeW = w - primeX - 14;
+    ctx.fillStyle = '#eef2ff';
+    ctx.strokeStyle = '#c7d2fe';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(primeX, dockY, primeW, dockH, 8);
+    else ctx.rect(primeX, dockY, primeW, dockH);
+    ctx.fill();
+    ctx.stroke();
+    ctx.font = 'bold 10px Pretendard, sans-serif';
+    ctx.fillStyle = '#3730a3';
+    ctx.fillText('🔢 소수 원자 (자연수의 기본)', primeX + 10, dockY + 12);
+
     // Chamber Area (Center bottom)
     const cx = w / 2;
-    const cy = h * 0.62;
-    const cr = Math.min(w, h) * 0.32;
+    const cy = h * 0.65;
+    const cr = Math.min(w * 0.40, h * 0.31);
 
-    // Glowing chamber ring
+    // Pulsing chamber ring
+    const chamberPulse = Math.sin(t * 3) * 2;
     ctx.save();
     ctx.beginPath();
-    ctx.arc(cx, cy, cr, 0, Math.PI * 2);
-    ctx.strokeStyle = '#e2e8f0';
-    ctx.lineWidth = 3;
+    ctx.arc(cx, cy, cr + chamberPulse, 0, Math.PI * 2);
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 2.5;
     ctx.setLineDash([8, 6]);
     ctx.stroke();
     ctx.restore();
 
-    ctx.fillStyle = 'rgba(248, 250, 252, 0.6)';
+    // Chamber Radial Glow Fill
+    const chamberGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, cr);
+    chamberGrad.addColorStop(0, '#ffffff');
+    chamberGrad.addColorStop(0.85, '#f8fafc');
+    chamberGrad.addColorStop(1, '#f1f5f9');
+    ctx.fillStyle = chamberGrad;
     ctx.beginPath();
     ctx.arc(cx, cy, cr, 0, Math.PI * 2);
     ctx.fill();
 
+    // Chamber Title
     ctx.textAlign = 'center';
-    ctx.font = 'bold 13px Pretendard, sans-serif';
+    ctx.textBaseline = 'top';
+    ctx.font = 'bold 12px Pretendard, sans-serif';
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText('⚗️ 원자 & 소수 결합 챔버 (원형 안으로 드래그)', cx, cy - cr + 25);
+    ctx.fillText('⚗️ 원자 & 소수 조립 챔버 (원자를 끌어다 놓으세요)', cx, cy - cr + 14);
 
     // Check atoms inside chamber
-    const inside = activeAtoms.filter(a => Math.hypot(a.x - cx, a.y - cy) < cr - 10);
+    const inside = atoms.filter(a => Math.hypot(a.x - cx, a.y - cy) < cr - 10);
     const hCount = inside.filter(a => a.label === 'H').length;
     const oCount = inside.filter(a => a.label === 'O').length;
     const p2Count = inside.filter(a => a.label === '2').length;
     const p3Count = inside.filter(a => a.label === '3').length;
     const p5Count = inside.filter(a => a.label === '5').length;
+    const p7Count = inside.filter(a => a.label === '7').length;
 
-    // Chamber Result Banner
+    // Draw Bond lines between atoms inside chamber
+    if (inside.length >= 2) {
+      ctx.save();
+      for (let i = 0; i < inside.length; i++) {
+        for (let j = i + 1; j < inside.length; j++) {
+          const a1 = inside[i];
+          const a2 = inside[j];
+          ctx.beginPath();
+          ctx.moveTo(a1.x, a1.y);
+          ctx.lineTo(a2.x, a2.y);
+          ctx.strokeStyle = 'rgba(99, 102, 241, 0.45)';
+          ctx.lineWidth = 3;
+          ctx.setLineDash([4, 4]);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
+
+    // Chamber Combination Detection & Feedback Card
     let resultText = '';
     let resultSub = '';
+    let resultColor = '#4f46e5';
+
     if (hCount === 2 && oCount === 1) {
-      resultText = '💥 화학 결합: 물 분자 (H₂O) 형성!';
-      resultSub = '기본 원소인 수소(H)와 산소(O)가 결합하여 물질을 이룹니다.';
-    } else if (p2Count > 0 || p3Count > 0 || p5Count > 0) {
-      let val = Math.pow(2, p2Count) * Math.pow(3, p3Count) * Math.pow(5, p5Count);
-      let formula = [];
-      if (p2Count > 0) formula.push(p2Count === 1 ? '2' : `2^${p2Count}`);
-      if (p3Count > 0) formula.push(p3Count === 1 ? '3' : `3^${p3Count}`);
-      if (p5Count > 0) formula.push(p5Count === 1 ? '5' : `5^${p5Count}`);
-      resultText = `🔢 자연수 결합: ${val} = ${formula.join(' × ')}`;
-      resultSub = `자연수의 기본 원소인 소수(2, 3, 5)들이 곱해져 합성수 ${val}을 만듭니다!`;
+      const curKey = 'H2O';
+      if (lastComboKey !== curKey) {
+        spawnBondParticles(cx, cy, '#0284c7');
+        lastComboKey = curKey;
+      }
+      resultText = '💥 화학 결합 성공: 물 분자 (H₂O) 형성!';
+      resultSub = '수소(H) 원자 2개와 산소(O) 원자 1개가 결합하여 새로운 물질(물)을 이룹니다.';
+      resultColor = '#0284c7';
+    } else {
+      const primeInsideCount = p2Count + p3Count + p5Count + p7Count;
+      if (primeInsideCount >= 2) {
+        const val = Math.pow(2, p2Count) * Math.pow(3, p3Count) * Math.pow(5, p5Count) * Math.pow(7, p7Count);
+        const formula = [];
+        if (p2Count > 0) formula.push(p2Count === 1 ? '2' : `2^${p2Count}`);
+        if (p3Count > 0) formula.push(p3Count === 1 ? '3' : `3^${p3Count}`);
+        if (p5Count > 0) formula.push(p5Count === 1 ? '5' : `5^${p5Count}`);
+        if (p7Count > 0) formula.push(p7Count === 1 ? '7' : `7^${p7Count}`);
+
+        const curKey = `PRIME_${val}`;
+        if (lastComboKey !== curKey) {
+          spawnBondParticles(cx, cy, '#4f46e5');
+          lastComboKey = curKey;
+        }
+        resultText = `🔢 자연수 결합 성공: 합성수 ${val} = ${formula.join(' × ')}`;
+        resultSub = `자연수의 기본 원소인 소수들의 곱으로 합성수 ${val}이(가) 조립되었습니다!`;
+        resultColor = '#4f46e5';
+      } else if (inside.length === 1) {
+        lastComboKey = '';
+        resultText = `🔍 기본 원소 1개: [${inside[0].label}] (${inside[0].sub})`;
+        resultSub = '다른 원자를 함께 넣어 분자나 합성수를 조립해 보세요.';
+        resultColor = '#64748b';
+      } else {
+        lastComboKey = '';
+      }
     }
 
+    // Result Card rendering
     if (resultText) {
+      const cardW = Math.min(w - 40, 480);
+      const cardH = 48;
+      const cardY = cy + cr - 42;
+      ctx.save();
       ctx.fillStyle = '#ffffff';
-      ctx.strokeStyle = '#4f46e5';
+      ctx.strokeStyle = resultColor;
       ctx.lineWidth = 2;
+      ctx.shadowColor = resultColor;
+      ctx.shadowBlur = 10;
       ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(cx - 180, cy + cr - 45, 360, 50, 10) : ctx.rect(cx - 180, cy + cr - 45, 360, 50);
+      if (ctx.roundRect) ctx.roundRect(cx - cardW / 2, cardY, cardW, cardH, 8);
+      else ctx.rect(cx - cardW / 2, cardY, cardW, cardH);
       ctx.fill();
       ctx.stroke();
+      ctx.restore();
 
-      ctx.fillStyle = '#4f46e5';
-      ctx.font = 'bold 14px Pretendard, sans-serif';
-      ctx.fillText(resultText, cx, cy + cr - 26);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = resultColor;
+      ctx.font = 'bold 13px Pretendard, sans-serif';
+      ctx.fillText(resultText, cx, cardY + 16);
+
+      ctx.fillStyle = '#475569';
       ctx.font = '11px Pretendard, sans-serif';
-      ctx.fillStyle = '#64748b';
-      ctx.fillText(resultSub, cx, cy + cr - 10);
+      ctx.fillText(resultSub, cx, cardY + 34);
     }
 
-    // Atoms draw
-    activeAtoms.forEach(a => {
+    // Draw Particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life -= p.decay;
+      if (p.life <= 0) {
+        particles.splice(i, 1);
+        continue;
+      }
       ctx.save();
-      // Drop shadow
-      ctx.shadowColor = 'rgba(0,0,0,0.15)';
-      ctx.shadowBlur = 6;
-      ctx.shadowOffsetY = 3;
+      ctx.globalAlpha = p.life;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius * p.life, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Draw Atoms
+    atoms.forEach(a => {
+      ctx.save();
+      if (a.isDragging || a.isHovered) {
+        ctx.shadowColor = a.color;
+        ctx.shadowBlur = 12;
+      } else {
+        ctx.shadowColor = 'rgba(0,0,0,0.12)';
+        ctx.shadowBlur = 6;
+        ctx.shadowOffsetY = 2;
+      }
 
       ctx.fillStyle = a.color;
       ctx.beginPath();
@@ -2270,49 +2558,30 @@ function drawCanvas_0_2(container) {
       ctx.fill();
       ctx.restore();
 
+      // White outline
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(a.x, a.y, a.r, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Atom Label
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.font = 'bold 15px Pretendard, sans-serif';
+      ctx.font = 'bold 14px Pretendard, sans-serif';
       ctx.fillText(a.label, a.x, a.y);
     });
 
+    // Helper hint at the very bottom
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.font = '10px Pretendard, sans-serif';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('💡 H 2개 + O 1개 ➔ H₂O 결합 / 소수들을 모아 합성수(6=2×3, 12=2²×3 등)를 조립해 보세요.', w / 2, h - 2);
+
     animId = requestAnimationFrame(draw);
   }
-
-  // Pointer events
-  canvas.addEventListener('pointerdown', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-
-    for (let i = activeAtoms.length - 1; i >= 0; i--) {
-      const a = activeAtoms[i];
-      if (Math.hypot(mx - a.x, my - a.y) <= a.r) {
-        draggedAtom = a;
-        dragOffset.x = mx - a.x;
-        dragOffset.y = my - a.y;
-        canvas.setPointerCapture(e.pointerId);
-        break;
-      }
-    }
-  });
-
-  canvas.addEventListener('pointermove', (e) => {
-    if (!draggedAtom) return;
-    const rect = canvas.getBoundingClientRect();
-    draggedAtom.x = e.clientX - rect.left - dragOffset.x;
-    draggedAtom.y = e.clientY - rect.top - dragOffset.y;
-  });
-
-  const stopDrag = (e) => {
-    if (draggedAtom) {
-      if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(440, 'sine', 0.05);
-      draggedAtom = null;
-    }
-  };
-  canvas.addEventListener('pointerup', stopDrag);
-  canvas.addEventListener('pointercancel', stopDrag);
 
   draw();
 }
@@ -2320,31 +2589,52 @@ function drawCanvas_0_2(container) {
 function renderForm_0_2(box) {
   box.innerHTML = `
     <div class="card">
-      <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
-        ⚗️ 물질의 원소와 자연수의 구성 요소 비교 (p.7)
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+        <span style="background:#4f46e5; color:#ffffff; font-size:0.75rem; font-weight:800; padding:3px 9px; border-radius:6px;">생각열기</span>
+        <span style="font-weight:800; font-size:1.02rem; color:#1e293b;">물질 원소와 자연수의 구성 요소 비교 (p.7)</span>
       </div>
-      <p style="font-size:0.9rem; color:#475569; line-height:1.6; margin-bottom:14px;">
-        물질을 이루는 기본 구성 요소로 산소(O), 수소(H), 질소(N) 등이 있듯이,
-        자연수에서도 2, 3, 5, 7과 같이 <b>1보다 큰 자연수 중에서 1과 자기 자신만을 약수로 갖는 수</b>들이 모든 자연수의 곱셈을 이루는 기본 구성 요소가 됩니다.
-        이러한 수를 무엇이라고 부를까요?
-      </p>
-      <div style="margin-bottom:12px;">
-        <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">용어 입력:</label>
-        <input type="text" id="ans-0-2" class="form-control" placeholder="용어 입력" autocomplete="off">
+
+      <div style="background:#f1f5f9; border-left:4px solid #4f46e5; border-radius:8px; padding:12px 14px; margin-bottom:14px;">
+        <div style="font-weight:700; font-size:0.88rem; color:#334155; margin-bottom:6px;">
+          📖 교과서 본문 탐구 (교과서 p.7)
+        </div>
+        <p style="font-size:0.88rem; color:#475569; line-height:1.65; margin:0;">
+          물질을 이루는 기본 구성 요소로 <b>산소(O), 수소(H), 질소(N)</b> 등이 있듯이,
+          자연수에서도 <b>2, 3, 5, 7</b>과 같이 <b>1보다 큰 자연수 중에서 1과 자기 자신만을 약수로 갖는 수</b>들이 모든 자연수의 곱셈을 이루는 기본 구성 요소가 됩니다.
+        </p>
       </div>
-      <button class="btn btn-primary" onclick="checkStep_0_2()">정답 확인 및 채점</button>
+
+      <div style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:10px; padding:14px; margin-bottom:16px;">
+        <div style="font-size:0.92rem; font-weight:700; color:#1e293b; line-height:1.6; margin-bottom:12px;">
+          🔍 <b>센티넬 탐구 미션:</b><br>
+          물질의 원소처럼 더 이상 다른 자연수의 곱으로 쪼갤 수 없는, 자연수를 이루는 이러한 기본 구성 요소를 무엇이라고 부를까요?
+        </div>
+        <div style="margin-bottom:6px;">
+          <label for="input-0-2" style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">용어 입력:</label>
+          <input type="text" id="input-0-2" class="form-control" placeholder="용어 입력" autocomplete="off" onkeydown="if(event.key==='Enter') checkStep_0_2()">
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="checkStep_0_2()" style="width:100%; padding:10px 16px; font-size:0.92rem;">
+        정답 확인 및 채점
+      </button>
     </div>
   `;
 }
 
 function checkStep_0_2() {
-  const input = document.getElementById('ans-0-2');
+  const input = document.getElementById('input-0-2') || document.getElementById('ans-0-2');
   const val = input ? input.value : '';
   if (normTxt(val) === '소수') {
-    completeSubStep('0-2', '🎉 <b>정답입니다!</b> 물질의 기본 단위가 원소이듯, 자연수의 모든 수는 기본 단위인 <b>소수(Prime number)</b>들의 결합(곱)으로 이루어집니다.');
+    state.completedSteps.add('0-2');
+    if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+    showFeedback(true, '🎉 <b>정답입니다!</b> 물질의 기본 구성 단위가 원소이듯, 모든 자연수는 기본 벽돌인 <b>소수(Prime number)</b>들의 곱으로 조립됩니다.');
+    const nextBtn = document.getElementById('btn-next-step');
+    if (nextBtn) nextBtn.style.display = 'block';
+    if (typeof renderSubstepDropdown === 'function') renderSubstepDropdown();
   } else {
     if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-    showFeedback(false, '❌ <b>다시 생각해 보세요.</b> 1보다 큰 자연수 중 1과 자기 자신만을 약수로 갖는 2글자 수학 용어입니다.');
+    showFeedback(false, '❌ <b>다시 생각해 보세요.</b><br>💡 힌트: 1보다 큰 자연수 중 1과 자기 자신만을 약수로 갖는 2글자 수학 용어입니다.');
   }
 }
 
