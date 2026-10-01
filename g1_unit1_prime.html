@@ -4072,184 +4072,694 @@ function checkStep_0_4() {
 // 0-5 (p.9): 되짚어보기 2: 공약수와 최대공약수
 // -------------------------------------------------------------
 function drawCanvas_0_5(container) {
+  // 이전 애니메이션 루프 정리
+  if (container._animId_0_5) {
+    cancelAnimationFrame(container._animId_0_5);
+    container._animId_0_5 = null;
+  }
   container.innerHTML = '';
+
+  const wrapper = document.createElement('div');
+  wrapper.style.position = 'relative';
+  wrapper.style.width = '100%';
+  wrapper.style.height = '100%';
+  wrapper.style.minHeight = '420px';
+  wrapper.style.overflow = 'hidden';
+  wrapper.style.background = 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)';
+  wrapper.style.borderRadius = '12px';
+  wrapper.style.userSelect = 'none';
+  wrapper.style.webkitUserSelect = 'none';
+  container.appendChild(wrapper);
+
   const canvas = document.createElement('canvas');
-  canvas.width = container.clientWidth || 560;
-  canvas.height = container.clientHeight || 460;
+  canvas.style.display = 'block';
   canvas.style.width = '100%';
   canvas.style.height = '100%';
-  canvas.style.display = 'block';
-  container.appendChild(canvas);
+  canvas.style.touchAction = 'none';
+  wrapper.appendChild(canvas);
 
   const ctx = canvas.getContext('2d');
-  let currentPair = 'pair1'; // pair1: (12, 18), pair2: (45, 54)
 
-  function draw() {
-    const w = canvas.width;
-    const h = canvas.height;
-    ctx.clearRect(0, 0, w, h);
+  // 데이터 정의
+  const pairsData = {
+    pair1: {
+      label: '⑴ 12와 18',
+      numA: 12,
+      numB: 18,
+      divA: [1, 2, 3, 4, 6, 12],
+      divB: [1, 2, 3, 6, 9, 18],
+      common: [1, 2, 3, 6],
+      gcd: 6,
+      colorA: '#2563eb', // blue
+      colorB: '#db2777', // pink
+      bgA: 'rgba(37, 99, 235, 0.12)',
+      bgB: 'rgba(219, 39, 119, 0.12)',
+    },
+    pair2: {
+      label: '⑵ 45와 54',
+      numA: 45,
+      numB: 54,
+      divA: [1, 3, 5, 9, 15, 45],
+      divB: [1, 2, 3, 6, 9, 18, 27, 54],
+      common: [1, 3, 9],
+      gcd: 9,
+      colorA: '#2563eb',
+      colorB: '#db2777',
+      bgA: 'rgba(37, 99, 235, 0.12)',
+      bgB: 'rgba(219, 39, 119, 0.12)',
+    }
+  };
 
-    const is1 = (currentPair === 'pair1');
-    const numA = is1 ? 12 : 45;
-    const numB = is1 ? 18 : 54;
-    const divA = is1 ? [1, 2, 3, 4, 6, 12] : [1, 3, 5, 9, 15, 45];
-    const divB = is1 ? [1, 2, 3, 6, 9, 18] : [1, 2, 3, 6, 9, 18, 27, 54];
-    const common = is1 ? [1, 2, 3, 6] : [1, 3, 9];
-    const gcd = is1 ? 6 : 9;
-    const onlyA = divA.filter(x => !common.includes(x));
-    const onlyB = divB.filter(x => !common.includes(x));
+  let currentKey = 'pair1';
+  let curData = pairsData[currentKey];
 
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 15px Pretendard, sans-serif';
-    ctx.fillStyle = '#1e293b';
-    ctx.fillText(`⭕ 벤다이어그램 공약수와 최대공약수 (${numA}, ${numB})`, w / 2, 35);
+  // 기하학적 파라미터
+  let w = 560;
+  let h = 460;
+  let dpr = window.devicePixelRatio || 1;
+  let radius = 130;
+  let cy = 240;
+  let cxA = 190;
+  let cxB = 370;
 
-    // Two overlapping circles
-    const cy = h * 0.52;
-    const r = Math.min(w, h) * 0.32;
-    const cx1 = w / 2 - r * 0.55;
-    const cx2 = w / 2 + r * 0.55;
+  // 구슬 객체 목록
+  let beads = [];
 
-    // Circle A
-    ctx.fillStyle = 'rgba(59, 130, 246, 0.12)';
-    ctx.strokeStyle = '#3b82f6';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(cx1, cy, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+  function initBeads() {
+    beads = [];
+    const divA = curData.divA;
+    const divB = curData.divB;
+    const common = curData.common;
+    const gcd = curData.gcd;
 
-    // Circle B
-    ctx.fillStyle = 'rgba(236, 72, 153, 0.12)';
-    ctx.strokeStyle = '#ec4899';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(cx2, cy, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+    const allDivs = Array.from(new Set([...divA, ...divB])).sort((a, b) => a - b);
 
-    // Labels
-    ctx.fillStyle = '#1d4ed8';
-    ctx.font = 'bold 14px Pretendard, sans-serif';
-    ctx.fillText(`${numA}의 약수`, cx1 - 40, cy - r + 24);
+    allDivs.forEach(val => {
+      const isCom = common.includes(val);
+      const inA = divA.includes(val);
+      const inB = divB.includes(val);
+      let group = 'onlyA';
+      if (isCom) group = 'common';
+      else if (inB) group = 'onlyB';
 
-    ctx.fillStyle = '#be185d';
-    ctx.font = 'bold 14px Pretendard, sans-serif';
-    ctx.fillText(`${numB}의 약수`, cx2 + 40, cy - r + 24);
-
-    ctx.fillStyle = '#059669';
-    ctx.font = 'bold 13px Pretendard, sans-serif';
-    ctx.fillText('공약수 (교집합)', w / 2, cy - r + 24);
-
-    // Draw Numbers in Only A
-    onlyA.forEach((val, idx) => {
-      const angle = Math.PI + (idx - (onlyA.length - 1) / 2) * 0.45;
-      const nx = cx1 + Math.cos(angle) * (r * 0.55);
-      const ny = cy + Math.sin(angle) * (r * 0.55);
-      drawPill(nx, ny, String(val), '#3b82f6');
+      beads.push({
+        val,
+        group,
+        isGcd: (val === gcd),
+        x: group === 'onlyA' ? cxA - radius * 0.5 : (group === 'onlyB' ? cxB + radius * 0.5 : (cxA + cxB) / 2),
+        y: cy,
+        targetX: cxA,
+        targetY: cy,
+        radius: 17,
+        scale: 1.0,
+      });
     });
-
-    // Draw Numbers in Only B
-    onlyB.forEach((val, idx) => {
-      const angle = (idx - (onlyB.length - 1) / 2) * 0.45;
-      const nx = cx2 + Math.cos(angle) * (r * 0.55);
-      const ny = cy + Math.sin(angle) * (r * 0.55);
-      drawPill(nx, ny, String(val), '#ec4899');
-    });
-
-    // Draw Common Numbers in Intersection
-    common.forEach((val, idx) => {
-      const isGcd = (val === gcd);
-      const stepY = (idx - (common.length - 1) / 2) * 36;
-      const nx = w / 2;
-      const ny = cy + stepY;
-      drawPill(nx, ny, String(val), isGcd ? '#d97706' : '#059669', isGcd);
-    });
-
-    // Bottom Summary
-    ctx.fillStyle = '#0f172a';
-    ctx.font = 'bold 14px Pretendard, sans-serif';
-    ctx.fillText(`공약수: { ${common.join(', ')} }  ➔  최대공약수(GCD): ${gcd}`, w / 2, h - 35);
   }
 
-  function drawPill(x, y, text, color, isHighlight = false) {
-    ctx.save();
-    if (isHighlight) {
-      ctx.shadowColor = 'rgba(217, 119, 6, 0.4)';
-      ctx.shadowBlur = 8;
+  function resize() {
+    const rect = wrapper.getBoundingClientRect();
+    w = rect.width || 560;
+    h = rect.height || 460;
+    dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    radius = Math.min(w * 0.28, h * 0.35, 140);
+    cy = h * 0.52;
+    const defOffset = radius * 0.62;
+    cxA = (w / 2) - defOffset;
+    cxB = (w / 2) + defOffset;
+  }
+
+  resize();
+  initBeads();
+
+  // 인터랙션 상태
+  let dragTarget = null; // 'circleA' | 'circleB'
+  let dragOffset = 0;
+  let hoveredBead = null;
+  let pointerPos = { x: -100, y: -100 };
+
+  // 상단 컨트롤 바 생성 (UI)
+  const topBar = document.createElement('div');
+  topBar.style.position = 'absolute';
+  topBar.style.top = '10px';
+  topBar.style.left = '12px';
+  topBar.style.right = '12px';
+  topBar.style.display = 'flex';
+  topBar.style.justifyContent = 'space-between';
+  topBar.style.alignItems = 'center';
+  topBar.style.pointerEvents = 'none';
+  topBar.style.zIndex = '10';
+
+  const titleBadge = document.createElement('div');
+  titleBadge.style.display = 'inline-flex';
+  titleBadge.style.alignItems = 'center';
+  titleBadge.style.gap = '6px';
+  titleBadge.style.background = 'rgba(255, 255, 255, 0.9)';
+  titleBadge.style.backdropFilter = 'blur(6px)';
+  titleBadge.style.padding = '5px 12px';
+  titleBadge.style.borderRadius = '20px';
+  titleBadge.style.border = '1px solid #cbd5e1';
+  titleBadge.style.fontSize = '0.84rem';
+  titleBadge.style.fontWeight = '700';
+  titleBadge.style.color = '#1e293b';
+  titleBadge.innerHTML = '<span>⭕ <b>동적 벤다이어그램</b> (원을 드래그해 겹쳐보세요)</span>';
+
+  const btnGroup = document.createElement('div');
+  btnGroup.style.display = 'flex';
+  btnGroup.style.gap = '6px';
+  btnGroup.style.pointerEvents = 'auto';
+
+  const btnPair1 = document.createElement('button');
+  btnPair1.className = 'btn btn-primary';
+  btnPair1.style.padding = '5px 12px';
+  btnPair1.style.fontSize = '0.8rem';
+  btnPair1.style.fontWeight = '700';
+  btnPair1.style.borderRadius = '8px';
+  btnPair1.textContent = '⑴ 12와 18';
+
+  const btnPair2 = document.createElement('button');
+  btnPair2.className = 'btn';
+  btnPair2.style.background = '#ffffff';
+  btnPair2.style.border = '1px solid #cbd5e1';
+  btnPair2.style.color = '#334155';
+  btnPair2.style.padding = '5px 12px';
+  btnPair2.style.fontSize = '0.8rem';
+  btnPair2.style.fontWeight = '700';
+  btnPair2.style.borderRadius = '8px';
+  btnPair2.textContent = '⑵ 45와 54';
+
+  const btnReset = document.createElement('button');
+  btnReset.className = 'btn';
+  btnReset.style.background = '#ffffff';
+  btnReset.style.border = '1px solid #cbd5e1';
+  btnReset.style.color = '#475569';
+  btnReset.style.padding = '5px 10px';
+  btnReset.style.fontSize = '0.8rem';
+  btnReset.style.fontWeight = '600';
+  btnReset.style.borderRadius = '8px';
+  btnReset.textContent = '⟲ 다이어그램 리셋';
+
+  function updateTabs() {
+    if (currentKey === 'pair1') {
+      btnPair1.className = 'btn btn-primary';
+      btnPair1.style.background = '#4f46e5';
+      btnPair1.style.color = '#ffffff';
+      btnPair2.className = 'btn';
+      btnPair2.style.background = '#ffffff';
+      btnPair2.style.color = '#334155';
+    } else {
+      btnPair2.className = 'btn btn-primary';
+      btnPair2.style.background = '#4f46e5';
+      btnPair2.style.color = '#ffffff';
+      btnPair1.className = 'btn';
+      btnPair1.style.background = '#ffffff';
+      btnPair1.style.color = '#334155';
     }
-    ctx.fillStyle = isHighlight ? '#fef3c7' : '#ffffff';
-    ctx.strokeStyle = color;
-    ctx.lineWidth = isHighlight ? 3 : 1.5;
+  }
+
+  btnPair1.onclick = () => {
+    currentKey = 'pair1';
+    curData = pairsData.pair1;
+    updateTabs();
+    resize();
+    initBeads();
+    if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(520, 'sine', 0.08);
+  };
+
+  btnPair2.onclick = () => {
+    currentKey = 'pair2';
+    curData = pairsData.pair2;
+    updateTabs();
+    resize();
+    initBeads();
+    if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(580, 'sine', 0.08);
+  };
+
+  btnReset.onclick = () => {
+    const defOffset = radius * 0.62;
+    cxA = (w / 2) - defOffset;
+    cxB = (w / 2) + defOffset;
+    initBeads();
+    if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(440, 'sine', 0.08);
+  };
+
+  btnGroup.appendChild(btnPair1);
+  btnGroup.appendChild(btnPair2);
+  btnGroup.appendChild(btnReset);
+
+  topBar.appendChild(titleBadge);
+  topBar.appendChild(btnGroup);
+  wrapper.appendChild(topBar);
+
+  // 포인터 이벤트 핸들러
+  function getCanvasPos(e) {
+    const r = canvas.getBoundingClientRect();
+    return {
+      x: e.clientX - r.left,
+      y: e.clientY - r.top
+    };
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    const pos = getCanvasPos(e);
+    pointerPos = pos;
+
+    // 구슬 클릭 확인
+    let foundBead = null;
+    for (let i = beads.length - 1; i >= 0; i--) {
+      const b = beads[i];
+      if (Math.hypot(pos.x - b.x, pos.y - b.y) <= b.radius + 6) {
+        foundBead = b;
+        break;
+      }
+    }
+
+    if (foundBead) {
+      hoveredBead = foundBead;
+      if (window.SoundFX && window.SoundFX.playTone) {
+        SoundFX.playTone(foundBead.isGcd ? 784 : (foundBead.group === 'common' ? 659 : 523), 'sine', 0.06);
+      }
+      return;
+    }
+
+    // 원 드래그 타깃 선정
+    const dA = Math.hypot(pos.x - cxA, pos.y - cy);
+    const dB = Math.hypot(pos.x - cxB, pos.y - cy);
+
+    if (dA <= radius && dB <= radius) {
+      if (pos.x < (cxA + cxB) / 2) {
+        dragTarget = 'circleA';
+        dragOffset = pos.x - cxA;
+      } else {
+        dragTarget = 'circleB';
+        dragOffset = pos.x - cxB;
+      }
+    } else if (dA <= radius + 15) {
+      dragTarget = 'circleA';
+      dragOffset = pos.x - cxA;
+    } else if (dB <= radius + 15) {
+      dragTarget = 'circleB';
+      dragOffset = pos.x - cxB;
+    }
+
+    if (dragTarget) {
+      canvas.setPointerCapture(e.pointerId);
+      if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(400, 'triangle', 0.05);
+    }
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    const pos = getCanvasPos(e);
+    pointerPos = pos;
+
+    // 드래그 중인 경우 원 이동
+    if (dragTarget === 'circleA') {
+      const targetX = pos.x - dragOffset;
+      const minX = radius + 20;
+      const maxX = (w / 2) - 10;
+      cxA = Math.max(minX, Math.min(maxX, targetX));
+    } else if (dragTarget === 'circleB') {
+      const targetX = pos.x - dragOffset;
+      const minX = (w / 2) + 10;
+      const maxX = w - radius - 20;
+      cxB = Math.max(minX, Math.min(maxX, targetX));
+    }
+
+    // 호버 구슬 탐지
+    let hit = null;
+    for (let i = beads.length - 1; i >= 0; i--) {
+      const b = beads[i];
+      if (Math.hypot(pos.x - b.x, pos.y - b.y) <= b.radius + 6) {
+        hit = b;
+        break;
+      }
+    }
+    hoveredBead = hit;
+    canvas.style.cursor = dragTarget ? 'grabbing' : (hit ? 'pointer' : ((Math.hypot(pos.x - cxA, pos.y - cy) <= radius || Math.hypot(pos.x - cxB, pos.y - cy) <= radius) ? 'grab' : 'default'));
+  });
+
+  function endDrag(e) {
+    if (dragTarget) {
+      try { canvas.releasePointerCapture(e.pointerId); } catch (err) {}
+      dragTarget = null;
+    }
+  }
+
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
+
+  // 60fps 렌더 루프
+  const startTime = performance.now();
+
+  function animate(now) {
+    container._animId_0_5 = requestAnimationFrame(animate);
+
+    const elapsed = now - startTime;
+    const timeSec = elapsed * 0.001;
+
+    ctx.clearRect(0, 0, w, h);
+
+    const dist = cxB - cxA;
+    const isOverlapping = (dist < 2 * radius);
+    const overlapRatio = Math.max(0, Math.min(1, (2 * radius - dist) / (2 * radius)));
+
+    // 1. 배경 미세 격자
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 0.5;
+    const gridStep = 40;
+    for (let x = 0; x < w; x += gridStep) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+      ctx.stroke();
+    }
+    for (let y = 0; y < h; y += gridStep) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+
+    // 2. 원 A 베이스 채우기
+    ctx.save();
+    ctx.fillStyle = curData.bgA;
     ctx.beginPath();
-    ctx.arc(x, y, 16, 0, Math.PI * 2);
+    ctx.arc(cxA, cy, radius, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
+
+    // 원 B 베이스 채우기
+    ctx.save();
+    ctx.fillStyle = curData.bgB;
+    ctx.beginPath();
+    ctx.arc(cxB, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // 3. 교집합 영역 (에메랄드 펄싱 블렌딩)
+    if (isOverlapping && overlapRatio > 0.05) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cxA, cy, radius, 0, Math.PI * 2);
+      ctx.clip();
+
+      const pulseAlpha = 0.22 + 0.08 * Math.sin(timeSec * 3.5);
+      ctx.fillStyle = `rgba(16, 185, 129, ${pulseAlpha})`;
+      ctx.beginPath();
+      ctx.arc(cxB, cy, radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 교집합 내부 중앙 빛줄기 글로우
+      const midX = (cxA + cxB) / 2;
+      const glowGrad = ctx.createRadialGradient(midX, cy, 10, midX, cy, radius * 0.8);
+      glowGrad.addColorStop(0, `rgba(52, 211, 153, ${0.25 + 0.1 * Math.sin(timeSec * 3.5)})`);
+      glowGrad.addColorStop(1, 'rgba(52, 211, 153, 0)');
+      ctx.fillStyle = glowGrad;
+      ctx.fillRect(midX - radius, cy - radius, radius * 2, radius * 2);
+      ctx.restore();
+    }
+
+    // 4. 원 테두리 스트로크
+    ctx.save();
+    ctx.strokeStyle = curData.colorA;
+    ctx.lineWidth = dragTarget === 'circleA' ? 3.5 : 2.5;
+    if (dragTarget === 'circleA') {
+      ctx.shadowColor = 'rgba(37, 99, 235, 0.4)';
+      ctx.shadowBlur = 10;
+    }
+    ctx.beginPath();
+    ctx.arc(cxA, cy, radius, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
 
-    ctx.fillStyle = color;
-    ctx.font = isHighlight ? 'bold 15px Pretendard, sans-serif' : 'bold 13px Pretendard, sans-serif';
+    ctx.save();
+    ctx.strokeStyle = curData.colorB;
+    ctx.lineWidth = dragTarget === 'circleB' ? 3.5 : 2.5;
+    if (dragTarget === 'circleB') {
+      ctx.shadowColor = 'rgba(219, 39, 119, 0.4)';
+      ctx.shadowBlur = 10;
+    }
+    ctx.beginPath();
+    ctx.arc(cxB, cy, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // 5. 원 상단 라벨 & 드래그 가이드
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.font = 'bold 14px Pretendard, sans-serif';
+    ctx.fillStyle = curData.colorA;
+    ctx.fillText(`${curData.numA}의 약수`, cxA, cy - radius - 8);
+
+    ctx.font = '10px Pretendard, sans-serif';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText('◀ 좌우 드래그 ▶', cxA, cy - radius - 24);
+
+    ctx.font = 'bold 14px Pretendard, sans-serif';
+    ctx.fillStyle = curData.colorB;
+    ctx.fillText(`${curData.numB}의 약수`, cxB, cy - radius - 8);
+
+    ctx.font = '10px Pretendard, sans-serif';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText('◀ 좌우 드래그 ▶', cxB, cy - radius - 24);
+
+    if (isOverlapping && overlapRatio > 0.15) {
+      const midX = (cxA + cxB) / 2;
+      ctx.font = 'bold 13px Pretendard, sans-serif';
+      ctx.fillStyle = '#059669';
+      ctx.fillText('🌿 공약수 (교집합)', midX, cy - radius + 15);
+    }
+    ctx.restore();
+
+    // 6. 구슬 목표 위치 계산 & 스프링/lerp 물리
+    const onlyABeads = beads.filter(b => b.group === 'onlyA');
+    const onlyBBeads = beads.filter(b => b.group === 'onlyB');
+    const commonBeads = beads.filter(b => b.group === 'common');
+
+    onlyABeads.forEach((b, i) => {
+      const total = onlyABeads.length;
+      const angleSpan = Math.PI * 0.7;
+      const startAngle = Math.PI - angleSpan / 2;
+      const angle = total === 1 ? Math.PI : startAngle + (i / Math.max(1, total - 1)) * angleSpan;
+      const distFromCenter = radius * 0.52;
+      b.targetX = cxA + Math.cos(angle) * distFromCenter;
+      b.targetY = cy + Math.sin(angle) * distFromCenter;
+    });
+
+    onlyBBeads.forEach((b, i) => {
+      const total = onlyBBeads.length;
+      const angleSpan = Math.PI * 0.7;
+      const startAngle = -angleSpan / 2;
+      const angle = total === 1 ? 0 : startAngle + (i / Math.max(1, total - 1)) * angleSpan;
+      const distFromCenter = radius * 0.52;
+      b.targetX = cxB + Math.cos(angle) * distFromCenter;
+      b.targetY = cy + Math.sin(angle) * distFromCenter;
+    });
+
+    const midX = (cxA + cxB) / 2;
+    commonBeads.forEach((b, i) => {
+      const total = commonBeads.length;
+      if (isOverlapping && overlapRatio > 0.15) {
+        const spanY = Math.min(radius * 1.3, total * 38);
+        const startY = cy - spanY / 2 + 18;
+        const stepY = total > 1 ? (spanY - 36) / (total - 1) : 0;
+        b.targetX = midX;
+        b.targetY = total === 1 ? cy : startY + i * stepY;
+      } else {
+        const spanY = total * 34;
+        const startY = cy - spanY / 2;
+        b.targetX = midX;
+        b.targetY = total === 1 ? cy : startY + i * 34;
+      }
+    });
+
+    beads.forEach(b => {
+      b.x += (b.targetX - b.x) * 0.22;
+      b.y += (b.targetY - b.y) * 0.22;
+
+      const isHovered = (hoveredBead === b);
+      const targetScale = isHovered ? 1.25 : 1.0;
+      b.scale += (targetScale - b.scale) * 0.25;
+    });
+
+    // 7. 구슬 렌더링
+    beads.forEach(b => {
+      const r = b.radius * b.scale;
+      const isCom = (b.group === 'common');
+      const isGcd = b.isGcd;
+      const isHovered = (hoveredBead === b);
+
+      ctx.save();
+      if (isGcd && isCom && isOverlapping && overlapRatio > 0.15) {
+        const pulseR = r + 6 + 2 * Math.sin(timeSec * 5);
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, pulseR, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(245, 158, 11, 0.85)';
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([4, 3]);
+        ctx.stroke();
+
+        ctx.shadowColor = 'rgba(245, 158, 11, 0.6)';
+        ctx.shadowBlur = 12;
+      } else if (isHovered) {
+        ctx.shadowColor = 'rgba(15, 23, 42, 0.3)';
+        ctx.shadowBlur = 10;
+      }
+
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
+      if (isGcd && isCom && isOverlapping && overlapRatio > 0.15) {
+        const grad = ctx.createLinearGradient(b.x - r, b.y - r, b.x + r, b.y + r);
+        grad.addColorStop(0, '#fef3c7');
+        grad.addColorStop(1, '#fde68a');
+        ctx.fillStyle = grad;
+        ctx.strokeStyle = '#d97706';
+        ctx.lineWidth = 3;
+      } else if (isCom) {
+        ctx.fillStyle = '#ecfdf5';
+        ctx.strokeStyle = '#059669';
+        ctx.lineWidth = 2.5;
+      } else if (b.group === 'onlyA') {
+        ctx.fillStyle = '#eff6ff';
+        ctx.strokeStyle = curData.colorA;
+        ctx.lineWidth = 2;
+      } else {
+        ctx.fillStyle = '#fdf2f8';
+        ctx.strokeStyle = curData.colorB;
+        ctx.lineWidth = 2;
+      }
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `bold ${Math.round(13 * b.scale)}px Pretendard, sans-serif`;
+      if (isGcd && isCom && isOverlapping && overlapRatio > 0.15) {
+        ctx.fillStyle = '#92400e';
+      } else if (isCom) {
+        ctx.fillStyle = '#065f46';
+      } else if (b.group === 'onlyA') {
+        ctx.fillStyle = '#1e40af';
+      } else {
+        ctx.fillStyle = '#9d174d';
+      }
+      ctx.fillText(String(b.val), b.x, b.y);
+
+      if (isGcd && isCom && isOverlapping && overlapRatio > 0.15) {
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillText('👑', b.x, b.y - r - 8);
+
+        ctx.font = 'bold 9px Pretendard, sans-serif';
+        ctx.fillStyle = '#b45309';
+        ctx.fillText('최대공약수', b.x, b.y + r + 9);
+      }
+      ctx.restore();
+    });
+
+    // 8. 하단 실시간 상태 바
+    ctx.save();
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(text, x, y);
+    ctx.font = 'bold 13px Pretendard, sans-serif';
 
-    if (isHighlight) {
+    if (isOverlapping && overlapRatio > 0.15) {
+      ctx.fillStyle = '#0f172a';
+      ctx.fillText(`✨ 공약수: { ${curData.common.join(', ')} }  ➔  👑 최대공약수(GCD): ${curData.gcd}`, w / 2, h - 25);
+    } else {
+      ctx.fillStyle = '#dc2626';
+      ctx.fillText('⚠️ 두 원이 겹쳐져야 공약수가 교집합 영역으로 모여듭니다! 원을 안쪽으로 드래그해 보세요.', w / 2, h - 25);
+    }
+    ctx.restore();
+
+    // 9. 나눗셈 검증 툴팁 (Division Inspector Tooltip)
+    if (hoveredBead) {
+      const b = hoveredBead;
+      const v = b.val;
+      const nA = curData.numA;
+      const nB = curData.numB;
+      const isDivA = (nA % v === 0);
+      const isDivB = (nB % v === 0);
+      const resA = nA / v;
+      const resB = nB / v;
+
+      const lineTitle = `🔍 수 ${v} 나눗셈 검증`;
+      const lineA = `${nA} ÷ ${v} = ${isDivA ? resA : Math.floor(nA / v)} ${isDivA ? '(나누어떨어짐 ✓)' : `··· 나머지 ${nA % v} ✗`}`;
+      const lineB = `${nB} ÷ ${v} = ${isDivB ? resB : Math.floor(nB / v)} ${isDivB ? '(나누어떨어짐 ✓)' : `··· 나머지 ${nB % v} ✗`}`;
+      let lineResult = '';
+      let resColor = '#38bdf8';
+
+      if (isDivA && isDivB) {
+        if (b.isGcd) {
+          lineResult = `👑 공약수 중 가장 큰 수 ➔ 최대공약수(GCD)!`;
+          resColor = '#fbbf24';
+        } else {
+          lineResult = `🟢 두 수의 공통된 약수 ➔ 공약수!`;
+          resColor = '#34d399';
+        }
+      } else if (isDivA) {
+        lineResult = `🔵 ${nA}만의 약수 (${nB}는 나누어떨어지지 않음)`;
+        resColor = '#60a5fa';
+      } else {
+        lineResult = `🟣 ${nB}만의 약수 (${nA}는 나누어떨어지지 않음)`;
+        resColor = '#f472b6';
+      }
+
+      const tw = 250;
+      const th = 88;
+      let tx = b.x - tw / 2;
+      let ty = b.y - b.radius * b.scale - th - 12;
+      if (ty < 45) {
+        ty = b.y + b.radius * b.scale + 12;
+      }
+      tx = Math.max(10, Math.min(w - tw - 10, tx));
+
+      ctx.save();
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+      ctx.lineWidth = 1.5;
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+      ctx.shadowBlur = 12;
+
+      if (ctx.roundRect) {
+        ctx.beginPath();
+        ctx.roundRect(tx, ty, tw, th, 8);
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        ctx.fillRect(tx, ty, tw, th);
+        ctx.strokeRect(tx, ty, tw, th);
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 12px Pretendard, sans-serif';
+      ctx.fillText(lineTitle, tx + 12, ty + 10);
+
       ctx.font = '11px Pretendard, sans-serif';
-      ctx.fillText('👑', x, y - 22);
+      ctx.fillStyle = isDivA ? '#93c5fd' : '#cbd5e1';
+      ctx.fillText(lineA, tx + 12, ty + 28);
+
+      ctx.fillStyle = isDivB ? '#f9a8d4' : '#cbd5e1';
+      ctx.fillText(lineB, tx + 12, ty + 46);
+
+      ctx.font = 'bold 11px Pretendard, sans-serif';
+      ctx.fillStyle = resColor;
+      ctx.fillText(lineResult, tx + 12, ty + 66);
+
+      ctx.restore();
     }
   }
 
-  // Toggle buttons
-  const tabRow = document.createElement('div');
-  tabRow.style.position = 'absolute';
-  tabRow.style.top = '10px';
-  tabRow.style.right = '10px';
-  tabRow.style.display = 'flex';
-  tabRow.style.gap = '6px';
-  tabRow.style.zIndex = '20';
-
-  const b1 = document.createElement('button');
-  b1.className = 'btn btn-primary';
-  b1.style.padding = '4px 10px';
-  b1.style.fontSize = '0.8rem';
-  b1.textContent = '⑴ 12와 18';
-
-  const b2 = document.createElement('button');
-  b2.className = 'btn';
-  b2.style.background = '#ffffff';
-  b2.style.border = '1px solid #cbd5e1';
-  b2.style.padding = '4px 10px';
-  b2.style.fontSize = '0.8rem';
-  b2.textContent = '⑵ 45와 54';
-
-  b1.onclick = () => {
-    currentPair = 'pair1';
-    b1.className = 'btn btn-primary';
-    b1.style.background = '#4f46e5';
-    b1.style.color = '#ffffff';
-    b2.className = 'btn';
-    b2.style.background = '#ffffff';
-    b2.style.color = '#334155';
-    draw();
-    if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(550, 'sine', 0.08);
-  };
-
-  b2.onclick = () => {
-    currentPair = 'pair2';
-    b2.className = 'btn btn-primary';
-    b2.style.background = '#4f46e5';
-    b2.style.color = '#ffffff';
-    b1.className = 'btn';
-    b1.style.background = '#ffffff';
-    b1.style.color = '#334155';
-    draw();
-    if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(600, 'sine', 0.08);
-  };
-
-  tabRow.appendChild(b1);
-  tabRow.appendChild(b2);
-  container.appendChild(tabRow);
-  draw();
+  container._animId_0_5 = requestAnimationFrame(animate);
 }
 
 function renderForm_0_5(box) {
@@ -4263,38 +4773,60 @@ function renderForm_0_5(box) {
       </p>
 
       <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:14px;">
-        <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
-          <div style="font-weight:700; font-size:0.9rem; color:#1e293b; margin-bottom:6px;">⑴ 12와 18</div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <div style="background:#f8fafc; padding:12px 14px; border-radius:10px; border:1px solid #e2e8f0;">
+          <div style="font-weight:700; font-size:0.9rem; color:#1e293b; margin-bottom:8px;">
+            ⑴ 12와 18
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
             <div>
-              <label style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">공약수 (쉼표 구분):</label>
+              <label for="ans-0-5-1-cd" style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">
+                공약수 (쉼표 구분):
+              </label>
               <input type="text" id="ans-0-5-1-cd" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off">
             </div>
             <div>
-              <label style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">최대공약수:</label>
+              <label for="ans-0-5-1-gcd" style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">
+                최대공약수:
+              </label>
               <input type="text" id="ans-0-5-1-gcd" class="form-control" placeholder="수 입력" autocomplete="off">
             </div>
           </div>
         </div>
 
-        <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
-          <div style="font-weight:700; font-size:0.9rem; color:#1e293b; margin-bottom:6px;">⑵ 45와 54</div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <div style="background:#f8fafc; padding:12px 14px; border-radius:10px; border:1px solid #e2e8f0;">
+          <div style="font-weight:700; font-size:0.9rem; color:#1e293b; margin-bottom:8px;">
+            ⑵ 45와 54
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
             <div>
-              <label style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">공약수 (쉼표 구분):</label>
+              <label for="ans-0-5-2-cd" style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">
+                공약수 (쉼표 구분):
+              </label>
               <input type="text" id="ans-0-5-2-cd" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off">
             </div>
             <div>
-              <label style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">최대공약수:</label>
+              <label for="ans-0-5-2-gcd" style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">
+                최대공약수:
+              </label>
               <input type="text" id="ans-0-5-2-gcd" class="form-control" placeholder="수 입력" autocomplete="off">
             </div>
           </div>
         </div>
       </div>
 
-      <button class="btn btn-primary" onclick="checkStep_0_5()">정답 확인 및 채점</button>
+      <button class="btn btn-primary" onclick="checkStep_0_5()" style="width:100%;">정답 확인 및 채점</button>
     </div>
   `;
+
+  // Enter 키 이벤트 연동
+  const inputs = box.querySelectorAll('input[type="text"]');
+  inputs.forEach(input => {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        checkStep_0_5();
+      }
+    });
+  });
 }
 
 function checkStep_0_5() {
@@ -4307,13 +4839,17 @@ function checkStep_0_5() {
   const ok2 = areListsEqual(cd2, [1, 3, 9]) && (gcd2 === '9');
 
   if (ok1 && ok2) {
-    completeSubStep('0-5', '🎉 <b>모두 정답입니다!</b> 12와 18의 공약수(1, 2, 3, 6)와 최대공약수(6), 45와 54의 공약수(1, 3, 9)와 최대공약수(9)를 정확히 구했습니다.');
+    completeSubStep('0-5', '🎉 <b>모두 정답입니다!</b> 12와 18의 공약수(1, 2, 3, 6)와 최대공약수(6), 45와 54의 공약수(1, 3, 9)와 최대공약수(9)를 완벽하게 도출하였습니다.');
+    const nextBtn = document.getElementById('btn-next-step');
+    if (nextBtn) {
+      nextBtn.style.display = 'inline-flex';
+    }
   } else {
     let wrong = [];
     if (!ok1) wrong.push('⑴ 12와 18');
     if (!ok2) wrong.push('⑵ 45와 54');
     if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-    showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>공약수 목록과 그중 가장 큰 최대공약수를 확인해 보세요.`);
+    showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>왼쪽 벤다이어그램에서 두 원을 겹쳐 교집합에 모이는 공약수와 그중 가장 큰 최대공약수(👑)를 확인해 보세요.`);
   }
 }
 
