@@ -18992,60 +18992,410 @@ function checkStep_1_12() {
     // 2-13 (p.17): 스스로 확인하기 2: 소인수분해하기
     // -------------------------------------------------------------
     function drawCanvas_2_13(container) {
+      if (container._animId_2_13) {
+        cancelAnimationFrame(container._animId_2_13);
+      }
       container.innerHTML = '';
-      const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 560;
-      canvas.height = container.clientHeight || 460;
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      canvas.style.display = 'block';
-      container.appendChild(canvas);
 
+      const wrapper = document.createElement('div');
+      wrapper.style.display = 'flex';
+      wrapper.style.flexDirection = 'column';
+      wrapper.style.height = '100%';
+      wrapper.style.width = '100%';
+
+      wrapper.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; gap:5px; flex-wrap:wrap;">
+            <button id="btn-2-13-tab-0" class="btn btn-sm btn-primary tab-2-13-btn" data-idx="0" style="font-weight:700; border-radius:6px; font-size:0.8rem;">⑴ 34</button>
+            <button id="btn-2-13-tab-1" class="btn btn-sm btn-outline-secondary tab-2-13-btn" data-idx="1" style="font-weight:700; border-radius:6px; font-size:0.8rem;">⑵ 75</button>
+            <button id="btn-2-13-tab-2" class="btn btn-sm btn-outline-secondary tab-2-13-btn" data-idx="2" style="font-weight:700; border-radius:6px; font-size:0.8rem;">⑶ 96</button>
+            <button id="btn-2-13-tab-3" class="btn btn-sm btn-outline-secondary tab-2-13-btn" data-idx="3" style="font-weight:700; border-radius:6px; font-size:0.8rem;">⑷ 120</button>
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button id="btn-2-13-step" class="btn btn-sm btn-outline-primary" style="font-weight:700; border-radius:6px; font-size:0.8rem;">⏩ 다음 소수로 분해</button>
+            <button id="btn-2-13-fill" class="btn btn-sm btn-outline-warning" style="font-weight:700; color:#d97706; border-color:#f59e0b; border-radius:6px; font-size:0.8rem;">⚡ 전체 분해 완성</button>
+            <button id="btn-2-13-reset" class="btn btn-sm btn-outline-secondary" style="font-weight:600; border-radius:6px; font-size:0.8rem;">⟲ 초기화</button>
+          </div>
+          <div id="badge-2-13-status" style="font-size:0.82rem; font-weight:700; color:#475569; background:#f1f5f9; padding:4px 10px; border-radius:12px; border:1px solid #e2e8f0; width:100%; margin-top:2px;">
+            ⑴ 34의 L자 소인수분해입니다. [다음 소수로 분해]를 눌러 몫이 소수가 될 때까지 나누어 보세요!
+          </div>
+        </div>
+        <div style="flex:1; min-height:380px; position:relative;">
+          <canvas style="width:100%; height:100%; display:block; border-radius:12px; background:#f8fafc; border:1px solid #e2e8f0;"></canvas>
+        </div>
+      `;
+
+      container.appendChild(wrapper);
+
+      const canvas = wrapper.querySelector('canvas');
       const ctx = canvas.getContext('2d');
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
+      const badgeStatus = wrapper.querySelector('#badge-2-13-status');
+      const tabBtns = wrapper.querySelectorAll('.tab-2-13-btn');
+      const btnStep = wrapper.querySelector('#btn-2-13-step');
+      const btnFill = wrapper.querySelector('#btn-2-13-fill');
+      const btnReset = wrapper.querySelector('#btn-2-13-reset');
 
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 15px Pretendard, sans-serif';
-      ctx.fillStyle = '#1e293b';
-      ctx.fillText('🌲 [스스로 확인하기 2] 다음 수를 소인수분해하기 (p.17)', w / 2, 35);
+      let w = 560;
+      let h = 430;
 
-      const items = [
-        { num: '⑴ 34', res: '2 × 17' },
-        { num: '⑵ 75', res: '3 × 5²' },
-        { num: '⑶ 96', res: '2⁵ × 3' },
-        { num: '⑷ 120', res: '2³ × 3 × 5' }
+      const problemData = [
+        {
+          idx: 0,
+          label: '⑴ 34',
+          title: '⑴ 34의 L자 연속 나눗셈 소인수분해',
+          target: 34,
+          steps: [
+            { divisor: 2, quotient: 17, isPrimeQuotient: true }
+          ],
+          resultFormula: '34 = 2 × 17'
+        },
+        {
+          idx: 1,
+          label: '⑵ 75',
+          title: '⑵ 75의 L자 연속 나눗셈 소인수분해',
+          target: 75,
+          steps: [
+            { divisor: 3, quotient: 25, isPrimeQuotient: false },
+            { divisor: 5, quotient: 5, isPrimeQuotient: true }
+          ],
+          resultFormula: '75 = 3 × 5²'
+        },
+        {
+          idx: 2,
+          label: '⑶ 96',
+          title: '⑶ 96의 L자 연속 나눗셈 소인수분해',
+          target: 96,
+          steps: [
+            { divisor: 2, quotient: 48, isPrimeQuotient: false },
+            { divisor: 2, quotient: 24, isPrimeQuotient: false },
+            { divisor: 2, quotient: 12, isPrimeQuotient: false },
+            { divisor: 2, quotient: 6, isPrimeQuotient: false },
+            { divisor: 2, quotient: 3, isPrimeQuotient: true }
+          ],
+          resultFormula: '96 = 2⁵ × 3'
+        },
+        {
+          idx: 3,
+          label: '⑷ 120',
+          title: '⑷ 120의 L자 연속 나눗셈 소인수분해',
+          target: 120,
+          steps: [
+            { divisor: 2, quotient: 60, isPrimeQuotient: false },
+            { divisor: 2, quotient: 30, isPrimeQuotient: false },
+            { divisor: 2, quotient: 15, isPrimeQuotient: false },
+            { divisor: 3, quotient: 5, isPrimeQuotient: true }
+          ],
+          resultFormula: '120 = 2³ × 3 × 5'
+        }
       ];
 
-      const cardW = (w - 60) / 2;
-      const cardH = 130;
+      let currentTab = 0;
+      let curSteps = [0, 0, 0, 0];
+      let celebrations = [false, false, false, false];
+      let particles = [];
 
-      items.forEach((it, idx) => {
-        const col = idx % 2;
-        const row = Math.floor(idx / 2);
-        const x = 20 + col * (cardW + 20);
-        const y = 65 + row * (cardH + 20);
+      function createConfetti() {
+        const colors = ['#f59e0b', '#ef4444', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
+        for (let i = 0; i < 50; i++) {
+          particles.push({
+            x: w * 0.5 + (Math.random() - 0.5) * 160,
+            y: h * 0.45 + (Math.random() - 0.5) * 60,
+            vx: (Math.random() - 0.5) * 10,
+            vy: -Math.random() * 8 - 4,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.012
+          });
+        }
+      }
+
+      function resize() {
+        w = canvas.clientWidth || 560;
+        h = canvas.clientHeight || 430;
+        canvas.width = w;
+        canvas.height = h;
+      }
+      resize();
+
+      function selectTab(idx) {
+        currentTab = idx;
+        tabBtns.forEach((btn, i) => {
+          if (i === idx) btn.className = 'btn btn-sm btn-primary tab-2-13-btn';
+          else btn.className = 'btn btn-sm btn-outline-secondary tab-2-13-btn';
+        });
+        const prob = problemData[idx];
+        const total = prob.steps.length;
+        if (curSteps[idx] >= total) {
+          badgeStatus.innerHTML = `🎉 ${prob.label} 소인수분해 완료: <b>${prob.resultFormula}</b>`;
+        } else {
+          badgeStatus.innerHTML = `${prob.label}의 L자 소인수분해입니다. [다음 소수로 분해]를 눌러보세요!`;
+        }
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      }
+
+      tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = parseInt(btn.getAttribute('data-idx'), 10);
+          selectTab(idx);
+        });
+      });
+
+      btnStep.addEventListener('click', () => {
+        const prob = problemData[currentTab];
+        const total = prob.steps.length;
+        if (curSteps[currentTab] < total) {
+          curSteps[currentTab]++;
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          if (curSteps[currentTab] === total) {
+            if (!celebrations[currentTab]) {
+              celebrations[currentTab] = true;
+              createConfetti();
+              if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+            }
+            badgeStatus.innerHTML = `🎉 ${prob.label} 소인수분해 완성! ➔ <b>${prob.resultFormula}</b>`;
+          } else {
+            const curDiv = prob.steps[curSteps[currentTab] - 1].divisor;
+            badgeStatus.innerHTML = `소수 ${curDiv}(으)로 나누었습니다. 진행: ${curSteps[currentTab]}/${total}단계`;
+          }
+        }
+      });
+
+      btnFill.addEventListener('click', () => {
+        const prob = problemData[currentTab];
+        curSteps[currentTab] = prob.steps.length;
+        if (!celebrations[currentTab]) {
+          celebrations[currentTab] = true;
+          createConfetti();
+          if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        } else {
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        }
+        badgeStatus.innerHTML = `⚡ ${prob.label} 소인수분해가 전체 완성되었습니다! ➔ <b>${prob.resultFormula}</b>`;
+      });
+
+      btnReset.addEventListener('click', () => {
+        curSteps[currentTab] = 0;
+        celebrations[currentTab] = false;
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        badgeStatus.innerHTML = '초기화되었습니다. [다음 소수로 분해]를 눌러보세요.';
+      });
+
+      window._step2_13_completeAll = function() {
+        for (let i = 0; i < 4; i++) {
+          curSteps[i] = problemData[i].steps.length;
+          celebrations[i] = true;
+        }
+        createConfetti();
+        if (badgeStatus) badgeStatus.innerHTML = '🎉 정답! 4개 수의 소인수분해가 모두 완성되었습니다!';
+      };
+
+      function render() {
+        ctx.clearRect(0, 0, w, h);
+
+        const prob = problemData[currentTab];
+        const total = prob.steps.length;
+        const cur = curSteps[currentTab];
 
         ctx.save();
-        ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = '#cbd5e1';
-        ctx.lineWidth = 1.5;
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`🌲 ${prob.title} (p.17)`, w / 2, 24);
+
+        ctx.fillStyle = '#475569';
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillText('나누어떨어지는 가장 작은 소수로 몫이 소수가 될 때까지 계속 나눕니다.', w / 2, 44);
+        ctx.restore();
+
+        const startX = Math.max(30, w * 0.16);
+        const startY = 70;
+        const rowH = 38;
+        const lWidth = 90;
+
+        let currentDividend = prob.target;
+
+        ctx.save();
+        ctx.font = 'bold 16px Pretendard, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText(currentDividend, startX + 50, startY + 18);
+
+        for (let i = 0; i < cur; i++) {
+          const step = prob.steps[i];
+          const y = startY + i * rowH;
+
+          ctx.strokeStyle = '#6366f1';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(startX + 22, y + 5);
+          ctx.lineTo(startX + 22, y + 33);
+          ctx.lineTo(startX + 22 + lWidth, y + 33);
+          ctx.stroke();
+
+          ctx.fillStyle = '#ede9fe';
+          ctx.beginPath();
+          ctx.arc(startX + 6, y + 18, 14, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#818cf8';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          ctx.fillStyle = '#4338ca';
+          ctx.font = 'bold 14px Pretendard, sans-serif';
+          ctx.fillText(step.divisor, startX + 6, y + 18);
+
+          const nextY = y + rowH;
+          const isLast = (i === total - 1);
+
+          if (isLast && step.isPrimeQuotient) {
+            ctx.fillStyle = '#d1fae5';
+            ctx.beginPath();
+            ctx.arc(startX + 50, nextY + 18, 16, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            ctx.fillStyle = '#065f46';
+            ctx.font = 'bold 15px Pretendard, sans-serif';
+            ctx.fillText(step.quotient, startX + 50, nextY + 18);
+
+            ctx.font = 'bold 10px Pretendard, sans-serif';
+            ctx.fillStyle = '#059669';
+            ctx.fillText('소수 완료!', startX + 50 + 44, nextY + 18);
+
+          } else {
+            ctx.fillStyle = '#1e293b';
+            ctx.font = 'bold 15px Pretendard, sans-serif';
+            ctx.fillText(step.quotient, startX + 50, nextY + 18);
+          }
+        }
+        ctx.restore();
+
+        const rightX = w - Math.min(230, w * 0.45);
+        const rightY = 70;
+        const rightW = Math.min(210, w * 0.42);
+        const isDone = (cur === total);
+
+        ctx.save();
+        ctx.fillStyle = isDone ? '#eff6ff' : '#f8fafc';
+        ctx.strokeStyle = isDone ? '#3b82f6' : '#cbd5e1';
+        ctx.lineWidth = isDone ? 2 : 1;
         ctx.beginPath();
-        ctx.roundRect ? ctx.roundRect(x, y, cardW, cardH, 10) : ctx.rect(x, y, cardW, cardH);
+        if (ctx.roundRect) ctx.roundRect(rightX, rightY, rightW, 180, 10);
+        else ctx.rect(rightX, rightY, rightW, 180);
         ctx.fill();
         ctx.stroke();
 
-        ctx.textAlign = 'left';
-        ctx.font = 'bold 16px Pretendard, sans-serif';
-        ctx.fillStyle = '#4f46e5';
-        ctx.fillText(it.num, x + 16, y + 36);
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#1e3a8a';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.fillText('🔍 소인수 곱셈 전개', rightX + rightW / 2, rightY + 26);
 
-        ctx.font = 'bold 18px Pretendard, sans-serif';
-        ctx.fillStyle = '#059669';
-        ctx.fillText(`➔ ${it.res}`, x + 16, y + 85);
+        const extractedPrimes = [];
+        for (let i = 0; i < cur; i++) {
+          extractedPrimes.push(prob.steps[i].divisor);
+        }
+        if (isDone && prob.steps[total - 1].isPrimeQuotient) {
+          extractedPrimes.push(prob.steps[total - 1].quotient);
+        }
+
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillStyle = '#475569';
+        ctx.fillText('추출된 소수들:', rightX + rightW / 2, rightY + 58);
+
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.fillStyle = '#4338ca';
+        if (extractedPrimes.length > 0) {
+          ctx.fillText(extractedPrimes.join(' × '), rightX + rightW / 2, rightY + 86);
+        } else {
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText('(분해 대기 중)', rightX + rightW / 2, rightY + 86);
+        }
+
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(rightX + 15, rightY + 110);
+        ctx.lineTo(rightX + rightW - 15, rightY + 110);
+        ctx.stroke();
+
+        ctx.font = 'bold 12px Pretendard, sans-serif';
+        ctx.fillStyle = isDone ? '#1e40af' : '#64748b';
+        ctx.fillText('거듭제곱 소인수분해 결과:', rightX + rightW / 2, rightY + 132);
+
+        ctx.font = 'bold 16px Pretendard, sans-serif';
+        if (isDone) {
+          ctx.fillStyle = '#059669';
+          ctx.fillText(prob.resultFormula, rightX + rightW / 2, rightY + 158);
+        } else {
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText('? = ...', rightX + rightW / 2, rightY + 158);
+        }
         ctx.restore();
-      });
+
+        const summaryY = 325;
+        ctx.save();
+        const sumW = w - 40;
+        const sumX = 20;
+        ctx.fillStyle = isDone ? '#ecfdf5' : '#f8fafc';
+        ctx.strokeStyle = isDone ? '#10b981' : '#e2e8f0';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(sumX, summaryY, sumW, 58, 8);
+        else ctx.rect(sumX, summaryY, sumW, 58);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        if (isDone) {
+          ctx.fillStyle = '#065f46';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.fillText(`✨ ${prob.label} 소인수분해 완성!`, w / 2, summaryY + 22);
+
+          ctx.fillStyle = '#059669';
+          ctx.font = 'bold 16px Pretendard, sans-serif';
+          ctx.fillText(prob.resultFormula, w / 2, summaryY + 44);
+        } else {
+          ctx.fillStyle = '#64748b';
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillText(`현재 진행: ${cur}/${total}단계. [⏩ 다음 소수로 분해]를 눌러보세요.`, w / 2, summaryY + 32);
+        }
+        ctx.restore();
+
+        if (particles.length > 0) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.22;
+            p.rot += p.vRot;
+            p.life -= p.decay;
+
+            if (p.life <= 0) {
+              particles.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+            ctx.restore();
+          }
+        }
+
+        container._animId_2_13 = requestAnimationFrame(render);
+      }
+
+      render();
     }
 
     function renderForm_2_13(box) {
@@ -19058,33 +19408,60 @@ function checkStep_1_12() {
             다음 수를 소인수분해하시오. (거듭제곱 꼴로 입력)
           </p>
 
+          <!-- 거듭제곱 퀵 입력 바 -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; background:#f1f5f9; padding:8px 10px; border-radius:8px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; line-height:28px;">기호 입력:</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert" data-char="^" style="font-weight:700; min-width:32px;">^</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert" data-char="²" style="font-weight:700; min-width:32px;">²</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert" data-char="³" style="font-weight:700; min-width:32px;">³</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert" data-char="⁵" style="font-weight:700; min-width:32px;">⁵</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert" data-char="×" style="font-weight:700; min-width:32px;">×</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert" data-char="*" style="font-weight:700; min-width:32px;">*</button>
+          </div>
+
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;">
-            <div style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
-              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑴ 34:</label>
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑴ 34 =</label>
               <input type="text" id="ans-2-13-1" class="form-control" placeholder="거듭제곱 식 입력" autocomplete="off">
             </div>
-            <div style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
-              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑵ 75:</label>
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑵ 75 =</label>
               <input type="text" id="ans-2-13-2" class="form-control" placeholder="거듭제곱 식 입력" autocomplete="off">
             </div>
-            <div style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
-              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑶ 96:</label>
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑶ 96 =</label>
               <input type="text" id="ans-2-13-3" class="form-control" placeholder="거듭제곱 식 입력" autocomplete="off">
             </div>
-            <div style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
-              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑷ 120:</label>
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑷ 120 =</label>
               <input type="text" id="ans-2-13-4" class="form-control" placeholder="거듭제곱 식 입력" autocomplete="off">
             </div>
           </div>
 
-          <button class="btn btn-primary" onclick="checkStep_2_13()" style="width:100%;">정답 확인 및 채점</button>
+          <button class="btn btn-primary" onclick="checkStep_2_13()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
 
+      let lastFocusedInput = box.querySelector('#ans-2-13-1');
+
       const inputs = box.querySelectorAll('input[type="text"]');
       inputs.forEach(input => {
+        input.addEventListener('focus', () => {
+          lastFocusedInput = input;
+        });
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') checkStep_2_13();
+        });
+      });
+
+      box.querySelectorAll('.btn-pow-insert').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const char = btn.getAttribute('data-char');
+          if (lastFocusedInput) {
+            lastFocusedInput.value += char;
+            lastFocusedInput.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
         });
       });
     }
@@ -19096,17 +19473,20 @@ function checkStep_1_12() {
       const ok4 = comparePowerMaps(parsePowerProduct(document.getElementById('ans-2-13-4')?.value), { 2: 3, 3: 1, 5: 1 });
 
       if (ok1 && ok2 && ok3 && ok4) {
-        completeSubStep('2-13', '🎉 <b>모두 정답입니다!</b> 34 = 2 × 17, 75 = 3 × 5², 96 = 2⁵ × 3, 120 = 2³ × 3 × 5로 완벽하게 소인수분해했습니다.');
+        if (window._step2_13_completeAll) {
+          window._step2_13_completeAll();
+        }
+        completeSubStep('2-13', '🎉 <b>모두 정답입니다!</b><br>⑴ 34 = <b>2 × 17</b><br>⑵ 75 = <b>3 × 5²</b><br>⑶ 96 = <b>2⁵ × 3</b><br>⑷ 120 = <b>2³ × 3 × 5</b>');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         let wrong = [];
-        if (!ok1) wrong.push('⑴ 34');
-        if (!ok2) wrong.push('⑵ 75');
-        if (!ok3) wrong.push('⑶ 96');
-        if (!ok4) wrong.push('⑷ 120');
+        if (!ok1) wrong.push('⑴ 34 (2로 나누어 17)');
+        if (!ok2) wrong.push('⑵ 75 (3으로 나누고 5로 2번 나눔)');
+        if (!ok3) wrong.push('⑶ 96 (2로 5번 나누고 3)');
+        if (!ok4) wrong.push('⑷ 120 (2로 3번 나누고 3, 5)');
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>소수로 끝까지 나눈 후 거듭제곱으로 나타내 보세요.`);
+        showFeedback(false, `❌ <b>오답 항목이 있습니다:</b><br>• ${wrong.join('<br>• ')}<br>거듭제곱을 사용하여 곱셈식 형태로 입력해 보세요.`);
       }
     }
 
