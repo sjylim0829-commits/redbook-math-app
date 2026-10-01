@@ -30094,34 +30094,723 @@ function checkStep_1_12() {
     }
 
     // 3-15 (p.21): 스스로 확인하기 6: 나머지와 최대공약수
-    function drawCanvas_3_15(container) { createDefaultCanvas_3(container, '🎨 [3-15] 나머지가 있는 나눗셈과 최대공약수'); }
+    function drawCanvas_3_15(container) {
+      if (container._animId_3_15) {
+        cancelAnimationFrame(container._animId_3_15);
+        container._animId_3_15 = null;
+      }
+      container.innerHTML = '';
+
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; height:100%; box-sizing:border-box;">
+          <!-- 상단 컨트롤러 및 상태 안내 바 -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+            <div id="badge-3-15" style="font-size:0.86rem; font-weight:700; color:#1e293b; background:#f1f5f9; padding:6px 14px; border-radius:20px; border:1px solid #cbd5e1; flex:1; min-width:240px;">
+              버튼을 클릭하여 나머지를 덜어내고 세 수의 최대공약수를 구하는 과정을 확인해 보세요!
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button id="btn-sub-3-15" class="btn btn-sm btn-outline-primary" style="font-weight:700;">➊ 나머지 덜어내기</button>
+              <button id="btn-factor-3-15" class="btn btn-sm btn-outline-primary" style="font-weight:700;">➋ 세 수 소인수분해 세로셈</button>
+              <button id="btn-extract-3-15" class="btn btn-sm btn-outline-primary" style="font-weight:700;">➌ 공통 소인수 추출</button>
+              <button id="btn-verify-3-15" class="btn btn-sm btn-warning" style="font-weight:800; color:#1e293b;">⚡ 최대공약수 15 & 검산</button>
+              <button id="btn-reset-3-15" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">⟲ 초기화</button>
+            </div>
+          </div>
+          <!-- Canvas 렌더링 영역 -->
+          <div style="flex:1; min-height:370px; position:relative;">
+            <canvas id="canvas-3-15" style="width:100%; height:100%; display:block; border-radius:12px; background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); border:1px solid #e2e8f0;"></canvas>
+          </div>
+        </div>
+      `;
+
+      const canvas = container.querySelector('#canvas-3-15');
+      const badgeStatus = container.querySelector('#badge-3-15');
+      const btnSub = container.querySelector('#btn-sub-3-15');
+      const btnFactor = container.querySelector('#btn-factor-3-15');
+      const btnExtract = container.querySelector('#btn-extract-3-15');
+      const btnVerify = container.querySelector('#btn-verify-3-15');
+      const btnReset = container.querySelector('#btn-reset-3-15');
+
+      const ctx = canvas.getContext('2d');
+      let w = 560, h = 400;
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        w = rect.width || 560;
+        h = rect.height || 400;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+
+      const ro = new ResizeObserver(() => {
+        resize();
+      });
+      ro.observe(canvas);
+
+      // 모드: 0: 초기, 1: 나머지 덜어내기, 2: 소인수분해 세로셈, 3: 공통소인수 추출, 4: 합성 및 검산
+      let currentMode = 0;
+      let particles = [];
+      let hoveredCol = null;
+
+      function spawnConfetti(count = 60) {
+        const colors = ['#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#f43f5e'];
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: w / 2 + (Math.random() - 0.5) * 140,
+            y: 195 + (Math.random() - 0.5) * 40,
+            vx: (Math.random() - 0.5) * 11,
+            vy: (Math.random() - 0.85) * 10 - 2,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.01
+          });
+        }
+      }
+
+      function setMode(mode) {
+        currentMode = mode;
+
+        if (btnSub) btnSub.className = `btn btn-sm ${mode === 1 ? 'btn-primary' : 'btn-outline-primary'}`;
+        if (btnFactor) btnFactor.className = `btn btn-sm ${mode === 2 ? 'btn-primary' : 'btn-outline-primary'}`;
+        if (btnExtract) btnExtract.className = `btn btn-sm ${mode === 3 ? 'btn-primary' : 'btn-outline-primary'}`;
+        if (btnVerify) btnVerify.className = `btn btn-sm ${mode === 4 ? 'btn-warning text-dark font-weight-bold' : 'btn-warning text-dark'}`;
+
+        if (badgeStatus) {
+          if (mode === 0) {
+            badgeStatus.innerText = '버튼을 클릭하여 나머지를 덜어내고 세 수의 최대공약수를 구하는 과정을 확인해 보세요!';
+          } else if (mode === 1) {
+            badgeStatus.innerHTML = '➊ <b>나머지 덜어내기</b>: 107 - 2 = <b>105</b>,  153 - 3 = <b>150</b>,  <b>90</b> ➔ 세 수의 공약수 탐색!';
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          } else if (mode === 2) {
+            badgeStatus.innerHTML = '➋ <b>세 수 소인수분해</b>: 105 = 3×5×7, 150 = 2×3×5², 90 = 2×3²×5 세로 정렬!';
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          } else if (mode === 3) {
+            badgeStatus.innerHTML = '➌ <b>공통 소인수 추출</b>: 세 수 모두에 공통인 소인수는 <b>3</b>과 <b>5</b> ➔ 최대공약수 = <b>3 × 5 = 15 👑</b>';
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          } else if (mode === 4) {
+            badgeStatus.innerHTML = '👑 <b>최대공약수 15 확정 및 검산 완료!</b> 107÷15=7...2, 153÷15=10...3, 90÷15=6';
+            spawnConfetti(60);
+            if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+          }
+        }
+      }
+
+      window._step3_15_triggerSuccess = function() {
+        setMode(4);
+        setTimeout(() => spawnConfetti(60), 400);
+      };
+
+      btnSub?.addEventListener('click', () => setMode(1));
+      btnFactor?.addEventListener('click', () => setMode(2));
+      btnExtract?.addEventListener('click', () => setMode(3));
+      btnVerify?.addEventListener('click', () => setMode(4));
+      btnReset?.addEventListener('click', () => setMode(0));
+
+      // 마우스 호버 감지
+      canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        hoveredCol = null;
+        if (my >= 35 && my <= 180) {
+          if (Math.abs(mx - (w / 2 - 105)) < 35) hoveredCol = 'col-2';
+          else if (Math.abs(mx - (w / 2 - 35)) < 35) hoveredCol = 'col-3';
+          else if (Math.abs(mx - (w / 2 + 35)) < 35) hoveredCol = 'col-5';
+          else if (Math.abs(mx - (w / 2 + 105)) < 35) hoveredCol = 'col-7';
+        }
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        hoveredCol = null;
+      });
+
+      // 카드 그리기 헬퍼
+      function drawFactorCard(val, x, y, isSelected = false, isDim = false, cw = 48, ch = 28) {
+        ctx.save();
+        if (isSelected) {
+          ctx.fillStyle = '#ecfdf5';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2.5;
+          ctx.shadowColor = 'rgba(16, 185, 129, 0.4)';
+          ctx.shadowBlur = 10;
+        } else if (isDim) {
+          ctx.fillStyle = '#f1f5f9';
+          ctx.strokeStyle = '#e2e8f0';
+          ctx.lineWidth = 1;
+        } else {
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.lineWidth = 1.5;
+        }
+
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(x - cw / 2, y - ch / 2, cw, ch, 6);
+        else ctx.rect(x - cw / 2, y - ch / 2, cw, ch);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.fillStyle = isDim ? '#94a3b8' : (isSelected ? '#059669' : '#1e293b');
+        ctx.fillText(val, x, y);
+        ctx.restore();
+      }
+
+      // 렌더링 루프
+      function render() {
+        ctx.clearRect(0, 0, w, h);
+
+        if (currentMode === 1) {
+          // -------------------------------------------------------------
+          // 모드 1: 나머지 덜어내기 카드 3장
+          // -------------------------------------------------------------
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.fillStyle = '#0f172a';
+          ctx.fillText('💡 나머지 덜어내기: 나누어떨어지는 수로 변환', w / 2, 28);
+          ctx.restore();
+
+          const cardW = Math.min((w - 48) / 3, 160);
+          const cardH = 135;
+          const startX = (w - (cardW * 3 + 16)) / 2;
+          const cardY = 48;
+
+          // 카드 1: 107 - 2 = 105
+          ctx.save();
+          ctx.fillStyle = '#f0f9ff';
+          ctx.strokeStyle = '#0284c7';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(startX, cardY, cardW, cardH, 10);
+          else ctx.rect(startX, cardY, cardW, cardH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.fillStyle = '#0369a1';
+          ctx.fillText('107을 나누면 2 남음', startX + cardW / 2, cardY + 28);
+          ctx.font = 'bold 18px Pretendard, sans-serif';
+          ctx.fillStyle = '#0284c7';
+          ctx.fillText('107 - 2 = 105', startX + cardW / 2, cardY + 68);
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#334155';
+          ctx.fillText('➔ 105의 약수 (단, > 2)', startX + cardW / 2, cardY + 105);
+          ctx.restore();
+
+          // 카드 2: 153 - 3 = 150
+          const c2X = startX + cardW + 8;
+          ctx.save();
+          ctx.fillStyle = '#f0f9ff';
+          ctx.strokeStyle = '#0284c7';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(c2X, cardY, cardW, cardH, 10);
+          else ctx.rect(c2X, cardY, cardW, cardH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.fillStyle = '#0369a1';
+          ctx.fillText('153을 나누면 3 남음', c2X + cardW / 2, cardY + 28);
+          ctx.font = 'bold 18px Pretendard, sans-serif';
+          ctx.fillStyle = '#0284c7';
+          ctx.fillText('153 - 3 = 150', c2X + cardW / 2, cardY + 68);
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#334155';
+          ctx.fillText('➔ 150의 약수 (단, > 3)', c2X + cardW / 2, cardY + 105);
+          ctx.restore();
+
+          // 카드 3: 90 나누어떨어짐
+          const c3X = startX + (cardW + 8) * 2;
+          ctx.save();
+          ctx.fillStyle = '#f0fdf4';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(c3X, cardY, cardW, cardH, 10);
+          else ctx.rect(c3X, cardY, cardW, cardH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.fillStyle = '#065f46';
+          ctx.fillText('90은 나누어떨어짐', c3X + cardW / 2, cardY + 28);
+          ctx.font = 'bold 18px Pretendard, sans-serif';
+          ctx.fillStyle = '#059669';
+          ctx.fillText('90 (그대로)', c3X + cardW / 2, cardY + 68);
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#334155';
+          ctx.fillText('➔ 90의 약수', c3X + cardW / 2, cardY + 105);
+          ctx.restore();
+
+          // 결론 배너
+          const trayW = Math.min(w - 36, 490);
+          const trayX = (w - trayW) / 2;
+          const trayY = 195;
+
+          ctx.save();
+          ctx.fillStyle = '#ecfdf5';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(trayX, trayY, trayW, 40, 8);
+          else ctx.rect(trayX, trayY, trayW, 40);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 14px Pretendard, sans-serif';
+          ctx.fillStyle = '#065f46';
+          ctx.fillText('구하는 수는 105, 150, 90의 공약수 중 가장 큰 수 ➔ 최대공약수!', w / 2, trayY + 20);
+          ctx.restore();
+        } else if (currentMode === 4) {
+          // -------------------------------------------------------------
+          // 모드 4: 최대공약수 15 확정 및 검산 시뮬레이션
+          // -------------------------------------------------------------
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.fillStyle = '#065f46';
+          ctx.fillText('👑 최대공약수 = 3 × 5 = 15 & 3가지 조건 나눗셈 검산', w / 2, 26);
+          ctx.restore();
+
+          const cardW = Math.min((w - 48) / 3, 160);
+          const cardH = 145;
+          const startX = (w - (cardW * 3 + 16)) / 2;
+          const cardY = 44;
+
+          // 검산 1: 107 ÷ 15
+          ctx.save();
+          ctx.fillStyle = '#ecfdf5';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(startX, cardY, cardW, cardH, 10);
+          else ctx.rect(startX, cardY, cardW, cardH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.fillStyle = '#065f46';
+          ctx.fillText('조건 ⑴ 검산', startX + cardW / 2, cardY + 26);
+          ctx.font = 'bold 18px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('107 ÷ 15', startX + cardW / 2, cardY + 62);
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.fillStyle = '#0284c7';
+          ctx.fillText('= 7 ... 나머지 2', startX + cardW / 2, cardY + 95);
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillStyle = '#059669';
+          ctx.fillText('나머지 2 일치! ✅', startX + cardW / 2, cardY + 125);
+          ctx.restore();
+
+          // 검산 2: 153 ÷ 15
+          const c2X = startX + cardW + 8;
+          ctx.save();
+          ctx.fillStyle = '#ecfdf5';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(c2X, cardY, cardW, cardH, 10);
+          else ctx.rect(c2X, cardY, cardW, cardH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.fillStyle = '#065f46';
+          ctx.fillText('조건 ⑵ 검산', c2X + cardW / 2, cardY + 26);
+          ctx.font = 'bold 18px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('153 ÷ 15', c2X + cardW / 2, cardY + 62);
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.fillStyle = '#0284c7';
+          ctx.fillText('= 10 ... 나머지 3', c2X + cardW / 2, cardY + 95);
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillStyle = '#059669';
+          ctx.fillText('나머지 3 일치! ✅', c2X + cardW / 2, cardY + 125);
+          ctx.restore();
+
+          // 검산 3: 90 ÷ 15
+          const c3X = startX + (cardW + 8) * 2;
+          ctx.save();
+          ctx.fillStyle = '#ecfdf5';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(c3X, cardY, cardW, cardH, 10);
+          else ctx.rect(c3X, cardY, cardW, cardH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.fillStyle = '#065f46';
+          ctx.fillText('조건 ⑶ 검산', c3X + cardW / 2, cardY + 26);
+          ctx.font = 'bold 18px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('90 ÷ 15', c3X + cardW / 2, cardY + 62);
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.fillStyle = '#0284c7';
+          ctx.fillText('= 6 (나머지 0)', c3X + cardW / 2, cardY + 95);
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillStyle = '#059669';
+          ctx.fillText('나누어떨어짐! ✅', c3X + cardW / 2, cardY + 125);
+          ctx.restore();
+
+          // 배너
+          const trayW = Math.min(w - 36, 490);
+          const trayX = (w - trayW) / 2;
+          const trayY = 198;
+
+          ctx.save();
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2;
+          ctx.shadowColor = 'rgba(16, 185, 129, 0.4)';
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(trayX, trayY, trayW, 40, 8);
+          else ctx.rect(trayX, trayY, trayW, 40);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.fillStyle = '#059669';
+          ctx.fillText('👑 가장 큰 자연수 = 105, 150, 90의 최대공약수 = 15', w / 2, trayY + 20);
+          ctx.restore();
+        } else {
+          // -------------------------------------------------------------
+          // 모드 0, 2, 3: 세 수의 소인수분해 세로셈 테이블
+          // -------------------------------------------------------------
+          const c2 = w / 2 - 105;
+          const c3 = w / 2 - 35;
+          const c5 = w / 2 + 35;
+          const c7 = w / 2 + 105;
+
+          const row1Y = 56;
+          const row2Y = 92;
+          const row3Y = 128;
+          const colLabelX = w / 2 - 170;
+
+          // 열 헤더
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText('밑 2 (제외)', c2, 26);
+          ctx.fillStyle = (currentMode === 3) ? '#059669' : '#0284c7';
+          ctx.fillText((currentMode === 3) ? '밑 3 ➔ 3' : '밑 3의 열', c3, 26);
+          ctx.fillStyle = (currentMode === 3) ? '#059669' : '#0284c7';
+          ctx.fillText((currentMode === 3) ? '밑 5 ➔ 5' : '밑 5의 열', c5, 26);
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText('밑 7 (제외)', c7, 26);
+          ctx.restore();
+
+          // 좌측 라벨
+          ctx.save();
+          ctx.textAlign = 'right';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 14px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('105 = ', colLabelX + 10, row1Y);
+          ctx.fillText('150 = ', colLabelX + 10, row2Y);
+          ctx.fillText('90 = ', colLabelX + 10, row3Y);
+          ctx.restore();
+
+          // 1행: 105 = 3 × 5 × 7
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = '11px Pretendard, sans-serif';
+          ctx.fillStyle = '#cbd5e1';
+          ctx.fillText('(없음)', c2, row1Y);
+          ctx.restore();
+          drawFactorCard('3', c3, row1Y, (currentMode === 3), false);
+          drawFactorCard('5', c5, row1Y, (currentMode === 3), false);
+          drawFactorCard('7', c7, row1Y, false, true);
+
+          // 2행: 150 = 2 × 3 × 5²
+          drawFactorCard('2', c2, row2Y, false, true);
+          drawFactorCard('3', c3, row2Y, (currentMode === 3), false);
+          drawFactorCard('5²', c5, row2Y, false, false);
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = '11px Pretendard, sans-serif';
+          ctx.fillStyle = '#cbd5e1';
+          ctx.fillText('(없음)', c7, row2Y);
+          ctx.restore();
+
+          // 3행: 90 = 2 × 3² × 5
+          drawFactorCard('2', c2, row3Y, false, true);
+          drawFactorCard('3²', c3, row3Y, false, false);
+          drawFactorCard('5', c5, row3Y, (currentMode === 3), false);
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = '11px Pretendard, sans-serif';
+          ctx.fillStyle = '#cbd5e1';
+          ctx.fillText('(없음)', c7, row3Y);
+          ctx.restore();
+
+          // 가로선
+          ctx.save();
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(colLabelX - 40, 150);
+          ctx.lineTo(c7 + 40, 150);
+          ctx.stroke();
+          ctx.restore();
+
+          // 아래 트레이 (y: 168 ~ 212)
+          const trayW = Math.min(w - 36, 480);
+          const trayX = (w - trayW) / 2;
+          const trayY = 168;
+
+          ctx.save();
+          ctx.fillStyle = (currentMode === 3) ? '#ecfdf5' : '#f8fafc';
+          ctx.strokeStyle = (currentMode === 3) ? '#10b981' : '#cbd5e1';
+          ctx.lineWidth = (currentMode === 3) ? 2 : 1.5;
+          if (currentMode === 3) {
+            ctx.shadowColor = 'rgba(16, 185, 129, 0.35)';
+            ctx.shadowBlur = 10;
+          }
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(trayX, trayY, trayW, 44, 10);
+          else ctx.rect(trayX, trayY, trayW, 44);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+
+          if (currentMode === 0) {
+            ctx.fillStyle = '#64748b';
+            ctx.fillText('105, 150, 90의 소인수를 비교하여 최대공약수를 구해 보세요.', w / 2, trayY + 22);
+          } else if (currentMode === 2) {
+            ctx.fillStyle = '#0284c7';
+            ctx.fillText('세 수 모두에 공통인 소인수는 3과 5뿐입니다. (2와 7은 제외)', w / 2, trayY + 22);
+          } else if (currentMode === 3) {
+            ctx.fillStyle = '#065f46';
+            ctx.fillText('👑 공통 소인수 중 작은 거듭제곱: 3 × 5 = 15', w / 2, trayY + 22);
+          }
+          ctx.restore();
+
+          // 마우스 호버 가이드 툴팁
+          if (hoveredCol) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+            ctx.font = '12px Pretendard, sans-serif';
+            ctx.textAlign = 'center';
+            let tipText = '';
+            let tipX = w / 2;
+
+            if (hoveredCol === 'col-2') {
+              tipText = '밑 2: 105에 없으므로 공약수에서 제외';
+              tipX = c2;
+            } else if (hoveredCol === 'col-3') {
+              tipText = '밑 3: 지수 1, 1, 2 중 작은 3 선택! 👑';
+              tipX = c3;
+            } else if (hoveredCol === 'col-5') {
+              tipText = '밑 5: 지수 1, 2, 1 중 작은 5 선택! 👑';
+              tipX = c5;
+            } else if (hoveredCol === 'col-7') {
+              tipText = '밑 7: 150과 90에 없으므로 공약수에서 제외';
+              tipX = c7;
+            }
+
+            const tipW = ctx.measureText(tipText).width + 16;
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(tipX - tipW / 2, 2, tipW, 24, 6);
+            else ctx.rect(tipX - tipW / 2, 2, tipW, 24);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(tipText, tipX, 14);
+            ctx.restore();
+          }
+        }
+
+        // 하단 핵심 정리 박스 (y: 242 ~ 362)
+        const sumW = Math.min(w - 36, 510);
+        const sumX = (w - sumW) / 2;
+        const sumY = 242;
+        const sumH = 120;
+
+        ctx.save();
+        ctx.fillStyle = (currentMode === 4) ? '#fef3c7' : '#f8fafc';
+        ctx.strokeStyle = (currentMode === 4) ? '#f59e0b' : '#cbd5e1';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(sumX, sumY, sumW, sumH, 10);
+        else ctx.rect(sumX, sumY, sumW, sumH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('📌 나머지가 있는 나눗셈과 최대공약수 핵심 분석 (p.21 스스로 확인하기 6):', sumX + 16, sumY + 22);
+
+        if (currentMode === 0) {
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#475569';
+          ctx.fillText('• 1단계: 각 수에서 나머지를 먼저 빼서 나누어떨어지는 세 수를 구합니다.', sumX + 16, sumY + 44);
+          ctx.fillText('• 2단계: 나머지를 뺀 세 수의 최대공약수를 구합니다. (단, 나누는 수 > 나머지)', sumX + 16, sumY + 64);
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillStyle = '#0284c7';
+          ctx.fillText('💡 상단 버튼을 클릭하거나 정답을 입력하면 나머지 덜어내기와 소인수분해가 시각화됩니다.', sumX + 16, sumY + 96);
+        } else {
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = (currentMode === 1 || currentMode === 4) ? '#0284c7' : '#94a3b8';
+          ctx.fillText('• 107을 나누면 2 남음 ➔ 107 - 2 = 105의 약수 (단, 나누는 수 > 2)', sumX + 16, sumY + 44);
+          ctx.fillText('• 153을 나누면 3 남음 ➔ 153 - 3 = 150의 약수 (단, 나누는 수 > 3)', sumX + 16, sumY + 64);
+
+          ctx.fillStyle = (currentMode >= 3) ? '#059669' : '#94a3b8';
+          ctx.fillText('• 90을 나누면 나누어떨어짐 ➔ 90의 약수', sumX + 16, sumY + 84);
+
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillStyle = (currentMode === 4) ? '#b45309' : '#94a3b8';
+          ctx.fillText((currentMode === 4) ? '👑 세 수의 최대공약수: 105, 150, 90의 최대공약수 = 3 × 5 = 15' : '💡 상단 [⚡ 최대공약수 15 & 검산] 버튼을 눌러 검산을 확인하세요.', sumX + 16, sumY + 106);
+        }
+        ctx.restore();
+
+        // 콘페티 애니메이션
+        if (particles.length > 0) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.22;
+            p.rot += p.vRot;
+            p.life -= p.decay;
+
+            if (p.life <= 0) {
+              particles.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+            ctx.restore();
+          }
+        }
+
+        container._animId_3_15 = requestAnimationFrame(render);
+      }
+
+      render();
+    }
+
     function renderForm_3_15(box) {
       box.innerHTML = `
-        <div class="card">
+        <div class="card" style="padding:16px 20px;">
           <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
             ✏️ [스스로 확인하기 6] 조건을 만족하는 가장 큰 수 (p.21)
           </div>
           <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
             어떤 수로 107을 나누면 2가 남고, 153을 나누면 3이 남고, 90을 나누면 나누어떨어집니다. 이러한 자연수 중에서 가장 큰 수를 구하시오.
           </p>
-          <div style="margin-bottom:12px;">
-            <input type="text" id="ans-3-15" class="input-text" placeholder="수 입력" style="width:100%;">
+
+          <!-- 거듭제곱 퀵 입력 바 (Zero-Spoiler 엄수: 정답 수치 15 배제) -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; background:#f1f5f9; padding:8px 10px; border-radius:8px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; line-height:28px;">기호 입력:</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-3-15" data-char="^" style="font-weight:700; min-width:32px;">^</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-3-15" data-char="²" style="font-weight:700; min-width:32px;">²</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-3-15" data-char="³" style="font-weight:700; min-width:32px;">³</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-3-15" data-char="×" style="font-weight:700; min-width:32px;">×</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-3-15" data-char="*" style="font-weight:700; min-width:32px;">*</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-3-15" data-char="·" style="font-weight:700; min-width:32px;">·</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-clear-3-15" style="font-weight:700;">초기화</button>
           </div>
-          <button class="btn btn-primary" onclick="checkStep_3_15()" style="width:100%;">정답 확인 및 채점</button>
+
+          <div style="margin-bottom:14px;">
+            <label for="ans-3-15" style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+              조건을 만족하는 가장 큰 자연수:
+            </label>
+            <input type="text" id="ans-3-15" class="form-control" style="width:160px;" placeholder="수 또는 식 입력" autocomplete="off">
+          </div>
+
+          <button class="btn btn-primary" onclick="checkStep_3_15()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
+
       const input = box.querySelector('#ans-3-15');
-      if (input) input.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkStep_3_15(); });
+      if (input) {
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') checkStep_3_15();
+        });
+      }
+
+      box.querySelectorAll('.btn-pow-insert-3-15').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const char = btn.getAttribute('data-char');
+          if (input) {
+            input.value += char;
+            input.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      });
+
+      const clearBtn = box.querySelector('.btn-pow-clear-3-15');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          if (input) {
+            input.value = '';
+            input.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      }
     }
+
     function checkStep_3_15() {
-      const v = document.getElementById('ans-3-15')?.value?.trim();
-      if (v === '15' || v === '3*5') {
-        completeSubStep('3-15', '🎉 <b>정답입니다!</b> 105, 150, 90의 최대공약수인 3 × 5 = <b>15</b>입니다.');
+      const v = normTxt(document.getElementById('ans-3-15')?.value);
+
+      // 최대공약수: 15 또는 3 * 5
+      const isCorrect = (parseInt(v, 10) === 15 ||
+                         comparePowerMaps(parsePowerProduct(v), { 3: 1, 5: 1 }) ||
+                         v === '15' || v === '3*5' || v === '3×5' || v === '5*3' || v === '5×3');
+
+      if (isCorrect) {
+        if (window._step3_15_triggerSuccess) {
+          window._step3_15_triggerSuccess();
+        }
+        completeSubStep('3-15', '🎉 <b>정답입니다!</b><br>• 107을 나누면 2가 남음 ➔ 107 - 2 = 105의 약수<br>• 153을 나누면 3이 남음 ➔ 153 - 3 = 150의 약수<br>• 90을 나누면 나누어떨어짐 ➔ 90의 약수<br>• 세 수의 최대공약수: 105 = 3×5×7, 150 = 2×3×5², 90 = 2×3²×5 ➔ 3 × 5 = <b>15</b>');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 107-2=105, 153-3=150, 90 세 수의 최대공약수를 구해 보세요.');
+        if (v === '3' || v === '5') {
+          showFeedback(false, '❌ <b>3과 5는 공약수입니다.</b> 문제에서 "가장 큰 수(최대공약수)"를 구해야 하므로, 3과 5의 곱인 15를 확인해 보세요.');
+        } else {
+          showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 나머지를 뺀 수(107-2=105, 153-3=150)와 90의 최대공약수를 구해 보세요.');
+        }
       }
     }
 
