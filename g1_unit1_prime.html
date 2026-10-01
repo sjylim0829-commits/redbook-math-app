@@ -6854,130 +6854,635 @@ function checkStep_1_2() {
 // 1-3 (p.11): 문제 1: 소수와 합성수 구분하기
 // -------------------------------------------------------------
 function drawCanvas_1_3(container) {
+  if (container._animId_1_3) {
+    cancelAnimationFrame(container._animId_1_3);
+    container._animId_1_3 = null;
+  }
   container.innerHTML = '';
+
+  const wrapper = document.createElement('div');
+  wrapper.style.position = 'relative';
+  wrapper.style.width = '100%';
+  wrapper.style.height = '100%';
+  wrapper.style.minHeight = '450px';
+  wrapper.style.overflow = 'hidden';
+  wrapper.style.background = 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)';
+  wrapper.style.borderRadius = '12px';
+  wrapper.style.userSelect = 'none';
+  wrapper.style.webkitUserSelect = 'none';
+  container.appendChild(wrapper);
+
   const canvas = document.createElement('canvas');
-  canvas.width = container.clientWidth || 560;
-  canvas.height = container.clientHeight || 460;
+  canvas.style.display = 'block';
   canvas.style.width = '100%';
   canvas.style.height = '100%';
-  canvas.style.display = 'block';
-  container.appendChild(canvas);
+  canvas.style.touchAction = 'none';
+  wrapper.appendChild(canvas);
 
   const ctx = canvas.getContext('2d');
+
+  let w = 560;
+  let h = 460;
+  let dpr = window.devicePixelRatio || 1;
+
+  // 상단 툴바 UI
+  const topBar = document.createElement('div');
+  topBar.style.position = 'absolute';
+  topBar.style.top = '10px';
+  topBar.style.left = '12px';
+  topBar.style.right = '12px';
+  topBar.style.display = 'flex';
+  topBar.style.justifyContent = 'space-between';
+  topBar.style.alignItems = 'center';
+  topBar.style.zIndex = '10';
+  wrapper.appendChild(topBar);
+
+  const titleBadge = document.createElement('div');
+  titleBadge.style.display = 'inline-flex';
+  titleBadge.style.alignItems = 'center';
+  titleBadge.style.gap = '6px';
+  titleBadge.style.background = 'rgba(255, 255, 255, 0.94)';
+  titleBadge.style.padding = '6px 14px';
+  titleBadge.style.borderRadius = '20px';
+  titleBadge.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.05)';
+  titleBadge.style.fontSize = '12px';
+  titleBadge.style.fontWeight = '700';
+  titleBadge.style.color = '#334155';
+  titleBadge.innerHTML = '🔖 <b>[문제 1]</b> 각 카드의 약수를 확인하고 [소수] 또는 [합성수] 도장을 찍어보세요!';
+  topBar.appendChild(titleBadge);
+
+  const resetBtn = document.createElement('button');
+  resetBtn.style.padding = '6px 12px';
+  resetBtn.style.fontSize = '12px';
+  resetBtn.style.fontWeight = '600';
+  resetBtn.style.color = '#475569';
+  resetBtn.style.background = '#ffffff';
+  resetBtn.style.border = '1px solid #cbd5e1';
+  resetBtn.style.borderRadius = '8px';
+  resetBtn.style.cursor = 'pointer';
+  resetBtn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
+  resetBtn.style.transition = 'all 0.15s ease';
+  resetBtn.innerHTML = '⟲ 도장 초기화';
+  resetBtn.onmouseenter = () => { resetBtn.style.background = '#f1f5f9'; };
+  resetBtn.onmouseleave = () => { resetBtn.style.background = '#ffffff'; };
+  topBar.appendChild(resetBtn);
+
+  // 안내 토스트 바
+  let toastMessage = '';
+  let toastTimer = 0;
+  function showToast(msg) {
+    toastMessage = msg;
+    toastTimer = 180;
+  }
+
+  // 카드 데이터 (교과서 p.11 문제 1: 13, 15, 20, 23, 29)
   const items = [
-    { num: 13, divs: [1, 13], isPrime: true, stamp: null },
-    { num: 15, divs: [1, 3, 5, 15], isPrime: false, stamp: null },
-    { num: 20, divs: [1, 2, 4, 5, 10, 20], isPrime: false, stamp: null },
-    { num: 23, divs: [1, 23], isPrime: true, stamp: null },
-    { num: 29, divs: [1, 29], isPrime: true, stamp: null }
+    { num: 13, divs: [1, 13], isPrime: true, stamp: null, stampScale: 1, stampAngle: -0.14, shake: 0, hover: false },
+    { num: 15, divs: [1, 3, 5, 15], isPrime: false, stamp: null, stampScale: 1, stampAngle: 0.12, shake: 0, hover: false },
+    { num: 20, divs: [1, 2, 4, 5, 10, 20], isPrime: false, stamp: null, stampScale: 1, stampAngle: -0.16, shake: 0, hover: false },
+    { num: 23, divs: [1, 23], isPrime: true, stamp: null, stampScale: 1, stampAngle: 0.14, shake: 0, hover: false },
+    { num: 29, divs: [1, 29], isPrime: true, stamp: null, stampScale: 1, stampAngle: -0.12, shake: 0, hover: false }
   ];
 
-  function draw() {
-    const w = canvas.width;
-    const h = canvas.height;
+  // 축하 파티클
+  let particles = [];
+  let allCelebrated = false;
+
+  function createConfetti() {
+    particles = [];
+    const colors = ['#4f46e5', '#059669', '#f59e0b', '#ec4899', '#06b6d4', '#8b5cf6', '#ef4444'];
+    for (let i = 0; i < 60; i++) {
+      particles.push({
+        x: w / 2 + (Math.random() - 0.5) * 180,
+        y: h / 2,
+        vx: (Math.random() - 0.5) * 14,
+        vy: -Math.random() * 12 - 4,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        size: Math.random() * 7 + 4,
+        rotation: Math.random() * Math.PI * 2,
+        vRot: (Math.random() - 0.5) * 0.25,
+        life: 1.0,
+        decay: Math.random() * 0.008 + 0.006
+      });
+    }
+  }
+
+  resetBtn.onclick = () => {
+    items.forEach(item => {
+      item.stamp = null;
+      item.stampScale = 1;
+      item.shake = 0;
+    });
+    particles = [];
+    allCelebrated = false;
+    showToast('⟲ 도장이 모두 초기화되었습니다.');
+    if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+  };
+
+  function resize() {
+    const rect = wrapper.getBoundingClientRect();
+    w = rect.width || 560;
+    h = rect.height || 460;
+    dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  resize();
+
+  // 날인 함수
+  function stampCard(item, chosenType) {
+    const isCorrect = (chosenType === '소수' && item.isPrime) || (chosenType === '합성수' && !item.isPrime);
+    if (isCorrect) {
+      item.stamp = chosenType;
+      item.stampScale = 2.4;
+      if (window.SoundFX && window.SoundFX.playTone) {
+        SoundFX.playTone(chosenType === '소수' ? 700 : 540, 'sine', 0.14);
+      }
+      showToast(`✨ [${item.num}] 판별 완료! ${chosenType} 도장이 날인되었습니다.`);
+
+      // 5개 모두 판별 완료 확인
+      const allDone = items.every(it => it.stamp !== null);
+      if (allDone && !allCelebrated) {
+        allCelebrated = true;
+        createConfetti();
+        if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        showToast('🎉 5개 수의 소수·합성수 도장 날인을 모두 완료했습니다! 아래에 정답을 적어보세요.');
+      }
+    } else {
+      item.shake = 1.0;
+      if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+      const divStr = item.divs.join(', ');
+      if (item.isPrime) {
+        showToast(`⚠️ [${item.num}]의 약수는 ${divStr} (${item.divs.length}개)뿐이므로 소수입니다!`);
+      } else {
+        showToast(`⚠️ [${item.num}]의 약수는 ${divStr} (${item.divs.length}개)로 3개 이상이므로 합성수입니다!`);
+      }
+    }
+  }
+
+  // 포인터 좌표 및 레이아웃 계산
+  let pointerX = -1;
+  let pointerY = -1;
+
+  function getCardLayout() {
+    const cardCount = items.length;
+    const padX = 14;
+    const availW = w - padX * 2;
+    const cardW = Math.min(96, Math.max(76, (availW - (cardCount - 1) * 8) / cardCount));
+    const cardH = 172;
+    const totalW = cardCount * cardW + (cardCount - 1) * 8;
+    const startX = (w - totalW) / 2;
+    const startY = 52;
+
+    return items.map((item, idx) => {
+      const cx = startX + idx * (cardW + 8);
+      const cy = startY;
+      const btnW = (cardW - 12) / 2;
+      const btnH = 26;
+      const btnY = cy + cardH - 32;
+      const primeBtn = { x: cx + 4, y: btnY, w: btnW, h: btnH };
+      const compBtn = { x: cx + 8 + btnW, y: btnY, w: btnW, h: btnH };
+
+      return {
+        item,
+        idx,
+        cx,
+        cy,
+        cardW,
+        cardH,
+        primeBtn,
+        compBtn
+      };
+    });
+  }
+
+  function handlePointer(e, type) {
+    const rect = canvas.getBoundingClientRect();
+    pointerX = e.clientX - rect.left;
+    pointerY = e.clientY - rect.top;
+
+    if (type === 'move') {
+      const layouts = getCardLayout();
+      let anyHover = false;
+      layouts.forEach(l => {
+        const inCard = (pointerX >= l.cx && pointerX <= l.cx + l.cardW && pointerY >= l.cy && pointerY <= l.cy + l.cardH);
+        l.item.hover = inCard;
+        if (inCard) anyHover = true;
+      });
+      canvas.style.cursor = anyHover ? 'pointer' : 'default';
+    } else if (type === 'down') {
+      const layouts = getCardLayout();
+      layouts.forEach(l => {
+        // 소수 도장 버튼 클릭
+        if (pointerX >= l.primeBtn.x && pointerX <= l.primeBtn.x + l.primeBtn.w &&
+            pointerY >= l.primeBtn.y && pointerY <= l.primeBtn.y + l.primeBtn.h) {
+          stampCard(l.item, '소수');
+          return;
+        }
+        // 합성수 도장 버튼 클릭
+        if (pointerX >= l.compBtn.x && pointerX <= l.compBtn.x + l.compBtn.w &&
+            pointerY >= l.compBtn.y && pointerY <= l.compBtn.y + l.compBtn.h) {
+          stampCard(l.item, '합성수');
+          return;
+        }
+        // 카드 본체 클릭 시 올바른 도장 날인
+        if (pointerX >= l.cx && pointerX <= l.cx + l.cardW &&
+            pointerY >= l.cy && pointerY <= l.cy + l.cardH) {
+          stampCard(l.item, l.item.isPrime ? '소수' : '합성수');
+        }
+      });
+    }
+  }
+
+  canvas.addEventListener('pointermove', (e) => handlePointer(e, 'move'));
+  canvas.addEventListener('pointerdown', (e) => handlePointer(e, 'down'));
+  canvas.addEventListener('pointerleave', () => {
+    pointerX = -1;
+    pointerY = -1;
+    items.forEach(it => it.hover = false);
+  });
+
+  // 애니메이션 루프
+  function animate() {
     ctx.clearRect(0, 0, w, h);
 
-    // Title
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 15px Pretendard, sans-serif';
-    ctx.fillStyle = '#1e293b';
-    ctx.fillText('🔖 [문제 1] 5개 수 카드 약수 분석 및 도장 날인기', w / 2, 35);
+    const layouts = getCardLayout();
 
-    const cardW = 90;
-    const cardH = 140;
-    const gap = (w - cardW * 5) / 6;
+    // 1. 카드 렌더링
+    layouts.forEach(l => {
+      const { item, cx, cy, cardW, cardH, primeBtn, compBtn } = l;
 
-    items.forEach((item, idx) => {
-      const cx = gap + idx * (cardW + gap);
-      const cy = 70;
+      // 쉐이크 오프셋
+      let ox = 0;
+      if (item.shake > 0) {
+        ox = Math.sin(item.shake * Math.PI * 8) * 6 * item.shake;
+        item.shake -= 0.04;
+        if (item.shake < 0) item.shake = 0;
+      }
 
-      // Card Box
+      // 스탬프 스케일 이징
+      if (item.stampScale > 1.0) {
+        item.stampScale += (1.0 - item.stampScale) * 0.22;
+        if (item.stampScale < 1.01) item.stampScale = 1.0;
+      }
+
+      const drawX = cx + ox;
+      const drawY = cy;
+
+      // 카드 배경 그림자
+      ctx.save();
+      ctx.shadowColor = item.hover ? 'rgba(99, 102, 241, 0.22)' : 'rgba(0, 0, 0, 0.05)';
+      ctx.shadowBlur = item.hover ? 12 : 6;
+      ctx.shadowOffsetY = item.hover ? 4 : 2;
+
+      // 카드 본체
       ctx.fillStyle = '#ffffff';
-      ctx.strokeStyle = '#cbd5e1';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = item.stamp === '소수' ? '#818cf8' : (item.stamp === '합성수' ? '#34d399' : (item.hover ? '#94a3b8' : '#e2e8f0'));
+      ctx.lineWidth = item.stamp ? 2.5 : 1.5;
+
       ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(cx, cy, cardW, cardH, 10) : ctx.rect(cx, cy, cardW, cardH);
+      if (ctx.roundRect) {
+        ctx.roundRect(drawX, drawY, cardW, cardH, 12);
+      } else {
+        ctx.rect(drawX, drawY, cardW, cardH);
+      }
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      // 수 표시 헤더 영역
+      ctx.fillStyle = item.stamp === '소수' ? 'rgba(99, 102, 241, 0.08)' : (item.stamp === '합성수' ? 'rgba(16, 185, 129, 0.08)' : '#f8fafc');
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(drawX + 4, drawY + 4, cardW - 8, 42, [8, 8, 4, 4]);
+      } else {
+        ctx.rect(drawX + 4, drawY + 4, cardW - 8, 42);
+      }
+      ctx.fill();
+
+      // 수 숫자
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#1e293b';
+      ctx.font = 'bold 22px Pretendard, sans-serif';
+      ctx.fillText(String(item.num), drawX + cardW / 2, drawY + 32);
+
+      // 약수 정보 박스
+      ctx.fillStyle = '#64748b';
+      ctx.font = '10px Pretendard, sans-serif';
+      ctx.fillText(`약수 (${item.divs.length}개)`, drawX + cardW / 2, drawY + 62);
+
+      // 약수 목록
+      ctx.fillStyle = '#334155';
+      const divStr = item.divs.join(', ');
+      ctx.font = (divStr.length > 10) ? 'bold 10px Pretendard, sans-serif' : 'bold 11px Pretendard, sans-serif';
+      ctx.fillText(divStr, drawX + cardW / 2, drawY + 78);
+
+      // 약수 개수 판별 힌트 배지
+      ctx.fillStyle = item.divs.length === 2 ? '#eef2ff' : '#ecfdf5';
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(drawX + 8, drawY + 88, cardW - 16, 18, 9);
+      } else {
+        ctx.rect(drawX + 8, drawY + 88, cardW - 16, 18);
+      }
+      ctx.fill();
+      ctx.fillStyle = item.divs.length === 2 ? '#4338ca' : '#047857';
+      ctx.font = 'bold 9.5px Pretendard, sans-serif';
+      ctx.fillText(item.divs.length === 2 ? '약수 2개' : `약수 ${item.divs.length}개`, drawX + cardW / 2, drawY + 100);
+
+      // 도장 날인 스탬프 표시 (중앙에 쾅!)
+      if (item.stamp) {
+        ctx.save();
+        ctx.translate(drawX + cardW / 2, drawY + 70);
+        ctx.rotate(item.stampAngle);
+        ctx.scale(item.stampScale, item.stampScale);
+
+        const isPrimeStamp = (item.stamp === '소수');
+        const stampColor = isPrimeStamp ? '#4f46e5' : '#059669';
+
+        ctx.strokeStyle = stampColor;
+        ctx.lineWidth = 2.5;
+        ctx.fillStyle = isPrimeStamp ? 'rgba(79, 70, 229, 0.12)' : 'rgba(5, 150, 105, 0.12)';
+
+        const sw = 56;
+        const sh = 28;
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(-sw / 2, -sh / 2, sw, sh, 6);
+        } else {
+          ctx.rect(-sw / 2, -sh / 2, sw, sh);
+        }
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-sw / 2 + 2.5, -sh / 2 + 2.5, sw - 5, sh - 5);
+
+        ctx.fillStyle = stampColor;
+        ctx.font = '900 13px Pretendard, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(item.stamp, 0, 0);
+
+        ctx.restore();
+      }
+
+      // 하단 도장 날인 버튼 2개
+      // [소수] 버튼
+      ctx.save();
+      const inPrimeBtn = (pointerX >= primeBtn.x && pointerX <= primeBtn.x + primeBtn.w && pointerY >= primeBtn.y && pointerY <= primeBtn.y + primeBtn.h);
+      ctx.fillStyle = item.stamp === '소수' ? '#4f46e5' : (inPrimeBtn ? '#e0e7ff' : '#f1f5f9');
+      ctx.strokeStyle = '#c7d2fe';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(primeBtn.x, primeBtn.y, primeBtn.w, primeBtn.h, 6);
+      } else {
+        ctx.rect(primeBtn.x, primeBtn.y, primeBtn.w, primeBtn.h);
+      }
       ctx.fill();
       ctx.stroke();
 
-      // Number
-      ctx.fillStyle = '#1e293b';
-      ctx.font = 'bold 24px Pretendard, sans-serif';
-      ctx.fillText(String(item.num), cx + cardW / 2, cy + 40);
-
-      // Divisors info
-      ctx.font = '11px Pretendard, sans-serif';
-      ctx.fillStyle = '#64748b';
-      ctx.fillText(`약수 (${item.divs.length}개):`, cx + cardW / 2, cy + 68);
+      ctx.fillStyle = item.stamp === '소수' ? '#ffffff' : '#4338ca';
       ctx.font = 'bold 11px Pretendard, sans-serif';
-      ctx.fillText(item.divs.join(','), cx + cardW / 2, cy + 86);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('소수', primeBtn.x + primeBtn.w / 2, primeBtn.y + primeBtn.h / 2);
+      ctx.restore();
 
-      // Stamp button area
-      if (item.stamp) {
-        ctx.save();
-        ctx.translate(cx + cardW / 2, cy + 115);
-        ctx.rotate(-0.15);
-        ctx.strokeStyle = item.stamp === '소수' ? '#4f46e5' : '#059669';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(-30, -12, 60, 24);
-        ctx.fillStyle = item.stamp === '소수' ? '#4f46e5' : '#059669';
-        ctx.font = 'bold 13px Pretendard, sans-serif';
-        ctx.fillText(item.stamp, 0, 4);
-        ctx.restore();
+      // [합성수] 버튼
+      ctx.save();
+      const inCompBtn = (pointerX >= compBtn.x && pointerX <= compBtn.x + compBtn.w && pointerY >= compBtn.y && pointerY <= compBtn.y + compBtn.h);
+      ctx.fillStyle = item.stamp === '합성수' ? '#059669' : (inCompBtn ? '#d1fae5' : '#f1f5f9');
+      ctx.strokeStyle = '#a7f3d0';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(compBtn.x, compBtn.y, compBtn.w, compBtn.h, 6);
       } else {
-        ctx.fillStyle = '#e2e8f0';
-        ctx.font = '10px Pretendard, sans-serif';
-        ctx.fillText('클릭하여 판별', cx + cardW / 2, cy + 120);
+        ctx.rect(compBtn.x, compBtn.y, compBtn.w, compBtn.h);
       }
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = item.stamp === '합성수' ? '#ffffff' : '#065f46';
+      ctx.font = 'bold 10.5px Pretendard, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('합성수', compBtn.x + compBtn.w / 2, compBtn.y + compBtn.h / 2);
+      ctx.restore();
     });
 
-    // Summary Box
-    const sy = h - 140;
-    ctx.fillStyle = '#f8fafc';
-    ctx.strokeStyle = '#e2e8f0';
+    // 2. 하단 실시간 분류 트레이 (Zero-Spoiler: 날인된 카드만 실시간 누적 집계)
+    const trayY = 240;
+    const trayH = 150;
+    const pad = 14;
+    const trayW = (w - pad * 3) / 2;
+
+    // 소수 트레이 (좌측)
+    const primeTrayX = pad;
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#c7d2fe';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.roundRect ? ctx.roundRect(30, sy, w - 60, 110, 12) : ctx.rect(30, sy, w - 60, 110);
+    if (ctx.roundRect) {
+      ctx.roundRect(primeTrayX, trayY, trayW, trayH, 12);
+    } else {
+      ctx.rect(primeTrayX, trayY, trayW, trayH);
+    }
     ctx.fill();
     ctx.stroke();
 
-    ctx.textAlign = 'left';
-    ctx.font = 'bold 13px Pretendard, sans-serif';
-    ctx.fillStyle = '#4f46e5';
-    ctx.fillText('🔵 소수 (약수가 2개뿐인 수):', 50, sy + 35);
-    ctx.font = '13px Pretendard, sans-serif';
-    ctx.fillStyle = '#1e293b';
-    ctx.fillText('13 (약수 1, 13), 23 (약수 1, 23), 29 (약수 1, 29)', 240, sy + 35);
+    // 소수 트레이 헤더
+    ctx.fillStyle = 'rgba(79, 70, 229, 0.08)';
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(primeTrayX + 2, trayY + 2, trayW - 4, 32, [10, 10, 0, 0]);
+    } else {
+      ctx.rect(primeTrayX + 2, trayY + 2, trayW - 4, 32);
+    }
+    ctx.fill();
 
-    ctx.font = 'bold 13px Pretendard, sans-serif';
-    ctx.fillStyle = '#059669';
-    ctx.fillText('🟢 합성수 (약수가 3개 이상인 수):', 50, sy + 75);
-    ctx.font = '13px Pretendard, sans-serif';
-    ctx.fillStyle = '#1e293b';
-    ctx.fillText('15 (약수 1, 3, 5, 15), 20 (약수 1, 2, 4, 5, 10, 20)', 240, sy + 75);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#4338ca';
+    ctx.font = 'bold 12.5px Pretendard, sans-serif';
+    ctx.fillText('🔴 소수 분류함 (약수 2개)', primeTrayX + 12, trayY + 18);
+
+    // 날인된 소수 목록
+    const stampedPrimes = items.filter(it => it.stamp === '소수');
+    if (stampedPrimes.length === 0) {
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '11px Pretendard, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('카드에 [소수] 도장을 찍으면', primeTrayX + trayW / 2, trayY + 70);
+      ctx.fillText('이곳에 수가 모입니다.', primeTrayX + trayW / 2, trayY + 90);
+    } else {
+      let chipX = primeTrayX + 14;
+      let chipY = trayY + 52;
+      stampedPrimes.forEach(p => {
+        ctx.fillStyle = '#4f46e5';
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(chipX, chipY, 44, 28, 8);
+        } else {
+          ctx.rect(chipX, chipY, 44, 28);
+        }
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 14px Pretendard, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(String(p.num), chipX + 22, chipY + 14);
+
+        chipX += 50;
+      });
+
+      ctx.fillStyle = '#64748b';
+      ctx.font = '11px Pretendard, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(`현재 ${stampedPrimes.length}개 소수 수집 완료`, primeTrayX + 14, trayY + 104);
+      ctx.fillStyle = '#4338ca';
+      ctx.font = 'bold 11px Pretendard, sans-serif';
+      ctx.fillText('1과 자기 자신만을 약수로 가지는 수', primeTrayX + 14, trayY + 124);
+    }
+    ctx.restore();
+
+    // 합성수 트레이 (우측)
+    const compTrayX = pad * 2 + trayW;
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#a7f3d0';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(compTrayX, trayY, trayW, trayH, 12);
+    } else {
+      ctx.rect(compTrayX, trayY, trayW, trayH);
+    }
+    ctx.fill();
+    ctx.stroke();
+
+    // 합성수 트레이 헤더
+    ctx.fillStyle = 'rgba(5, 150, 105, 0.08)';
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(compTrayX + 2, trayY + 2, trayW - 4, 32, [10, 10, 0, 0]);
+    } else {
+      ctx.rect(compTrayX + 2, trayY + 2, trayW - 4, 32);
+    }
+    ctx.fill();
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#065f46';
+    ctx.font = 'bold 12.5px Pretendard, sans-serif';
+    ctx.fillText('🟢 합성수 분류함 (약수 3개 이상)', compTrayX + 12, trayY + 18);
+
+    // 날인된 합성수 목록
+    const stampedComps = items.filter(it => it.stamp === '합성수');
+    if (stampedComps.length === 0) {
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '11px Pretendard, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('카드에 [합성수] 도장을 찍으면', compTrayX + trayW / 2, trayY + 70);
+      ctx.fillText('이곳에 수가 모입니다.', compTrayX + trayW / 2, trayY + 90);
+    } else {
+      let chipX = compTrayX + 14;
+      let chipY = trayY + 52;
+      stampedComps.forEach(c => {
+        ctx.fillStyle = '#059669';
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(chipX, chipY, 44, 28, 8);
+        } else {
+          ctx.rect(chipX, chipY, 44, 28);
+        }
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 14px Pretendard, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(String(c.num), chipX + 22, chipY + 14);
+
+        chipX += 50;
+      });
+
+      ctx.fillStyle = '#64748b';
+      ctx.font = '11px Pretendard, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(`현재 ${stampedComps.length}개 합성수 수집 완료`, compTrayX + 14, trayY + 104);
+      ctx.fillStyle = '#059669';
+      ctx.font = 'bold 11px Pretendard, sans-serif';
+      ctx.fillText('1과 자기 자신 이외의 약수를 가짐', compTrayX + 14, trayY + 124);
+    }
+    ctx.restore();
+
+    // 3. 토스트 메시지 렌더링
+    if (toastTimer > 0) {
+      toastTimer--;
+      const alpha = Math.min(1.0, toastTimer / 20);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+      const toastW = Math.min(w - 30, ctx.measureText(toastMessage).width + 48);
+      const toastH = 34;
+      const toastX = (w - toastW) / 2;
+      const toastY = trayY - 40;
+
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(toastX, toastY, toastW, toastH, 17);
+      } else {
+        ctx.rect(toastX, toastY, toastW, toastH);
+      }
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 12px Pretendard, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(toastMessage, w / 2, toastY + toastH / 2);
+      ctx.restore();
+    }
+
+    // 4. 축하 파티클 렌더링
+    if (particles.length > 0) {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.35;
+        p.rotation += p.vRot;
+        p.life -= p.decay;
+
+        if (p.life <= 0 || p.y > h + 20) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+        ctx.restore();
+      }
+    }
+
+    container._animId_1_3 = requestAnimationFrame(animate);
   }
 
-  canvas.addEventListener('click', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-    const w = canvas.width;
-    const cardW = 90;
-    const cardH = 140;
-    const gap = (w - cardW * 5) / 6;
+  container._animId_1_3 = requestAnimationFrame(animate);
 
-    items.forEach((item, idx) => {
-      const cx = gap + idx * (cardW + gap);
-      const cy = 70;
-      if (mx >= cx && mx <= cx + cardW && my >= cy && my <= cy + cardH) {
-        item.stamp = item.isPrime ? '소수' : '합성수';
-        if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(item.isPrime ? 650 : 500, 'sine', 0.1);
-        draw();
-      }
-    });
+  const ro = new ResizeObserver(() => {
+    resize();
   });
-
-  draw();
+  ro.observe(wrapper);
 }
 
 function renderForm_1_3(box) {
@@ -6986,25 +7491,36 @@ function renderForm_1_3(box) {
       <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
         ✏️ [문제 1] 소수와 합성수 구분하기 (p.11)
       </div>
-      <p style="font-size:0.88rem; color:#475569; line-height:1.5; margin-bottom:12px;">
+      <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
         다음 수 중에서 소수와 합성수를 각각 구분하여 쓰시오. (수는 쉼표로 구분하여 입력)<br>
-        <span style="font-weight:800; color:#1e293b; font-size:0.95rem;">13, 15, 20, 23, 29</span>
+        <span style="display:inline-block; margin-top:4px; padding:4px 12px; background:#f1f5f9; border-radius:6px; font-weight:800; color:#1e293b; font-size:1.0rem; letter-spacing:1px;">
+          13, 15, 20, 23, 29
+        </span>
       </p>
 
-      <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
-        <div>
-          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑴ 소수:</label>
+      <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:14px;">
+        <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0;">
+          <label style="font-size:0.86rem; font-weight:700; color:#4338ca; display:block; margin-bottom:6px;">⑴ 소수:</label>
           <input type="text" id="ans-1-3-prime" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off">
         </div>
-        <div>
-          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑵ 합성수:</label>
+        <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0;">
+          <label style="font-size:0.86rem; font-weight:700; color:#047857; display:block; margin-bottom:6px;">⑵ 합성수:</label>
           <input type="text" id="ans-1-3-comp" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off">
         </div>
       </div>
 
-      <button class="btn btn-primary" onclick="checkStep_1_3()">정답 확인 및 채점</button>
+      <button class="btn btn-primary" onclick="checkStep_1_3()" style="width:100%;">정답 확인 및 채점</button>
     </div>
   `;
+
+  const inputs = box.querySelectorAll('input[type="text"]');
+  inputs.forEach(input => {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        checkStep_1_3();
+      }
+    });
+  });
 }
 
 function checkStep_1_3() {
@@ -7015,13 +7531,17 @@ function checkStep_1_3() {
   const okC = areListsEqual(cList, [15, 20]);
 
   if (okP && okC) {
-    completeSubStep('1-3', '🎉 <b>정답입니다!</b> 13, 23, 29는 약수가 1과 자신뿐인 <b>소수</b>이고, 15, 20은 약수가 3개 이상인 <b>합성수</b>입니다.');
+    completeSubStep('1-3', '🎉 <b>정답입니다!</b> 13, 23, 29는 약수가 1과 자기 자신뿐인 <b>소수</b>이고, 15, 20은 약수가 3개 이상인 <b>합성수</b>입니다.');
+    const nextBtn = document.getElementById('btn-next-step');
+    if (nextBtn) {
+      nextBtn.style.display = 'inline-flex';
+    }
   } else {
     let wrong = [];
-    if (!okP) wrong.push('소수 목록');
-    if (!okC) wrong.push('합성수 목록');
+    if (!okP) wrong.push('⑴ 소수 목록');
+    if (!okC) wrong.push('⑵ 합성수 목록');
     if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-    showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>각 수의 약수 개수를 세어 바르게 구분해 보세요.`);
+    showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>각 수의 약수를 구하여 약수가 2개뿐인 수와 3개 이상인 수를 올바르게 분류해 보세요.`);
   }
 }
 
