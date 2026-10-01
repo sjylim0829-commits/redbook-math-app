@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="utf-8">
@@ -41951,85 +41951,676 @@ function checkStep_1_12() {
     // ==========================================
     function drawCanvas_4_17(container) {
       if (!container) return;
-      container.innerHTML = '';
-      const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 500;
-      canvas.height = container.clientHeight || 450;
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      canvas.style.display = 'block';
-      container.appendChild(canvas);
+      if (container._animId_4_17) {
+        cancelAnimationFrame(container._animId_4_17);
+        container._animId_4_17 = null;
+      }
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; height:100%; gap:10px;">
+          <!-- 상단 컨트롤러 및 설명 뱃지 바 -->
+          <div style="background:#ffffff; padding:12px 14px; border-radius:10px; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+              <span id="badge-4-17" style="font-size:0.88rem; font-weight:700; color:#1e293b;">
+                단계별 버튼을 눌러 조건을 만족하는 가장 작은 세 자리 자연수를 찾는 원리를 확인해 보세요!
+              </span>
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+              <button id="btn-step1-4-17" class="btn btn-sm btn-outline-primary" style="font-weight:700;">1단계: 조건 ㈎</button>
+              <button id="btn-step2-4-17" class="btn btn-sm btn-outline-primary" style="font-weight:700;">2단계: 90의 배수</button>
+              <button id="btn-step3-4-17" class="btn btn-sm btn-outline-danger" style="font-weight:700;">3단계: 조건 ㈏ 필터</button>
+              <button id="btn-step4-4-17" class="btn btn-sm btn-warning" style="font-weight:800; color:#1e293b;">4단계: 가장 작은 수 확정</button>
+              <button id="btn-reset-4-17" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">⟲ 초기화</button>
+            </div>
+          </div>
+          <!-- Canvas 영역 -->
+          <div style="flex:1; min-height:370px; position:relative;">
+            <canvas id="canvas-4-17" style="width:100%; height:100%; display:block; border-radius:12px; background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); border:1px solid #e2e8f0;"></canvas>
+          </div>
+        </div>
+      `;
+
+      const canvas = container.querySelector('#canvas-4-17');
+      const badgeStatus = container.querySelector('#badge-4-17');
+      const btnStep1 = container.querySelector('#btn-step1-4-17');
+      const btnStep2 = container.querySelector('#btn-step2-4-17');
+      const btnStep3 = container.querySelector('#btn-step3-4-17');
+      const btnStep4 = container.querySelector('#btn-step4-4-17');
+      const btnReset = container.querySelector('#btn-reset-4-17');
+
       const ctx = canvas.getContext('2d');
+      let w = 560, h = 400;
 
-      let animId;
-      let angle = 0;
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        w = rect.width || 560;
+        h = rect.height || 400;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+
+      const ro = new ResizeObserver(() => resize());
+      ro.observe(canvas);
+
+      let currentStep = 0;
+      let pulseTimer = 0;
+      let particles = [];
+      let hoveredNode = null;
+
+      function spawnConfetti(count = 60) {
+        const colors = ['#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#f43f5e'];
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: w / 2 + (Math.random() - 0.5) * 180,
+            y: 180 + (Math.random() - 0.5) * 60,
+            vx: (Math.random() - 0.5) * 12,
+            vy: (Math.random() - 0.85) * 11 - 2,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.01
+          });
+        }
+      }
+
+      function updateUI() {
+        if (btnStep1) btnStep1.className = `btn btn-sm ${currentStep === 1 ? 'btn-primary text-white' : 'btn-outline-primary'}`;
+        if (btnStep2) btnStep2.className = `btn btn-sm ${currentStep === 2 ? 'btn-primary text-white' : 'btn-outline-primary'}`;
+        if (btnStep3) btnStep3.className = `btn btn-sm ${currentStep === 3 ? 'btn-danger text-white' : 'btn-outline-danger'}`;
+        if (btnStep4) btnStep4.className = `btn btn-sm ${currentStep === 4 ? 'btn-warning text-dark font-weight-bold shadow-sm' : 'btn-outline-warning text-dark'}`;
+
+        if (badgeStatus) {
+          if (currentStep === 0) {
+            badgeStatus.innerText = '단계별 버튼을 눌러 조건을 만족하는 가장 작은 세 자리 자연수를 찾는 원리를 확인해 보세요!';
+          } else if (currentStep === 1) {
+            badgeStatus.innerHTML = '1️⃣ <b>조건 ㈎ 분석</b>: 18과 45로 각각 나누어떨어지므로 <b>최소공배수 = 2 × 3² × 5 = 90</b>의 배수입니다.';
+          } else if (currentStep === 2) {
+            badgeStatus.innerHTML = '2️⃣ <b>90의 배수 나열</b>: 90씩 수직선을 점프하며 <b>90, 180, 270, 360, ...</b>이 차례로 위치합니다.';
+          } else if (currentStep === 3) {
+            badgeStatus.innerHTML = '3️⃣ <b>조건 ㈏ 필터</b>: 90은 두 자리 수이므로 <b>탈락(X)</b>! 세 자리 수 영역(≥ 100)을 확인합니다.';
+          } else if (currentStep === 4) {
+            badgeStatus.innerHTML = '👑 <b>가장 작은 수 확정</b>: 세 자리 공배수(180, 270, 360, ...) 중 가장 작은 수는 <b>180</b>입니다!';
+          }
+        }
+      }
+
+      btnStep1?.addEventListener('click', () => { currentStep = 1; updateUI(); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+      btnStep2?.addEventListener('click', () => { currentStep = 2; updateUI(); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+      btnStep3?.addEventListener('click', () => { currentStep = 3; updateUI(); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+      btnStep4?.addEventListener('click', () => { currentStep = 4; spawnConfetti(65); updateUI(); if (window.SoundFX && window.SoundFX.success) SoundFX.success(); });
+      btnReset?.addEventListener('click', () => { currentStep = 0; updateUI(); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+
+      window._step4_17_triggerSuccess = function() {
+        currentStep = 4;
+        updateUI();
+        spawnConfetti(70);
+      };
+
+      // 마우스 포인터 인터랙션
+      canvas.addEventListener('pointermove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        const cardBoxW = Math.min(w - 36, 520);
+        const cardBoxX = (w - cardBoxW) / 2;
+        const lineStartX = cardBoxX + 30;
+        const lineEndX = cardBoxX + cardBoxW - 30;
+        const lineY = Math.min(195, h * 0.48);
+        const toX = (val) => lineStartX + (val / 380) * (lineEndX - lineStartX);
+
+        hoveredNode = null;
+        if (Math.abs(my - lineY) < 30) {
+          const nodes = [90, 180, 270, 360];
+          nodes.forEach(val => {
+            if (Math.abs(mx - toX(val)) < 24) {
+              hoveredNode = val;
+            }
+          });
+        }
+        canvas.style.cursor = hoveredNode ? 'pointer' : 'default';
+      });
+
+      canvas.addEventListener('pointerleave', () => {
+        hoveredNode = null;
+        canvas.style.cursor = 'default';
+      });
+
+      canvas.addEventListener('pointerdown', () => {
+        if (hoveredNode === 90) {
+          currentStep = 3;
+          updateUI();
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        } else if (hoveredNode === 180) {
+          currentStep = 4;
+          spawnConfetti(60);
+          updateUI();
+          if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        } else if (hoveredNode !== null) {
+          if (currentStep < 2) currentStep = 2;
+          updateUI();
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        }
+      });
+
       function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, w, h);
+        pulseTimer += 0.05;
 
-        // Grid lines
-        ctx.strokeStyle = '#1e293b';
-        ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 40) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-        }
-        for (let y = 0; y < canvas.height; y += 40) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-        }
-
-        // Badge & Title
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 16px "Pretendard", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('[4-17] 스스로 확인하기 6: 조건을 만족하는 세 자리 수 (p.22)', canvas.width / 2, 40);
-
-        // Interactive visual placeholder
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
+        // 상단 제목 뱃지
+        const badgeW = Math.min(w - 36, 520);
+        const badgeX = (w - badgeW) / 2;
         ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.strokeStyle = '#6366f1';
-        ctx.lineWidth = 3;
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(0, 0, 70, 0, Math.PI * 2);
+        if (ctx.roundRect) ctx.roundRect(badgeX, 10, badgeW, 30, 8);
+        else ctx.rect(badgeX, 10, badgeW, 30);
+        ctx.fill();
         ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 12.5px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('스스로 확인하기 6: 조건을 만족하는 가장 작은 세 자리 자연수 찾기', w / 2, 25);
         ctx.restore();
 
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '13px "Pretendard", sans-serif';
-        ctx.fillText('최소공배수 시각화 인터랙터', cx, cy + 110);
+        // 1. 조건 요약 카드 2종 (가로 배치)
+        const cardStartY = 48;
+        const cardH = 76;
+        const cardBoxW = Math.min(w - 36, 520);
+        const cardBoxX = (w - cardBoxW) / 2;
+        const leftW = Math.floor(cardBoxW * 0.62) - 4;
+        const rightW = cardBoxW - leftW - 8;
+        const leftX = cardBoxX;
+        const rightX = cardBoxX + leftW + 8;
 
-        angle += 0.02;
-        animId = requestAnimationFrame(render);
+        // 왼쪽 카드: 조건 ㈎
+        ctx.save();
+        ctx.fillStyle = (currentStep >= 1) ? '#eff6ff' : '#ffffff';
+        ctx.strokeStyle = (currentStep >= 1) ? '#93c5fd' : '#e2e8f0';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(leftX, cardStartY, leftW, cardH, 8);
+        else ctx.rect(leftX, cardStartY, leftW, cardH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = 'bold 12px Pretendard, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = '#1e40af';
+        ctx.fillText('조건 ㈎: 18과 45로 각각 나누어떨어짐', leftX + 12, cardStartY + 10);
+
+        ctx.font = '11.5px Pretendard, sans-serif';
+        ctx.fillStyle = '#334155';
+        if (currentStep === 0) {
+          ctx.fillText('• 18과 45의 공배수 (최소공배수의 배수)', leftX + 12, cardStartY + 30);
+          ctx.fillStyle = '#64748b';
+          ctx.fillText('• 최소공배수 = ?', leftX + 12, cardStartY + 50);
+        } else {
+          ctx.fillText('• 18 = 2 × 3²,  45 = 3² × 5', leftX + 12, cardStartY + 30);
+          ctx.fillStyle = '#b45309';
+          ctx.font = 'bold 11.5px Pretendard, sans-serif';
+          ctx.fillText('• 최소공배수 = 2 × 3² × 5 = 90 (90의 배수)', leftX + 12, cardStartY + 50);
+        }
+        ctx.restore();
+
+        // 오른쪽 카드: 조건 ㈏
+        ctx.save();
+        ctx.fillStyle = (currentStep >= 3) ? '#fefce8' : '#ffffff';
+        ctx.strokeStyle = (currentStep >= 3) ? '#fef08a' : '#e2e8f0';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(rightX, cardStartY, rightW, cardH, 8);
+        else ctx.rect(rightX, cardStartY, rightW, cardH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = 'bold 12px Pretendard, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = '#0f766e';
+        ctx.fillText('조건 ㈏: 세 자리 자연수', rightX + 12, cardStartY + 10);
+
+        ctx.font = '11.5px Pretendard, sans-serif';
+        ctx.fillStyle = '#334155';
+        ctx.fillText('• 크기 조건: N ≥ 100', rightX + 12, cardStartY + 30);
+
+        if (currentStep <= 2) {
+          ctx.fillStyle = '#64748b';
+          ctx.fillText('• 100 이상 중 최소 탐색', rightX + 12, cardStartY + 50);
+        } else if (currentStep === 3) {
+          ctx.fillStyle = '#dc2626';
+          ctx.font = 'bold 11px Pretendard, sans-serif';
+          ctx.fillText('• 90은 2자리 ➔ 탈락(X)', rightX + 12, cardStartY + 50);
+        } else {
+          ctx.fillStyle = '#15803d';
+          ctx.font = 'bold 11.5px Pretendard, sans-serif';
+          ctx.fillText('• 세 자리 최소 = 180 👑', rightX + 12, cardStartY + 50);
+        }
+        ctx.restore();
+
+        // 2. 수직선 점프 시뮬레이터 (중앙)
+        const lineStartX = cardBoxX + 30;
+        const lineEndX = cardBoxX + cardBoxW - 30;
+        const lineY = Math.min(195, h * 0.48);
+        const toX = (val) => lineStartX + (val / 380) * (lineEndX - lineStartX);
+
+        // 영역 배경 음영 (두 자리 수 영역 vs 세 자리 수 영역)
+        const zoneTop = lineY - 48;
+        const zoneH = 68;
+        const x0 = toX(0);
+        const x100 = toX(100);
+        const x380 = toX(380);
+
+        ctx.save();
+        // 두 자리 수 영역 (< 100)
+        ctx.fillStyle = (currentStep >= 3) ? 'rgba(254, 226, 226, 0.55)' : 'rgba(241, 245, 249, 0.45)';
+        ctx.fillRect(x0 - 10, zoneTop, (x100 - x0) + 10, zoneH);
+
+        // 세 자리 수 영역 (≥ 100)
+        ctx.fillStyle = (currentStep >= 3) ? 'rgba(240, 253, 244, 0.65)' : 'rgba(248, 250, 252, 0.35)';
+        ctx.fillRect(x100, zoneTop, (x380 - x100) + 15, zoneH);
+
+        // 경계선 (100)
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(x100, zoneTop - 4);
+        ctx.lineTo(x100, zoneTop + zoneH + 4);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // 영역 라벨
+        ctx.font = 'bold 10.5px Pretendard, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillStyle = (currentStep >= 3) ? '#dc2626' : '#94a3b8';
+        ctx.fillText('두 자리 수 영역 (< 100)', (x0 + x100) / 2, zoneTop - 2);
+
+        ctx.fillStyle = (currentStep >= 3) ? '#16a34a' : '#64748b';
+        ctx.fillText('세 자리 수 영역 (≥ 100, 조건 ㈏ 만족)', (x100 + x380) / 2, zoneTop - 2);
+        ctx.restore();
+
+        // 수직선 본체
+        ctx.save();
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x0 - 12, lineY);
+        ctx.lineTo(x380 + 16, lineY);
+        ctx.stroke();
+
+        // 수직선 끝 화살표
+        ctx.fillStyle = '#94a3b8';
+        ctx.beginPath();
+        ctx.moveTo(x380 + 16, lineY);
+        ctx.lineTo(x380 + 8, lineY - 4);
+        ctx.lineTo(x380 + 8, lineY + 4);
+        ctx.closePath();
+        ctx.fill();
+
+        // 100 경계 틱
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x100, lineY - 6);
+        ctx.lineTo(x100, lineY + 6);
+        ctx.stroke();
+
+        ctx.font = 'bold 10px Pretendard, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = '#dc2626';
+        ctx.fillText('100 (경계)', x100, lineY + 8);
+        ctx.restore();
+
+        // 90의 배수 점프 곡선 (2단계 이상)
+        if (currentStep >= 2) {
+          const jumps = [
+            { from: 0, to: 90 },
+            { from: 90, to: 180 },
+            { from: 180, to: 270 },
+            { from: 270, to: 360 }
+          ];
+
+          jumps.forEach((j) => {
+            const startNodeX = toX(j.from);
+            const endNodeX = toX(j.to);
+            const midNodeX = (startNodeX + endNodeX) / 2;
+            const arcH = 36;
+
+            ctx.save();
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            ctx.moveTo(startNodeX, lineY);
+            ctx.quadraticCurveTo(midNodeX, lineY - arcH, endNodeX, lineY);
+            ctx.stroke();
+
+            // 점프 라벨 (+90)
+            ctx.font = 'bold 10px Pretendard, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillStyle = '#2563eb';
+            ctx.fillText('+90', midNodeX, lineY - arcH / 2 - 2);
+
+            // 화살표 머리
+            ctx.fillStyle = '#3b82f6';
+            ctx.beginPath();
+            ctx.moveTo(endNodeX, lineY);
+            ctx.lineTo(endNodeX - 6, lineY - 6);
+            ctx.lineTo(endNodeX - 2, lineY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+          });
+        }
+
+        // 수직선 위 노드들 (0, 90, 180, 270, 360)
+        const nodes = [0, 90, 180, 270, 360];
+        nodes.forEach(val => {
+          const nx = toX(val);
+          const is90 = (val === 90);
+          const is180 = (val === 180);
+          const isHovered = (hoveredNode === val);
+
+          ctx.save();
+          if (val === 0) {
+            // 0 노드
+            ctx.fillStyle = '#64748b';
+            ctx.beginPath();
+            ctx.arc(nx, lineY, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.font = '11px Pretendard, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.fillStyle = '#64748b';
+            ctx.fillText('0', nx, lineY + 6);
+          } else if (is90) {
+            // 90 노드
+            let circleR = 8;
+            let fillCol = '#eff6ff';
+            let strokeCol = '#3b82f6';
+
+            if (currentStep >= 3) {
+              fillCol = '#fef2f2';
+              strokeCol = '#ef4444';
+              circleR = 9;
+            }
+
+            if (isHovered) circleR += 2;
+
+            ctx.fillStyle = fillCol;
+            ctx.strokeStyle = strokeCol;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(nx, lineY, circleR, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // 텍스트 & 탈락 표기
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+
+            if (currentStep >= 3) {
+              // 붉은 X
+              ctx.strokeStyle = '#dc2626';
+              ctx.lineWidth = 2.2;
+              ctx.beginPath();
+              ctx.moveTo(nx - 5, lineY - 5);
+              ctx.lineTo(nx + 5, lineY + 5);
+              ctx.moveTo(nx + 5, lineY - 5);
+              ctx.lineTo(nx - 5, lineY + 5);
+              ctx.stroke();
+
+              ctx.font = 'bold 11px Pretendard, sans-serif';
+              ctx.fillStyle = '#dc2626';
+              ctx.fillText('90 (탈락 ❌)', nx, lineY + 12);
+            } else {
+              ctx.font = 'bold 11px Pretendard, sans-serif';
+              ctx.fillStyle = '#1e40af';
+              ctx.fillText('90', nx, lineY + 8);
+            }
+          } else if (is180) {
+            // 180 노드 (최종 정답)
+            let circleR = (currentStep === 4) ? 10 : 8;
+            let fillCol = (currentStep === 4) ? '#fef08a' : (currentStep >= 2 ? '#f0fdf4' : '#f8fafc');
+            let strokeCol = (currentStep === 4) ? '#eab308' : (currentStep >= 2 ? '#22c55e' : '#cbd5e1');
+
+            if (isHovered) circleR += 2;
+
+            if (currentStep === 4) {
+              // 골드 펄스 글로우
+              const pulseR = 12 + Math.sin(pulseTimer) * 3;
+              ctx.fillStyle = 'rgba(234, 179, 8, 0.28)';
+              ctx.beginPath();
+              ctx.arc(nx, lineY, pulseR + 6, 0, Math.PI * 2);
+              ctx.fill();
+            }
+
+            ctx.fillStyle = fillCol;
+            ctx.strokeStyle = strokeCol;
+            ctx.lineWidth = (currentStep === 4) ? 2.5 : 2;
+            ctx.beginPath();
+            ctx.arc(nx, lineY, circleR, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+
+            if (currentStep === 4) {
+              // 왕관 뱃지
+              ctx.font = 'bold 12px Pretendard, sans-serif';
+              ctx.fillStyle = '#854d0e';
+              ctx.fillText('👑 가장 작은 세 자리 수!', nx, lineY - 32);
+
+              ctx.font = 'bold 12.5px Pretendard, sans-serif';
+              ctx.fillStyle = '#854d0e';
+              ctx.fillText('180 (정답)', nx, lineY + 10);
+            } else if (currentStep >= 2) {
+              ctx.font = 'bold 11px Pretendard, sans-serif';
+              ctx.fillStyle = '#15803d';
+              ctx.fillText('180', nx, lineY + 8);
+            } else {
+              ctx.font = '11px Pretendard, sans-serif';
+              ctx.fillStyle = '#64748b';
+              ctx.fillText('180', nx, lineY + 8);
+            }
+          } else {
+            // 270, 360 노드
+            let circleR = 6;
+            let fillCol = (currentStep >= 2) ? '#f0fdf4' : '#f8fafc';
+            let strokeCol = (currentStep >= 2) ? '#86efac' : '#cbd5e1';
+
+            if (isHovered) circleR += 2;
+
+            ctx.fillStyle = fillCol;
+            ctx.strokeStyle = strokeCol;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(nx, lineY, circleR, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.font = '11px Pretendard, sans-serif';
+            ctx.fillStyle = (currentStep >= 2) ? '#166534' : '#64748b';
+            ctx.fillText(String(val), nx, lineY + 8);
+
+            if (currentStep === 4) {
+              ctx.font = '9.5px Pretendard, sans-serif';
+              ctx.fillStyle = '#94a3b8';
+              ctx.fillText('(더 큰 수)', nx, lineY + 22);
+            }
+          }
+          ctx.restore();
+        });
+
+        // 3. 하단 단계별 해설 안내 박스
+        const infoY = Math.min(242, h * 0.59);
+        const infoW = cardBoxW;
+        const infoX = cardBoxX;
+        const infoH = Math.min(124, h - infoY - 12);
+
+        ctx.save();
+        ctx.fillStyle = (currentStep === 4) ? '#f0fdf4' : '#f8fafc';
+        ctx.strokeStyle = (currentStep === 4) ? '#86efac' : '#e2e8f0';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(infoX, infoY, infoW, infoH, 10);
+        else ctx.rect(infoX, infoY, infoW, infoH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 12.5px Pretendard, sans-serif';
+
+        if (currentStep === 0) {
+          ctx.fillStyle = '#334155';
+          ctx.fillText('💡 문제 핵심 조건 파악:', infoX + 16, infoY + 12);
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#64748b';
+          ctx.fillText('• 조건 ㈎: 18과 45로 각각 나누어떨어지는 수는 18과 45의 공배수입니다.', infoX + 16, infoY + 36);
+          ctx.fillText('• 조건 ㈏: 공배수 중에서 "세 자리 자연수(100 이상)"를 찾아야 합니다.', infoX + 16, infoY + 58);
+          ctx.fillText('• 위의 단계별 버튼을 눌러 조건을 만족하는 수를 단계별로 찾아보세요!', infoX + 16, infoY + 82);
+        } else if (currentStep === 1) {
+          ctx.fillStyle = '#0369a1';
+          ctx.fillText('1️⃣ 조건 ㈎ 분석 - 최소공배수 90 도출:', infoX + 16, infoY + 12);
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('• 18 = 2 × 3²,  45 = 3² × 5', infoX + 16, infoY + 36);
+          ctx.fillText('• 두 수의 최소공배수 = 2 × 3² × 5 = 90', infoX + 16, infoY + 58);
+          ctx.fillText('➔ 18과 45로 나누어떨어지는 수는 90의 배수(90 × k)이어야 합니다!', infoX + 16, infoY + 82);
+        } else if (currentStep === 2) {
+          ctx.fillStyle = '#0369a1';
+          ctx.fillText('2️⃣ 90의 배수 나열 (수직선 점프 시뮬레이션):', infoX + 16, infoY + 12);
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('• 90의 배수: 90, 180, 270, 360, 450, ...', infoX + 16, infoY + 36);
+          ctx.fillText('• 90씩 수직선을 점프하며 배수들이 차례로 위치합니다.', infoX + 16, infoY + 58);
+          ctx.fillText('➔ 이제 조건 ㈏인 "세 자리 자연수" 필터를 적용해 봅시다!', infoX + 16, infoY + 82);
+        } else if (currentStep === 3) {
+          ctx.fillStyle = '#b91c1c';
+          ctx.fillText('3️⃣ 조건 ㈏ 필터링 (세 자리 자연수 ≥ 100):', infoX + 16, infoY + 12);
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('• 90은 두 자리 수이므로 조건 ㈏에 맞지 않아 탈락(X)!', infoX + 16, infoY + 36);
+          ctx.fillText('• 100 이상인 세 자리 수 영역: 180, 270, 360, ...', infoX + 16, infoY + 58);
+          ctx.fillStyle = '#dc2626';
+          ctx.fillText('➔ 이 중에서 가장 작은 수를 확정해 보세요!', infoX + 16, infoY + 82);
+        } else if (currentStep === 4) {
+          ctx.fillStyle = '#166534';
+          ctx.fillText('👑 4단계: 가장 작은 자연수 확정 ➔ 180', infoX + 16, infoY + 12);
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('• 세 자리 공배수(180, 270, 360, ...) 중 가장 작은 자연수는 180입니다!', infoX + 16, infoY + 36);
+          ctx.fillText('• 검산: 180 ÷ 18 = 10 (나누어떨어짐), 180 ÷ 45 = 4 (나누어떨어짐)', infoX + 16, infoY + 58);
+          ctx.fillStyle = '#059669';
+          ctx.fillText('➔ 우측 정답 입력창에 180을 입력해 보세요!', infoX + 16, infoY + 82);
+        }
+        ctx.restore();
+
+        // 파티클 렌더링
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.35;
+          p.rot += p.vRot;
+          p.life -= p.decay;
+
+          if (p.life <= 0) {
+            particles.splice(i, 1);
+            continue;
+          }
+
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.globalAlpha = Math.max(0, p.life);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+          ctx.restore();
+        }
+
+        container._animId_4_17 = requestAnimationFrame(render);
       }
+
       render();
 
       window._cleanup_step_4_17 = () => {
-        if (animId) cancelAnimationFrame(animId);
+        if (container._animId_4_17) {
+          cancelAnimationFrame(container._animId_4_17);
+          container._animId_4_17 = null;
+        }
+        ro.disconnect();
       };
     }
 
     function renderForm_4_17(box) {
       if (!box) return;
       box.innerHTML = `
-        <div class="question-card" style="padding:16px; background:#1e293b; border-radius:10px; margin-bottom:15px; border:1px solid #334155;">
-          <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 4-17. 스스로 확인하기 6: 조건을 만족하는 세 자리 수 (p.22)</div>
-          <p style="font-size:14px; color:#cbd5e1; line-height:1.6; margin-bottom:12px;">
-            문제를 해결하고 최소공배수 또는 답을 입력창에 작성하세요.
+        <div class="card" style="padding:16px 20px;">
+          <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
+            ✏️ [스스로 확인하기 6] 조건을 만족하는 가장 작은 세 자리 자연수 (p.22)
+          </div>
+
+          <!-- 문제 안내 카드 -->
+          <div style="background:#f8fafc; border-left:4px solid #3b82f6; padding:10px 14px; border-radius:6px; margin-bottom:14px;">
+            <div style="font-weight:700; font-size:0.86rem; color:#1e40af; margin-bottom:4px;">
+              문제 조건
+            </div>
+            <div style="font-size:0.88rem; color:#1e293b; line-height:1.6; font-family:'Pretendard', sans-serif;">
+              다음을 모두 만족시키는 <b>가장 작은 자연수</b>를 구하시오.<br>
+              <span style="display:inline-block; margin-top:4px;">
+                ㈎ <b>18, 45</b>로 각각 나누어떨어진다.<br>
+                ㈏ <b>세 자리</b> 자연수이다.
+              </span>
+            </div>
+          </div>
+
+          <p style="font-size:0.88rem; color:#334155; line-height:1.6; margin-bottom:12px;">
+            두 조건을 만족하는 가장 작은 세 자리 자연수를 구하여 입력창에 작성하세요.
           </p>
-          <div style="margin-bottom:12px;">
-            <input type="text" id="ans-4-17" class="form-control" placeholder="수 또는 식 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
+
+          <!-- 입력 필드 (Zero-Spoiler) -->
+          <div style="background:#fefce8; padding:12px 14px; border-radius:8px; border:1px solid #fef08a; margin-bottom:14px;">
+            <label for="ans-4-17" style="font-size:0.85rem; font-weight:700; color:#854d0e; display:block; margin-bottom:6px;">
+              가장 작은 자연수:
+            </label>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="text" id="ans-4-17" class="form-control" style="width:100%; font-size:1rem;" placeholder="수 입력" autocomplete="off">
+            </div>
           </div>
-          <div style="display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap;">
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_17" data-char="²">²</button>
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_17" data-char="³">³</button>
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_17" data-char="⁴">⁴</button>
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_17" data-char="×">×</button>
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_17" data-char="^">^</button>
-            <button type="button" class="btn btn-sm btn-outline-danger btn-pow-clear-4_17">지우기</button>
+
+          <!-- 퀵 숫자 키패드 -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; background:#f1f5f9; padding:8px 10px; border-radius:8px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; line-height:28px;">빠른 입력:</span>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-17" data-char="1" style="font-weight:700; min-width:30px;">1</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-17" data-char="8" style="font-weight:700; min-width:30px;">8</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-17" data-char="0" style="font-weight:700; min-width:30px;">0</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-17" data-char="9" style="font-weight:700; min-width:30px;">9</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-17" data-char="2" style="font-weight:700; min-width:30px;">2</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-17" data-char="7" style="font-weight:700; min-width:30px;">7</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-17" data-char="3" style="font-weight:700; min-width:30px;">3</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-17" data-char="6" style="font-weight:700; min-width:30px;">6</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-4-17" data-char="5" style="font-weight:700; min-width:30px;">5</button>
+            <button type="button" class="btn btn-sm btn-outline-danger btn-num-clear-4-17" style="font-weight:700;">지우기</button>
           </div>
+
           <button class="btn btn-primary" onclick="checkStep_4_17()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
@@ -42040,7 +42631,8 @@ function checkStep_1_12() {
           if (e.key === 'Enter') checkStep_4_17();
         });
       }
-      box.querySelectorAll('.btn-pow-insert-4_17').forEach(btn => {
+
+      box.querySelectorAll('.btn-num-insert-4-17').forEach(btn => {
         btn.addEventListener('click', () => {
           const char = btn.getAttribute('data-char');
           if (input) {
@@ -42050,27 +42642,48 @@ function checkStep_1_12() {
           }
         });
       });
-      const clearBtn = box.querySelector('.btn-pow-clear-4_17');
+
+      const clearBtn = box.querySelector('.btn-num-clear-4-17');
       if (clearBtn) {
         clearBtn.addEventListener('click', () => {
           if (input) {
             input.value = '';
             input.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
           }
         });
       }
     }
 
     function checkStep_4_17() {
-      const v = normTxt(document.getElementById('ans-4-17')?.value);
-      const isCorrect = (v.length > 0);
-      if (isCorrect) {
-        completeSubStep('4-17', '🎉 <b>정답입니다!</b><br>• 정답 및 풀이: 180');
+      const raw = document.getElementById('ans-4-17')?.value || '';
+      const v = (raw || '').trim().replace(/\s+/g, '');
+
+      if (!v || v.length === 0) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>값을 입력해 주세요.</b> 두 조건을 만족하는 가장 작은 세 자리 자연수를 입력해 보세요.');
+        return;
+      }
+
+      const numVal = parseInt(v, 10);
+
+      if (numVal === 90) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, "❌ <b>90은 두 자리 수입니다!</b> 90은 18과 45의 공배수이지만, 조건 ㈏의 '세 자리 자연수'를 만족하지 않는 두 자리 수입니다. 세 자리 수 중 가장 작은 수를 구해 보세요!");
+      } else if ([270, 360, 450, 540].includes(numVal) || (numVal > 180 && numVal % 90 === 0)) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, "❌ <b>가장 작은 수가 아닙니다!</b> 18과 45의 공배수이자 세 자리 자연수이지만, 조건에 맞는 '가장 작은' 수를 구해야 합니다.");
+      } else if (numVal === 180) {
+        if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        if (window._step4_17_triggerSuccess) {
+          window._step4_17_triggerSuccess();
+        }
+        completeSubStep('4-17', '🎉 <b>정답입니다!</b><br>• 18과 45의 최소공배수: 18 = 2 × 3², 45 = 3² × 5 ➔ 2 × 3² × 5 = 90<br>• 조건을 만족하는 수는 90의 배수: 90, 180, 270, ...<br>• 세 자리 자연수 중 가장 작은 수: <b>180</b>');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>값을 입력해 주세요.</b>');
+        showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 18과 45의 최소공배수인 90의 배수(90, 180, 270, ...) 중에서 세 자리 자연수 중 가장 작은 수를 찾아보세요.');
       }
     }
 
