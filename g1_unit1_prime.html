@@ -18469,60 +18469,458 @@ function checkStep_1_12() {
     // 2-12 (p.17): 스스로 확인하기 1: 소인수 구하기
     // -------------------------------------------------------------
     function drawCanvas_2_12(container) {
+      if (container._animId_2_12) {
+        cancelAnimationFrame(container._animId_2_12);
+      }
       container.innerHTML = '';
-      const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 560;
-      canvas.height = container.clientHeight || 460;
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      canvas.style.display = 'block';
-      container.appendChild(canvas);
 
+      const wrapper = document.createElement('div');
+      wrapper.style.display = 'flex';
+      wrapper.style.flexDirection = 'column';
+      wrapper.style.height = '100%';
+      wrapper.style.width = '100%';
+
+      wrapper.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; gap:5px; flex-wrap:wrap;">
+            <button id="btn-2-12-tab-0" class="btn btn-sm btn-primary tab-2-12-btn" data-idx="0" style="font-weight:700; border-radius:6px; font-size:0.8rem;">⑴ 15</button>
+            <button id="btn-2-12-tab-1" class="btn btn-sm btn-outline-secondary tab-2-12-btn" data-idx="1" style="font-weight:700; border-radius:6px; font-size:0.8rem;">⑵ 22</button>
+            <button id="btn-2-12-tab-2" class="btn btn-sm btn-outline-secondary tab-2-12-btn" data-idx="2" style="font-weight:700; border-radius:6px; font-size:0.8rem;">⑶ 49</button>
+            <button id="btn-2-12-tab-3" class="btn btn-sm btn-outline-secondary tab-2-12-btn" data-idx="3" style="font-weight:700; border-radius:6px; font-size:0.8rem;">⑷ 70</button>
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button id="btn-2-12-extract" class="btn btn-sm btn-outline-primary" style="font-weight:700; border-radius:6px; font-size:0.8rem;">🔮 소인수 구슬 추출</button>
+            <button id="btn-2-12-complete" class="btn btn-sm btn-outline-warning" style="font-weight:700; color:#d97706; border-color:#f59e0b; border-radius:6px; font-size:0.8rem;">⚡ 전체 소인수 완성</button>
+            <button id="btn-2-12-reset" class="btn btn-sm btn-outline-secondary" style="font-weight:600; border-radius:6px; font-size:0.8rem;">⟲ 리셋</button>
+          </div>
+          <div id="badge-2-12-status" style="font-size:0.82rem; font-weight:700; color:#475569; background:#f1f5f9; padding:4px 10px; border-radius:12px; border:1px solid #e2e8f0; width:100%; margin-top:2px;">
+            15의 약수 구슬들이 있습니다. [소인수 구슬 추출]을 눌러 소수인 인수만 보석 상자에 담아보세요!
+          </div>
+        </div>
+        <div style="flex:1; min-height:380px; position:relative;">
+          <canvas style="width:100%; height:100%; display:block; border-radius:12px; background:#f8fafc; border:1px solid #e2e8f0; cursor:pointer;"></canvas>
+        </div>
+      `;
+
+      container.appendChild(wrapper);
+
+      const canvas = wrapper.querySelector('canvas');
       const ctx = canvas.getContext('2d');
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
+      const badgeStatus = wrapper.querySelector('#badge-2-12-status');
+      const tabBtns = wrapper.querySelectorAll('.tab-2-12-btn');
+      const btnExtract = wrapper.querySelector('#btn-2-12-extract');
+      const btnComplete = wrapper.querySelector('#btn-2-12-complete');
+      const btnReset = wrapper.querySelector('#btn-2-12-reset');
 
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 15px Pretendard, sans-serif';
-      ctx.fillStyle = '#1e293b';
-      ctx.fillText('🔍 [스스로 확인하기 1] 다음 수의 소인수 구하기 (p.17)', w / 2, 35);
+      let w = 560;
+      let h = 430;
 
-      const items = [
-        { label: '⑴ 15', factors: '1, 3, 5, 15', primes: '3, 5' },
-        { label: '⑵ 22', factors: '1, 2, 11, 22', primes: '2, 11' },
-        { label: '⑶ 49', factors: '1, 7, 49', primes: '7' },
-        { label: '⑷ 70', factors: '1, 2, 5, 7, 10, ...', primes: '2, 5, 7' }
+      const problemData = [
+        {
+          idx: 0,
+          label: '⑴ 15',
+          title: '⑴ 15의 약수 중 소인수(소수인 인수) 구하기',
+          divs: [
+            { val: 1, isPrime: false },
+            { val: 3, isPrime: true },
+            { val: 5, isPrime: true },
+            { val: 15, isPrime: false }
+          ],
+          primes: [3, 5]
+        },
+        {
+          idx: 1,
+          label: '⑵ 22',
+          title: '⑵ 22의 약수 중 소인수(소수인 인수) 구하기',
+          divs: [
+            { val: 1, isPrime: false },
+            { val: 2, isPrime: true },
+            { val: 11, isPrime: true },
+            { val: 22, isPrime: false }
+          ],
+          primes: [2, 11]
+        },
+        {
+          idx: 2,
+          label: '⑶ 49',
+          title: '⑶ 49의 약수 중 소인수(소수인 인수) 구하기',
+          divs: [
+            { val: 1, isPrime: false },
+            { val: 7, isPrime: true },
+            { val: 49, isPrime: false }
+          ],
+          primes: [7]
+        },
+        {
+          idx: 3,
+          label: '⑷ 70',
+          title: '⑷ 70의 약수 중 소인수(소수인 인수) 구하기',
+          divs: [
+            { val: 1, isPrime: false },
+            { val: 2, isPrime: true },
+            { val: 5, isPrime: true },
+            { val: 7, isPrime: true },
+            { val: 10, isPrime: false },
+            { val: 14, isPrime: false },
+            { val: 35, isPrime: false },
+            { val: 70, isPrime: false }
+          ],
+          primes: [2, 5, 7]
+        }
       ];
 
-      const cardW = (w - 60) / 2;
-      const cardH = 130;
+      let currentTab = 0;
+      let balls = [];
+      let isExtracted = false;
+      let particles = [];
 
-      items.forEach((it, idx) => {
-        const col = idx % 2;
-        const row = Math.floor(idx / 2);
-        const x = 20 + col * (cardW + 20);
-        const y = 65 + row * (cardH + 20);
+      function createConfetti() {
+        const colors = ['#f59e0b', '#ef4444', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
+        for (let i = 0; i < 50; i++) {
+          particles.push({
+            x: w * 0.5 + (Math.random() - 0.5) * 160,
+            y: h * 0.45 + (Math.random() - 0.5) * 60,
+            vx: (Math.random() - 0.5) * 10,
+            vy: -Math.random() * 8 - 4,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.012
+          });
+        }
+      }
+
+      function resize() {
+        w = canvas.clientWidth || 560;
+        h = canvas.clientHeight || 430;
+        canvas.width = w;
+        canvas.height = h;
+        initBalls();
+      }
+
+      function initBalls() {
+        const prob = problemData[currentTab];
+        const n = prob.divs.length;
+        balls = [];
+
+        const areaW = Math.min(300, w * 0.55);
+        const centerX = 20 + areaW / 2;
+        const centerY = 195;
+        const radius = Math.min(areaW * 0.38, 95);
+
+        const chestX = w - Math.min(190, w * 0.36);
+        const chestY = 70;
+        const chestW = Math.min(170, w * 0.32);
+
+        let primeIdx = 0;
+
+        prob.divs.forEach((d, i) => {
+          const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
+          const ox = centerX + Math.cos(angle) * radius;
+          const oy = centerY + Math.sin(angle) * radius;
+
+          let tx = ox;
+          let ty = oy;
+          if (d.isPrime) {
+            const slotY = chestY + 70 + primeIdx * 45;
+            tx = chestX + chestW / 2;
+            ty = slotY;
+            primeIdx++;
+          }
+
+          balls.push({
+            val: d.val,
+            isPrime: d.isPrime,
+            x: ox,
+            y: oy,
+            origX: ox,
+            origY: oy,
+            targetX: tx,
+            targetY: ty,
+            r: 20,
+            absorbed: false,
+            pulse: 0
+          });
+        });
+      }
+
+      resize();
+
+      function selectTab(idx) {
+        currentTab = idx;
+        tabBtns.forEach((btn, i) => {
+          if (i === idx) btn.className = 'btn btn-sm btn-primary tab-2-12-btn';
+          else btn.className = 'btn btn-sm btn-outline-secondary tab-2-12-btn';
+        });
+        isExtracted = false;
+        initBalls();
+        const prob = problemData[idx];
+        badgeStatus.innerHTML = `${prob.label}의 약수 구슬 중 소인수(소수) 구슬을 [추출]하거나 직접 클릭해 보세요!`;
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      }
+
+      tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = parseInt(btn.getAttribute('data-idx'), 10);
+          selectTab(idx);
+        });
+      });
+
+      function extractPrimes(instant = false) {
+        isExtracted = true;
+        balls.forEach(b => {
+          if (b.isPrime) {
+            b.absorbed = true;
+            b.pulse = 1.0;
+            if (instant) {
+              b.x = b.targetX;
+              b.y = b.targetY;
+            }
+          }
+        });
+
+        const prob = problemData[currentTab];
+        badgeStatus.innerHTML = `💎 ${prob.label}의 소인수: <b>${prob.primes.join(', ')}</b>가 보석 상자에 추출되었습니다!`;
+
+        if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        createConfetti();
+      }
+
+      btnExtract.addEventListener('click', () => extractPrimes(false));
+      btnComplete.addEventListener('click', () => extractPrimes(true));
+
+      btnReset.addEventListener('click', () => {
+        isExtracted = false;
+        balls.forEach(b => {
+          b.absorbed = false;
+          b.x = b.origX;
+          b.y = b.origY;
+          b.pulse = 0;
+        });
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        badgeStatus.innerHTML = '구슬이 원래 위치로 돌아왔습니다. 소수 구슬을 찾아보세요!';
+      });
+
+      canvas.addEventListener('click', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const cx = e.clientX - rect.left;
+        const cy = e.clientY - rect.top;
+
+        balls.forEach(b => {
+          const dist = Math.hypot(cx - b.x, cy - b.y);
+          if (dist <= b.r + 4) {
+            if (b.isPrime) {
+              b.absorbed = true;
+              b.pulse = 1.0;
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+              badgeStatus.innerHTML = `✨ 소수 <b>${b.val}</b>을(를) 보석 상자로 추출했습니다!`;
+
+              const allAbsorbed = balls.filter(x => x.isPrime).every(x => x.absorbed);
+              if (allAbsorbed) {
+                isExtracted = true;
+                createConfetti();
+                if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+                badgeStatus.innerHTML = `💎 소인수가 모두 추출되었습니다! (${problemData[currentTab].primes.join(', ')})`;
+              }
+            } else {
+              if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+              b.pulse = 0.5;
+              badgeStatus.innerHTML = `❌ <b>${b.val}</b>은(는) 소수가 아니므로 소인수가 될 수 없습니다.`;
+            }
+          }
+        });
+      });
+
+      window._step2_12_completeAll = function() {
+        isExtracted = true;
+        balls.forEach(b => {
+          if (b.isPrime) {
+            b.absorbed = true;
+            b.x = b.targetX;
+            b.y = b.targetY;
+          }
+        });
+        createConfetti();
+        if (badgeStatus) badgeStatus.innerHTML = '🎉 정답! 4개 수의 소인수 추출이 모두 완료되었습니다!';
+      };
+
+      function render() {
+        ctx.clearRect(0, 0, w, h);
+
+        const prob = problemData[currentTab];
 
         ctx.save();
-        ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = '#cbd5e1';
-        ctx.lineWidth = 1.5;
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`🔍 ${prob.title} (p.17)`, w / 2, 24);
+
+        ctx.fillStyle = '#475569';
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillText('약수 중 1과 자기 자신만을 약수로 갖는 "소수"인 것만 소인수입니다.', w / 2, 44);
+        ctx.restore();
+
+        const chestX = w - Math.min(190, w * 0.36);
+        const chestY = 70;
+        const chestW = Math.min(170, w * 0.32);
+        const chestH = 240;
+
+        ctx.save();
+        const chestGrad = ctx.createLinearGradient(chestX, chestY, chestX + chestW, chestY + chestH);
+        chestGrad.addColorStop(0, '#f8fafc');
+        chestGrad.addColorStop(1, '#f1f5f9');
+        ctx.fillStyle = chestGrad;
+        ctx.strokeStyle = isExtracted ? '#10b981' : '#6366f1';
+        ctx.lineWidth = isExtracted ? 2.5 : 1.5;
         ctx.beginPath();
-        ctx.roundRect ? ctx.roundRect(x, y, cardW, cardH, 10) : ctx.rect(x, y, cardW, cardH);
+        if (ctx.roundRect) ctx.roundRect(chestX, chestY, chestW, chestH, 12);
+        else ctx.rect(chestX, chestY, chestW, chestH);
         ctx.fill();
         ctx.stroke();
 
-        ctx.textAlign = 'left';
-        ctx.font = 'bold 15px Pretendard, sans-serif';
-        ctx.fillStyle = '#4f46e5';
-        ctx.fillText(it.label, x + 16, y + 34);
-
+        ctx.textAlign = 'center';
+        ctx.fillStyle = isExtracted ? '#047857' : '#4338ca';
         ctx.font = 'bold 14px Pretendard, sans-serif';
-        ctx.fillStyle = '#059669';
-        ctx.fillText(`소인수: ${it.primes}`, x + 16, y + 80);
+        ctx.fillText('💎 소인수 보석 상자', chestX + chestW / 2, chestY + 28);
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = '11px Pretendard, sans-serif';
+        ctx.fillText('(소수인 약수만 보관)', chestX + chestW / 2, chestY + 46);
         ctx.restore();
-      });
+
+        balls.forEach(b => {
+          if (b.absorbed) {
+            b.x += (b.targetX - b.x) * 0.12;
+            b.y += (b.targetY - b.y) * 0.12;
+          } else {
+            b.x += (b.origX - b.x) * 0.12;
+            b.y += (b.origY - b.y) * 0.12;
+          }
+
+          if (b.pulse > 0) {
+            b.pulse = Math.max(0, b.pulse - 0.03);
+          }
+
+          ctx.save();
+          ctx.shadowColor = b.isPrime && b.absorbed ? 'rgba(16, 185, 129, 0.4)' : 'rgba(0, 0, 0, 0.08)';
+          ctx.shadowBlur = b.pulse > 0 ? 12 : 5;
+          ctx.shadowOffsetY = 2;
+
+          const bGrad = ctx.createRadialGradient(b.x - 5, b.y - 5, 2, b.x, b.y, b.r);
+
+          if (b.isPrime) {
+            if (b.absorbed) {
+              bGrad.addColorStop(0, '#a7f3d0');
+              bGrad.addColorStop(1, '#059669');
+              ctx.fillStyle = bGrad;
+              ctx.strokeStyle = '#047857';
+              ctx.lineWidth = 2;
+            } else {
+              bGrad.addColorStop(0, '#e0e7ff');
+              bGrad.addColorStop(1, '#6366f1');
+              ctx.fillStyle = bGrad;
+              ctx.strokeStyle = '#4f46e5';
+              ctx.lineWidth = 1.5;
+            }
+          } else {
+            if (isExtracted) {
+              bGrad.addColorStop(0, '#f1f5f9');
+              bGrad.addColorStop(1, '#cbd5e1');
+              ctx.fillStyle = bGrad;
+              ctx.strokeStyle = '#94a3b8';
+              ctx.lineWidth = 1;
+            } else {
+              bGrad.addColorStop(0, '#ffffff');
+              bGrad.addColorStop(1, '#94a3b8');
+              ctx.fillStyle = bGrad;
+              ctx.strokeStyle = '#64748b';
+              ctx.lineWidth = 1.2;
+            }
+          }
+
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, b.r + (b.pulse * 3), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          if (b.isPrime) {
+            ctx.fillStyle = '#ffffff';
+          } else {
+            ctx.fillStyle = isExtracted ? '#94a3b8' : '#1e293b';
+          }
+          ctx.fillText(b.val, b.x, b.y);
+
+          if (b.isPrime && b.absorbed) {
+            ctx.font = 'bold 9px Pretendard, sans-serif';
+            ctx.fillStyle = '#065f46';
+            ctx.fillText('소인수', b.x, b.y + b.r + 10);
+          }
+
+          ctx.restore();
+        });
+
+        const summaryY = 325;
+        ctx.save();
+        const sumW = w - 40;
+        const sumX = 20;
+        ctx.fillStyle = isExtracted ? '#eff6ff' : '#f8fafc';
+        ctx.strokeStyle = isExtracted ? '#3b82f6' : '#e2e8f0';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(sumX, summaryY, sumW, 58, 8);
+        else ctx.rect(sumX, summaryY, sumW, 58);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        if (isExtracted) {
+          ctx.fillStyle = '#1e40af';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.fillText(`✨ ${prob.label}의 소인수:`, w / 2, summaryY + 22);
+
+          ctx.fillStyle = '#2563eb';
+          ctx.font = 'bold 16px Pretendard, sans-serif';
+          ctx.fillText(prob.primes.join(', '), w / 2, summaryY + 44);
+        } else {
+          ctx.fillStyle = '#64748b';
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillText(`소인수는 약수 중에서 소수인 수입니다. [🔮 소인수 구슬 추출]을 눌러보세요.`, w / 2, summaryY + 32);
+        }
+        ctx.restore();
+
+        if (particles.length > 0) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.22;
+            p.rot += p.vRot;
+            p.life -= p.decay;
+
+            if (p.life <= 0) {
+              particles.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+            ctx.restore();
+          }
+        }
+
+        container._animId_2_12 = requestAnimationFrame(render);
+      }
+
+      render();
     }
 
     function renderForm_2_12(box) {
@@ -18532,29 +18930,29 @@ function checkStep_1_12() {
             ✏️ [스스로 확인하기 1] 소인수 구하기 (p.17)
           </div>
           <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
-            다음 수의 소인수를 모두 구하시오. (쉼표로 구분)
+            다음 수의 소인수를 작은 수부터 쉼표로 구분하여 모두 쓰시오.
           </p>
 
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;">
-            <div style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
-              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑴ 15:</label>
-              <input type="text" id="ans-2-12-1" class="form-control" placeholder="소인수 입력" autocomplete="off">
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑴ 15의 소인수:</label>
+              <input type="text" id="ans-2-12-1" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off">
             </div>
-            <div style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
-              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑵ 22:</label>
-              <input type="text" id="ans-2-12-2" class="form-control" placeholder="소인수 입력" autocomplete="off">
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑵ 22의 소인수:</label>
+              <input type="text" id="ans-2-12-2" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off">
             </div>
-            <div style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
-              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑶ 49:</label>
-              <input type="text" id="ans-2-12-3" class="form-control" placeholder="소인수 입력" autocomplete="off">
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑶ 49의 소인수:</label>
+              <input type="text" id="ans-2-12-3" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off">
             </div>
-            <div style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
-              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑷ 70:</label>
-              <input type="text" id="ans-2-12-4" class="form-control" placeholder="소인수 입력" autocomplete="off">
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑷ 70의 소인수:</label>
+              <input type="text" id="ans-2-12-4" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off">
             </div>
           </div>
 
-          <button class="btn btn-primary" onclick="checkStep_2_12()" style="width:100%;">정답 확인 및 채점</button>
+          <button class="btn btn-primary" onclick="checkStep_2_12()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
 
@@ -18573,17 +18971,20 @@ function checkStep_1_12() {
       const ok4 = areListsEqual(parseNumList(document.getElementById('ans-2-12-4')?.value), [2, 5, 7]);
 
       if (ok1 && ok2 && ok3 && ok4) {
-        completeSubStep('2-12', '🎉 <b>모두 정답입니다!</b> 4개 수의 소인수를 정확하게 구했습니다.');
+        if (window._step2_12_completeAll) {
+          window._step2_12_completeAll();
+        }
+        completeSubStep('2-12', '🎉 <b>모두 정답입니다!</b><br>⑴ 15의 소인수: <b>3, 5</b><br>⑵ 22의 소인수: <b>2, 11</b><br>⑶ 49의 소인수: <b>7</b><br>⑷ 70의 소인수: <b>2, 5, 7</b>');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         let wrong = [];
-        if (!ok1) wrong.push('⑴ 15');
-        if (!ok2) wrong.push('⑵ 22');
-        if (!ok3) wrong.push('⑶ 49');
-        if (!ok4) wrong.push('⑷ 70');
+        if (!ok1) wrong.push('⑴ 15 (약수 1, 3, 5, 15 중 소수)');
+        if (!ok2) wrong.push('⑵ 22 (약수 1, 2, 11, 22 중 소수)');
+        if (!ok3) wrong.push('⑶ 49 (약수 1, 7, 49 중 소수)');
+        if (!ok4) wrong.push('⑷ 70 (약수 중 소수만 선택)');
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>약수 중에서 소수인 것만 골라 입력하세요.`);
+        showFeedback(false, `❌ <b>오답 항목이 있습니다:</b><br>• ${wrong.join('<br>• ')}<br>1과 합성수를 제외하고 소수인 인수만 적어보세요.`);
       }
     }
 
