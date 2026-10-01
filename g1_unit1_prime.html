@@ -14939,79 +14939,432 @@ function checkStep_1_12() {
     // 2-5 (p.15): 예제 1 & 따라하기: 24와 60 소인수분해
     // -------------------------------------------------------------
     function drawCanvas_2_5(container) {
+      if (container._animId_2_5) {
+        cancelAnimationFrame(container._animId_2_5);
+      }
       container.innerHTML = '';
-      const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 560;
-      canvas.height = container.clientHeight || 460;
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      canvas.style.display = 'block';
-      container.appendChild(canvas);
 
+      const wrapper = document.createElement('div');
+      wrapper.style.display = 'flex';
+      wrapper.style.flexDirection = 'column';
+      wrapper.style.height = '100%';
+      wrapper.style.width = '100%';
+
+      wrapper.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button id="tab-2-5-24" class="btn btn-sm btn-primary num-tab" style="font-weight:700; border-radius:6px; font-size:0.82rem;">📘 [예제 1] 24</button>
+            <button id="tab-2-5-60" class="btn btn-sm btn-outline-secondary num-tab" style="font-weight:600; border-radius:6px; font-size:0.82rem;">📗 [따라하기] 60</button>
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button id="btn-2-5-mode-tree" class="btn btn-sm btn-info active" style="font-weight:700; border-radius:6px; font-size:0.82rem;">🌿 나뭇가지 그림</button>
+            <button id="btn-2-5-mode-div" class="btn btn-sm btn-outline-info" style="font-weight:600; border-radius:6px; font-size:0.82rem;">➗ L자 나눗셈</button>
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button id="btn-2-5-step" class="btn btn-sm btn-outline-primary" style="font-weight:700; border-radius:6px; font-size:0.82rem;">⏩ 다음 소수로 분해</button>
+            <button id="btn-2-5-all" class="btn btn-sm btn-outline-warning" style="font-weight:700; color:#d97706; border-color:#f59e0b; border-radius:6px; font-size:0.82rem;">⚡ 전체 완성</button>
+            <button id="btn-2-5-reset" class="btn btn-sm btn-outline-secondary" style="font-weight:600; border-radius:6px; font-size:0.82rem;">⟲ 초기화</button>
+          </div>
+          <div id="badge-2-5-status" style="font-size:0.82rem; font-weight:700; color:#475569; background:#f1f5f9; padding:4px 10px; border-radius:12px; border:1px solid #e2e8f0; width:100%; margin-top:2px;">
+            [다음 소수로 분해] 버튼을 눌러 소인수분해 과정을 단계별로 관찰해 보세요!
+          </div>
+        </div>
+        <div style="flex:1; min-height:360px; position:relative;">
+          <canvas style="width:100%; height:100%; display:block; border-radius:12px; background:#f8fafc; border:1px solid #e2e8f0;"></canvas>
+        </div>
+      `;
+
+      container.appendChild(wrapper);
+
+      const canvas = wrapper.querySelector('canvas');
       const ctx = canvas.getContext('2d');
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
+      const badgeStatus = wrapper.querySelector('#badge-2-5-status');
 
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 15px Pretendard, sans-serif';
-      ctx.fillStyle = '#1e293b';
-      ctx.fillText('🌲 [예제 1 & 따라하기] 24와 60 소인수분해 트리 (p.15)', w / 2, 35);
+      const tab24 = wrapper.querySelector('#tab-2-5-24');
+      const tab60 = wrapper.querySelector('#tab-2-5-60');
+      const btnModeTree = wrapper.querySelector('#btn-2-5-mode-tree');
+      const btnModeDiv = wrapper.querySelector('#btn-2-5-mode-div');
+      const btnStep = wrapper.querySelector('#btn-2-5-step');
+      const btnAll = wrapper.querySelector('#btn-2-5-all');
+      const btnReset = wrapper.querySelector('#btn-2-5-reset');
 
-      const cardW = (w - 60) / 2;
-      const cardH = 260;
+      let w = 560;
+      let h = 420;
 
-      // 24 분해
-      ctx.save();
-      ctx.fillStyle = '#ffffff';
-      ctx.strokeStyle = '#3b82f6';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(20, 70, cardW, cardH, 10) : ctx.rect(20, 70, cardW, cardH);
-      ctx.fill();
-      ctx.stroke();
+      let currentNum = 24; // 24 or 60
+      let currentMode = 'tree'; // 'tree' or 'div'
+      let step = 0; // 0 to 3
+      const maxStep = 3;
+      let particles = [];
+      const completedNums = new Set();
+      let celebrationTriggered = false;
 
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 16px Pretendard, sans-serif';
-      ctx.fillStyle = '#1d4ed8';
-      ctx.fillText('[예제 1] 24 소인수분해', 20 + cardW / 2, 105);
+      function createConfetti() {
+        const colors = ['#f59e0b', '#ef4444', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
+        for (let i = 0; i < 50; i++) {
+          particles.push({
+            x: w * 0.5 + (Math.random() - 0.5) * 140,
+            y: h * 0.7 + (Math.random() - 0.5) * 40,
+            vx: (Math.random() - 0.5) * 10,
+            vy: -Math.random() * 8 - 4,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.012
+          });
+        }
+      }
 
-      ctx.font = '13px Pretendard, sans-serif';
-      ctx.fillStyle = '#475569';
-      ctx.fillText('24 = 2 × 12', 20 + cardW / 2, 145);
-      ctx.fillText('   = 2 × 2 × 6', 20 + cardW / 2, 175);
-      ctx.fillText('   = 2 × 2 × 2 × 3', 20 + cardW / 2, 205);
+      function resize() {
+        w = canvas.clientWidth || 560;
+        h = canvas.clientHeight || 420;
+        canvas.width = w;
+        canvas.height = h;
+      }
 
-      ctx.font = 'bold 15px Pretendard, sans-serif';
-      ctx.fillStyle = '#2563eb';
-      ctx.fillText('➔ 24 = 2³ × 3', 20 + cardW / 2, 250);
-      ctx.restore();
+      resize();
 
-      // 60 분해
-      ctx.save();
-      ctx.fillStyle = '#ffffff';
-      ctx.strokeStyle = '#059669';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(30 + cardW, 70, cardW, cardH, 10) : ctx.rect(30 + cardW, 70, cardW, cardH);
-      ctx.fill();
-      ctx.stroke();
+      // 탭 및 버튼 이벤트
+      tab24.addEventListener('click', () => {
+        currentNum = 24;
+        step = 0;
+        tab24.className = 'btn btn-sm btn-primary num-tab';
+        tab60.className = 'btn btn-sm btn-outline-secondary num-tab';
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        if (badgeStatus) badgeStatus.innerText = '📘 [예제 1] 24의 소인수분해를 단계별로 진행해 보세요.';
+      });
 
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 16px Pretendard, sans-serif';
-      ctx.fillStyle = '#047857';
-      ctx.fillText('[따라하기] 60 소인수분해', 30 + cardW + cardW / 2, 105);
+      tab60.addEventListener('click', () => {
+        currentNum = 60;
+        step = 0;
+        tab60.className = 'btn btn-sm btn-primary num-tab';
+        tab24.className = 'btn btn-sm btn-outline-secondary num-tab';
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        if (badgeStatus) badgeStatus.innerText = '📗 [따라하기] 60의 소인수분해를 단계별로 진행해 보세요.';
+      });
 
-      ctx.font = '13px Pretendard, sans-serif';
-      ctx.fillStyle = '#475569';
-      ctx.fillText('60 = 2 × 30', 30 + cardW + cardW / 2, 145);
-      ctx.fillText('   = 2 × 2 × 15', 30 + cardW + cardW / 2, 175);
-      ctx.fillText('   = 2 × 2 × 3 × 5', 30 + cardW + cardW / 2, 205);
+      btnModeTree.addEventListener('click', () => {
+        currentMode = 'tree';
+        btnModeTree.className = 'btn btn-sm btn-info active';
+        btnModeDiv.className = 'btn btn-sm btn-outline-info';
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      });
 
-      ctx.font = 'bold 15px Pretendard, sans-serif';
-      ctx.fillStyle = '#059669';
-      ctx.fillText('➔ 60 = 2² × 3 × 5', 30 + cardW + cardW / 2, 250);
-      ctx.restore();
+      btnModeDiv.addEventListener('click', () => {
+        currentMode = 'div';
+        btnModeDiv.className = 'btn btn-sm btn-info active';
+        btnModeTree.className = 'btn btn-sm btn-outline-info';
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      });
+
+      btnStep.addEventListener('click', () => {
+        if (step < maxStep) {
+          step++;
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          checkCompletion();
+        }
+      });
+
+      btnAll.addEventListener('click', () => {
+        step = maxStep;
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        checkCompletion();
+      });
+
+      btnReset.addEventListener('click', () => {
+        step = 0;
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        if (badgeStatus) {
+          badgeStatus.innerText = `${currentNum}의 소인수분해 단계가 초기화되었습니다.`;
+        }
+      });
+
+      function checkCompletion() {
+        if (step >= maxStep) {
+          completedNums.add(currentNum);
+          if (completedNums.size === 2 && !celebrationTriggered) {
+            celebrationTriggered = true;
+            createConfetti();
+            if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+            if (badgeStatus) {
+              badgeStatus.innerHTML = `🎉 <b>24와 60 소인수분해를 모두 완료했습니다!</b> 워크 폼에 정답을 작성하세요.`;
+            }
+          } else {
+            if (badgeStatus) {
+              const res = currentNum === 24 ? '24 = 2³ × 3' : '60 = 2² × 3 × 5';
+              badgeStatus.innerHTML = `✨ <b>${currentNum} 소인수분해 완료!</b> 결과: <b>${res}</b>`;
+            }
+          }
+        }
+      }
+
+      // 60fps 애니메이션 렌더링
+      function animate() {
+        ctx.clearRect(0, 0, w, h);
+
+        // 1. 헤더 타이틀
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText(`🌲 [예제 1 & 따라하기] ${currentNum} 소인수분해 (${currentMode === 'tree' ? '나뭇가지 그림' : 'L자 나눗셈법'}) (p.15)`, w / 2, 14);
+
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillStyle = '#64748b';
+        ctx.fillText('합성수를 소수로 끝까지 나누어 소인수들의 거듭제곱 곱으로 나타냅니다.', w / 2, 38);
+
+        // 2. 렌더링 모드에 따른 분기
+        if (currentMode === 'tree') {
+          renderTreeMode();
+        } else {
+          renderDivMode();
+        }
+
+        // 3. 최종 완성 배너
+        if (step >= maxStep) {
+          const bannerW = Math.min(w - 40, 480);
+          const bannerX = (w - bannerW) / 2;
+          const bannerY = h - 64;
+
+          ctx.save();
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = currentNum === 24 ? '#3b82f6' : '#10b981';
+          ctx.lineWidth = 2;
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.08)';
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          ctx.roundRect ? ctx.roundRect(bannerX, bannerY, bannerW, 48, 10) : ctx.rect(bannerX, bannerY, bannerW, 48);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 16px Pretendard, sans-serif';
+          ctx.fillStyle = currentNum === 24 ? '#1d4ed8' : '#047857';
+          const eq = currentNum === 24 ? '24 = 2 × 2 × 2 × 3 = 2³ × 3' : '60 = 2 × 2 × 3 × 5 = 2² × 3 × 5';
+          ctx.fillText(eq, w / 2, bannerY + 24);
+          ctx.restore();
+        }
+
+        // 4. 파티클 애니메이션
+        if (particles.length > 0) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.25;
+            p.rot += p.vRot;
+            p.life -= p.decay;
+
+            if (p.life <= 0 || p.y > h + 20) {
+              particles.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+            ctx.restore();
+          }
+        }
+
+        container._animId_2_5 = requestAnimationFrame(animate);
+      }
+
+      // --- 트리 모드 렌더링 ---
+      function renderTreeMode() {
+        const is24 = (currentNum === 24);
+        const data = is24 ? [
+          { val: 24, p: true, x: w * 0.5, y: 75, r: 21, isPrime: false },
+          { val: 2, p: step >= 1, x: w * 0.35, y: 135, r: 18, isPrime: true, parent: 0 },
+          { val: 12, p: step >= 1, x: w * 0.65, y: 135, r: 18, isPrime: false, parent: 0 },
+          { val: 2, p: step >= 2, x: w * 0.52, y: 195, r: 18, isPrime: true, parent: 2 },
+          { val: 6, p: step >= 2, x: w * 0.78, y: 195, r: 18, isPrime: false, parent: 2 },
+          { val: 2, p: step >= 3, x: w * 0.68, y: 255, r: 18, isPrime: true, parent: 4 },
+          { val: 3, p: step >= 3, x: w * 0.88, y: 255, r: 18, isPrime: true, parent: 4 }
+        ] : [
+          { val: 60, p: true, x: w * 0.5, y: 75, r: 21, isPrime: false },
+          { val: 2, p: step >= 1, x: w * 0.35, y: 135, r: 18, isPrime: true, parent: 0 },
+          { val: 30, p: step >= 1, x: w * 0.65, y: 135, r: 18, isPrime: false, parent: 0 },
+          { val: 2, p: step >= 2, x: w * 0.52, y: 195, r: 18, isPrime: true, parent: 2 },
+          { val: 15, p: step >= 2, x: w * 0.78, y: 195, r: 18, isPrime: false, parent: 2 },
+          { val: 3, p: step >= 3, x: w * 0.68, y: 255, r: 18, isPrime: true, parent: 4 },
+          { val: 5, p: step >= 3, x: w * 0.88, y: 255, r: 18, isPrime: true, parent: 4 }
+        ];
+
+        // 연결선
+        data.forEach((node, idx) => {
+          if (idx > 0 && node.p) {
+            const parentNode = data[node.parent];
+            ctx.save();
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(parentNode.x, parentNode.y);
+            ctx.lineTo(node.x, node.y);
+            ctx.stroke();
+            ctx.restore();
+          }
+        });
+
+        // 노드 원 그리기
+        data.forEach(node => {
+          if (!node.p) return;
+
+          if (node.isPrime) {
+            ctx.save();
+            const pulse = 1 + Math.sin(Date.now() * 0.006 + node.val) * 0.12;
+            ctx.shadowColor = 'rgba(245, 158, 11, 0.75)';
+            ctx.shadowBlur = 10 * pulse;
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 2.2;
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, node.r + 3 * pulse, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, node.r, 0, Math.PI * 2);
+
+          let grad = ctx.createRadialGradient(node.x - node.r * 0.3, node.y - node.r * 0.3, node.r * 0.1, node.x, node.y, node.r);
+          if (node.isPrime) {
+            grad.addColorStop(0, '#fef08a');
+            grad.addColorStop(1, '#f59e0b');
+            ctx.strokeStyle = '#d97706';
+          } else {
+            grad.addColorStop(0, '#ffffff');
+            grad.addColorStop(1, '#e2e8f0');
+            ctx.strokeStyle = '#94a3b8';
+          }
+          ctx.fillStyle = grad;
+          ctx.fill();
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = `bold ${Math.round(node.r * 0.9)}px Pretendard, sans-serif`;
+          ctx.fillStyle = node.isPrime ? '#78350f' : '#1e293b';
+          ctx.fillText(String(node.val), node.x, node.y);
+
+          if (node.isPrime) {
+            ctx.font = 'bold 9px Pretendard, sans-serif';
+            ctx.fillStyle = '#d97706';
+            ctx.fillText('★소수', node.x, node.y + node.r + 11);
+          }
+          ctx.restore();
+        });
+      }
+
+      // --- L자 나눗셈 모드 렌더링 ---
+      function renderDivMode() {
+        const is24 = (currentNum === 24);
+        const startX = w * 0.44;
+        const startY = 85;
+        const rowH = 45;
+
+        // 단계별 데이터 [나누는 소수, 이전 피제수, 몫]
+        const divSteps24 = [
+          { divisor: 2, num: 24, quotient: 12 },
+          { divisor: 2, num: 12, quotient: 6 },
+          { divisor: 2, num: 6, quotient: 3 }
+        ];
+        const divSteps60 = [
+          { divisor: 2, num: 60, quotient: 30 },
+          { divisor: 2, num: 30, quotient: 15 },
+          { divisor: 3, num: 15, quotient: 5 }
+        ];
+        const divSteps = is24 ? divSteps24 : divSteps60;
+
+        // 초기 수
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 20px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText(String(currentNum), startX + 16, startY);
+
+        for (let i = 0; i < step; i++) {
+          const cur = divSteps[i];
+          const y = startY + i * rowH;
+
+          // 1. 나누는 소수 (좌측)
+          ctx.save();
+          const pulse = 1 + Math.sin(Date.now() * 0.006 + i) * 0.1;
+          ctx.shadowColor = 'rgba(245, 158, 11, 0.6)';
+          ctx.shadowBlur = 8 * pulse;
+
+          ctx.fillStyle = '#f59e0b';
+          ctx.beginPath();
+          ctx.arc(startX - 22, y, 16, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(String(cur.divisor), startX - 22, y);
+          ctx.restore();
+
+          // 2. L자 선
+          ctx.save();
+          ctx.strokeStyle = '#3b82f6';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(startX - 5, y - 16);
+          ctx.lineTo(startX - 5, y + 16);
+          ctx.lineTo(startX + 80, y + 16);
+          ctx.stroke();
+          ctx.restore();
+
+          // 3. 몫 (아래)
+          const nextY = y + rowH;
+          const isFinal = (i === divSteps.length - 1);
+
+          if (isFinal) {
+            // 최종 몫도 소수이므로 하이라이트
+            ctx.save();
+            const finalPulse = 1 + Math.sin(Date.now() * 0.006 + 9) * 0.12;
+            ctx.shadowColor = 'rgba(16, 185, 129, 0.7)';
+            ctx.shadowBlur = 10 * finalPulse;
+
+            ctx.fillStyle = '#10b981';
+            ctx.beginPath();
+            ctx.arc(startX + 30, nextY, 16, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 15px Pretendard, sans-serif';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(String(cur.quotient), startX + 30, nextY);
+
+            ctx.font = 'bold 10px Pretendard, sans-serif';
+            ctx.fillStyle = '#047857';
+            ctx.fillText('★최종 소수', startX + 80, nextY);
+            ctx.restore();
+          } else {
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 19px Pretendard, sans-serif';
+            ctx.fillStyle = '#1e293b';
+            ctx.fillText(String(cur.quotient), startX + 16, nextY);
+          }
+        }
+      }
+
+      container._animId_2_5 = requestAnimationFrame(animate);
+
+      const ro = new ResizeObserver(() => {
+        resize();
+      });
+      ro.observe(wrapper);
     }
 
     function renderForm_2_5(box) {
@@ -15021,46 +15374,95 @@ function checkStep_1_12() {
             ✏️ [예제 1 & 따라하기] 24와 60 소인수분해 (p.15)
           </div>
           <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
-            다음을 소인수분해하여 거듭제곱 꼴로 나타내시오. (^ 기호 사용 가능)
+            예제 1과 따라하기의 빈칸을 채우고 소인수분해한 결과를 거듭제곱으로 나타내시오.
           </p>
 
-          <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:14px;">
-            <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0;">
-              <label style="font-size:0.86rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">⑴ 24를 소인수분해하시오:</label>
-              <input type="text" id="ans-2-5-1" class="form-control" placeholder="거듭제곱 식 입력" autocomplete="off">
+          <div style="display:flex; flex-direction:column; gap:14px; margin-bottom:16px;">
+            <!-- 예제 1 -->
+            <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
+              <div style="font-weight:700; color:#1d4ed8; margin-bottom:6px;">📘 [예제 1] 24를 소인수분해하시오:</div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span>$24 =$</span>
+                [ <input type="text" id="ans-2-5-1" style="width:170px; text-align:center; font-weight:700; display:inline-block;" class="form-control" placeholder="거듭제곱 식 입력" autocomplete="off"> ]
+              </div>
             </div>
-            <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0;">
-              <label style="font-size:0.86rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">⑵ 60을 소인수분해하시오:</label>
-              <input type="text" id="ans-2-5-2" class="form-control" placeholder="거듭제곱 식 입력" autocomplete="off">
+
+            <!-- 따라하기 -->
+            <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
+              <div style="font-weight:700; color:#047857; margin-bottom:6px;">📗 [따라하기] 60을 소인수분해하는 과정의 빈칸을 채우고 결과를 쓰시오:</div>
+              <div style="margin-bottom:8px; font-size:0.95rem;">
+                $60 = 2 \\times$ [ <input type="text" id="ans-2-5-2-1" style="width:75px; text-align:center; font-weight:700; display:inline-block;" class="form-control" placeholder="수 입력" autocomplete="off"> ]
+                $= 2 \\times 2 \\times$ [ <input type="text" id="ans-2-5-2-2" style="width:75px; text-align:center; font-weight:700; display:inline-block;" class="form-control" placeholder="수 입력" autocomplete="off"> ]
+                $= 2^2 \\times 3 \\times 5$
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span>최종 결과: $60 =$</span>
+                [ <input type="text" id="ans-2-5-2" style="width:190px; text-align:center; font-weight:700; display:inline-block;" class="form-control" placeholder="거듭제곱 식 입력" autocomplete="off"> ]
+              </div>
             </div>
           </div>
 
-          <button class="btn btn-primary" onclick="checkStep_2_5()" style="width:100%;">정답 확인 및 채점</button>
+          <!-- 거듭제곱 퀵 입력 바 -->
+          <div style="display:flex; align-items:center; gap:6px; margin-bottom:14px; background:#f1f5f9; padding:8px 12px; border-radius:8px;">
+            <span style="font-size:0.82rem; font-weight:700; color:#475569;">기호 입력:</span>
+            <button type="button" class="btn btn-sm btn-light quick-sym-btn" data-sym="^" style="border:1px solid #cbd5e1; font-weight:700; padding:2px 8px;">^</button>
+            <button type="button" class="btn btn-sm btn-light quick-sym-btn" data-sym="²" style="border:1px solid #cbd5e1; font-weight:700; padding:2px 8px;">²</button>
+            <button type="button" class="btn btn-sm btn-light quick-sym-btn" data-sym="³" style="border:1px solid #cbd5e1; font-weight:700; padding:2px 8px;">³</button>
+            <button type="button" class="btn btn-sm btn-light quick-sym-btn" data-sym=" × " style="border:1px solid #cbd5e1; font-weight:700; padding:2px 8px;">×</button>
+          </div>
+
+          <button class="btn btn-primary" onclick="checkStep_2_5()" style="width:100%; font-weight:700; padding:10px 0;">정답 확인 및 채점</button>
         </div>
       `;
 
-      const inputs = box.querySelectorAll('input[type="text"]');
-      inputs.forEach(input => {
-        input.addEventListener('keydown', (e) => {
+      let lastActiveInput = box.querySelector('#ans-2-5-1');
+      const allInputs = box.querySelectorAll('input[type="text"]');
+      allInputs.forEach(inp => {
+        inp.addEventListener('focus', () => { lastActiveInput = inp; });
+        inp.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') checkStep_2_5();
+        });
+      });
+
+      const quickBtns = box.querySelectorAll('.quick-sym-btn');
+      quickBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (lastActiveInput) {
+            const sym = btn.getAttribute('data-sym');
+            const start = lastActiveInput.selectionStart || lastActiveInput.value.length;
+            const end = lastActiveInput.selectionEnd || lastActiveInput.value.length;
+            const val = lastActiveInput.value;
+            lastActiveInput.value = val.substring(0, start) + sym + val.substring(end);
+            lastActiveInput.focus();
+            lastActiveInput.setSelectionRange(start + sym.length, start + sym.length);
+          }
         });
       });
     }
 
     function checkStep_2_5() {
-      const ok1 = comparePowerMaps(parsePowerProduct(document.getElementById('ans-2-5-1')?.value), { 2: 3, 3: 1 });
-      const ok2 = comparePowerMaps(parsePowerProduct(document.getElementById('ans-2-5-2')?.value), { 2: 2, 3: 1, 5: 1 });
+      const v1 = document.getElementById('ans-2-5-1')?.value || '';
+      const v2_1 = normTxt(document.getElementById('ans-2-5-2-1')?.value);
+      const v2_2 = normTxt(document.getElementById('ans-2-5-2-2')?.value);
+      const v2 = document.getElementById('ans-2-5-2')?.value || '';
 
-      if (ok1 && ok2) {
-        completeSubStep('2-5', '🎉 <b>모두 정답입니다!</b> 24 = 2³ × 3, 60 = 2² × 3 × 5로 완벽하게 소인수분해했습니다.');
+      const ok1 = comparePowerMaps(parsePowerProduct(v1), { 2: 3, 3: 1 });
+      const ok2_1 = (v2_1 === '30');
+      const ok2_2 = (v2_2 === '15');
+      const ok2 = comparePowerMaps(parsePowerProduct(v2), { 2: 2, 3: 1, 5: 1 });
+
+      if (ok1 && ok2_1 && ok2_2 && ok2) {
+        completeSubStep('2-5', '🎉 <b>모두 정답입니다!</b><br>• [예제 1] $24 = 2^3 \\times 3$<br>• [따라하기] $60 = 2 \\times 30 = 2 \\times 2 \\times 15 = 2^2 \\times 3 \\times 5$');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         let wrong = [];
-        if (!ok1) wrong.push('⑴ 24');
-        if (!ok2) wrong.push('⑵ 60');
+        if (!ok1) wrong.push('[예제 1] 24의 소인수분해 (2³×3)');
+        if (!ok2_1) wrong.push('[따라하기] 첫 번째 빈칸 (60=2×30)');
+        if (!ok2_2) wrong.push('[따라하기] 두 번째 빈칸 (30=2×15)');
+        if (!ok2) wrong.push('[따라하기] 60의 소인수분해 (2²×3×5)');
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>나뭇가지 그림이나 나눗셈을 이용해 소수로 끝까지 나누어 보세요.`);
+        showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>💡 힌트: 나뭇가지 그림이나 L자 나눗셈으로 소수로 끝까지 분해해 보세요.`);
       }
     }
 
