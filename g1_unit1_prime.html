@@ -22819,37 +22819,514 @@ function checkStep_1_12() {
     }
 
     // 3-4 (p.19): 문제 1: 두 수가 서로소인 것 고르기
-    function drawCanvas_3_4(container) { createDefaultCanvas_3(container, '🎨 [3-4] 서로소 판별 레이더'); }
+    function drawCanvas_3_4(container) {
+      if (container._animId_3_4) {
+        cancelAnimationFrame(container._animId_3_4);
+        container._animId_3_4 = null;
+      }
+      container.innerHTML = '';
+
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; height:100%; box-sizing:border-box;">
+          <!-- 상단 컨트롤러 및 상태 안내 바 -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+            <div id="badge-3-4" style="font-size:0.86rem; font-weight:700; color:#1e293b; background:#f1f5f9; padding:6px 14px; border-radius:20px; border:1px solid #cbd5e1; flex:1; min-width:240px;">
+              각 보기를 클릭하거나 버튼을 눌러 소인수분해와 서로소 여부를 분석해 보세요!
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button id="btn-card1-3-4" class="btn btn-sm btn-outline-primary" style="font-weight:700;">⑴ 14, 15</button>
+              <button id="btn-card2-3-4" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">⑵ 10, 45</button>
+              <button id="btn-card3-3-4" class="btn btn-sm btn-outline-primary" style="font-weight:700;">⑶ 24, 35</button>
+              <button id="btn-card4-3-4" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">⑷ 17, 51</button>
+              <button id="btn-scanall-3-4" class="btn btn-sm btn-warning" style="font-weight:800; color:#1e293b;">⚡ 전체 동시 스캔</button>
+              <button id="btn-reset-3-4" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">⟲ 초기화</button>
+            </div>
+          </div>
+          <!-- Canvas 렌더링 영역 -->
+          <div style="flex:1; min-height:370px; position:relative;">
+            <canvas id="canvas-3-4" style="width:100%; height:100%; display:block; border-radius:12px; background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); border:1px solid #e2e8f0;"></canvas>
+          </div>
+        </div>
+      `;
+
+      const canvas = container.querySelector('#canvas-3-4');
+      const badgeStatus = container.querySelector('#badge-3-4');
+      const btn1 = container.querySelector('#btn-card1-3-4');
+      const btn2 = container.querySelector('#btn-card2-3-4');
+      const btn3 = container.querySelector('#btn-card3-3-4');
+      const btn4 = container.querySelector('#btn-card4-3-4');
+      const btnScanAll = container.querySelector('#btn-scanall-3-4');
+      const btnReset = container.querySelector('#btn-reset-3-4');
+
+      const ctx = canvas.getContext('2d');
+      let w = 560, h = 400;
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        w = rect.width || 560;
+        h = rect.height || 400;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+
+      const ro = new ResizeObserver(() => {
+        resize();
+      });
+      ro.observe(canvas);
+
+      // 4개 보기 카드 데이터
+      const cards = [
+        {
+          id: 1,
+          numLabel: '⑴',
+          pair: '14, 15',
+          fA: '14 = 2 × 7',
+          fB: '15 = 3 × 5',
+          common: '공통 소인수 없음 (최대공약수 = 1)',
+          isCoprime: true,
+          revealed: false,
+          glow: 0
+        },
+        {
+          id: 2,
+          numLabel: '⑵',
+          pair: '10, 45',
+          fA: '10 = 2 × 5',
+          fB: '45 = 3² × 5',
+          common: '공통 소인수 5 (최대공약수 = 5 ≠ 1)',
+          isCoprime: false,
+          revealed: false,
+          glow: 0
+        },
+        {
+          id: 3,
+          numLabel: '⑶',
+          pair: '24, 35',
+          fA: '24 = 2³ × 3',
+          fB: '35 = 5 × 7',
+          common: '공통 소인수 없음 (최대공약수 = 1)',
+          isCoprime: true,
+          revealed: false,
+          glow: 0
+        },
+        {
+          id: 4,
+          numLabel: '⑷',
+          pair: '17, 51',
+          fA: '17 (소수)',
+          fB: '51 = 3 × 17',
+          common: '공통 소인수 17 (최대공약수 = 17 ≠ 1)',
+          isCoprime: false,
+          revealed: false,
+          glow: 0
+        }
+      ];
+
+      let particles = [];
+      let hoveredCard = null;
+
+      function spawnConfetti(count = 55) {
+        const colors = ['#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#f43f5e'];
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: w / 2 + (Math.random() - 0.5) * 120,
+            y: h / 2 - 30,
+            vx: (Math.random() - 0.5) * 12,
+            vy: (Math.random() - 0.85) * 11 - 2,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.01
+          });
+        }
+      }
+
+      function revealCard(id) {
+        const card = cards.find(c => c.id === id);
+        if (!card) return;
+        card.revealed = true;
+        card.glow = 1.0;
+
+        if (badgeStatus) {
+          if (card.isCoprime) {
+            badgeStatus.innerHTML = `✨ <b>${card.numLabel} ${card.pair}</b>: 공통 소인수가 없으므로 <b>최대공약수 = 1 ➔ 서로소 ⭕</b>!`;
+            if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+          } else {
+            badgeStatus.innerHTML = `⚠️ <b>${card.numLabel} ${card.pair}</b>: ${card.common} ➔ <b>서로소 아님 ❌</b>!`;
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        }
+      }
+
+      function scanAll() {
+        cards.forEach((c, idx) => {
+          setTimeout(() => {
+            c.revealed = true;
+            c.glow = 1.0;
+            if (c.isCoprime && idx === cards.length - 1) {
+              spawnConfetti(55);
+            }
+          }, idx * 180);
+        });
+
+        if (badgeStatus) {
+          badgeStatus.innerHTML = '👑 <b>전체 스캔 완료!</b> 두 수가 서로소인 것은 <b>⑴, ⑶</b> 입니다!';
+        }
+        if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+      }
+
+      function resetAll() {
+        cards.forEach(c => {
+          c.revealed = false;
+          c.glow = 0;
+        });
+        particles = [];
+        if (badgeStatus) {
+          badgeStatus.innerText = '각 보기를 클릭하거나 버튼을 눌러 소인수분해와 서로소 여부를 분석해 보세요!';
+        }
+      }
+
+      window._step3_4_triggerSuccess = function() {
+        scanAll();
+        setTimeout(() => spawnConfetti(60), 600);
+      };
+
+      btn1?.addEventListener('click', () => revealCard(1));
+      btn2?.addEventListener('click', () => revealCard(2));
+      btn3?.addEventListener('click', () => revealCard(3));
+      btn4?.addEventListener('click', () => revealCard(4));
+      btnScanAll?.addEventListener('click', scanAll);
+      btnReset?.addEventListener('click', resetAll);
+
+      // 마우스 클릭 및 호버 인터랙션
+      function getCardRect(idx) {
+        const padX = 18;
+        const gapX = 14;
+        const cardW = (w - padX * 2 - gapX) / 2;
+        const padY = 16;
+        const gapY = 12;
+        const cardH = 118;
+
+        const row = Math.floor(idx / 2);
+        const col = idx % 2;
+        const x = padX + col * (cardW + gapX);
+        const y = padY + row * (cardH + gapY);
+        return { x, y, w: cardW, h: cardH };
+      }
+
+      canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        hoveredCard = null;
+        cards.forEach((c, idx) => {
+          const cr = getCardRect(idx);
+          if (mx >= cr.x && mx <= cr.x + cr.w && my >= cr.y && my <= cr.y + cr.h) {
+            hoveredCard = c;
+          }
+        });
+        canvas.style.cursor = hoveredCard ? 'pointer' : 'default';
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        hoveredCard = null;
+        canvas.style.cursor = 'default';
+      });
+
+      canvas.addEventListener('click', () => {
+        if (hoveredCard) {
+          revealCard(hoveredCard.id);
+        }
+      });
+
+      // 렌더링 루프
+      function render() {
+        ctx.clearRect(0, 0, w, h);
+
+        // 1. 4개 보기 카드 그리기
+        cards.forEach((card, idx) => {
+          const cr = getCardRect(idx);
+          const isHov = (hoveredCard === card);
+
+          // 글로우 감쇠
+          if (card.glow > 0) card.glow = Math.max(0, card.glow - 0.02);
+
+          ctx.save();
+          // 배경 채우기
+          if (card.revealed) {
+            if (card.isCoprime) {
+              ctx.fillStyle = '#ecfdf5';
+              ctx.strokeStyle = '#10b981';
+            } else {
+              ctx.fillStyle = '#fff7ed';
+              ctx.strokeStyle = '#f97316';
+            }
+          } else {
+            ctx.fillStyle = isHov ? '#ffffff' : '#f8fafc';
+            ctx.strokeStyle = isHov ? '#3b82f6' : '#cbd5e1';
+          }
+
+          ctx.lineWidth = (card.revealed || isHov) ? 2 : 1;
+
+          // 호버 또는 활성화 시 부드러운 그림자
+          if (card.glow > 0 || isHov) {
+            ctx.shadowColor = card.revealed ? (card.isCoprime ? 'rgba(16,185,129,0.4)' : 'rgba(249,115,22,0.4)') : 'rgba(59,130,246,0.3)';
+            ctx.shadowBlur = (card.glow > 0) ? 14 : 8;
+          }
+
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(cr.x, cr.y, cr.w, cr.h, 10);
+          else ctx.rect(cr.x, cr.y, cr.w, cr.h);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+
+          // 카드 상단 헤더: [기호 및 두 수] vs [판정 뱃지]
+          ctx.save();
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText(`${card.numLabel}  ${card.pair}`, cr.x + 14, cr.y + 22);
+
+          // 우측 뱃지
+          if (card.revealed) {
+            const badgeX = cr.x + cr.w - 14;
+            ctx.textAlign = 'right';
+            ctx.font = 'bold 13px Pretendard, sans-serif';
+            if (card.isCoprime) {
+              ctx.fillStyle = '#059669';
+              ctx.fillText('⭕ 서로소', badgeX, cr.y + 22);
+            } else {
+              ctx.fillStyle = '#ea580c';
+              ctx.fillText('❌ 서로소 아님', badgeX, cr.y + 22);
+            }
+          } else {
+            const badgeX = cr.x + cr.w - 14;
+            ctx.textAlign = 'right';
+            ctx.font = '12px Pretendard, sans-serif';
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText('클릭하여 분석 🔍', badgeX, cr.y + 22);
+          }
+          ctx.restore();
+
+          // 카드 구분선
+          ctx.save();
+          ctx.strokeStyle = card.revealed ? (card.isCoprime ? '#a7f3d0' : '#fed7aa') : '#e2e8f0';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(cr.x + 10, cr.y + 40);
+          ctx.lineTo(cr.x + cr.w - 10, cr.y + 40);
+          ctx.stroke();
+          ctx.restore();
+
+          // 카드 본문 (소인수분해 및 판정)
+          ctx.save();
+          ctx.textAlign = 'left';
+          if (card.revealed) {
+            // 소인수분해 식
+            ctx.font = 'bold 13px Pretendard, sans-serif';
+            ctx.fillStyle = '#334155';
+            ctx.fillText(`• ${card.fA}`, cr.x + 14, cr.y + 60);
+            ctx.fillText(`• ${card.fB}`, cr.x + 14, cr.y + 80);
+
+            // 결론
+            ctx.font = 'bold 12px Pretendard, sans-serif';
+            if (card.isCoprime) {
+              ctx.fillStyle = '#047857';
+              ctx.fillText('➔ 공통 소인수 없음 (최대공약수=1)', cr.x + 14, cr.y + 102);
+            } else {
+              ctx.fillStyle = '#c2410c';
+              ctx.fillText(`➔ ${card.common}`, cr.x + 14, cr.y + 102);
+            }
+          } else {
+            // 비공개 상태 안내
+            ctx.font = '13px Pretendard, sans-serif';
+            ctx.fillStyle = '#64748b';
+            ctx.fillText('두 수를 소인수분해하여', cr.x + 14, cr.y + 66);
+            ctx.fillText('공약수가 1뿐인지 확인해 보세요.', cr.x + 14, cr.y + 88);
+          }
+          ctx.restore();
+        });
+
+        // 2. 하단 핵심 정리 박스 (y: 276 ~ 384)
+        const sumW = Math.min(w - 36, 520);
+        const sumX = (w - sumW) / 2;
+        const sumY = 276;
+
+        ctx.save();
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(sumX, sumY, sumW, 108, 10);
+        else ctx.rect(sumX, sumY, sumW, 108);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('💡 서로소 판별 핵심 비법 (교과서 p.19 문제 1):', sumX + 16, sumY + 22);
+
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillStyle = '#334155';
+        ctx.fillText('➊ 각 수를 소인수분해했을 때 공통인 소인수가 없으면 최대공약수는 1 ➔ 서로소!', sumX + 16, sumY + 44);
+        ctx.fillText('➋ ⑴ 14(=2×7), 15(=3×5) ➔ 공통 소인수 없음 ➔ 서로소 ⭕', sumX + 16, sumY + 64);
+        ctx.fillText('➌ ⑶ 24(=2³×3), 35(=5×7) ➔ 공통 소인수 없음 ➔ 서로소 ⭕', sumX + 16, sumY + 82);
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('※ ⑵는 공약수 5, ⑷는 공약수 17(51=17×3)이 있으므로 서로소가 아닙니다.', sumX + 16, sumY + 100);
+        ctx.restore();
+
+        // 3. 콘페티 애니메이션
+        if (particles.length > 0) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.22;
+            p.rot += p.vRot;
+            p.life -= p.decay;
+
+            if (p.life <= 0) {
+              particles.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+            ctx.restore();
+          }
+        }
+
+        container._animId_3_4 = requestAnimationFrame(render);
+      }
+
+      render();
+    }
+
     function renderForm_3_4(box) {
       box.innerHTML = `
-        <div class="card">
+        <div class="card" style="padding:16px 20px;">
           <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
             ✏️ [문제 1] 두 수가 서로소인 것 고르기 (p.19)
           </div>
           <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
-            다음 중에서 두 수가 서로소인 것을 모두 고르시오. (쉼표로 구분, 예: ⑴, ⑶ 또는 1, 3)<br>
-            ⑴ 14, 15 &nbsp;&nbsp; ⑵ 10, 45 &nbsp;&nbsp; ⑶ 24, 35 &nbsp;&nbsp; ⑷ 17, 51
+            다음 중에서 두 수가 서로소인 것을 <b>모두</b> 고르시오.
           </p>
-          <div style="margin-bottom:12px;">
-            <input type="text" id="ans-3-4" class="input-text" placeholder="보기 기호 입력" style="width:100%;">
+
+          <!-- 보기 카드 박스 -->
+          <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:12px 16px; margin-bottom:12px;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-weight:700; font-size:0.95rem; color:#1e293b;">
+              <div>⑴ 14, 15</div>
+              <div>⑵ 10, 45</div>
+              <div>⑶ 24, 35</div>
+              <div>⑷ 17, 51</div>
+            </div>
           </div>
-          <button class="btn btn-primary" onclick="checkStep_3_4()" style="width:100%;">정답 확인 및 채점</button>
+
+          <!-- 퀵 입력 바 -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; background:#f1f5f9; padding:8px 10px; border-radius:8px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; line-height:28px;">퀵 입력:</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-insert-3-4" data-char="⑴" style="font-weight:700; min-width:32px;">⑴</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-insert-3-4" data-char="⑵" style="font-weight:700; min-width:32px;">⑵</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-insert-3-4" data-char="⑶" style="font-weight:700; min-width:32px;">⑶</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-insert-3-4" data-char="⑷" style="font-weight:700; min-width:32px;">⑷</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-insert-3-4" data-char=", " style="font-weight:700; min-width:32px;">,</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-clear-3-4" style="font-weight:700;">초기화</button>
+          </div>
+
+          <div style="margin-bottom:14px;">
+            <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+              서로소인 것 (쉼표로 구분하여 모두 입력):
+            </label>
+            <input type="text" id="ans-3-4" class="form-control" style="width:100%; font-size:1rem; font-weight:700;" placeholder="보기 기호 입력 (예: ⑴, ⑶)" autocomplete="off">
+          </div>
+
+          <button class="btn btn-primary" onclick="checkStep_3_4()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
+
       const input = box.querySelector('#ans-3-4');
-      if (input) input.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkStep_3_4(); });
+      if (input) {
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') checkStep_3_4();
+        });
+      }
+
+      box.querySelectorAll('.btn-quick-insert-3-4').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const char = btn.getAttribute('data-char');
+          if (input) {
+            input.value += char;
+            input.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      });
+
+      const clearBtn = box.querySelector('.btn-quick-clear-3-4');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          if (input) {
+            input.value = '';
+            input.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      }
     }
+
     function checkStep_3_4() {
-      const v = normTxt(document.getElementById('ans-3-4')?.value);
-      const isOk = (v.includes('1') && v.includes('3') && !v.includes('2') && !v.includes('4')) ||
-                   (v.includes('⑴') && v.includes('⑶') && !v.includes('⑵') && !v.includes('⑷'));
+      const raw = normTxt(document.getElementById('ans-3-4')?.value);
+
+      // 1. 수 자체 입력 호환 체크
+      const hasNumPair1 = (raw.includes('14') && raw.includes('15'));
+      const hasNumPair3 = (raw.includes('24') && raw.includes('35'));
+      const hasWrongPair2 = (raw.includes('10') || raw.includes('45'));
+      const hasWrongPair4 = (raw.includes('17') || raw.includes('51'));
+
+      // 2. 보기 번호 체크 (두 자리 수 제거 후 1, 2, 3, 4 탐색)
+      const cleanTokens = raw.replace(/\d{2,}/g, ' ').replace(/[()]/g, '');
+
+      const has1 = raw.includes('⑴') || cleanTokens.includes('1') || hasNumPair1;
+      const has2 = raw.includes('⑵') || cleanTokens.includes('2') || hasWrongPair2;
+      const has3 = raw.includes('⑶') || cleanTokens.includes('3') || hasNumPair3;
+      const has4 = raw.includes('⑷') || cleanTokens.includes('4') || hasWrongPair4;
+
+      const isOk = has1 && has3 && !has2 && !has4;
+
       if (isOk) {
-        completeSubStep('3-4', '🎉 <b>정답입니다!</b> ⑴(14, 15)와 ⑶(24, 35)는 최대공약수가 1이므로 서로소입니다.');
+        if (window._step3_4_triggerSuccess) {
+          window._step3_4_triggerSuccess();
+        }
+        completeSubStep('3-4', '🎉 <b>정답입니다! ⑴, ⑶</b><br>• <b>⑴ 14, 15</b>: 14 = 2 × 7, 15 = 3 × 5 ➔ 공통 소인수가 없으므로 최대공약수는 1 (<b>서로소 ⭕</b>)<br>• <b>⑶ 24, 35</b>: 24 = 2³ × 3, 35 = 5 × 7 ➔ 공통 소인수가 없으므로 최대공약수는 1 (<b>서로소 ⭕</b>)<br>• ⑵ 10, 45: 공약수 5를 가지므로 서로소가 아님 (❌)<br>• ⑷ 17, 51: 51 = 3 × 17이므로 공약수 17을 가져 서로소가 아님 (❌)');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 1 이외의 공약수가 없는 두 수의 쌍을 찾아보세요.');
+        if (has1 && !has3 && !has2 && !has4) {
+          showFeedback(false, '❌ <b>한 개를 더 찾아보세요!</b> ⑴ 외에도 서로소인 보기가 하나 더 있습니다. ⑶ 24와 35를 소인수분해해 보세요.');
+        } else if (!has1 && has3 && !has2 && !has4) {
+          showFeedback(false, '❌ <b>한 개를 더 찾아보세요!</b> ⑶ 외에도 서로소인 보기가 하나 더 있습니다. ⑴ 14와 15를 소인수분해해 보세요.');
+        } else if (has2 || has4) {
+          const wrongList = [];
+          if (has2) wrongList.push('⑵ 10과 45 (공약수 5)');
+          if (has4) wrongList.push('⑷ 17과 51 (공약수 17)');
+          showFeedback(false, `❌ <b>오답입니다: ${wrongList.join(', ')}는 서로소가 아닙니다.</b> 1 이외의 공통인 소인수가 없는 두 수만 모두 골라 보세요.`);
+        } else {
+          showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 각 보기를 소인수분해하여 1 이외의 공통인 소인수가 없는 것을 모두 골라 보세요. (예: ⑴, ⑶)');
+        }
       }
     }
 
