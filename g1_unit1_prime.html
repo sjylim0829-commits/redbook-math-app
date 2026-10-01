@@ -9184,155 +9184,610 @@ function checkStep_1_6() {
 }
 
 // -------------------------------------------------------------
-// 1-7 (p.12): 문제 3: 밑과 지수 구하기
+// 1-7 (p.12): 수학·과학: 종이 접기와 거듭제곱의 위력
 // -------------------------------------------------------------
 function drawCanvas_1_7(container) {
+  if (container._animId_1_7) {
+    cancelAnimationFrame(container._animId_1_7);
+    container._animId_1_7 = null;
+  }
   container.innerHTML = '';
+
+  const wrapper = document.createElement('div');
+  wrapper.style.position = 'relative';
+  wrapper.style.width = '100%';
+  wrapper.style.height = '100%';
+  wrapper.style.minHeight = '500px';
+  wrapper.style.overflow = 'hidden';
+  wrapper.style.background = 'radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%)';
+  wrapper.style.borderRadius = '12px';
+  wrapper.style.userSelect = 'none';
+  wrapper.style.webkitUserSelect = 'none';
+  container.appendChild(wrapper);
+
   const canvas = document.createElement('canvas');
-  canvas.width = container.clientWidth || 560;
-  canvas.height = container.clientHeight || 460;
+  canvas.style.display = 'block';
   canvas.style.width = '100%';
   canvas.style.height = '100%';
-  canvas.style.display = 'block';
-  container.appendChild(canvas);
+  canvas.style.touchAction = 'none';
+  wrapper.appendChild(canvas);
 
   const ctx = canvas.getContext('2d');
 
-  function draw() {
-    const w = canvas.width;
-    const h = canvas.height;
-    ctx.clearRect(0, 0, w, h);
+  let w = 560;
+  let h = 500;
+  let dpr = window.devicePixelRatio || 1;
 
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 15px Pretendard, sans-serif';
-    ctx.fillStyle = '#1e293b';
-    ctx.fillText('🔬 거듭제곱 밑과 지수 구조 분석기 (p.12)', w / 2, 35);
+  let folds = 0; // 0 ~ 42
+  let targetFolds = 0;
+  let animFolds = 0;
 
-    // Card 1: 2^5
-    const cx1 = w * 0.3;
-    const cy1 = 160;
-
-    ctx.fillStyle = '#ffffff';
-    ctx.strokeStyle = '#3b82f6';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect ? ctx.roundRect(cx1 - 90, cy1 - 70, 180, 180, 12) : ctx.rect(cx1 - 90, cy1 - 70, 180, 180);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#1d4ed8';
-    ctx.font = 'bold 36px Pretendard, sans-serif';
-    ctx.fillText('2', cx1 - 15, cy1 - 10);
-    ctx.font = 'bold 22px Pretendard, sans-serif';
-    ctx.fillStyle = '#ef4444';
-    ctx.fillText('5', cx1 + 18, cy1 - 25);
-
-    ctx.fillStyle = '#334155';
-    ctx.font = 'bold 13px Pretendard, sans-serif';
-    ctx.fillText('⑴ 2⁵의 구조', cx1, cy1 + 35);
-    ctx.font = '12px Pretendard, sans-serif';
-    ctx.fillStyle = '#1d4ed8';
-    ctx.fillText('밑: 2 (곱하는 수)', cx1, cy1 + 60);
-    ctx.fillStyle = '#dc2626';
-    ctx.fillText('지수: 5 (곱한 횟수)', cx1, cy1 + 80);
-
-    // Card 2: 10^3
-    const cx2 = w * 0.7;
-    ctx.fillStyle = '#ffffff';
-    ctx.strokeStyle = '#8b5cf6';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect ? ctx.roundRect(cx2 - 90, cy1 - 70, 180, 180, 12) : ctx.rect(cx2 - 90, cy1 - 70, 180, 180);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#6d28d9';
-    ctx.font = 'bold 36px Pretendard, sans-serif';
-    ctx.fillText('10', cx2 - 15, cy1 - 10);
-    ctx.font = 'bold 22px Pretendard, sans-serif';
-    ctx.fillStyle = '#ef4444';
-    ctx.fillText('3', cx2 + 25, cy1 - 25);
-
-    ctx.fillStyle = '#334155';
-    ctx.font = 'bold 13px Pretendard, sans-serif';
-    ctx.fillText('⑵ 10³의 구조', cx2, cy1 + 35);
-    ctx.font = '12px Pretendard, sans-serif';
-    ctx.fillStyle = '#6d28d9';
-    ctx.fillText('밑: 10 (곱하는 수)', cx2, cy1 + 60);
-    ctx.fillStyle = '#dc2626';
-    ctx.fillText('지수: 3 (곱한 횟수)', cx2, cy1 + 80);
-
-    // Bottom explanation
-    ctx.font = '13px Pretendard, sans-serif';
-    ctx.fillStyle = '#64748b';
-    ctx.fillText('2⁵ = 2 × 2 × 2 × 2 × 2 = 32   |   10³ = 10 × 10 × 10 = 1000', w / 2, h - 50);
+  // 별빛 배경 데이터
+  const stars = [];
+  for (let i = 0; i < 45; i++) {
+    stars.push({
+      x: Math.random(),
+      y: Math.random(),
+      r: Math.random() * 1.5 + 0.5,
+      alpha: Math.random() * 0.7 + 0.3,
+      speed: Math.random() * 0.02 + 0.01
+    });
   }
 
-  draw();
+  // 상단 툴바 UI
+  const topBar = document.createElement('div');
+  topBar.style.position = 'absolute';
+  topBar.style.top = '10px';
+  topBar.style.left = '12px';
+  topBar.style.right = '12px';
+  topBar.style.display = 'flex';
+  topBar.style.justifyContent = 'space-between';
+  topBar.style.alignItems = 'center';
+  topBar.style.zIndex = '10';
+  wrapper.appendChild(topBar);
+
+  const titleBadge = document.createElement('div');
+  titleBadge.style.display = 'inline-flex';
+  titleBadge.style.alignItems = 'center';
+  titleBadge.style.gap = '6px';
+  titleBadge.style.background = 'rgba(15, 23, 42, 0.85)';
+  titleBadge.style.border = '1px solid rgba(255, 255, 255, 0.15)';
+  titleBadge.style.padding = '6px 14px';
+  titleBadge.style.borderRadius = '20px';
+  titleBadge.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.4)';
+  titleBadge.style.fontSize = '12px';
+  titleBadge.style.fontWeight = '700';
+  titleBadge.style.color = '#e2e8f0';
+  titleBadge.innerHTML = '🚀 <b>[수학·과학 탐구]</b> 종이 접기와 거듭제곱의 우주적 위력 (p.12)';
+  topBar.appendChild(titleBadge);
+
+  const resetBtn = document.createElement('button');
+  resetBtn.style.padding = '5px 12px';
+  resetBtn.style.fontSize = '11.5px';
+  resetBtn.style.fontWeight = '600';
+  resetBtn.style.color = '#cbd5e1';
+  resetBtn.style.background = 'rgba(30, 41, 59, 0.8)';
+  resetBtn.style.border = '1px solid #475569';
+  resetBtn.style.borderRadius = '8px';
+  resetBtn.style.cursor = 'pointer';
+  resetBtn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.2)';
+  resetBtn.innerHTML = '⟲ 처음으로';
+  resetBtn.onclick = () => {
+    setFolds(0);
+    if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+  };
+  topBar.appendChild(resetBtn);
+
+  // 하단 컨트롤러 바
+  const ctrlRow = document.createElement('div');
+  ctrlRow.style.position = 'absolute';
+  ctrlRow.style.bottom = '10px';
+  ctrlRow.style.left = '10px';
+  ctrlRow.style.right = '10px';
+  ctrlRow.style.display = 'flex';
+  ctrlRow.style.justifyContent = 'center';
+  ctrlRow.style.alignItems = 'center';
+  ctrlRow.style.flexWrap = 'wrap';
+  ctrlRow.style.gap = '8px';
+  ctrlRow.style.zIndex = '10';
+  ctrlRow.style.background = 'rgba(15, 23, 42, 0.88)';
+  ctrlRow.style.backdropFilter = 'blur(6px)';
+  ctrlRow.style.padding = '8px 14px';
+  ctrlRow.style.borderRadius = '12px';
+  ctrlRow.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+  wrapper.appendChild(ctrlRow);
+
+  function createCtrlBtn(label, onClick, isPrimary = false) {
+    const btn = document.createElement('button');
+    btn.style.padding = '6px 12px';
+    btn.style.fontSize = '12px';
+    btn.style.fontWeight = '700';
+    btn.style.borderRadius = '8px';
+    btn.style.cursor = 'pointer';
+    btn.style.transition = 'all 0.15s ease';
+    if (isPrimary) {
+      btn.style.background = 'linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)';
+      btn.style.color = '#ffffff';
+      btn.style.border = 'none';
+      btn.style.boxShadow = '0 2px 8px rgba(245, 158, 11, 0.4)';
+    } else {
+      btn.style.background = '#1e293b';
+      btn.style.color = '#f1f5f9';
+      btn.style.border = '1px solid #475569';
+    }
+    btn.innerHTML = label;
+    btn.onclick = onClick;
+    return btn;
+  }
+
+  const minusBtn = createCtrlBtn('-1번', () => setFolds(folds - 1));
+  const plusBtn = createCtrlBtn('+1번 접기', () => setFolds(folds + 1));
+  const plus5Btn = createCtrlBtn('+5번 접기', () => setFolds(folds + 5));
+  const jump42Btn = createCtrlBtn('🚀 42번으로 점프! (달 궤도 돌파)', () => setFolds(42), true);
+
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  slider.min = '0';
+  slider.max = '42';
+  slider.value = '0';
+  slider.style.width = '100px';
+  slider.style.cursor = 'pointer';
+  slider.oninput = (e) => setFolds(parseInt(e.target.value, 10));
+
+  ctrlRow.appendChild(minusBtn);
+  ctrlRow.appendChild(slider);
+  ctrlRow.appendChild(plusBtn);
+  ctrlRow.appendChild(plus5Btn);
+  ctrlRow.appendChild(jump42Btn);
+
+  function setFolds(n) {
+    const prev = folds;
+    folds = Math.max(0, Math.min(42, n));
+    targetFolds = folds;
+    slider.value = String(folds);
+
+    if (folds !== prev) {
+      if (folds === 42) {
+        createConfetti();
+        if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+      } else {
+        if (window.SoundFX && window.SoundFX.playTone) {
+          SoundFX.playTone(300 + folds * 15, 'sine', 0.08);
+        }
+      }
+    }
+  }
+
+  // 파티클
+  let particles = [];
+  function createConfetti() {
+    particles = [];
+    const colors = ['#f59e0b', '#fbbf24', '#38bdf8', '#818cf8', '#ec4899', '#ffffff'];
+    for (let i = 0; i < 60; i++) {
+      particles.push({
+        x: w * 0.72 + (Math.random() - 0.5) * 80,
+        y: 110 + (Math.random() - 0.5) * 60,
+        vx: (Math.random() - 0.5) * 12,
+        vy: (Math.random() - 0.5) * 12 - 3,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        size: Math.random() * 6 + 3,
+        rotation: Math.random() * Math.PI * 2,
+        vRot: (Math.random() - 0.5) * 0.25,
+        life: 1.0,
+        decay: Math.random() * 0.01 + 0.006
+      });
+    }
+  }
+
+  function resize() {
+    const rect = wrapper.getBoundingClientRect();
+    w = rect.width || 560;
+    h = rect.height || 500;
+    dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  resize();
+
+  let t = 0;
+  function animate() {
+    t += 0.03;
+    ctx.clearRect(0, 0, w, h);
+
+    animFolds += (targetFolds - animFolds) * 0.15;
+
+    // 1. 별빛 배경 렌더링
+    stars.forEach(st => {
+      ctx.fillStyle = `rgba(255, 255, 255, ${st.alpha * (0.6 + 0.4 * Math.sin(t * 3 + st.x * 10))})`;
+      ctx.beginPath();
+      ctx.arc(st.x * w, st.y * h, st.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    const currentBigLayers = 1n << BigInt(folds);
+    const layersStr = folds <= 10 ? currentBigLayers.toLocaleString() : (folds === 42 ? '4,398,046,511,104' : `2^${folds}`);
+
+    let thicknessDisplay = '';
+    let unitDesc = '';
+    if (folds === 0) {
+      thicknessDisplay = '0.1 mm';
+      unitDesc = '(기본 종이 1장의 두께)';
+    } else if (folds <= 13) {
+      const mm = 0.1 * Math.pow(2, folds);
+      thicknessDisplay = `${mm.toFixed(1)} mm`;
+      unitDesc = folds >= 10 ? `(약 ${(mm / 10).toFixed(1)} cm - 사전 두께)` : '';
+    } else if (folds <= 23) {
+      const m = (0.1 * Math.pow(2, folds)) / 1000;
+      thicknessDisplay = `${m.toFixed(1)} m`;
+      unitDesc = folds >= 20 ? '(빌딩·아파트 높이 초과!)' : '(사람 키 높이 초과!)';
+    } else {
+      const km = (0.1 * Math.pow(2, folds)) / 1000000;
+      thicknessDisplay = `${Math.round(km).toLocaleString()} km`;
+      if (folds === 42) {
+        thicknessDisplay = '439,805 km';
+        unitDesc = '★ 달까지 거리(384,400 km) 돌파!';
+      } else if (folds >= 32) {
+        unitDesc = '(우주 궤도 진입!)';
+      } else {
+        unitDesc = '(성층권 돌파!)';
+      }
+    }
+
+    // 2. 좌측 영역: 종이 접기 시각화 박스
+    const leftW = Math.min(230, w * 0.44);
+    const leftX = 20;
+    const leftY = 56;
+    const leftH = h - leftY - 70;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(30, 41, 59, 0.75)';
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(leftX, leftY, leftW, leftH, 14);
+    } else {
+      ctx.rect(leftX, leftY, leftW, leftH);
+    }
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '11.5px Pretendard, sans-serif';
+    ctx.fillText('현재 접은 횟수', leftX + leftW / 2, leftY + 24);
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = 'bold 32px Pretendard, sans-serif';
+    ctx.fillText(`${folds} 번`, leftX + leftW / 2, leftY + 56);
+
+    // 3D 종이 겹 표현 (두께 애니메이션)
+    const paperBoxY = leftY + 105;
+    const paperBaseW = leftW - 40;
+    const paperBaseH = Math.min(65, 8 + animFolds * 1.35);
+    const paperPx = leftX + 20;
+    const paperPy = paperBoxY + (65 - paperBaseH);
+
+    ctx.fillStyle = '#f8fafc';
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(paperPx, paperPy, paperBaseW, paperBaseH, 4);
+    } else {
+      ctx.rect(paperPx, paperPy, paperBaseW, paperBaseH);
+    }
+    ctx.fill();
+    ctx.stroke();
+
+    if (folds > 0) {
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)';
+      ctx.lineWidth = 1;
+      const stripeCount = Math.min(10, folds);
+      for (let s = 1; s <= stripeCount; s++) {
+        const sy = paperPy + (paperBaseH * s) / (stripeCount + 1);
+        ctx.beginPath();
+        ctx.moveTo(paperPx + 4, sy);
+        ctx.lineTo(paperPx + paperBaseW - 4, sy);
+        ctx.stroke();
+      }
+    }
+
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = 'bold 13px Pretendard, sans-serif';
+    ctx.fillText(`종이 겹수: ${layersStr} 겹`, leftX + leftW / 2, leftY + 210);
+
+    ctx.font = '11.5px Pretendard, sans-serif';
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillText(folds === 0 ? '1 겹 (2⁰)' : `2^${folds} 겹`, leftX + leftW / 2, leftY + 230);
+
+    // 누적 두께 표시 박스
+    const thkBoxY = leftY + 255;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+    ctx.strokeStyle = folds === 42 ? '#f59e0b' : '#38bdf8';
+    ctx.lineWidth = folds === 42 ? 2 : 1;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(leftX + 12, thkBoxY, leftW - 24, 76, 10);
+    } else {
+      ctx.rect(leftX + 12, thkBoxY, leftW - 24, 76);
+    }
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '10.5px Pretendard, sans-serif';
+    ctx.fillText('현재 환산 두께', leftX + leftW / 2, thkBoxY + 18);
+
+    ctx.fillStyle = folds === 42 ? '#fbbf24' : '#ffffff';
+    ctx.font = 'bold 18px Pretendard, sans-serif';
+    ctx.fillText(thicknessDisplay, leftX + leftW / 2, thkBoxY + 40);
+
+    ctx.fillStyle = folds === 42 ? '#f59e0b' : '#64748b';
+    ctx.font = 'bold 10px Pretendard, sans-serif';
+    ctx.fillText(unitDesc, leftX + leftW / 2, thkBoxY + 60);
+
+    ctx.restore();
+
+    // 3. 우측 영역: 지구-달 우주 궤도 게이지
+    const rightX = leftX + leftW + 20;
+    const rightW = w - rightX - 20;
+    const rightY = leftY;
+    const rightH = leftH;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.6)';
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(rightX, rightY, rightW, rightH, 14);
+    } else {
+      ctx.rect(rightX, rightY, rightW, rightH);
+    }
+    ctx.fill();
+    ctx.stroke();
+
+    const railX = rightX + 50;
+    const railTopY = rightY + 60;
+    const railBottomY = rightY + rightH - 60;
+    const railLen = railBottomY - railTopY;
+
+    // 레일 배경선
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.3)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(railX, railBottomY);
+    ctx.lineTo(railX, railTopY);
+    ctx.stroke();
+
+    const moonRatio = 0.80;
+    const moonY = railBottomY - railLen * moonRatio;
+
+    const currentProgress = (animFolds / 42) * 0.92;
+    const currentPaperY = railBottomY - railLen * currentProgress;
+
+    // 채워지는 궤도선
+    ctx.strokeStyle = folds === 42 ? '#f59e0b' : '#38bdf8';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(railX, railBottomY);
+    ctx.lineTo(railX, currentPaperY);
+    ctx.stroke();
+
+    // 1) 지구 (하단)
+    ctx.font = '26px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🌍', railX, railBottomY + 22);
+
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 12px Pretendard, sans-serif';
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillText('지구 (출발점: 0 km)', railX + 30, railBottomY + 22);
+
+    // 2) 달 (상단 목표)
+    ctx.save();
+    if (folds === 42) {
+      ctx.shadowColor = '#f59e0b';
+      ctx.shadowBlur = 16 + Math.sin(t * 3) * 6;
+    }
+    ctx.font = '26px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🌕', railX, moonY);
+    ctx.restore();
+
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 12.5px Pretendard, sans-serif';
+    ctx.fillStyle = folds === 42 ? '#fbbf24' : '#e2e8f0';
+    ctx.fillText('달 (Moon): 384,400 km', railX + 30, moonY - 6);
+
+    ctx.font = '10.5px Pretendard, sans-serif';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('지구에서 달까지의 평균 거리', railX + 30, moonY + 12);
+
+    // 달 기준 점선 가이드
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(railX + 16, moonY);
+    ctx.lineTo(rightX + rightW - 20, moonY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 3) 42번 접었을 때 도달선 (달 궤도 돌파 지점)
+    const topGoalY = railBottomY - railLen * 0.92;
+    if (folds >= 40) {
+      ctx.textAlign = 'left';
+      ctx.font = 'bold 11.5px Pretendard, sans-serif';
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillText('★ 42번 접은 두께: 439,805 km (돌파!)', railX + 30, topGoalY);
+    }
+
+    // 4) 현재 종이 탐사선 마커
+    ctx.save();
+    ctx.shadowColor = '#38bdf8';
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(railX, currentPaperY, 7, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = folds === 42 ? '#f59e0b' : '#38bdf8';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.font = '16px sans-serif';
+    ctx.fillText('📄', railX - 24, currentPaperY);
+
+    // 42번 돌파 축하 배너
+    if (folds === 42) {
+      ctx.save();
+      const bannerW = rightW - 40;
+      const bannerH = 50;
+      const bannerX = rightX + 20;
+      const bannerY = rightY + rightH - 74;
+
+      ctx.fillStyle = 'rgba(245, 158, 11, 0.15)';
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 10);
+      } else {
+        ctx.rect(bannerX, bannerY, bannerW, bannerH);
+      }
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = 'bold 13px Pretendard, sans-serif';
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillText('🎉 0.1 mm 종이 42번 접기 달 도달 성공!', bannerX + bannerW / 2, bannerY + 16);
+      ctx.font = '11px Pretendard, sans-serif';
+      ctx.fillStyle = '#fde68a';
+      ctx.fillText('439,805 km > 384,400 km (거듭제곱의 경이로움!)', bannerX + bannerW / 2, bannerY + 34);
+      ctx.restore();
+    }
+
+    ctx.restore();
+
+    // 4. 파티클
+    if (particles.length > 0) {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.25;
+        p.rotation += p.vRot;
+        p.life -= p.decay;
+
+        if (p.life <= 0 || p.y > h + 20) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+        ctx.restore();
+      }
+    }
+
+    container._animId_1_7 = requestAnimationFrame(animate);
+  }
+
+  container._animId_1_7 = requestAnimationFrame(animate);
+
+  const ro = new ResizeObserver(() => {
+    resize();
+  });
+  ro.observe(wrapper);
 }
 
 function renderForm_1_7(box) {
   box.innerHTML = `
     <div class="card">
       <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
-        ✏️ [문제 3] 밑과 지수 구하기 (p.12)
+        🚀 [수학·과학 탐구] 종이 접기와 거듭제곱의 위력 (p.12)
       </div>
-      <p style="font-size:0.88rem; color:#475569; line-height:1.5; margin-bottom:12px;">
-        다음 거듭제곱의 밑과 지수를 각각 구하시오.
+      <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
+        두께가 $0.1\\text{ mm}$인 종이를 접을 때마다 겹수가 2배씩 늘어납니다. 다음 물음에 답하시오.
       </p>
 
       <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:14px;">
-        <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
-          <div style="font-weight:700; font-size:0.9rem; color:#1e293b; margin-bottom:6px;">⑴ $2^5$</div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-            <div>
-              <label style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">밑:</label>
-              <input type="text" id="ans-1-7-1-base" class="form-control" placeholder="수 입력" autocomplete="off">
-            </div>
-            <div>
-              <label style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">지수:</label>
-              <input type="text" id="ans-1-7-1-exp" class="form-control" placeholder="수 입력" autocomplete="off">
-            </div>
+        <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
+          ⑴ 두께 $0.1\\text{ mm}$의 종이를 42번 접었을 때의 겹수를 거듭제곱으로 나타내시오.<br>
+          <div style="margin-top:4px;">
+            [ <input type="text" id="ans-1-7-1" style="width:110px; display:inline-block; padding:4px 8px; font-weight:700;" class="form-control" placeholder="거듭제곱 식 입력" autocomplete="off"> ] 겹
           </div>
         </div>
 
-        <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
-          <div style="font-weight:700; font-size:0.9rem; color:#1e293b; margin-bottom:6px;">⑵ $10^3$</div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-            <div>
-              <label style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">밑:</label>
-              <input type="text" id="ans-1-7-2-base" class="form-control" placeholder="수 입력" autocomplete="off">
-            </div>
-            <div>
-              <label style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">지수:</label>
-              <input type="text" id="ans-1-7-2-exp" class="form-control" placeholder="수 입력" autocomplete="off">
-            </div>
+        <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
+          ⑵ 42번 접은 종이의 두께($439,805\\text{ km}$)는 지구에서 달까지의 거리($384,400\\text{ km}$)보다 더 어떠한가요? (크다 / 작다 중 입력)<br>
+          <div style="margin-top:4px;">
+            달까지의 거리보다 더 [ <input type="text" id="ans-1-7-2" style="width:130px; display:inline-block; padding:4px 8px; font-weight:700;" class="form-control" placeholder="크다 또는 작다 입력" autocomplete="off"> ].
+          </div>
+        </div>
+
+        <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
+          ⑶ 이와 같이 같은 수를 거듭하여 곱하여 폭발적으로 커지는 수학적 표현을 무엇이라고 하나요?<br>
+          <div style="margin-top:4px;">
+            [ <input type="text" id="ans-1-7-3" style="width:100px; display:inline-block; padding:4px 8px; font-weight:700;" class="form-control" placeholder="용어 입력" autocomplete="off"> ]
           </div>
         </div>
       </div>
 
-      <button class="btn btn-primary" onclick="checkStep_1_7()">정답 확인 및 채점</button>
+      <button class="btn btn-primary" onclick="checkStep_1_7()" style="width:100%;">정답 확인 및 채점</button>
     </div>
   `;
+
+  const inputs = box.querySelectorAll('input[type="text"]');
+  inputs.forEach(input => {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        checkStep_1_7();
+      }
+    });
+  });
 }
 
 function checkStep_1_7() {
-  const b1 = normTxt(document.getElementById('ans-1-7-1-base')?.value);
-  const e1 = normTxt(document.getElementById('ans-1-7-1-exp')?.value);
-  const b2 = normTxt(document.getElementById('ans-1-7-2-base')?.value);
-  const e2 = normTxt(document.getElementById('ans-1-7-2-exp')?.value);
+  let v1 = normTxt(document.getElementById('ans-1-7-1')?.value);
+  const v2 = normTxt(document.getElementById('ans-1-7-2')?.value);
+  const v3 = normTxt(document.getElementById('ans-1-7-3')?.value);
 
-  const ok1 = (b1 === '2' && e1 === '5');
-  const ok2 = (b2 === '10' && e2 === '3');
+  // v1 정규화: 2⁴² -> 2^42
+  v1 = v1.replace(/⁴/g, '4').replace(/²/g, '2');
+  if (v1 === '242') v1 = '2^42';
 
-  if (ok1 && ok2) {
-    completeSubStep('1-7', '🎉 <b>정답입니다!</b> $2^5$의 밑 2, 지수 5 및 $10^3$의 밑 10, 지수 3을 정확히 구분하여 도출했습니다.');
+  const ok1 = (v1 === '2^42');
+  const ok2 = (v2 === '크다' || v2 === '더크다' || v2 === '더 크다' || v2 === '큰' || v2 === '큽니다');
+  const ok3 = (v3 === '거듭제곱');
+
+  if (ok1 && ok2 && ok3) {
+    completeSubStep('1-7', '🎉 <b>정답입니다!</b> 0.1 mm 종이를 42번 접으면 $2^{42}$겹이 되어 그 두께가 약 439,805 km로 지구에서 달까지의 거리(384,400 km)를 돌파합니다. 이것이 바로 <b>거듭제곱</b>의 놀라운 위력입니다!');
+    const nextBtn = document.getElementById('btn-next-step');
+    if (nextBtn) {
+      nextBtn.style.display = 'inline-flex';
+    }
   } else {
     let wrong = [];
-    if (!ok1) wrong.push('⑴ 2⁵의 밑/지수');
-    if (!ok2) wrong.push('⑵ 10³의 밑/지수');
+    if (!ok1) wrong.push('⑴ 거듭제곱 겹수 표현');
+    if (!ok2) wrong.push('⑵ 달까지 거리와 비교');
+    if (!ok3) wrong.push('⑶ 폭발적 곱셈의 수학 용어');
     if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-    showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>곱하는 수(밑)와 곱한 횟수(지수)를 다시 확인해 보세요.`);
+    showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>교과서 p.12 수학·과학 탐구 내용을 다시 확인하여 입력해 보세요.`);
   }
 }
 
