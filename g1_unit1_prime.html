@@ -19494,93 +19494,568 @@ function checkStep_1_12() {
     // 2-14 (p.17): 스스로 확인하기 3: 연속 곱 소인수의 지수
     // -------------------------------------------------------------
     function drawCanvas_2_14(container) {
+      if (container._animId_2_14) {
+        cancelAnimationFrame(container._animId_2_14);
+        container._animId_2_14 = null;
+      }
       container.innerHTML = '';
-      const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 560;
-      canvas.height = container.clientHeight || 460;
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      canvas.style.display = 'block';
-      container.appendChild(canvas);
+
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; height:100%; box-sizing:border-box;">
+          <!-- 상단 상태 알림 및 인터랙터 조작 바 -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+            <div id="badge-2-14" style="font-size:0.86rem; font-weight:700; color:#1e293b; background:#f1f5f9; padding:6px 14px; border-radius:20px; border:1px solid #cbd5e1; flex:1; min-width:240px;">
+              연속 곱 2 × 3 × 4 × 5 × 6 에서 소인수 2의 지수를 탐구해 보세요!
+            </div>
+            <div style="display:flex; gap:6px;">
+              <button id="btn-decompose-2-14" class="btn btn-sm btn-primary" style="font-weight:700;">🔍 합성수 분해하기</button>
+              <button id="btn-collect-2-14" class="btn btn-sm btn-outline-secondary" style="font-weight:700;" disabled>🧲 소인수 2만 자석 수집</button>
+              <button id="btn-reset-2-14" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">⟲ 초기화</button>
+            </div>
+          </div>
+          <!-- Canvas 렌더링 영역 -->
+          <div style="flex:1; min-height:360px; position:relative;">
+            <canvas id="canvas-2-14" style="width:100%; height:100%; display:block; border-radius:12px; background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); border:1px solid #e2e8f0;"></canvas>
+          </div>
+        </div>
+      `;
+
+      const canvas = container.querySelector('#canvas-2-14');
+      const badgeStatus = container.querySelector('#badge-2-14');
+      const btnDecompose = container.querySelector('#btn-decompose-2-14');
+      const btnCollect2 = container.querySelector('#btn-collect-2-14');
+      const btnReset = container.querySelector('#btn-reset-2-14');
 
       const ctx = canvas.getContext('2d');
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
+      let w = 560, h = 380;
+      let mode = 0; // 0: initial, 1: decomposed, 2: collected
+      let particles = [];
 
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 15px Pretendard, sans-serif';
-      ctx.fillStyle = '#1e293b';
-      ctx.fillText('🧮 [스스로 확인하기 3] 연속 곱 소인수 2의 지수 (p.17)', w / 2, 35);
+      function createConfetti() {
+        const colors = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#3b82f6', '#8b5cf6', '#eab308'];
+        particles = [];
+        for (let i = 0; i < 55; i++) {
+          particles.push({
+            x: w * 0.5 + (Math.random() - 0.5) * 180,
+            y: 90 + (Math.random() - 0.5) * 40,
+            vx: (Math.random() - 0.5) * 9,
+            vy: -Math.random() * 7 - 3,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.012
+          });
+        }
+      }
 
-      ctx.save();
-      ctx.fillStyle = '#ffffff';
-      ctx.strokeStyle = '#4f46e5';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(30, 70, w - 60, 200, 12) : ctx.rect(30, 70, w - 60, 200);
-      ctx.fill();
-      ctx.stroke();
+      function resize() {
+        w = canvas.clientWidth || 560;
+        h = canvas.clientHeight || 380;
+        canvas.width = w;
+        canvas.height = h;
+      }
+      resize();
 
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 18px Pretendard, sans-serif';
-      ctx.fillStyle = '#1e293b';
-      ctx.fillText('2 × 3 × 4 × 5 × 6 의 전개', w / 2, 105);
+      btnDecompose.addEventListener('click', () => {
+        mode = 1;
+        btnDecompose.disabled = true;
+        btnCollect2.disabled = false;
+        btnCollect2.className = 'btn btn-sm btn-warning';
+        badgeStatus.innerHTML = '🔍 합성수 4(2²)와 6(2×3)이 분해되었습니다! [🧲 소인수 2만 자석 수집]을 눌러보세요.';
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      });
 
-      ctx.font = '14px Pretendard, sans-serif';
-      ctx.fillStyle = '#475569';
-      ctx.fillText('= 2 × 3 × (2²) × 5 × (2 × 3)', w / 2, 145);
-      ctx.fillText('= (2 × 2² × 2) × (3 × 3) × 5', w / 2, 180);
+      btnCollect2.addEventListener('click', () => {
+        mode = 2;
+        btnCollect2.disabled = true;
+        btnCollect2.className = 'btn btn-sm btn-outline-secondary';
+        badgeStatus.innerHTML = '🎉 소인수 2가 4개 수집되어 <b>2⁴</b>이 되었습니다! 소인수 2의 지수는 <b>4</b>입니다.';
+        createConfetti();
+        if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+      });
 
-      ctx.font = 'bold 18px Pretendard, sans-serif';
-      ctx.fillStyle = '#059669';
-      ctx.fillText('= 2⁴ × 3² × 5', w / 2, 225);
-      ctx.restore();
+      btnReset.addEventListener('click', () => {
+        mode = 0;
+        btnDecompose.disabled = false;
+        btnCollect2.disabled = true;
+        btnCollect2.className = 'btn btn-sm btn-outline-secondary';
+        badgeStatus.innerHTML = '초기화되었습니다. [합성수 분해하기]를 눌러보세요.';
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      });
 
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 14px Pretendard, sans-serif';
-      ctx.fillStyle = '#2563eb';
-      ctx.fillText('따라서 소인수 2의 지수는 4입니다.', w / 2, 310);
+      window._step2_14_completeAll = function() {
+        mode = 2;
+        if (btnDecompose) btnDecompose.disabled = true;
+        if (btnCollect2) {
+          btnCollect2.disabled = true;
+          btnCollect2.className = 'btn btn-sm btn-outline-secondary';
+        }
+        if (badgeStatus) {
+          badgeStatus.innerHTML = '🎉 정답! 2 × 3 × 4 × 5 × 6 = <b>2⁴ × 3² × 5</b> (소인수 2의 지수는 <b>4</b>)';
+        }
+        createConfetti();
+      };
+
+      function drawCard(x, y, cardW, cardH, num, badge, isHighlighted, auraColor) {
+        ctx.save();
+        if (isHighlighted) {
+          ctx.shadowColor = auraColor || '#f59e0b';
+          ctx.shadowBlur = 12;
+        }
+        ctx.fillStyle = isHighlighted ? '#fffbeb' : '#ffffff';
+        ctx.strokeStyle = isHighlighted ? (auraColor || '#d97706') : '#cbd5e1';
+        ctx.lineWidth = isHighlighted ? 2.5 : 1.5;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(x - cardW / 2, y - cardH / 2, cardW, cardH, 8);
+        else ctx.rect(x - cardW / 2, y - cardH / 2, cardW, cardH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.shadowBlur = 0;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 18px Pretendard, sans-serif';
+        ctx.fillStyle = isHighlighted ? '#b45309' : '#1e293b';
+        ctx.fillText(num, x, y + 2);
+
+        if (badge) {
+          ctx.font = 'bold 10px Pretendard, sans-serif';
+          ctx.fillStyle = isHighlighted ? '#d97706' : '#64748b';
+          ctx.fillText(badge, x, y - cardH / 2 + 10);
+        }
+        ctx.restore();
+      }
+
+      function render() {
+        ctx.clearRect(0, 0, w, h);
+
+        // Title and description
+        ctx.save();
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🧲 [연속 곱 소인수분해] 2 × 3 × 4 × 5 × 6 (p.17)', w / 2, 22);
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = '12px Pretendard, sans-serif';
+        if (mode === 0) {
+          ctx.fillText('합성수 4와 6을 소인수로 분해하여 숨겨진 소인수 2를 모두 찾아보세요!', w / 2, 40);
+        } else if (mode === 1) {
+          ctx.fillText('모든 수가 소인수로 분해되었습니다! [🧲 소인수 2만 자석 수집] 버튼을 눌러보세요.', w / 2, 40);
+        } else {
+          ctx.fillText('소인수 2가 모두 수집되어 2⁴으로 결합되었습니다!', w / 2, 40);
+        }
+        ctx.restore();
+
+        // 1. Upper Magnet Tray (소인수 2 자석 수집 트레이)
+        const trayY = 56;
+        const trayH = 74;
+        const trayW = Math.min(w - 40, 500);
+        const trayX = (w - trayW) / 2;
+
+        ctx.save();
+        if (mode === 2) {
+          ctx.fillStyle = '#fef3c7';
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 2;
+          ctx.shadowColor = 'rgba(245, 158, 11, 0.4)';
+          ctx.shadowBlur = 10;
+        } else {
+          ctx.fillStyle = '#f8fafc';
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([5, 4]);
+        }
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(trayX, trayY, trayW, trayH, 10);
+        else ctx.rect(trayX, trayY, trayW, trayH);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+
+        if (mode < 2) {
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.fillText('🧲 소인수 2 자석 수집 트레이 (수집 대기 중)', w / 2, trayY + 32);
+          ctx.font = '11px Pretendard, sans-serif';
+          ctx.fillText('합성수를 먼저 분해한 뒤 자석 수집 버튼을 누르면 2들이 모여듭니다.', w / 2, trayY + 52);
+          ctx.restore();
+        } else {
+          // Mode 2: Magnet Tray contents
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#92400e';
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillText('🧲 소인수 2 자석 수집 트레이 ➔ 2가 4번 곱해짐!', w / 2, trayY + 18);
+
+          // 4 collected '2' cards inside tray
+          const miniStartX = w / 2 - 130;
+          for (let i = 0; i < 4; i++) {
+            const mx = miniStartX + i * 44;
+            const my = trayY + 44;
+            drawCard(mx, my, 32, 34, '2', null, true, '#f59e0b');
+            if (i < 3) {
+              ctx.fillStyle = '#d97706';
+              ctx.font = 'bold 14px Pretendard, sans-serif';
+              ctx.fillText('×', mx + 22, my + 2);
+            }
+          }
+
+          // Arrow and 2^4 Badge
+          ctx.fillStyle = '#b45309';
+          ctx.font = 'bold 18px Pretendard, sans-serif';
+          ctx.fillText('➔', w / 2 + 55, trayY + 46);
+
+          // 2^4 Power Badge
+          const badgeX = w / 2 + 105;
+          const badgeY = trayY + 44;
+          ctx.fillStyle = '#d97706';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(badgeX - 32, badgeY - 18, 64, 36, 8);
+          else ctx.rect(badgeX - 32, badgeY - 18, 64, 36);
+          ctx.fill();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 18px Pretendard, sans-serif';
+          ctx.fillText('2⁴', badgeX, badgeY + 1);
+
+          ctx.restore();
+        }
+
+        // 2. Middle Row: Number Card Track
+        const midY = 180;
+
+        if (mode === 0) {
+          // 5 cards: 2, 3, 4, 5, 6
+          const cards0 = [
+            { num: '2', isComp: false, sub: '소수' },
+            { num: '3', isComp: false, sub: '소수' },
+            { num: '4', isComp: true, sub: '합성수' },
+            { num: '5', isComp: false, sub: '소수' },
+            { num: '6', isComp: true, sub: '합성수' }
+          ];
+
+          const startX = w / 2 - 160;
+          const spacing = 80;
+
+          for (let i = 0; i < 5; i++) {
+            const cx = startX + i * spacing;
+            const c = cards0[i];
+            drawCard(cx, midY, 52, 60, c.num, c.sub, c.isComp, '#f59e0b');
+
+            if (i < 4) {
+              ctx.fillStyle = '#64748b';
+              ctx.font = 'bold 18px Pretendard, sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText('×', cx + spacing / 2, midY + 4);
+            }
+
+            // Sub-hints for 4 and 6
+            if (c.num === '4') {
+              ctx.fillStyle = '#d97706';
+              ctx.font = 'bold 11px Pretendard, sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText('➔ 2²', cx, midY + 44);
+            } else if (c.num === '6') {
+              ctx.fillStyle = '#d97706';
+              ctx.font = 'bold 11px Pretendard, sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText('➔ 2 × 3', cx, midY + 44);
+            }
+          }
+        } else if (mode === 1) {
+          // Decomposed mode:
+          // [2] × [3] × ([2] × [2]) × [5] × ([2] × [3])
+          // 7 items
+          const items1 = [
+            { num: '2', is2: true, tag: '1번째' },
+            { num: '3', is2: false, tag: null },
+            { num: '2', is2: true, tag: '4=2²' },
+            { num: '2', is2: true, tag: '4=2²' },
+            { num: '5', is2: false, tag: null },
+            { num: '2', is2: true, tag: '6=2×3' },
+            { num: '3', is2: false, tag: '6=2×3' }
+          ];
+
+          const totalW = Math.min(w - 30, 480);
+          const startX = (w - totalW) / 2 + 25;
+          const stepX = (totalW - 50) / 6;
+
+          // Group brackets behind 4 and 6
+          ctx.save();
+          // Bracket for 4 (items 2 and 3)
+          const b4x1 = startX + 2 * stepX - 22;
+          const b4x2 = startX + 3 * stepX + 22;
+          ctx.fillStyle = '#fef3c7';
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(b4x1, midY - 36, b4x2 - b4x1, 72, 6);
+          else ctx.rect(b4x1, midY - 36, b4x2 - b4x1, 72);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#b45309';
+          ctx.font = 'bold 10px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('4의 분해 (2²)', (b4x1 + b4x2) / 2, midY - 40);
+
+          // Bracket for 6 (items 5 and 6)
+          const b6x1 = startX + 5 * stepX - 22;
+          const b6x2 = startX + 6 * stepX + 22;
+          ctx.fillStyle = '#fef3c7';
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(b6x1, midY - 36, b6x2 - b6x1, 72, 6);
+          else ctx.rect(b6x1, midY - 36, b6x2 - b6x1, 72);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#b45309';
+          ctx.font = 'bold 10px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('6의 분해 (2×3)', (b6x1 + b6x2) / 2, midY - 40);
+          ctx.restore();
+
+          // Draw the 7 cards
+          for (let i = 0; i < 7; i++) {
+            const cx = startX + i * stepX;
+            const item = items1[i];
+            drawCard(cx, midY, 36, 46, item.num, null, item.is2, '#f59e0b');
+
+            if (item.is2) {
+              ctx.save();
+              ctx.fillStyle = '#d97706';
+              ctx.font = 'bold 10px Pretendard, sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText('소인수 2', cx, midY + 34);
+              ctx.restore();
+            }
+
+            if (i < 6) {
+              ctx.save();
+              ctx.fillStyle = '#64748b';
+              ctx.font = 'bold 15px Pretendard, sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText('×', cx + stepX / 2, midY + 4);
+              ctx.restore();
+            }
+          }
+        } else {
+          // Mode 2: Remaining factors on track: 3 × 3 × 5 = 3² × 5
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#475569';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.fillText('남은 소인수 정리 (3과 5):', w / 2, midY - 24);
+
+          const remStartX = w / 2 - 100;
+          // Card 3
+          drawCard(remStartX, midY + 10, 42, 48, '3', '소수', false);
+          ctx.fillStyle = '#64748b';
+          ctx.font = 'bold 16px Pretendard, sans-serif';
+          ctx.fillText('×', remStartX + 36, midY + 14);
+
+          // Card 3
+          drawCard(remStartX + 72, midY + 10, 42, 48, '3', '소수', false);
+          ctx.fillStyle = '#64748b';
+          ctx.font = 'bold 16px Pretendard, sans-serif';
+          ctx.fillText('×', remStartX + 108, midY + 14);
+
+          // Card 5
+          drawCard(remStartX + 144, midY + 10, 42, 48, '5', '소수', false);
+
+          ctx.fillStyle = '#2563eb';
+          ctx.font = 'bold 18px Pretendard, sans-serif';
+          ctx.fillText('➔  3² × 5', remStartX + 220, midY + 14);
+          ctx.restore();
+        }
+
+        // 3. Lower Summary Card
+        const sumY = h - 80;
+        const sumW = Math.min(w - 40, 500);
+        const sumX = (w - sumW) / 2;
+
+        ctx.save();
+        ctx.fillStyle = mode === 2 ? '#ecfdf5' : '#f8fafc';
+        ctx.strokeStyle = mode === 2 ? '#10b981' : '#e2e8f0';
+        ctx.lineWidth = mode === 2 ? 1.5 : 1;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(sumX, sumY, sumW, 64, 8);
+        else ctx.rect(sumX, sumY, sumW, 64);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        if (mode === 2) {
+          ctx.fillStyle = '#065f46';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.fillText('✨ 전체 소인수분해 완성: 2 × 3 × 4 × 5 × 6', w / 2, sumY + 22);
+
+          ctx.fillStyle = '#059669';
+          ctx.font = 'bold 17px Pretendard, sans-serif';
+          ctx.fillText('= 2⁴ × 3² × 5  ➔  소인수 2의 지수는 4!', w / 2, sumY + 46);
+        } else if (mode === 1) {
+          ctx.fillStyle = '#1e293b';
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillText('전개: 2 × 3 × (2²) × 5 × (2 × 3)', w / 2, sumY + 24);
+
+          ctx.fillStyle = '#d97706';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.fillText('2가 [2]에서 1개, [4]에서 2개, [6]에서 1개로 총 4개 있습니다.', w / 2, sumY + 46);
+        } else {
+          ctx.fillStyle = '#64748b';
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillText('4 = 2², 6 = 2 × 3 이므로, 각각 소수로 나누어 볼 수 있습니다.', w / 2, sumY + 24);
+          ctx.fillText('[🔍 합성수 분해하기] 버튼을 눌러 소인수별로 분해해 보세요.', w / 2, sumY + 46);
+        }
+        ctx.restore();
+
+        // Particles rendering
+        if (particles.length > 0) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.22;
+            p.rot += p.vRot;
+            p.life -= p.decay;
+
+            if (p.life <= 0) {
+              particles.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+            ctx.restore();
+          }
+        }
+
+        container._animId_2_14 = requestAnimationFrame(render);
+      }
+
+      render();
     }
 
     function renderForm_2_14(box) {
       box.innerHTML = `
-        <div class="card">
+        <div class="card" style="padding:16px 20px;">
           <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
             ✏️ [스스로 확인하기 3] 연속 곱 소인수의 지수 (p.17)
           </div>
           <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
-            $2 \\times 3 \\times 4 \\times 5 \\times 6$을 소인수분해했을 때, 소인수 2의 지수를 구하시오.
+            $2 \\times 3 \\times 4 \\times 5 \\times 6$을 소인수분해했을 때, 물음에 답하시오.
           </p>
 
-          <div style="margin-bottom:14px;">
-            <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">소인수 2의 지수:</label>
-            <input type="text" id="ans-2-14" style="width:120px;" class="form-control" placeholder="지수 입력" autocomplete="off">
+          <!-- 거듭제곱 퀵 입력 바 -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; background:#f1f5f9; padding:8px 10px; border-radius:8px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; line-height:28px;">기호 입력:</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-2-14" data-char="^" style="font-weight:700; min-width:32px;">^</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-2-14" data-char="²" style="font-weight:700; min-width:32px;">²</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-2-14" data-char="³" style="font-weight:700; min-width:32px;">³</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-2-14" data-char="⁴" style="font-weight:700; min-width:32px;">⁴</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-2-14" data-char="⁵" style="font-weight:700; min-width:32px;">⁵</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-2-14" data-char="×" style="font-weight:700; min-width:32px;">×</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-2-14" data-char="*" style="font-weight:700; min-width:32px;">*</button>
           </div>
 
-          <button class="btn btn-primary" onclick="checkStep_2_14()" style="width:100%;">정답 확인 및 채점</button>
+          <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
+            <!-- ⑴ 4와 6 분해 -->
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+                ⑴ 4와 6을 각각 소인수분해하시오:
+              </label>
+              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; font-size:0.9rem;">
+                <span style="font-weight:600;">$4 = 2^$</span>
+                <input type="text" id="ans-2-14-1" class="form-control" style="width:85px; display:inline-block;" placeholder="지수 입력" autocomplete="off">
+                <span style="font-weight:600; margin-left:6px;">, &nbsp; $6 = 2 \\times$</span>
+                <input type="text" id="ans-2-14-2" class="form-control" style="width:85px; display:inline-block;" placeholder="수 입력" autocomplete="off">
+              </div>
+            </div>
+
+            <!-- ⑵ 전체 거듭제곱 식 -->
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+                ⑵ $2 \\times 3 \\times 4 \\times 5 \\times 6$을 소인수분해한 전체 결과를 거듭제곱으로 나타내시오:
+              </label>
+              <input type="text" id="ans-2-14-3" class="form-control" placeholder="거듭제곱 식 입력" autocomplete="off">
+            </div>
+
+            <!-- ⑶ 소인수 2의 지수 -->
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+                ⑶ 소인수 2의 지수를 구하시오:
+              </label>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:0.88rem; font-weight:600; color:#475569;">소인수 2의 지수:</span>
+                <input type="text" id="ans-2-14-4" class="form-control" style="width:110px;" placeholder="수 입력" autocomplete="off">
+              </div>
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="checkStep_2_14()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
 
-      const input = box.querySelector('#ans-2-14');
-      if (input) {
+      let lastFocusedInput = box.querySelector('#ans-2-14-1');
+      const inputs = box.querySelectorAll('input[type="text"]');
+      inputs.forEach(input => {
+        input.addEventListener('focus', () => {
+          lastFocusedInput = input;
+        });
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') checkStep_2_14();
         });
-      }
+      });
+
+      box.querySelectorAll('.btn-pow-insert-2-14').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const char = btn.getAttribute('data-char');
+          if (lastFocusedInput) {
+            lastFocusedInput.value += char;
+            lastFocusedInput.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      });
     }
 
     function checkStep_2_14() {
-      const v = normTxt(document.getElementById('ans-2-14')?.value);
-      const ok = (v === '4');
+      const v1 = normTxt(document.getElementById('ans-2-14-1')?.value);
+      const v2 = normTxt(document.getElementById('ans-2-14-2')?.value);
+      const v3 = document.getElementById('ans-2-14-3')?.value;
+      const v4 = normTxt(document.getElementById('ans-2-14-4')?.value);
 
-      if (ok) {
-        completeSubStep('2-14', '🎉 <b>정답입니다!</b> 2에서 1개, 4=2²에서 2개, 6=2×3에서 1개로 총 2가 4번 곱해지므로 지수는 <b>4</b>입니다.');
+      const ok1 = (v1 === '2');
+      const ok2 = (v2 === '3');
+      const ok3 = comparePowerMaps(parsePowerProduct(v3), { 2: 4, 3: 2, 5: 1 });
+      const ok4 = (v4 === '4');
+
+      if (ok1 && ok2 && ok3 && ok4) {
+        if (window._step2_14_completeAll) {
+          window._step2_14_completeAll();
+        }
+        completeSubStep('2-14', '🎉 <b>모두 정답입니다!</b><br>⑴ 4 = <b>2²</b>, 6 = <b>2 × 3</b><br>⑵ 2 × 3 × 4 × 5 × 6 = <b>2⁴ × 3² × 5</b><br>⑶ 2가 총 4개 곱해지므로 소인수 2의 지수는 <b>4</b>입니다.');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
+        let wrong = [];
+        if (!ok1) wrong.push('⑴ 4의 소인수분해 ($4 = 2^\\square$의 지수)');
+        if (!ok2) wrong.push('⑴ 6의 소인수분해 ($6 = 2 \\times \\square$의 수)');
+        if (!ok3) wrong.push('⑵ 전체 소인수분해 식 ($2^4 \\times 3^2 \\times 5$)');
+        if (!ok4) wrong.push('⑶ 소인수 2의 지수 ($4$)');
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 4 = 2², 6 = 2 × 3으로 쪼개어 2가 총 몇 번 곱해지는지 세어 보세요.');
+        showFeedback(false, `❌ <b>오답 항목이 있습니다:</b><br>• ${wrong.join('<br>• ')}<br>합성수 4와 6을 소수로 쪼갠 후 2가 몇 번 곱해지는지 세어 보세요.`);
       }
     }
 
