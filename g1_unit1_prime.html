@@ -29525,34 +29525,571 @@ function checkStep_1_12() {
     }
 
     // 3-14 (p.21): 스스로 확인하기 5: 분수가 자연수가 되는 수
-    function drawCanvas_3_14(container) { createDefaultCanvas_3(container, '🎨 [3-14] 공약수 블록 기하 모델'); }
-    function renderForm_3_14(box) {
-      box.innerHTML = `
-        <div class="card">
-          <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
-            ✏️ [스스로 확인하기 5] 분수가 자연수가 되는 가장 큰 수 (p.21)
+    function drawCanvas_3_14(container) {
+      if (container._animId_3_14) {
+        cancelAnimationFrame(container._animId_3_14);
+        container._animId_3_14 = null;
+      }
+      container.innerHTML = '';
+
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; height:100%; box-sizing:border-box;">
+          <!-- 상단 컨트롤러 및 상태 안내 바 -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+            <div id="badge-3-14" style="font-size:0.86rem; font-weight:700; color:#1e293b; background:#f1f5f9; padding:6px 14px; border-radius:20px; border:1px solid #cbd5e1; flex:1; min-width:240px;">
+              버튼을 클릭하여 105와 350의 소인수분해와 최대공약수(가장 큰 분모 □)를 확인해 보세요!
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button id="btn-factor-3-14" class="btn btn-sm btn-outline-primary" style="font-weight:700;">➊ 105 & 350 소인수분해</button>
+              <button id="btn-extract-3-14" class="btn btn-sm btn-outline-primary" style="font-weight:700;">➋ 공통 약수 블록 추출</button>
+              <button id="btn-sim-3-14" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">➌ 분모 □=35 약분 시뮬레이션</button>
+              <button id="btn-combine-3-14" class="btn btn-sm btn-warning" style="font-weight:800; color:#1e293b;">⚡ 최대공약수 □=35 합성</button>
+              <button id="btn-reset-3-14" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">⟲ 초기화</button>
+            </div>
           </div>
-          <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
-            두 수 105/□, 350/□이 모두 자연수가 되도록 할 때, □ 안에 공통으로 들어가는 자연수 중에서 가장 큰 수를 구하시오.
-          </p>
-          <div style="margin-bottom:12px;">
-            <input type="text" id="ans-3-14" class="input-text" placeholder="수 입력" style="width:100%;">
+          <!-- Canvas 렌더링 영역 -->
+          <div style="flex:1; min-height:370px; position:relative;">
+            <canvas id="canvas-3-14" style="width:100%; height:100%; display:block; border-radius:12px; background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); border:1px solid #e2e8f0;"></canvas>
           </div>
-          <button class="btn btn-primary" onclick="checkStep_3_14()" style="width:100%;">정답 확인 및 채점</button>
         </div>
       `;
-      const input = box.querySelector('#ans-3-14');
-      if (input) input.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkStep_3_14(); });
+
+      const canvas = container.querySelector('#canvas-3-14');
+      const badgeStatus = container.querySelector('#badge-3-14');
+      const btnFactor = container.querySelector('#btn-factor-3-14');
+      const btnExtract = container.querySelector('#btn-extract-3-14');
+      const btnSim = container.querySelector('#btn-sim-3-14');
+      const btnCombine = container.querySelector('#btn-combine-3-14');
+      const btnReset = container.querySelector('#btn-reset-3-14');
+
+      const ctx = canvas.getContext('2d');
+      let w = 560, h = 400;
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        w = rect.width || 560;
+        h = rect.height || 400;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+
+      const ro = new ResizeObserver(() => {
+        resize();
+      });
+      ro.observe(canvas);
+
+      // 모드: 0: 초기, 1: 소인수분해, 2: 공통 약수 추출, 3: 약분 시뮬레이션, 4: 최종 합성
+      let currentMode = 0;
+      let particles = [];
+      let hoveredCol = null;
+
+      function spawnConfetti(count = 60) {
+        const colors = ['#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#f43f5e'];
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: w / 2 + (Math.random() - 0.5) * 140,
+            y: 195 + (Math.random() - 0.5) * 40,
+            vx: (Math.random() - 0.5) * 11,
+            vy: (Math.random() - 0.85) * 10 - 2,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.01
+          });
+        }
+      }
+
+      function setMode(mode) {
+        currentMode = mode;
+
+        if (btnFactor) btnFactor.className = `btn btn-sm ${mode === 1 ? 'btn-primary' : 'btn-outline-primary'}`;
+        if (btnExtract) btnExtract.className = `btn btn-sm ${mode === 2 ? 'btn-primary' : 'btn-outline-primary'}`;
+        if (btnSim) btnSim.className = `btn btn-sm ${mode === 3 ? 'btn-info text-white' : 'btn-outline-secondary'}`;
+        if (btnCombine) btnCombine.className = `btn btn-sm ${mode === 4 ? 'btn-warning text-dark font-weight-bold' : 'btn-warning text-dark'}`;
+
+        if (badgeStatus) {
+          if (mode === 0) {
+            badgeStatus.innerText = '버튼을 클릭하여 105와 350의 소인수분해와 최대공약수(가장 큰 분모 □)를 확인해 보세요!';
+          } else if (mode === 1) {
+            badgeStatus.innerHTML = '➊ <b>105 = 3 × 5 × 7,  350 = 2 × 5² × 7</b>: □는 105와 350의 공약수이어야 함!';
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          } else if (mode === 2) {
+            badgeStatus.innerHTML = '➋ <b>공통 소인수 블록 추출</b>: 두 수의 공통 소인수는 <b>5</b>와 <b>7</b> ➔ 최대공약수 = <b>5 × 7 = 35 👑</b>';
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          } else if (mode === 3) {
+            badgeStatus.innerHTML = '➌ <b>약분 시뮬레이션</b>: 105/35 = <b>3</b> (자연수 ✅),  350/35 = <b>10</b> (자연수 ✅)!';
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          } else if (mode === 4) {
+            badgeStatus.innerHTML = '👑 <b>최대공약수 □ = 35 확정!</b> 가장 큰 공통 자연수 분모는 <b>35</b>입니다.';
+            spawnConfetti(60);
+            if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+          }
+        }
+      }
+
+      window._step3_14_triggerSuccess = function() {
+        setMode(4);
+        setTimeout(() => spawnConfetti(60), 400);
+      };
+
+      btnFactor?.addEventListener('click', () => setMode(1));
+      btnExtract?.addEventListener('click', () => setMode(2));
+      btnSim?.addEventListener('click', () => setMode(3));
+      btnCombine?.addEventListener('click', () => setMode(4));
+      btnReset?.addEventListener('click', () => setMode(0));
+
+      // 마우스 호버 감지
+      canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        hoveredCol = null;
+        if (my >= 35 && my <= 180) {
+          if (Math.abs(mx - (w / 2 - 105)) < 35) hoveredCol = 'col-2';
+          else if (Math.abs(mx - (w / 2 - 35)) < 35) hoveredCol = 'col-3';
+          else if (Math.abs(mx - (w / 2 + 35)) < 35) hoveredCol = 'col-5';
+          else if (Math.abs(mx - (w / 2 + 105)) < 35) hoveredCol = 'col-7';
+        }
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        hoveredCol = null;
+      });
+
+      // 카드 그리기 헬퍼
+      function drawFactorCard(val, x, y, isSelected = false, isDim = false, cw = 48, ch = 28) {
+        ctx.save();
+        if (isSelected) {
+          ctx.fillStyle = '#ecfdf5';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2.5;
+          ctx.shadowColor = 'rgba(16, 185, 129, 0.4)';
+          ctx.shadowBlur = 10;
+        } else if (isDim) {
+          ctx.fillStyle = '#f1f5f9';
+          ctx.strokeStyle = '#e2e8f0';
+          ctx.lineWidth = 1;
+        } else {
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.lineWidth = 1.5;
+        }
+
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(x - cw / 2, y - ch / 2, cw, ch, 6);
+        else ctx.rect(x - cw / 2, y - ch / 2, cw, ch);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.fillStyle = isDim ? '#94a3b8' : (isSelected ? '#059669' : '#1e293b');
+        ctx.fillText(val, x, y);
+        ctx.restore();
+      }
+
+      // 렌더링 루프
+      function render() {
+        ctx.clearRect(0, 0, w, h);
+
+        if (currentMode === 3) {
+          // -------------------------------------------------------------
+          // 모드 3: 분모 □=35 약분 시뮬레이션
+          // -------------------------------------------------------------
+          const halfW = (w - 48) / 2;
+          const cardY = 25;
+          const cardH = 195;
+
+          // 좌측 분수: 105/35
+          ctx.save();
+          ctx.fillStyle = '#f0fdf4';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(18, cardY, halfW, cardH, 10);
+          else ctx.rect(18, cardY, halfW, cardH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 14px Pretendard, sans-serif';
+          ctx.fillStyle = '#065f46';
+          ctx.fillText('첫 번째 분수 약분 검산', 18 + halfW / 2, cardY + 28);
+
+          // 분수 수식
+          ctx.font = 'bold 22px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('105', 18 + halfW / 2, cardY + 70);
+          ctx.strokeStyle = '#1e293b';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(18 + halfW / 2 - 35, cardY + 80);
+          ctx.lineTo(18 + halfW / 2 + 35, cardY + 80);
+          ctx.stroke();
+          ctx.fillStyle = '#059669';
+          ctx.fillText('35', 18 + halfW / 2, cardY + 104);
+
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.fillStyle = '#0284c7';
+          ctx.fillText('=  3  (자연수 ✅)', 18 + halfW / 2, cardY + 142);
+
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#475569';
+          ctx.fillText('(105 = 35 × 3 이므로 나누어떨어짐)', 18 + halfW / 2, cardY + 170);
+          ctx.restore();
+
+          // 우측 분수: 350/35
+          ctx.save();
+          const rX = 18 + halfW + 12;
+          ctx.fillStyle = '#f0fdf4';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(rX, cardY, halfW, cardH, 10);
+          else ctx.rect(rX, cardY, halfW, cardH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 14px Pretendard, sans-serif';
+          ctx.fillStyle = '#065f46';
+          ctx.fillText('두 번째 분수 약분 검산', rX + halfW / 2, cardY + 28);
+
+          // 분수 수식
+          ctx.font = 'bold 22px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('350', rX + halfW / 2, cardY + 70);
+          ctx.strokeStyle = '#1e293b';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(rX + halfW / 2 - 35, cardY + 80);
+          ctx.lineTo(rX + halfW / 2 + 35, cardY + 80);
+          ctx.stroke();
+          ctx.fillStyle = '#059669';
+          ctx.fillText('35', rX + halfW / 2, cardY + 104);
+
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.fillStyle = '#0284c7';
+          ctx.fillText('=  10  (자연수 ✅)', rX + halfW / 2, cardY + 142);
+
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#475569';
+          ctx.fillText('(350 = 35 × 10 이므로 나누어떨어짐)', rX + halfW / 2, cardY + 170);
+          ctx.restore();
+        } else {
+          // -------------------------------------------------------------
+          // 모드 0, 1, 2, 4: 세로셈 소인수분해 테이블
+          // -------------------------------------------------------------
+          const c2 = w / 2 - 105;
+          const c3 = w / 2 - 35;
+          const c5 = w / 2 + 35;
+          const c7 = w / 2 + 105;
+
+          const row1Y = 62;
+          const row2Y = 104;
+          const colLabelX = w / 2 - 170;
+
+          // 열 헤더
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText('밑 2 (제외)', c2, 30);
+          ctx.fillText('밑 3 (제외)', c3, 30);
+          ctx.fillStyle = (currentMode === 2 || currentMode === 4) ? '#059669' : '#0284c7';
+          ctx.fillText((currentMode === 2 || currentMode === 4) ? '밑 5 ➔ 5' : '밑 5의 열', c5, 30);
+          ctx.fillText((currentMode === 2 || currentMode === 4) ? '밑 7 ➔ 7' : '밑 7의 열', c7, 30);
+          ctx.restore();
+
+          // 좌측 라벨
+          ctx.save();
+          ctx.textAlign = 'right';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 14px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('105 = ', colLabelX + 10, row1Y);
+          ctx.fillText('350 = ', colLabelX + 10, row2Y);
+          ctx.restore();
+
+          // 1행: 105 = 3 × 5 × 7
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = '11px Pretendard, sans-serif';
+          ctx.fillStyle = '#cbd5e1';
+          ctx.fillText('(없음)', c2, row1Y);
+          ctx.restore();
+          drawFactorCard('3', c3, row1Y, false, true);
+          drawFactorCard('5', c5, row1Y, (currentMode === 2 || currentMode === 4), false);
+          drawFactorCard('7', c7, row1Y, (currentMode === 2 || currentMode === 4), false);
+
+          // 2행: 350 = 2 × 5² × 7
+          drawFactorCard('2', c2, row2Y, false, true);
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = '11px Pretendard, sans-serif';
+          ctx.fillStyle = '#cbd5e1';
+          ctx.fillText('(없음)', c3, row2Y);
+          ctx.restore();
+          drawFactorCard('5²', c5, row2Y, false, false);
+          drawFactorCard('7', c7, row2Y, (currentMode === 2 || currentMode === 4), false);
+
+          // 가로선
+          ctx.save();
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(colLabelX - 40, 130);
+          ctx.lineTo(c7 + 40, 130);
+          ctx.stroke();
+          ctx.restore();
+
+          // 아래 트레이 (y: 150 ~ 194)
+          const trayW = Math.min(w - 36, 480);
+          const trayX = (w - trayW) / 2;
+          const trayY = 150;
+
+          ctx.save();
+          ctx.fillStyle = (currentMode === 4) ? '#ecfdf5' : '#f8fafc';
+          ctx.strokeStyle = (currentMode === 4) ? '#10b981' : '#cbd5e1';
+          ctx.lineWidth = (currentMode === 4) ? 2 : 1.5;
+          if (currentMode === 4) {
+            ctx.shadowColor = 'rgba(16, 185, 129, 0.35)';
+            ctx.shadowBlur = 10;
+          }
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(trayX, trayY, trayW, 44, 10);
+          else ctx.rect(trayX, trayY, trayW, 44);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+
+          if (currentMode === 0) {
+            ctx.fillStyle = '#64748b';
+            ctx.fillText('105와 350의 공통 약수 중 가장 큰 수(최대공약수)를 구해 보세요.', w / 2, trayY + 22);
+          } else if (currentMode === 1) {
+            ctx.fillStyle = '#0284c7';
+            ctx.fillText('105와 350의 공통 소인수는 5와 7뿐입니다. (2와 3은 제외)', w / 2, trayY + 22);
+          } else if (currentMode === 2) {
+            ctx.fillStyle = '#059669';
+            ctx.fillText('공통 소인수 중 작은 거듭제곱: 5 × 7 = 35 👑', w / 2, trayY + 22);
+          } else if (currentMode === 4) {
+            ctx.fillStyle = '#065f46';
+            ctx.fillText('👑 가장 큰 자연수 분모 □ = 5 × 7 = 35', w / 2, trayY + 22);
+          }
+          ctx.restore();
+
+          // 마우스 호버 가이드 툴팁
+          if (hoveredCol) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+            ctx.font = '12px Pretendard, sans-serif';
+            ctx.textAlign = 'center';
+            let tipText = '';
+            let tipX = w / 2;
+
+            if (hoveredCol === 'col-2') {
+              tipText = '밑 2: 350에만 있고 105에 없으므로 공약수에서 제외';
+              tipX = c2;
+            } else if (hoveredCol === 'col-3') {
+              tipText = '밑 3: 105에만 있고 350에 없으므로 공약수에서 제외';
+              tipX = c3;
+            } else if (hoveredCol === 'col-5') {
+              tipText = '밑 5: 지수 1과 2 중 작은 5 선택! 👑';
+              tipX = c5;
+            } else if (hoveredCol === 'col-7') {
+              tipText = '밑 7: 두 수 모두 7을 가지므로 7 선택! 👑';
+              tipX = c7;
+            }
+
+            const tipW = ctx.measureText(tipText).width + 16;
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(tipX - tipW / 2, 2, tipW, 24, 6);
+            else ctx.rect(tipX - tipW / 2, 2, tipW, 24);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(tipText, tipX, 14);
+            ctx.restore();
+          }
+        }
+
+        // 하단 핵심 정리 박스 (y: 228 ~ 360)
+        const sumW = Math.min(w - 36, 510);
+        const sumX = (w - sumW) / 2;
+        const sumY = (currentMode === 3) ? 232 : 220;
+        const sumH = (currentMode === 3) ? 134 : 144;
+
+        ctx.save();
+        ctx.fillStyle = (currentMode === 4) ? '#fef3c7' : '#f8fafc';
+        ctx.strokeStyle = (currentMode === 4) ? '#f59e0b' : '#cbd5e1';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(sumX, sumY, sumW, sumH, 10);
+        else ctx.rect(sumX, sumY, sumW, sumH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('📌 두 분수를 자연수로 만드는 수의 핵심 원리 (p.21 스스로 확인하기 5):', sumX + 16, sumY + 22);
+
+        if (currentMode === 0) {
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#475569';
+          ctx.fillText('• 105/□가 자연수가 되려면 □는 105의 약수이어야 합니다.', sumX + 16, sumY + 44);
+          ctx.fillText('• 350/□가 자연수가 되려면 □는 350의 약수이어야 합니다.', sumX + 16, sumY + 66);
+          ctx.fillText('• 따라서 □는 105와 350의 공약수이며, 가장 큰 수는 두 수의 최대공약수입니다.', sumX + 16, sumY + 88);
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillStyle = '#0284c7';
+          ctx.fillText('💡 상단 버튼을 클릭하거나 정답을 입력하면 소인수분해 및 최대공약수 합성이 시각화됩니다.', sumX + 16, sumY + 112);
+        } else {
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = (currentMode >= 1) ? '#0284c7' : '#94a3b8';
+          ctx.fillText('• 105/□가 자연수 ➔ □는 105의 약수,  350/□가 자연수 ➔ □는 350의 약수', sumX + 16, sumY + 44);
+          ctx.fillText('• 따라서 □는 105와 350의 공약수이며, 가장 큰 수는 최대공약수!', sumX + 16, sumY + 66);
+
+          ctx.fillStyle = (currentMode === 2 || currentMode === 4) ? '#059669' : '#94a3b8';
+          ctx.fillText((currentMode === 2 || currentMode === 4) ? '• 105 = 3 × 5 × 7,  350 = 2 × 5² × 7 ➔ 공통 소인수 중 작은 거듭제곱: 5 × 7 = 35' : '• 상단 [소인수분해] 버튼을 클릭하여 소인수분해를 확인하세요.', sumX + 16, sumY + 88);
+
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillStyle = (currentMode === 4) ? '#b45309' : '#94a3b8';
+          ctx.fillText((currentMode === 4) ? '👑 검산: 105/35 = 3 (자연수),  350/35 = 10 (자연수) ➔ 완벽 성립!' : '💡 상단 [⚡ □=35 합성] 버튼을 눌러 약분 검산을 확인하세요.', sumX + 16, sumY + 112);
+        }
+        ctx.restore();
+
+        // 콘페티 애니메이션
+        if (particles.length > 0) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.22;
+            p.rot += p.vRot;
+            p.life -= p.decay;
+
+            if (p.life <= 0) {
+              particles.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+            ctx.restore();
+          }
+        }
+
+        container._animId_3_14 = requestAnimationFrame(render);
+      }
+
+      render();
     }
+
+    function renderForm_3_14(box) {
+      box.innerHTML = `
+        <div class="card" style="padding:16px 20px;">
+          <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
+            ✏️ [스스로 확인하기 5] 두 분수를 자연수로 만드는 수 (p.21)
+          </div>
+          <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
+            두 수 105/□,  350/□이 모두 자연수가 되도록 할 때, □ 안에 공통으로 들어가는 자연수 중에서 가장 큰 수를 구하시오.
+          </p>
+
+          <!-- 거듭제곱 퀵 입력 바 (Zero-Spoiler 엄수: 정답 수치 35 배제) -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; background:#f1f5f9; padding:8px 10px; border-radius:8px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; line-height:28px;">기호 입력:</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-3-14" data-char="^" style="font-weight:700; min-width:32px;">^</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-3-14" data-char="²" style="font-weight:700; min-width:32px;">²</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-3-14" data-char="³" style="font-weight:700; min-width:32px;">³</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-3-14" data-char="×" style="font-weight:700; min-width:32px;">×</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-3-14" data-char="*" style="font-weight:700; min-width:32px;">*</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-3-14" data-char="·" style="font-weight:700; min-width:32px;">·</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-clear-3-14" style="font-weight:700;">초기화</button>
+          </div>
+
+          <div style="margin-bottom:14px;">
+            <label for="ans-3-14" style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+              □ 안에 공통으로 들어가는 가장 큰 자연수:
+            </label>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:0.88rem; font-weight:600; color:#475569;">□ =</span>
+              <input type="text" id="ans-3-14" class="form-control" style="width:160px;" placeholder="수 또는 식 입력" autocomplete="off">
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="checkStep_3_14()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
+        </div>
+      `;
+
+      const input = box.querySelector('#ans-3-14');
+      if (input) {
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') checkStep_3_14();
+        });
+      }
+
+      box.querySelectorAll('.btn-pow-insert-3-14').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const char = btn.getAttribute('data-char');
+          if (input) {
+            input.value += char;
+            input.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      });
+
+      const clearBtn = box.querySelector('.btn-pow-clear-3-14');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          if (input) {
+            input.value = '';
+            input.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      }
+    }
+
     function checkStep_3_14() {
-      const v = document.getElementById('ans-3-14')?.value?.trim();
-      if (v === '35' || v === '5*7') {
-        completeSubStep('3-14', '🎉 <b>정답입니다!</b> □는 105와 350의 최대공약수인 5 × 7 = <b>35</b>입니다.');
+      const v = normTxt(document.getElementById('ans-3-14')?.value);
+
+      // 최대공약수: 35 또는 5 * 7
+      const isCorrect = (parseInt(v, 10) === 35 ||
+                         comparePowerMaps(parsePowerProduct(v), { 5: 1, 7: 1 }) ||
+                         v === '35' || v === '5*7' || v === '5×7' || v === '7*5' || v === '7×5');
+
+      if (isCorrect) {
+        if (window._step3_14_triggerSuccess) {
+          window._step3_14_triggerSuccess();
+        }
+        completeSubStep('3-14', '🎉 <b>정답입니다!</b><br>• 105/□가 자연수 ➔ □는 105의 약수<br>• 350/□가 자연수 ➔ □는 350의 약수<br>• 따라서 □는 105와 350의 공약수이며, 가장 큰 수는 최대공약수입니다.<br>• 105 = 3 × 5 × 7, 350 = 2 × 5² × 7 ➔ 최대공약수: 5 × 7 = <b>35</b>');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 105와 350의 최대공약수를 구해 보세요.');
+        if (v === '5' || v === '7') {
+          showFeedback(false, '❌ <b>5와 7은 공약수입니다.</b> 문제에서 "가장 큰 수(최대공약수)"를 구해야 하므로, 5와 7의 곱인 35를 확인해 보세요.');
+        } else {
+          showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 105와 350을 각각 소인수분해하여 두 수의 최대공약수를 구해 보세요.');
+        }
       }
     }
 
