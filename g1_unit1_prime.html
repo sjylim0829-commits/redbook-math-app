@@ -2649,218 +2649,585 @@ function drawCanvas_0_3(container) {
   canvas.style.width = '100%';
   canvas.style.height = '100%';
   canvas.style.display = 'block';
+  canvas.style.touchAction = 'none';
   container.appendChild(canvas);
 
   const ctx = canvas.getContext('2d');
   let animId = null;
   let t = 0;
 
+  // Prime keys & public key N
   let primeP = 61;
   let primeQ = 53;
+  let N = primeP * primeQ; // 3233
+
   let isLocked = false;
-  let lockAngle = 0;
   let attackMode = false;
-  let attackProgress = 0;
+  let attackTimer = 0;
+
+  // Key state
+  let keyState = {
+    x: 0,
+    y: 0,
+    defaultX: 0,
+    defaultY: 0,
+    isDragging: false,
+    isHovered: false
+  };
+
+  function initPositions() {
+    const w = canvas.width;
+    const h = canvas.height;
+    keyState.defaultX = w * 0.16;
+    keyState.defaultY = h * 0.65;
+    if (!isLocked && !keyState.isDragging) {
+      keyState.x = keyState.defaultX;
+      keyState.y = keyState.defaultY;
+    }
+  }
+  initPositions();
+
+  function resetSim() {
+    isLocked = false;
+    attackMode = false;
+    particles = [];
+    keyState.isDragging = false;
+    keyState.x = keyState.defaultX;
+    keyState.y = keyState.defaultY;
+    if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(380, 'sine', 0.08);
+  }
+
+  function resize() {
+    if (!container || !canvas) return;
+    const newW = container.clientWidth || 560;
+    const newH = container.clientHeight || 460;
+    if (canvas.width !== newW || canvas.height !== newH) {
+      canvas.width = newW;
+      canvas.height = newH;
+      initPositions();
+    }
+  }
+  window.addEventListener('resize', resize);
+
+  // Particles
+  let particles = [];
+  function spawnShieldBurst(cx, cy) {
+    for (let i = 0; i < 36; i++) {
+      const angle = (Math.PI * 2 * i) / 36 + (Math.random() - 0.5) * 0.2;
+      const speed = 2.0 + Math.random() * 4.0;
+      particles.push({
+        x: cx,
+        y: cy,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        radius: 3 + Math.random() * 3.5,
+        color: i % 2 === 0 ? '#10b981' : '#f59e0b',
+        life: 1.0,
+        decay: 0.015 + Math.random() * 0.015
+      });
+    }
+  }
+
+  function spawnAttackSpark(x, y) {
+    for (let i = 0; i < 5; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 1.5 + Math.random() * 3.5;
+      particles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        radius: 2 + Math.random() * 2,
+        color: '#ef4444',
+        life: 0.7,
+        decay: 0.04
+      });
+    }
+  }
+
+  function lockPadlock(cx, cy) {
+    if (!isLocked) {
+      isLocked = true;
+      keyState.x = cx;
+      keyState.y = cy + 18;
+      spawnShieldBurst(cx, cy);
+      if (window.SoundFX && window.SoundFX.unlock) SoundFX.unlock();
+    }
+  }
+
+  // Pointer drag handling
+  let dragOffset = { x: 0, y: 0 };
+
+  function getCanvasPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / (rect.width || 1);
+    const scaleY = canvas.height / (rect.height || 1);
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY
+    };
+  }
+
+  function hitTestKey(pos) {
+    return Math.hypot(pos.x - keyState.x, pos.y - keyState.y) <= 34;
+  }
+
+  function hitTestButton(pos, bx, by, bw, bh) {
+    return (pos.x >= bx && pos.x <= bx + bw && pos.y >= by && pos.y <= by + bh);
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    try { canvas.setPointerCapture(e.pointerId); } catch(err) {}
+    const pos = getCanvasPos(e);
+    const w = canvas.width;
+    const h = canvas.height;
+    const lx = w * 0.64;
+    const ly = h * 0.65;
+
+    // Reset button (top right: w - 105, 10, 90, 26)
+    if (hitTestButton(pos, w - 105, 10, 90, 26)) {
+      resetSim();
+      return;
+    }
+
+    // Lock Quick Button (bottom left: 16, h - 42, 126, 30)
+    if (hitTestButton(pos, 16, h - 42, 126, 30)) {
+      lockPadlock(lx, ly);
+      return;
+    }
+
+    // Supercomputer Attack Button (bottom center: w / 2 - 105, h - 42, 210, 30)
+    if (hitTestButton(pos, w / 2 - 105, h - 42, 210, 30)) {
+      attackMode = !attackMode;
+      if (attackMode) {
+        if (!isLocked) lockPadlock(lx, ly);
+        if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(320, 'sawtooth', 0.15);
+      }
+      return;
+    }
+
+    // Key drag hit test
+    if (!isLocked && hitTestKey(pos)) {
+      keyState.isDragging = true;
+      dragOffset.x = pos.x - keyState.x;
+      dragOffset.y = pos.y - keyState.y;
+      if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(520, 'sine', 0.05);
+    }
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    const pos = getCanvasPos(e);
+    const w = canvas.width;
+    const h = canvas.height;
+    const lx = w * 0.64;
+    const ly = h * 0.65;
+
+    if (keyState.isDragging) {
+      keyState.x = Math.max(25, Math.min(w - 25, pos.x - dragOffset.x));
+      keyState.y = Math.max(35, Math.min(h - 50, pos.y - dragOffset.y));
+
+      // Keyhole proximity snap (keyhole is at lx, ly + 18)
+      const distToHole = Math.hypot(keyState.x - lx, keyState.y - (ly + 18));
+      if (distToHole < 45) {
+        keyState.isDragging = false;
+        lockPadlock(lx, ly);
+      }
+      canvas.style.cursor = 'grabbing';
+    } else {
+      const onKey = !isLocked && hitTestKey(pos);
+      keyState.isHovered = onKey;
+      const onReset = hitTestButton(pos, w - 105, 10, 90, 26);
+      const onLockBtn = hitTestButton(pos, 16, h - 42, 126, 30);
+      const onAttackBtn = hitTestButton(pos, w / 2 - 105, h - 42, 210, 30);
+      canvas.style.cursor = (onKey || onReset || onLockBtn || onAttackBtn) ? 'pointer' : 'default';
+    }
+  });
+
+  function stopDrag(e) {
+    if (keyState.isDragging) {
+      keyState.isDragging = false;
+      canvas.style.cursor = 'default';
+      const w = canvas.width;
+      const h = canvas.height;
+      const distToDefault = Math.hypot(keyState.x - keyState.defaultX, keyState.y - keyState.defaultY);
+      if (distToDefault > 160 && !isLocked) {
+        keyState.x = keyState.defaultX;
+        keyState.y = keyState.defaultY;
+      }
+    }
+    try {
+      if (canvas.hasPointerCapture(e.pointerId)) {
+        canvas.releasePointerCapture(e.pointerId);
+      }
+    } catch(err) {}
+  }
+
+  canvas.addEventListener('pointerup', stopDrag);
+  canvas.addEventListener('pointercancel', stopDrag);
 
   function draw() {
-    t += 0.02;
+    if (!container.isConnected || !container.contains(canvas)) {
+      if (animId) cancelAnimationFrame(animId);
+      window.removeEventListener('resize', resize);
+      return;
+    }
+
+    t += 0.025;
     const w = canvas.width;
     const h = canvas.height;
     ctx.clearRect(0, 0, w, h);
 
-    const N = primeP * primeQ; // 3233
-
-    // Background security grid
+    // Subtle background security grid
     ctx.strokeStyle = '#f8fafc';
     ctx.lineWidth = 1;
-    for (let x = 0; x < w; x += 40) {
+    for (let x = 0; x < w; x += 36) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
       ctx.lineTo(x, h);
       ctx.stroke();
     }
+    for (let y = 0; y < h; y += 36) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
 
-    // Top Title & Explanation
+    // Top Header: Title & Reset Button
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.font = '800 15px Pretendard, sans-serif';
+    ctx.fillStyle = '#0f172a';
+    ctx.fillText('🔐 현대 정보보호 RSA 공개키 암호 시뮬레이터 (p.8)', 16, 24);
+
+    // Reset Button (Top Right)
+    ctx.save();
+    ctx.fillStyle = '#f1f5f9';
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(w - 105, 10, 90, 26, 6);
+    else ctx.rect(w - 105, 10, 90, 26);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#475569';
+    ctx.font = 'bold 11px Pretendard, sans-serif';
     ctx.textAlign = 'center';
-    ctx.font = 'bold 15px Pretendard, sans-serif';
-    ctx.fillStyle = '#1e293b';
-    ctx.fillText('🔐 현대 정보보호 RSA 공개키 암호 시뮬레이터', w / 2, 35);
-    ctx.font = '12px Pretendard, sans-serif';
-    ctx.fillStyle = '#64748b';
-    ctx.fillText('거대한 두 소수를 곱하기는 쉽지만, 곱한 합성수를 다시 소인수분해하기는 불가능에 가깝습니다.', w / 2, 58);
+    ctx.fillText('⟲ 시뮬레이터 리셋', w - 60, 23);
+    ctx.restore();
 
-    // Left Key: Prime P
-    const kx1 = w * 0.22;
-    const ky = 150;
+    // Upper Math Cards: Key Generation (p, q ➔ N)
+    const cardY = 52;
+    const cardH = 68;
+
+    // Box 1: Prime P
+    const bx1 = w * 0.16;
     ctx.fillStyle = '#eff6ff';
     ctx.strokeStyle = '#3b82f6';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.roundRect ? ctx.roundRect(kx1 - 55, ky - 40, 110, 80, 12) : ctx.rect(kx1 - 55, ky - 40, 110, 80);
+    if (ctx.roundRect) ctx.roundRect(bx1 - 50, cardY, 100, cardH, 8);
+    else ctx.rect(bx1 - 50, cardY, 100, cardH);
     ctx.fill();
     ctx.stroke();
-
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 10px Pretendard, sans-serif';
     ctx.fillStyle = '#1d4ed8';
-    ctx.font = 'bold 12px Pretendard, sans-serif';
-    ctx.fillText('🔑 소수 키 p', kx1, ky - 16);
-    ctx.font = 'bold 24px Pretendard, sans-serif';
-    ctx.fillText(String(primeP), kx1, ky + 16);
-
-    // Multiplication Symbol
-    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('🔑 소수 키 p', bx1, cardY + 16);
     ctx.font = 'bold 22px Pretendard, sans-serif';
-    ctx.fillText('×', w * 0.37, ky + 5);
+    ctx.fillText(String(primeP), bx1, cardY + 44);
 
-    // Right Key: Prime Q
-    const kx2 = w * 0.52;
-    ctx.fillStyle = '#faf5ff';
+    // Multiply Symbol
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = 'bold 20px Pretendard, sans-serif';
+    ctx.fillText('×', w * 0.32, cardY + 36);
+
+    // Box 2: Prime Q
+    const bx2 = w * 0.46;
+    ctx.fillStyle = '#f5f3ff';
     ctx.strokeStyle = '#8b5cf6';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.roundRect ? ctx.roundRect(kx2 - 55, ky - 40, 110, 80, 12) : ctx.rect(kx2 - 55, ky - 40, 110, 80);
+    if (ctx.roundRect) ctx.roundRect(bx2 - 50, cardY, 100, cardH, 8);
+    else ctx.rect(bx2 - 50, cardY, 100, cardH);
     ctx.fill();
     ctx.stroke();
-
+    ctx.font = 'bold 10px Pretendard, sans-serif';
     ctx.fillStyle = '#6d28d9';
-    ctx.font = 'bold 12px Pretendard, sans-serif';
-    ctx.fillText('🔑 소수 키 q', kx2, ky - 16);
-    ctx.font = 'bold 24px Pretendard, sans-serif';
-    ctx.fillText(String(primeQ), kx2, ky + 16);
+    ctx.fillText('🔑 소수 키 q', bx2, cardY + 16);
+    ctx.font = 'bold 22px Pretendard, sans-serif';
+    ctx.fillText(String(primeQ), bx2, cardY + 44);
 
     // Equals Symbol
     ctx.fillStyle = '#94a3b8';
-    ctx.font = 'bold 22px Pretendard, sans-serif';
-    ctx.fillText('=', w * 0.67, ky + 5);
+    ctx.font = 'bold 20px Pretendard, sans-serif';
+    ctx.fillText('=', w * 0.62, cardY + 36);
 
-    // Lock Core Result (N = p * q)
-    const kx3 = w * 0.82;
+    // Box 3: Public Key N
+    const bx3 = w * 0.81;
     ctx.fillStyle = isLocked ? '#ecfdf5' : '#fef2f2';
     ctx.strokeStyle = isLocked ? '#10b981' : '#f87171';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.roundRect ? ctx.roundRect(kx3 - 60, ky - 40, 120, 80, 12) : ctx.rect(kx3 - 60, ky - 40, 120, 80);
+    if (ctx.roundRect) ctx.roundRect(bx3 - 62, cardY, 124, cardH, 8);
+    else ctx.rect(bx3 - 62, cardY, 124, cardH);
     ctx.fill();
     ctx.stroke();
-
+    ctx.font = 'bold 10px Pretendard, sans-serif';
     ctx.fillStyle = isLocked ? '#065f46' : '#991b1b';
-    ctx.font = 'bold 12px Pretendard, sans-serif';
-    ctx.fillText('공개키 N (합성수)', kx3, ky - 16);
+    ctx.fillText('🔒 공개키 N (합성수)', bx3, cardY + 16);
     ctx.font = 'bold 22px Pretendard, sans-serif';
-    ctx.fillText(String(N), kx3, ky + 16);
+    ctx.fillText(String(N), bx3, cardY + 44);
 
-    // Center Big Padlock
-    const lx = w / 2;
-    const ly = h * 0.68;
+    // Stage Area: Left Key Dock vs Right Padlock
+    const lx = w * 0.64;
+    const ly = h * 0.65;
 
-    // Shield Wave if locked
+    // Left Key Dock Area
+    const dockW = w * 0.28;
+    const dockH = 120;
+    const dockX = 16;
+    const dockY = ly - 60;
+    ctx.fillStyle = '#f8fafc';
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(dockX, dockY, dockW, dockH, 10);
+    else ctx.rect(dockX, dockY, dockW, dockH);
+    ctx.fill();
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 11px Pretendard, sans-serif';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText('🗝️ 소수 열쇠 보관소', dockX + dockW / 2, dockY + 18);
+    ctx.font = '10px Pretendard, sans-serif';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(isLocked ? '열쇠가 자물쇠에 결합됨' : '열쇠를 자물쇠 구멍으로 드래그!', dockX + dockW / 2, dockY + dockH - 12);
+
+    // Padlock Drawing at (lx, ly)
+    // Pulsing Security Shield when locked
     if (isLocked) {
-      const pulse = (Math.sin(t * 4) + 1) / 2;
-      ctx.strokeStyle = `rgba(16, 185, 129, ${0.15 + pulse * 0.25})`;
-      ctx.lineWidth = 3 + pulse * 4;
+      const shieldRadius = 85;
+      const pulse = (Math.sin(t * 3.5) + 1) / 2;
+
+      // Outer aura
+      const auraGrad = ctx.createRadialGradient(lx, ly, 30, lx, ly, shieldRadius + 20);
+      auraGrad.addColorStop(0, 'rgba(16, 185, 129, 0.25)');
+      auraGrad.addColorStop(0.7, 'rgba(16, 185, 129, 0.08)');
+      auraGrad.addColorStop(1, 'rgba(16, 185, 129, 0)');
+      ctx.fillStyle = auraGrad;
       ctx.beginPath();
-      ctx.arc(lx, ly, 75 + pulse * 10, 0, Math.PI * 2);
+      ctx.arc(lx, ly, shieldRadius + 20, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Shield rings
+      ctx.strokeStyle = `rgba(16, 185, 129, ${0.4 + pulse * 0.4})`;
+      ctx.lineWidth = 3 + pulse * 3;
+      ctx.beginPath();
+      ctx.arc(lx, ly, shieldRadius + pulse * 6, 0, Math.PI * 2);
       ctx.stroke();
+
+      // Rotating shield notches
+      ctx.save();
+      ctx.translate(lx, ly);
+      ctx.rotate(t * 0.8);
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([12, 16]);
+      ctx.beginPath();
+      ctx.arc(0, 0, shieldRadius + 14, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
     }
 
-    // Shackle (U-shape)
-    ctx.strokeStyle = isLocked ? '#cbd5e1' : '#94a3b8';
+    // Shackle (U-bar)
+    ctx.save();
+    ctx.strokeStyle = isLocked ? '#94a3b8' : '#cbd5e1';
     ctx.lineWidth = 14;
     ctx.lineCap = 'round';
     ctx.beginPath();
-    const shackleY = isLocked ? ly - 42 : ly - 60;
-    ctx.arc(lx, shackleY, 32, Math.PI, 0);
-    ctx.lineTo(lx + 32, ly - 15);
-    ctx.moveTo(lx - 32, shackleY);
-    ctx.lineTo(lx - 32, ly - 15);
+    const shackleTopY = isLocked ? ly - 46 : ly - 68;
+    ctx.arc(lx, shackleTopY, 32, Math.PI, 0);
+    ctx.lineTo(lx + 32, ly - 14);
+    ctx.moveTo(lx - 32, shackleTopY);
+    ctx.lineTo(lx - 32, isLocked ? ly - 14 : ly - 36);
     ctx.stroke();
-    ctx.lineCap = 'butt';
+    ctx.restore();
 
     // Lock Body
+    ctx.save();
+    ctx.shadowColor = isLocked ? '#f59e0b' : 'rgba(0,0,0,0.15)';
+    ctx.shadowBlur = isLocked ? 14 : 8;
     ctx.fillStyle = isLocked ? '#f59e0b' : '#64748b';
     ctx.strokeStyle = isLocked ? '#d97706' : '#475569';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.roundRect ? ctx.roundRect(lx - 50, ly - 15, 100, 75, 14) : ctx.rect(lx - 50, ly - 15, 100, 75);
+    if (ctx.roundRect) ctx.roundRect(lx - 52, ly - 16, 104, 78, 14);
+    else ctx.rect(lx - 52, ly - 16, 104, 78);
     ctx.fill();
     ctx.stroke();
+    ctx.restore();
 
     // Keyhole
-    ctx.fillStyle = '#1e293b';
+    ctx.fillStyle = '#1e1b4b';
     ctx.beginPath();
-    ctx.arc(lx, ly + 15, 8, 0, Math.PI * 2);
+    ctx.arc(lx, ly + 14, 8, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.moveTo(lx - 4, ly + 17);
-    ctx.lineTo(lx + 4, ly + 17);
+    ctx.moveTo(lx - 4, ly + 16);
+    ctx.lineTo(lx + 4, ly + 16);
     ctx.lineTo(lx + 6, ly + 36);
     ctx.lineTo(lx - 6, ly + 36);
     ctx.closePath();
     ctx.fill();
 
-    // Attack simulation status
-    if (attackMode) {
-      attackProgress += 0.015;
-      ctx.fillStyle = 'rgba(239, 68, 68, 0.95)';
-      ctx.strokeStyle = '#b91c1c';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(w / 2 - 200, h - 65, 400, 50, 10) : ctx.rect(w / 2 - 200, h - 65, 400, 50);
-      ctx.fill();
-      ctx.stroke();
+    // Lock Center Badge / Status
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.font = 'bold 11px Pretendard, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(isLocked ? 'RSA SECURE' : 'UNLOCKED', lx, ly + 46);
 
-      ctx.fillStyle = '#ffffff';
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 13px Pretendard, sans-serif';
-      ctx.fillText(`🚨 슈퍼컴퓨터 무차별 소인수분해 공격 중... (해독 불가)`, w / 2, h - 42);
-      ctx.font = '11px Pretendard, sans-serif';
-      ctx.fillText(`수백 자리의 두 소수를 곱한 합성수는 현재 인류 기술로 분해 불가능!`, w / 2, h - 24);
+    // Golden Prime Key Drawing at (keyState.x, keyState.y)
+    ctx.save();
+    ctx.translate(keyState.x, keyState.y);
+    if (isLocked) ctx.rotate(Math.PI / 4);
+
+    // Key Glow
+    if (keyState.isDragging || keyState.isHovered) {
+      ctx.shadowColor = '#eab308';
+      ctx.shadowBlur = 14;
+    }
+
+    // Key Bow (Round handle)
+    ctx.fillStyle = '#facc15';
+    ctx.strokeStyle = '#ca8a04';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(-16, 0, 14, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Hole in handle
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(-16, 0, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Key Stem
+    ctx.fillStyle = '#facc15';
+    ctx.strokeStyle = '#ca8a04';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.rect(-3, -3, 26, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    // Key Teeth
+    ctx.beginPath();
+    ctx.rect(13, 3, 4, 7);
+    ctx.rect(19, 3, 4, 9);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    // Status / Feedback message above buttons
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    if (attackMode) {
+      attackTimer += 0.04;
+      // Draw attacking brute-force beams
+      for (let b = 0; b < 4; b++) {
+        const beamY = ly - 20 + b * 15;
+        const fromLeft = (b % 2 === 0);
+        const bx = fromLeft ? (w * 0.1 + ((t * 220 + b * 60) % (lx - w * 0.1 - 40))) : (w * 0.95 - ((t * 220 + b * 60) % (w * 0.95 - lx - 40)));
+
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+        ctx.moveTo(fromLeft ? 10 : w - 10, beamY);
+        ctx.lineTo(bx, beamY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Spark at beam head
+        spawnAttackSpark(bx, beamY);
+      }
+
+      // Flying test divisor tags
+      const trialDivs = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47];
+      const curDiv = trialDivs[Math.floor((t * 6) % trialDivs.length)];
+
+      ctx.fillStyle = '#b91c1c';
+      ctx.font = 'bold 12px Pretendard, sans-serif';
+      ctx.fillText(`🚨 슈퍼컴퓨터 무차별 대입 공격 중: 3233 ÷ ${curDiv} ? ❌ (방어 성공! 소수 크기가 커서 분해 불가)`, w / 2, h - 62);
     } else {
-      ctx.textAlign = 'center';
-      ctx.font = '12px Pretendard, sans-serif';
-      ctx.fillStyle = '#64748b';
-      ctx.fillText(isLocked ? '✅ 암호화 완료! 아래 버튼으로 공격 방어력을 확인해 보세요.' : '👇 버튼을 눌러 소수 암호 자물쇠를 잠그세요.', w / 2, h - 30);
+      if (isLocked) {
+        ctx.fillStyle = '#059669';
+        ctx.font = 'bold 12px Pretendard, sans-serif';
+        ctx.fillText('🔒 [소수 암호 잠금 성공] 공개키 N=3233으로 인터넷 데이터가 완벽 보호 중입니다.', w / 2, h - 62);
+      } else {
+        ctx.fillStyle = '#64748b';
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillText('💡 왼쪽의 황금 열쇠를 마우스/터치로 드래그하여 자물쇠에 꽂아 암호를 잠그세요!', w / 2, h - 62);
+      }
+    }
+
+    // Bottom In-Canvas Controls
+    // Button 1: Quick Lock
+    ctx.save();
+    ctx.fillStyle = isLocked ? '#e2e8f0' : '#4f46e5';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(16, h - 42, 126, 30, 6);
+    else ctx.rect(16, h - 42, 126, 30);
+    ctx.fill();
+    ctx.font = 'bold 12px Pretendard, sans-serif';
+    ctx.fillStyle = isLocked ? '#64748b' : '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.fillText('🔒 소수 암호 잠그기', 79, h - 27);
+    ctx.restore();
+
+    // Button 2: Supercomputer Attack Simulation
+    ctx.save();
+    ctx.fillStyle = attackMode ? '#dc2626' : '#fef2f2';
+    ctx.strokeStyle = '#f87171';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(w / 2 - 105, h - 42, 210, 30, 6);
+    else ctx.rect(w / 2 - 105, h - 42, 210, 30);
+    ctx.fill();
+    ctx.stroke();
+    ctx.font = 'bold 12px Pretendard, sans-serif';
+    ctx.fillStyle = attackMode ? '#ffffff' : '#b91c1c';
+    ctx.textAlign = 'center';
+    ctx.fillText(attackMode ? '⚡ 공격 중지' : '⚡ 슈퍼컴퓨터 해독 시뮬레이션', w / 2, h - 27);
+    ctx.restore();
+
+    // Particles render
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life -= p.decay;
+      if (p.life <= 0) {
+        particles.splice(i, 1);
+        continue;
+      }
+      ctx.save();
+      ctx.globalAlpha = p.life;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius * p.life, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     }
 
     animId = requestAnimationFrame(draw);
   }
-
-  // Buttons in canvas container
-  const btnRow = document.createElement('div');
-  btnRow.style.position = 'absolute';
-  btnRow.style.bottom = '12px';
-  btnRow.style.left = '50%';
-  btnRow.style.transform = 'translateX(-50%)';
-  btnRow.style.display = 'flex';
-  btnRow.style.gap = '8px';
-  btnRow.style.zIndex = '20';
-
-  const btnLock = document.createElement('button');
-  btnLock.className = 'btn btn-primary';
-  btnLock.style.padding = '6px 14px';
-  btnLock.style.fontSize = '0.84rem';
-  btnLock.textContent = '🔒 소수 암호 잠그기';
-  btnLock.onclick = () => {
-    isLocked = true;
-    attackMode = false;
-    if (window.SoundFX && window.SoundFX.unlock) SoundFX.unlock();
-  };
-
-  const btnAttack = document.createElement('button');
-  btnAttack.className = 'btn';
-  btnAttack.style.background = '#fef2f2';
-  btnAttack.style.color = '#dc2626';
-  btnAttack.style.border = '1px solid #fecaca';
-  btnAttack.style.padding = '6px 14px';
-  btnAttack.style.fontSize = '0.84rem';
-  btnAttack.textContent = '⚡ 해독 공격 시뮬레이션';
-  btnAttack.onclick = () => {
-    attackMode = true;
-    if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(320, 'sawtooth', 0.2);
-  };
-
-  btnRow.appendChild(btnLock);
-  btnRow.appendChild(btnAttack);
-  container.appendChild(btnRow);
 
   draw();
 }
@@ -2868,26 +3235,40 @@ function drawCanvas_0_3(container) {
 function renderForm_0_3(box) {
   box.innerHTML = `
     <div class="card">
-      <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
-        🛡️ 정보화 시대의 암호와 수의 역할 (p.8)
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+        <span style="background:#4f46e5; color:#ffffff; font-size:0.75rem; font-weight:800; padding:3px 9px; border-radius:6px;">수학 산책</span>
+        <span style="font-weight:800; font-size:1.02rem; color:#1e293b;">정보화 시대의 암호와 소수 (p.8)</span>
       </div>
-      <p style="font-size:0.9rem; color:#475569; line-height:1.6; margin-bottom:14px;">
-        현대 사회에서 금융, 통신, 인터넷 전자상거래의 정보를 안전하게 지키는 RSA 암호 체계는 
-        <b>"거대한 두 [ <span style="color:#4f46e5;">?</span> ]를 곱하기는 매우 쉽지만, 그 곱한 결과를 다시 본래의 두 수로 쪼개는(소인수분해하는) 것은 슈퍼컴퓨터로도 수백 년이 걸린다"</b>는 
-        수학적 원리를 기반으로 설계되었습니다.
-        현대 보안 암호의 핵심이 되는 이 수의 종류를 무엇이라고 할까요?
-      </p>
-      <div style="margin-bottom:12px;">
-        <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">용어 입력:</label>
-        <input type="text" id="ans-0-3" class="form-control" placeholder="용어 입력" autocomplete="off">
+
+      <div style="background:#f1f5f9; border-left:4px solid #4f46e5; border-radius:8px; padding:12px 14px; margin-bottom:14px;">
+        <div style="font-weight:700; font-size:0.88rem; color:#334155; margin-bottom:6px;">
+          📖 교과서 본문 탐구 (교과서 p.8)
+        </div>
+        <p style="font-size:0.88rem; color:#475569; line-height:1.65; margin:0;">
+          이 단원에서 배울 <b>[ <span style="color:#4f46e5;">?</span> ]</b>는 자연수를 구성하는 기본 요소로서 현대 사회에서 정보 보호를 위해 암호를 만드는 데 사용되는 매우 중요한 수입니다. 암호는 행정, 산업, 금융 등 실생활의 여러 분야에서 널리 쓰입니다.
+        </p>
       </div>
-      <button class="btn btn-primary" onclick="checkStep_0_3()">정답 확인 및 채점</button>
+
+      <div style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:10px; padding:14px; margin-bottom:16px;">
+        <div style="font-size:0.92rem; font-weight:700; color:#1e293b; line-height:1.6; margin-bottom:12px;">
+          🔍 <b>센티넬 탐구 미션:</b><br>
+          거대한 두 소수를 곱하기는 매우 쉽지만, 곱한 결과를 다시 소인수분해하는 것은 슈퍼컴퓨터로도 불가능에 가깝습니다. 현대 인터넷 보안과 암호화의 핵심이 되는 이 수의 종류는 무엇일까요?
+        </div>
+        <div style="margin-bottom:6px;">
+          <label for="ans-0-3" style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">용어 입력:</label>
+          <input type="text" id="ans-0-3" class="form-control" placeholder="용어 입력" autocomplete="off" onkeydown="if(event.key==='Enter') checkStep_0_3()">
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="checkStep_0_3()" style="width:100%; padding:10px 16px; font-size:0.92rem;">
+        정답 확인 및 채점
+      </button>
     </div>
   `;
 }
 
 function checkStep_0_3() {
-  const input = document.getElementById('ans-0-3');
+  const input = document.getElementById('ans-0-3') || document.getElementById('input-0-3');
   const val = input ? input.value : '';
   if (normTxt(val) === '소수') {
     completeSubStep('0-3', '🎉 <b>정답입니다!</b> <b>소수(Prime)</b>의 비대칭적 곱셈과 분해의 난이도 차이가 바로 전 세계 인터넷 금융과 보안을 지키는 든든한 방패입니다.');
