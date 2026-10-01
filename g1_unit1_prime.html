@@ -5695,203 +5695,515 @@ function checkStep_0_6() {
 // 1-1 (p.10): 생각열기: 자연수의 분류 (1~12)
 // -------------------------------------------------------------
 function drawCanvas_1_1(container) {
+  if (container._animId_1_1) {
+    cancelAnimationFrame(container._animId_1_1);
+    container._animId_1_1 = null;
+  }
   container.innerHTML = '';
+
+  const wrapper = document.createElement('div');
+  wrapper.style.position = 'relative';
+  wrapper.style.width = '100%';
+  wrapper.style.height = '100%';
+  wrapper.style.minHeight = '420px';
+  wrapper.style.overflow = 'hidden';
+  wrapper.style.background = 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)';
+  wrapper.style.borderRadius = '12px';
+  wrapper.style.userSelect = 'none';
+  wrapper.style.webkitUserSelect = 'none';
+  container.appendChild(wrapper);
+
   const canvas = document.createElement('canvas');
-  canvas.width = container.clientWidth || 560;
-  canvas.height = container.clientHeight || 460;
+  canvas.style.display = 'block';
   canvas.style.width = '100%';
   canvas.style.height = '100%';
-  canvas.style.display = 'block';
-  container.appendChild(canvas);
+  canvas.style.touchAction = 'none';
+  wrapper.appendChild(canvas);
 
   const ctx = canvas.getContext('2d');
-  let animId = null;
 
-  // Numbers 1 to 12
+  let w = 560;
+  let h = 460;
+  let dpr = window.devicePixelRatio || 1;
+
+  // 12개 수 데이터 생성
   const numbers = [];
   for (let i = 1; i <= 12; i++) {
-    // compute divisors
-    let divs = [];
+    const divs = [];
     for (let d = 1; d <= i; d++) {
       if (i % d === 0) divs.push(d);
     }
-    const cat = (divs.length === 1) ? 1 : (divs.length === 2 ? 2 : 3);
-    const colIdx = (i - 1) % 6;
-    const rowIdx = Math.floor((i - 1) / 6);
+    const cat = divs.length === 1 ? 1 : (divs.length === 2 ? 2 : 3);
     numbers.push({
       val: i,
       divs: divs,
+      divCount: divs.length,
       cat: cat,
-      x: 60 + colIdx * 75,
-      y: 60 + rowIdx * 55,
-      origX: 60 + colIdx * 75,
-      origY: 60 + rowIdx * 55,
+      x: 0,
+      y: 0,
+      origX: 0,
+      origY: 0,
+      targetX: 0,
+      targetY: 0,
       r: 18,
-      inBasket: 0
+      inBasket: 0, // 0: 미배치, 1, 2, 3
+      isDragging: false,
+      scale: 1.0
     });
   }
 
   let draggedNum = null;
-  let dragOffset = { x: 0, y: 0 };
+  const dragOffset = { x: 0, y: 0 };
+  let feedbackMsg = '';
+  let feedbackTimer = 0;
+  const particles = [];
+  let celebrationTriggered = false;
 
-  function draw() {
-    const w = canvas.width;
-    const h = canvas.height;
-    ctx.clearRect(0, 0, w, h);
-
-    // Title
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 15px Pretendard, sans-serif';
-    ctx.fillStyle = '#1e293b';
-    ctx.fillText('🧺 약수의 개수에 따른 자연수 분류기 (1부터 12까지)', w / 2, 28);
-
-    // 3 Baskets
-    const bW = (w - 60) / 3;
-    const bH = 140;
-    const bY = h - bH - 30;
-
-    const baskets = [
-      { id: 1, label: '약수가 1개', sub: '(자연수 1)', color: '#0284c7', bg: 'rgba(2, 132, 199, 0.08)' },
-      { id: 2, label: '약수가 2개', sub: '(소수: 2, 3, 5, 7, 11)', color: '#4f46e5', bg: 'rgba(79, 70, 229, 0.08)' },
-      { id: 3, label: '약수가 3개 이상', sub: '(합성수: 4, 6, 8, ...)', color: '#7c3aed', bg: 'rgba(124, 58, 237, 0.08)' }
+  function getBasketBounds() {
+    const bW = (w - 50) / 3;
+    const bH = Math.min(150, h * 0.35);
+    const bY = h - bH - 25;
+    return [
+      { id: 1, label: '약수가 1개', sub: '오직 1', color: '#0284c7', bg: 'rgba(2, 132, 199, 0.08)', border: '#38bdf8', x: 15, y: bY, w: bW, h: bH },
+      { id: 2, label: '약수가 2개', sub: '소수 (Prime)', color: '#4f46e5', bg: 'rgba(79, 70, 229, 0.08)', border: '#818cf8', x: 15 + bW + 10, y: bY, w: bW, h: bH },
+      { id: 3, label: '약수가 3개 이상', sub: '합성수 (Composite)', color: '#9333ea', bg: 'rgba(147, 51, 234, 0.08)', border: '#c084fc', x: 15 + (bW + 10) * 2, y: bY, w: bW, h: bH }
     ];
-
-    baskets.forEach((b, idx) => {
-      const bx = 20 + idx * (bW + 10);
-      ctx.fillStyle = b.bg;
-      ctx.strokeStyle = b.color;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(bx, bY, bW, bH, 12) : ctx.rect(bx, bY, bW, bH);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = b.color;
-      ctx.font = 'bold 13px Pretendard, sans-serif';
-      ctx.fillText(b.label, bx + bW / 2, bY + 24);
-      ctx.font = '11px Pretendard, sans-serif';
-      ctx.fillStyle = '#64748b';
-      ctx.fillText(b.sub, bx + bW / 2, bY + 40);
-    });
-
-    // Draw Numbers
-    numbers.forEach(n => {
-      ctx.save();
-      ctx.shadowColor = 'rgba(0,0,0,0.12)';
-      ctx.shadowBlur = 4;
-      ctx.shadowOffsetY = 2;
-
-      let ballColor = '#3b82f6';
-      if (n.inBasket === 1) ballColor = '#0284c7';
-      if (n.inBasket === 2) ballColor = '#4f46e5';
-      if (n.inBasket === 3) ballColor = '#7c3aed';
-
-      ctx.fillStyle = ballColor;
-      ctx.beginPath();
-      ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-
-      ctx.fillStyle = '#ffffff';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.font = 'bold 13px Pretendard, sans-serif';
-      ctx.fillText(String(n.val), n.x, n.y);
-    });
-
-    // Bottom Guide
-    ctx.textAlign = 'center';
-    ctx.font = '12px Pretendard, sans-serif';
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText('💡 수 공을 드래그하여 알맞은 약수 개수 바구니에 담아보세요.', w / 2, h - 8);
-
-    animId = requestAnimationFrame(draw);
   }
 
-  // Pointer events
-  canvas.addEventListener('pointerdown', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
+  function updateBasketSlots() {
+    const baskets = getBasketBounds();
+    baskets.forEach(b => {
+      const inThis = numbers.filter(n => n.inBasket === b.id && !n.isDragging);
+      inThis.forEach((n, idx) => {
+        const cols = b.id === 1 ? 1 : 3;
+        const col = idx % cols;
+        const row = Math.floor(idx / cols);
+        const cellW = (b.w - 20) / cols;
+        n.targetX = b.x + 10 + col * cellW + cellW / 2;
+        n.targetY = b.y + 55 + row * 40;
+      });
+    });
+  }
 
+  function layoutNumbers() {
+    const cols = 6;
+    const slotW = (w - 60) / cols;
+    const startY = 65;
+    const rowH = 46;
+
+    numbers.forEach((n, idx) => {
+      const c = idx % cols;
+      const r = Math.floor(idx / cols);
+      n.origX = 30 + c * slotW + slotW / 2;
+      n.origY = startY + r * rowH;
+
+      if (n.inBasket === 0 && !n.isDragging) {
+        n.targetX = n.origX;
+        n.targetY = n.origY;
+        if (n.x === 0 && n.y === 0) {
+          n.x = n.origX;
+          n.y = n.origY;
+        }
+      }
+    });
+    updateBasketSlots();
+  }
+
+  function resize() {
+    const rect = wrapper.getBoundingClientRect();
+    w = rect.width || 560;
+    h = rect.height || 460;
+    dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    layoutNumbers();
+  }
+
+  resize();
+
+  // 상단 UI 컨트롤
+  const topBar = document.createElement('div');
+  topBar.style.position = 'absolute';
+  topBar.style.top = '10px';
+  topBar.style.left = '12px';
+  topBar.style.right = '12px';
+  topBar.style.display = 'flex';
+  topBar.style.justifyContent = 'space-between';
+  topBar.style.alignItems = 'center';
+  topBar.style.pointerEvents = 'none';
+  topBar.style.zIndex = '10';
+
+  const titleBadge = document.createElement('div');
+  titleBadge.style.display = 'inline-flex';
+  titleBadge.style.alignItems = 'center';
+  titleBadge.style.gap = '6px';
+  titleBadge.style.background = 'rgba(255, 255, 255, 0.92)';
+  titleBadge.style.backdropFilter = 'blur(6px)';
+  titleBadge.style.padding = '5px 12px';
+  titleBadge.style.borderRadius = '20px';
+  titleBadge.style.border = '1px solid #cbd5e1';
+  titleBadge.style.fontSize = '0.84rem';
+  titleBadge.style.fontWeight = '700';
+  titleBadge.style.color = '#1e293b';
+  titleBadge.innerHTML = '<span>🧺 <b>자연수의 3대 분류 탐구</b> (수를 바구니에 드래그)</span>';
+
+  const btnReset = document.createElement('button');
+  btnReset.className = 'btn';
+  btnReset.style.background = '#ffffff';
+  btnReset.style.border = '1px solid #cbd5e1';
+  btnReset.style.color = '#475569';
+  btnReset.style.padding = '5px 10px';
+  btnReset.style.fontSize = '0.8rem';
+  btnReset.style.fontWeight = '600';
+  btnReset.style.borderRadius = '8px';
+  btnReset.style.pointerEvents = 'auto';
+  btnReset.textContent = '⟲ 분류 초기화';
+
+  btnReset.onclick = () => {
+    numbers.forEach(n => {
+      n.inBasket = 0;
+      n.isDragging = false;
+      n.targetX = n.origX;
+      n.targetY = n.origY;
+    });
+    feedbackMsg = '';
+    particles.length = 0;
+    celebrationTriggered = false;
+    if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(440, 'sine', 0.08);
+  };
+
+  topBar.appendChild(titleBadge);
+  topBar.appendChild(btnReset);
+  wrapper.appendChild(topBar);
+
+  const ro = new ResizeObserver(() => {
+    resize();
+  });
+  ro.observe(wrapper);
+
+  function getCanvasPos(e) {
+    const r = canvas.getBoundingClientRect();
+    return {
+      x: e.clientX - r.left,
+      y: e.clientY - r.top
+    };
+  }
+
+  function spawnCelebration(cx, cy) {
+    for (let i = 0; i < 30; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 2 + Math.random() * 5;
+      const colors = ['#f59e0b', '#10b981', '#6366f1', '#ec4899', '#3b82f6'];
+      particles.push({
+        x: cx,
+        y: cy,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 2,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        size: 3 + Math.random() * 4,
+        alpha: 1.0,
+        decay: 0.015 + Math.random() * 0.02
+      });
+    }
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    const pos = getCanvasPos(e);
     for (let i = numbers.length - 1; i >= 0; i--) {
       const n = numbers[i];
-      if (Math.hypot(mx - n.x, my - n.y) <= n.r) {
+      if (Math.hypot(pos.x - n.x, pos.y - n.y) <= n.r + 6) {
         draggedNum = n;
-        dragOffset.x = mx - n.x;
-        dragOffset.y = my - n.y;
+        n.isDragging = true;
+        dragOffset.x = pos.x - n.x;
+        dragOffset.y = pos.y - n.y;
         canvas.setPointerCapture(e.pointerId);
+        feedbackMsg = '';
+        if (window.SoundFX && window.SoundFX.playTone) {
+          SoundFX.playTone(520, 'sine', 0.05);
+        }
         break;
       }
     }
   });
 
   canvas.addEventListener('pointermove', (e) => {
-    if (!draggedNum) return;
-    const rect = canvas.getBoundingClientRect();
-    draggedNum.x = e.clientX - rect.left - dragOffset.x;
-    draggedNum.y = e.clientY - rect.top - dragOffset.y;
+    const pos = getCanvasPos(e);
+    if (draggedNum) {
+      draggedNum.x = pos.x - dragOffset.x;
+      draggedNum.y = pos.y - dragOffset.y;
+      draggedNum.targetX = draggedNum.x;
+      draggedNum.targetY = draggedNum.y;
+    }
+
+    let hitAny = false;
+    for (let i = numbers.length - 1; i >= 0; i--) {
+      if (Math.hypot(pos.x - numbers[i].x, pos.y - numbers[i].y) <= numbers[i].r + 4) {
+        hitAny = true;
+        break;
+      }
+    }
+    canvas.style.cursor = draggedNum ? 'grabbing' : (hitAny ? 'grab' : 'default');
   });
 
-  const stopDrag = () => {
+  function endDrag(e) {
     if (!draggedNum) return;
-    const w = canvas.width;
-    const h = canvas.height;
-    const bW = (w - 60) / 3;
-    const bH = 140;
-    const bY = h - bH - 30;
+    try { canvas.releasePointerCapture(e.pointerId); } catch (err) {}
+
+    const n = draggedNum;
+    n.isDragging = false;
+    const baskets = getBasketBounds();
 
     let targetBasket = 0;
-    for (let idx = 0; idx < 3; idx++) {
-      const bx = 20 + idx * (bW + 10);
-      if (draggedNum.x >= bx && draggedNum.x <= bx + bW && draggedNum.y >= bY && draggedNum.y <= bY + bH) {
-        targetBasket = idx + 1;
+    for (let i = 0; i < baskets.length; i++) {
+      const b = baskets[i];
+      if (n.x >= b.x && n.x <= b.x + b.w && n.y >= b.y && n.y <= b.y + b.h) {
+        targetBasket = b.id;
         break;
       }
     }
 
     if (targetBasket > 0) {
-      draggedNum.inBasket = targetBasket;
-      if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(targetBasket === draggedNum.cat ? 620 : 300, 'sine', 0.1);
+      if (targetBasket === n.cat) {
+        n.inBasket = targetBasket;
+        updateBasketSlots();
+        if (window.SoundFX && window.SoundFX.playTone) {
+          SoundFX.playTone(660 + n.val * 25, 'triangle', 0.09);
+        }
+
+        const allDone = numbers.every(num => num.inBasket === num.cat);
+        if (allDone && !celebrationTriggered) {
+          celebrationTriggered = true;
+          spawnCelebration(w / 2, h / 2);
+          if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        }
+      } else {
+        n.inBasket = 0;
+        n.targetX = n.origX;
+        n.targetY = n.origY;
+        const catNames = { 1: '약수가 1개', 2: '약수가 2개 (소수)', 3: '약수가 3개 이상 (합성수)' };
+        feedbackMsg = `⚠️ ${n.val}의 약수는 [${n.divs.join(', ')}] (${n.divCount}개) ➔ ${catNames[n.cat]} 바구니에 담아야 합니다!`;
+        feedbackTimer = performance.now() + 3500;
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+      }
     } else {
-      draggedNum.inBasket = 0;
+      n.inBasket = 0;
+      n.targetX = n.origX;
+      n.targetY = n.origY;
     }
+
     draggedNum = null;
-  };
+    updateBasketSlots();
+  }
 
-  canvas.addEventListener('pointerup', stopDrag);
-  canvas.addEventListener('pointercancel', stopDrag);
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
 
-  // Auto classify button
-  const btnAuto = document.createElement('button');
-  btnAuto.className = 'btn btn-sky';
-  btnAuto.style.position = 'absolute';
-  btnAuto.style.top = '10px';
-  btnAuto.style.right = '10px';
-  btnAuto.style.padding = '4px 10px';
-  btnAuto.style.fontSize = '0.78rem';
-  btnAuto.textContent = '✨ 자동 분류 예시';
-  btnAuto.onclick = () => {
-    const w = canvas.width;
-    const h = canvas.height;
-    const bW = (w - 60) / 3;
-    const bH = 140;
-    const bY = h - bH - 30;
+  // 60fps 애니메이션 렌더 루프
+  function animate(now) {
+    container._animId_1_1 = requestAnimationFrame(animate);
 
-    let counts = { 1: 0, 2: 0, 3: 0 };
-    numbers.forEach(n => {
-      n.inBasket = n.cat;
-      const idx = n.cat - 1;
-      const bx = 20 + idx * (bW + 10);
-      const slot = counts[n.cat]++;
-      n.x = bx + 25 + (slot % 3) * 35;
-      n.y = bY + 65 + Math.floor(slot / 3) * 32;
+    ctx.clearRect(0, 0, w, h);
+
+    // 1. 배경 그리드
+    ctx.strokeStyle = '#f1f5f9';
+    ctx.lineWidth = 1;
+    const gridStep = 40;
+    for (let x = 0; x < w; x += gridStep) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+      ctx.stroke();
+    }
+    for (let y = 0; y < h; y += gridStep) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+
+    // 2. 바구니 드로잉
+    const baskets = getBasketBounds();
+    baskets.forEach(b => {
+      ctx.save();
+      ctx.fillStyle = b.bg;
+      ctx.strokeStyle = b.border;
+      ctx.lineWidth = 2.5;
+
+      if (ctx.roundRect) {
+        ctx.beginPath();
+        ctx.roundRect(b.x, b.y, b.w, b.h, 14);
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+        ctx.strokeRect(b.x, b.y, b.w, b.h);
+      }
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.font = 'bold 14px Pretendard, sans-serif';
+      ctx.fillStyle = b.color;
+      ctx.fillText(b.label, b.x + b.w / 2, b.y + 12);
+
+      ctx.font = '11px Pretendard, sans-serif';
+      ctx.fillStyle = '#64748b';
+      ctx.fillText(b.sub, b.x + b.w / 2, b.y + 30);
+
+      const count = numbers.filter(n => n.inBasket === b.id).length;
+      const expectedCount = b.id === 1 ? 1 : (b.id === 2 ? 5 : 6);
+      ctx.font = 'bold 11px Pretendard, sans-serif';
+      ctx.fillStyle = count === expectedCount ? '#059669' : '#94a3b8';
+      ctx.fillText(`(${count} / ${expectedCount}개)`, b.x + b.w / 2, b.y + b.h - 18);
+
+      ctx.restore();
     });
-    if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(550, 'sine', 0.1);
-  };
-  container.appendChild(btnAuto);
 
-  draw();
+    // 3. 공(수 카드) Lerp 및 렌더링
+    numbers.forEach(n => {
+      if (!n.isDragging) {
+        n.x += (n.targetX - n.x) * 0.22;
+        n.y += (n.targetY - n.y) * 0.22;
+      }
+
+      const targetScale = n.isDragging ? 1.25 : 1.0;
+      n.scale += (targetScale - n.scale) * 0.25;
+      const r = n.r * n.scale;
+
+      ctx.save();
+      ctx.shadowColor = n.isDragging ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.1)';
+      ctx.shadowBlur = n.isDragging ? 12 : 5;
+      ctx.shadowOffsetY = n.isDragging ? 6 : 2;
+
+      let fillColor = '#eff6ff';
+      let strokeColor = '#3b82f6';
+      let textColor = '#1e40af';
+
+      if (n.inBasket === 1) {
+        fillColor = '#e0f2fe';
+        strokeColor = '#0284c7';
+        textColor = '#0369a1';
+      } else if (n.inBasket === 2) {
+        fillColor = '#e0e7ff';
+        strokeColor = '#4f46e5';
+        textColor = '#3730a3';
+      } else if (n.inBasket === 3) {
+        fillColor = '#f3e8ff';
+        strokeColor = '#9333ea';
+        textColor = '#6b21a8';
+      }
+
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = fillColor;
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = 2.5;
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `bold ${Math.round(14 * n.scale)}px Pretendard, sans-serif`;
+      ctx.fillStyle = textColor;
+      ctx.fillText(String(n.val), n.x, n.y);
+
+      ctx.restore();
+    });
+
+    // 4. 드래그 중인 카드의 힌트 버블 표시
+    if (draggedNum) {
+      const n = draggedNum;
+      const bubbleText = `💡 ${n.val}의 약수: [${n.divs.join(', ')}] (${n.divCount}개)`;
+      ctx.save();
+      ctx.font = 'bold 12px Pretendard, sans-serif';
+      const tw = ctx.measureText(bubbleText).width + 20;
+      const th = 28;
+      const bx = Math.max(10, Math.min(w - tw - 10, n.x - tw / 2));
+      const by = n.y - n.r * n.scale - th - 10;
+
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.5;
+      if (ctx.roundRect) {
+        ctx.beginPath();
+        ctx.roundRect(bx, by, tw, th, 6);
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        ctx.fillRect(bx, by, tw, th);
+        ctx.strokeRect(bx, by, tw, th);
+      }
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(bubbleText, bx + tw / 2, by + th / 2);
+      ctx.restore();
+    }
+
+    // 5. 오개념 피드백 배너
+    if (feedbackMsg && now < feedbackTimer) {
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = 'bold 12px Pretendard, sans-serif';
+      const tw = ctx.measureText(feedbackMsg).width + 24;
+      const bx = (w - tw) / 2;
+      const by = h * 0.44;
+
+      ctx.fillStyle = '#fef2f2';
+      ctx.strokeStyle = '#fca5a5';
+      ctx.lineWidth = 1.5;
+      if (ctx.roundRect) {
+        ctx.beginPath();
+        ctx.roundRect(bx, by, tw, 30, 8);
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        ctx.fillRect(bx, by, tw, 30);
+      }
+      ctx.fillStyle = '#dc2626';
+      ctx.fillText(feedbackMsg, w / 2, by + 15);
+      ctx.restore();
+    }
+
+    // 6. 전체 완료 축하 배너
+    if (celebrationTriggered) {
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = 'bold 13px Pretendard, sans-serif';
+      ctx.fillStyle = '#059669';
+      ctx.fillText('🎉 12개 자연수를 약수의 개수에 따라 3개 그룹으로 완벽하게 분류했습니다!', w / 2, h * 0.44);
+      ctx.restore();
+    }
+
+    // 7. 파티클 애니메이션
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.15;
+      p.alpha -= p.decay;
+
+      if (p.alpha <= 0) {
+        particles.splice(i, 1);
+        continue;
+      }
+
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  container._animId_1_1 = requestAnimationFrame(animate);
 }
 
 function renderForm_1_1(box) {
@@ -5904,44 +6216,65 @@ function renderForm_1_1(box) {
         1부터 12까지의 자연수를 약수의 개수에 따라 3개의 범주로 분류하시오. (수는 쉼표로 구분하여 입력)
       </p>
 
-      <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
-        <div>
-          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑴ 약수가 1개인 수:</label>
+      <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:14px;">
+        <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+          <label for="ans-1-1-1" style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">
+            ⑴ 약수가 1개인 수:
+          </label>
           <input type="text" id="ans-1-1-1" class="form-control" placeholder="수 입력" autocomplete="off">
         </div>
-        <div>
-          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑵ 약수가 2개인 수:</label>
+
+        <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+          <label for="ans-1-1-2" style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">
+            ⑵ 약수가 2개인 수:
+          </label>
           <input type="text" id="ans-1-1-2" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off">
         </div>
-        <div>
-          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑶ 약수가 3개 이상인 수:</label>
+
+        <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+          <label for="ans-1-1-3" style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">
+            ⑶ 약수가 3개 이상인 수:
+          </label>
           <input type="text" id="ans-1-1-3" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off">
         </div>
       </div>
 
-      <button class="btn btn-primary" onclick="checkStep_1_1()">정답 확인 및 채점</button>
+      <button class="btn btn-primary" onclick="checkStep_1_1()" style="width:100%;">정답 확인 및 채점</button>
     </div>
   `;
+
+  const inputs = box.querySelectorAll('input[type="text"]');
+  inputs.forEach(input => {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        checkStep_1_1();
+      }
+    });
+  });
 }
 
 function checkStep_1_1() {
-  const l1 = parseNumList(document.getElementById('ans-1-1-1')?.value);
-  const l2 = parseNumList(document.getElementById('ans-1-1-2')?.value);
-  const l3 = parseNumList(document.getElementById('ans-1-1-3')?.value);
+  const a1 = parseNumList(document.getElementById('ans-1-1-1')?.value);
+  const a2 = parseNumList(document.getElementById('ans-1-1-2')?.value);
+  const a3 = parseNumList(document.getElementById('ans-1-1-3')?.value);
 
-  const ok1 = areListsEqual(l1, [1]);
-  const ok2 = areListsEqual(l2, [2, 3, 5, 7, 11]);
-  const ok3 = areListsEqual(l3, [4, 6, 8, 9, 10, 12]);
+  const ok1 = areListsEqual(a1, [1]);
+  const ok2 = areListsEqual(a2, [2, 3, 5, 7, 11]);
+  const ok3 = areListsEqual(a3, [4, 6, 8, 9, 10, 12]);
 
   if (ok1 && ok2 && ok3) {
-    completeSubStep('1-1', '🎉 <b>정답입니다!</b> 자연수는 약수의 개수에 따라 [1], [소수: 2, 3, 5, 7, 11], [합성수: 4, 6, 8, 9, 10, 12]의 세 집단으로 완벽히 분류됩니다.');
+    completeSubStep('1-1', '🎉 <b>정답입니다!</b> 자연수는 약수의 개수에 따라 <b>1</b>, 약수가 2개인 <b>소수</b>, 약수가 3개 이상인 <b>합성수</b>로 완벽하게 분류됩니다.');
+    const nextBtn = document.getElementById('btn-next-step');
+    if (nextBtn) {
+      nextBtn.style.display = 'inline-flex';
+    }
   } else {
     let wrong = [];
-    if (!ok1) wrong.push('⑴ 약수 1개');
-    if (!ok2) wrong.push('⑵ 약수 2개');
-    if (!ok3) wrong.push('⑶ 약수 3개 이상');
+    if (!ok1) wrong.push('⑴ 약수가 1개인 수');
+    if (!ok2) wrong.push('⑵ 약수가 2개인 수');
+    if (!ok3) wrong.push('⑶ 약수가 3개 이상인 수');
     if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-    showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>1부터 12까지 수의 약수를 직접 구해 다시 입력해 보세요.`);
+    showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>왼쪽 캔버스에서 수를 바구니에 담아 약수의 개수를 확인해 보세요.`);
   }
 }
 
