@@ -10348,7 +10348,7 @@ function renderForm_1_8(box) {
         <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
           ⑴ 25가 적혀 있는 역에서 내린 승객은 모두 몇 명인가요?<br>
           <div style="margin-top:4px;">
-            [ <input type="text" id="ans-1-8-1" style="width:110px; display:inline-block; padding:4px 8px; font-weight:700;" class="form-control" placeholder="승객 수 입력" autocomplete="off"> ] 명
+            [ <input type="text" id="ans-1-8-1" style="width:110px; display:inline-block; padding:4px 8px; font-weight:700;" class="form-control" placeholder="승객 수 입력 (예: 3)" autocomplete="off"> ] 명
           </div>
         </div>
 
@@ -10412,75 +10412,648 @@ function checkStep_1_8() {
 // 1-9 (p.13): 스스로 확인하기 1: 소수와 합성수 판별
 // -------------------------------------------------------------
 function drawCanvas_1_9(container) {
+  if (container._animId_1_9) {
+    cancelAnimationFrame(container._animId_1_9);
+  }
   container.innerHTML = '';
+
+  const wrapper = document.createElement('div');
+  wrapper.style.width = '100%';
+  wrapper.style.height = '100%';
+  wrapper.style.position = 'relative';
+  container.appendChild(wrapper);
+
   const canvas = document.createElement('canvas');
-  canvas.width = container.clientWidth || 560;
-  canvas.height = container.clientHeight || 460;
   canvas.style.width = '100%';
   canvas.style.height = '100%';
   canvas.style.display = 'block';
-  container.appendChild(canvas);
+  wrapper.appendChild(canvas);
 
   const ctx = canvas.getContext('2d');
-  const cards = [
-    { num: 8, divs: '1, 2, 4, 8 (4개)', type: '합성수', color: '#059669' },
-    { num: 17, divs: '1, 17 (2개)', type: '소수', color: '#4f46e5' },
-    { num: 39, divs: '1, 3, 13, 39 (4개)', type: '합성수', color: '#059669' },
-    { num: 53, divs: '1, 53 (2개)', type: '소수', color: '#4f46e5' }
+
+  // 데이터 모델
+  const items = [
+    {
+      id: 1,
+      num: 8,
+      label: '⑴ 8',
+      divs: [1, 2, 4, 8],
+      count: 4,
+      type: '합성수',
+      revealed: false,
+      tray: null,
+      shake: 0,
+      scale: 1,
+      targetScale: 1,
+      stampAnim: 0,
+      hint: '2 × 4 = 8'
+    },
+    {
+      id: 2,
+      num: 17,
+      label: '⑵ 17',
+      divs: [1, 17],
+      count: 2,
+      type: '소수',
+      revealed: false,
+      tray: null,
+      shake: 0,
+      scale: 1,
+      targetScale: 1,
+      stampAnim: 0,
+      hint: '1 × 17 = 17'
+    },
+    {
+      id: 3,
+      num: 39,
+      label: '⑶ 39',
+      divs: [1, 3, 13, 39],
+      count: 4,
+      type: '합성수',
+      revealed: false,
+      tray: null,
+      shake: 0,
+      scale: 1,
+      targetScale: 1,
+      stampAnim: 0,
+      hint: '3 × 13 = 39'
+    },
+    {
+      id: 4,
+      num: 53,
+      label: '⑷ 53',
+      divs: [1, 53],
+      count: 2,
+      type: '소수',
+      revealed: false,
+      tray: null,
+      shake: 0,
+      scale: 1,
+      targetScale: 1,
+      stampAnim: 0,
+      hint: '1 × 53 = 53'
+    }
   ];
 
-  function draw() {
-    const w = canvas.width;
-    const h = canvas.height;
-    ctx.clearRect(0, 0, w, h);
+  let particles = [];
+  let confettiFired = false;
+  let feedbackMsg = { text: '', color: '#64748b', time: 0 };
+  let hoverInfo = null;
 
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 15px Pretendard, sans-serif';
-    ctx.fillStyle = '#1e293b';
-    ctx.fillText('⚖️ [스스로 확인하기 1] 약수 개수 저울 판별기 (p.13)', w / 2, 35);
-
-    const cardW = (w - 70) / 2;
-    const cardH = 140;
-
-    cards.forEach((c, idx) => {
-      const col = idx % 2;
-      const row = Math.floor(idx / 2);
-      const x = 25 + col * (cardW + 20);
-      const y = 65 + row * (cardH + 20);
-
-      ctx.fillStyle = '#ffffff';
-      ctx.strokeStyle = c.color;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(x, y, cardW, cardH, 12) : ctx.rect(x, y, cardW, cardH);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = '#1e293b';
-      ctx.font = 'bold 28px Pretendard, sans-serif';
-      ctx.fillText(String(c.num), x + cardW / 2, y + 42);
-
-      ctx.font = '12px Pretendard, sans-serif';
-      ctx.fillStyle = '#64748b';
-      ctx.fillText(`약수: ${c.divs}`, x + cardW / 2, y + 74);
-
-      // Badge
-      ctx.fillStyle = c.color;
-      ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(x + cardW / 2 - 45, y + 95, 90, 26, 13) : ctx.rect(x + cardW / 2 - 45, y + 95, 90, 26);
-      ctx.fill();
-
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 12px Pretendard, sans-serif';
-      ctx.fillText(c.type, x + cardW / 2, y + 112);
-    });
-
-    ctx.font = '12px Pretendard, sans-serif';
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText('💡 약수가 2개면 소수, 3개 이상이면 합성수입니다.', w / 2, h - 25);
+  function setFeedback(text, isError = false) {
+    feedbackMsg = {
+      text,
+      color: isError ? '#ef4444' : '#2563eb',
+      time: Date.now() + 4500
+    };
   }
 
-  draw();
+  function createConfetti() {
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4'];
+    for (let i = 0; i < 60; i++) {
+      particles.push({
+        x: canvas.width / 2 + (Math.random() - 0.5) * 100,
+        y: canvas.height * 0.45,
+        vx: (Math.random() - 0.5) * 12,
+        vy: -Math.random() * 10 - 3,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        size: Math.random() * 7 + 4,
+        rot: Math.random() * Math.PI * 2,
+        vRot: (Math.random() - 0.5) * 0.25,
+        life: 1.0,
+        decay: Math.random() * 0.012 + 0.008
+      });
+    }
+  }
+
+  function resize() {
+    const rect = wrapper.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const w = rect.width || 560;
+    const h = Math.max(490, rect.height || 490);
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    ctx.resetTransform ? ctx.resetTransform() : ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
+  }
+  resize();
+
+  function revealCard(item) {
+    if (!item.revealed) {
+      item.revealed = true;
+      item.targetScale = 1.05;
+      setTimeout(() => { item.targetScale = 1; }, 180);
+      if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      setFeedback(`🔍 ${item.num}의 약수를 분해했습니다! 약수의 개수를 확인하고 트레이로 분류하세요.`);
+    }
+  }
+
+  function classifyCard(item, targetTray) {
+    if (item.tray) {
+      setFeedback(`이미 [${item.tray === 'prime' ? '소수' : '합성수'}] 트레이에 분류되었습니다.`);
+      return;
+    }
+
+    if (!item.revealed) {
+      revealCard(item);
+    }
+
+    const isPrime = (item.type === '소수');
+    const chosenPrime = (targetTray === 'prime');
+
+    if (isPrime === chosenPrime) {
+      item.tray = targetTray;
+      item.stampAnim = 1.0;
+      if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      setFeedback(`✔ 올바른 분류! ${item.num}은(는) 약수가 [${item.divs.join(', ')}] ${item.count}개이므로 ${item.type}입니다.`);
+
+      const allDone = items.every(it => it.tray !== null);
+      if (allDone && !confettiFired) {
+        confettiFired = true;
+        createConfetti();
+        if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        setFeedback(`🎉 4개 수를 모두 올바르게 분류했습니다! 오른쪽 문제에 답을 적고 채점해 보세요.`);
+      }
+    } else {
+      item.shake = 16;
+      if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+      if (chosenPrime) {
+        setFeedback(`❌ 오답입니다! ${item.num}의 약수는 [${item.divs.join(', ')}] 총 ${item.count}개입니다. 약수가 3개 이상이면 '합성수'입니다!`, true);
+      } else {
+        setFeedback(`❌ 오답입니다! ${item.num}의 약수는 [${item.divs.join(', ')}] 2개뿐입니다. 약수가 1과 자기 자신 2개뿐이면 '소수'입니다!`, true);
+      }
+    }
+  }
+
+  function resetAll() {
+    items.forEach(it => {
+      it.revealed = false;
+      it.tray = null;
+      it.shake = 0;
+      it.scale = 1;
+      it.stampAnim = 0;
+    });
+    particles = [];
+    confettiFired = false;
+    feedbackMsg = { text: '', color: '#64748b', time: 0 };
+    if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+    setFeedback('⟲ 모든 카드를 초기화했습니다. 다시 탐구해 보세요!');
+  }
+
+  function getLayout(w, h) {
+    const padX = 14;
+    const cardY = 56;
+    const cardH = 175;
+    const gap = 10;
+    const cardW = Math.max(80, (w - padX * 2 - gap * 3) / 4);
+
+    const resetBtn = { x: w - 85, y: 12, w: 72, h: 26 };
+
+    const trayY = cardY + cardH + 18;
+    const trayH = Math.max(165, h - trayY - 34);
+    const trayW = (w - padX * 2 - gap) / 2;
+
+    const trayPrime = {
+      x: padX,
+      y: trayY,
+      w: trayW,
+      h: trayH,
+      type: 'prime',
+      title: '🔵 소수 트레이 (약수 2개)',
+      sub: '1보다 큰 자연수 중 1과 자기 자신만을 약수로 가지는 수',
+      accent: '#2563eb',
+      bg: '#eff6ff',
+      border: '#93c5fd'
+    };
+
+    const trayComp = {
+      x: padX + trayW + gap,
+      y: trayY,
+      w: trayW,
+      h: trayH,
+      type: 'composite',
+      title: '🟢 합성수 트레이 (약수 3개 이상)',
+      sub: '1보다 큰 자연수 중 소수가 아닌 수 (약수가 3개 이상)',
+      accent: '#059669',
+      bg: '#ecfdf5',
+      border: '#6ee7b7'
+    };
+
+    return { padX, cardY, cardH, gap, cardW, resetBtn, trayPrime, trayComp };
+  }
+
+  function hitTest(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    const mx = clientX - rect.left;
+    const my = clientY - rect.top;
+    const w = rect.width;
+    const h = rect.height;
+    const layout = getLayout(w, h);
+
+    if (mx >= layout.resetBtn.x && mx <= layout.resetBtn.x + layout.resetBtn.w &&
+        my >= layout.resetBtn.y && my <= layout.resetBtn.y + layout.resetBtn.h) {
+      return { type: 'btnReset' };
+    }
+
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      const cx = layout.padX + i * (layout.cardW + layout.gap);
+      const cy = layout.cardY;
+      const cw = layout.cardW;
+      const ch = layout.cardH;
+
+      if (mx >= cx && mx <= cx + cw && my >= cy && my <= cy + ch) {
+        if (!it.revealed) {
+          return { type: 'card', index: i };
+        } else if (!it.tray) {
+          const btnY = cy + ch - 38;
+          const btnH = 28;
+          const btnW = (cw - 12) / 2;
+          const pBtnX = cx + 4;
+          const cBtnX = cx + 4 + btnW + 4;
+
+          if (my >= btnY && my <= btnY + btnH) {
+            if (mx >= pBtnX && mx <= pBtnX + btnW) {
+              return { type: 'btnPrime', index: i };
+            }
+            if (mx >= cBtnX && mx <= cBtnX + btnW) {
+              return { type: 'btnComp', index: i };
+            }
+          }
+          return { type: 'card', index: i };
+        } else {
+          return { type: 'card', index: i };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  canvas.addEventListener('click', (e) => {
+    const hit = hitTest(e.clientX, e.clientY);
+    if (!hit) return;
+
+    if (hit.type === 'btnReset') {
+      resetAll();
+    } else if (hit.type === 'card') {
+      const item = items[hit.index];
+      if (!item.revealed) {
+        revealCard(item);
+      } else if (!item.tray) {
+        setFeedback('하단의 [소수] 또는 [합성수] 버튼을 눌러 트레이에 분류해 보세요.');
+      }
+    } else if (hit.type === 'btnPrime') {
+      classifyCard(items[hit.index], 'prime');
+    } else if (hit.type === 'btnComp') {
+      classifyCard(items[hit.index], 'composite');
+    }
+  });
+
+  canvas.addEventListener('mousemove', (e) => {
+    const hit = hitTest(e.clientX, e.clientY);
+    hoverInfo = hit;
+    canvas.style.cursor = hit ? 'pointer' : 'default';
+  });
+
+  canvas.addEventListener('mouseleave', () => {
+    hoverInfo = null;
+    canvas.style.cursor = 'default';
+  });
+
+  function animate() {
+    const rect = wrapper.getBoundingClientRect();
+    const w = rect.width || 560;
+    const h = Math.max(490, rect.height || 490);
+
+    ctx.clearRect(0, 0, w, h);
+    const layout = getLayout(w, h);
+
+    // 1. 헤더 타이틀
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 15px Pretendard, sans-serif';
+    ctx.fillStyle = '#1e293b';
+    ctx.fillText('⚖️ [스스로 확인하기 1] 약수 개수 탐구 & 수 분류 트레이 (p.13)', layout.padX, 24);
+
+    // ⟲ 초기화 버튼
+    const isResetHover = (hoverInfo && hoverInfo.type === 'btnReset');
+    ctx.save();
+    ctx.fillStyle = isResetHover ? '#f1f5f9' : '#ffffff';
+    ctx.strokeStyle = isResetHover ? '#64748b' : '#cbd5e1';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(layout.resetBtn.x, layout.resetBtn.y, layout.resetBtn.w, layout.resetBtn.h, 6) : ctx.rect(layout.resetBtn.x, layout.resetBtn.y, layout.resetBtn.w, layout.resetBtn.h);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 12px Pretendard, sans-serif';
+    ctx.fillStyle = isResetHover ? '#0f172a' : '#475569';
+    ctx.fillText('⟲ 초기화', layout.resetBtn.x + layout.resetBtn.w / 2, layout.resetBtn.y + layout.resetBtn.h / 2);
+    ctx.restore();
+
+    // 2. 상단 4개 수 카드 렌더링
+    items.forEach((it, idx) => {
+      if (it.shake > 0) {
+        it.shake *= 0.85;
+        if (it.shake < 0.2) it.shake = 0;
+      }
+      it.scale += (it.targetScale - it.scale) * 0.18;
+      if (it.stampAnim > 0) {
+        it.stampAnim = Math.max(0, it.stampAnim - 0.06);
+      }
+
+      const cx = layout.padX + idx * (layout.cardW + layout.gap) + (it.shake ? Math.sin(Date.now() * 0.05) * it.shake : 0);
+      const cy = layout.cardY;
+      const cw = layout.cardW;
+      const ch = layout.cardH;
+      const isCardHover = (hoverInfo && hoverInfo.index === idx);
+
+      ctx.save();
+      let cardBg = '#ffffff';
+      let cardBorder = '#cbd5e1';
+      let borderWidth = 1.5;
+
+      if (it.tray === 'prime') {
+        cardBg = '#eff6ff';
+        cardBorder = '#3b82f6';
+        borderWidth = 2;
+      } else if (it.tray === 'composite') {
+        cardBg = '#ecfdf5';
+        cardBorder = '#10b981';
+        borderWidth = 2;
+      } else if (isCardHover) {
+        cardBorder = '#6366f1';
+        borderWidth = 2;
+      }
+
+      ctx.fillStyle = cardBg;
+      ctx.strokeStyle = cardBorder;
+      ctx.lineWidth = borderWidth;
+      ctx.shadowColor = isCardHover ? 'rgba(99, 102, 241, 0.15)' : 'rgba(0, 0, 0, 0.04)';
+      ctx.shadowBlur = isCardHover ? 12 : 6;
+      ctx.shadowOffsetY = isCardHover ? 4 : 2;
+
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(cx, cy, cw, ch, 12) : ctx.rect(cx, cy, cw, ch);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 12px Pretendard, sans-serif';
+      ctx.fillStyle = '#64748b';
+      ctx.fillText(it.label, cx + cw / 2, cy + 18);
+
+      ctx.font = 'bold 26px Pretendard, sans-serif';
+      ctx.fillStyle = it.tray ? (it.tray === 'prime' ? '#1d4ed8' : '#047857') : '#1e293b';
+      ctx.fillText(String(it.num), cx + cw / 2, cy + 45);
+
+      if (!it.revealed) {
+        const btnY = cy + 76;
+        const btnH = 34;
+        const btnW = cw - 20;
+        const btnX = cx + 10;
+        const isHover = (isCardHover && (!hoverInfo.type || hoverInfo.type === 'card'));
+
+        ctx.fillStyle = isHover ? '#e0e7ff' : '#f1f5f9';
+        ctx.strokeStyle = isHover ? '#6366f1' : '#cbd5e1';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect ? ctx.roundRect(btnX, btnY, btnW, btnH, 8) : ctx.rect(btnX, btnY, btnW, btnH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = 'bold 12px Pretendard, sans-serif';
+        ctx.fillStyle = isHover ? '#4338ca' : '#475569';
+        ctx.fillText('🔍 약수 분해', cx + cw / 2, btnY + btnH / 2);
+
+        ctx.font = '10.5px Pretendard, sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('탭하여 약수 구슬 확인', cx + cw / 2, cy + ch - 22);
+      } else {
+        const beads = it.divs;
+        if (beads.length === 2) {
+          const bY = cy + 74;
+          const r = 13;
+          const spacing = 36;
+          const startX = cx + cw / 2 - spacing / 2;
+
+          beads.forEach((d, bIdx) => {
+            const bx = startX + bIdx * spacing;
+            ctx.fillStyle = '#dbeafe';
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.arc(bx, bY, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.font = 'bold 11px Pretendard, sans-serif';
+            ctx.fillStyle = '#1e40af';
+            ctx.fillText(String(d), bx, bY);
+          });
+        } else {
+          const r = 11;
+          const row1Y = cy + 68;
+          const row2Y = cy + 92;
+          const spacingX = 30;
+          const bStartX = cx + cw / 2 - spacingX / 2;
+
+          beads.forEach((d, bIdx) => {
+            const bx = bStartX + (bIdx % 2) * spacingX;
+            const by = (bIdx < 2) ? row1Y : row2Y;
+
+            ctx.fillStyle = '#d1fae5';
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.arc(bx, by, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.font = 'bold 10px Pretendard, sans-serif';
+            ctx.fillStyle = '#065f46';
+            ctx.fillText(String(d), bx, by);
+          });
+        }
+
+        const countY = (beads.length === 2) ? cy + 104 : cy + 118;
+        ctx.font = 'bold 11px Pretendard, sans-serif';
+        if (it.count === 2) {
+          ctx.fillStyle = '#2563eb';
+          ctx.fillText(`약수 2개 (1, 자기 자신)`, cx + cw / 2, countY);
+        } else {
+          ctx.fillStyle = '#059669';
+          ctx.fillText(`약수 ${it.count}개 (3개 이상)`, cx + cw / 2, countY);
+        }
+
+        if (!it.tray) {
+          const btnY = cy + ch - 38;
+          const btnH = 28;
+          const btnW = (cw - 12) / 2;
+          const pBtnX = cx + 4;
+          const cBtnX = cx + 4 + btnW + 4;
+
+          const isPHover = (hoverInfo && hoverInfo.type === 'btnPrime' && hoverInfo.index === idx);
+          const isCHover = (hoverInfo && hoverInfo.type === 'btnComp' && hoverInfo.index === idx);
+
+          ctx.fillStyle = isPHover ? '#3b82f6' : '#eff6ff';
+          ctx.strokeStyle = '#3b82f6';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.roundRect ? ctx.roundRect(pBtnX, btnY, btnW, btnH, 6) : ctx.rect(pBtnX, btnY, btnW, btnH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.font = 'bold 11px Pretendard, sans-serif';
+          ctx.fillStyle = isPHover ? '#ffffff' : '#1d4ed8';
+          ctx.fillText('소수', pBtnX + btnW / 2, btnY + btnH / 2);
+
+          ctx.fillStyle = isCHover ? '#10b981' : '#ecfdf5';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.roundRect ? ctx.roundRect(cBtnX, btnY, btnW, btnH, 6) : ctx.rect(cBtnX, btnY, btnW, btnH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.font = 'bold 11px Pretendard, sans-serif';
+          ctx.fillStyle = isCHover ? '#ffffff' : '#047857';
+          ctx.fillText('합성수', cBtnX + btnW / 2, btnY + btnH / 2);
+        } else {
+          const stampY = cy + ch - 34;
+          ctx.save();
+          if (it.stampAnim > 0) {
+            ctx.translate(cx + cw / 2, stampY);
+            ctx.scale(1 + it.stampAnim * 0.6, 1 + it.stampAnim * 0.6);
+            ctx.translate(-(cx + cw / 2), -stampY);
+          }
+          ctx.fillStyle = (it.tray === 'prime') ? '#2563eb' : '#059669';
+          ctx.beginPath();
+          ctx.roundRect ? ctx.roundRect(cx + 8, stampY - 10, cw - 16, 22, 6) : ctx.rect(cx + 8, stampY - 10, cw - 16, 22);
+          ctx.fill();
+
+          ctx.font = 'bold 11px Pretendard, sans-serif';
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(`✔ ${it.tray === 'prime' ? '소수 분류' : '합성수 분류'}`, cx + cw / 2, stampY + 1);
+          ctx.restore();
+        }
+      }
+    });
+
+    // 3. 하단 2대 분류 트레이 렌더링
+    [layout.trayPrime, layout.trayComp].forEach(tr => {
+      ctx.save();
+      ctx.fillStyle = tr.bg;
+      ctx.strokeStyle = tr.border;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(tr.x, tr.y, tr.w, tr.h, 12) : ctx.rect(tr.x, tr.y, tr.w, tr.h);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.fillStyle = tr.accent;
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(tr.x + 8, tr.y + 8, tr.w - 16, 28, 8) : ctx.rect(tr.x + 8, tr.y + 8, tr.w - 16, 28);
+      ctx.fill();
+
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 13px Pretendard, sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(tr.title, tr.x + tr.w / 2, tr.y + 22);
+
+      ctx.font = '11px Pretendard, sans-serif';
+      ctx.fillStyle = '#64748b';
+      ctx.fillText(tr.sub, tr.x + tr.w / 2, tr.y + 48);
+
+      const classifiedItems = items.filter(it => it.tray === tr.type);
+      if (classifiedItems.length === 0) {
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillText('상단 카드에서 해당되는 수를 분류하세요', tr.x + tr.w / 2, tr.y + tr.h / 2 + 15);
+      } else {
+        classifiedItems.forEach((it, cIdx) => {
+          const chipW = tr.w - 24;
+          const chipH = 38;
+          const chipX = tr.x + 12;
+          const chipY = tr.y + 64 + cIdx * (chipH + 8);
+
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = tr.border;
+          ctx.lineWidth = 1.2;
+          ctx.shadowColor = 'rgba(0,0,0,0.03)';
+          ctx.shadowBlur = 4;
+          ctx.shadowOffsetY = 1;
+          ctx.beginPath();
+          ctx.roundRect ? ctx.roundRect(chipX, chipY, chipW, chipH, 8) : ctx.rect(chipX, chipY, chipW, chipH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'left';
+          ctx.font = 'bold 16px Pretendard, sans-serif';
+          ctx.fillStyle = tr.accent;
+          ctx.fillText(`[ ${it.num} ]`, chipX + 12, chipY + chipH / 2);
+
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#334155';
+          ctx.fillText(`약수: ${it.divs.join(', ')} (${it.count}개)`, chipX + 68, chipY + chipH / 2);
+
+          ctx.textAlign = 'right';
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillStyle = tr.accent;
+          ctx.fillText(`✔ ${tr.type === 'prime' ? '소수' : '합성수'}`, chipX + chipW - 12, chipY + chipH / 2);
+        });
+      }
+    });
+
+    // 4. 파티클
+    if (particles.length > 0) {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.28;
+        p.rot += p.vRot;
+        p.life -= p.decay;
+
+        if (p.life <= 0 || p.y > h + 20) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+        ctx.restore();
+      }
+    }
+
+    // 5. 하단 안내 및 실시간 피드백 배너
+    const isCustomMsg = (feedbackMsg.time > Date.now() && feedbackMsg.text);
+    const bannerText = isCustomMsg ? feedbackMsg.text : '💡 상단 수 카드를 탭하여 약수를 분해하고, [소수] 또는 [합성수] 트레이에 분류해 보세요.';
+    const bannerColor = isCustomMsg ? feedbackMsg.color : '#64748b';
+
+    ctx.textAlign = 'center';
+    ctx.font = isCustomMsg ? 'bold 12.5px Pretendard, sans-serif' : '12px Pretendard, sans-serif';
+    ctx.fillStyle = bannerColor;
+    ctx.fillText(bannerText, w / 2, h - 14);
+
+    container._animId_1_9 = requestAnimationFrame(animate);
+  }
+
+  container._animId_1_9 = requestAnimationFrame(animate);
+
+  const ro = new ResizeObserver(() => {
+    resize();
+  });
+  ro.observe(wrapper);
 }
 
 function renderForm_1_9(box) {
@@ -10494,27 +11067,36 @@ function renderForm_1_9(box) {
       </p>
 
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;">
-        <div>
-          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑴ 8:</label>
-          <input type="text" id="ans-1-9-1" class="form-control" placeholder="소수 또는 합성수" autocomplete="off">
+        <div style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
+          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑴ 8 :</label>
+          <input type="text" id="ans-1-9-1" class="form-control" placeholder="소수 또는 합성수 입력" autocomplete="off">
         </div>
-        <div>
-          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑵ 17:</label>
-          <input type="text" id="ans-1-9-2" class="form-control" placeholder="소수 또는 합성수" autocomplete="off">
+        <div style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
+          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑵ 17 :</label>
+          <input type="text" id="ans-1-9-2" class="form-control" placeholder="소수 또는 합성수 입력" autocomplete="off">
         </div>
-        <div>
-          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑶ 39:</label>
-          <input type="text" id="ans-1-9-3" class="form-control" placeholder="소수 또는 합성수" autocomplete="off">
+        <div style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
+          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑶ 39 :</label>
+          <input type="text" id="ans-1-9-3" class="form-control" placeholder="소수 또는 합성수 입력" autocomplete="off">
         </div>
-        <div>
-          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑷ 53:</label>
-          <input type="text" id="ans-1-9-4" class="form-control" placeholder="소수 또는 합성수" autocomplete="off">
+        <div style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
+          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑷ 53 :</label>
+          <input type="text" id="ans-1-9-4" class="form-control" placeholder="소수 또는 합성수 입력" autocomplete="off">
         </div>
       </div>
 
-      <button class="btn btn-primary" onclick="checkStep_1_9()">정답 확인 및 채점</button>
+      <button class="btn btn-primary" onclick="checkStep_1_9()" style="width:100%;">정답 확인 및 채점</button>
     </div>
   `;
+
+  const inputs = box.querySelectorAll('input[type="text"]');
+  inputs.forEach(input => {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        checkStep_1_9();
+      }
+    });
+  });
 }
 
 function checkStep_1_9() {
@@ -10529,7 +11111,11 @@ function checkStep_1_9() {
   const ok4 = (v4 === '소수');
 
   if (ok1 && ok2 && ok3 && ok4) {
-    completeSubStep('1-9', '🎉 <b>모두 정답입니다!</b> 8(합성수), 17(소수), 39(합성수), 53(소수)의 약수 개수를 완벽하게 판별했습니다.');
+    completeSubStep('1-9', '🎉 <b>모두 정답입니다!</b> 8(약수 4개)과 39(약수 4개)는 <b>합성수</b>이고, 17(약수 2개)과 53(약수 2개)은 <b>소수</b>입니다.');
+    const nextBtn = document.getElementById('btn-next-step');
+    if (nextBtn) {
+      nextBtn.style.display = 'inline-flex';
+    }
   } else {
     let wrong = [];
     if (!ok1) wrong.push('⑴ 8');
@@ -10537,7 +11123,7 @@ function checkStep_1_9() {
     if (!ok3) wrong.push('⑶ 39');
     if (!ok4) wrong.push('⑷ 53');
     if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-    showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>각 수의 약수가 2개인지 3개 이상인지 확인해 보세요.`);
+    showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>각 수의 약수가 2개(소수)인지 3개 이상(합성수)인지 확인해 보세요.`);
   }
 }
 
