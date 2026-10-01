@@ -13329,113 +13329,478 @@ function checkStep_1_12() {
     // 2-2 (p.14): 개념 탐구: 인수와 소인수의 뜻
     // -------------------------------------------------------------
     function drawCanvas_2_2(container) {
+      if (container._animId_2_2) {
+        cancelAnimationFrame(container._animId_2_2);
+      }
       container.innerHTML = '';
-      const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 560;
-      canvas.height = container.clientHeight || 460;
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      canvas.style.display = 'block';
-      container.appendChild(canvas);
 
+      const wrapper = document.createElement('div');
+      wrapper.style.display = 'flex';
+      wrapper.style.flexDirection = 'column';
+      wrapper.style.height = '100%';
+      wrapper.style.width = '100%';
+
+      wrapper.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button id="btn-2-2-radar" class="btn btn-sm btn-outline-primary" style="font-weight:700; border-radius:6px; font-size:0.82rem;">🔍 소수 탐지 레이더 가동</button>
+            <button id="btn-2-2-collect" class="btn btn-sm btn-outline-warning" style="font-weight:700; color:#d97706; border-color:#f59e0b; border-radius:6px; font-size:0.82rem;">💎 소인수 주머니로 모으기</button>
+            <button id="btn-2-2-reset" class="btn btn-sm btn-outline-secondary" style="font-weight:600; border-radius:6px; font-size:0.82rem;">⟲ 구슬 리셋</button>
+          </div>
+          <div id="badge-2-2-status" style="font-size:0.82rem; font-weight:700; color:#475569; background:#f1f5f9; padding:4px 10px; border-radius:12px; border:1px solid #e2e8f0;">
+            구슬을 클릭하거나 탐지 레이더를 가동해 보세요!
+          </div>
+        </div>
+        <div style="flex:1; min-height:360px; position:relative;">
+          <canvas style="width:100%; height:100%; display:block; border-radius:12px; background:#f8fafc; border:1px solid #e2e8f0;"></canvas>
+        </div>
+      `;
+
+      container.appendChild(wrapper);
+
+      const canvas = wrapper.querySelector('canvas');
       const ctx = canvas.getContext('2d');
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
+      const badgeStatus = wrapper.querySelector('#badge-2-2-status');
 
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 15px Pretendard, sans-serif';
-      ctx.fillStyle = '#1e293b';
-      ctx.fillText('🔮 [개념 탐구] 12의 약수(인수)와 소인수 분류기 (p.14)', w / 2, 35);
+      let w = 560;
+      let h = 420;
 
-      ctx.font = '12px Pretendard, sans-serif';
-      ctx.fillStyle = '#64748b';
-      ctx.fillText('12의 인수 {1, 2, 3, 4, 6, 12} 중에서 소수인 것(소인수)을 찾아보세요.', w / 2, 58);
-
-      const factors = [
-        { num: 1, isPrime: false },
-        { num: 2, isPrime: true },
-        { num: 3, isPrime: true },
-        { num: 4, isPrime: false },
-        { num: 6, isPrime: false },
-        { num: 12, isPrime: false }
+      // 12의 인수 6개 데이터
+      const factorsData = [
+        { num: 1, isPrime: false, divisors: [1], label: '1 (약수 1개 ➔ 소수 아님)', desc: '1은 1과 자기 자신이 같아 약수가 1개뿐이므로 소수도 합성수도 아닙니다.' },
+        { num: 2, isPrime: true, divisors: [1, 2], label: '2 (약수 2개 ➔ 소수!)', desc: '1과 자기 자신만을 약수로 가지는 가장 작은 짝수 소수(소인수)입니다.' },
+        { num: 3, isPrime: true, divisors: [1, 3], label: '3 (약수 2개 ➔ 소수!)', desc: '1과 자기 자신만을 약수로 가지는 홀수 소수(소인수)입니다.' },
+        { num: 4, isPrime: false, divisors: [1, 2, 4], label: '4 (약수 3개 ➔ 합성수)', desc: '1, 2, 4를 약수로 가지므로 소수가 아닙니다.' },
+        { num: 6, isPrime: false, divisors: [1, 2, 3, 6], label: '6 (약수 4개 ➔ 합성수)', desc: '1, 2, 3, 6을 약수로 가지므로 소수가 아닙니다.' },
+        { num: 12, isPrime: false, divisors: [1, 2, 3, 4, 6, 12], label: '12 (약수 6개 ➔ 합성수)', desc: '약수가 6개인 합성수입니다.' }
       ];
 
-      const startX = (w - (factors.length * 64 - 14)) / 2;
-      const beadY = 130;
+      let beads = [];
+      let isRadarScanning = false;
+      let radarX = -50;
+      let radarSpeed = 6;
+      let selectedBead = null;
+      let pouchPulse = 1;
+      let pouchCollectedCount = 0;
+      let celebrationTriggered = false;
+      let particles = [];
 
-      factors.forEach((f, idx) => {
-        const bx = startX + idx * 64;
-        ctx.save();
-        ctx.fillStyle = f.isPrime ? '#f59e0b' : '#f1f5f9';
-        ctx.strokeStyle = f.isPrime ? '#d97706' : '#cbd5e1';
-        ctx.lineWidth = f.isPrime ? 2.5 : 1.5;
-        if (f.isPrime) {
-          ctx.shadowColor = 'rgba(245, 158, 11, 0.35)';
-          ctx.shadowBlur = 10;
+      function createConfetti() {
+        const colors = ['#f59e0b', '#ef4444', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
+        for (let i = 0; i < 50; i++) {
+          particles.push({
+            x: w * 0.75 + (Math.random() - 0.5) * 80,
+            y: h * 0.65 + (Math.random() - 0.5) * 40,
+            vx: (Math.random() - 0.5) * 9,
+            vy: -Math.random() * 8 - 4,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.012
+          });
         }
+      }
+
+      function initBeadPositions() {
+        const count = factorsData.length;
+        const spacing = Math.min(76, (w - 60) / count);
+        const startX = (w - (count - 1) * spacing) / 2;
+        const beadY = 120;
+
+        beads = factorsData.map((f, i) => {
+          const bx = startX + i * spacing;
+          return {
+            ...f,
+            x: bx,
+            y: beadY,
+            origX: bx,
+            origY: beadY,
+            targetX: bx,
+            targetY: beadY,
+            r: Math.min(24, spacing * 0.36),
+            isScanned: false,
+            isCollected: false,
+            glow: 0,
+            scale: 1,
+            targetScale: 1
+          };
+        });
+      }
+
+      function resize() {
+        w = canvas.clientWidth || 560;
+        h = canvas.clientHeight || 420;
+        canvas.width = w;
+        canvas.height = h;
+        initBeadPositions();
+      }
+
+      resize();
+
+      // 버튼 이벤트
+      const btnRadar = wrapper.querySelector('#btn-2-2-radar');
+      const btnCollect = wrapper.querySelector('#btn-2-2-collect');
+      const btnReset = wrapper.querySelector('#btn-2-2-reset');
+
+      btnRadar.addEventListener('click', () => {
+        isRadarScanning = true;
+        radarX = 0;
+        beads.forEach(b => {
+          b.isScanned = false;
+          b.glow = 0;
+        });
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        if (badgeStatus) badgeStatus.innerText = '🔍 소수 탐지 레이더가 12의 인수를 스캔 중입니다...';
+      });
+
+      btnCollect.addEventListener('click', () => {
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        const pouchX = w * 0.75;
+        const pouchY = h * 0.66;
+        let primeCount = 0;
+
+        beads.forEach(b => {
+          if (b.isPrime) {
+            b.isScanned = true;
+            b.isCollected = true;
+            b.targetX = pouchX + (primeCount === 0 ? -18 : 18);
+            b.targetY = pouchY + 14;
+            b.targetScale = 0.85;
+            b.glow = 1;
+            primeCount++;
+          }
+        });
+
+        pouchCollectedCount = primeCount;
+        pouchPulse = 1.35;
+
+        if (!celebrationTriggered) {
+          celebrationTriggered = true;
+          createConfetti();
+          if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+          if (badgeStatus) badgeStatus.innerHTML = '💎 12의 소인수 <b>2, 3</b>이 소인수 주머니에 완벽하게 수집되었습니다!';
+        }
+      });
+
+      btnReset.addEventListener('click', () => {
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        isRadarScanning = false;
+        radarX = -50;
+        selectedBead = null;
+        pouchPulse = 1;
+        pouchCollectedCount = 0;
+        celebrationTriggered = false;
+        beads.forEach(b => {
+          b.targetX = b.origX;
+          b.targetY = b.origY;
+          b.targetScale = 1;
+          b.isScanned = false;
+          b.isCollected = false;
+          b.glow = 0;
+        });
+        if (badgeStatus) badgeStatus.innerText = '구슬을 클릭하거나 탐지 레이더를 가동해 보세요!';
+      });
+
+      // 마우스 인터랙션
+      canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        let hovering = false;
+        beads.forEach(b => {
+          const dist = Math.hypot(mx - b.x, my - b.y);
+          if (dist <= b.r + 4) {
+            hovering = true;
+            b.scale = b.targetScale * 1.18;
+          } else {
+            b.scale = b.targetScale;
+          }
+        });
+        canvas.style.cursor = hovering ? 'pointer' : 'default';
+      });
+
+      canvas.addEventListener('click', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        beads.forEach(b => {
+          const dist = Math.hypot(mx - b.x, my - b.y);
+          if (dist <= b.r + 6) {
+            selectedBead = b;
+            b.isScanned = true;
+            if (b.isPrime) b.glow = 1;
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+            if (badgeStatus) {
+              badgeStatus.innerHTML = `구슬 [<b>${b.num}</b>]: 약수 {${b.divisors.join(', ')}} ➔ ${b.isPrime ? '⭐ <b>소수 (소인수!)</b>' : (b.num === 1 ? '1은 소수/합성수 아님' : '합성수 (소수 아님)')}`;
+            }
+          }
+        });
+      });
+
+      // 애니메이션 루프
+      function animate() {
+        ctx.clearRect(0, 0, w, h);
+
+        // 1. 헤더 타이틀
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('🔮 [개념 탐구] 12의 인수(약수)와 소인수 탐색기 (p.14)', w / 2, 16);
+
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillStyle = '#64748b';
+        ctx.fillText('12의 인수 중에서 소수(소인수)를 찾아 마법 주머니에 모아보세요!', w / 2, 40);
+
+        // 2. 가이드 라인 (구슬 베이스 레일)
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([6, 6]);
         ctx.beginPath();
-        ctx.arc(bx + 25, beadY, 25, 0, Math.PI * 2);
+        ctx.moveTo(30, 120);
+        ctx.lineTo(w - 30, 120);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // 3. 레이더 스캔 처리
+        if (isRadarScanning) {
+          radarX += radarSpeed;
+          beads.forEach(b => {
+            if (!b.isScanned && radarX >= b.x - b.r) {
+              b.isScanned = true;
+              if (b.isPrime) {
+                b.glow = 1;
+              }
+            }
+          });
+
+          // 레이더 빔 렌더링
+          const grad = ctx.createLinearGradient(radarX - 30, 60, radarX, 60);
+          grad.addColorStop(0, 'rgba(59, 130, 246, 0)');
+          grad.addColorStop(1, 'rgba(59, 130, 246, 0.45)');
+          ctx.fillStyle = grad;
+          ctx.fillRect(radarX - 30, 70, 30, 100);
+
+          ctx.strokeStyle = '#2563eb';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(radarX, 70);
+          ctx.lineTo(radarX, 170);
+          ctx.stroke();
+
+          if (radarX > w + 50) {
+            isRadarScanning = false;
+            if (badgeStatus && !celebrationTriggered) {
+              badgeStatus.innerHTML = '🔍 스캔 완료! 황금빛 오라가 켜진 소수 구슬을 주머니에 모아보세요.';
+            }
+          }
+        }
+
+        // 4. 좌하단 개념 정리 카드 (Zero-Spoiler: 정답을 직통으로 적지 않고 원리 안내)
+        const cardW = Math.min(w * 0.46, 260);
+        const cardH = 150;
+        const cardX = 20;
+        const cardY = h - cardH - 24;
+
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1.5;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.05)';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.roundRect ? ctx.roundRect(cardX, cardY, cardW, cardH, 10) : ctx.rect(cardX, cardY, cardW, cardH);
         ctx.fill();
         ctx.stroke();
 
-        ctx.font = 'bold 18px Pretendard, sans-serif';
-        ctx.fillStyle = f.isPrime ? '#ffffff' : '#334155';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.fillStyle = '#1d4ed8';
+        ctx.fillText('📖 인수(Factor)와 소인수', cardX + 14, cardY + 14);
+
+        ctx.font = '11px Pretendard, sans-serif';
+        ctx.fillStyle = '#475569';
+        ctx.fillText('• a = b × c일 때 b, c는 a의 [인수]', cardX + 14, cardY + 38);
+        ctx.fillText('  (자연수의 인수는 약수와 같음)', cardX + 14, cardY + 54);
+        ctx.fillText('• 인수 중에서 [소수]인 것을', cardX + 14, cardY + 76);
+        ctx.fillText('  그 자연수의 [소인수]라고 함!', cardX + 14, cardY + 92);
+        ctx.fillStyle = '#0284c7';
+        ctx.fillText('👉 12의 인수 중 소수를 찾아보세요.', cardX + 14, cardY + 118);
+        ctx.restore();
+
+        // 5. 우하단 소인수 주머니 (💎 소인수 주머니)
+        const pouchX = w * 0.75;
+        const pouchY = h * 0.66;
+        pouchPulse += (1 - pouchPulse) * 0.08;
+
+        ctx.save();
+        ctx.translate(pouchX, pouchY);
+        ctx.scale(pouchPulse, pouchPulse);
+
+        // 주머니 그림자 및 배경 원
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.12)';
+        ctx.beginPath();
+        ctx.arc(0, 16, 52, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 주머니 본체
+        ctx.fillStyle = '#fef3c7';
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(-32, -18);
+        ctx.quadraticCurveTo(-46, 36, 0, 48);
+        ctx.quadraticCurveTo(46, 36, 32, -18);
+        ctx.quadraticCurveTo(16, -10, 0, -10);
+        ctx.quadraticCurveTo(-16, -10, -32, -18);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // 주머니 끈/리본
+        ctx.fillStyle = '#d97706';
+        ctx.beginPath();
+        ctx.ellipse(0, -14, 22, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 주머니 텍스트
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(String(f.num), bx + 25, beadY);
+        ctx.font = 'bold 12px Pretendard, sans-serif';
+        ctx.fillStyle = '#b45309';
+        ctx.fillText('💎 소인수 주머니', 0, 68);
 
         ctx.font = 'bold 11px Pretendard, sans-serif';
-        ctx.fillStyle = f.isPrime ? '#d97706' : '#94a3b8';
-        ctx.fillText(f.isPrime ? '★ 소인수' : '인수', bx + 25, beadY + 38);
+        ctx.fillStyle = pouchCollectedCount === 2 ? '#16a34a' : '#d97706';
+        ctx.fillText(`수집: (${pouchCollectedCount} / 2)`, 0, 84);
+
         ctx.restore();
+
+        // 6. 구슬 렌더링 (Lerp 위치 보간)
+        beads.forEach(b => {
+          b.x += (b.targetX - b.x) * 0.16;
+          b.y += (b.targetY - b.y) * 0.16;
+
+          const currentScale = b.scale || 1;
+          const r = b.r * currentScale;
+
+          // 오라 이펙트 (소수이거나 스캔된 경우)
+          if (b.isScanned && b.isPrime) {
+            ctx.save();
+            const pulse = 1 + Math.sin(Date.now() * 0.006 + b.num) * 0.15;
+            ctx.shadowColor = 'rgba(245, 158, 11, 0.7)';
+            ctx.shadowBlur = 14 * pulse;
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, r + 4 * pulse, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          // 구슬 바탕
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
+
+          let beadGrad = ctx.createRadialGradient(b.x - r * 0.3, b.y - r * 0.3, r * 0.1, b.x, b.y, r);
+          if (b.isScanned) {
+            if (b.isPrime) {
+              beadGrad.addColorStop(0, '#fef08a');
+              beadGrad.addColorStop(1, '#f59e0b');
+              ctx.strokeStyle = '#d97706';
+            } else {
+              beadGrad.addColorStop(0, '#f8fafc');
+              beadGrad.addColorStop(1, '#cbd5e1');
+              ctx.strokeStyle = '#94a3b8';
+            }
+          } else {
+            beadGrad.addColorStop(0, '#ffffff');
+            beadGrad.addColorStop(1, '#e2e8f0');
+            ctx.strokeStyle = '#cbd5e1';
+          }
+
+          ctx.fillStyle = beadGrad;
+          ctx.fill();
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // 숫자 텍스트
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = `bold ${Math.round(r * 0.82)}px Pretendard, sans-serif`;
+          ctx.fillStyle = (b.isScanned && b.isPrime) ? '#78350f' : '#1e293b';
+          ctx.fillText(String(b.num), b.x, b.y);
+
+          // 하단 서브 라벨 (스캔된 경우만)
+          if (b.isScanned && !b.isCollected) {
+            ctx.font = 'bold 10px Pretendard, sans-serif';
+            ctx.fillStyle = b.isPrime ? '#d97706' : '#64748b';
+            ctx.fillText(b.isPrime ? '★소수' : (b.num === 1 ? '1' : '합성수'), b.x, b.y + r + 13);
+          }
+
+          ctx.restore();
+        });
+
+        // 7. 하단 인터랙션 툴팁 (선택된 구슬 설명)
+        if (selectedBead) {
+          ctx.save();
+          const tipW = Math.min(w - 40, 500);
+          const tipX = (w - tipW) / 2;
+          const tipY = h - 22;
+
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+          ctx.beginPath();
+          ctx.roundRect ? ctx.roundRect(tipX, tipY - 24, tipW, 26, 6) : ctx.rect(tipX, tipY - 24, tipW, 26);
+          ctx.fill();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = '11px Pretendard, sans-serif';
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(`[구슬 ${selectedBead.num}] ${selectedBead.desc}`, w / 2, tipY - 11);
+          ctx.restore();
+        }
+
+        // 8. 파티클 애니메이션
+        if (particles.length > 0) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.25;
+            p.rot += p.vRot;
+            p.life -= p.decay;
+
+            if (p.life <= 0 || p.y > h + 20) {
+              particles.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+            ctx.restore();
+          }
+        }
+
+        container._animId_2_2 = requestAnimationFrame(animate);
+      }
+
+      container._animId_2_2 = requestAnimationFrame(animate);
+
+      const ro = new ResizeObserver(() => {
+        resize();
       });
-
-      const cardW = (w - 60) / 2;
-      const cardH = 150;
-      const cardY = 210;
-
-      ctx.save();
-      ctx.fillStyle = '#ffffff';
-      ctx.strokeStyle = '#3b82f6';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(20, cardY, cardW, cardH, 10) : ctx.rect(20, cardY, cardW, cardH);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.textAlign = 'left';
-      ctx.font = 'bold 14px Pretendard, sans-serif';
-      ctx.fillStyle = '#1d4ed8';
-      ctx.fillText('📖 인수(Factor)란?', 36, cardY + 28);
-
-      ctx.font = '12px Pretendard, sans-serif';
-      ctx.fillStyle = '#475569';
-      ctx.fillText('• 어떤 자연수의 약수를 그 수의', 36, cardY + 58);
-      ctx.fillText('  [인수]라고 합니다.', 36, cardY + 78);
-      ctx.fillText('• 12의 인수: 1, 2, 3, 4, 6, 12', 36, cardY + 104);
-      ctx.restore();
-
-      ctx.save();
-      ctx.fillStyle = '#ffffff';
-      ctx.strokeStyle = '#f59e0b';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(30 + cardW, cardY, cardW, cardH, 10) : ctx.rect(30 + cardW, cardY, cardW, cardH);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.textAlign = 'left';
-      ctx.font = 'bold 14px Pretendard, sans-serif';
-      ctx.fillStyle = '#b45309';
-      ctx.fillText('⭐ 소인수(Prime Factor)란?', 46 + cardW, cardY + 28);
-
-      ctx.font = '12px Pretendard, sans-serif';
-      ctx.fillStyle = '#475569';
-      ctx.fillText('• 인수 중에서 [소수]인 것을', 46 + cardW, cardY + 58);
-      ctx.fillText('  [소인수]라고 합니다.', 46 + cardW, cardY + 78);
-      ctx.fillText('• 12의 소인수: 2, 3 (2개)', 46 + cardW, cardY + 104);
-      ctx.restore();
+      ro.observe(wrapper);
     }
 
     function renderForm_2_2(box) {
@@ -13444,23 +13809,26 @@ function checkStep_1_12() {
           <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
             ✏️ [개념 탐구] 인수와 소인수의 뜻 (p.14)
           </div>
-          <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
-            다음 빈칸에 알맞은 용어 또는 수를 써넣으시오.
+          <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:14px;">
+            교과서 개념을 읽고 다음 빈칸에 알맞은 용어 또는 수를 써넣으시오.
           </p>
 
-          <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:14px;">
+          <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:16px;">
             <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
-              ⑴ 어떤 자연수의 약수를 그 수의 [ <input type="text" id="ans-2-2-1" style="width:90px; display:inline-block;" class="form-control" placeholder="용어 입력" autocomplete="off"> ]라고 한다.
+              ⑴ $a = b \\times c$일 때, $b$와 $c$를 $a$의 무엇이라고 하나요?:<br>
+              👉 [ <input type="text" id="ans-2-2-1" style="width:110px; text-align:center; font-weight:700; display:inline-block;" class="form-control" placeholder="용어 입력" autocomplete="off"> ]
             </div>
             <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
-              ⑵ 인수 중에서 소수인 것을 [ <input type="text" id="ans-2-2-2" style="width:100px; display:inline-block;" class="form-control" placeholder="용어 입력" autocomplete="off"> ]라고 한다.
+              ⑵ 어떤 자연수의 인수 중에서 소수인 것을 무엇이라고 하나요?:<br>
+              👉 [ <input type="text" id="ans-2-2-2" style="width:110px; text-align:center; font-weight:700; display:inline-block;" class="form-control" placeholder="용어 입력" autocomplete="off"> ]
             </div>
             <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
-              ⑶ 12의 소인수를 모두 쓰시오: [ <input type="text" id="ans-2-2-3" style="width:130px; display:inline-block;" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off"> ]
+              ⑶ 12의 인수(1, 2, 3, 4, 6, 12) 중에서 소인수를 작은 수부터 쉼표로 구분하여 모두 쓰시오:<br>
+              👉 [ <input type="text" id="ans-2-2-3" style="width:160px; text-align:center; font-weight:700; display:inline-block;" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off"> ]
             </div>
           </div>
 
-          <button class="btn btn-primary" onclick="checkStep_2_2()" style="width:100%;">정답 확인 및 채점</button>
+          <button class="btn btn-primary" onclick="checkStep_2_2()" style="width:100%; font-weight:700; padding:10px 0;">정답 확인 및 채점</button>
         </div>
       `;
 
@@ -13484,16 +13852,16 @@ function checkStep_1_12() {
       const ok3 = areListsEqual(list3, [2, 3]);
 
       if (ok1 && ok2 && ok3) {
-        completeSubStep('2-2', '🎉 <b>모두 정답입니다!</b> 자연수의 약수를 <b>인수</b>, 그중 소수인 것을 <b>소인수</b>라고 하며, 12의 소인수는 <b>2, 3</b>입니다.');
+        completeSubStep('2-2', '🎉 <b>모두 정답입니다!</b> 자연수 $a = b \\times c$일 때 $b, c$를 $a$의 <b>인수</b>(=약수), 인수 중 소수인 것을 <b>소인수</b>라고 하며, 12의 소인수는 <b>2, 3</b>입니다.');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         let wrong = [];
-        if (!ok1) wrong.push('⑴ 약수의 다른 이름');
-        if (!ok2) wrong.push('⑵ 소수인 인수');
+        if (!ok1) wrong.push('⑴ 인수 개념');
+        if (!ok2) wrong.push('⑵ 소인수 개념');
         if (!ok3) wrong.push('⑶ 12의 소인수');
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>약수=인수, 소수인 인수=소인수임을 기억해 보세요.`);
+        showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>💡 힌트: 자연수의 약수는 인수와 같고, 인수 중 소수인 것이 소인수입니다.`);
       }
     }
 
