@@ -26313,36 +26313,533 @@ function checkStep_1_12() {
     }
 
     // 3-9 (p.20): 생각 넓히기: 조건 만족 수 찾기
-    function drawCanvas_3_9(container) { createDefaultCanvas_3(container, '🎨 [3-9] 영호와 수진의 조건 필터'); }
+    function drawCanvas_3_9(container) {
+      if (container._animId_3_9) {
+        cancelAnimationFrame(container._animId_3_9);
+        container._animId_3_9 = null;
+      }
+      container.innerHTML = '';
+
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; height:100%; box-sizing:border-box;">
+          <!-- 상단 컨트롤러 및 상태 안내 바 -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+            <div id="badge-3-9" style="font-size:0.86rem; font-weight:700; color:#1e293b; background:#f1f5f9; padding:6px 14px; border-radius:20px; border:1px solid #cbd5e1; flex:1; min-width:240px;">
+              버튼을 클릭하여 영호와 수진의 2단계 조건 필터링 과정을 확인해 보세요!
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button id="btn-cond1-3-9" class="btn btn-sm btn-outline-primary" style="font-weight:700;">➊ 영호 조건 (10~49 두 자리 수)</button>
+              <button id="btn-cond2-3-9" class="btn btn-sm btn-outline-primary" style="font-weight:700;">➋ 수진 조건 (3의 배수 제외)</button>
+              <button id="btn-all-3-9" class="btn btn-sm btn-warning" style="font-weight:800; color:#1e293b;">⚡ 최종 만족 수 합성</button>
+              <button id="btn-reset-3-9" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">⟲ 초기화</button>
+            </div>
+          </div>
+          <!-- Canvas 렌더링 영역 -->
+          <div style="flex:1; min-height:370px; position:relative;">
+            <canvas id="canvas-3-9" style="width:100%; height:100%; display:block; border-radius:12px; background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); border:1px solid #e2e8f0;"></canvas>
+          </div>
+        </div>
+      `;
+
+      const canvas = container.querySelector('#canvas-3-9');
+      const badgeStatus = container.querySelector('#badge-3-9');
+      const btnCond1 = container.querySelector('#btn-cond1-3-9');
+      const btnCond2 = container.querySelector('#btn-cond2-3-9');
+      const btnAll = container.querySelector('#btn-all-3-9');
+      const btnReset = container.querySelector('#btn-reset-3-9');
+
+      const ctx = canvas.getContext('2d');
+      let w = 560, h = 400;
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        w = rect.width || 560;
+        h = rect.height || 400;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+
+      const ro = new ResizeObserver(() => {
+        resize();
+      });
+      ro.observe(canvas);
+
+      // 모드: 0: 초기, 1: 영호 조건, 2: 수진 조건, 3: 최종 합성 완료
+      let currentMode = 0;
+      let particles = [];
+      let hoveredCard = null;
+
+      // 50보다 작은 7의 배수들
+      const numbers = [7, 14, 21, 28, 35, 42, 49];
+
+      function spawnConfetti(count = 55) {
+        const colors = ['#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#f43f5e'];
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: w / 2 + (Math.random() - 0.5) * 140,
+            y: 180 + (Math.random() - 0.5) * 40,
+            vx: (Math.random() - 0.5) * 11,
+            vy: (Math.random() - 0.85) * 10 - 2,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.01
+          });
+        }
+      }
+
+      function setMode(mode) {
+        currentMode = mode;
+
+        if (btnCond1) btnCond1.className = `btn btn-sm ${mode === 1 ? 'btn-primary' : 'btn-outline-primary'}`;
+        if (btnCond2) btnCond2.className = `btn btn-sm ${mode === 2 ? 'btn-primary' : 'btn-outline-primary'}`;
+        if (btnAll) btnAll.className = `btn btn-sm ${mode === 3 ? 'btn-warning text-dark font-weight-bold' : 'btn-warning text-dark'}`;
+
+        if (badgeStatus) {
+          if (mode === 0) {
+            badgeStatus.innerText = '버튼을 클릭하여 영호와 수진의 2단계 조건 필터링 과정을 확인해 보세요!';
+          } else if (mode === 1) {
+            badgeStatus.innerHTML = '➊ <b>영호 조건</b>: 50보다 작은 두 자리 자연수 ➔ <b>7</b>은 한 자리 수이므로 제외!';
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          } else if (mode === 2) {
+            badgeStatus.innerHTML = '➋ <b>수진 조건</b>: 21과의 최대공약수가 7 ➔ 3의 배수인 <b>21, 42</b>는 최대공약수가 21이 되어 탈락!';
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          } else if (mode === 3) {
+            badgeStatus.innerHTML = '👑 <b>최종 만족 수 확정!</b> 14, 28, 35, 49 (총 4개)';
+            spawnConfetti(55);
+            if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+          }
+        }
+      }
+
+      window._step3_9_triggerSuccess = function() {
+        setMode(3);
+        setTimeout(() => spawnConfetti(60), 400);
+      };
+
+      btnCond1?.addEventListener('click', () => setMode(1));
+      btnCond2?.addEventListener('click', () => setMode(2));
+      btnAll?.addEventListener('click', () => setMode(3));
+      btnReset?.addEventListener('click', () => setMode(0));
+
+      // 마우스 호버 감지
+      canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        hoveredCard = null;
+        const cardW = 54;
+        const cardH = 64;
+        const gap = Math.min(16, (w - 60 - numbers.length * cardW) / (numbers.length - 1));
+        const totalW = numbers.length * cardW + (numbers.length - 1) * gap;
+        const startX = (w - totalW) / 2 + cardW / 2;
+        const cardY = 88;
+
+        for (let i = 0; i < numbers.length; i++) {
+          const cx = startX + i * (cardW + gap);
+          if (Math.abs(mx - cx) <= cardW / 2 && Math.abs(my - cardY) <= cardH / 2) {
+            hoveredCard = numbers[i];
+            break;
+          }
+        }
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        hoveredCard = null;
+      });
+
+      // 애니메이션 펄스용 타이머
+      let pulseTimer = 0;
+
+      // 렌더링 루프
+      function render() {
+        ctx.clearRect(0, 0, w, h);
+        pulseTimer += 0.05;
+
+        // 상단 타이틀
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.fillStyle = '#0f172a';
+        ctx.fillText('🔍 50보다 작은 7의 배수 필터링 스테이지', w / 2, 28);
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillStyle = '#64748b';
+        ctx.fillText('수진의 조건: 21과의 최대공약수가 7 ➔ 7의 배수 중 3의 배수가 아니어야 함', w / 2, 48);
+        ctx.restore();
+
+        // 7개의 카드 배치
+        const cardW = 54;
+        const cardH = 64;
+        const gap = Math.min(16, (w - 60 - numbers.length * cardW) / (numbers.length - 1));
+        const totalW = numbers.length * cardW + (numbers.length - 1) * gap;
+        const startX = (w - totalW) / 2 + cardW / 2;
+        const cardY = 100;
+
+        for (let i = 0; i < numbers.length; i++) {
+          const num = numbers[i];
+          const cx = startX + i * (cardW + gap);
+
+          // 상태 판정
+          let isExcludedYoungho = (currentMode >= 1 && num === 7);
+          let isExcludedSujin = (currentMode >= 2 && (num === 21 || num === 42));
+          let isFinalPassed = (currentMode >= 2 && num !== 7 && num !== 21 && num !== 42);
+
+          ctx.save();
+
+          // 배경 및 테두리 스타일
+          if (isFinalPassed) {
+            // 합격 카드
+            ctx.fillStyle = '#ecfdf5';
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = (currentMode === 3) ? 2.5 : 2;
+            if (currentMode === 3) {
+              ctx.shadowColor = 'rgba(16, 185, 129, 0.45)';
+              ctx.shadowBlur = 10 + Math.sin(pulseTimer) * 3;
+            }
+          } else if (isExcludedYoungho || isExcludedSujin) {
+            // 제외된 카드
+            ctx.fillStyle = '#f8fafc';
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 1;
+          } else if (currentMode === 1 && num !== 7) {
+            // 영호 조건 통과 상태
+            ctx.fillStyle = '#f0f9ff';
+            ctx.strokeStyle = '#0284c7';
+            ctx.lineWidth = 1.8;
+          } else {
+            // 초기 상태
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 1.5;
+          }
+
+          // 둥근 사각형 그리기
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(cx - cardW / 2, cardY - cardH / 2, cardW, cardH, 8);
+          else ctx.rect(cx - cardW / 2, cardY - cardH / 2, cardW, cardH);
+          ctx.fill();
+          ctx.stroke();
+
+          // 숫자 텍스트
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 18px Pretendard, sans-serif';
+
+          if (isFinalPassed) {
+            ctx.fillStyle = '#059669';
+            ctx.fillText(num, cx, cardY - 6);
+          } else if (isExcludedYoungho || isExcludedSujin) {
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText(num, cx, cardY - 6);
+          } else {
+            ctx.fillStyle = '#1e293b';
+            ctx.fillText(num, cx, cardY - 6);
+          }
+
+          // 하단 라벨
+          ctx.font = 'bold 10px Pretendard, sans-serif';
+          if (isExcludedYoungho) {
+            ctx.fillStyle = '#ef4444';
+            ctx.fillText('한자리(X)', cx, cardY + 18);
+            // 취소선
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(cx - cardW / 2 + 6, cardY - 6);
+            ctx.lineTo(cx + cardW / 2 - 6, cardY - 6);
+            ctx.stroke();
+          } else if (isExcludedSujin) {
+            ctx.fillStyle = '#dc2626';
+            ctx.fillText('3의배수(X)', cx, cardY + 18);
+            // 취소선
+            ctx.strokeStyle = '#dc2626';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(cx - cardW / 2 + 6, cardY - 6);
+            ctx.lineTo(cx + cardW / 2 - 6, cardY - 6);
+            ctx.stroke();
+          } else if (isFinalPassed) {
+            ctx.fillStyle = '#059669';
+            ctx.fillText('통과 👑', cx, cardY + 18);
+          } else {
+            ctx.fillStyle = '#64748b';
+            ctx.fillText(`7×${num / 7}`, cx, cardY + 18);
+          }
+
+          ctx.restore();
+        }
+
+        // 마우스 호버 시 툴팁
+        if (hoveredCard !== null) {
+          ctx.save();
+          let tipText = '';
+          if (hoveredCard === 7) {
+            tipText = '7 = 7×1 (한 자리 수 ➔ 영호 조건 "두 자리 수" 불만족으로 제외)';
+          } else if (hoveredCard === 14) {
+            tipText = '14 = 7×2 (두 자리 수, 3의 배수 아님 ➔ 영호/수진 조건 모두 만족! 👑)';
+          } else if (hoveredCard === 21) {
+            tipText = '21 = 7×3 (3의 배수! 21과의 최대공약수가 21이 되므로 수진 조건 불만족으로 제외)';
+          } else if (hoveredCard === 28) {
+            tipText = '28 = 7×4 (두 자리 수, 3의 배수 아님 ➔ 영호/수진 조건 모두 만족! 👑)';
+          } else if (hoveredCard === 35) {
+            tipText = '35 = 7×5 (두 자리 수, 3의 배수 아님 ➔ 영호/수진 조건 모두 만족! 👑)';
+          } else if (hoveredCard === 42) {
+            tipText = '42 = 7×6 (3의 배수! 21과의 최대공약수가 21이 되므로 수진 조건 불만족으로 제외)';
+          } else if (hoveredCard === 49) {
+            tipText = '49 = 7×7 (두 자리 수, 3의 배수 아님 ➔ 영호/수진 조건 모두 만족! 👑)';
+          }
+
+          ctx.font = '12px Pretendard, sans-serif';
+          const tipW = ctx.measureText(tipText).width + 20;
+          const tipX = w / 2;
+          const tipY = 152;
+
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(tipX - tipW / 2, tipY, tipW, 26, 6);
+          else ctx.rect(tipX - tipW / 2, tipY, tipW, 26);
+          ctx.fill();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(tipText, tipX, tipY + 13);
+          ctx.restore();
+        }
+
+        // 모드 3: 최종 합성 완료 결과 트레이 (y: 168 ~ 220)
+        if (currentMode === 3) {
+          const trayW = Math.min(w - 36, 480);
+          const trayX = (w - trayW) / 2;
+          const trayY = 168;
+
+          ctx.save();
+          ctx.fillStyle = '#ecfdf5';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2;
+          ctx.shadowColor = 'rgba(16, 185, 129, 0.35)';
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(trayX, trayY, trayW, 46, 10);
+          else ctx.rect(trayX, trayY, trayW, 46);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.fillStyle = '#065f46';
+          ctx.fillText('👑 최종 조건을 만족하는 수: 14, 28, 35, 49', w / 2, trayY + 23);
+          ctx.restore();
+        }
+
+        // 하단 핵심 정리 박스 (y: 228 ~ 362)
+        const sumW = Math.min(w - 36, 510);
+        const sumX = (w - sumW) / 2;
+        const sumY = (currentMode === 3) ? 226 : 195;
+        const sumH = (currentMode === 3) ? 134 : 160;
+
+        ctx.save();
+        ctx.fillStyle = (currentMode === 3) ? '#fef3c7' : '#f8fafc';
+        ctx.strokeStyle = (currentMode === 3) ? '#f59e0b' : '#cbd5e1';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(sumX, sumY, sumW, sumH, 10);
+        else ctx.rect(sumX, sumY, sumW, sumH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('📌 [생각 넓히기] 2단계 논리 추론 프로세스 (p.20):', sumX + 16, sumY + 22);
+
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillStyle = (currentMode === 1 || currentMode === 3) ? '#0284c7' : '#475569';
+        ctx.fillText('• 1단계 (영호 조건): 50보다 작은 두 자리 자연수 ➔ 10 ≤ N < 50', sumX + 16, sumY + 46);
+
+        ctx.fillStyle = (currentMode === 2 || currentMode === 3) ? '#059669' : '#475569';
+        ctx.fillText('• 2단계 (수진 조건): 21과의 최대공약수가 7 ➔ 21 = 3 × 7 이므로,', sumX + 16, sumY + 68);
+        ctx.fillText('  N은 반드시 7의 배수이어야 하고, 동시에 3의 배수가 아니어야 함!', sumX + 28, sumY + 88);
+
+        ctx.font = 'bold 12px Pretendard, sans-serif';
+        ctx.fillStyle = '#d97706';
+        ctx.fillText('💡 50보다 작은 7의 배수 {7, 14, 21, 28, 35, 42, 49} 중', sumX + 16, sumY + 114);
+        ctx.fillStyle = '#b45309';
+        ctx.fillText('   한 자리 수인 7과 3의 배수인 21, 42를 제외하면 ➔ 14, 28, 35, 49', sumX + 16, sumY + 134);
+        ctx.restore();
+
+        // 콘페티 애니메이션
+        if (particles.length > 0) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.22;
+            p.rot += p.vRot;
+            p.life -= p.decay;
+
+            if (p.life <= 0) {
+              particles.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+            ctx.restore();
+          }
+        }
+
+        container._animId_3_9 = requestAnimationFrame(render);
+      }
+
+      render();
+    }
+
     function renderForm_3_9(box) {
       box.innerHTML = `
-        <div class="card">
+        <div class="card" style="padding:16px 20px;">
           <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
             💡 [생각 넓히기] 조건 만족 수 찾기 (p.20)
           </div>
           <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
-            영호: "50보다 작은 두 자리 자연수야."<br>
-            수진: "21과의 최대공약수는 7이야."<br>
-            두 학생의 설명을 동시에 만족시키는 수를 모두 구하시오. (쉼표로 구분)
+            다음 두 학생의 설명을 동시에 만족시키는 수를 모두 구해 보자.
           </p>
-          <div style="margin-bottom:12px;">
-            <input type="text" id="ans-3-9" class="input-text" placeholder="수 입력 (쉼표 구분)" style="width:100%;">
+
+          <!-- 학생 대화 말풍선 카드 -->
+          <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:14px;">
+            <div style="background:#f0f9ff; border-left:4px solid #0284c7; padding:8px 12px; border-radius:4px;">
+              <div style="font-size:0.84rem; font-weight:700; color:#0369a1; margin-bottom:2px;">👦 영호:</div>
+              <div style="font-size:0.88rem; color:#1e293b;">"50보다 작은 두 자리 자연수야."</div>
+            </div>
+            <div style="background:#f0fdf4; border-left:4px solid #10b981; padding:8px 12px; border-radius:4px;">
+              <div style="font-size:0.84rem; font-weight:700; color:#047857; margin-bottom:2px;">👧 수진:</div>
+              <div style="font-size:0.88rem; color:#1e293b;">"21과의 최대공약수는 7이야."</div>
+            </div>
           </div>
-          <button class="btn btn-primary" onclick="checkStep_3_9()" style="width:100%;">정답 확인 및 채점</button>
+
+          <!-- 7의 배수 후보군 퀵 입력 바 (Zero-Spoiler: 7개의 후보 수 전체 제공으로 직접 탐색) -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; background:#f1f5f9; padding:8px 10px; border-radius:8px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; line-height:28px;">후보 수:</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-9" data-val="7" style="font-weight:700; min-width:32px;">7</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-9" data-val="14" style="font-weight:700; min-width:32px;">14</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-9" data-val="21" style="font-weight:700; min-width:32px;">21</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-9" data-val="28" style="font-weight:700; min-width:32px;">28</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-9" data-val="35" style="font-weight:700; min-width:32px;">35</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-9" data-val="42" style="font-weight:700; min-width:32px;">42</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-9" data-val="49" style="font-weight:700; min-width:32px;">49</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-9" data-val="," style="font-weight:700; min-width:30px;">,</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-backspace-3-9" style="font-weight:700;">⌫</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-clear-3-9" style="font-weight:700;">초기화</button>
+          </div>
+
+          <!-- 입력창 -->
+          <div style="margin-bottom:14px;">
+            <label for="ans-3-9" style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+              두 학생의 설명을 동시에 만족시키는 모든 수 (쉼표로 구분):
+            </label>
+            <input type="text" id="ans-3-9" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off">
+          </div>
+
+          <button class="btn btn-primary" onclick="checkStep_3_9()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
+
       const input = box.querySelector('#ans-3-9');
-      if (input) input.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkStep_3_9(); });
+      if (input) {
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') checkStep_3_9();
+        });
+      }
+
+      // 퀵 버튼 이벤트 연동
+      box.querySelectorAll('.btn-num-insert-3-9').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = btn.getAttribute('data-val');
+          if (input) {
+            let cur = input.value.trim();
+            if (val === ',') {
+              if (cur && !cur.endsWith(',')) input.value = cur + ', ';
+            } else {
+              if (!cur) {
+                input.value = val;
+              } else if (cur.endsWith(',') || cur.endsWith(', ')) {
+                input.value = cur + (cur.endsWith(' ') ? '' : ' ') + val;
+              } else {
+                input.value = cur + ', ' + val;
+              }
+            }
+            input.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      });
+
+      const backBtn = box.querySelector('.btn-num-backspace-3-9');
+      if (backBtn) {
+        backBtn.addEventListener('click', () => {
+          if (input) {
+            let cur = input.value.trim();
+            if (cur) {
+              // 마지막 쉼표나 수 제거
+              const parts = cur.split(/,\s*/);
+              parts.pop();
+              input.value = parts.join(', ');
+              input.focus();
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+            }
+          }
+        });
+      }
+
+      const clearBtn = box.querySelector('.btn-num-clear-3-9');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          if (input) {
+            input.value = '';
+            input.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      }
     }
+
     function checkStep_3_9() {
-      const list = parseNumList(document.getElementById('ans-3-9')?.value);
-      if (areListsEqual(list, [14, 28, 35, 49])) {
-        completeSubStep('3-9', '🎉 <b>정답입니다!</b> 50보다 작은 두 자리 자연수 중 7의 배수이면서 3의 배수가 아닌 수는 <b>14, 28, 35, 49</b>입니다.');
+      const raw = document.getElementById('ans-3-9')?.value || '';
+      const list = parseNumList(raw);
+
+      const targetList = [14, 28, 35, 49];
+      const isCorrect = areListsEqual(list, targetList);
+
+      if (isCorrect) {
+        if (window._step3_9_triggerSuccess) {
+          window._step3_9_triggerSuccess();
+        }
+        completeSubStep('3-9', '🎉 <b>정답입니다!</b><br>• <b>영호의 조건</b>: 50보다 작은 두 자리 자연수 (10 ≤ N < 50)<br>• <b>수진의 조건</b>: 21(=3×7)과의 최대공약수가 7 ➔ 7의 배수이면서 3의 배수가 아니어야 함<br>• 50보다 작은 7의 배수 {7, 14, 21, 28, 35, 42, 49} 중 한 자리 수 7 제외, 3의 배수 21, 42 제외 ➔ <b>14, 28, 35, 49</b>');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 7의 배수 중에서 21의 약수인 3의 배수를 제외해 보세요.');
+
+        if (list.includes(21) || list.includes(42)) {
+          showFeedback(false, '❌ <b>21과 42를 확인해 보세요.</b> 21과 42는 3의 배수이므로 21과의 최대공약수가 7이 아니라 21이 됩니다.');
+        } else if (list.includes(7)) {
+          showFeedback(false, '❌ <b>7을 확인해 보세요.</b> 영호의 조건인 "두 자리 자연수"를 만족하지 않습니다. (7은 한 자리 수)');
+        } else if (list.length > 0 && list.every(n => targetList.includes(n)) && list.length < targetList.length) {
+          showFeedback(false, '❌ <b>만족하는 수가 더 있습니다.</b> 총 4개의 수가 있습니다. 다른 7의 배수도 점검해 보세요.');
+        } else {
+          showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 50보다 작은 7의 배수 중 두 자리 자연수이면서 3의 배수가 아닌 수를 모두 찾아 쉼표로 구분해 입력해 보세요.');
+        }
       }
     }
 
