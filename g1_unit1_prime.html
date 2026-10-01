@@ -17913,105 +17913,555 @@ function checkStep_1_12() {
     // 2-11 (p.17): 생각 넓히기: 약수의 개수 구하기
     // -------------------------------------------------------------
     function drawCanvas_2_11(container) {
+      if (container._animId_2_11) {
+        cancelAnimationFrame(container._animId_2_11);
+      }
       container.innerHTML = '';
-      const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 560;
-      canvas.height = container.clientHeight || 460;
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      canvas.style.display = 'block';
-      container.appendChild(canvas);
 
+      const wrapper = document.createElement('div');
+      wrapper.style.display = 'flex';
+      wrapper.style.flexDirection = 'column';
+      wrapper.style.height = '100%';
+      wrapper.style.width = '100%';
+
+      wrapper.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button id="btn-2-11-tab-m160" class="btn btn-sm btn-primary" style="font-weight:700; border-radius:6px; font-size:0.82rem;">⑴ 160의 약수 개수 모델</button>
+            <button id="btn-2-11-tab-rev" class="btn btn-sm btn-outline-secondary" style="font-weight:700; border-radius:6px; font-size:0.82rem;">⑵ 2^□ × 3² 역산 모델</button>
+          </div>
+          <div id="controls-2-11-m160" style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button id="btn-2-11-step" class="btn btn-sm btn-outline-primary" style="font-weight:700; border-radius:6px; font-size:0.82rem;">⏩ 격자 면적 전개</button>
+            <button id="btn-2-11-fill" class="btn btn-sm btn-outline-warning" style="font-weight:700; color:#d97706; border-color:#f59e0b; border-radius:6px; font-size:0.82rem;">⚡ 전체 면적 완성</button>
+            <button id="btn-2-11-reset" class="btn btn-sm btn-outline-secondary" style="font-weight:600; border-radius:6px; font-size:0.82rem;">⟲ 모델 리셋</button>
+          </div>
+          <div id="controls-2-11-rev" style="display:none; gap:6px; flex-wrap:wrap; align-items:center;">
+            <button id="btn-2-11-minus" class="btn btn-sm btn-outline-danger" style="font-weight:700; border-radius:6px; font-size:0.82rem;">➖ □ 줄이기</button>
+            <span id="label-2-11-box" style="font-weight:800; font-size:0.9rem; color:#1e293b; min-width:55px; text-align:center;">□ = 1</span>
+            <button id="btn-2-11-plus" class="btn btn-sm btn-outline-success" style="font-weight:700; border-radius:6px; font-size:0.82rem;">➕ □ 늘리기</button>
+            <button id="btn-2-11-rev-ans" class="btn btn-sm btn-outline-primary" style="font-weight:700; border-radius:6px; font-size:0.82rem;">⚡ 정답(□=3) 맞추기</button>
+          </div>
+          <div id="badge-2-11-status" style="font-size:0.82rem; font-weight:700; color:#475569; background:#f1f5f9; padding:4px 10px; border-radius:12px; border:1px solid #e2e8f0; width:100%; margin-top:2px;">
+            160 = 2⁵ × 5¹의 약수의 개수는 (5+1) × (1+1) = 6 × 2 직사각형 격자의 면적과 같습니다!
+          </div>
+        </div>
+        <div style="flex:1; min-height:380px; position:relative;">
+          <canvas style="width:100%; height:100%; display:block; border-radius:12px; background:#f8fafc; border:1px solid #e2e8f0;"></canvas>
+        </div>
+      `;
+
+      container.appendChild(wrapper);
+
+      const canvas = wrapper.querySelector('canvas');
       const ctx = canvas.getContext('2d');
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
+      const badgeStatus = wrapper.querySelector('#badge-2-11-status');
+      const tabM160 = wrapper.querySelector('#btn-2-11-tab-m160');
+      const tabRev = wrapper.querySelector('#btn-2-11-tab-rev');
+      const controlsM160 = wrapper.querySelector('#controls-2-11-m160');
+      const controlsRev = wrapper.querySelector('#controls-2-11-rev');
 
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 15px Pretendard, sans-serif';
-      ctx.fillStyle = '#1e293b';
-      ctx.fillText('💡 [생각 넓히기] 소인수분해와 약수의 개수 공식 (p.17)', w / 2, 35);
+      const btnStep = wrapper.querySelector('#btn-2-11-step');
+      const btnFill = wrapper.querySelector('#btn-2-11-fill');
+      const btnReset = wrapper.querySelector('#btn-2-11-reset');
 
-      ctx.save();
-      ctx.fillStyle = '#f8fafc';
-      ctx.strokeStyle = '#6366f1';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(30, 70, w - 60, 150, 12) : ctx.rect(30, 70, w - 60, 150);
-      ctx.fill();
-      ctx.stroke();
+      const btnMinus = wrapper.querySelector('#btn-2-11-minus');
+      const btnPlus = wrapper.querySelector('#btn-2-11-plus');
+      const btnRevAns = wrapper.querySelector('#btn-2-11-rev-ans');
+      const labelBox = wrapper.querySelector('#label-2-11-box');
 
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 16px Pretendard, sans-serif';
-      ctx.fillStyle = '#4f46e5';
-      ctx.fillText('📐 약수의 개수 공식', w / 2, 105);
+      let w = 560;
+      let h = 430;
 
-      ctx.font = 'bold 18px Pretendard, sans-serif';
-      ctx.fillStyle = '#1e293b';
-      ctx.fillText('aᵐ × bⁿ 의 약수의 개수 = (m + 1) × (n + 1) 개', w / 2, 145);
+      let currentMode = 'm160';
 
-      ctx.font = '12px Pretendard, sans-serif';
-      ctx.fillStyle = '#64748b';
-      ctx.fillText('(단, a, b는 서로 다른 소수, m, n은 자연수)', w / 2, 178);
-      ctx.restore();
+      let m160Step = 0;
+      const m160Cols = [1, 2, 4, 8, 16, 32];
+      const m160Rows = [1, 5];
+      let celebration160 = false;
 
-      // 160 분석 예시
-      ctx.textAlign = 'center';
-      ctx.font = '13px Pretendard, sans-serif';
-      ctx.fillStyle = '#059669';
-      ctx.fillText('160 = 2⁵ × 5¹ ➔ (5 + 1) × (1 + 1) = 6 × 2 = 12개', w / 2, 260);
+      let boxVal = 1;
+      let celebrationRev = false;
+
+      let particles = [];
+
+      function createConfetti() {
+        const colors = ['#f59e0b', '#ef4444', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
+        for (let i = 0; i < 50; i++) {
+          particles.push({
+            x: w * 0.5 + (Math.random() - 0.5) * 160,
+            y: h * 0.45 + (Math.random() - 0.5) * 60,
+            vx: (Math.random() - 0.5) * 10,
+            vy: -Math.random() * 8 - 4,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.012
+          });
+        }
+      }
+
+      function resize() {
+        w = canvas.clientWidth || 560;
+        h = canvas.clientHeight || 430;
+        canvas.width = w;
+        canvas.height = h;
+      }
+      resize();
+
+      function switchMode(m) {
+        currentMode = m;
+        if (m === 'm160') {
+          tabM160.className = 'btn btn-sm btn-primary';
+          tabRev.className = 'btn btn-sm btn-outline-secondary';
+          controlsM160.style.display = 'flex';
+          controlsRev.style.display = 'none';
+          badgeStatus.innerHTML = m160Step >= 12
+            ? '🎉 160의 약수 격자 12칸이 모두 채워졌습니다! (5+1) × (1+1) = 12개'
+            : '160 = 2⁵ × 5¹의 약수 개수는 가로 6칸 × 세로 2칸 직사각형 면적으로 구할 수 있습니다!';
+        } else {
+          tabM160.className = 'btn btn-sm btn-outline-secondary';
+          tabRev.className = 'btn btn-sm btn-primary';
+          controlsM160.style.display = 'none';
+          controlsRev.style.display = 'flex';
+          updateRevBadge();
+        }
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      }
+
+      tabM160.addEventListener('click', () => switchMode('m160'));
+      tabRev.addEventListener('click', () => switchMode('rev'));
+
+      btnStep.addEventListener('click', () => {
+        if (m160Step < 12) {
+          m160Step++;
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          if (m160Step === 12) {
+            if (!celebration160) {
+              celebration160 = true;
+              createConfetti();
+              if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+            }
+            badgeStatus.innerHTML = '🎉 160의 12개 약수 격자가 완성되었습니다! (약수의 개수: 12개)';
+          } else {
+            badgeStatus.innerHTML = `진행: ${m160Step}/12개 셀 채워짐 (가로 6 × 세로 2 면적 모델)`;
+          }
+        }
+      });
+
+      btnFill.addEventListener('click', () => {
+        m160Step = 12;
+        if (!celebration160) {
+          celebration160 = true;
+          createConfetti();
+          if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        } else {
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        }
+        badgeStatus.innerHTML = '⚡ 160의 12개 약수 격자 면적이 전체 완성되었습니다!';
+      });
+
+      btnReset.addEventListener('click', () => {
+        m160Step = 0;
+        celebration160 = false;
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        badgeStatus.innerHTML = '모델이 리셋되었습니다. [격자 면적 전개]를 눌러보세요.';
+      });
+
+      function updateRevBadge() {
+        const curCount = (boxVal + 1) * 3;
+        if (labelBox) labelBox.innerHTML = `□ = ${boxVal}`;
+        if (curCount === 12) {
+          badgeStatus.innerHTML = `🎉 정답! □ = 3일 때 가로 (3+1)=4칸 × 세로 (2+1)=3칸 = 12칸으로 완벽 일치합니다!`;
+          if (!celebrationRev) {
+            celebrationRev = true;
+            createConfetti();
+            if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+          }
+        } else if (curCount < 12) {
+          badgeStatus.innerHTML = `현재 (□+1)×3 = ${boxVal + 1}×3 = ${curCount}칸 (12칸보다 부족합니다. [➕ 늘리기]를 누르세요)`;
+        } else {
+          badgeStatus.innerHTML = `현재 (□+1)×3 = ${boxVal + 1}×3 = ${curCount}칸 (12칸보다 초과했습니다. [➖ 줄이기]를 누르세요)`;
+        }
+      }
+
+      btnMinus.addEventListener('click', () => {
+        if (boxVal > 1) {
+          boxVal--;
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          updateRevBadge();
+        }
+      });
+
+      btnPlus.addEventListener('click', () => {
+        if (boxVal < 5) {
+          boxVal++;
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          updateRevBadge();
+        }
+      });
+
+      btnRevAns.addEventListener('click', () => {
+        boxVal = 3;
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        updateRevBadge();
+      });
+
+      window._step2_11_revealAll = function() {
+        m160Step = 12;
+        celebration160 = true;
+        boxVal = 3;
+        celebrationRev = true;
+        createConfetti();
+        if (badgeStatus) badgeStatus.innerHTML = '🎉 정답! 160의 약수는 12개, 역산 모델의 □ = 3 입니다!';
+      };
+
+      function render() {
+        ctx.clearRect(0, 0, w, h);
+
+        if (currentMode === 'm160') {
+          renderM160();
+        } else {
+          renderRev();
+        }
+
+        if (particles.length > 0) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.22;
+            p.rot += p.vRot;
+            p.life -= p.decay;
+
+            if (p.life <= 0) {
+              particles.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+            ctx.restore();
+          }
+        }
+
+        container._animId_2_11 = requestAnimationFrame(render);
+      }
+
+      function renderM160() {
+        ctx.save();
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('📐 [생각 넓히기 1] 160의 약수 개수 직사각형 면적 모델 (p.17)', w / 2, 24);
+
+        ctx.fillStyle = '#475569';
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillText('160 = 2⁵ × 5¹ ➔ 가로 2⁵의 약수 (5+1)=6개 × 세로 5¹의 약수 (1+1)=2개 = 12개', w / 2, 44);
+
+        const gridCols = 7;
+        const gridRows = 3;
+        const colW = Math.min(68, Math.floor((w - 50) / gridCols));
+        const rowH = 46;
+        const tableW = gridCols * colW;
+        const tableX = w / 2 - tableW / 2;
+        const tableY = 66;
+
+        const colHeaders = ['1', '2', '4', '8', '16', '32'];
+        const rowHeaders = ['1', '5'];
+
+        for (let r = 0; r < gridRows; r++) {
+          for (let c = 0; c < gridCols; c++) {
+            const x = tableX + c * colW;
+            const y = tableY + r * rowH;
+
+            ctx.save();
+            if (r === 0 || c === 0) {
+              ctx.fillStyle = (r === 0 && c === 0) ? '#e2e8f0' : '#f1f5f9';
+              ctx.strokeStyle = '#cbd5e1';
+              ctx.lineWidth = 1.5;
+              ctx.fillRect(x, y, colW, rowH);
+              ctx.strokeRect(x, y, colW, rowH);
+
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillStyle = '#1e293b';
+              ctx.font = 'bold 12px Pretendard, sans-serif';
+
+              let txt = '';
+              if (r === 0 && c === 0) txt = '×';
+              else if (r === 0) txt = colHeaders[c - 1];
+              else txt = rowHeaders[r - 1];
+              ctx.fillText(txt, x + colW / 2, y + rowH / 2);
+
+            } else {
+              const cellIdx = (r - 1) * 6 + (c - 1);
+              const isRevealed = cellIdx < m160Step;
+              const rVal = m160Rows[r - 1];
+              const cVal = m160Cols[c - 1];
+              const prod = rVal * cVal;
+
+              if (isRevealed) {
+                const grad = ctx.createLinearGradient(x, y, x + colW, y + rowH);
+                grad.addColorStop(0, '#ecfdf5');
+                grad.addColorStop(1, '#d1fae5');
+                ctx.fillStyle = grad;
+                ctx.strokeStyle = '#059669';
+                ctx.lineWidth = 1.5;
+                ctx.fillRect(x, y, colW, rowH);
+                ctx.strokeRect(x, y, colW, rowH);
+
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#047857';
+                ctx.font = '10px Pretendard, sans-serif';
+                ctx.fillText(`${cVal}×${rVal}`, x + colW / 2, y + 14);
+
+                ctx.fillStyle = '#065f46';
+                ctx.font = 'bold 15px Pretendard, sans-serif';
+                ctx.fillText(prod, x + colW / 2, y + 31);
+
+              } else {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(x, y, colW, rowH);
+
+                ctx.save();
+                ctx.setLineDash([4, 4]);
+                ctx.strokeStyle = '#94a3b8';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(x, y, colW, rowH);
+                ctx.restore();
+
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = 'bold 14px Pretendard, sans-serif';
+                ctx.fillText('?', x + colW / 2, y + rowH / 2);
+              }
+            }
+            ctx.restore();
+          }
+        }
+
+        const bannerY = tableY + gridRows * rowH + 20;
+        const isDone = m160Step >= 12;
+
+        ctx.save();
+        const bw = Math.min(tableW + 30, w - 40);
+        const bx = w / 2 - bw / 2;
+        ctx.fillStyle = isDone ? '#eff6ff' : '#f8fafc';
+        ctx.strokeStyle = isDone ? '#3b82f6' : '#e2e8f0';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(bx, bannerY, bw, 62, 8);
+        else ctx.rect(bx, bannerY, bw, 62);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        if (isDone) {
+          ctx.fillStyle = '#1e40af';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.fillText('✨ 160의 약수의 개수 = (지수+1)의 곱', w / 2, bannerY + 22);
+
+          ctx.fillStyle = '#2563eb';
+          ctx.font = 'bold 16px Pretendard, sans-serif';
+          ctx.fillText('(5 + 1) × (1 + 1) = 6 × 2 = 12개', w / 2, bannerY + 46);
+        } else {
+          ctx.fillStyle = '#64748b';
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillText(`현재 채워진 칸: ${m160Step}/12개. [⏩ 격자 면적 전개]를 눌러보세요.`, w / 2, bannerY + 34);
+        }
+        ctx.restore();
+        ctx.restore();
+      }
+
+      function renderRev() {
+        ctx.save();
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🧩 [생각 넓히기 2] 2^□ × 3²의 약수 12개 역산 모델 (p.17)', w / 2, 24);
+
+        ctx.fillStyle = '#475569';
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillText('세로 3²의 약수 (2+1)=3칸 고정! 가로 (□+1)칸을 조절하여 전체 면적 12칸을 완성하세요.', w / 2, 44);
+
+        const cols = boxVal + 1;
+        const rows = 3;
+        const curCount = cols * rows;
+        const isCorrect = (boxVal === 3);
+
+        const colW = Math.min(65, Math.floor((w - 70) / (cols + 1)));
+        const rowH = 44;
+        const tableW = (cols + 1) * colW;
+        const tableX = w / 2 - tableW / 2;
+        const tableY = 66;
+
+        for (let r = 0; r <= rows; r++) {
+          for (let c = 0; c <= cols; c++) {
+            const x = tableX + c * colW;
+            const y = tableY + r * rowH;
+
+            ctx.save();
+            if (r === 0 || c === 0) {
+              ctx.fillStyle = (r === 0 && c === 0) ? '#e2e8f0' : '#f1f5f9';
+              ctx.strokeStyle = '#cbd5e1';
+              ctx.lineWidth = 1.5;
+              ctx.fillRect(x, y, colW, rowH);
+              ctx.strokeRect(x, y, colW, rowH);
+
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillStyle = '#1e293b';
+              ctx.font = 'bold 12px Pretendard, sans-serif';
+
+              let txt = '';
+              if (r === 0 && c === 0) txt = '×';
+              else if (r === 0) txt = `2^${c - 1}`;
+              else txt = `3^${r - 1}`;
+              ctx.fillText(txt, x + colW / 2, y + rowH / 2);
+
+            } else {
+              ctx.fillStyle = isCorrect ? '#ecfdf5' : '#f8fafc';
+              ctx.strokeStyle = isCorrect ? '#10b981' : '#cbd5e1';
+              ctx.lineWidth = isCorrect ? 2 : 1;
+              ctx.fillRect(x, y, colW, rowH);
+              ctx.strokeRect(x, y, colW, rowH);
+
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillStyle = isCorrect ? '#065f46' : '#64748b';
+              ctx.font = 'bold 13px Pretendard, sans-serif';
+              ctx.fillText(`약수`, x + colW / 2, y + rowH / 2);
+            }
+            ctx.restore();
+          }
+        }
+
+        const bannerY = tableY + (rows + 1) * rowH + 16;
+        ctx.save();
+        const bw = Math.min(tableW + 40, w - 30);
+        const bx = w / 2 - bw / 2;
+        ctx.fillStyle = isCorrect ? '#ecfdf5' : '#fffbeb';
+        ctx.strokeStyle = isCorrect ? '#10b981' : '#f59e0b';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(bx, bannerY, bw, 68, 8);
+        else ctx.rect(bx, bannerY, bw, 68);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#1e293b';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.fillText(`현재 수식: (□ + 1) × (2 + 1) = (${boxVal} + 1) × 3 = ${curCount}칸`, w / 2, bannerY + 22);
+
+        if (isCorrect) {
+          ctx.fillStyle = '#059669';
+          ctx.font = 'bold 16px Pretendard, sans-serif';
+          ctx.fillText('🎉 목표 12개 완성! (□ + 1 = 4 ➔ □ = 3)', w / 2, bannerY + 48);
+        } else if (curCount < 12) {
+          ctx.fillStyle = '#d97706';
+          ctx.font = 'bold 14px Pretendard, sans-serif';
+          ctx.fillText(`목표 12개보다 ${12 - curCount}개 부족합니다. [➕ 늘리기]를 눌러보세요!`, w / 2, bannerY + 48);
+        } else {
+          ctx.fillStyle = '#dc2626';
+          ctx.font = 'bold 14px Pretendard, sans-serif';
+          ctx.fillText(`목표 12개보다 ${curCount - 12}개 초과했습니다. [➖ 줄이기]를 눌러보세요!`, w / 2, bannerY + 48);
+        }
+        ctx.restore();
+        ctx.restore();
+      }
+
+      render();
     }
 
     function renderForm_2_11(box) {
       box.innerHTML = `
         <div class="card">
           <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
-            ✏️ [생각 넓히기] 약수의 개수 구하기 (p.17)
+            ✏️ [생각 넓히기] 소인수분해와 약수의 개수 (p.17)
           </div>
           <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
             소인수분해를 이용하여 약수의 개수에 관한 물음에 답하시오.
           </p>
 
-          <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:14px;">
+          <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:16px;">
             <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
-              ⑴ 160의 약수의 개수를 구하시오:<br>
-              <input type="text" id="ans-2-11-1" style="width:120px;" class="form-control" placeholder="개수 입력" autocomplete="off"> 개
+              <div style="font-size:0.86rem; font-weight:700; color:#1e293b; margin-bottom:4px;">
+                ⑴ 160을 소인수분해하면 $160 = 2^5 \\times 5$입니다. 160의 약수의 개수를 구하시오:
+              </div>
+              <div>
+                👉 [ <input type="text" id="ans-2-11-1" style="width:100px; text-align:center; font-weight:700; display:inline-block;" class="form-control" placeholder="수 입력" autocomplete="off"> ] 개
+              </div>
             </div>
+
             <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
-              ⑵ $2^\\square \\times 3^2$의 약수의 개수가 12개일 때 $\\square$에 알맞은 수를 구하시오:<br>
-              <input type="text" id="ans-2-11-2" style="width:120px;" class="form-control" placeholder="수 입력" autocomplete="off">
+              <div style="font-size:0.86rem; font-weight:700; color:#1e293b; margin-bottom:4px;">
+                ⑵ $2^\\square \\times 3^2$의 약수의 개수가 12일 때, $\\square$ 안에 알맞은 수를 쓰시오:
+              </div>
+              <div>
+                👉 [ <input type="text" id="ans-2-11-2" style="width:100px; text-align:center; font-weight:700; display:inline-block;" class="form-control" placeholder="수 입력" autocomplete="off"> ]
+              </div>
+            </div>
+
+            <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
+              <div style="font-size:0.86rem; font-weight:700; color:#1e293b; margin-bottom:4px;">
+                ⑶ 소인수분해 $a^m \\times b^n$에서 약수의 개수를 구하는 공식:
+              </div>
+              <div style="font-size:0.92rem; color:#334155;">
+                약수의 개수 = $(m + 1) \\times$ [ <input type="text" id="ans-2-11-3" style="width:120px; text-align:center; font-weight:700; display:inline-block;" class="form-control" placeholder="식 입력" autocomplete="off"> ]
+              </div>
             </div>
           </div>
 
-          <button class="btn btn-primary" onclick="checkStep_2_11()" style="width:100%;">정답 확인 및 채점</button>
+          <button class="btn btn-primary" onclick="checkStep_2_11()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
 
-      const inputs = box.querySelectorAll('input[type="text"]');
-      inputs.forEach(input => {
-        input.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') checkStep_2_11();
-        });
+      ['ans-2-11-1', 'ans-2-11-2', 'ans-2-11-3'].forEach(id => {
+        const input = box.querySelector('#' + id);
+        if (input) {
+          input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') checkStep_2_11();
+          });
+        }
       });
     }
 
     function checkStep_2_11() {
-      const v1 = normTxt(document.getElementById('ans-2-11-1')?.value);
-      const v2 = normTxt(document.getElementById('ans-2-11-2')?.value);
+      const v1 = document.getElementById('ans-2-11-1')?.value || '';
+      const v2 = document.getElementById('ans-2-11-2')?.value || '';
+      const v3 = document.getElementById('ans-2-11-3')?.value || '';
 
-      const ok1 = (v1 === '12' || v1 === '12개');
-      const ok2 = (v2 === '3');
+      const c1 = v1.replace(/\s+/g, '').replace('개', '');
+      const c2 = v2.replace(/\s+/g, '');
+      const c3 = v3.toLowerCase().replace(/\s+/g, '').replace(/[()]/g, '');
 
-      if (ok1 && ok2) {
-        completeSubStep('2-11', '🎉 <b>모두 정답입니다!</b> 160은 2⁵ × 5이므로 약수의 개수는 (5+1)(1+1)=<b>12개</b>이며, (□+1)×3=12에서 □=<b>3</b>입니다.');
+      const ok1 = (c1 === '12');
+      const ok2 = (c2 === '3');
+      const ok3 = (c3 === 'n+1' || c3 === '1+n');
+
+      if (ok1 && ok2 && ok3) {
+        if (window._step2_11_revealAll) {
+          window._step2_11_revealAll();
+        }
+        completeSubStep('2-11', '🎉 <b>모두 정답입니다!</b><br>⑴ 160 = 2⁵ × 5¹의 약수의 개수: (5+1)×(1+1) = <b>12개</b><br>⑵ (□+1)×(2+1) = 12 ➔ (□+1)×3 = 12 ➔ □ = <b>3</b><br>⑶ 약수의 개수 공식: (m+1) × <b>(n+1)</b>');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         let wrong = [];
-        if (!ok1) wrong.push('⑴ 160의 약수의 개수');
-        if (!ok2) wrong.push('⑵ 빈칸의 수');
+        if (!ok1) wrong.push('⑴ 160의 약수의 개수: 2⁵ × 5¹이므로 (5+1) × (1+1)을 계산해 보세요.');
+        if (!ok2) wrong.push('⑵ 빈칸 □: (□+1) × (2+1) = 12에서 (□+1) × 3 = 12이므로 □를 구해 보세요.');
+        if (!ok3) wrong.push('⑶ 공식: 지수 n에 1을 더한 식을 입력해 보세요. (예: n+1)');
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>각 소인수의 지수에 1을 더해 곱하는 공식을 사용해 보세요.`);
+        showFeedback(false, `❌ <b>다시 확인해 보세요:</b><br>• ${wrong.join('<br>• ')}`);
       }
     }
 
