@@ -15903,64 +15903,430 @@ function checkStep_1_12() {
     // 2-7 (p.16): 생각 나누기: 108의 약수 찾기
     // -------------------------------------------------------------
     function drawCanvas_2_7(container) {
+      if (container._animId_2_7) {
+        cancelAnimationFrame(container._animId_2_7);
+      }
       container.innerHTML = '';
-      const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 560;
-      canvas.height = container.clientHeight || 460;
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      canvas.style.display = 'block';
-      container.appendChild(canvas);
 
+      const wrapper = document.createElement('div');
+      wrapper.style.display = 'flex';
+      wrapper.style.flexDirection = 'column';
+      wrapper.style.height = '100%';
+      wrapper.style.width = '100%';
+
+      wrapper.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button id="btn-2-7-table" class="btn btn-sm btn-outline-primary" style="font-weight:700; border-radius:6px; font-size:0.82rem;">🔍 108 소인수분해 표 분석</button>
+            <button id="btn-2-7-fill" class="btn btn-sm btn-outline-warning" style="font-weight:700; color:#d97706; border-color:#f59e0b; border-radius:6px; font-size:0.82rem;">⚡ 빠진 약수 채우기</button>
+            <button id="btn-2-7-reset" class="btn btn-sm btn-outline-secondary" style="font-weight:600; border-radius:6px; font-size:0.82rem;">⟲ 카드 리셋</button>
+          </div>
+          <div id="badge-2-7-status" style="font-size:0.82rem; font-weight:700; color:#475569; background:#f1f5f9; padding:4px 10px; border-radius:12px; border:1px solid #e2e8f0; width:100%; margin-top:2px;">
+            108의 10개 약수 카드가 주어져 있습니다. [표 분석]을 통해 빠진 2개의 약수를 찾아보세요!
+          </div>
+        </div>
+        <div style="flex:1; min-height:360px; position:relative;">
+          <canvas style="width:100%; height:100%; display:block; border-radius:12px; background:#f8fafc; border:1px solid #e2e8f0;"></canvas>
+        </div>
+      `;
+
+      container.appendChild(wrapper);
+
+      const canvas = wrapper.querySelector('canvas');
       const ctx = canvas.getContext('2d');
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
+      const badgeStatus = wrapper.querySelector('#badge-2-7-status');
+      const btnTable = wrapper.querySelector('#btn-2-7-table');
+      const btnFill = wrapper.querySelector('#btn-2-7-fill');
+      const btnReset = wrapper.querySelector('#btn-2-7-reset');
 
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 15px Pretendard, sans-serif';
-      ctx.fillStyle = '#1e293b';
-      ctx.fillText('🧩 [생각 나누기] 108의 약수 빠짐없이 찾기 (p.16)', w / 2, 35);
+      let w = 560;
+      let h = 420;
 
-      ctx.font = '12px Pretendard, sans-serif';
-      ctx.fillStyle = '#64748b';
-      ctx.fillText('108 = 2² × 3³ 을 이용하면 약수를 빠짐없이 구할 수 있습니다.', w / 2, 60);
+      // 12개 약수 정보 (정렬 순서)
+      const all108Divisors = [
+        { val: 1, expr: '1', isMissing: false },
+        { val: 2, expr: '2', isMissing: false },
+        { val: 3, expr: '3', isMissing: false },
+        { val: 4, expr: '2²', isMissing: false },
+        { val: 6, expr: '2 × 3', isMissing: true },
+        { val: 9, expr: '3²', isMissing: false },
+        { val: 12, expr: '2² × 3', isMissing: false },
+        { val: 18, expr: '2 × 3²', isMissing: true },
+        { val: 27, expr: '3³', isMissing: false },
+        { val: 36, expr: '2² × 3²', isMissing: false },
+        { val: 54, expr: '2 × 3³', isMissing: false },
+        { val: 108, expr: '2² × 3³', isMissing: false }
+      ];
 
-      // 108의 약수 목록 나열
-      const allDivs = [1, 2, 3, 4, 6, 9, 12, 18, 27, 36, 54, 108];
-      const startX = 30;
-      const cardW = (w - 60 - 30) / 4;
-      const cardH = 50;
+      let showTable = false;
+      let isFilled = false;
+      let fillT = 0;
+      let selectedSlot = null;
+      let celebrationTriggered = false;
+      let particles = [];
 
-      allDivs.forEach((d, idx) => {
-        const col = idx % 4;
-        const row = Math.floor(idx / 4);
-        const x = startX + col * (cardW + 10);
-        const y = 90 + row * (cardH + 12);
-        const isMissing = (d === 6 || d === 18);
+      function createConfetti() {
+        const colors = ['#f59e0b', '#ef4444', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
+        for (let i = 0; i < 50; i++) {
+          particles.push({
+            x: w * 0.5 + (Math.random() - 0.5) * 140,
+            y: h * 0.4 + (Math.random() - 0.5) * 60,
+            vx: (Math.random() - 0.5) * 10,
+            vy: -Math.random() * 8 - 4,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.012
+          });
+        }
+      }
+
+      function resize() {
+        w = canvas.clientWidth || 560;
+        h = canvas.clientHeight || 420;
+        canvas.width = w;
+        canvas.height = h;
+      }
+
+      resize();
+
+      // 버튼 이벤트
+      btnTable.addEventListener('click', () => {
+        showTable = !showTable;
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        if (badgeStatus) {
+          badgeStatus.innerHTML = showTable
+            ? '🔍 108 = 2² × 3³ 소인수분해 표가 열렸습니다. 가로 4칸 × 세로 3칸의 곱(12개)을 대조해 보세요!'
+            : '카드 보드 모드로 돌아왔습니다.';
+        }
+      });
+
+      btnFill.addEventListener('click', () => {
+        isFilled = true;
+        fillT = 0;
+        if (!celebrationTriggered) {
+          celebrationTriggered = true;
+          createConfetti();
+          if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+          if (badgeStatus) {
+            badgeStatus.innerHTML = '⚡ <b>빠진 약수 6과 18이 완벽하게 채워졌습니다!</b> 108의 약수는 총 12개입니다.';
+          }
+        } else {
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        }
+      });
+
+      btnReset.addEventListener('click', () => {
+        showTable = false;
+        isFilled = false;
+        fillT = 0;
+        selectedSlot = null;
+        celebrationTriggered = false;
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        if (badgeStatus) {
+          badgeStatus.innerText = '108의 10개 약수 카드가 주어져 있습니다. [표 분석]을 통해 빠진 2개의 약수를 찾아보세요!';
+        }
+      });
+
+      // 마우스 인터랙션
+      canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        let hovering = false;
+        if (!showTable) {
+          const cardW = Math.min((w - 50) / 4, 110);
+          const cardH = 46;
+          const startX = (w - (cardW * 4 + 10 * 3)) / 2;
+          const startY = 80;
+
+          all108Divisors.forEach((d, idx) => {
+            const col = idx % 4;
+            const row = Math.floor(idx / 4);
+            const cx = startX + col * (cardW + 10);
+            const cy = startY + row * (cardH + 12);
+            if (mx >= cx && mx <= cx + cardW && my >= cy && my <= cy + cardH) {
+              hovering = true;
+            }
+          });
+        }
+        canvas.style.cursor = hovering ? 'pointer' : 'default';
+      });
+
+      canvas.addEventListener('click', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        if (!showTable) {
+          const cardW = Math.min((w - 50) / 4, 110);
+          const cardH = 46;
+          const startX = (w - (cardW * 4 + 10 * 3)) / 2;
+          const startY = 80;
+
+          all108Divisors.forEach((d, idx) => {
+            const col = idx % 4;
+            const row = Math.floor(idx / 4);
+            const cx = startX + col * (cardW + 10);
+            const cy = startY + row * (cardH + 12);
+            if (mx >= cx && mx <= cx + cardW && my >= cy && my <= cy + cardH) {
+              selectedSlot = d;
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+              if (badgeStatus) {
+                if (d.isMissing && !isFilled) {
+                  badgeStatus.innerHTML = `❓ <b>[물음표 빈칸]</b> 진수가 빠뜨린 약수입니다. (표 분석을 통해 찾아보세요)`;
+                } else {
+                  badgeStatus.innerHTML = `약수 [<b>${d.val}</b>] = ${d.expr} (108의 약수)`;
+                }
+              }
+            }
+          });
+        }
+      });
+
+      // 60fps 애니메이션 루프
+      function animate() {
+        ctx.clearRect(0, 0, w, h);
+
+        if (isFilled && fillT < 1) {
+          fillT = Math.min(1, fillT + 0.08);
+        }
+
+        // 1. 헤더 타이틀
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('🧩 [생각 나누기] 108의 약수 카드와 빠진 약수 탐색기 (p.16)', w / 2, 14);
+
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillStyle = '#64748b';
+        ctx.fillText('진수가 찾은 10장의 카드 중 빠진 2장의 약수 카드를 찾아보세요.', w / 2, 38);
+
+        if (showTable) {
+          // 2-A. 표 분석 모드 (소인수분해 격자표)
+          renderDivisorTable();
+        } else {
+          // 2-B. 12장 카드 보드 모드
+          renderCardBoard();
+        }
+
+        // 3. 하단 팁 배너
+        const bannerW = Math.min(w - 40, 480);
+        const bannerX = (w - bannerW) / 2;
+        const bannerY = h - 56;
 
         ctx.save();
-        ctx.fillStyle = isMissing ? '#fef3c7' : '#f8fafc';
-        ctx.strokeStyle = isMissing ? '#f59e0b' : '#cbd5e1';
-        ctx.lineWidth = isMissing ? 2 : 1;
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = isFilled ? '#f59e0b' : '#3b82f6';
+        ctx.lineWidth = 1.8;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.06)';
+        ctx.shadowBlur = 8;
         ctx.beginPath();
-        ctx.roundRect ? ctx.roundRect(x, y, cardW, cardH, 8) : ctx.rect(x, y, cardW, cardH);
+        ctx.roundRect ? ctx.roundRect(bannerX, bannerY, bannerW, 44, 10) : ctx.rect(bannerX, bannerY, bannerW, 44);
         ctx.fill();
         ctx.stroke();
 
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.font = 'bold 16px Pretendard, sans-serif';
-        ctx.fillStyle = isMissing ? '#b45309' : '#334155';
-        ctx.fillText(String(d), x + cardW / 2, y + cardH / 2);
+        ctx.font = 'bold 14px Pretendard, sans-serif';
+        ctx.fillStyle = isFilled ? '#b45309' : '#1d4ed8';
+        if (isFilled) {
+          ctx.fillText('✨ 108의 약수는 총 12개! 빠진 약수: 6, 18', w / 2, bannerY + 22);
+        } else {
+          ctx.fillText('💡 소인수분해(2² × 3³)를 이용하면 약수를 빠짐없이 모두 찾을 수 있습니다!', w / 2, bannerY + 22);
+        }
         ctx.restore();
-      });
 
-      // 하단 팁
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 13px Pretendard, sans-serif';
-      ctx.fillStyle = '#4f46e5';
-      ctx.fillText('💡 소인수분해를 이용하면 약수를 체계적으로 빠짐없이 구할 수 있습니다.', w / 2, h - 30);
+        // 4. 파티클 애니메이션
+        if (particles.length > 0) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.25;
+            p.rot += p.vRot;
+            p.life -= p.decay;
+
+            if (p.life <= 0 || p.y > h + 20) {
+              particles.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+            ctx.restore();
+          }
+        }
+
+        container._animId_2_7 = requestAnimationFrame(animate);
+      }
+
+      // --- 카드 보드 렌더링 ---
+      function renderCardBoard() {
+        const cardW = Math.min((w - 50) / 4, 110);
+        const cardH = 46;
+        const startX = (w - (cardW * 4 + 10 * 3)) / 2;
+        const startY = 75;
+
+        all108Divisors.forEach((d, idx) => {
+          const col = idx % 4;
+          const row = Math.floor(idx / 4);
+          const x = startX + col * (cardW + 10);
+          const y = startY + row * (cardH + 14);
+
+          const isMissing = d.isMissing;
+          const reveal = isMissing && isFilled;
+
+          ctx.save();
+
+          if (isMissing && !reveal) {
+            // 물음표 빈칸 슬롯
+            ctx.fillStyle = '#f1f5f9';
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 4]);
+            ctx.beginPath();
+            ctx.roundRect ? ctx.roundRect(x, y, cardW, cardH, 8) : ctx.rect(x, y, cardW, cardH);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 20px Pretendard, sans-serif';
+            ctx.fillStyle = '#64748b';
+            ctx.fillText('?', x + cardW / 2, y + cardH / 2);
+          } else {
+            // 일반 카드 또는 채워진 카드
+            if (reveal) {
+              const pulse = 1 + Math.sin(Date.now() * 0.006 + idx) * 0.12;
+              ctx.shadowColor = 'rgba(245, 158, 11, 0.7)';
+              ctx.shadowBlur = 10 * pulse;
+              ctx.fillStyle = '#fef3c7';
+              ctx.strokeStyle = '#f59e0b';
+              ctx.lineWidth = 2.2;
+            } else {
+              ctx.fillStyle = '#ffffff';
+              ctx.strokeStyle = '#cbd5e1';
+              ctx.lineWidth = 1.5;
+            }
+
+            ctx.beginPath();
+            ctx.roundRect ? ctx.roundRect(x, y, cardW, cardH, 8) : ctx.rect(x, y, cardW, cardH);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 17px Pretendard, sans-serif';
+            ctx.fillStyle = reveal ? '#b45309' : '#1e293b';
+            ctx.fillText(String(d.val), x + cardW / 2, y + cardH / 2);
+
+            if (reveal) {
+              ctx.font = 'bold 9px Pretendard, sans-serif';
+              ctx.fillStyle = '#d97706';
+              ctx.fillText('★발견!', x + cardW / 2, y + cardH - 8);
+            }
+          }
+
+          ctx.restore();
+        });
+      }
+
+      // --- 소인수분해 표(격자) 렌더링 ---
+      function renderDivisorTable() {
+        const tableW = Math.min(w - 40, 480);
+        const tableX = (w - tableW) / 2;
+        const tableY = 70;
+        const colW = tableW / 5;
+        const rowH = 38;
+
+        const rowHeaders = ['×', '1', '3', '3²(9)', '3³(27)'];
+        const colHeaders = ['1', '2', '2²(4)'];
+        const gridValues = [
+          [1, 3, 9, 27],
+          [2, 6, 18, 54],
+          [4, 12, 36, 108]
+        ];
+
+        // 헤더 행
+        for (let c = 0; c < 5; c++) {
+          ctx.save();
+          ctx.fillStyle = '#f1f5f9';
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.rect(tableX + c * colW, tableY, colW, rowH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillStyle = '#334155';
+          ctx.fillText(rowHeaders[c], tableX + c * colW + colW / 2, tableY + rowH / 2);
+          ctx.restore();
+        }
+
+        // 각 데이터 행
+        for (let r = 0; r < 3; r++) {
+          const curY = tableY + (r + 1) * rowH;
+
+          // 좌측 열 헤더
+          ctx.save();
+          ctx.fillStyle = '#f1f5f9';
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.rect(tableX, curY, colW, rowH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillStyle = '#334155';
+          ctx.fillText(colHeaders[r], tableX + colW / 2, curY + rowH / 2);
+          ctx.restore();
+
+          // 내부 셀
+          for (let c = 0; c < 4; c++) {
+            const cellVal = gridValues[r][c];
+            const isMissing = (cellVal === 6 || cellVal === 18);
+            const cellX = tableX + (c + 1) * colW;
+
+            ctx.save();
+            ctx.fillStyle = isMissing ? '#fef3c7' : '#ffffff';
+            ctx.strokeStyle = isMissing ? '#f59e0b' : '#e2e8f0';
+            ctx.lineWidth = isMissing ? 2 : 1;
+            ctx.beginPath();
+            ctx.rect(cellX, curY, colW, rowH);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = isMissing ? 'bold 14px Pretendard, sans-serif' : '13px Pretendard, sans-serif';
+            ctx.fillStyle = isMissing ? '#b45309' : '#1e293b';
+            ctx.fillText(String(cellVal) + (isMissing ? ' ❓' : ''), cellX + colW / 2, curY + rowH / 2);
+            ctx.restore();
+          }
+        }
+      }
+
+      container._animId_2_7 = requestAnimationFrame(animate);
+
+      const ro = new ResizeObserver(() => {
+        resize();
+      });
+      ro.observe(wrapper);
     }
 
     function renderForm_2_7(box) {
@@ -15969,22 +16335,26 @@ function checkStep_1_12() {
           <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
             ✏️ [생각 나누기] 108의 약수 찾기 (p.16)
           </div>
-          <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
-            진수가 찾은 108의 약수에서 빠진 두 약수와 효과적인 방법을 쓰시오.
+          <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:14px;">
+            진수가 찾은 10장의 108의 약수 카드에서 빠진 약수를 찾고, 소인수분해를 이용하는 장점을 생각하여 답하시오.
           </p>
 
-          <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:14px;">
+          <div style="display:flex; flex-direction:column; gap:14px; margin-bottom:16px;">
             <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
-              ⑴ 빠진 두 약수를 작은 것부터 차례대로 쓰시오:<br>
-              <input type="text" id="ans-2-7-1" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off">
+              <div style="font-weight:700; color:#334155; margin-bottom:4px;">
+                ⑴ 제시된 10개의 108의 약수(1, 2, 3, 4, 9, 12, 27, 36, 54, 108)에서 빠진 약수 2개를 작은 수부터 쉼표로 구분하여 쓰시오:
+              </div>
+              👉 [ <input type="text" id="ans-2-7-1" style="width:170px; text-align:center; font-weight:700; display:inline-block;" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off"> ]
             </div>
             <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
-              ⑵ 큰 수의 약수를 빠짐없이 구할 때 이용하면 편리한 방법은 무엇인가요?<br>
-              <input type="text" id="ans-2-7-2" class="form-control" placeholder="방법(용어) 입력" autocomplete="off">
+              <div style="font-weight:700; color:#334155; margin-bottom:4px;">
+                ⑵ 소인수분해를 이용하여 약수를 구하면 어떤 점이 좋은가요? (키워드: 빠짐없이 모두 찾을 수 있다):
+              </div>
+              👉 [ <input type="text" id="ans-2-7-2" style="width:260px; text-align:center; font-weight:700; display:inline-block;" class="form-control" placeholder="답변 입력" autocomplete="off"> ]
             </div>
           </div>
 
-          <button class="btn btn-primary" onclick="checkStep_2_7()" style="width:100%;">정답 확인 및 채점</button>
+          <button class="btn btn-primary" onclick="checkStep_2_7()" style="width:100%; font-weight:700; padding:10px 0;">정답 확인 및 채점</button>
         </div>
       `;
 
@@ -15999,18 +16369,20 @@ function checkStep_1_12() {
     function checkStep_2_7() {
       const ok1 = areListsEqual(parseNumList(document.getElementById('ans-2-7-1')?.value), [6, 18]);
       const v2 = normTxt(document.getElementById('ans-2-7-2')?.value);
-      const ok2 = (v2 === '소인수분해');
+
+      // ⑵ 소인수분해 활용 장점: 빠짐없이, 모두, 정확, 편리, 소인수분해 등 긍정 서술 포용
+      const ok2 = v2.includes('빠짐') || v2.includes('모두') || v2.includes('소인수분해') || v2.includes('정확') || v2.includes('쉽') || v2.includes('편리');
 
       if (ok1 && ok2) {
-        completeSubStep('2-7', '🎉 <b>모두 정답입니다!</b> 빠진 약수는 <b>6, 18</b>이며, <b>소인수분해</b>를 이용하면 약수를 빠짐없이 구할 수 있습니다.');
+        completeSubStep('2-7', '🎉 <b>모두 정답입니다!</b><br>• 빠진 약수: <b>6, 18</b><br>• 소인수분해를 이용하면 큰 수의 약수라도 <b>빠짐없이 모두</b> 정확하게 구할 수 있습니다.');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         let wrong = [];
-        if (!ok1) wrong.push('⑴ 빠진 두 약수');
-        if (!ok2) wrong.push('⑵ 편리한 방법');
+        if (!ok1) wrong.push('⑴ 빠진 두 약수 (6, 18)');
+        if (!ok2) wrong.push('⑵ 소인수분해의 장점 (빠짐없이 모두 찾을 수 있음)');
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>108의 약수를 곱셈 쌍으로 찾아보세요.`);
+        showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>💡 힌트: 108 = 2² × 3³의 거듭제곱 표를 대조하여 빠진 수(2×3, 2×9)를 찾아보세요.`);
       }
     }
 
