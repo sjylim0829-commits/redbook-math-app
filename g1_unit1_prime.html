@@ -444,9 +444,8 @@
         </form>
         <div id="login-error-notice" style="display:none; color:#dc2626; font-size:0.88rem; font-weight:700; margin-top:12px; background:#fef2f2; padding:10px 14px; border-radius:8px; border:1.5px solid #fca5a5;"></div>
         <div style="margin-top:14px; border-top:1px solid #e2e8f0; padding-top:12px; display:flex; flex-direction:column; gap:8px;">
-          <button type="button" class="btn" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; width:100%; font-weight:700; padding:10px;" onclick="quickTeacherLogin()">⚡ 교사 마스터 1초 즉시 접속</button>
-          <button type="button" class="btn" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; width:100%; font-weight:700; padding:8px; font-size:0.85rem;" onclick="openTestLoginModal()">🔑 교사 비밀번호 인증 접속</button>
-          <button type="button" class="btn" style="background:#eef2ff; color:#4338ca; border:1.5px solid #c7d2fe; width:100%; font-weight:800; padding:10px;" onclick="openTeacherDashboardModal()">📊 교사 5x5 실시간 모니터링 관제실</button>
+          <button type="button" class="btn" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; width:100%; font-weight:700;" onclick="openTestLoginModal()">🔑 교사 계정 접속</button>
+          <button type="button" class="btn" style="background:#eef2ff; color:#4338ca; border:1.5px solid #c7d2fe; width:100%; font-weight:800;" onclick="openTeacherDashboardModal()">📊 교사 5x5 실시간 모니터링 관제실</button>
         </div>
       </div>
     </section>
@@ -544,7 +543,7 @@
       <form id="secure-password-form" onsubmit="handleSecurePasswordSubmit(event)">
         <div style="margin-bottom:16px; text-align:left;">
           <label for="secure-modal-input" style="font-size:0.85rem; font-weight:700; color:#334155; margin-bottom:6px; display:block;">비밀번호</label>
-          <input type="password" id="secure-modal-input" class="form-control" placeholder="비밀번호 입력 (예: 260523)" style="letter-spacing:3px; font-size:1.1rem; width:100%;" autocomplete="off" required>
+          <input type="password" id="secure-modal-input" class="form-control" placeholder="비밀번호 입력" style="letter-spacing:3px; font-size:1.1rem; width:100%;" autocomplete="off" required>
         </div>
         <div id="secure-modal-error" style="display:none; color:#dc2626; font-size:0.82rem; font-weight:700; margin-bottom:12px; background:#fef2f2; padding:8px 10px; border-radius:6px; border:1px solid #fca5a5;"></div>
         <div style="display:flex; gap:8px;">
@@ -856,21 +855,6 @@
     // ==========================================
     // 4. LMS Login & Teacher Auth
     // ==========================================
-    function quickTeacherLogin() {
-      const masterUser = {
-        id: '260523',
-        name: '임종윤 선생님',
-        role: 'teacher',
-        grade: 1,
-        classNum: 1
-      };
-      if (typeof LMSIntegration !== 'undefined' && LMSIntegration.setCurrentUser) {
-        LMSIntegration.setCurrentUser(masterUser);
-      }
-      applyLoggedInUser(masterUser);
-    }
-    window.quickTeacherLogin = quickTeacherLogin;
-
     async function handleLMSLogin(e) {
       if (e && e.preventDefault) e.preventDefault();
       const idInput = document.getElementById('student-id');
@@ -886,9 +870,19 @@
         return false;
       }
 
-      // Check Teacher Master PIN directly (프리패스 교사 관리자 접속)
+      // Check Teacher Master PIN directly (교사 관리자 모드 프리패스)
       if (TEACHER_MASTER_PASSWORDS.includes(password) || TEACHER_MASTER_PASSWORDS.includes(val)) {
-        quickTeacherLogin();
+        const masterUser = {
+          id: '260523',
+          name: '임종윤 선생님',
+          role: 'teacher',
+          grade: 1,
+          classNum: 1
+        };
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.setCurrentUser) {
+          LMSIntegration.setCurrentUser(masterUser);
+        }
+        applyLoggedInUser(masterUser);
         return true;
       }
 
@@ -1009,57 +1003,50 @@
     }
     window.handleLogout = handleLogout;
 
-    // Secure Modal
-    let pendingSecureAction = null;
-    function openSecureModal(title, desc, action) {
-      document.getElementById('secure-modal-title-text').textContent = title;
-      document.getElementById('secure-modal-desc').textContent = desc;
-      document.getElementById('secure-modal-input').value = '';
-      document.getElementById('secure-modal-error').style.display = 'none';
-      pendingSecureAction = action;
-      document.getElementById('secure-password-modal').style.display = 'flex';
-      setTimeout(() => document.getElementById('secure-modal-input').focus(), 80);
+    // Secure Password Modal (4단원 표준 구조)
+    let currentSecureModalAction = 'test_login';
+
+    function openSecurePasswordModal(actionType, title, desc) {
+      currentSecureModalAction = actionType;
+      const modal = document.getElementById('secure-password-modal');
+      const titleEl = document.getElementById('secure-modal-title-text');
+      const descEl = document.getElementById('secure-modal-desc');
+      const inputEl = document.getElementById('secure-modal-input');
+      const errEl = document.getElementById('secure-modal-error');
+
+      if (titleEl) titleEl.innerText = title;
+      if (descEl) descEl.innerText = desc;
+      if (inputEl) { inputEl.value = ''; inputEl.type = 'password'; }
+      if (errEl) { errEl.style.display = 'none'; errEl.innerText = ''; }
+
+      if (modal) {
+        modal.style.display = 'flex';
+        setTimeout(() => { if (inputEl) inputEl.focus(); }, 80);
+      }
     }
-    window.openSecureModal = openSecureModal;
+    window.openSecurePasswordModal = openSecurePasswordModal;
 
     function closeSecurePasswordModal() {
-      document.getElementById('secure-password-modal').style.display = 'none';
-      pendingSecureAction = null;
+      const modal = document.getElementById('secure-password-modal');
+      if (modal) modal.style.display = 'none';
     }
     window.closeSecurePasswordModal = closeSecurePasswordModal;
 
-    function handleSecurePasswordSubmit(e) {
-      if (e && e.preventDefault) e.preventDefault();
-      const pin = document.getElementById('secure-modal-input').value.trim();
-      if (TEACHER_MASTER_PASSWORDS.includes(pin)) {
-        closeSecurePasswordModal();
-        SoundFX.unlock();
-        const masterUser = { id: '260523', name: '임종윤 선생님', role: 'teacher', grade: 1, classNum: 1 };
-        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.setCurrentUser) {
-          LMSIntegration.setCurrentUser(masterUser);
-        }
-        applyLoggedInUser(masterUser);
-        if (pendingSecureAction === 'teacherDashboard') {
-          switchView('teacher-dashboard');
-          renderTeacherDashboard();
-        } else if (pendingSecureAction === 'teacherPass') {
-          executeTeacherPass(state.currentSubStep);
-        } else {
-          switchView('activity');
-        }
-      } else {
-        const err = document.getElementById('secure-modal-error');
-        if (err) {
-          err.innerText = '❌ 올바른 교사 비밀번호가 아닙니다!';
-          err.style.display = 'block';
-        }
-        SoundFX.error();
-      }
+    function openTeacherLoginModal() {
+      openSecurePasswordModal(
+        'teacher_login',
+        '교사 계정 보안 접속',
+        '교사 전용 비밀번호를 입력해 주세요.'
+      );
     }
-    window.handleSecurePasswordSubmit = handleSecurePasswordSubmit;
+    window.openTeacherLoginModal = openTeacherLoginModal;
 
     function openTestLoginModal() {
-      openSecureModal('교사 계정 접속', '교사 마스터 비밀번호를 입력해 관리자 모드로 즉시 접속하세요.', 'testLogin');
+      openSecurePasswordModal(
+        'test_login',
+        '교사 계정 접속',
+        '교사 전용 비밀번호를 입력해 주세요.'
+      );
     }
     window.openTestLoginModal = openTestLoginModal;
 
@@ -1067,16 +1054,81 @@
       if (state.isTeacherLoggedIn) {
         switchView('teacher-dashboard');
         renderTeacherDashboard();
-      } else {
-        openSecureModal('교사 5x5 관제실 접속', '학급 전체 모니터링을 위해 교사 비밀번호를 인증하세요.', 'teacherDashboard');
+        return;
       }
+      openSecurePasswordModal(
+        'teacher_dashboard',
+        '교사 5x5 모니터링 관제실 접속',
+        '학생 실시간 수행 관제를 위해 교사 전용 비밀번호를 입력해 주세요.'
+      );
     }
     window.openTeacherDashboardModal = openTeacherDashboardModal;
 
     function openTeacherPassModal() {
-      openSecureModal('현재 단계 교사 패스 (Pass)', '학생의 탐구를 즉시 통과 처리하기 위해 교사 비밀번호를 입력하세요.', 'teacherPass');
+      if (state.isTeacherLoggedIn) {
+        if (confirm(`🔑 교사 권한으로 현재 [${state.currentSubStep}] 단계를 즉시 통과하시겠습니까?`)) {
+          executeTeacherPass(state.currentSubStep);
+        }
+        return;
+      }
+      openSecurePasswordModal(
+        'teacher_pass',
+        '교사 인증 패스 (Pass)',
+        `현재 [${state.currentSubStep}] 단계를 학생 대신 통과 처리하려면 교사 비밀번호를 입력해 주세요.`
+      );
     }
     window.openTeacherPassModal = openTeacherPassModal;
+
+    function handleSecurePasswordSubmit(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const inputEl = document.getElementById('secure-modal-input');
+      const errEl = document.getElementById('secure-modal-error');
+      const pw = inputEl ? inputEl.value.trim() : '';
+
+      const isTeacherPw = TEACHER_MASTER_PASSWORDS.includes(pw);
+
+      if (!isTeacherPw) {
+        if (errEl) {
+          errEl.style.display = 'block';
+          errEl.innerText = '❌ 비밀번호가 올바르지 않습니다. 다시 입력해 주세요.';
+        }
+        if (inputEl) { inputEl.value = ''; inputEl.focus(); }
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        return false;
+      }
+
+      closeSecurePasswordModal();
+      if (window.SoundFX && window.SoundFX.unlock) SoundFX.unlock();
+
+      const masterUser = {
+        id: '260523',
+        name: '임종윤 선생님',
+        role: 'teacher',
+        grade: 1,
+        classNum: 1
+      };
+
+      if (typeof LMSIntegration !== 'undefined' && LMSIntegration.setCurrentUser) {
+        LMSIntegration.setCurrentUser(masterUser);
+      }
+
+      if (currentSecureModalAction === 'test_login' || currentSecureModalAction === 'teacher_login') {
+        applyLoggedInUser(masterUser);
+        switchView('activity');
+        switchMainTab(0);
+      } else if (currentSecureModalAction === 'teacher_dashboard') {
+        applyLoggedInUser(masterUser);
+        switchView('teacher-dashboard');
+        renderTeacherDashboard();
+      } else if (currentSecureModalAction === 'teacher_pass') {
+        executeTeacherPass(state.currentSubStep);
+      } else {
+        applyLoggedInUser(masterUser);
+        switchView('activity');
+      }
+      return true;
+    }
+    window.handleSecurePasswordSubmit = handleSecurePasswordSubmit;
 
     function executeTeacherPass(code) {
       state.completedSteps.add(code);
