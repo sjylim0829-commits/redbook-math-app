@@ -3289,274 +3289,757 @@ function drawCanvas_0_4(container) {
   canvas.style.width = '100%';
   canvas.style.height = '100%';
   canvas.style.display = 'block';
+  canvas.style.touchAction = 'none';
   container.appendChild(canvas);
 
   const ctx = canvas.getContext('2d');
-  let currentMode = 'div6'; // div6, div13, mul24, mul36
+  let animId = null;
+  let t = 0;
 
-  function draw() {
-    const w = canvas.width;
-    const h = canvas.height;
-    ctx.clearRect(0, 0, w, h);
+  let currentMode = 'div6'; // 'div6', 'div13', 'mul24', 'mul36'
 
-    if (currentMode === 'div6') {
-      // 6 Divisor Grid
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 15px Pretendard, sans-serif';
-      ctx.fillStyle = '#1e293b';
-      ctx.fillText('🟣 6의 약수 모눈 배열 (1, 2, 3, 6)', w / 2, 40);
+  // State for div6
+  let div6Config = 1; // 0: 1x6, 1: 2x3, 2: 3x2, 3: 6x1
+  const div6Options = [
+    { r: 1, c: 6, label: '1 × 6' },
+    { r: 2, c: 3, label: '2 × 3' },
+    { r: 3, c: 2, label: '3 × 2' },
+    { r: 6, c: 1, label: '6 × 1' }
+  ];
 
-      const configs = [
-        { r: 1, c: 6, label: '1 × 6' },
-        { r: 2, c: 3, label: '2 × 3' },
-        { r: 3, c: 2, label: '3 × 2' },
-        { r: 6, c: 1, label: '6 × 1' }
-      ];
+  // State for div13
+  let div13Rows = 1; // 1, 2, 3, 4, 5
+  const div13Options = [
+    { rows: 1, cols: 13, rem: 0, label: '1줄 (1 × 13)' },
+    { rows: 2, cols: 6, rem: 1, label: '2줄 (2 × 6 + 1)' },
+    { rows: 3, cols: 4, rem: 1, label: '3줄 (3 × 4 + 1)' },
+    { rows: 4, cols: 3, rem: 1, label: '4줄 (4 × 3 + 1)' },
+    { rows: 5, cols: 2, rem: 3, label: '5줄 (5 × 2 + 3)' }
+  ];
 
-      const startY = 80;
-      configs.forEach((cfg, idx) => {
-        const cx = (w / 5) * (idx + 1);
-        ctx.fillStyle = '#4f46e5';
-        ctx.font = 'bold 13px Pretendard, sans-serif';
-        ctx.fillText(cfg.label, cx, startY);
+  // State for mul24 & mul36
+  let trainPosRatio = 0.2;
+  let isDraggingTrain = false;
+  let lastStationTriggered = -1;
 
-        const beadR = 10;
-        const gap = 24;
-        const totalW = (cfg.c - 1) * gap;
-        const totalH = (cfg.r - 1) * gap;
-        const bx = cx - totalW / 2;
-        const by = startY + 25;
-
-        for (let row = 0; row < cfg.r; row++) {
-          for (let col = 0; col < cfg.c; col++) {
-            ctx.fillStyle = '#6366f1';
-            ctx.beginPath();
-            ctx.arc(bx + col * gap, by + row * gap, beadR, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        }
+  // Particle system
+  let particles = [];
+  function spawnSparks(x, y, color) {
+    for (let i = 0; i < 22; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 1.5 + Math.random() * 3.5;
+      particles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        radius: 2.5 + Math.random() * 2.5,
+        color: color || '#f59e0b',
+        life: 1.0,
+        decay: 0.025 + Math.random() * 0.02
       });
-
-      ctx.fillStyle = '#059669';
-      ctx.font = 'bold 14px Pretendard, sans-serif';
-      ctx.fillText('✅ 6은 1, 2, 3, 6으로 직사각형이 깔끔하게 완성됩니다 (나머지 없음)', w / 2, h - 50);
-
-    } else if (currentMode === 'div13') {
-      // 13 Divisor Grid
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 15px Pretendard, sans-serif';
-      ctx.fillStyle = '#1e293b';
-      ctx.fillText('🔴 13의 약수 모눈 배열 (오직 1과 13뿐!)', w / 2, 40);
-
-      ctx.fillStyle = '#dc2626';
-      ctx.font = 'bold 13px Pretendard, sans-serif';
-      ctx.fillText('1 × 13 (일렬 나열)', w / 2, 90);
-
-      const beadR = 9;
-      const gap = 22;
-      const startX = w / 2 - (12 * gap) / 2;
-      for (let i = 0; i < 13; i++) {
-        ctx.fillStyle = '#ef4444';
-        ctx.beginPath();
-        ctx.arc(startX + i * gap, 120, beadR, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      ctx.fillStyle = '#64748b';
-      ctx.font = '13px Pretendard, sans-serif';
-      ctx.fillText('2줄, 3줄, 4줄 등으로 나누면 항상 나머지가 생겨 직사각형을 만들 수 없습니다.', w / 2, 180);
-
-      // Attempt 2x6 + 1
-      ctx.fillText('2줄로 배열 시: 2 × 6 + 1 (1개가 남아 직사각형 실패!)', w / 2, 220);
-      for (let row = 0; row < 2; row++) {
-        for (let col = 0; col < 6; col++) {
-          ctx.fillStyle = '#94a3b8';
-          ctx.beginPath();
-          ctx.arc(w / 2 - (5 * 22) / 2 + col * 22, 245 + row * 22, 8, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-      ctx.fillStyle = '#ef4444';
-      ctx.beginPath();
-      ctx.arc(w / 2 - (5 * 22) / 2 + 6 * 22, 245, 8, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#b91c1c';
-      ctx.font = 'bold 14px Pretendard, sans-serif';
-      ctx.fillText('✅ 13의 약수는 오직 1과 13뿐입니다! (소수)', w / 2, h - 50);
-
-    } else if (currentMode === 'mul24') {
-      // 24 Multiples Rail
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 15px Pretendard, sans-serif';
-      ctx.fillStyle = '#1e293b';
-      ctx.fillText('🚆 24의 배수 수직선 레일', w / 2, 40);
-
-      const lineY = h / 2;
-      ctx.strokeStyle = '#cbd5e1';
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(40, lineY);
-      ctx.lineTo(w - 40, lineY);
-      ctx.stroke();
-
-      const mults = [
-        { n: 1, val: 24, x: 0.22 },
-        { n: 2, val: 48, x: 0.44 },
-        { n: 3, val: 72, x: 0.66 },
-        { n: 4, val: 96, x: 0.88 }
-      ];
-
-      mults.forEach(m => {
-        const mx = 40 + (w - 80) * m.x;
-        ctx.fillStyle = '#0284c7';
-        ctx.beginPath();
-        ctx.arc(mx, lineY, 12, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.strokeStyle = '#38bdf8';
-        ctx.lineWidth = 3;
-        ctx.stroke();
-
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 11px Pretendard, sans-serif';
-        ctx.fillText(String(m.n), mx, lineY + 4);
-
-        ctx.fillStyle = '#0369a1';
-        ctx.font = 'bold 15px Pretendard, sans-serif';
-        ctx.fillText(String(m.val), mx, lineY - 22);
-
-        ctx.fillStyle = '#64748b';
-        ctx.font = '11px Pretendard, sans-serif';
-        ctx.fillText(`24×${m.n}`, mx, lineY + 30);
-      });
-
-      ctx.fillStyle = '#0f172a';
-      ctx.font = 'bold 14px Pretendard, sans-serif';
-      ctx.fillText('24의 배수: 24, 48, 72, 96, ...', w / 2, h - 50);
-
-    } else if (currentMode === 'mul36') {
-      // 36 Multiples Rail
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 15px Pretendard, sans-serif';
-      ctx.fillStyle = '#1e293b';
-      ctx.fillText('🚆 36의 배수 수직선 레일', w / 2, 40);
-
-      const lineY = h / 2;
-      ctx.strokeStyle = '#cbd5e1';
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(40, lineY);
-      ctx.lineTo(w - 40, lineY);
-      ctx.stroke();
-
-      const mults = [
-        { n: 1, val: 36, x: 0.25 },
-        { n: 2, val: 72, x: 0.52 },
-        { n: 3, val: 108, x: 0.78 }
-      ];
-
-      mults.forEach(m => {
-        const mx = 40 + (w - 80) * m.x;
-        ctx.fillStyle = '#7c3aed';
-        ctx.beginPath();
-        ctx.arc(mx, lineY, 14, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.strokeStyle = '#c084fc';
-        ctx.lineWidth = 3;
-        ctx.stroke();
-
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 12px Pretendard, sans-serif';
-        ctx.fillText(String(m.n), mx, lineY + 4);
-
-        ctx.fillStyle = '#5b21b6';
-        ctx.font = 'bold 16px Pretendard, sans-serif';
-        ctx.fillText(String(m.val), mx, lineY - 24);
-
-        ctx.fillStyle = '#64748b';
-        ctx.font = '12px Pretendard, sans-serif';
-        ctx.fillText(`36×${m.n}`, mx, lineY + 32);
-      });
-
-      ctx.fillStyle = '#0f172a';
-      ctx.font = 'bold 14px Pretendard, sans-serif';
-      ctx.fillText('36의 배수: 36, 72, 108, 144, ...', w / 2, h - 50);
     }
   }
 
-  // Nav buttons for 0-4
-  const tabRow = document.createElement('div');
-  tabRow.style.position = 'absolute';
-  tabRow.style.top = '10px';
-  tabRow.style.right = '10px';
-  tabRow.style.display = 'flex';
-  tabRow.style.gap = '4px';
-  tabRow.style.zIndex = '20';
+  function resize() {
+    if (!container || !canvas) return;
+    const newW = container.clientWidth || 560;
+    const newH = container.clientHeight || 460;
+    if (canvas.width !== newW || canvas.height !== newH) {
+      canvas.width = newW;
+      canvas.height = newH;
+    }
+  }
+  window.addEventListener('resize', resize);
 
-  const modes = [
+  function getCanvasPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / (rect.width || 1);
+    const scaleY = canvas.height / (rect.height || 1);
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY
+    };
+  }
+
+  // Hit test buttons
+  const modeTabs = [
     { id: 'div6', label: '6의 약수' },
     { id: 'div13', label: '13의 약수' },
     { id: 'mul24', label: '24의 배수' },
     { id: 'mul36', label: '36의 배수' }
   ];
 
-  modes.forEach(m => {
-    const btn = document.createElement('button');
-    btn.className = 'btn';
-    btn.style.padding = '4px 8px';
-    btn.style.fontSize = '0.78rem';
-    btn.style.background = (currentMode === m.id) ? '#4f46e5' : '#ffffff';
-    btn.style.color = (currentMode === m.id) ? '#ffffff' : '#334155';
-    btn.style.border = '1px solid #cbd5e1';
-    btn.textContent = m.label;
-    btn.onclick = () => {
-      currentMode = m.id;
-      tabRow.querySelectorAll('button').forEach((b, idx) => {
-        b.style.background = (modes[idx].id === m.id) ? '#4f46e5' : '#ffffff';
-        b.style.color = (modes[idx].id === m.id) ? '#ffffff' : '#334155';
-      });
-      draw();
-      if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(500, 'sine', 0.08);
-    };
-    tabRow.appendChild(btn);
+  function hitTestTab(pos) {
+    const w = canvas.width;
+    const tabW = Math.min(105, (w - 30) / 4);
+    const tabH = 28;
+    const startX = (w - tabW * 4 - 18) / 2;
+    const tabY = 10;
+
+    for (let i = 0; i < 4; i++) {
+      const tx = startX + i * (tabW + 6);
+      if (pos.x >= tx && pos.x <= tx + tabW && pos.y >= tabY && pos.y <= tabY + tabH) {
+        return modeTabs[i].id;
+      }
+    }
+    return null;
+  }
+
+  function hitTestDiv6Option(pos) {
+    const w = canvas.width;
+    const btnW = 90;
+    const btnH = 30;
+    const startX = (w - btnW * 4 - 30) / 2;
+    const btnY = 82;
+    for (let i = 0; i < 4; i++) {
+      const bx = startX + i * (btnW + 10);
+      if (pos.x >= bx && pos.x <= bx + btnW && pos.y >= btnY && pos.y <= btnY + btnH) {
+        return i;
+      }
+    }
+    return null;
+  }
+
+  function hitTestDiv13Option(pos) {
+    const w = canvas.width;
+    const btnW = Math.min(94, (w - 40) / 5);
+    const btnH = 30;
+    const startX = (w - btnW * 5 - 24) / 2;
+    const btnY = 82;
+    for (let i = 0; i < 5; i++) {
+      const bx = startX + i * (btnW + 6);
+      if (pos.x >= bx && pos.x <= bx + btnW && pos.y >= btnY && pos.y <= btnY + btnH) {
+        return div13Options[i].rows;
+      }
+    }
+    return null;
+  }
+
+  function hitTestTrain(pos, railX1, railX2, railY) {
+    const trainX = railX1 + trainPosRatio * (railX2 - railX1);
+    return Math.hypot(pos.x - trainX, pos.y - railY) <= 30;
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    try { canvas.setPointerCapture(e.pointerId); } catch(err) {}
+    const pos = getCanvasPos(e);
+    const w = canvas.width;
+    const h = canvas.height;
+
+    // Mode tab click
+    const clickedTab = hitTestTab(pos);
+    if (clickedTab) {
+      currentMode = clickedTab;
+      particles = [];
+      lastStationTriggered = -1;
+      trainPosRatio = (clickedTab === 'mul24') ? 0.2 : (clickedTab === 'mul36' ? 0.25 : 0.2);
+      if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(500, 'sine', 0.06);
+      return;
+    }
+
+    if (currentMode === 'div6') {
+      const optIdx = hitTestDiv6Option(pos);
+      if (optIdx !== null) {
+        div6Config = optIdx;
+        spawnSparks(pos.x, pos.y, '#6366f1');
+        if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(580, 'sine', 0.08);
+      }
+    } else if (currentMode === 'div13') {
+      const r = hitTestDiv13Option(pos);
+      if (r !== null) {
+        div13Rows = r;
+        spawnSparks(pos.x, pos.y, r === 1 ? '#10b981' : '#ef4444');
+        if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(r === 1 ? 640 : 360, 'sine', 0.08);
+      }
+    } else if (currentMode === 'mul24' || currentMode === 'mul36') {
+      const railX1 = 50;
+      const railX2 = w - 50;
+      const railY = h * 0.58;
+
+      if (pos.y >= railY - 40 && pos.y <= railY + 40 && pos.x >= railX1 - 20 && pos.x <= railX2 + 20) {
+        isDraggingTrain = true;
+        trainPosRatio = Math.max(0, Math.min(1, (pos.x - railX1) / (railX2 - railX1)));
+        if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(480, 'sine', 0.05);
+      }
+    }
   });
 
-  container.appendChild(tabRow);
+  canvas.addEventListener('pointermove', (e) => {
+    const pos = getCanvasPos(e);
+    const w = canvas.width;
+    const h = canvas.height;
+    const railX1 = 50;
+    const railX2 = w - 50;
+    const railY = h * 0.58;
+
+    if (isDraggingTrain && (currentMode === 'mul24' || currentMode === 'mul36')) {
+      trainPosRatio = Math.max(0, Math.min(1, (pos.x - railX1) / (railX2 - railX1)));
+      canvas.style.cursor = 'grabbing';
+    } else {
+      const onTab = !!hitTestTab(pos);
+      const onDiv6 = (currentMode === 'div6' && hitTestDiv6Option(pos) !== null);
+      const onDiv13 = (currentMode === 'div13' && hitTestDiv13Option(pos) !== null);
+      const onTrain = ((currentMode === 'mul24' || currentMode === 'mul36') && hitTestTrain(pos, railX1, railX2, railY));
+      canvas.style.cursor = (onTab || onDiv6 || onDiv13 || onTrain) ? 'pointer' : 'default';
+    }
+  });
+
+  function stopTrainDrag(e) {
+    if (isDraggingTrain) {
+      isDraggingTrain = false;
+      canvas.style.cursor = 'default';
+    }
+    try {
+      if (canvas.hasPointerCapture(e.pointerId)) {
+        canvas.releasePointerCapture(e.pointerId);
+      }
+    } catch(err) {}
+  }
+
+  canvas.addEventListener('pointerup', stopTrainDrag);
+  canvas.addEventListener('pointercancel', stopTrainDrag);
+
+  function draw() {
+    if (!container.isConnected || !container.contains(canvas)) {
+      if (animId) cancelAnimationFrame(animId);
+      window.removeEventListener('resize', resize);
+      return;
+    }
+
+    t += 0.025;
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    // Subtle background grid
+    ctx.strokeStyle = '#f8fafc';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < w; x += 36) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+      ctx.stroke();
+    }
+    for (let y = 0; y < h; y += 36) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+
+    // Draw Mode Tabs (Top Center)
+    const tabW = Math.min(105, (w - 30) / 4);
+    const tabH = 28;
+    const tabStartX = (w - tabW * 4 - 18) / 2;
+    const tabY = 10;
+
+    modeTabs.forEach((tab, i) => {
+      const tx = tabStartX + i * (tabW + 6);
+      const isCur = (currentMode === tab.id);
+
+      ctx.save();
+      ctx.fillStyle = isCur ? '#4f46e5' : '#ffffff';
+      ctx.strokeStyle = isCur ? '#4f46e5' : '#cbd5e1';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(tx, tabY, tabW, tabH, 6);
+      else ctx.rect(tx, tabY, tabW, tabH);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.font = 'bold 11px Pretendard, sans-serif';
+      ctx.fillStyle = isCur ? '#ffffff' : '#475569';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(tab.label, tx + tabW / 2, tabY + tabH / 2);
+      ctx.restore();
+    });
+
+    if (currentMode === 'div6') {
+      // 6의 약수 모드
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 15px Pretendard, sans-serif';
+      ctx.fillStyle = '#0f172a';
+      ctx.fillText('🟣 6의 약수 모눈 직사각형 조립기', w / 2, 54);
+
+      // Div 6 Option Buttons
+      const btnW = 90;
+      const btnH = 30;
+      const startX = (w - btnW * 4 - 30) / 2;
+      const btnY = 82;
+
+      div6Options.forEach((opt, idx) => {
+        const bx = startX + idx * (btnW + 10);
+        const isSel = (div6Config === idx);
+
+        ctx.save();
+        ctx.fillStyle = isSel ? '#4f46e5' : '#f1f5f9';
+        ctx.strokeStyle = isSel ? '#4338ca' : '#cbd5e1';
+        ctx.lineWidth = isSel ? 2 : 1;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(bx, btnY, btnW, btnH, 6);
+        else ctx.rect(bx, btnY, btnW, btnH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = 'bold 12px Pretendard, sans-serif';
+        ctx.fillStyle = isSel ? '#ffffff' : '#334155';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(opt.label, bx + btnW / 2, btnY + btnH / 2);
+        ctx.restore();
+      });
+
+      // Visual Bead Arrangement for selected config
+      const curCfg = div6Options[div6Config];
+      const gap = 36;
+      const beadR = 13;
+      const gridW = (curCfg.c - 1) * gap;
+      const gridH = (curCfg.r - 1) * gap;
+      const gridX = w / 2 - gridW / 2;
+      const gridY = 220 - gridH / 2;
+
+      // Bounding Box around beads
+      ctx.save();
+      ctx.fillStyle = 'rgba(79, 70, 229, 0.05)';
+      ctx.strokeStyle = '#4f46e5';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 6]);
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(gridX - beadR - 14, gridY - beadR - 14, gridW + beadR * 2 + 28, gridH + beadR * 2 + 28, 12);
+      else ctx.rect(gridX - beadR - 14, gridY - beadR - 14, gridW + beadR * 2 + 28, gridH + beadR * 2 + 28);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      // Dimension labels
+      ctx.font = 'bold 12px Pretendard, sans-serif';
+      ctx.fillStyle = '#4f46e5';
+      ctx.textAlign = 'center';
+      ctx.fillText(`가로 ${curCfg.c}개`, w / 2, gridY - beadR - 22);
+
+      ctx.save();
+      ctx.translate(gridX - beadR - 24, gridY + gridH / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText(`세로 ${curCfg.r}개`, 0, 0);
+      ctx.restore();
+
+      // Beads
+      for (let r = 0; r < curCfg.r; r++) {
+        for (let c = 0; c < curCfg.c; c++) {
+          const bx = gridX + c * gap;
+          const by = gridY + r * gap;
+
+          ctx.save();
+          ctx.shadowColor = 'rgba(79, 70, 229, 0.4)';
+          ctx.shadowBlur = 8;
+          ctx.fillStyle = '#4f46e5';
+          ctx.beginPath();
+          ctx.arc(bx, by, beadR, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.restore();
+
+          // Bead index
+          ctx.font = 'bold 10px Pretendard, sans-serif';
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(String(r * curCfg.c + c + 1), bx, by);
+        }
+      }
+
+      // Bottom Result Card
+      ctx.save();
+      ctx.fillStyle = '#ecfdf5';
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(w / 2 - 210, h - 68, 420, 52, 8);
+      else ctx.rect(w / 2 - 210, h - 68, 420, 52);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#065f46';
+      ctx.font = 'bold 13px Pretendard, sans-serif';
+      ctx.fillText(`✅ 직사각형 완성! 6 = ${curCfg.r} × ${curCfg.c} (나누어떨어짐)`, w / 2, h - 51);
+      ctx.font = '11px Pretendard, sans-serif';
+      ctx.fillStyle = '#047857';
+      ctx.fillText(`나머지가 없으므로 1, 2, 3, 6은 모두 6의 약수입니다.`, w / 2, h - 33);
+
+    } else if (currentMode === 'div13') {
+      // 13의 약수 모드
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 15px Pretendard, sans-serif';
+      ctx.fillStyle = '#0f172a';
+      ctx.fillText('🔴 13의 약수 분할 실험실 (오직 1줄뿐!)', w / 2, 54);
+
+      // 5 Rows selection buttons
+      const btnW = Math.min(94, (w - 40) / 5);
+      const btnH = 30;
+      const startX = (w - btnW * 5 - 24) / 2;
+      const btnY = 82;
+
+      div13Options.forEach((opt, idx) => {
+        const bx = startX + idx * (btnW + 6);
+        const isSel = (div13Rows === opt.rows);
+
+        ctx.save();
+        ctx.fillStyle = isSel ? (opt.rem === 0 ? '#10b981' : '#ef4444') : '#f1f5f9';
+        ctx.strokeStyle = isSel ? (opt.rem === 0 ? '#059669' : '#dc2626') : '#cbd5e1';
+        ctx.lineWidth = isSel ? 2 : 1;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(bx, btnY, btnW, btnH, 6);
+        else ctx.rect(bx, btnY, btnW, btnH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = 'bold 11px Pretendard, sans-serif';
+        ctx.fillStyle = isSel ? '#ffffff' : '#334155';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${opt.rows}줄`, bx + btnW / 2, btnY + btnH / 2);
+        ctx.restore();
+      });
+
+      const curOpt = div13Options.find(o => o.rows === div13Rows);
+      const gap = 30;
+      const beadR = 11;
+      const gridW = (curOpt.cols - 1) * gap;
+      const gridH = (curOpt.rows - 1) * gap;
+      const gridX = w / 2 - (gridW + (curOpt.rem > 0 ? 40 : 0)) / 2;
+      const gridY = 210 - gridH / 2;
+
+      // Draw Main Completed Rows
+      for (let r = 0; r < curOpt.rows; r++) {
+        for (let c = 0; c < curOpt.cols; c++) {
+          const bx = gridX + c * gap;
+          const by = gridY + r * gap;
+
+          ctx.save();
+          ctx.fillStyle = curOpt.rem === 0 ? '#10b981' : '#64748b';
+          ctx.beginPath();
+          ctx.arc(bx, by, beadR, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          ctx.restore();
+
+          ctx.font = 'bold 9px Pretendard, sans-serif';
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(String(r * curOpt.cols + c + 1), bx, by);
+        }
+      }
+
+      // Draw Remainder Beads (in Red with Pulse)
+      if (curOpt.rem > 0) {
+        const pulse = Math.sin(t * 5) * 2;
+        const remStartX = gridX + curOpt.cols * gap + 15;
+
+        ctx.font = 'bold 11px Pretendard, sans-serif';
+        ctx.fillStyle = '#ef4444';
+        ctx.textAlign = 'left';
+        ctx.fillText(`⚠️ 나머지 ${curOpt.rem}개!`, remStartX - 6, gridY - 14);
+
+        for (let remI = 0; remI < curOpt.rem; remI++) {
+          const rx = remStartX;
+          const ry = gridY + remI * gap;
+
+          ctx.save();
+          ctx.shadowColor = '#ef4444';
+          ctx.shadowBlur = 10;
+          ctx.fillStyle = '#ef4444';
+          ctx.beginPath();
+          ctx.arc(rx, ry, beadR + pulse * 0.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.restore();
+
+          ctx.font = 'bold 9px Pretendard, sans-serif';
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(String(curOpt.rows * curOpt.cols + remI + 1), rx, ry);
+        }
+      }
+
+      // Result Card at bottom
+      ctx.save();
+      ctx.fillStyle = curOpt.rem === 0 ? '#ecfdf5' : '#fef2f2';
+      ctx.strokeStyle = curOpt.rem === 0 ? '#10b981' : '#f87171';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(w / 2 - 210, h - 68, 420, 52, 8);
+      else ctx.rect(w / 2 - 210, h - 68, 420, 52);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      if (curOpt.rem === 0) {
+        ctx.fillStyle = '#065f46';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.fillText(`🎉 직사각형 성공! 13 = 1 × 13 (나머지 0)`, w / 2, h - 51);
+        ctx.font = '11px Pretendard, sans-serif';
+        ctx.fillStyle = '#047857';
+        ctx.fillText(`13의 약수는 오직 1과 13뿐입니다! ➔ [소수]`, w / 2, h - 33);
+      } else {
+        ctx.fillStyle = '#991b1b';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.fillText(`❌ 직사각형 실패: 13 = ${curOpt.rows} × ${curOpt.cols} + ${curOpt.rem} (나머지 발생)`, w / 2, h - 51);
+        ctx.font = '11px Pretendard, sans-serif';
+        ctx.fillStyle = '#b91c1c';
+        ctx.fillText(`나누어떨어지지 않으므로 ${curOpt.rows}은(는) 13의 약수가 아닙니다.`, w / 2, h - 33);
+      }
+
+    } else if (currentMode === 'mul24' || currentMode === 'mul36') {
+      // 24 / 36 배수 모드
+      const stepVal = (currentMode === 'mul24') ? 24 : 36;
+      const maxVal = (currentMode === 'mul24') ? 120 : 144;
+      const colorPrimary = (currentMode === 'mul24') ? '#0284c7' : '#7c3aed';
+      const colorGlow = (currentMode === 'mul24') ? '#38bdf8' : '#c084fc';
+
+      const stations = (currentMode === 'mul24') ? [
+        { n: 1, val: 24 },
+        { n: 2, val: 48 },
+        { n: 3, val: 72 },
+        { n: 4, val: 96 },
+        { n: 5, val: 120 }
+      ] : [
+        { n: 1, val: 36 },
+        { n: 2, val: 72 },
+        { n: 3, val: 108 },
+        { n: 4, val: 144 }
+      ];
+
+      ctx.textAlign = 'center';
+      ctx.font = '800 15px Pretendard, sans-serif';
+      ctx.fillStyle = '#0f172a';
+      ctx.fillText(`🚆 ${stepVal}의 배수 수직선 레일 기차 여행`, w / 2, 54);
+
+      // Rail Line
+      const railX1 = 50;
+      const railX2 = w - 50;
+      const railY = h * 0.52;
+      const railLen = railX2 - railX1;
+
+      // Rail Sleepers
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 3;
+      for (let rx = railX1; rx <= railX2; rx += 14) {
+        ctx.beginPath();
+        ctx.moveTo(rx, railY - 10);
+        ctx.lineTo(rx, railY + 10);
+        ctx.stroke();
+      }
+
+      // Rail Tracks
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(railX1, railY - 5);
+      ctx.lineTo(railX2, railY - 5);
+      ctx.moveTo(railX1, railY + 5);
+      ctx.lineTo(railX2, railY + 5);
+      ctx.stroke();
+
+      const trainX = railX1 + trainPosRatio * railLen;
+      const curTrainVal = Math.round(trainPosRatio * maxVal);
+
+      // Check Station Approaching / Hit
+      let curStationHit = null;
+      stations.forEach((st, sIdx) => {
+        const sx = railX1 + (st.val / maxVal) * railLen;
+        const dist = Math.abs(trainX - sx);
+
+        const isHit = dist < 12;
+        if (isHit) {
+          curStationHit = st;
+          if (lastStationTriggered !== sIdx) {
+            lastStationTriggered = sIdx;
+            spawnSparks(sx, railY, colorPrimary);
+            if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(600 + sIdx * 60, 'sine', 0.1);
+          }
+        }
+
+        // Draw Station Board & Marker
+        ctx.save();
+        if (isHit) {
+          ctx.shadowColor = colorGlow;
+          ctx.shadowBlur = 14;
+        }
+
+        // Marker pin
+        ctx.fillStyle = isHit ? colorGlow : colorPrimary;
+        ctx.beginPath();
+        ctx.arc(sx, railY, isHit ? 14 : 10, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        ctx.restore();
+
+        // Station Board above
+        ctx.save();
+        ctx.fillStyle = isHit ? colorPrimary : '#f8fafc';
+        ctx.strokeStyle = colorPrimary;
+        ctx.lineWidth = isHit ? 2 : 1.2;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(sx - 32, railY - 60, 64, 38, 6);
+        else ctx.rect(sx - 32, railY - 60, 64, 38);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = 'bold 9px Pretendard, sans-serif';
+        ctx.fillStyle = isHit ? '#ffffff' : '#64748b';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(`제 ${st.n}역`, sx, railY - 56);
+
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.fillStyle = isHit ? '#ffffff' : colorPrimary;
+        ctx.fillText(String(st.val), sx, railY - 42);
+        ctx.restore();
+
+        // Formula label below rail
+        ctx.font = '11px Pretendard, sans-serif';
+        ctx.fillStyle = '#64748b';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(`${stepVal}×${st.n}`, sx, railY + 18);
+      });
+
+      // Draw Locomotive / Train Handle at (trainX, railY)
+      ctx.save();
+      ctx.translate(trainX, railY);
+
+      // Glow on train
+      ctx.shadowColor = isDraggingTrain ? '#38bdf8' : 'rgba(0,0,0,0.15)';
+      ctx.shadowBlur = isDraggingTrain ? 12 : 6;
+
+      // Train Body
+      ctx.fillStyle = isDraggingTrain ? '#0284c7' : '#0369a1';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(-22, -18, 44, 36, 8);
+      else ctx.rect(-22, -18, 44, 36);
+      ctx.fill();
+
+      // Train Window
+      ctx.fillStyle = '#bae6fd';
+      ctx.beginPath();
+      ctx.arc(0, -4, 8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Train Wheels
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath();
+      ctx.arc(-12, 16, 5, 0, Math.PI * 2);
+      ctx.arc(12, 16, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+
+      // Bottom Result Card
+      ctx.save();
+      ctx.fillStyle = curStationHit ? '#f0fdf4' : '#f8fafc';
+      ctx.strokeStyle = curStationHit ? '#22c55e' : '#cbd5e1';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(w / 2 - 210, h - 68, 420, 52, 8);
+      else ctx.rect(w / 2 - 210, h - 68, 420, 52);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      if (curStationHit) {
+        ctx.fillStyle = '#15803d';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.fillText(`🎉 [제 ${curStationHit.n}역 정차] ${stepVal}의 ${curStationHit.n}배 = ${curStationHit.val}!`, w / 2, h - 51);
+        ctx.font = '11px Pretendard, sans-serif';
+        ctx.fillStyle = '#166534';
+        ctx.fillText(`어떤 수에 자연수(1, 2, 3...)를 곱한 수를 그 수의 '배수'라고 합니다.`, w / 2, h - 33);
+      } else {
+        ctx.fillStyle = '#334155';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.fillText(`현재 기차 위치: ${curTrainVal} (레일을 마우스/터치로 드래그하세요)`, w / 2, h - 51);
+        ctx.font = '11px Pretendard, sans-serif';
+        ctx.fillStyle = '#64748b';
+        ctx.fillText(`${stepVal}의 배수 역(${stations.map(s => s.val).join(', ')})으로 기차를 이동시켜 보세요.`, w / 2, h - 33);
+      }
+    }
+
+    // Draw Particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life -= p.decay;
+      if (p.life <= 0) {
+        particles.splice(i, 1);
+        continue;
+      }
+      ctx.save();
+      ctx.globalAlpha = p.life;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius * p.life, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    animId = requestAnimationFrame(draw);
+  }
+
   draw();
 }
 
 function renderForm_0_4(box) {
   box.innerHTML = `
     <div class="card">
-      <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
-        ✏️ [되짚어보기 1] 약수와 배수 구하기 (p.9)
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+        <span style="background:#4f46e5; color:#ffffff; font-size:0.75rem; font-weight:800; padding:3px 9px; border-radius:6px;">되짚어보기 1</span>
+        <span style="font-weight:800; font-size:1.02rem; color:#1e293b;">약수와 배수 구하기 (p.9)</span>
       </div>
-      <p style="font-size:0.88rem; color:#475569; line-height:1.5; margin-bottom:12px;">
-        초등학교에서 배운 약수와 배수의 뜻을 되짚어보며 다음을 구하시오. (수는 쉼표로 구분하여 입력)
+      <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:14px;">
+        초등학교에서 배운 <b>약수</b>(나누어떨어지게 하는 수)와 <b>배수</b>(어떤 수에 자연수를 곱한 수)의 뜻을 되짚어보며 다음을 구하시오. (수는 쉼표로 구분하여 입력)
       </p>
 
-      <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
+      <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:16px;">
         <div>
-          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑴ 6의 약수:</label>
-          <input type="text" id="ans-0-4-1" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off">
+          <label for="ans-0-4-1" style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑴ 6의 약수:</label>
+          <input type="text" id="ans-0-4-1" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off" onkeydown="if(event.key==='Enter') checkStep_0_4()">
         </div>
         <div>
-          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑵ 13의 약수:</label>
-          <input type="text" id="ans-0-4-2" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off">
+          <label for="ans-0-4-2" style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑵ 13의 약수:</label>
+          <input type="text" id="ans-0-4-2" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off" onkeydown="if(event.key==='Enter') checkStep_0_4()">
         </div>
         <div>
-          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑶ 24의 배수 (작은 것부터 3개):</label>
-          <input type="text" id="ans-0-4-3" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off">
+          <label for="ans-0-4-3" style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑶ 24의 배수 (작은 것부터 3개):</label>
+          <input type="text" id="ans-0-4-3" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off" onkeydown="if(event.key==='Enter') checkStep_0_4()">
         </div>
         <div>
-          <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑷ 36의 배수 (작은 것부터 3개):</label>
-          <input type="text" id="ans-0-4-4" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off">
+          <label for="ans-0-4-4" style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">⑷ 36의 배수 (작은 것부터 3개):</label>
+          <input type="text" id="ans-0-4-4" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off" onkeydown="if(event.key==='Enter') checkStep_0_4()">
         </div>
       </div>
 
-      <button class="btn btn-primary" onclick="checkStep_0_4()">정답 확인 및 채점</button>
+      <button class="btn btn-primary" onclick="checkStep_0_4()" style="width:100%; padding:10px 16px; font-size:0.92rem;">
+        정답 확인 및 채점
+      </button>
     </div>
   `;
 }
