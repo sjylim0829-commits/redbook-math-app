@@ -25490,37 +25490,825 @@ function checkStep_1_12() {
     }
 
     // 3-8 (p.19): 문제 3: 세 수의 최대공약수 구하기
-    function drawCanvas_3_8(container) { createDefaultCanvas_3(container, '🎨 [3-8] 세 수의 최대공약수 계산기'); }
+    function drawCanvas_3_8(container) {
+      if (container._animId_3_8) {
+        cancelAnimationFrame(container._animId_3_8);
+        container._animId_3_8 = null;
+      }
+      container.innerHTML = '';
+
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; height:100%; box-sizing:border-box;">
+          <!-- 상단 컨트롤러 및 상태 안내 바 -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+            <div id="badge-3-8" style="font-size:0.86rem; font-weight:700; color:#1e293b; background:#f1f5f9; padding:6px 14px; border-radius:20px; border:1px solid #cbd5e1; flex:1; min-width:240px;">
+              버튼을 클릭하여 세 수의 소인수분해와 최대공약수 합성 과정을 확인해 보세요!
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button id="btn-prob1-3-8" class="btn btn-sm btn-outline-primary" style="font-weight:700;">⑴ 2²×3×5, 2×5×7, 2×5²</button>
+              <button id="btn-prob2-3-8" class="btn btn-sm btn-outline-primary" style="font-weight:700;">⑵ 54, 72, 90</button>
+              <button id="btn-ladder-3-8" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">📐 L자 나눗셈 비교</button>
+              <button id="btn-all-3-8" class="btn btn-sm btn-warning" style="font-weight:800; color:#1e293b;">⚡ 전체 동시 합성</button>
+              <button id="btn-reset-3-8" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">⟲ 초기화</button>
+            </div>
+          </div>
+          <!-- Canvas 렌더링 영역 -->
+          <div style="flex:1; min-height:370px; position:relative;">
+            <canvas id="canvas-3-8" style="width:100%; height:100%; display:block; border-radius:12px; background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); border:1px solid #e2e8f0;"></canvas>
+          </div>
+        </div>
+      `;
+
+      const canvas = container.querySelector('#canvas-3-8');
+      const badgeStatus = container.querySelector('#badge-3-8');
+      const btnProb1 = container.querySelector('#btn-prob1-3-8');
+      const btnProb2 = container.querySelector('#btn-prob2-3-8');
+      const btnLadder = container.querySelector('#btn-ladder-3-8');
+      const btnAll = container.querySelector('#btn-all-3-8');
+      const btnReset = container.querySelector('#btn-reset-3-8');
+
+      const ctx = canvas.getContext('2d');
+      let w = 560, h = 400;
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        w = rect.width || 560;
+        h = rect.height || 400;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+
+      const ro = new ResizeObserver(() => {
+        resize();
+      });
+      ro.observe(canvas);
+
+      // 모드: 0: 초기, 1: 문제 ⑴, 2: 문제 ⑵, 3: L자 나눗셈, 4: 전체 동시 합성
+      let currentMode = 0;
+      let particles = [];
+      let hoveredCol = null;
+
+      function spawnConfetti(count = 55) {
+        const colors = ['#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#f43f5e'];
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: w / 2 + (Math.random() - 0.5) * 120,
+            y: 195 + (Math.random() - 0.5) * 40,
+            vx: (Math.random() - 0.5) * 11,
+            vy: (Math.random() - 0.85) * 10 - 2,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.01
+          });
+        }
+      }
+
+      function setMode(mode) {
+        currentMode = mode;
+
+        if (btnProb1) btnProb1.className = `btn btn-sm ${mode === 1 ? 'btn-primary' : 'btn-outline-primary'}`;
+        if (btnProb2) btnProb2.className = `btn btn-sm ${mode === 2 ? 'btn-primary' : 'btn-outline-primary'}`;
+        if (btnLadder) btnLadder.className = `btn btn-sm ${mode === 3 ? 'btn-info text-white' : 'btn-outline-secondary'}`;
+        if (btnAll) btnAll.className = `btn btn-sm ${mode === 4 ? 'btn-warning text-dark font-weight-bold' : 'btn-warning text-dark'}`;
+
+        if (badgeStatus) {
+          if (mode === 0) {
+            badgeStatus.innerText = '버튼을 클릭하여 세 수의 소인수분해와 최대공약수 합성 과정을 확인해 보세요!';
+          } else if (mode === 1) {
+            badgeStatus.innerHTML = '⑴ <b>2²×3×5, 2×5×7, 2×5²</b>: 세 수 모두에 공통인 소인수 중 작은 거듭제곱 <b>2</b>와 <b>5</b>를 곱함 ➔ <b>2 × 5 = 10 👑</b>';
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          } else if (mode === 2) {
+            badgeStatus.innerHTML = '⑵ <b>54, 72, 90</b>: 54 = 2×3³, 72 = 2³×3², 90 = 2×3²×5 ➔ 공통인 <b>2</b>와 <b>3²</b>을 곱함 ➔ <b>2 × 3² = 18 👑</b>';
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          } else if (mode === 3) {
+            badgeStatus.innerHTML = '📐 <b>L자 나눗셈 비교</b>: 54, 72, 90을 공약수 2, 3, 3으로 연속 나누어 최대공약수 <b>2 × 3 × 3 = 18</b> 도출!';
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          } else if (mode === 4) {
+            badgeStatus.innerHTML = '👑 <b>전체 합성 완료!</b> ⑴ 최대공약수 = <b>10</b>, ⑵ 최대공약수 = <b>18</b>';
+            spawnConfetti(55);
+            if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+          }
+        }
+      }
+
+      window._step3_8_triggerSuccess = function() {
+        setMode(4);
+        setTimeout(() => spawnConfetti(60), 400);
+      };
+
+      btnProb1?.addEventListener('click', () => setMode(1));
+      btnProb2?.addEventListener('click', () => setMode(2));
+      btnLadder?.addEventListener('click', () => setMode(3));
+      btnAll?.addEventListener('click', () => setMode(4));
+      btnReset?.addEventListener('click', () => setMode(0));
+
+      // 마우스 호버 감지
+      canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        hoveredCol = null;
+        if (currentMode === 1 && my >= 40 && my <= 165) {
+          if (Math.abs(mx - (w / 2 - 100)) < 35) hoveredCol = '1-2';
+          else if (Math.abs(mx - (w / 2 - 30)) < 35) hoveredCol = '1-3';
+          else if (Math.abs(mx - (w / 2 + 40)) < 35) hoveredCol = '1-5';
+          else if (Math.abs(mx - (w / 2 + 110)) < 35) hoveredCol = '1-7';
+        } else if (currentMode === 2 && my >= 40 && my <= 165) {
+          if (Math.abs(mx - (w / 2 - 70)) < 40) hoveredCol = '2-2';
+          else if (Math.abs(mx - (w / 2 + 15)) < 40) hoveredCol = '2-3';
+          else if (Math.abs(mx - (w / 2 + 100)) < 40) hoveredCol = '2-5';
+        }
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        hoveredCol = null;
+      });
+
+      // 카드 그리기 헬퍼
+      function drawFactorCard(val, x, y, isSelected = false, isDim = false, cw = 50, ch = 28) {
+        ctx.save();
+        if (isSelected) {
+          ctx.fillStyle = '#ecfdf5';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2.5;
+          ctx.shadowColor = 'rgba(16, 185, 129, 0.4)';
+          ctx.shadowBlur = 10;
+        } else if (isDim) {
+          ctx.fillStyle = '#f1f5f9';
+          ctx.strokeStyle = '#e2e8f0';
+          ctx.lineWidth = 1;
+        } else {
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.lineWidth = 1.5;
+        }
+
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(x - cw / 2, y - ch / 2, cw, ch, 6);
+        else ctx.rect(x - cw / 2, y - ch / 2, cw, ch);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.fillStyle = isDim ? '#94a3b8' : (isSelected ? '#059669' : '#1e293b');
+        ctx.fillText(val, x, y);
+        ctx.restore();
+      }
+
+      // 렌더링 루프
+      function render() {
+        ctx.clearRect(0, 0, w, h);
+
+        if (currentMode === 3) {
+          // -------------------------------------------------------------
+          // 모드 3: L자 나눗셈 비교 화면 (54, 72, 90)
+          // -------------------------------------------------------------
+          ctx.save();
+          const padW = Math.min(w - 36, 500);
+          const padX = (w - padW) / 2;
+          const padY = 20;
+          const padH = 220;
+
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#0284c7';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(padX, padY, padW, padH, 10);
+          else ctx.rect(padX, padY, padW, padH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.fillStyle = '#0369a1';
+          ctx.fillText('📐 [문제 ⑵] 54, 72, 90의 연속 나눗셈(L자) 비교', w / 2, padY + 28);
+
+          const lx = w / 2 - 80;
+          let ly = padY + 65;
+
+          ctx.font = '15px monospace';
+          ctx.textAlign = 'right';
+          ctx.fillStyle = '#ef4444';
+          ctx.fillText('2 ) ', lx, ly);
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText(' 54    72    90', lx + 140, ly);
+
+          // 가로선 1
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(lx - 25, ly + 8);
+          ctx.lineTo(lx + 155, ly + 8);
+          ctx.stroke();
+
+          ly += 30;
+          ctx.fillStyle = '#ef4444';
+          ctx.fillText('3 ) ', lx, ly);
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText(' 27    36    45', lx + 140, ly);
+
+          // 가로선 2
+          ctx.beginPath();
+          ctx.moveTo(lx - 25, ly + 8);
+          ctx.lineTo(lx + 155, ly + 8);
+          ctx.stroke();
+
+          ly += 30;
+          ctx.fillStyle = '#ef4444';
+          ctx.fillText('3 ) ', lx, ly);
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('  9    12    15', lx + 140, ly);
+
+          // 가로선 3
+          ctx.beginPath();
+          ctx.moveTo(lx - 25, ly + 8);
+          ctx.lineTo(lx + 155, ly + 8);
+          ctx.stroke();
+
+          ly += 30;
+          ctx.fillStyle = '#059669';
+          ctx.fillText('  3     4     5', lx + 140, ly);
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillText('(공약수 없음)', lx + 215, ly);
+
+          // L자 결론
+          ly += 34;
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.fillStyle = '#1d4ed8';
+          ctx.fillText('왼쪽 공약수들의 곱: 2 × 3 × 3 = 2 × 3² = 18 ➔ 소인수분해 원리와 완벽 일치!', w / 2, ly);
+          ctx.restore();
+        } else if (currentMode === 4) {
+          // -------------------------------------------------------------
+          // 모드 4: 전체 동시 합성 (좌: ⑴ [10], 우: ⑵ [18])
+          // -------------------------------------------------------------
+          const halfW = (w - 48) / 2;
+          const cardY = 28;
+          const cardH = 205;
+
+          // 좌측 카드: ⑴
+          ctx.save();
+          ctx.fillStyle = '#ecfdf5';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2;
+          ctx.shadowColor = 'rgba(16, 185, 129, 0.3)';
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(18, cardY, halfW, cardH, 10);
+          else ctx.rect(18, cardY, halfW, cardH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 14px Pretendard, sans-serif';
+          ctx.fillStyle = '#065f46';
+          ctx.fillText('⑴ 2²×3×5, 2×5×7, 2×5²', 18 + halfW / 2, cardY + 28);
+
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#334155';
+          ctx.fillText('• 공통 소인수 중 가장 작은 지수:', 18 + halfW / 2, cardY + 65);
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.fillStyle = '#0284c7';
+          ctx.fillText('밑 2 ➔ 2,  밑 5 ➔ 5 (3, 7은 제외)', 18 + halfW / 2, cardY + 90);
+
+          // 뱃지
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(32, cardY + 125, halfW - 28, 48, 8);
+          else ctx.rect(32, cardY + 125, halfW - 28, 48);
+          ctx.fill();
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          ctx.font = 'bold 16px Pretendard, sans-serif';
+          ctx.fillStyle = '#059669';
+          ctx.fillText('최대공약수 = 2 × 5 = 10 👑', 18 + halfW / 2, cardY + 155);
+          ctx.restore();
+
+          // 우측 카드: ⑵
+          ctx.save();
+          const rX = 18 + halfW + 12;
+          ctx.fillStyle = '#ecfdf5';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2;
+          ctx.shadowColor = 'rgba(16, 185, 129, 0.3)';
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(rX, cardY, halfW, cardH, 10);
+          else ctx.rect(rX, cardY, halfW, cardH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 14px Pretendard, sans-serif';
+          ctx.fillStyle = '#065f46';
+          ctx.fillText('⑵ 54, 72, 90', rX + halfW / 2, cardY + 28);
+
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#334155';
+          ctx.fillText('• 54 = 2×3³, 72 = 2³×3², 90 = 2×3²×5', rX + halfW / 2, cardY + 65);
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.fillStyle = '#059669';
+          ctx.fillText('밑 2 ➔ 2,  밑 3 ➔ 3² (5는 제외)', rX + halfW / 2, cardY + 90);
+
+          // 뱃지
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(rX + 14, cardY + 125, halfW - 28, 48, 8);
+          else ctx.rect(rX + 14, cardY + 125, halfW - 28, 48);
+          ctx.fill();
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          ctx.font = 'bold 16px Pretendard, sans-serif';
+          ctx.fillStyle = '#059669';
+          ctx.fillText('최대공약수 = 2 × 3² = 18 👑', rX + halfW / 2, cardY + 155);
+          ctx.restore();
+        } else {
+          // -------------------------------------------------------------
+          // 모드 1 또는 모드 2 (세 수의 3행 세로 정렬 테이블)
+          // -------------------------------------------------------------
+          const row1Y = 58;
+          const row2Y = 94;
+          const row3Y = 130;
+          const colLabelX = w / 2 - 180;
+
+          if (currentMode === 0) {
+            // 초기 화면
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 15px Pretendard, sans-serif';
+            ctx.fillStyle = '#64748b';
+            ctx.fillText('상단 버튼을 눌러 ⑴ 또는 ⑵ 문제의 세 수 세로셈 분석을 확인하세요.', w / 2, 95);
+            ctx.font = '13px Pretendard, sans-serif';
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText('세 수 모두에 공통인 소인수 중 가장 작은 지수를 찾는 원리를 시각화합니다.', w / 2, 122);
+            ctx.restore();
+          } else if (currentMode === 1) {
+            // -------------------------------------------------------------
+            // 문제 ⑴: 2² × 3 × 5,  2 × 5 × 7,  2 × 5²
+            // 열: 밑 2(x: w/2 - 100), 밑 3(x: w/2 - 30), 밑 5(x: w/2 + 40), 밑 7(x: w/2 + 110)
+            // -------------------------------------------------------------
+            const c2 = w / 2 - 100;
+            const c3 = w / 2 - 30;
+            const c5 = w / 2 + 40;
+            const c7 = w / 2 + 110;
+
+            // 열 헤더
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 13px Pretendard, sans-serif';
+            ctx.fillStyle = '#0284c7';
+            ctx.fillText('밑 2', c2, 28);
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText('밑 3', c3, 28);
+            ctx.fillStyle = '#059669';
+            ctx.fillText('밑 5', c5, 28);
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText('밑 7', c7, 28);
+            ctx.restore();
+
+            // 좌측 라벨
+            ctx.save();
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 14px Pretendard, sans-serif';
+            ctx.fillStyle = '#1e293b';
+            ctx.fillText('첫 번째 수 = ', colLabelX, row1Y);
+            ctx.fillText('두 번째 수 = ', colLabelX, row2Y);
+            ctx.fillText('세 번째 수 = ', colLabelX, row3Y);
+            ctx.restore();
+
+            // 1행: 2² × 3 × 5
+            drawFactorCard('2²', c2, row1Y, false, false, 46, 28);
+            drawFactorCard('3', c3, row1Y, false, true, 46, 28);
+            drawFactorCard('5', c5, row1Y, true, false, 46, 28);
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '11px Pretendard, sans-serif';
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillText('(없음)', c7, row1Y);
+            ctx.restore();
+
+            // 2행: 2 × 5 × 7
+            drawFactorCard('2', c2, row2Y, true, false, 46, 28);
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '11px Pretendard, sans-serif';
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillText('(없음)', c3, row2Y);
+            ctx.restore();
+            drawFactorCard('5', c5, row2Y, true, false, 46, 28);
+            drawFactorCard('7', c7, row2Y, false, true, 46, 28);
+
+            // 3행: 2 × 5²
+            drawFactorCard('2', c2, row3Y, true, false, 46, 28);
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '11px Pretendard, sans-serif';
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillText('(없음)', c3, row3Y);
+            ctx.restore();
+            drawFactorCard('5²', c5, row3Y, false, false, 46, 28);
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '11px Pretendard, sans-serif';
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillText('(없음)', c7, row3Y);
+            ctx.restore();
+
+            // 가로선
+            ctx.save();
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(colLabelX - 50, 152);
+            ctx.lineTo(c7 + 35, 152);
+            ctx.stroke();
+            ctx.restore();
+
+            // 아래 트레이
+            const trayW = Math.min(w - 36, 500);
+            const trayX = (w - trayW) / 2;
+            const trayY = 168;
+
+            ctx.save();
+            ctx.fillStyle = '#ecfdf5';
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 2;
+            ctx.shadowColor = 'rgba(16, 185, 129, 0.35)';
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(trayX, trayY, trayW, 44, 10);
+            else ctx.rect(trayX, trayY, trayW, 44);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 16px Pretendard, sans-serif';
+            ctx.fillStyle = '#065f46';
+            ctx.fillText('👑 ⑴ 최대공약수 = 2 × 5 = 10', w / 2, trayY + 22);
+            ctx.restore();
+          } else if (currentMode === 2) {
+            // -------------------------------------------------------------
+            // 문제 ⑵: 54, 72, 90
+            // 54 = 2 × 3³, 72 = 2³ × 3², 90 = 2 × 3² × 5
+            // 열: 밑 2(x: w/2 - 70), 밑 3(x: w/2 + 15), 밑 5(x: w/2 + 100)
+            // -------------------------------------------------------------
+            const c2 = w / 2 - 70;
+            const c3 = w / 2 + 15;
+            const c5 = w / 2 + 100;
+
+            // 열 헤더
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 13px Pretendard, sans-serif';
+            ctx.fillStyle = '#0284c7';
+            ctx.fillText('밑 2의 열', c2, 28);
+            ctx.fillStyle = '#059669';
+            ctx.fillText('밑 3의 열', c3, 28);
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText('밑 5의 열', c5, 28);
+            ctx.restore();
+
+            // 좌측 라벨: 54 =, 72 =, 90 =
+            ctx.save();
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 15px Pretendard, sans-serif';
+            ctx.fillStyle = '#1e293b';
+            ctx.fillText('54 = ', colLabelX + 15, row1Y);
+            ctx.fillText('72 = ', colLabelX + 15, row2Y);
+            ctx.fillText('90 = ', colLabelX + 15, row3Y);
+            ctx.restore();
+
+            // 1행: 54 = 2 × 3³
+            drawFactorCard('2', c2, row1Y, true, false);
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 15px Pretendard, sans-serif';
+            ctx.fillStyle = '#64748b';
+            ctx.fillText('×', (c2 + c3) / 2, row1Y);
+            ctx.restore();
+            drawFactorCard('3³', c3, row1Y, false, false);
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '12px Pretendard, sans-serif';
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillText('(없음)', c5, row1Y);
+            ctx.restore();
+
+            // 2행: 72 = 2³ × 3²
+            drawFactorCard('2³', c2, row2Y, false, false);
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 15px Pretendard, sans-serif';
+            ctx.fillStyle = '#64748b';
+            ctx.fillText('×', (c2 + c3) / 2, row2Y);
+            ctx.restore();
+            drawFactorCard('3²', c3, row2Y, true, false);
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '12px Pretendard, sans-serif';
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillText('(없음)', c5, row2Y);
+            ctx.restore();
+
+            // 3행: 90 = 2 × 3² × 5
+            drawFactorCard('2', c2, row3Y, true, false);
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 15px Pretendard, sans-serif';
+            ctx.fillStyle = '#64748b';
+            ctx.fillText('×', (c2 + c3) / 2, row3Y);
+            ctx.restore();
+            drawFactorCard('3²', c3, row3Y, true, false);
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 15px Pretendard, sans-serif';
+            ctx.fillStyle = '#64748b';
+            ctx.fillText('×', (c3 + c5) / 2, row3Y);
+            ctx.restore();
+            drawFactorCard('5', c5, row3Y, false, true);
+
+            // 가로선
+            ctx.save();
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(colLabelX - 35, 152);
+            ctx.lineTo(c5 + 45, 152);
+            ctx.stroke();
+            ctx.restore();
+
+            // 아래 트레이
+            const trayW = Math.min(w - 36, 500);
+            const trayX = (w - trayW) / 2;
+            const trayY = 168;
+
+            ctx.save();
+            ctx.fillStyle = '#ecfdf5';
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 2;
+            ctx.shadowColor = 'rgba(16, 185, 129, 0.35)';
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(trayX, trayY, trayW, 44, 10);
+            else ctx.rect(trayX, trayY, trayW, 44);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 16px Pretendard, sans-serif';
+            ctx.fillStyle = '#065f46';
+            ctx.fillText('👑 ⑵ 최대공약수 = 2 × 3² = 18', w / 2, trayY + 22);
+            ctx.restore();
+          }
+
+          // 툴팁
+          if (hoveredCol) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+            ctx.font = '12px Pretendard, sans-serif';
+            ctx.textAlign = 'center';
+            let tipText = '';
+            let tipX = w / 2;
+            if (hoveredCol === '1-2') {
+              tipText = '밑 2: 지수 2, 1, 1 중 가장 작은 2 선택';
+              tipX = w / 2 - 100;
+            } else if (hoveredCol === '1-3') {
+              tipText = '밑 3: 첫 번째 수에만 있으므로 제외';
+              tipX = w / 2 - 30;
+            } else if (hoveredCol === '1-5') {
+              tipText = '밑 5: 지수 1, 1, 2 중 가장 작은 5 선택';
+              tipX = w / 2 + 40;
+            } else if (hoveredCol === '1-7') {
+              tipText = '밑 7: 두 번째 수에만 있으므로 제외';
+              tipX = w / 2 + 110;
+            } else if (hoveredCol === '2-2') {
+              tipText = '밑 2: 지수 1, 3, 1 중 가장 작은 2 선택';
+              tipX = w / 2 - 70;
+            } else if (hoveredCol === '2-3') {
+              tipText = '밑 3: 지수 3, 2, 2 중 가장 작은 3² 선택';
+              tipX = w / 2 + 15;
+            } else if (hoveredCol === '2-5') {
+              tipText = '밑 5: 90에만 있고 54, 72에 없으므로 제외';
+              tipX = w / 2 + 100;
+            }
+
+            const tipW = ctx.measureText(tipText).width + 16;
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(tipX - tipW / 2, 2, tipW, 24, 6);
+            else ctx.rect(tipX - tipW / 2, 2, tipW, 24);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(tipText, tipX, 14);
+            ctx.restore();
+          }
+        }
+
+        // 하단 핵심 정리 박스 (y: 240 ~ 358)
+        const sumW = Math.min(w - 36, 510);
+        const sumX = (w - sumW) / 2;
+        const sumY = 240;
+
+        ctx.save();
+        ctx.fillStyle = (currentMode === 4) ? '#fef3c7' : '#f8fafc';
+        ctx.strokeStyle = (currentMode === 4) ? '#f59e0b' : '#cbd5e1';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(sumX, sumY, sumW, 118, 10);
+        else ctx.rect(sumX, sumY, sumW, 118);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('📌 세 수의 최대공약수 구하는 핵심 원리 (p.19 문제 3):', sumX + 16, sumY + 22);
+
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillStyle = (currentMode === 1 || currentMode === 4) ? '#0284c7' : '#475569';
+        ctx.fillText('⑴ 2²×3×5, 2×5×7, 2×5² ➔ 세 수 공통 소인수 중 작은 거듭제곱: 2 × 5 = 10', sumX + 16, sumY + 46);
+
+        ctx.fillStyle = (currentMode === 2 || currentMode === 4) ? '#059669' : '#475569';
+        ctx.fillText('⑵ 54 = 2×3³, 72 = 2³×3², 90 = 2×3²×5 ➔ 세 수 공통 소인수 중 작은 거듭제곱: 2 × 3² = 18', sumX + 16, sumY + 68);
+
+        ctx.font = 'bold 12px Pretendard, sans-serif';
+        ctx.fillStyle = '#d97706';
+        ctx.fillText('💡 주의: 세 수 중 어느 하나라도 없는 소인수(⑴의 3, 7 및 ⑵의 5)는 반드시 제외합니다!', sumX + 16, sumY + 94);
+        ctx.restore();
+
+        // 콘페티 애니메이션
+        if (particles.length > 0) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.22;
+            p.rot += p.vRot;
+            p.life -= p.decay;
+
+            if (p.life <= 0) {
+              particles.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+            ctx.restore();
+          }
+        }
+
+        container._animId_3_8 = requestAnimationFrame(render);
+      }
+
+      render();
+    }
+
     function renderForm_3_8(box) {
       box.innerHTML = `
-        <div class="card">
+        <div class="card" style="padding:16px 20px;">
           <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
             ✏️ [문제 3] 세 수의 최대공약수 구하기 (p.19)
           </div>
-          <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:8px;">
-            ⑴ 2² × 3 × 5, 2 × 5 × 7, 2 × 5² 의 최대공약수:
+          <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
+            소인수분해를 이용하여 다음 세 수의 최대공약수를 각각 구하시오.
           </p>
-          <input type="text" id="ans-3-8-1" class="input-text" placeholder="수 입력" style="width:100%; margin-bottom:12px;">
-          <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:8px;">
-            ⑵ 54, 72, 90 의 최대공약수:
-          </p>
-          <input type="text" id="ans-3-8-2" class="input-text" placeholder="수 입력" style="width:100%; margin-bottom:14px;">
-          <button class="btn btn-primary" onclick="checkStep_3_8()" style="width:100%;">정답 확인 및 채점</button>
+
+          <!-- 거듭제곱 퀵 입력 바 (Zero-Spoiler 엄수: 정답 수치 10, 18 배제) -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; background:#f1f5f9; padding:8px 10px; border-radius:8px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; line-height:28px;">기호 입력:</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-3-8" data-char="^" style="font-weight:700; min-width:32px;">^</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-3-8" data-char="²" style="font-weight:700; min-width:32px;">²</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-3-8" data-char="³" style="font-weight:700; min-width:32px;">³</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-3-8" data-char="×" style="font-weight:700; min-width:32px;">×</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-3-8" data-char="*" style="font-weight:700; min-width:32px;">*</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-3-8" data-char="·" style="font-weight:700; min-width:32px;">·</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-clear-3-8" style="font-weight:700;">초기화</button>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
+            <!-- ⑴ 2² × 3 × 5, 2 × 5 × 7, 2 × 5² -->
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+                ⑴ 2² × 3 × 5,  2 × 5 × 7,  2 × 5² 의 최대공약수:
+              </label>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:0.88rem; font-weight:600; color:#475569;">최대공약수:</span>
+                <input type="text" id="ans-3-8-1" class="form-control" style="width:160px;" placeholder="수 또는 식 입력" autocomplete="off">
+              </div>
+            </div>
+
+            <!-- ⑵ 54, 72, 90 -->
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+                ⑵ 54,  72,  90 의 최대공약수:
+              </label>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:0.88rem; font-weight:600; color:#475569;">최대공약수:</span>
+                <input type="text" id="ans-3-8-2" class="form-control" style="width:160px;" placeholder="수 또는 식 입력" autocomplete="off">
+              </div>
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="checkStep_3_8()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
-      const input = box.querySelector('#ans-3-8-2');
-      if (input) input.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkStep_3_8(); });
+
+      let lastFocusedInput = box.querySelector('#ans-3-8-1');
+      const inputs = box.querySelectorAll('input[type="text"]');
+      inputs.forEach(input => {
+        input.addEventListener('focus', () => {
+          lastFocusedInput = input;
+        });
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') checkStep_3_8();
+        });
+      });
+
+      box.querySelectorAll('.btn-pow-insert-3-8').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const char = btn.getAttribute('data-char');
+          if (lastFocusedInput) {
+            lastFocusedInput.value += char;
+            lastFocusedInput.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      });
+
+      const clearBtn = box.querySelector('.btn-pow-clear-3-8');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          if (lastFocusedInput) {
+            lastFocusedInput.value = '';
+            lastFocusedInput.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      }
     }
+
     function checkStep_3_8() {
-      const v1 = document.getElementById('ans-3-8-1')?.value?.trim();
-      const v2 = document.getElementById('ans-3-8-2')?.value?.trim();
-      if ((v1 === '10' || v1 === '2*5') && (v2 === '18' || v2 === '2*3^2')) {
-        completeSubStep('3-8', '🎉 <b>정답입니다!</b> ⑴ 10, ⑵ 18 입니다.');
+      const v1 = normTxt(document.getElementById('ans-3-8-1')?.value);
+      const v2 = normTxt(document.getElementById('ans-3-8-2')?.value);
+
+      // ⑴ 최대공약수: 10 또는 2 * 5
+      const ok1 = (parseInt(v1, 10) === 10 ||
+                   comparePowerMaps(parsePowerProduct(v1), { 2: 1, 5: 1 }) ||
+                   v1 === '10' || v1 === '2*5' || v1 === '2×5' || v1 === '5*2' || v1 === '5×2');
+
+      // ⑵ 최대공약수: 18 또는 2 * 3^2
+      const ok2 = (parseInt(v2, 10) === 18 ||
+                   comparePowerMaps(parsePowerProduct(v2), { 2: 1, 3: 2 }) ||
+                   v2 === '18' || v2 === '2*3^2' || v2 === '2*3²' || v2 === '2×3²' || v2 === '2*9' || v2 === '2×9');
+
+      if (ok1 && ok2) {
+        if (window._step3_8_triggerSuccess) {
+          window._step3_8_triggerSuccess();
+        }
+        completeSubStep('3-8', '🎉 <b>정답입니다!</b><br>• ⑴ 2²×3×5, 2×5×7, 2×5² ➔ 세 수의 공통 소인수 중 작은 거듭제곱: 2 × 5 = <b>10</b><br>• ⑵ 54 = 2×3³, 72 = 2³×3², 90 = 2×3²×5 ➔ 세 수의 공통 소인수 중 작은 거듭제곱: 2 × 3² = <b>18</b>');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 세 수의 공통 소인수를 정확히 찾아보세요.');
+        if (!ok1 && ok2) {
+          showFeedback(false, '❌ <b>⑴을 다시 확인해 보세요.</b> 세 수 모두에 공통인 소인수는 2와 5입니다. 가장 작은 지수를 택해 2 × 5의 값을 계산해 보세요. (3과 7은 제외)');
+        } else if (ok1 && !ok2) {
+          showFeedback(false, '❌ <b>⑵를 다시 확인해 보세요.</b> 54 = 2×3³, 72 = 2³×3², 90 = 2×3²×5로 소인수분해한 후 세 수의 공통인 소인수 2와 3²을 곱해 보세요. (5는 제외)');
+        } else {
+          showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 세 수 모두에 공통인 소인수 중 지수가 가장 작은 것을 택해 곱해 보세요.');
+        }
       }
     }
 
