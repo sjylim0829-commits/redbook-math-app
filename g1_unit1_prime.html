@@ -1742,6 +1742,7 @@ function drawCanvas_0_1(container) {
   canvas.style.width = '100%';
   canvas.style.height = '100%';
   canvas.style.display = 'block';
+  canvas.style.touchAction = 'none';
   container.appendChild(canvas);
 
   const ctx = canvas.getContext('2d');
@@ -1749,28 +1750,178 @@ function drawCanvas_0_1(container) {
   let t = 0;
 
   const nodes = [
-    { id: 'elem', title: '초등 5~6학년', concept: '약수와 배수', desc: '나누어떨어지는 수의 규칙과 배수 원리 탐구', x: 0.16, y: 0.32, color: '#0284c7' },
-    { id: 'g1', title: '중1 (현재 단원)', concept: '소인수분해', desc: '자연수를 소수들의 곱으로 분해하는 기본 벽돌 탐구', x: 0.38, y: 0.68, color: '#4f46e5', isTarget: true },
-    { id: 'g2', title: '중2 연계', concept: '유리수와 순환소수', desc: '분수를 소수로 나타낼 때 유한소수와 순환소수 판별', x: 0.62, y: 0.32, color: '#059669' },
-    { id: 'g3', title: '중3 연계', concept: '제곱근과 실수', desc: '제곱하여 a가 되는 수와 무리수의 도입', x: 0.84, y: 0.68, color: '#d97706' }
+    {
+      id: 'elem',
+      title: '초등 5~6학년',
+      grade: '초등 연계',
+      concept: '약수와 배수',
+      desc: '자연수의 나눗셈과 배수 관계, 공약수와 공배수의 기초 원리 탐구',
+      mathMeaning: '약수를 통해 수를 쪼개고, 배수를 통해 규칙적으로 확장하는 수의 기본 규칙',
+      relX: 0.16,
+      relY: 0.35,
+      radius: 38,
+      color: '#0284c7',
+      isTarget: false,
+      isHovered: false
+    },
+    {
+      id: 'g1',
+      title: '중1 (현재 단원)',
+      grade: '중1 핵심',
+      concept: '소인수분해',
+      desc: '자연수를 오직 소수들의 곱으로 나타내어 수의 본질을 분석',
+      mathMeaning: '물질의 원자처럼 자연수를 이루는 근본 소수 벽돌을 규명하는 핵심 관문',
+      relX: 0.38,
+      relY: 0.65,
+      radius: 42,
+      color: '#4f46e5',
+      isTarget: true,
+      isHovered: false
+    },
+    {
+      id: 'g2',
+      title: '중2 연계',
+      grade: '중2 심화',
+      concept: '유리수와 순환소수',
+      desc: '분수를 소수로 나타낼 때 유한소수와 순환소수 판별',
+      mathMeaning: '기약분수 분모를 소인수분해하여 2나 5뿐인지 확인하는 판별 기준 활용',
+      relX: 0.62,
+      relY: 0.35,
+      radius: 38,
+      color: '#059669',
+      isTarget: false,
+      isHovered: false
+    },
+    {
+      id: 'g3',
+      title: '중3 연계',
+      grade: '중3 확장',
+      concept: '제곱근과 실수',
+      desc: '제곱하여 a가 되는 수와 무리수의 도입',
+      mathMeaning: '소인수분해의 지수가 짝수가 되도록 맞추어 근호(√) 밖으로 탈출시키는 원리',
+      relX: 0.84,
+      relY: 0.65,
+      radius: 38,
+      color: '#d97706',
+      isTarget: false,
+      isHovered: false
+    }
   ];
 
   let selectedNode = nodes[1];
 
+  function initNodePositions() {
+    const w = canvas.width;
+    const h = canvas.height;
+    nodes.forEach(n => {
+      n.x = n.relX * w;
+      n.y = n.relY * h;
+    });
+  }
+  initNodePositions();
+
   function resize() {
     if (!container || !canvas) return;
-    canvas.width = container.clientWidth || 560;
-    canvas.height = container.clientHeight || 460;
+    const newW = container.clientWidth || 560;
+    const newH = container.clientHeight || 460;
+    if (canvas.width !== newW || canvas.height !== newH) {
+      canvas.width = newW;
+      canvas.height = newH;
+      initNodePositions();
+    }
   }
   window.addEventListener('resize', resize);
 
+  let isDragging = false;
+  let dragNode = null;
+  let dragOffsetX = 0;
+  let dragOffsetY = 0;
+  let hasMoved = false;
+
+  function getCanvasPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / (rect.width || 1);
+    const scaleY = canvas.height / (rect.height || 1);
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY
+    };
+  }
+
+  function hitTestNode(pos) {
+    for (let i = nodes.length - 1; i >= 0; i--) {
+      const n = nodes[i];
+      const dist = Math.hypot(pos.x - n.x, pos.y - n.y);
+      if (dist <= n.radius + 6) return n;
+    }
+    return null;
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    try { canvas.setPointerCapture(e.pointerId); } catch(err) {}
+    const pos = getCanvasPos(e);
+    const n = hitTestNode(pos);
+    if (n) {
+      isDragging = true;
+      dragNode = n;
+      dragOffsetX = n.x - pos.x;
+      dragOffsetY = n.y - pos.y;
+      hasMoved = false;
+      selectedNode = n;
+      if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(580, 'sine', 0.08);
+    }
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    const pos = getCanvasPos(e);
+    if (isDragging && dragNode) {
+      const newX = pos.x + dragOffsetX;
+      const newY = pos.y + dragOffsetY;
+      if (Math.hypot(newX - dragNode.x, newY - dragNode.y) > 3) hasMoved = true;
+      dragNode.x = Math.max(50, Math.min(canvas.width - 50, newX));
+      dragNode.y = Math.max(65, Math.min(canvas.height - 110, newY));
+      dragNode.relX = dragNode.x / canvas.width;
+      dragNode.relY = dragNode.y / canvas.height;
+      canvas.style.cursor = 'grabbing';
+    } else {
+      const n = hitTestNode(pos);
+      nodes.forEach(node => node.isHovered = (node === n));
+      canvas.style.cursor = n ? 'grab' : 'default';
+    }
+  });
+
+  function handlePointerUp(e) {
+    if (isDragging && dragNode) {
+      if (!hasMoved) {
+        selectedNode = dragNode;
+      }
+      isDragging = false;
+      dragNode = null;
+      canvas.style.cursor = 'default';
+    }
+    try {
+      if (canvas.hasPointerCapture(e.pointerId)) {
+        canvas.releasePointerCapture(e.pointerId);
+      }
+    } catch(err) {}
+  }
+
+  canvas.addEventListener('pointerup', handlePointerUp);
+  canvas.addEventListener('pointercancel', handlePointerUp);
+
   function draw() {
+    if (!container.isConnected || !container.contains(canvas)) {
+      if (animId) cancelAnimationFrame(animId);
+      window.removeEventListener('resize', resize);
+      return;
+    }
+
     t += 0.025;
     const w = canvas.width;
     const h = canvas.height;
     ctx.clearRect(0, 0, w, h);
 
-    // Background Grid
+    // Subtle background grid
     ctx.strokeStyle = '#f1f5f9';
     ctx.lineWidth = 1;
     for (let x = 0; x < w; x += 30) {
@@ -1786,122 +1937,158 @@ function drawCanvas_0_1(container) {
       ctx.stroke();
     }
 
-    // Connect Lines (Bezier Curves)
+    // Top Header Badge & Title
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+
+    // Badge
+    ctx.fillStyle = '#4f46e5';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(w / 2 - 75, 10, 150, 20, 10);
+    else ctx.rect(w / 2 - 75, 10, 150, 20);
+    ctx.fill();
+    ctx.font = 'bold 11px Pretendard, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('수학 계통도 (Curriculum Map)', w / 2, 14);
+
+    // Title
+    ctx.font = '800 17px Pretendard, sans-serif';
+    ctx.fillStyle = '#0f172a';
+    ctx.fillText('초등 ➔ 중1 ➔ 중2 ➔ 중3 수학의 유기적 확장', w / 2, 34);
+
+    // Dynamic Bezier Curves connecting nodes
     for (let i = 0; i < nodes.length - 1; i++) {
       const n1 = nodes[i];
       const n2 = nodes[i + 1];
-      const x1 = n1.x * w;
-      const y1 = n1.y * h;
-      const x2 = n2.x * w;
-      const y2 = n2.y * h;
+      const x1 = n1.x;
+      const y1 = n1.y;
+      const x2 = n2.x;
+      const y2 = n2.y;
 
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
       const cx1 = (x1 + x2) / 2;
       const cy1 = y1;
       const cx2 = (x1 + x2) / 2;
       const cy2 = y2;
+
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
       ctx.bezierCurveTo(cx1, cy1, cx2, cy2, x2, y2);
       ctx.strokeStyle = '#cbd5e1';
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 3.5;
       ctx.setLineDash([6, 6]);
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Flowing particle
-      const pRatio = (t * 0.4 + i * 0.33) % 1;
-      const px = Math.pow(1 - pRatio, 3) * x1 + 3 * Math.pow(1 - pRatio, 2) * pRatio * cx1 + 3 * (1 - pRatio) * Math.pow(pRatio, 2) * cx2 + Math.pow(pRatio, 3) * x2;
-      const py = Math.pow(1 - pRatio, 3) * y1 + 3 * Math.pow(1 - pRatio, 2) * pRatio * cy1 + 3 * (1 - pRatio) * Math.pow(pRatio, 2) * cy2 + Math.pow(pRatio, 3) * y2;
-      ctx.fillStyle = '#4f46e5';
-      ctx.beginPath();
-      ctx.arc(px, py, 4, 0, Math.PI * 2);
-      ctx.fill();
+      // Flowing energy quantum particles along curve
+      for (let pIdx = 0; pIdx < 2; pIdx++) {
+        const pRatio = (t * 0.45 + i * 0.33 + pIdx * 0.5) % 1;
+        const px = Math.pow(1 - pRatio, 3) * x1 + 3 * Math.pow(1 - pRatio, 2) * pRatio * cx1 + 3 * (1 - pRatio) * Math.pow(pRatio, 2) * cx2 + Math.pow(pRatio, 3) * x2;
+        const py = Math.pow(1 - pRatio, 3) * y1 + 3 * Math.pow(1 - pRatio, 2) * pRatio * cy1 + 3 * (1 - pRatio) * Math.pow(pRatio, 2) * cy2 + Math.pow(pRatio, 3) * y2;
+
+        ctx.beginPath();
+        ctx.arc(px, py, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = n2.color;
+        ctx.shadowColor = n2.color;
+        ctx.shadowBlur = 8;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
     }
 
     // Draw Nodes
     nodes.forEach(n => {
-      const nx = n.x * w;
-      const ny = n.y * h;
-      const isCur = n === selectedNode;
+      const isCur = (n === selectedNode);
+      const isHov = n.isHovered;
 
-      // Pulse ring for target node
+      // Pulse ring for target node (중1 소인수분해)
       if (n.isTarget) {
         const pulse = (Math.sin(t * 3) + 1) / 2;
-        ctx.strokeStyle = `rgba(79, 70, 229, ${0.2 + pulse * 0.4})`;
+        ctx.strokeStyle = `rgba(79, 70, 229, ${0.25 + pulse * 0.45})`;
         ctx.lineWidth = 4 + pulse * 6;
         ctx.beginPath();
-        ctx.arc(nx, ny, 44 + pulse * 6, 0, Math.PI * 2);
+        ctx.arc(n.x, n.y, n.radius + 8 + pulse * 6, 0, Math.PI * 2);
         ctx.stroke();
       }
 
-      // Node Circle
+      // Outer Glow when selected or hovered
+      if (isCur || isHov) {
+        ctx.shadowColor = n.color;
+        ctx.shadowBlur = 14;
+      } else {
+        ctx.shadowColor = 'rgba(0,0,0,0.08)';
+        ctx.shadowBlur = 6;
+        ctx.shadowOffsetY = 2;
+      }
+
+      // Node Circle Body
       ctx.fillStyle = isCur ? n.color : '#ffffff';
       ctx.strokeStyle = n.color;
-      ctx.lineWidth = isCur ? 4 : 3;
+      ctx.lineWidth = isCur ? 4 : (isHov ? 3.5 : 2.5);
       ctx.beginPath();
-      ctx.arc(nx, ny, 36, 0, Math.PI * 2);
+      ctx.arc(n.x, n.y, n.radius, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
 
-      // Node Label
+      // Drag indicator icon
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.font = 'bold 12px Pretendard, sans-serif';
-      ctx.fillStyle = isCur ? '#ffffff' : '#475569';
-      ctx.fillText(n.title, nx, ny - 10);
+      ctx.font = '9px sans-serif';
+      ctx.fillStyle = isCur ? 'rgba(255,255,255,0.7)' : '#94a3b8';
+      ctx.fillText('⠿', n.x, n.y - n.radius + 8);
 
-      ctx.font = 'bold 14px Pretendard, sans-serif';
+      // Node Labels
+      ctx.font = 'bold 11px Pretendard, sans-serif';
+      ctx.fillStyle = isCur ? '#ffffff' : '#64748b';
+      ctx.fillText(n.title, n.x, n.y - 6);
+
+      ctx.font = 'bold 13px Pretendard, sans-serif';
       ctx.fillStyle = isCur ? '#ffffff' : n.color;
-      ctx.fillText(n.concept, nx, ny + 10);
+      ctx.fillText(n.concept, n.x, n.y + 12);
     });
 
-    // Detail Card at bottom
+    // Detail / Mathematical significance Card at bottom
     if (selectedNode) {
-      const cardY = h - 90;
+      const cardH = 78;
+      const cardY = h - cardH - 12;
+      ctx.save();
       ctx.fillStyle = '#ffffff';
       ctx.strokeStyle = selectedNode.color;
       ctx.lineWidth = 2;
+      ctx.shadowColor = 'rgba(0,0,0,0.06)';
+      ctx.shadowBlur = 8;
       ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(30, cardY, w - 60, 75, 12) : ctx.rect(30, cardY, w - 60, 75);
+      if (ctx.roundRect) ctx.roundRect(25, cardY, w - 50, cardH, 10);
+      else ctx.rect(25, cardY, w - 50, cardH);
       ctx.fill();
       ctx.stroke();
+      ctx.restore();
 
       ctx.textAlign = 'left';
-      ctx.font = 'bold 14px Pretendard, sans-serif';
+      ctx.textBaseline = 'middle';
+      ctx.font = 'bold 13px Pretendard, sans-serif';
       ctx.fillStyle = selectedNode.color;
-      ctx.fillText(`📌 [${selectedNode.title}] ${selectedNode.concept}`, 45, cardY + 28);
+      ctx.fillText(`📌 [${selectedNode.title}] ${selectedNode.concept}`, 40, cardY + 20);
 
-      ctx.font = '13px Pretendard, sans-serif';
-      ctx.fillStyle = '#334155';
-      ctx.fillText(selectedNode.desc, 45, cardY + 52);
+      ctx.font = '12px Pretendard, sans-serif';
+      ctx.fillStyle = '#1e293b';
+      ctx.fillText(selectedNode.desc, 40, cardY + 40);
+
+      ctx.font = '11px Pretendard, sans-serif';
+      ctx.fillStyle = '#64748b';
+      ctx.fillText(`💡 연계 의의: ${selectedNode.mathMeaning}`, 40, cardY + 60);
     }
 
-    // Interactive guide
+    // Interactive guide at bottom
     ctx.textAlign = 'center';
-    ctx.font = '12px Pretendard, sans-serif';
+    ctx.textBaseline = 'bottom';
+    ctx.font = '10px Pretendard, sans-serif';
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText('💡 노드를 클릭하여 각 학년별 수학 계통도 연계 개념을 확인하세요.', w / 2, 25);
+    ctx.fillText('💡 노드를 드래그하여 자유롭게 배치하거나 클릭하여 학년별 연계 개념을 확인하세요.', w / 2, h - 2);
 
     animId = requestAnimationFrame(draw);
   }
-
-  canvas.addEventListener('click', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-    const w = canvas.width;
-    const h = canvas.height;
-
-    nodes.forEach(n => {
-      const nx = n.x * w;
-      const ny = n.y * h;
-      const dist = Math.hypot(mx - nx, my - ny);
-      if (dist <= 40) {
-        selectedNode = n;
-        if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(580, 'sine', 0.1);
-      }
-    });
-  });
 
   draw();
 }
@@ -1909,30 +2096,52 @@ function drawCanvas_0_1(container) {
 function renderForm_0_1(box) {
   box.innerHTML = `
     <div class="card">
-      <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
-        📖 대단원 계통도 탐구 및 빈칸 채우기
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+        <span style="background:#4f46e5; color:#ffffff; font-size:0.75rem; font-weight:800; padding:3px 9px; border-radius:6px;">수학 계통도 탐구</span>
+        <span style="font-weight:800; font-size:1.02rem; color:#1e293b;">초·중·고 연계 수학적 발전 (p.6)</span>
       </div>
-      <p style="font-size:0.9rem; color:#475569; line-height:1.6; margin-bottom:14px;">
-        초등학교 5~6학년에서 배운 <b>[약수와 배수]</b>는 중학교 1학년에서 자연수를 소수들의 곱으로 나타내는 <b>[ <span style="color:#4f46e5;">?</span> ]</b> 개념으로 확장됩니다.
-        이후 중2 유리수와 순환소수, 중3 제곱근으로 연결되는 중1 수학의 첫 관문인 이 단원의 명칭은 무엇일까요?
-      </p>
-      <div style="margin-bottom:12px;">
-        <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">용어 입력:</label>
-        <input type="text" id="ans-0-1" class="form-control" placeholder="용어 입력" autocomplete="off">
+
+      <div style="background:#f1f5f9; border-left:4px solid #4f46e5; border-radius:8px; padding:12px 14px; margin-bottom:14px;">
+        <div style="font-weight:700; font-size:0.88rem; color:#334155; margin-bottom:6px;">
+          📖 교과서 수학 계통도 (교과서 p.6)
+        </div>
+        <p style="font-size:0.88rem; color:#475569; line-height:1.65; margin:0;">
+          초등학교 5~6학년에서 배운 <b>[약수와 배수]</b>는 중학교 1학년에서 자연수를 소수들의 곱으로 나타내는 <b>[ <span style="color:#4f46e5;">?</span> ]</b> 개념으로 확장됩니다.
+          이후 중2 <b>[유리수와 순환소수]</b>, 중3 <b>[제곱근과 실수]</b>로 이어집니다.
+        </p>
       </div>
-      <button class="btn btn-primary" onclick="checkStep_0_1()">정답 확인 및 채점</button>
+
+      <div style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:10px; padding:14px; margin-bottom:16px;">
+        <div style="font-size:0.92rem; font-weight:700; color:#1e293b; line-height:1.6; margin-bottom:12px;">
+          🔍 <b>계통도 탐구 미션:</b><br>
+          초등학교의 약수와 배수를 바탕으로 자연수를 소수의 곱으로 분해하여 수의 본질을 밝히는 중1 첫 번째 단원의 이름은 무엇인가요?
+        </div>
+        <div style="margin-bottom:6px;">
+          <label for="input-0-1" style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">단원 이름 입력:</label>
+          <input type="text" id="input-0-1" class="form-control" placeholder="단원 이름 입력" autocomplete="off" onkeydown="if(event.key==='Enter') checkStep_0_1()">
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="checkStep_0_1()" style="width:100%; padding:10px 16px; font-size:0.92rem;">
+        정답 확인 및 채점
+      </button>
     </div>
   `;
 }
 
 function checkStep_0_1() {
-  const input = document.getElementById('ans-0-1');
+  const input = document.getElementById('input-0-1') || document.getElementById('ans-0-1');
   const val = input ? input.value : '';
   if (normTxt(val) === '소인수분해') {
-    completeSubStep('0-1', '🎉 <b>정답입니다!</b> 초등학교의 약수와 배수가 중1의 <b>소인수분해</b>로 연결되어 자연수의 심오한 기본 성질을 파헤치게 됩니다.');
+    state.completedSteps.add('0-1');
+    if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+    showFeedback(true, '🎉 <b>정답입니다!</b> 초등학교의 약수와 배수가 중1의 <b>소인수분해</b>로 연결되어 중2 순환소수, 중3 제곱근으로 발전하는 수학 계통도를 훌륭하게 파악했습니다.');
+    const nextBtn = document.getElementById('btn-next-step');
+    if (nextBtn) nextBtn.style.display = 'block';
+    if (typeof renderSubstepDropdown === 'function') renderSubstepDropdown();
   } else {
     if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-    showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 초등의 약수와 배수를 바탕으로 자연수를 소수의 곱으로 분해하는 5글자 단원명입니다.');
+    showFeedback(false, '❌ <b>다시 확인해 보세요.</b><br>💡 힌트: 초등의 약수와 배수를 바탕으로 자연수를 소수의 곱으로 분해하는 5글자 단원명입니다.');
   }
 }
 
