@@ -23969,37 +23969,784 @@ function checkStep_1_12() {
     }
 
     // 3-6 (p.19): 문제 2: 두 수의 최대공약수 구하기
-    function drawCanvas_3_6(container) { createDefaultCanvas_3(container, '🎨 [3-6] 두 수의 최대공약수 계산기'); }
+    function drawCanvas_3_6(container) {
+      if (container._animId_3_6) {
+        cancelAnimationFrame(container._animId_3_6);
+        container._animId_3_6 = null;
+      }
+      container.innerHTML = '';
+
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; height:100%; box-sizing:border-box;">
+          <!-- 상단 컨트롤러 및 상태 안내 바 -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+            <div id="badge-3-6" style="font-size:0.86rem; font-weight:700; color:#1e293b; background:#f1f5f9; padding:6px 14px; border-radius:20px; border:1px solid #cbd5e1; flex:1; min-width:240px;">
+              버튼을 클릭하여 ⑴과 ⑵ 두 문제의 소인수분해와 최대공약수 합성 과정을 확인해 보세요!
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button id="btn-prob1-3-6" class="btn btn-sm btn-outline-primary" style="font-weight:700;">⑴ 2²×5² & 2²×5×7</button>
+              <button id="btn-prob2-3-6" class="btn btn-sm btn-outline-primary" style="font-weight:700;">⑵ 56 & 140</button>
+              <button id="btn-ladder-3-6" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">📐 L자 나눗셈 비교</button>
+              <button id="btn-all-3-6" class="btn btn-sm btn-warning" style="font-weight:800; color:#1e293b;">⚡ 전체 동시 합성</button>
+              <button id="btn-reset-3-6" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">⟲ 초기화</button>
+            </div>
+          </div>
+          <!-- Canvas 렌더링 영역 -->
+          <div style="flex:1; min-height:370px; position:relative;">
+            <canvas id="canvas-3-6" style="width:100%; height:100%; display:block; border-radius:12px; background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); border:1px solid #e2e8f0;"></canvas>
+          </div>
+        </div>
+      `;
+
+      const canvas = container.querySelector('#canvas-3-6');
+      const badgeStatus = container.querySelector('#badge-3-6');
+      const btnProb1 = container.querySelector('#btn-prob1-3-6');
+      const btnProb2 = container.querySelector('#btn-prob2-3-6');
+      const btnLadder = container.querySelector('#btn-ladder-3-6');
+      const btnAll = container.querySelector('#btn-all-3-6');
+      const btnReset = container.querySelector('#btn-reset-3-6');
+
+      const ctx = canvas.getContext('2d');
+      let w = 560, h = 400;
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        w = rect.width || 560;
+        h = rect.height || 400;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+
+      const ro = new ResizeObserver(() => {
+        resize();
+      });
+      ro.observe(canvas);
+
+      // 모드: 0: 초기, 1: 문제 ⑴ (2²×5² & 2²×5×7), 2: 문제 ⑵ (56 & 140), 3: L자 나눗셈, 4: 전체 동시 합성
+      let currentMode = 0;
+      let particles = [];
+      let hoveredCol = null;
+
+      function spawnConfetti(count = 55) {
+        const colors = ['#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#f43f5e'];
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: w / 2 + (Math.random() - 0.5) * 120,
+            y: 190 + (Math.random() - 0.5) * 40,
+            vx: (Math.random() - 0.5) * 11,
+            vy: (Math.random() - 0.85) * 10 - 2,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.01
+          });
+        }
+      }
+
+      function setMode(mode) {
+        currentMode = mode;
+
+        if (btnProb1) btnProb1.className = `btn btn-sm ${mode === 1 ? 'btn-primary' : 'btn-outline-primary'}`;
+        if (btnProb2) btnProb2.className = `btn btn-sm ${mode === 2 ? 'btn-primary' : 'btn-outline-primary'}`;
+        if (btnLadder) btnLadder.className = `btn btn-sm ${mode === 3 ? 'btn-info text-white' : 'btn-outline-secondary'}`;
+        if (btnAll) btnAll.className = `btn btn-sm ${mode === 4 ? 'btn-warning text-dark font-weight-bold' : 'btn-warning text-dark'}`;
+
+        if (badgeStatus) {
+          if (mode === 0) {
+            badgeStatus.innerText = '버튼을 클릭하여 ⑴과 ⑵ 두 문제의 소인수분해와 최대공약수 합성 과정을 확인해 보세요!';
+          } else if (mode === 1) {
+            badgeStatus.innerHTML = '⑴ <b>2² × 5² & 2² × 5 × 7</b>: 공통 소인수 중 작은 거듭제곱 <b>2²</b>과 <b>5</b>를 곱함 ➔ <b>2² × 5 = 20 👑</b>';
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          } else if (mode === 2) {
+            badgeStatus.innerHTML = '⑵ <b>56 & 140</b>: 56 = 2³ × 7, 140 = 2² × 5 × 7 ➔ 공통인 <b>2²</b>과 <b>7</b>을 곱함 ➔ <b>2² × 7 = 28 👑</b>';
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          } else if (mode === 3) {
+            badgeStatus.innerHTML = '📐 <b>L자 나눗셈 비교</b>: 56과 140을 공약수 2, 2, 7로 연속 나누어 최대공약수 <b>2 × 2 × 7 = 28</b> 도출!';
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          } else if (mode === 4) {
+            badgeStatus.innerHTML = '👑 <b>전체 합성 완료!</b> ⑴ 최대공약수 = <b>20</b>, ⑵ 최대공약수 = <b>28</b>';
+            spawnConfetti(55);
+            if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+          }
+        }
+      }
+
+      window._step3_6_triggerSuccess = function() {
+        setMode(4);
+        setTimeout(() => spawnConfetti(60), 400);
+      };
+
+      btnProb1?.addEventListener('click', () => setMode(1));
+      btnProb2?.addEventListener('click', () => setMode(2));
+      btnLadder?.addEventListener('click', () => setMode(3));
+      btnAll?.addEventListener('click', () => setMode(4));
+      btnReset?.addEventListener('click', () => setMode(0));
+
+      // 마우스 호버 감지
+      canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        hoveredCol = null;
+        if (currentMode === 1 && my >= 45 && my <= 165) {
+          if (Math.abs(mx - (w / 2 - 70)) < 40) hoveredCol = '1-2';
+          else if (Math.abs(mx - (w / 2 + 15)) < 40) hoveredCol = '1-5';
+          else if (Math.abs(mx - (w / 2 + 100)) < 40) hoveredCol = '1-7';
+        } else if (currentMode === 2 && my >= 45 && my <= 165) {
+          if (Math.abs(mx - (w / 2 - 70)) < 40) hoveredCol = '2-2';
+          else if (Math.abs(mx - (w / 2 + 15)) < 40) hoveredCol = '2-5';
+          else if (Math.abs(mx - (w / 2 + 100)) < 40) hoveredCol = '2-7';
+        }
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        hoveredCol = null;
+      });
+
+      // 카드 그리기 헬퍼
+      function drawFactorCard(val, x, y, isSelected = false, isDim = false) {
+        const cw = 54, ch = 38;
+        ctx.save();
+        if (isSelected) {
+          ctx.fillStyle = '#ecfdf5';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2.5;
+          ctx.shadowColor = 'rgba(16, 185, 129, 0.4)';
+          ctx.shadowBlur = 10;
+        } else if (isDim) {
+          ctx.fillStyle = '#f1f5f9';
+          ctx.strokeStyle = '#e2e8f0';
+          ctx.lineWidth = 1;
+        } else {
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.lineWidth = 1.5;
+        }
+
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(x - cw / 2, y - ch / 2, cw, ch, 8);
+        else ctx.rect(x - cw / 2, y - ch / 2, cw, ch);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 16px Pretendard, sans-serif';
+        ctx.fillStyle = isDim ? '#94a3b8' : (isSelected ? '#059669' : '#1e293b');
+        ctx.fillText(val, x, y);
+        ctx.restore();
+      }
+
+      // 렌더링 루프
+      function render() {
+        ctx.clearRect(0, 0, w, h);
+
+        if (currentMode === 3) {
+          // -------------------------------------------------------------
+          // 모드 3: L자 나눗셈 비교 화면 (56 & 140)
+          // -------------------------------------------------------------
+          ctx.save();
+          const padW = Math.min(w - 36, 500);
+          const padX = (w - padW) / 2;
+          const padY = 20;
+          const padH = 220;
+
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#0284c7';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(padX, padY, padW, padH, 10);
+          else ctx.rect(padX, padY, padW, padH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.fillStyle = '#0369a1';
+          ctx.fillText('📐 [문제 ⑵] 56과 140의 초등 연속 나눗셈(L자) 비교', w / 2, padY + 28);
+
+          const lx = w / 2 - 70;
+          let ly = padY + 65;
+
+          ctx.font = '15px monospace';
+          ctx.textAlign = 'right';
+          ctx.fillStyle = '#ef4444';
+          ctx.fillText('2 ) ', lx, ly);
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText(' 56    140', lx + 120, ly);
+
+          // 가로선 1
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(lx - 25, ly + 8);
+          ctx.lineTo(lx + 130, ly + 8);
+          ctx.stroke();
+
+          ly += 30;
+          ctx.fillStyle = '#ef4444';
+          ctx.fillText('2 ) ', lx, ly);
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText(' 28     70', lx + 120, ly);
+
+          // 가로선 2
+          ctx.beginPath();
+          ctx.moveTo(lx - 25, ly + 8);
+          ctx.lineTo(lx + 130, ly + 8);
+          ctx.stroke();
+
+          ly += 30;
+          ctx.fillStyle = '#ef4444';
+          ctx.fillText('7 ) ', lx, ly);
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText(' 14     35', lx + 120, ly);
+
+          // 가로선 3
+          ctx.beginPath();
+          ctx.moveTo(lx - 25, ly + 8);
+          ctx.lineTo(lx + 130, ly + 8);
+          ctx.stroke();
+
+          ly += 30;
+          ctx.fillStyle = '#059669';
+          ctx.fillText('  2      5', lx + 120, ly);
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillText('(서로소)', lx + 190, ly);
+
+          // L자 결론
+          ly += 34;
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.fillStyle = '#1d4ed8';
+          ctx.fillText('왼쪽 공약수들의 곱: 2 × 2 × 7 = 2² × 7 = 28 ➔ 소인수분해 원리와 완벽 일치!', w / 2, ly);
+          ctx.restore();
+        } else if (currentMode === 4) {
+          // -------------------------------------------------------------
+          // 모드 4: 전체 동시 합성 (좌: ⑴ 20, 우: ⑵ 28)
+          // -------------------------------------------------------------
+          const halfW = (w - 48) / 2;
+          const cardY = 30;
+          const cardH = 205;
+
+          // 좌측 카드: ⑴ 20
+          ctx.save();
+          ctx.fillStyle = '#ecfdf5';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2;
+          ctx.shadowColor = 'rgba(16, 185, 129, 0.3)';
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(18, cardY, halfW, cardH, 10);
+          else ctx.rect(18, cardY, halfW, cardH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.fillStyle = '#065f46';
+          ctx.fillText('⑴ 2² × 5², 2² × 5 × 7', 18 + halfW / 2, cardY + 28);
+
+          ctx.font = '13px Pretendard, sans-serif';
+          ctx.fillStyle = '#334155';
+          ctx.fillText('• 공통 소인수 중 작은 지수: 2², 5', 18 + halfW / 2, cardY + 65);
+          ctx.fillText('• 7은 공통 소인수 아님(제외)', 18 + halfW / 2, cardY + 90);
+
+          // 뱃지
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(32, cardY + 120, halfW - 28, 48, 8);
+          else ctx.rect(32, cardY + 120, halfW - 28, 48);
+          ctx.fill();
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          ctx.font = 'bold 16px Pretendard, sans-serif';
+          ctx.fillStyle = '#059669';
+          ctx.fillText('최대공약수 = 2² × 5 = 20 👑', 18 + halfW / 2, cardY + 150);
+          ctx.restore();
+
+          // 우측 카드: ⑵ 28
+          ctx.save();
+          const rX = 18 + halfW + 12;
+          ctx.fillStyle = '#ecfdf5';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2;
+          ctx.shadowColor = 'rgba(16, 185, 129, 0.3)';
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(rX, cardY, halfW, cardH, 10);
+          else ctx.rect(rX, cardY, halfW, cardH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.fillStyle = '#065f46';
+          ctx.fillText('⑵ 56, 140', rX + halfW / 2, cardY + 28);
+
+          ctx.font = '13px Pretendard, sans-serif';
+          ctx.fillStyle = '#334155';
+          ctx.fillText('• 56 = 2³ × 7,  140 = 2² × 5 × 7', rX + halfW / 2, cardY + 65);
+          ctx.fillText('• 공통 소인수 중 작은 지수: 2², 7', rX + halfW / 2, cardY + 90);
+
+          // 뱃지
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(rX + 14, cardY + 120, halfW - 28, 48, 8);
+          else ctx.rect(rX + 14, cardY + 120, halfW - 28, 48);
+          ctx.fill();
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          ctx.font = 'bold 16px Pretendard, sans-serif';
+          ctx.fillStyle = '#059669';
+          ctx.fillText('최대공약수 = 2² × 7 = 28 👑', rX + halfW / 2, cardY + 150);
+          ctx.restore();
+        } else {
+          // -------------------------------------------------------------
+          // 모드 1 또는 모드 2 (세로 정렬 테이블)
+          // -------------------------------------------------------------
+          const row1Y = 70;
+          const row2Y = 125;
+          const colLabelX = w / 2 - 175;
+          const col2X = w / 2 - 70;
+          const col5X = w / 2 + 15;
+          const col7X = w / 2 + 100;
+
+          if (currentMode === 0) {
+            // 초기 화면
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 15px Pretendard, sans-serif';
+            ctx.fillStyle = '#64748b';
+            ctx.fillText('상단 버튼을 눌러 ⑴ 또는 ⑵ 문제의 세로 정렬 분석을 확인하세요.', w / 2, 100);
+            ctx.font = '13px Pretendard, sans-serif';
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText('각 소인수별로 지수를 비교하여 작은 쪽을 택해 곱하는 원리를 배웁니다.', w / 2, 126);
+            ctx.restore();
+          } else if (currentMode === 1) {
+            // 문제 ⑴: 2² × 5²,  2² × 5 × 7
+            // 열 헤더
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 13px Pretendard, sans-serif';
+            ctx.fillStyle = '#0284c7';
+            ctx.fillText('밑 2의 열', col2X, 35);
+            ctx.fillStyle = '#059669';
+            ctx.fillText('밑 5의 열', col5X, 35);
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText('밑 7의 열', col7X, 35);
+            ctx.restore();
+
+            // 좌측 라벨
+            ctx.save();
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 15px Pretendard, sans-serif';
+            ctx.fillStyle = '#1e293b';
+            ctx.fillText('첫 번째 수 = ', colLabelX, row1Y);
+            ctx.fillText('두 번째 수 = ', colLabelX, row2Y);
+            ctx.restore();
+
+            // 1행: 2² × 5²
+            drawFactorCard('2²', col2X, row1Y, true, false);
+
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 16px Pretendard, sans-serif';
+            ctx.fillStyle = '#64748b';
+            ctx.fillText('×', (col2X + col5X) / 2, row1Y);
+            ctx.restore();
+
+            drawFactorCard('5²', col5X, row1Y, false, false);
+
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '12px Pretendard, sans-serif';
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillText('(없음)', col7X, row1Y);
+            ctx.restore();
+
+            // 2행: 2² × 5 × 7
+            drawFactorCard('2²', col2X, row2Y, true, false);
+
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 16px Pretendard, sans-serif';
+            ctx.fillStyle = '#64748b';
+            ctx.fillText('×', (col2X + col5X) / 2, row2Y);
+            ctx.restore();
+
+            drawFactorCard('5', col5X, row2Y, true, false);
+
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 16px Pretendard, sans-serif';
+            ctx.fillStyle = '#64748b';
+            ctx.fillText('×', (col5X + col7X) / 2, row2Y);
+            ctx.restore();
+
+            drawFactorCard('7', col7X, row2Y, false, true);
+
+            // 가로선
+            ctx.save();
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(colLabelX - 50, 155);
+            ctx.lineTo(col7X + 45, 155);
+            ctx.stroke();
+            ctx.restore();
+
+            // 아래 하강 결합 트레이
+            const trayW = Math.min(w - 36, 500);
+            const trayX = (w - trayW) / 2;
+            const trayY = 175;
+
+            ctx.save();
+            ctx.fillStyle = '#ecfdf5';
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 2;
+            ctx.shadowColor = 'rgba(16, 185, 129, 0.35)';
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(trayX, trayY, trayW, 44, 10);
+            else ctx.rect(trayX, trayY, trayW, 44);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 16px Pretendard, sans-serif';
+            ctx.fillStyle = '#065f46';
+            ctx.fillText('👑 ⑴ 최대공약수 = 2² × 5 = 20', w / 2, trayY + 22);
+            ctx.restore();
+          } else if (currentMode === 2) {
+            // 문제 ⑵: 56, 140
+            // 열 헤더
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 13px Pretendard, sans-serif';
+            ctx.fillStyle = '#0284c7';
+            ctx.fillText('밑 2의 열', col2X, 35);
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText('밑 5의 열', col5X, 35);
+            ctx.fillStyle = '#059669';
+            ctx.fillText('밑 7의 열', col7X, 35);
+            ctx.restore();
+
+            // 좌측 라벨: 56 =, 140 =
+            ctx.save();
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 18px Pretendard, sans-serif';
+            ctx.fillStyle = '#1e293b';
+            ctx.fillText('56 = ', colLabelX, row1Y);
+            ctx.fillText('140 = ', colLabelX, row2Y);
+            ctx.restore();
+
+            // 1행: 56 = 2³ × 7
+            drawFactorCard('2³', col2X, row1Y, false, false);
+
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '12px Pretendard, sans-serif';
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillText('(없음)', col5X, row1Y);
+            ctx.restore();
+
+            drawFactorCard('7', col7X, row1Y, true, false);
+
+            // 2행: 140 = 2² × 5 × 7
+            drawFactorCard('2²', col2X, row2Y, true, false);
+
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 16px Pretendard, sans-serif';
+            ctx.fillStyle = '#64748b';
+            ctx.fillText('×', (col2X + col5X) / 2, row2Y);
+            ctx.restore();
+
+            drawFactorCard('5', col5X, row2Y, false, true);
+
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 16px Pretendard, sans-serif';
+            ctx.fillStyle = '#64748b';
+            ctx.fillText('×', (col5X + col7X) / 2, row2Y);
+            ctx.restore();
+
+            drawFactorCard('7', col7X, row2Y, true, false);
+
+            // 가로선
+            ctx.save();
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(colLabelX - 50, 155);
+            ctx.lineTo(col7X + 45, 155);
+            ctx.stroke();
+            ctx.restore();
+
+            // 아래 하강 결합 트레이
+            const trayW = Math.min(w - 36, 500);
+            const trayX = (w - trayW) / 2;
+            const trayY = 175;
+
+            ctx.save();
+            ctx.fillStyle = '#ecfdf5';
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 2;
+            ctx.shadowColor = 'rgba(16, 185, 129, 0.35)';
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(trayX, trayY, trayW, 44, 10);
+            else ctx.rect(trayX, trayY, trayW, 44);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 16px Pretendard, sans-serif';
+            ctx.fillStyle = '#065f46';
+            ctx.fillText('👑 ⑵ 최대공약수 = 2² × 7 = 28', w / 2, trayY + 22);
+            ctx.restore();
+          }
+
+          // 호버 툴팁
+          if (hoveredCol) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+            ctx.font = '12px Pretendard, sans-serif';
+            ctx.textAlign = 'center';
+            let tipText = '';
+            let tipX = col2X;
+            if (hoveredCol === '1-2') {
+              tipText = '밑 2: 지수가 2로 같으므로 2² 선택';
+              tipX = col2X;
+            } else if (hoveredCol === '1-5') {
+              tipText = '밑 5: 지수 2와 1 중 작은 쪽인 5 선택';
+              tipX = col5X;
+            } else if (hoveredCol === '1-7') {
+              tipText = '밑 7: 한쪽에만 있으므로 공통 아님(제외)';
+              tipX = col7X;
+            } else if (hoveredCol === '2-2') {
+              tipText = '밑 2: 지수 3과 2 중 작은 쪽인 2² 선택';
+              tipX = col2X;
+            } else if (hoveredCol === '2-5') {
+              tipText = '밑 5: 140에만 있고 56에는 없으므로 제외';
+              tipX = col5X;
+            } else if (hoveredCol === '2-7') {
+              tipText = '밑 7: 지수가 1로 같으므로 7 선택';
+              tipX = col7X;
+            }
+
+            const tipW = ctx.measureText(tipText).width + 16;
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(tipX - tipW / 2, 4, tipW, 24, 6);
+            else ctx.rect(tipX - tipW / 2, 4, tipW, 24);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(tipText, tipX, 16);
+            ctx.restore();
+          }
+        }
+
+        // 하단 핵심 정리 박스 (y: 248 ~ 362)
+        const sumW = Math.min(w - 36, 510);
+        const sumX = (w - sumW) / 2;
+        const sumY = 248;
+
+        ctx.save();
+        ctx.fillStyle = (currentMode === 4) ? '#fef3c7' : '#f8fafc';
+        ctx.strokeStyle = (currentMode === 4) ? '#f59e0b' : '#cbd5e1';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(sumX, sumY, sumW, 114, 10);
+        else ctx.rect(sumX, sumY, sumW, 114);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('📌 교과서 문제 2 핵심 해설 (p.19):', sumX + 16, sumY + 22);
+
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillStyle = (currentMode === 1 || currentMode === 4) ? '#0284c7' : '#475569';
+        ctx.fillText('⑴ 2² × 5²,  2² × 5 × 7 ➔ 공통 소인수 중 작은 거듭제곱: 2² × 5 = 20', sumX + 16, sumY + 46);
+
+        ctx.fillStyle = (currentMode === 2 || currentMode === 4) ? '#059669' : '#475569';
+        ctx.fillText('⑵ 56 = 2³ × 7,  140 = 2² × 5 × 7 ➔ 공통 소인수 중 작은 거듭제곱: 2² × 7 = 28', sumX + 16, sumY + 68);
+
+        ctx.font = 'bold 12px Pretendard, sans-serif';
+        ctx.fillStyle = '#d97706';
+        ctx.fillText('💡 공통이 아닌 소인수(⑴의 7, ⑵의 5)는 최대공약수에 포함하지 않습니다!', sumX + 16, sumY + 92);
+        ctx.restore();
+
+        // 콘페티 애니메이션
+        if (particles.length > 0) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.22;
+            p.rot += p.vRot;
+            p.life -= p.decay;
+
+            if (p.life <= 0) {
+              particles.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+            ctx.restore();
+          }
+        }
+
+        container._animId_3_6 = requestAnimationFrame(render);
+      }
+
+      render();
+    }
+
     function renderForm_3_6(box) {
       box.innerHTML = `
-        <div class="card">
+        <div class="card" style="padding:16px 20px;">
           <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
             ✏️ [문제 2] 두 수의 최대공약수 구하기 (p.19)
           </div>
-          <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:8px;">
-            ⑴ 2² × 5², 2² × 5 × 7 의 최대공약수:
+          <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
+            다음 두 수의 최대공약수를 각각 구하시오.
           </p>
-          <input type="text" id="ans-3-6-1" class="input-text" placeholder="수 입력" style="width:100%; margin-bottom:12px;">
-          <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:8px;">
-            ⑵ 56, 140 의 최대공약수:
-          </p>
-          <input type="text" id="ans-3-6-2" class="input-text" placeholder="수 입력" style="width:100%; margin-bottom:14px;">
-          <button class="btn btn-primary" onclick="checkStep_3_6()" style="width:100%;">정답 확인 및 채점</button>
+
+          <!-- 거듭제곱 퀵 입력 바 -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; background:#f1f5f9; padding:8px 10px; border-radius:8px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; line-height:28px;">기호 입력:</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-3-6" data-char="^" style="font-weight:700; min-width:32px;">^</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-3-6" data-char="²" style="font-weight:700; min-width:32px;">²</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-3-6" data-char="³" style="font-weight:700; min-width:32px;">³</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-3-6" data-char="×" style="font-weight:700; min-width:32px;">×</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-3-6" data-char="*" style="font-weight:700; min-width:32px;">*</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-3-6" data-char="20" style="font-weight:700;">20</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-insert-3-6" data-char="28" style="font-weight:700;">28</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-pow-clear-3-6" style="font-weight:700;">초기화</button>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
+            <!-- ⑴ 2² × 5², 2² × 5 × 7 -->
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+                ⑴ 2² × 5²,  2² × 5 × 7 의 최대공약수:
+              </label>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:0.88rem; font-weight:600; color:#475569;">최대공약수:</span>
+                <input type="text" id="ans-3-6-1" class="form-control" style="width:160px;" placeholder="수 또는 식 입력" autocomplete="off">
+              </div>
+            </div>
+
+            <!-- ⑵ 56, 140 -->
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+                ⑵ 56,  140 의 최대공약수:
+              </label>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:0.88rem; font-weight:600; color:#475569;">최대공약수:</span>
+                <input type="text" id="ans-3-6-2" class="form-control" style="width:160px;" placeholder="수 또는 식 입력" autocomplete="off">
+              </div>
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="checkStep_3_6()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
-      const input = box.querySelector('#ans-3-6-2');
-      if (input) input.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkStep_3_6(); });
+
+      let lastFocusedInput = box.querySelector('#ans-3-6-1');
+      const inputs = box.querySelectorAll('input[type="text"]');
+      inputs.forEach(input => {
+        input.addEventListener('focus', () => {
+          lastFocusedInput = input;
+        });
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') checkStep_3_6();
+        });
+      });
+
+      box.querySelectorAll('.btn-pow-insert-3-6').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const char = btn.getAttribute('data-char');
+          if (lastFocusedInput) {
+            lastFocusedInput.value += char;
+            lastFocusedInput.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      });
+
+      const clearBtn = box.querySelector('.btn-pow-clear-3-6');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          if (lastFocusedInput) {
+            lastFocusedInput.value = '';
+            lastFocusedInput.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      }
     }
+
     function checkStep_3_6() {
-      const v1 = document.getElementById('ans-3-6-1')?.value?.trim();
-      const v2 = document.getElementById('ans-3-6-2')?.value?.trim();
-      if ((v1 === '20' || v1 === '2^2*5') && (v2 === '28' || v2 === '2^2*7')) {
-        completeSubStep('3-6', '🎉 <b>정답입니다!</b> ⑴ 20, ⑵ 28 입니다.');
+      const v1 = normTxt(document.getElementById('ans-3-6-1')?.value);
+      const v2 = normTxt(document.getElementById('ans-3-6-2')?.value);
+
+      // ⑴ 최대공약수: 20 또는 2^2 * 5
+      const ok1 = (parseInt(v1, 10) === 20 ||
+                   comparePowerMaps(parsePowerProduct(v1), { 2: 2, 5: 1 }) ||
+                   v1 === '20' || v1 === '2^2*5' || v1 === '2²×5' || v1 === '2²*5' || v1 === '4*5');
+
+      // ⑵ 최대공약수: 28 또는 2^2 * 7
+      const ok2 = (parseInt(v2, 10) === 28 ||
+                   comparePowerMaps(parsePowerProduct(v2), { 2: 2, 7: 1 }) ||
+                   v2 === '28' || v2 === '2^2*7' || v2 === '2²×7' || v2 === '2²*7' || v2 === '4*7');
+
+      if (ok1 && ok2) {
+        if (window._step3_6_triggerSuccess) {
+          window._step3_6_triggerSuccess();
+        }
+        completeSubStep('3-6', '🎉 <b>정답입니다!</b><br>• ⑴ 2² × 5²,  2² × 5 × 7 ➔ 공통 소인수 중 작은 거듭제곱: 2² × 5 = <b>20</b><br>• ⑵ 56 = 2³ × 7,  140 = 2² × 5 × 7 ➔ 공통 소인수 중 작은 거듭제곱: 2² × 7 = <b>28</b>');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 두 수의 소인수분해에서 공통인 소인수를 찾아 곱해 보세요.');
+        if (!ok1 && ok2) {
+          showFeedback(false, '❌ <b>⑴을 다시 확인해 보세요.</b> 밑 2는 2², 밑 5는 지수가 더 작은 5를 택하고(7은 제외), 곱하여 2² × 5의 값을 계산해 보세요.');
+        } else if (ok1 && !ok2) {
+          showFeedback(false, '❌ <b>⑵를 다시 확인해 보세요.</b> 56 = 2³ × 7, 140 = 2² × 5 × 7로 소인수분해한 후 공통인 거듭제곱(2², 7)을 곱해 보세요.');
+        } else {
+          showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 각 수의 소인수분해에서 밑이 같은 소인수 중 지수가 작거나 같은 것을 택해 곱해 보세요.');
+        }
       }
     }
 
