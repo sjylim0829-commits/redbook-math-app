@@ -6282,108 +6282,511 @@ function checkStep_1_1() {
 // 1-2 (p.10): 개념: 소수와 합성수의 뜻
 // -------------------------------------------------------------
 function drawCanvas_1_2(container) {
+  if (container._animId_1_2) {
+    cancelAnimationFrame(container._animId_1_2);
+    container._animId_1_2 = null;
+  }
   container.innerHTML = '';
+
+  const wrapper = document.createElement('div');
+  wrapper.style.position = 'relative';
+  wrapper.style.width = '100%';
+  wrapper.style.height = '100%';
+  wrapper.style.minHeight = '420px';
+  wrapper.style.overflow = 'hidden';
+  wrapper.style.background = 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)';
+  wrapper.style.borderRadius = '12px';
+  wrapper.style.userSelect = 'none';
+  wrapper.style.webkitUserSelect = 'none';
+  container.appendChild(wrapper);
+
   const canvas = document.createElement('canvas');
-  canvas.width = container.clientWidth || 560;
-  canvas.height = container.clientHeight || 460;
+  canvas.style.display = 'block';
   canvas.style.width = '100%';
   canvas.style.height = '100%';
-  canvas.style.display = 'block';
-  container.appendChild(canvas);
+  canvas.style.touchAction = 'none';
+  wrapper.appendChild(canvas);
 
   const ctx = canvas.getContext('2d');
-  let animId = null;
+
+  let w = 560;
+  let h = 460;
+  let dpr = window.devicePixelRatio || 1;
+
+  let selectedBranch = 'prime'; // 'one' | 'prime' | 'composite'
+  let hoveredBranch = null;
+  let showEtymology = false;
   let t = 0;
 
-  function draw() {
-    t += 0.02;
-    const w = canvas.width;
-    const h = canvas.height;
+  function resize() {
+    const rect = wrapper.getBoundingClientRect();
+    w = rect.width || 560;
+    h = rect.height || 460;
+    dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  resize();
+
+  // 상단 툴바 UI
+  const topBar = document.createElement('div');
+  topBar.style.position = 'absolute';
+  topBar.style.top = '10px';
+  topBar.style.left = '12px';
+  topBar.style.right = '12px';
+  topBar.style.display = 'flex';
+  topBar.style.justifyContent = 'space-between';
+  topBar.style.alignItems = 'center';
+  topBar.style.pointerEvents = 'none';
+  topBar.style.zIndex = '10';
+
+  const titleBadge = document.createElement('div');
+  titleBadge.style.display = 'inline-flex';
+  titleBadge.style.alignItems = 'center';
+  titleBadge.style.gap = '6px';
+  titleBadge.style.background = 'rgba(255, 255, 255, 0.92)';
+  titleBadge.style.backdropFilter = 'blur(6px)';
+  titleBadge.style.padding = '5px 12px';
+  titleBadge.style.borderRadius = '20px';
+  titleBadge.style.border = '1px solid #cbd5e1';
+  titleBadge.style.fontSize = '0.84rem';
+  titleBadge.style.fontWeight = '700';
+  titleBadge.style.color = '#1e293b';
+  titleBadge.innerHTML = '<span>🏛️ <b>자연수의 3대 분류 체계 트리</b></span>';
+
+  const btnGroup = document.createElement('div');
+  btnGroup.style.display = 'flex';
+  btnGroup.style.gap = '6px';
+  btnGroup.style.pointerEvents = 'auto';
+
+  const btnEtym = document.createElement('button');
+  btnEtym.className = 'btn';
+  btnEtym.style.background = '#ffffff';
+  btnEtym.style.border = '1px solid #cbd5e1';
+  btnEtym.style.color = '#4338ca';
+  btnEtym.style.padding = '5px 10px';
+  btnEtym.style.fontSize = '0.8rem';
+  btnEtym.style.fontWeight = '700';
+  btnEtym.style.borderRadius = '8px';
+  btnEtym.textContent = '🌿 소수(素數) vs 소수(小數) 어원 비교';
+
+  btnEtym.onclick = () => {
+    showEtymology = !showEtymology;
+    btnEtym.style.background = showEtymology ? '#e0e7ff' : '#ffffff';
+    if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(showEtymology ? 550 : 440, 'sine', 0.06);
+  };
+
+  const btnReset = document.createElement('button');
+  btnReset.className = 'btn';
+  btnReset.style.background = '#ffffff';
+  btnReset.style.border = '1px solid #cbd5e1';
+  btnReset.style.color = '#475569';
+  btnReset.style.padding = '5px 10px';
+  btnReset.style.fontSize = '0.8rem';
+  btnReset.style.fontWeight = '600';
+  btnReset.style.borderRadius = '8px';
+  btnReset.textContent = '⟲ 트리 리셋';
+
+  btnReset.onclick = () => {
+    selectedBranch = 'prime';
+    showEtymology = false;
+    btnEtym.style.background = '#ffffff';
+    if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(440, 'sine', 0.08);
+  };
+
+  btnGroup.appendChild(btnEtym);
+  btnGroup.appendChild(btnReset);
+
+  topBar.appendChild(titleBadge);
+  topBar.appendChild(btnGroup);
+  wrapper.appendChild(topBar);
+
+  const ro = new ResizeObserver(() => {
+    resize();
+  });
+  ro.observe(wrapper);
+
+  function getBranchesData() {
+    const cardW = Math.min(160, (w - 60) / 3);
+    const cardH = 92;
+    const branchY = 160;
+
+    return [
+      {
+        id: 'one',
+        title: '자연수 1',
+        tag: '약수 1개 (오직 1)',
+        note: '소수도 합성수도 아님 ❌',
+        color: '#475569',
+        border: '#94a3b8',
+        bg: '#f8fafc',
+        x: w * 0.18,
+        y: branchY,
+        w: cardW,
+        h: cardH
+      },
+      {
+        id: 'prime',
+        title: '소수 (Prime)',
+        tag: '약수 2개뿐',
+        note: '1과 자기 자신만 (2, 3, 5, 7..)',
+        color: '#4f46e5',
+        border: '#818cf8',
+        bg: '#eef2ff',
+        x: w * 0.5,
+        y: branchY,
+        w: cardW,
+        h: cardH
+      },
+      {
+        id: 'composite',
+        title: '합성수 (Composite)',
+        tag: '약수 3개 이상',
+        note: '1과 자신 외의 약수 (4, 6, 8..)',
+        color: '#059669',
+        border: '#34d399',
+        bg: '#ecfdf5',
+        x: w * 0.82,
+        y: branchY,
+        w: cardW,
+        h: cardH
+      }
+    ];
+  }
+
+  function getCanvasPos(e) {
+    const r = canvas.getBoundingClientRect();
+    return {
+      x: e.clientX - r.left,
+      y: e.clientY - r.top
+    };
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    const pos = getCanvasPos(e);
+
+    if (showEtymology) {
+      showEtymology = false;
+      btnEtym.style.background = '#ffffff';
+      if (window.SoundFX && window.SoundFX.playTone) SoundFX.playTone(400, 'sine', 0.05);
+      return;
+    }
+
+    const branches = getBranchesData();
+    for (let i = 0; i < branches.length; i++) {
+      const b = branches[i];
+      if (pos.x >= b.x - b.w / 2 && pos.x <= b.x + b.w / 2 && pos.y >= b.y - b.h / 2 && pos.y <= b.y + b.h / 2) {
+        selectedBranch = b.id;
+        if (window.SoundFX && window.SoundFX.playTone) {
+          SoundFX.playTone(b.id === 'prime' ? 660 : (b.id === 'composite' ? 580 : 480), 'sine', 0.08);
+        }
+        break;
+      }
+    }
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    const pos = getCanvasPos(e);
+    const branches = getBranchesData();
+    let hit = null;
+    for (let i = 0; i < branches.length; i++) {
+      const b = branches[i];
+      if (pos.x >= b.x - b.w / 2 && pos.x <= b.x + b.w / 2 && pos.y >= b.y - b.h / 2 && pos.y <= b.y + b.h / 2) {
+        hit = b.id;
+        break;
+      }
+    }
+    hoveredBranch = hit;
+    canvas.style.cursor = hit ? 'pointer' : 'default';
+  });
+
+  // 60fps 렌더 루프
+  function animate() {
+    container._animId_1_2 = requestAnimationFrame(animate);
+    t += 0.025;
+
     ctx.clearRect(0, 0, w, h);
 
-    // Title
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 15px Pretendard, sans-serif';
-    ctx.fillStyle = '#1e293b';
-    ctx.fillText('🏛️ 자연수의 3대 수체계 분류 트리 (p.10)', w / 2, 32);
+    // 1. 배경 미세 격자
+    ctx.strokeStyle = '#f1f5f9';
+    ctx.lineWidth = 1;
+    const step = 40;
+    for (let x = 0; x < w; x += step) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+      ctx.stroke();
+    }
+    for (let y = 0; y < h; y += step) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
 
-    // Root Node (자연수)
-    const rx = w / 2;
-    const ry = 75;
+    // 2. 루트 노드 (자연수)
+    const rootX = w / 2;
+    const rootY = 62;
+    const rootW = 160;
+    const rootH = 38;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(15, 23, 42, 0.15)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 3;
     ctx.fillStyle = '#1e293b';
     ctx.beginPath();
-    ctx.roundRect ? ctx.roundRect(rx - 70, ry - 22, 140, 44, 10) : ctx.rect(rx - 70, ry - 22, 140, 44);
+    if (ctx.roundRect) ctx.roundRect(rootX - rootW / 2, rootY - rootH / 2, rootW, rootH, 10);
+    else ctx.rect(rootX - rootW / 2, rootY - rootH / 2, rootW, rootH);
     ctx.fill();
 
+    ctx.shadowBlur = 0;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 15px Pretendard, sans-serif';
-    ctx.fillText('자연수 (Natural)', rx, ry + 5);
+    ctx.font = 'bold 14px Pretendard, sans-serif';
+    ctx.fillText('자연수 (Natural Numbers)', rootX, rootY);
+    ctx.restore();
 
-    // 3 Branches
-    const branches = [
-      { title: '자연수 1', sub: '약수가 1개뿐', note: '소수도 합성수도 아님!', color: '#64748b', bg: '#f1f5f9', x: w * 0.18, y: 220 },
-      { title: '소수 (Prime)', sub: '약수가 2개뿐', note: '1과 자기 자신만 (2, 3, 5, ...)', color: '#4f46e5', bg: '#eef2ff', isPrime: true, x: w * 0.5, y: 220 },
-      { title: '합성수 (Composite)', sub: '약수가 3개 이상', note: '1과 자신 이외의 약수 (4, 6, 8, ...)', color: '#059669', bg: '#ecfdf5', x: w * 0.82, y: 220 }
-    ];
-
-    // Connecting lines
+    // 3. 가지선(Branch Connecting Lines)
+    const branches = getBranchesData();
     branches.forEach(b => {
-      ctx.strokeStyle = '#cbd5e1';
-      ctx.lineWidth = 2.5;
+      const isSelected = (selectedBranch === b.id);
+      ctx.save();
+      ctx.strokeStyle = isSelected ? b.color : '#cbd5e1';
+      ctx.lineWidth = isSelected ? 3 : 2;
       ctx.beginPath();
-      ctx.moveTo(rx, ry + 22);
-      ctx.lineTo(b.x, b.y - 45);
+      ctx.moveTo(rootX, rootY + rootH / 2);
+      ctx.bezierCurveTo(rootX, rootY + 50, b.x, b.y - 60, b.x, b.y - b.h / 2);
       ctx.stroke();
+      ctx.restore();
     });
 
-    // Branch Cards
+    // 4. 브랜치 카드 드로잉
     branches.forEach(b => {
+      const isSelected = (selectedBranch === b.id);
+      const isHovered = (hoveredBranch === b.id);
+
       ctx.save();
-      if (b.isPrime) {
-        const pulse = (Math.sin(t * 3) + 1) / 2;
-        ctx.shadowColor = `rgba(79, 70, 229, ${0.3 + pulse * 0.3})`;
-        ctx.shadowBlur = 8 + pulse * 6;
+      if (isSelected) {
+        const pulse = 0.5 + 0.5 * Math.sin(t * 3);
+        ctx.shadowColor = b.color;
+        ctx.shadowBlur = 10 + pulse * 6;
+      } else if (isHovered) {
+        ctx.shadowColor = 'rgba(0,0,0,0.12)';
+        ctx.shadowBlur = 6;
       }
+
       ctx.fillStyle = b.bg;
-      ctx.strokeStyle = b.color;
-      ctx.lineWidth = b.isPrime ? 3 : 2;
+      ctx.strokeStyle = isSelected ? b.color : (isHovered ? b.border : '#cbd5e1');
+      ctx.lineWidth = isSelected ? 2.5 : 1.5;
+
+      const bx = b.x - b.w / 2;
+      const by = b.y - b.h / 2;
+
       ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(b.x - 75, b.y - 45, 150, 110, 12) : ctx.rect(b.x - 75, b.y - 45, 150, 110);
+      if (ctx.roundRect) ctx.roundRect(bx, by, b.w, b.h, 12);
+      else ctx.rect(bx, by, b.w, b.h);
       ctx.fill();
       ctx.stroke();
       ctx.restore();
 
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      ctx.font = 'bold 13px Pretendard, sans-serif';
       ctx.fillStyle = b.color;
-      ctx.font = 'bold 14px Pretendard, sans-serif';
-      ctx.fillText(b.title, b.x, b.y - 18);
+      ctx.fillText(b.title, b.x, b.y - 20);
 
+      ctx.font = 'bold 11px Pretendard, sans-serif';
       ctx.fillStyle = '#1e293b';
-      ctx.font = 'bold 12px Pretendard, sans-serif';
-      ctx.fillText(b.sub, b.x, b.y + 6);
+      ctx.fillText(b.tag, b.x, b.y + 4);
 
-      ctx.fillStyle = '#64748b';
       ctx.font = '10px Pretendard, sans-serif';
-      ctx.fillText(b.note, b.x, b.y + 30);
+      ctx.fillStyle = '#64748b';
+      ctx.fillText(b.note, b.x, b.y + 26);
+
+      if (isSelected) {
+        ctx.font = 'bold 10px Pretendard, sans-serif';
+        ctx.fillStyle = b.color;
+        ctx.fillText('▼ 상세 보기 선택됨', b.x, b.y + b.h / 2 + 12);
+      }
+      ctx.restore();
     });
 
-    // Special Notice Card for "1"
-    const ny = h - 60;
+    // 5. 선택된 브랜치 인터랙티브 상세 디테일 박스
+    const detailY = 245;
+    const detailH = 125;
+    const detailW = w - 40;
+    const detailX = 20;
+
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = 'rgba(0,0,0,0.06)';
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetY = 2;
+
+    if (ctx.roundRect) ctx.roundRect(detailX, detailY, detailW, detailH, 12);
+    else ctx.rect(detailX, detailY, detailW, detailH);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    if (selectedBranch === 'one') {
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#334155';
+      ctx.font = 'bold 13px Pretendard, sans-serif';
+      ctx.fillText('🔍 [자연수 1의 특별한 성질]', detailX + 16, detailY + 22);
+
+      ctx.font = '12px Pretendard, sans-serif';
+      ctx.fillStyle = '#475569';
+      ctx.fillText('• 1의 약수: { 1 } ➔ 약수가 오직 1개뿐입니다.', detailX + 16, detailY + 46);
+      ctx.fillText('• 소수(약수 2개)도 아니고, 합성수(약수 3개 이상)도 아닙니다.', detailX + 16, detailY + 68);
+
+      ctx.fillStyle = '#dc2626';
+      ctx.font = 'bold 12px Pretendard, sans-serif';
+      ctx.fillText('⚠️ 시험 단골 함정: "1은 가장 작은 소수이다"는 완전히 틀린 거짓 명제입니다!', detailX + 16, detailY + 95);
+    } else if (selectedBranch === 'prime') {
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#4338ca';
+      ctx.font = 'bold 13px Pretendard, sans-serif';
+      ctx.fillText('🔍 [소수(Prime Numbers)의 핵심 개념과 특징]', detailX + 16, detailY + 22);
+
+      ctx.font = '12px Pretendard, sans-serif';
+      ctx.fillStyle = '#334155';
+      ctx.fillText('• 정의: 1보다 큰 자연수 중 1과 자기 자신만을 약수로 가지는 수 (약수 정확히 2개)', detailX + 16, detailY + 46);
+      ctx.fillText('• 소수 예시: 2 (1×2), 3 (1×3), 5 (1×5), 7 (1×7), 11 (1×11), 13 (1×13)...', detailX + 16, detailY + 68);
+
+      ctx.fillStyle = '#b45309';
+      ctx.font = 'bold 12px Pretendard, sans-serif';
+      ctx.fillText('👑 핵심 팁: 2는 짝수 중 유일한 소수이며, 가장 작은 소수입니다! (다른 짝수는 모두 2의 배수 ➔ 합성수)', detailX + 16, detailY + 95);
+    } else {
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#065f46';
+      ctx.font = 'bold 13px Pretendard, sans-serif';
+      ctx.fillText('🔍 [합성수(Composite Numbers)의 핵심 개념과 특징]', detailX + 16, detailY + 22);
+
+      ctx.font = '12px Pretendard, sans-serif';
+      ctx.fillStyle = '#334155';
+      ctx.fillText('• 정의: 1보다 큰 자연수 중 1과 자기 자신 이외의 수를 약수로 가지는 수 (약수 3개 이상)', detailX + 16, detailY + 46);
+      ctx.fillText('• 합성수 예시: 4 (1, 2, 4), 6 (1, 2, 3, 6), 8 (1, 2, 4, 8), 9 (1, 3, 9)...', detailX + 16, detailY + 68);
+
+      ctx.fillStyle = '#047857';
+      ctx.font = 'bold 12px Pretendard, sans-serif';
+      ctx.fillText('💡 어원: 합성(合成)은 둘 이상의 소수가 곱셈으로 결합되어 이루어진 수라는 뜻입니다.', detailX + 16, detailY + 95);
+    }
+    ctx.restore();
+
+    // 6. 하단 강조 주의 배너
+    const noteY = h - 38;
+    ctx.save();
     ctx.fillStyle = '#fffbeb';
-    ctx.strokeStyle = '#f59e0b';
+    ctx.strokeStyle = '#fde68a';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.roundRect ? ctx.roundRect(30, ny - 25, w - 60, 50, 8) : ctx.rect(30, ny - 25, w - 60, 50);
+    if (ctx.roundRect) ctx.roundRect(20, noteY - 16, w - 40, 32, 8);
+    else ctx.rect(20, noteY - 16, w - 40, 32);
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = '#b45309';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     ctx.font = 'bold 12px Pretendard, sans-serif';
-    ctx.fillText('⚠️ 핵심 주의: 1은 약수가 1개뿐이므로 소수도 아니고 합성수도 아닙니다!', w / 2, ny);
+    ctx.fillStyle = '#b45309';
+    ctx.fillText('⚠️ 핵심 주의: 1은 약수가 1개뿐이므로 소수도 아니고 합성수도 아닙니다!', w / 2, noteY);
+    ctx.restore();
 
-    animId = requestAnimationFrame(draw);
+    // 7. 한자/어원 비교 오버레이 팝업 모달
+    if (showEtymology) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.65)';
+      ctx.fillRect(0, 0, w, h);
+
+      const mw = Math.min(480, w - 40);
+      const mh = 250;
+      const mx = (w - mw) / 2;
+      const my = (h - mh) / 2;
+
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#6366f1';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = 'rgba(0,0,0,0.3)';
+      ctx.shadowBlur = 18;
+      if (ctx.roundRect) ctx.roundRect(mx, my, mw, mh, 16);
+      else ctx.rect(mx, my, mw, mh);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.shadowBlur = 0;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+
+      ctx.fillStyle = '#1e293b';
+      ctx.font = 'bold 15px Pretendard, sans-serif';
+      ctx.fillText('🌿 [수학 상식] 소수(素數) vs 소수(小數) 한자/어원 비교', w / 2, my + 16);
+
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(mx + 20, my + 44);
+      ctx.lineTo(mx + mw - 20, my + 44);
+      ctx.stroke();
+
+      const colW = (mw - 50) / 2;
+
+      const lx = mx + 20;
+      ctx.fillStyle = '#eef2ff';
+      if (ctx.roundRect) ctx.roundRect(lx, my + 54, colW, 140, 10);
+      else ctx.fillRect(lx, my + 54, colW, 140);
+
+      ctx.textAlign = 'left';
+      ctx.font = 'bold 13px Pretendard, sans-serif';
+      ctx.fillStyle = '#4338ca';
+      ctx.fillText('1. 소수 (素數, Prime)', lx + 12, my + 66);
+
+      ctx.font = '11px Pretendard, sans-serif';
+      ctx.fillStyle = '#334155';
+      ctx.fillText('• 素: 본디 소 (바탕, 원소)', lx + 12, my + 88);
+      ctx.fillText('• 數: 셈 수 (숫자)', lx + 12, my + 106);
+      ctx.fillStyle = '#475569';
+      ctx.fillText('• 의미: 모든 자연수를 만드는', lx + 12, my + 130);
+      ctx.fillText('  가장 근본적인 "원소"가 되는 수', lx + 12, my + 146);
+      ctx.fillText('• 예: 2, 3, 5, 7, 11...', lx + 12, my + 168);
+
+      const rx = mx + 30 + colW;
+      ctx.fillStyle = '#f8fafc';
+      if (ctx.roundRect) ctx.roundRect(rx, my + 54, colW, 140, 10);
+      else ctx.fillRect(rx, my + 54, colW, 140);
+
+      ctx.font = 'bold 13px Pretendard, sans-serif';
+      ctx.fillStyle = '#0284c7';
+      ctx.fillText('2. 소수 (小數, Decimal)', rx + 12, my + 66);
+
+      ctx.font = '11px Pretendard, sans-serif';
+      ctx.fillStyle = '#334155';
+      ctx.fillText('• 小: 작을 소 (작다)', rx + 12, my + 88);
+      ctx.fillText('• 數: 셈 수 (숫자)', rx + 12, my + 106);
+      ctx.fillStyle = '#475569';
+      ctx.fillText('• 의미: 1보다 작은 자리의 값을', rx + 12, my + 130);
+      ctx.fillText('  나타내는 "작은 수"', rx + 12, my + 146);
+      ctx.fillText('• 예: 0.1, 0.5, 3.14...', rx + 12, my + 168);
+
+      ctx.textAlign = 'center';
+      ctx.font = '11px Pretendard, sans-serif';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText('(화면 아무 곳이나 클릭하면 닫힙니다)', w / 2, my + mh - 22);
+
+      ctx.restore();
+    }
   }
 
-  draw();
+  container._animId_1_2 = requestAnimationFrame(animate);
 }
 
 function renderForm_1_2(box) {
@@ -6393,24 +6796,33 @@ function renderForm_1_2(box) {
         📖 [개념 탐구] 소수와 합성수의 뜻 (p.10)
       </div>
       <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
-        다음 문장의 빈칸에 들어갈 알맞은 수학 용어를 쓰시오.
+        다음 설명의 빈칸에 들어갈 알맞은 수학 용어를 쓰시오.
       </p>
 
       <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
-        <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.7;">
-          1보다 큰 자연수 중에서 1과 자기 자신만을 약수로 가지는 수를 [ <input type="text" id="ans-1-2-1" style="width:90px; display:inline-block; padding:3px 6px; font-weight:700;" class="form-control" placeholder="용어 입력" autocomplete="off"> ](이)라고 합니다.
+        <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
+          1보다 큰 자연수 중에서 1과 자기 자신만을 약수로 가지는 수를 [ <input type="text" id="ans-1-2-1" style="width:90px; display:inline-block; padding:4px 8px; font-weight:700;" class="form-control" placeholder="용어 입력" autocomplete="off"> ](이)라고 하고,
         </div>
-        <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.7;">
-          또 1보다 큰 자연수 중에서 1과 자기 자신 이외의 수를 약수로 가지는 수를 [ <input type="text" id="ans-1-2-2" style="width:90px; display:inline-block; padding:3px 6px; font-weight:700;" class="form-control" placeholder="용어 입력" autocomplete="off"> ](이)라고 합니다.
+        <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
+          1과 자기 자신 이외의 수를 약수로 가지는 수를 [ <input type="text" id="ans-1-2-2" style="width:90px; display:inline-block; padding:4px 8px; font-weight:700;" class="form-control" placeholder="용어 입력" autocomplete="off"> ](이)라고 합니다.
         </div>
-        <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.7;">
-          이때 1은 소수도 아니고 합성수도 [ <input type="text" id="ans-1-2-3" style="width:90px; display:inline-block; padding:3px 6px; font-weight:700;" class="form-control" placeholder="용어 입력" autocomplete="off"> ].
+        <div style="background:#f8fafc; padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0; line-height:1.8;">
+          이때 1은 약수가 1개뿐이므로 소수도 아니고 합성수도 [ <input type="text" id="ans-1-2-3" style="width:90px; display:inline-block; padding:4px 8px; font-weight:700;" class="form-control" placeholder="단어 입력" autocomplete="off"> ].
         </div>
       </div>
 
-      <button class="btn btn-primary" onclick="checkStep_1_2()">정답 확인 및 채점</button>
+      <button class="btn btn-primary" onclick="checkStep_1_2()" style="width:100%;">정답 확인 및 채점</button>
     </div>
   `;
+
+  const inputs = box.querySelectorAll('input[type="text"]');
+  inputs.forEach(input => {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        checkStep_1_2();
+      }
+    });
+  });
 }
 
 function checkStep_1_2() {
@@ -6423,14 +6835,18 @@ function checkStep_1_2() {
   const ok3 = (v3 === '아니다' || v3 === '아님' || v3 === '아닙니다');
 
   if (ok1 && ok2 && ok3) {
-    completeSubStep('1-2', '🎉 <b>정답입니다!</b> 1과 자신만을 약수로 갖는 <b>소수</b>, 3개 이상의 약수를 갖는 <b>합성수</b>, 그리고 어느 쪽에도 속하지 않는 <b>1</b>의 개념을 완벽히 이해했습니다.');
+    completeSubStep('1-2', '🎉 <b>정답입니다!</b> 1보다 큰 자연수 중 약수가 2개뿐인 <b>소수</b>, 약수가 3개 이상인 <b>합성수</b>, 그리고 어느 쪽에도 속하지 않는 <b>1</b>의 개념을 완벽하게 이해했습니다.');
+    const nextBtn = document.getElementById('btn-next-step');
+    if (nextBtn) {
+      nextBtn.style.display = 'inline-flex';
+    }
   } else {
     let wrong = [];
-    if (!ok1) wrong.push('첫 번째 빈칸(소수)');
-    if (!ok2) wrong.push('두 번째 빈칸(합성수)');
-    if (!ok3) wrong.push('세 번째 빈칸(아니다)');
+    if (!ok1) wrong.push('① 첫 번째 빈칸');
+    if (!ok2) wrong.push('② 두 번째 빈칸');
+    if (!ok3) wrong.push('③ 세 번째 빈칸');
     if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-    showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>교과서의 정의를 다시 확인하여 정확히 입력해 보세요.`);
+    showFeedback(false, `❌ <b>오답 항목이 있습니다:</b> [${wrong.join(', ')}]<br>교과서 p.10 본문의 정의를 다시 확인하여 정확히 입력해 보세요.`);
   }
 }
 
