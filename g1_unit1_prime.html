@@ -22286,34 +22286,535 @@ function checkStep_1_12() {
     }
 
     // 3-3 (p.18): 개념: 서로소의 뜻과 수학봇
-    function drawCanvas_3_3(container) { createDefaultCanvas_3(container, '🎨 [3-3] 서로소 벤다이어그램 & 수학봇'); }
-    function renderForm_3_3(box) {
-      box.innerHTML = `
-        <div class="card">
-          <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
-            📖 [개념 탐구] 서로소의 뜻 (p.18)
+    function drawCanvas_3_3(container) {
+      if (container._animId_3_3) {
+        cancelAnimationFrame(container._animId_3_3);
+        container._animId_3_3 = null;
+      }
+      container.innerHTML = '';
+
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; height:100%; box-sizing:border-box;">
+          <!-- 상단 컨트롤러 및 상태 안내 바 -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+            <div id="badge-3-3" style="font-size:0.86rem; font-weight:700; color:#1e293b; background:#f1f5f9; padding:6px 14px; border-radius:20px; border:1px solid #cbd5e1; flex:1; min-width:240px;">
+              원하는 버튼을 클릭하여 서로소의 성질과 수학봇 원리를 탐구해 보세요!
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button id="btn-coprime-3-3" class="btn btn-sm btn-outline-primary" style="font-weight:700;">8과 15 (서로소 ⭕)</button>
+              <button id="btn-not-coprime-3-3" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">12와 18 (서로소 ❌)</button>
+              <button id="btn-bot-3-3" class="btn btn-sm btn-outline-info" style="font-weight:700;">수학봇: 두 소수 (5, 13) 🤖</button>
+              <button id="btn-reset-3-3" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">⟲ 초기화</button>
+            </div>
           </div>
-          <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
-            최대공약수가 1인 두 자연수를 무엇이라고 부르나요?
-          </p>
-          <div style="margin-bottom:12px;">
-            <input type="text" id="ans-3-3" class="input-text" placeholder="용어 입력" style="width:100%;">
+          <!-- Canvas 렌더링 영역 -->
+          <div style="flex:1; min-height:370px; position:relative;">
+            <canvas id="canvas-3-3" style="width:100%; height:100%; display:block; border-radius:12px; background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); border:1px solid #e2e8f0;"></canvas>
           </div>
-          <button class="btn btn-primary" onclick="checkStep_3_3()" style="width:100%;">정답 확인 및 채점</button>
         </div>
       `;
-      const input = box.querySelector('#ans-3-3');
-      if (input) input.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkStep_3_3(); });
+
+      const canvas = container.querySelector('#canvas-3-3');
+      const badgeStatus = container.querySelector('#badge-3-3');
+      const btnCoprime = container.querySelector('#btn-coprime-3-3');
+      const btnNotCoprime = container.querySelector('#btn-not-coprime-3-3');
+      const btnBot = container.querySelector('#btn-bot-3-3');
+      const btnReset = container.querySelector('#btn-reset-3-3');
+
+      const ctx = canvas.getContext('2d');
+      let w = 560, h = 400;
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        w = rect.width || 560;
+        h = rect.height || 400;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+
+      const ro = new ResizeObserver(() => {
+        resize();
+      });
+      ro.observe(canvas);
+
+      // 모드: 0: 초기, 1: 8과 15 (서로소), 2: 12와 18 (서로소 아님), 3: 소수 5와 13 (수학봇)
+      let currentMode = 0;
+      let particles = [];
+      let hoverBall = null;
+
+      // 구슬 데이터 구조: { val, x, y, tx, ty, color, radius, setType: 'A'|'B'|'common', isGcd }
+      let balls = [];
+
+      function spawnConfetti(count = 55) {
+        const colors = ['#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#f43f5e'];
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: w / 2 + (Math.random() - 0.5) * 80,
+            y: h / 2 - 20,
+            vx: (Math.random() - 0.5) * 11,
+            vy: (Math.random() - 0.9) * 10 - 2,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.01
+          });
+        }
+      }
+
+      function setMode(mode) {
+        currentMode = mode;
+        balls = [];
+
+        // 버튼 활성화 클래스 토글
+        if (btnCoprime) btnCoprime.className = `btn btn-sm ${mode === 1 ? 'btn-primary' : 'btn-outline-primary'}`;
+        if (btnNotCoprime) btnNotCoprime.className = `btn btn-sm ${mode === 2 ? 'btn-danger' : 'btn-outline-secondary'}`;
+        if (btnBot) btnBot.className = `btn btn-sm ${mode === 3 ? 'btn-info text-white' : 'btn-outline-info'}`;
+
+        const cAX = w / 2 - 80;
+        const cBX = w / 2 + 80;
+        const cY = 145;
+
+        if (mode === 0) {
+          if (badgeStatus) badgeStatus.innerText = '원하는 버튼을 클릭하여 서로소의 성질과 수학봇 원리를 탐구해 보세요!';
+        } else if (mode === 1) {
+          // 8과 15 (서로소)
+          if (badgeStatus) badgeStatus.innerHTML = '✨ <b>8과 15</b>: 공약수가 <b>1</b>뿐이므로 <b>최대공약수=1 ➔ 서로소</b>입니다!';
+          // 8의 약수: 1, 2, 4, 8 (전용: 2, 4, 8)
+          // 15의 약수: 1, 3, 5, 15 (전용: 3, 5, 15)
+          // 공통: 1
+          balls.push({ val: 2, x: cAX - 100, y: cY - 80, tx: cAX - 45, ty: cY - 35, color: '#3b82f6', radius: 18, setType: 'A' });
+          balls.push({ val: 4, x: cAX - 120, y: cY, tx: cAX - 55, ty: cY + 25, color: '#3b82f6', radius: 18, setType: 'A' });
+          balls.push({ val: 8, x: cAX - 80, y: cY + 80, tx: cAX - 15, ty: cY + 40, color: '#3b82f6', radius: 18, setType: 'A' });
+
+          balls.push({ val: 3, x: cBX + 100, y: cY - 80, tx: cBX + 45, ty: cY - 35, color: '#8b5cf6', radius: 18, setType: 'B' });
+          balls.push({ val: 5, x: cBX + 120, y: cY, tx: cBX + 55, ty: cY + 25, color: '#8b5cf6', radius: 18, setType: 'B' });
+          balls.push({ val: 15, x: cBX + 80, y: cY + 80, tx: cBX + 15, ty: cY + 40, color: '#8b5cf6', radius: 18, setType: 'B' });
+
+          // 공약수 1 (중앙 교집합)
+          balls.push({ val: 1, x: w / 2, y: -40, tx: w / 2, ty: cY, color: '#10b981', radius: 22, setType: 'common', isGcd: true });
+
+          spawnConfetti(45);
+          if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        } else if (mode === 2) {
+          // 12와 18 (서로소 아님)
+          if (badgeStatus) badgeStatus.innerHTML = '⚠️ <b>12와 18</b>: 공약수가 {1, 2, 3, 6}으로 <b>최대공약수=6 (≠1) ➔ 서로소 아님</b>!';
+          // 12 약수: 1, 2, 3, 4, 6, 12 (전용: 4, 12)
+          // 18 약수: 1, 2, 3, 6, 9, 18 (전용: 9, 18)
+          // 공통: 1, 2, 3, 6
+          balls.push({ val: 4, x: cAX - 100, y: cY - 40, tx: cAX - 45, ty: cY - 20, color: '#3b82f6', radius: 18, setType: 'A' });
+          balls.push({ val: 12, x: cAX - 100, y: cY + 40, tx: cAX - 45, ty: cY + 30, color: '#3b82f6', radius: 18, setType: 'A' });
+
+          balls.push({ val: 9, x: cBX + 100, y: cY - 40, tx: cBX + 45, ty: cY - 20, color: '#8b5cf6', radius: 18, setType: 'B' });
+          balls.push({ val: 18, x: cBX + 100, y: cY + 40, tx: cBX + 45, ty: cY + 30, color: '#8b5cf6', radius: 18, setType: 'B' });
+
+          // 공약수 4개 (중앙 교집합)
+          balls.push({ val: 1, x: w / 2, y: -40, tx: w / 2, ty: cY - 50, color: '#f59e0b', radius: 17, setType: 'common' });
+          balls.push({ val: 2, x: w / 2, y: -40, tx: w / 2, ty: cY - 18, color: '#f59e0b', radius: 17, setType: 'common' });
+          balls.push({ val: 3, x: w / 2, y: -40, tx: w / 2, ty: cY + 14, color: '#f59e0b', radius: 17, setType: 'common' });
+          balls.push({ val: 6, x: w / 2, y: -40, tx: w / 2, ty: cY + 48, color: '#ef4444', radius: 21, setType: 'common', isGcd: true });
+
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        } else if (mode === 3) {
+          // 두 소수 5와 13 (수학봇)
+          if (badgeStatus) badgeStatus.innerHTML = '🤖 <b>수학봇 탐구</b>: 두 소수는 1 외에 공약수가 없으므로 <b>항상 서로소</b>입니다!';
+          // 소수 5: 약수 1, 5 (전용: 5)
+          // 소수 13: 약수 1, 13 (전용: 13)
+          // 공통: 1
+          balls.push({ val: 5, x: cAX - 100, y: cY, tx: cAX - 40, ty: cY, color: '#0284c7', radius: 20, setType: 'A' });
+          balls.push({ val: 13, x: cBX + 100, y: cY, tx: cBX + 40, ty: cY, color: '#7c3aed', radius: 20, setType: 'B' });
+
+          // 공약수 1
+          balls.push({ val: 1, x: w / 2, y: -40, tx: w / 2, ty: cY, color: '#10b981', radius: 24, setType: 'common', isGcd: true });
+
+          spawnConfetti(50);
+          if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        }
+      }
+
+      // 외부 트리거 연동
+      window._step3_3_triggerSuccess = function() {
+        setMode(1);
+        spawnConfetti(65);
+      };
+
+      btnCoprime?.addEventListener('click', () => setMode(1));
+      btnNotCoprime?.addEventListener('click', () => setMode(2));
+      btnBot?.addEventListener('click', () => setMode(3));
+      btnReset?.addEventListener('click', () => setMode(0));
+
+      // 마우스 호버 감지
+      canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        hoverBall = null;
+        for (let b of balls) {
+          const dx = mx - b.x;
+          const dy = my - b.y;
+          if (Math.hypot(dx, dy) <= b.radius + 4) {
+            hoverBall = b;
+            break;
+          }
+        }
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        hoverBall = null;
+      });
+
+      // 애니메이션 루프
+      function render() {
+        ctx.clearRect(0, 0, w, h);
+
+        const cAX = w / 2 - 80;
+        const cBX = w / 2 + 80;
+        const cY = 145;
+        const R = 95;
+
+        // 1. 벤다이어그램 원 A (왼쪽)
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cAX, cY, R, 0, Math.PI * 2);
+        ctx.fillStyle = (currentMode === 1) ? 'rgba(59, 130, 246, 0.08)' : (currentMode === 2) ? 'rgba(59, 130, 246, 0.06)' : (currentMode === 3) ? 'rgba(2, 132, 199, 0.09)' : 'rgba(226, 232, 240, 0.2)';
+        ctx.fill();
+        ctx.strokeStyle = (currentMode === 1 || currentMode === 3) ? '#3b82f6' : (currentMode === 2) ? '#60a5fa' : '#94a3b8';
+        ctx.lineWidth = (currentMode > 0) ? 2.5 : 1.5;
+        ctx.stroke();
+
+        // 원 A 상단 타이틀
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 14px Pretendard, sans-serif';
+        ctx.fillStyle = '#1d4ed8';
+        let labelA = '집합 A';
+        if (currentMode === 1) labelA = '8의 약수 {1, 2, 4, 8}';
+        else if (currentMode === 2) labelA = '12의 약수';
+        else if (currentMode === 3) labelA = '소수 5의 약수 {1, 5}';
+        ctx.fillText(labelA, cAX - 30, cY - R - 10);
+        ctx.restore();
+
+        // 2. 벤다이어그램 원 B (오른쪽)
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cBX, cY, R, 0, Math.PI * 2);
+        ctx.fillStyle = (currentMode === 1) ? 'rgba(139, 92, 246, 0.08)' : (currentMode === 2) ? 'rgba(139, 92, 246, 0.06)' : (currentMode === 3) ? 'rgba(124, 58, 237, 0.09)' : 'rgba(226, 232, 240, 0.2)';
+        ctx.fill();
+        ctx.strokeStyle = (currentMode === 1 || currentMode === 3) ? '#8b5cf6' : (currentMode === 2) ? '#a78bfa' : '#94a3b8';
+        ctx.lineWidth = (currentMode > 0) ? 2.5 : 1.5;
+        ctx.stroke();
+
+        // 원 B 상단 타이틀
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 14px Pretendard, sans-serif';
+        ctx.fillStyle = '#6d28d9';
+        let labelB = '집합 B';
+        if (currentMode === 1) labelB = '15의 약수 {1, 3, 5, 15}';
+        else if (currentMode === 2) labelB = '18의 약수';
+        else if (currentMode === 3) labelB = '소수 13의 약수 {1, 13}';
+        ctx.fillText(labelB, cBX + 30, cY - R - 10);
+        ctx.restore();
+
+        // 3. 교집합 A ∩ B 영역 강조 (하이라이트)
+        if (currentMode > 0) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(cAX, cY, R, 0, Math.PI * 2);
+          ctx.clip();
+          ctx.beginPath();
+          ctx.arc(cBX, cY, R, 0, Math.PI * 2);
+          ctx.fillStyle = (currentMode === 1 || currentMode === 3) ? 'rgba(16, 185, 129, 0.16)' : 'rgba(245, 158, 11, 0.16)';
+          ctx.fill();
+          ctx.strokeStyle = (currentMode === 1 || currentMode === 3) ? '#10b981' : '#f59e0b';
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+          ctx.restore();
+
+          // 교집합 상단 라벨
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillStyle = (currentMode === 1 || currentMode === 3) ? '#059669' : '#d97706';
+          ctx.fillText('공약수 (A ∩ B)', w / 2, cY - R - 10);
+          ctx.restore();
+        }
+
+        // 초기 상태(mode === 0) 안내 문구
+        if (currentMode === 0) {
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 15px Pretendard, sans-serif';
+          ctx.fillStyle = '#64748b';
+          ctx.fillText('상단 버튼을 눌러 서로소 벤다이어그램을 확인하세요', w / 2, cY - 8);
+          ctx.font = '13px Pretendard, sans-serif';
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText('두 수의 공약수가 1뿐인지 직접 눈으로 비교할 수 있습니다.', w / 2, cY + 16);
+          ctx.restore();
+        }
+
+        // 4. 구슬 애니메이션 (Lerp 보간 이동 & 렌더링)
+        balls.forEach(b => {
+          b.x += (b.tx - b.x) * 0.14;
+          b.y += (b.ty - b.y) * 0.14;
+
+          const isHovered = (hoverBall === b);
+          const rad = isHovered ? b.radius + 3 : b.radius;
+
+          ctx.save();
+          // 글로우 효과 (isGcd 또는 호버)
+          if (b.isGcd || isHovered) {
+            ctx.shadowColor = b.color;
+            ctx.shadowBlur = b.isGcd ? 16 : 8;
+          }
+
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, rad, 0, Math.PI * 2);
+          ctx.fillStyle = b.color;
+          ctx.fill();
+
+          // 구슬 테두리
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+
+          // 최대공약수 표시 왕관/별 마크 또는 링
+          if (b.isGcd) {
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, rad + 4, 0, Math.PI * 2);
+            ctx.strokeStyle = (currentMode === 2) ? '#ef4444' : '#10b981';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([3, 3]);
+            ctx.stroke();
+          }
+
+          // 구슬 텍스트
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = `bold ${b.val > 9 ? 13 : 15}px Pretendard, sans-serif`;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(b.val, b.x, b.y);
+          ctx.restore();
+        });
+
+        // 5. 판정 배너 카드 (y: 252)
+        if (currentMode > 0) {
+          const bannerW = Math.min(w - 36, 510);
+          const bannerX = (w - bannerW) / 2;
+          const bannerY = 252;
+
+          ctx.save();
+          if (currentMode === 1) {
+            ctx.fillStyle = '#ecfdf5';
+            ctx.strokeStyle = '#10b981';
+          } else if (currentMode === 2) {
+            ctx.fillStyle = '#fff7ed';
+            ctx.strokeStyle = '#f97316';
+          } else if (currentMode === 3) {
+            ctx.fillStyle = '#f0f9ff';
+            ctx.strokeStyle = '#0284c7';
+          }
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(bannerX, bannerY, bannerW, 36, 8);
+          else ctx.rect(bannerX, bannerY, bannerW, 36);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          if (currentMode === 1) {
+            ctx.fillStyle = '#065f46';
+            ctx.fillText('✨ 최대공약수가 1이므로 8과 15는 【서로소】입니다! (Coprime)', w / 2, bannerY + 18);
+          } else if (currentMode === 2) {
+            ctx.fillStyle = '#9a3412';
+            ctx.fillText('⚠️ 공약수가 {1, 2, 3, 6} (최대공약수=6 ≠ 1) ➔ 【서로소 아님】!', w / 2, bannerY + 18);
+          } else if (currentMode === 3) {
+            ctx.fillStyle = '#075985';
+            ctx.fillText('🤖 두 소수 5와 13의 공약수는 1뿐 ➔ 【서로 다른 두 소수는 항상 서로소】 (참)', w / 2, bannerY + 18);
+          }
+          ctx.restore();
+        }
+
+        // 6. 하단 3개 핵심 정리 박스 (y: 296 ~ 384)
+        const sumW = Math.min(w - 36, 510);
+        const sumX = (w - sumW) / 2;
+        const sumY = 296;
+
+        ctx.save();
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(sumX, sumY, sumW, 88, 8);
+        else ctx.rect(sumX, sumY, sumW, 88);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 12px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('📌 교과서 핵심 개념 정리 (p.18):', sumX + 14, sumY + 18);
+
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillStyle = (currentMode === 1) ? '#059669' : '#475569';
+        ctx.fillText('• 서로소: 최대공약수가 1인 두 자연수 (예: 8의 약수와 15의 약수의 공약수는 1뿐)', sumX + 14, sumY + 38);
+
+        ctx.fillStyle = (currentMode === 2) ? '#d97706' : '#475569';
+        ctx.fillText('• 12와 18의 공약수는 1, 2, 3, 6이므로 최대공약수가 6 ➔ 서로소가 아님', sumX + 14, sumY + 56);
+
+        ctx.font = 'bold 12px Pretendard, sans-serif';
+        ctx.fillStyle = (currentMode === 3) ? '#0284c7' : '#64748b';
+        ctx.fillText('• 🤖 수학봇: 소수는 약수가 1과 자신뿐이므로, 서로 다른 두 소수는 항상 서로소!', sumX + 14, sumY + 74);
+        ctx.restore();
+
+        // 7. 콘페티 애니메이션
+        if (particles.length > 0) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.22;
+            p.rot += p.vRot;
+            p.life -= p.decay;
+
+            if (p.life <= 0) {
+              particles.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+            ctx.restore();
+          }
+        }
+
+        container._animId_3_3 = requestAnimationFrame(render);
+      }
+
+      render();
     }
+
+    function renderForm_3_3(box) {
+      box.innerHTML = `
+        <div class="card" style="padding:16px 20px;">
+          <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
+            📖 [개념 탐구] 서로소의 뜻과 수학봇 (p.18)
+          </div>
+          <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
+            두 자연수 8, 15의 공약수는 1뿐이므로 최대공약수는 1입니다.<br>
+            교과서 개념과 수학봇의 질문을 읽고 물음에 답하시오.
+          </p>
+
+          <!-- 퀵 입력 바 -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; background:#f1f5f9; padding:8px 10px; border-radius:8px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; line-height:28px;">퀵 입력:</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-insert-3-3" data-char="서로소" style="font-weight:700;">서로소</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-insert-3-3" data-char="O" style="font-weight:700; min-width:32px;">O</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-insert-3-3" data-char="X" style="font-weight:700; min-width:32px;">X</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-insert-3-3" data-char="1" style="font-weight:700; min-width:32px;">1</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-clear-3-3" style="font-weight:700;">초기화</button>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
+            <!-- ⑴ 서로소 용어 -->
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+                ⑴ 최대공약수가 1인 두 자연수를 무엇이라고 부르는가?
+              </label>
+              <input type="text" id="ans-3-3-1" class="form-control" style="width:140px;" placeholder="용어 입력" autocomplete="off">
+            </div>
+
+            <!-- ⑵ 수학봇 질문 -->
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+                ⑵ 🤖 수학봇: "서로 다른 두 소수는 항상 서로소인가요?" (O/X):
+              </label>
+              <input type="text" id="ans-3-3-2" class="form-control" style="width:140px;" placeholder="O 또는 X 입력" autocomplete="off">
+            </div>
+
+            <!-- ⑶ 8과 15의 공약수 -->
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+                ⑶ 두 자연수 8과 15의 공약수를 모두 쓰시오:
+              </label>
+              <input type="text" id="ans-3-3-3" class="form-control" style="width:140px;" placeholder="수 입력" autocomplete="off">
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="checkStep_3_3()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
+        </div>
+      `;
+
+      let lastFocusedInput = box.querySelector('#ans-3-3-1');
+      const inputs = box.querySelectorAll('input[type="text"]');
+      inputs.forEach(input => {
+        input.addEventListener('focus', () => {
+          lastFocusedInput = input;
+        });
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') checkStep_3_3();
+        });
+      });
+
+      box.querySelectorAll('.btn-quick-insert-3-3').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const char = btn.getAttribute('data-char');
+          if (lastFocusedInput) {
+            lastFocusedInput.value = char;
+            lastFocusedInput.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      });
+
+      const clearBtn = box.querySelector('.btn-quick-clear-3-3');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          if (lastFocusedInput) {
+            lastFocusedInput.value = '';
+            lastFocusedInput.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      }
+    }
+
     function checkStep_3_3() {
-      const v = normTxt(document.getElementById('ans-3-3')?.value);
-      if (v === '서로소') {
-        completeSubStep('3-3', '🎉 <b>정답입니다!</b> 최대공약수가 1인 두 자연수를 <b>서로소</b>라고 합니다.');
+      const v1 = normTxt(document.getElementById('ans-3-3-1')?.value);
+      const v2 = normTxt(document.getElementById('ans-3-3-2')?.value);
+      const v3 = normTxt(document.getElementById('ans-3-3-3')?.value);
+
+      const ok1 = (v1 === '서로소');
+      const ok2 = (v2 === 'o' || v2 === '참' || v2 === '그렇다' || v2 === 'ㅇ' || v2 === '맞다' || v2 === 'true');
+      const ok3 = (v3 === '1');
+
+      if (ok1 && ok2 && ok3) {
+        if (window._step3_3_triggerSuccess) {
+          window._step3_3_triggerSuccess();
+        }
+        completeSubStep('3-3', '🎉 <b>정답입니다!</b><br>• 최대공약수가 1인 두 자연수를 <b>서로소</b>라고 합니다.<br>• 서로 다른 두 소수는 약수가 1과 자신뿐이므로 최대공약수가 항상 1입니다 ➔ <b>O (참)</b><br>• 8의 약수 {1, 2, 4, 8}과 15의 약수 {1, 3, 5, 15}의 공약수는 <b>1</b>뿐입니다.');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 교과서 18쪽의 핵심 용어를 떠올려 보세요.');
+        if (!ok1 && ok2 && ok3) {
+          showFeedback(false, '❌ <b>⑴ 용어를 다시 확인해 보세요.</b> 최대공약수가 1인 두 자연수의 관계를 나타내는 수학 용어를 적어보세요.');
+        } else if (ok1 && !ok2 && ok3) {
+          showFeedback(false, '❌ <b>⑵ 수학봇 질문을 다시 확인해 보세요.</b> 두 소수는 각각 약수가 1과 자기 자신뿐이므로, 공약수가 1 외에 있을 수 있을까요? (O 또는 X)');
+        } else if (ok1 && ok2 && !ok3) {
+          showFeedback(false, '❌ <b>⑶ 공약수를 다시 확인해 보세요.</b> 8의 약수 {1, 2, 4, 8}과 15의 약수 {1, 3, 5, 15}에 공통으로 들어 있는 수를 찾아보세요.');
+        } else {
+          showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 최대공약수가 1인 두 자연수의 개념과 두 소수의 약수 관계를 차례로 생각해 보세요.');
+        }
       }
     }
 
