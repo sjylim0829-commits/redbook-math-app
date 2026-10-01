@@ -36033,86 +36033,516 @@ function checkStep_1_12() {
     // Step 4-8: 문제 2-⑴: 거듭제곱 꼴 세 수의 최소공배수 (p.21)
     // ==========================================
     function drawCanvas_4_8(container) {
-      if (!container) return;
+      if (container._animId_4_8) {
+        cancelAnimationFrame(container._animId_4_8);
+        container._animId_4_8 = null;
+      }
       container.innerHTML = '';
-      const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 500;
-      canvas.height = container.clientHeight || 450;
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      canvas.style.display = 'block';
-      container.appendChild(canvas);
+
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; height:100%; box-sizing:border-box;">
+          <!-- 상단 컨트롤러 및 안내 바 -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+            <div id="badge-4-8" style="font-size:0.86rem; font-weight:700; color:#1e293b; background:#f1f5f9; padding:6px 14px; border-radius:20px; border:1px solid #cbd5e1; flex:1; min-width:240px;">
+              단계별 버튼을 눌러 세 수의 최소공배수를 구하는 원리를 확인해 보세요!
+            </div>
+            <div style="display:flex; gap:5px; flex-wrap:wrap;">
+              <button id="btn-step1-4-8" class="btn btn-sm btn-outline-primary" style="font-weight:700;">1단계: 밑 2</button>
+              <button id="btn-step2-4-8" class="btn btn-sm btn-outline-primary" style="font-weight:700;">2단계: 밑 3</button>
+              <button id="btn-step3-4-8" class="btn btn-sm btn-outline-primary" style="font-weight:700;">3단계: 밑 5</button>
+              <button id="btn-step4-4-8" class="btn btn-sm btn-warning" style="font-weight:800; color:#1e293b;">4단계: 결합</button>
+              <button id="btn-reset-4-8" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">⟲ 초기화</button>
+            </div>
+          </div>
+          <!-- Canvas 영역 -->
+          <div style="flex:1; min-height:370px; position:relative;">
+            <canvas id="canvas-4-8" style="width:100%; height:100%; display:block; border-radius:12px; background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); border:1px solid #e2e8f0;"></canvas>
+          </div>
+        </div>
+      `;
+
+      const canvas = container.querySelector('#canvas-4-8');
+      const badgeStatus = container.querySelector('#badge-4-8');
+      const btnStep1 = container.querySelector('#btn-step1-4-8');
+      const btnStep2 = container.querySelector('#btn-step2-4-8');
+      const btnStep3 = container.querySelector('#btn-step3-4-8');
+      const btnStep4 = container.querySelector('#btn-step4-4-8');
+      const btnReset = container.querySelector('#btn-reset-4-8');
+
       const ctx = canvas.getContext('2d');
+      let w = 560, h = 400;
 
-      let animId;
-      let angle = 0;
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        w = rect.width || 560;
+        h = rect.height || 400;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+
+      const ro = new ResizeObserver(() => resize());
+      ro.observe(canvas);
+
+      let currentStep = 0;
+      let pulseTimer = 0;
+      let particles = [];
+      let hoveredCol = null;
+
+      function spawnConfetti(count = 60) {
+        const colors = ['#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#f43f5e'];
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: w / 2 + (Math.random() - 0.5) * 180,
+            y: 200 + (Math.random() - 0.5) * 60,
+            vx: (Math.random() - 0.5) * 12,
+            vy: (Math.random() - 0.85) * 11 - 2,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.01
+          });
+        }
+      }
+
+      function updateUI() {
+        if (btnStep1) btnStep1.className = `btn btn-sm ${currentStep === 1 ? 'btn-primary text-white' : 'btn-outline-primary'}`;
+        if (btnStep2) btnStep2.className = `btn btn-sm ${currentStep === 2 ? 'btn-primary text-white' : 'btn-outline-primary'}`;
+        if (btnStep3) btnStep3.className = `btn btn-sm ${currentStep === 3 ? 'btn-primary text-white' : 'btn-outline-primary'}`;
+        if (btnStep4) btnStep4.className = `btn btn-sm ${currentStep === 4 ? 'btn-warning text-dark font-weight-bold shadow-sm' : 'btn-outline-warning text-dark'}`;
+
+        if (badgeStatus) {
+          if (currentStep === 0) {
+            badgeStatus.innerText = '단계별 버튼을 눌러 세 수의 최소공배수를 구하는 원리를 확인해 보세요!';
+          } else if (currentStep === 1) {
+            badgeStatus.innerHTML = '1️⃣ <b>밑이 2인 거듭제곱</b>: 2²과 2 중 지수가 큰 ➔ <b>2²</b>을 택합니다! (지수 2 > 1)';
+          } else if (currentStep === 2) {
+            badgeStatus.innerHTML = '2️⃣ <b>밑이 3인 소인수</b>: 수 1과 수 3에 공통이고 지수 동일(1) ➔ <b>3</b>을 택합니다!';
+          } else if (currentStep === 3) {
+            badgeStatus.innerHTML = '3️⃣ <b>밑이 5인 거듭제곱</b>: 5, 5², 5² 중 지수가 큰 ➔ <b>5²</b>을 택합니다! (지수 2 > 1)';
+          } else if (currentStep === 4) {
+            badgeStatus.innerHTML = '👑 <b>최소공배수 완성!</b> 택한 소인수를 모두 곱합니다: <b>2² × 3 × 5² = 300</b>';
+          }
+        }
+      }
+
+      btnStep1?.addEventListener('click', () => { currentStep = 1; updateUI(); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+      btnStep2?.addEventListener('click', () => { currentStep = 2; updateUI(); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+      btnStep3?.addEventListener('click', () => { currentStep = 3; updateUI(); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+      btnStep4?.addEventListener('click', () => { currentStep = 4; spawnConfetti(60); updateUI(); if (window.SoundFX && window.SoundFX.success) SoundFX.success(); });
+      btnReset?.addEventListener('click', () => { currentStep = 0; updateUI(); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+
+      window._step4_8_triggerSuccess = function() {
+        currentStep = 4;
+        updateUI();
+        spawnConfetti(70);
+      };
+
+      // 포인터 인터랙션 (열 호버)
+      canvas.addEventListener('pointermove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        hoveredCol = null;
+        if (my >= 65 && my <= 280) {
+          const centerX = w / 2;
+          const col2X = centerX - 90;
+          const col3X = centerX + 10;
+          const col5X = centerX + 110;
+
+          if (Math.abs(mx - col2X) < 45) hoveredCol = 2;
+          else if (Math.abs(mx - col3X) < 45) hoveredCol = 3;
+          else if (Math.abs(mx - col5X) < 45) hoveredCol = 5;
+        }
+      });
+
+      canvas.addEventListener('pointerleave', () => { hoveredCol = null; });
+
+      canvas.addEventListener('pointerdown', () => {
+        if (hoveredCol === 2) { currentStep = 1; updateUI(); }
+        else if (hoveredCol === 3) { currentStep = 2; updateUI(); }
+        else if (hoveredCol === 5) { currentStep = 3; updateUI(); }
+      });
+
       function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, w, h);
+        pulseTimer += 0.05;
 
-        // Grid lines
-        ctx.strokeStyle = '#1e293b';
-        ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 40) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-        }
-        for (let y = 0; y < canvas.height; y += 40) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-        }
-
-        // Badge & Title
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 16px "Pretendard", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('[4-8] 문제 2-⑴: 거듭제곱 꼴 세 수의 최소공배수 (p.21)', canvas.width / 2, 40);
-
-        // Interactive visual placeholder
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
+        // 상단 뱃지
+        const badgeW = Math.min(w - 36, 520);
+        const badgeX = (w - badgeW) / 2;
         ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.strokeStyle = '#6366f1';
-        ctx.lineWidth = 3;
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(0, 0, 70, 0, Math.PI * 2);
+        if (ctx.roundRect) ctx.roundRect(badgeX, 10, badgeW, 32, 8);
+        else ctx.rect(badgeX, 10, badgeW, 32);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 12.5px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('문제 2-⑴: 3 × 5, 2² × 5², 2 × 3 × 5² 의 최소공배수 구하기', w / 2, 26);
+        ctx.restore();
+
+        const centerX = w / 2;
+        const startY = 56;
+        const rowH = 38;
+        const col2X = centerX - 90;
+        const col3X = centerX + 10;
+        const col5X = centerX + 110;
+        const labelX = centerX - 190;
+
+        // 열 하이라이트 배경
+        [
+          { col: 2, x: col2X, step: 1, active: currentStep >= 1 },
+          { col: 3, x: col3X, step: 2, active: currentStep >= 2 },
+          { col: 5, x: col5X, step: 3, active: currentStep >= 3 }
+        ].forEach(c => {
+          const isCurrent = (currentStep === c.step) || (hoveredCol === c.col);
+          if (isCurrent || c.active) {
+            ctx.save();
+            ctx.fillStyle = isCurrent ? 'rgba(56, 189, 248, 0.12)' : 'rgba(241, 245, 249, 0.5)';
+            ctx.strokeStyle = isCurrent ? '#38bdf8' : '#e2e8f0';
+            ctx.lineWidth = isCurrent ? 2 : 1;
+            ctx.setLineDash(isCurrent ? [] : [4, 4]);
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(c.x - 38, startY - 6, 76, rowH * 4 + 18, 10);
+            else ctx.rect(c.x - 38, startY - 6, 76, rowH * 4 + 18);
+            ctx.fill();
+            ctx.stroke();
+
+            if (isCurrent) {
+              ctx.textAlign = 'center';
+              ctx.font = 'bold 11px Pretendard, sans-serif';
+              ctx.fillStyle = '#0284c7';
+              if (c.col === 2) ctx.fillText('지수 큰 쪽 ➔ 2²', c.x, startY - 12);
+              if (c.col === 3) ctx.fillText('공통 밑 ➔ 3', c.x, startY - 12);
+              if (c.col === 5) ctx.fillText('지수 큰 쪽 ➔ 5²', c.x, startY - 12);
+            }
+            ctx.restore();
+          }
+        });
+
+        // 1행: 수 A = 3 × 5
+        const y1 = startY + 16;
+        ctx.save();
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('수 A = ', labelX + 30, y1);
+
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillStyle = '#cbd5e1';
+        ctx.textAlign = 'center';
+        ctx.fillText('(없음)', col2X, y1);
+
+        drawFactorCard(col3X, y1, '3', '#10b981', currentStep >= 2, false);
+        ctx.fillStyle = '#94a3b8';
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 14px Pretendard, sans-serif';
+        ctx.fillText('×', (col3X + col5X) / 2, y1);
+        drawFactorCard(col5X, y1, '5', '#f59e0b', false, false);
+        ctx.restore();
+
+        // 2행: 수 B = 2² × 5²
+        const y2 = y1 + rowH;
+        ctx.save();
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('수 B = ', labelX + 30, y2);
+
+        drawFactorCard(col2X, y2, '2²', '#3b82f6', currentStep >= 1, currentStep === 1);
+
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillStyle = '#cbd5e1';
+        ctx.textAlign = 'center';
+        ctx.fillText('(없음)', col3X, y2);
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = 'bold 14px Pretendard, sans-serif';
+        ctx.fillText('×', (col3X + col5X) / 2, y2);
+        drawFactorCard(col5X, y2, '5²', '#f59e0b', currentStep >= 3, currentStep === 3);
+        ctx.restore();
+
+        // 3행: 수 C = 2 × 3 × 5²
+        const y3 = y2 + rowH;
+        ctx.save();
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('수 C = ', labelX + 30, y3);
+
+        drawFactorCard(col2X, y3, '2', '#3b82f6', false, false);
+        ctx.fillStyle = '#94a3b8';
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 14px Pretendard, sans-serif';
+        ctx.fillText('×', (col2X + col3X) / 2, y3);
+
+        drawFactorCard(col3X, y3, '3', '#10b981', currentStep >= 2, currentStep === 2);
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('×', (col3X + col5X) / 2, y3);
+
+        drawFactorCard(col5X, y3, '5²', '#f59e0b', currentStep >= 3, false);
+        ctx.restore();
+
+        // 구분선
+        const lineY = y3 + 24;
+        ctx.save();
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(labelX - 10, lineY);
+        ctx.lineTo(col5X + 50, lineY);
         ctx.stroke();
         ctx.restore();
 
+        // 4행: 최소공배수 = 2² × 3 × 5²
+        const y4 = lineY + 24;
+        ctx.save();
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 14px Pretendard, sans-serif';
+        ctx.fillStyle = (currentStep === 4) ? '#b45309' : '#0284c7';
+        ctx.fillText('(최소공배수) = ', labelX + 30, y4);
+
+        // 슬롯 2²
+        if (currentStep >= 1) {
+          drawFactorCard(col2X, y4, '2²', '#2563eb', true, currentStep === 1, true);
+        } else {
+          drawEmptySlot(col2X, y4);
+        }
+
         ctx.fillStyle = '#94a3b8';
-        ctx.font = '13px "Pretendard", sans-serif';
-        ctx.fillText('최소공배수 시각화 인터랙터', cx, cy + 110);
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 14px Pretendard, sans-serif';
+        ctx.fillText('×', (col2X + col3X) / 2, y4);
 
-        angle += 0.02;
-        animId = requestAnimationFrame(render);
+        // 슬롯 3
+        if (currentStep >= 2) {
+          drawFactorCard(col3X, y4, '3', '#059669', true, currentStep === 2, true);
+        } else {
+          drawEmptySlot(col3X, y4);
+        }
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('×', (col3X + col5X) / 2, y4);
+
+        // 슬롯 5²
+        if (currentStep >= 3) {
+          drawFactorCard(col5X, y4, '5²', '#d97706', true, currentStep === 3, true);
+        } else {
+          drawEmptySlot(col5X, y4);
+        }
+
+        // 4단계 결과값
+        if (currentStep === 4) {
+          ctx.textAlign = 'left';
+          ctx.font = 'bold 16px Pretendard, sans-serif';
+          ctx.fillStyle = '#b45309';
+          ctx.fillText(' = 300', col5X + 44, y4);
+        }
+        ctx.restore();
+
+        // 하단 핵심 원리 정리 박스
+        const boxW = Math.min(w - 36, 520);
+        const boxX = (w - boxW) / 2;
+        const boxY = 224;
+        const boxH = 146;
+
+        ctx.save();
+        ctx.fillStyle = (currentStep === 4) ? '#fefce8' : '#f8fafc';
+        ctx.strokeStyle = (currentStep === 4) ? '#f59e0b' : '#cbd5e1';
+        ctx.lineWidth = (currentStep === 4) ? 2 : 1.5;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(boxX, boxY, boxW, boxH, 10);
+        else ctx.rect(boxX, boxY, boxW, boxH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('📌 세 수 3 × 5, 2² × 5², 2 × 3 × 5² 의 최소공배수 풀이:', boxX + 16, boxY + 12);
+
+        ctx.font = '12px Pretendard, sans-serif';
+        ctx.fillStyle = '#475569';
+        ctx.fillText('• 세 수: 3 × 5,  2² × 5²,  2 × 3 × 5²', boxX + 16, boxY + 34);
+
+        // 1단계: 밑 2
+        ctx.fillStyle = (currentStep === 1) ? '#0284c7' : '#475569';
+        ctx.font = (currentStep === 1) ? 'bold 12px Pretendard, sans-serif' : '12px Pretendard, sans-serif';
+        const text1 = (currentStep >= 1)
+          ? '① 밑 2: 2²과 2 중 지수가 큰 거듭제곱 ➔ 2² 선택 (지수 2 > 1)'
+          : '① 밑이 같은 거듭제곱 중 지수가 가장 큰 것을 택한다.';
+        ctx.fillText(text1, boxX + 16, boxY + 56);
+
+        // 2단계: 밑 3
+        ctx.fillStyle = (currentStep === 2) ? '#059669' : '#475569';
+        ctx.font = (currentStep === 2) ? 'bold 12px Pretendard, sans-serif' : '12px Pretendard, sans-serif';
+        const text2 = (currentStep >= 2)
+          ? '② 밑 3: 수 A와 수 C에 공통이고 지수 동일(1) ➔ 3 선택'
+          : '② 한쪽에만 있는 나머지 소인수도 모두 택한다.';
+        ctx.fillText(text2, boxX + 16, boxY + 78);
+
+        // 3단계: 밑 5
+        ctx.fillStyle = (currentStep === 3) ? '#d97706' : '#475569';
+        ctx.font = (currentStep === 3) ? 'bold 12px Pretendard, sans-serif' : '12px Pretendard, sans-serif';
+        const text3 = (currentStep >= 3)
+          ? '③ 밑 5: 5, 5², 5² 중 지수가 큰 거듭제곱 ➔ 5² 선택 (지수 2 > 1)'
+          : '③ 밑이 같은 거듭제곱 중 지수가 가장 큰 것을 택한다.';
+        ctx.fillText(text3, boxX + 16, boxY + 100);
+
+        // 4단계: 결합
+        ctx.fillStyle = (currentStep === 4) ? '#b45309' : '#64748b';
+        ctx.font = (currentStep === 4) ? 'bold 12.5px Pretendard, sans-serif' : '12px Pretendard, sans-serif';
+        const text4 = (currentStep === 4)
+          ? '④ 택한 거듭제곱을 모두 곱한다: 2² × 3 × 5² = 300'
+          : '④ 택한 거듭제곱을 모두 곱하여 최소공배수를 완성한다.';
+        ctx.fillText(text4, boxX + 16, boxY + 122);
+        ctx.restore();
+
+        // 파티클
+        if (particles.length > 0) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.22;
+            p.rot += p.vRot;
+            p.life -= p.decay;
+
+            if (p.life <= 0) {
+              particles.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+            ctx.restore();
+          }
+        }
+
+        container._animId_4_8 = requestAnimationFrame(render);
       }
-      render();
 
-      window._cleanup_step_4_8 = () => {
-        if (animId) cancelAnimationFrame(animId);
-      };
+      function drawFactorCard(cx, cy, text, color, isSelected, isFocus, isResult = false) {
+        const cardW = 54;
+        const cardH = 32;
+        const x = cx - cardW / 2;
+        const y = cy - cardH / 2;
+
+        ctx.save();
+        if (isFocus) {
+          ctx.shadowColor = color;
+          ctx.shadowBlur = 12 + Math.sin(pulseTimer) * 4;
+        }
+
+        ctx.fillStyle = isSelected ? color : '#f1f5f9';
+        ctx.strokeStyle = isSelected ? color : '#cbd5e1';
+        ctx.lineWidth = isFocus ? 2.5 : 1.5;
+
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(x, y, cardW, cardH, 7);
+        else ctx.rect(x, y, cardW, cardH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = (isResult ? 'bold 16px' : 'bold 14.5px') + ' Pretendard, sans-serif';
+        ctx.fillStyle = isSelected ? '#ffffff' : '#334155';
+        ctx.fillText(text, cx, cy);
+        ctx.restore();
+      }
+
+      function drawEmptySlot(cx, cy) {
+        const cardW = 54;
+        const cardH = 32;
+        const x = cx - cardW / 2;
+        const y = cy - cardH / 2;
+
+        ctx.save();
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 3]);
+
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(x, y, cardW, cardH, 7);
+        else ctx.rect(x, y, cardW, cardH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 14px Pretendard, sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('?', cx, cy);
+        ctx.restore();
+      }
+
+      render();
     }
 
     function renderForm_4_8(box) {
-      if (!box) return;
       box.innerHTML = `
-        <div class="question-card" style="padding:16px; background:#1e293b; border-radius:10px; margin-bottom:15px; border:1px solid #334155;">
-          <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 4-8. 문제 2-⑴: 거듭제곱 꼴 세 수의 최소공배수 (p.21)</div>
-          <p style="font-size:14px; color:#cbd5e1; line-height:1.6; margin-bottom:12px;">
-            문제를 해결하고 최소공배수 또는 답을 입력창에 작성하세요.
+        <div class="card" style="padding:16px 20px;">
+          <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
+            💡 [문제 2-⑴] 거듭제곱 꼴 세 수의 최소공배수 (p.21)
+          </div>
+
+          <!-- 문제 안내 카드 -->
+          <div style="background:#f8fafc; border-left:4px solid #3b82f6; padding:10px 14px; border-radius:6px; margin-bottom:14px;">
+            <div style="font-weight:700; font-size:0.86rem; color:#1e40af; margin-bottom:4px;">
+              주어진 세 수
+            </div>
+            <div style="font-size:0.88rem; color:#1e293b; line-height:1.6; font-family:'Pretendard', sans-serif;">
+              • <b>3 × 5</b>, &nbsp; <b>2² × 5²</b>, &nbsp; <b>2 × 3 × 5²</b>
+            </div>
+          </div>
+
+          <p style="font-size:0.88rem; color:#334155; line-height:1.6; margin-bottom:12px;">
+            세 수 <b>3 × 5</b>, <b>2² × 5²</b>, <b>2 × 3 × 5²</b> 의 <b>최소공배수</b>를 거듭제곱의 곱 또는 계산값으로 구하세요.
           </p>
-          <div style="margin-bottom:12px;">
-            <input type="text" id="ans-4-8" class="form-control" placeholder="수 또는 식 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
+
+          <!-- 입력 필드 (Zero-Spoiler) -->
+          <div style="background:#fefce8; padding:12px 14px; border-radius:8px; border:1px solid #fef08a; margin-bottom:14px;">
+            <label for="ans-4-8" style="font-size:0.85rem; font-weight:700; color:#854d0e; display:block; margin-bottom:6px;">
+              세 수의 최소공배수:
+            </label>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="text" id="ans-4-8" class="form-control" style="width:100%; font-size:1rem;" placeholder="거듭제곱 식 또는 수 입력" autocomplete="off">
+            </div>
           </div>
-          <div style="display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap;">
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_8" data-char="²">²</button>
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_8" data-char="³">³</button>
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_8" data-char="⁴">⁴</button>
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_8" data-char="×">×</button>
-            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4_8" data-char="^">^</button>
-            <button type="button" class="btn btn-sm btn-outline-danger btn-pow-clear-4_8">지우기</button>
+
+          <!-- 퀵 거듭제곱/연산자 키패드 -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; background:#f1f5f9; padding:8px 10px; border-radius:8px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; line-height:28px;">특수 기호:</span>
+            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4-8" data-char="²" style="font-weight:700; min-width:32px;">²</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4-8" data-char="³" style="font-weight:700; min-width:32px;">³</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4-8" data-char="×" style="font-weight:700; min-width:32px;">×</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-pow-insert-4-8" data-char="^" style="font-weight:700; min-width:32px;">^</button>
+            <button type="button" class="btn btn-sm btn-outline-danger btn-pow-clear-4-8" style="font-weight:700;">지우기</button>
           </div>
+
           <button class="btn btn-primary" onclick="checkStep_4_8()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
@@ -36123,7 +36553,8 @@ function checkStep_1_12() {
           if (e.key === 'Enter') checkStep_4_8();
         });
       }
-      box.querySelectorAll('.btn-pow-insert-4_8').forEach(btn => {
+
+      box.querySelectorAll('.btn-pow-insert-4-8').forEach(btn => {
         btn.addEventListener('click', () => {
           const char = btn.getAttribute('data-char');
           if (input) {
@@ -36133,29 +36564,89 @@ function checkStep_1_12() {
           }
         });
       });
-      const clearBtn = box.querySelector('.btn-pow-clear-4_8');
+
+      const clearBtn = box.querySelector('.btn-pow-clear-4-8');
       if (clearBtn) {
         clearBtn.addEventListener('click', () => {
           if (input) {
             input.value = '';
             input.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
           }
         });
       }
     }
 
     function checkStep_4_8() {
-      const v = normTxt(document.getElementById('ans-4-8')?.value);
-      const isCorrect = (v.length > 0);
-      if (isCorrect) {
-        completeSubStep('4-8', '🎉 <b>정답입니다!</b><br>• 정답 및 풀이: 2² × 3 × 5² = 300');
+      const raw = document.getElementById('ans-4-8')?.value || '';
+      const v = normTxt(raw);
+
+      if (!v || v.length === 0) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>값을 입력해 주세요.</b> 거듭제곱의 곱 또는 계산값을 입력해 보세요.');
+        return;
+      }
+
+      // 1. 수치 직접 계산값 확인 (300)
+      const numVal = /^\d+$/.test(v.replace(/,/g, '')) ? parseInt(v.replace(/,/g, ''), 10) : null;
+      const isDirect300 = (numVal === 300);
+
+      // 2. 거듭제곱 식 파싱 검증: 2^2 * 3 * 5^2
+      const powerMap = parsePowerProduct(v);
+      const isPowerMatch = comparePowerMaps(powerMap, { 2: 2, 3: 1, 5: 2 });
+
+      // 3. 수식 계산 평가 (예: 4*3*25 = 300)
+      let evalVal = null;
+      try {
+        const expr = v.replace(/²/g, '^2').replace(/³/g, '^3').replace(/\^/g, '**').replace(/×/g, '*');
+        if (/^[0-9\*\+\-\s]+$/.test(expr) || /^[0-9\*\+\-\s\*]+$/.test(expr)) {
+          // eslint-disable-next-line no-eval
+          evalVal = Function('"use strict";return (' + expr + ')')();
+        }
+      } catch (e) {
+        evalVal = null;
+      }
+      const isEval300 = (evalVal === 300);
+
+      // 4. 오답 힌트 분석
+      // 최대공약수(5)를 입력한 경우
+      const isGcdPower = comparePowerMaps(powerMap, { 5: 1 });
+      const isGcdNum = (numVal === 5 || evalVal === 5);
+
+      // 밑 5의 지수를 1로 택한 경우 (2²×3×5 = 60)
+      const isSmallPow5 = comparePowerMaps(powerMap, { 2: 2, 3: 1, 5: 1 }) || numVal === 60 || evalVal === 60;
+
+      // 밑 2의 지수를 1로 택한 경우 (2×3×5² = 150)
+      const isSmallPow2 = comparePowerMaps(powerMap, { 2: 1, 3: 1, 5: 2 }) || numVal === 150 || evalVal === 150;
+
+      // 밑 3을 빠뜨린 경우 (2²×5² = 100)
+      const isMissing3 = comparePowerMaps(powerMap, { 2: 2, 5: 2 }) || numVal === 100 || evalVal === 100;
+
+      if (isPowerMatch || isDirect300 || isEval300) {
+        if (window._step4_8_triggerSuccess) {
+          window._step4_8_triggerSuccess();
+        }
+        completeSubStep('4-8', '🎉 <b>정답입니다!</b><br>• 세 수: 3 × 5, 2² × 5², 2 × 3 × 5²<br>• 밑이 같은 거듭제곱 중 지수가 크거나 같은 것: <b>2², 3, 5²</b><br>• 최소공배수: 2² × 3 × 5² = <b>300</b>');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>값을 입력해 주세요.</b>');
+        if (isGcdPower || isGcdNum) {
+          showFeedback(false, '❌ <b>최대공약수(5)를 입력하셨습니다!</b> 최소공배수는 세 수의 소인수 거듭제곱 중 지수가 크거나 같은 것을 택해야 합니다.');
+        } else if (isMissing3) {
+          showFeedback(false, '❌ <b>소인수 3이 빠졌습니다!</b> 세 수 중 소인수 3도 최소공배수에 포함되어야 합니다.');
+        } else if (isSmallPow5) {
+          showFeedback(false, '❌ <b>밑 5의 지수를 확인해 보세요!</b> 5와 5² 중에서 지수가 큰 <b>5²</b>을 택해야 합니다.');
+        } else if (isSmallPow2) {
+          showFeedback(false, '❌ <b>밑 2의 지수를 확인해 보세요!</b> 2²과 2 중에서 지수가 큰 <b>2²</b>을 택해야 합니다.');
+        } else {
+          showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 세 수의 밑이 같은 거듭제곱 중 지수가 가장 큰 것과 나머지 거듭제곱을 모두 곱해 보세요. (예: 2² × 3 × 5² 또는 300)');
+        }
       }
     }
+
+    // -------------------------------------------------------------
+
 
 
     // ==========================================
