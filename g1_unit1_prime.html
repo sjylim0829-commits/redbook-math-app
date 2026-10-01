@@ -28957,34 +28957,570 @@ function checkStep_1_12() {
     }
 
     // 3-13 (p.21): 스스로 확인하기 4: 미지 지수와 최대공약수
-    function drawCanvas_3_13(container) { createDefaultCanvas_3(container, '🎨 [3-13] 미지 지수와 최대공약수'); }
-    function renderForm_3_13(box) {
-      box.innerHTML = `
-        <div class="card">
-          <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
-            ✏️ [스스로 확인하기 4] 미지 지수와 최대공약수 (p.21)
+    function drawCanvas_3_13(container) {
+      if (container._animId_3_13) {
+        cancelAnimationFrame(container._animId_3_13);
+        container._animId_3_13 = null;
+      }
+      container.innerHTML = '';
+
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; height:100%; box-sizing:border-box;">
+          <!-- 상단 컨트롤러 및 상태 안내 바 -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+            <div id="badge-3-13" style="font-size:0.86rem; font-weight:700; color:#1e293b; background:#f1f5f9; padding:6px 14px; border-radius:20px; border:1px solid #cbd5e1; flex:1; min-width:240px;">
+              버튼을 클릭하여 최대공약수의 소인수분해와 미지 지수 a, b의 값을 분석해 보세요!
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button id="btn-prime100-3-13" class="btn btn-sm btn-outline-primary" style="font-weight:700;">➊ 100 소인수분해 (2²×5²)</button>
+              <button id="btn-finda-3-13" class="btn btn-sm btn-outline-primary" style="font-weight:700;">➋ 미지수 a 분석</button>
+              <button id="btn-findb-3-13" class="btn btn-sm btn-outline-primary" style="font-weight:700;">➌ 미지수 b 분석</button>
+              <button id="btn-combine-3-13" class="btn btn-sm btn-warning" style="font-weight:800; color:#1e293b;">⚡ a+b 최종 결합</button>
+              <button id="btn-reset-3-13" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">⟲ 초기화</button>
+            </div>
           </div>
-          <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
-            두 수 2ᵃ × 5³ × 7, 2³ × 3 × 5ᵇ의 최대공약수가 100일 때, a + b의 값을 구하시오.
-          </p>
-          <div style="margin-bottom:12px;">
-            <input type="text" id="ans-3-13" class="input-text" placeholder="수 입력" style="width:100%;">
+          <!-- Canvas 렌더링 영역 -->
+          <div style="flex:1; min-height:370px; position:relative;">
+            <canvas id="canvas-3-13" style="width:100%; height:100%; display:block; border-radius:12px; background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); border:1px solid #e2e8f0;"></canvas>
           </div>
-          <button class="btn btn-primary" onclick="checkStep_3_13()" style="width:100%;">정답 확인 및 채점</button>
         </div>
       `;
-      const input = box.querySelector('#ans-3-13');
-      if (input) input.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkStep_3_13(); });
+
+      const canvas = container.querySelector('#canvas-3-13');
+      const badgeStatus = container.querySelector('#badge-3-13');
+      const btnPrime100 = container.querySelector('#btn-prime100-3-13');
+      const btnFindA = container.querySelector('#btn-finda-3-13');
+      const btnFindB = container.querySelector('#btn-findb-3-13');
+      const btnCombine = container.querySelector('#btn-combine-3-13');
+      const btnReset = container.querySelector('#btn-reset-3-13');
+
+      const ctx = canvas.getContext('2d');
+      let w = 560, h = 400;
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        w = rect.width || 560;
+        h = rect.height || 400;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+
+      const ro = new ResizeObserver(() => {
+        resize();
+      });
+      ro.observe(canvas);
+
+      // 모드: 0: 초기, 1: 100 소인수분해, 2: a 분석, 3: b 분석, 4: a+b 결합
+      let currentMode = 0;
+      let particles = [];
+      let hoveredCol = null;
+
+      function spawnConfetti(count = 60) {
+        const colors = ['#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#f43f5e'];
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: w / 2 + (Math.random() - 0.5) * 140,
+            y: 195 + (Math.random() - 0.5) * 40,
+            vx: (Math.random() - 0.5) * 11,
+            vy: (Math.random() - 0.85) * 10 - 2,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.01
+          });
+        }
+      }
+
+      function setMode(mode) {
+        currentMode = mode;
+
+        if (btnPrime100) btnPrime100.className = `btn btn-sm ${mode === 1 ? 'btn-primary' : 'btn-outline-primary'}`;
+        if (btnFindA) btnFindA.className = `btn btn-sm ${mode === 2 ? 'btn-primary' : 'btn-outline-primary'}`;
+        if (btnFindB) btnFindB.className = `btn btn-sm ${mode === 3 ? 'btn-primary' : 'btn-outline-primary'}`;
+        if (btnCombine) btnCombine.className = `btn btn-sm ${mode === 4 ? 'btn-warning text-dark font-weight-bold' : 'btn-warning text-dark'}`;
+
+        if (badgeStatus) {
+          if (mode === 0) {
+            badgeStatus.innerText = '버튼을 클릭하여 최대공약수의 소인수분해와 미지 지수 a, b의 값을 분석해 보세요!';
+          } else if (mode === 1) {
+            badgeStatus.innerHTML = '➊ <b>최대공약수 100 = 2² × 5²</b>: 밑 2의 최대공약수 지수는 <b>2</b>, 밑 5의 최대공약수 지수는 <b>2</b>!';
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          } else if (mode === 2) {
+            badgeStatus.innerHTML = '➋ <b>밑 2의 지수 분석</b>: min(a, 3) = 2 이므로 ➔ <b>a = 2 👑</b>';
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          } else if (mode === 3) {
+            badgeStatus.innerHTML = '➌ <b>밑 5의 지수 분석</b>: min(3, b) = 2 이므로 ➔ <b>b = 2 👑</b>';
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          } else if (mode === 4) {
+            badgeStatus.innerHTML = '👑 <b>최종 결합 완료!</b> a = 2, b = 2 ➔ <b>a + b = 2 + 2 = 4</b>';
+            spawnConfetti(60);
+            if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+          }
+        }
+      }
+
+      window._step3_13_triggerSuccess = function() {
+        setMode(4);
+        setTimeout(() => spawnConfetti(60), 400);
+      };
+
+      btnPrime100?.addEventListener('click', () => setMode(1));
+      btnFindA?.addEventListener('click', () => setMode(2));
+      btnFindB?.addEventListener('click', () => setMode(3));
+      btnCombine?.addEventListener('click', () => setMode(4));
+      btnReset?.addEventListener('click', () => setMode(0));
+
+      // 마우스 호버 감지
+      canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        hoveredCol = null;
+        if (my >= 35 && my <= 180) {
+          if (Math.abs(mx - (w / 2 - 105)) < 35) hoveredCol = 'col-2';
+          else if (Math.abs(mx - (w / 2 - 35)) < 35) hoveredCol = 'col-3';
+          else if (Math.abs(mx - (w / 2 + 35)) < 35) hoveredCol = 'col-5';
+          else if (Math.abs(mx - (w / 2 + 105)) < 35) hoveredCol = 'col-7';
+        }
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        hoveredCol = null;
+      });
+
+      // 카드 그리기 헬퍼
+      function drawFactorCard(val, x, y, isSelected = false, isDim = false, cw = 50, ch = 28) {
+        ctx.save();
+        if (isSelected) {
+          ctx.fillStyle = '#ecfdf5';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2.5;
+          ctx.shadowColor = 'rgba(16, 185, 129, 0.4)';
+          ctx.shadowBlur = 10;
+        } else if (isDim) {
+          ctx.fillStyle = '#f1f5f9';
+          ctx.strokeStyle = '#e2e8f0';
+          ctx.lineWidth = 1;
+        } else {
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.lineWidth = 1.5;
+        }
+
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(x - cw / 2, y - ch / 2, cw, ch, 6);
+        else ctx.rect(x - cw / 2, y - ch / 2, cw, ch);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.fillStyle = isDim ? '#94a3b8' : (isSelected ? '#059669' : '#1e293b');
+        ctx.fillText(val, x, y);
+        ctx.restore();
+      }
+
+      let pulseTimer = 0;
+
+      // 렌더링 루프
+      function render() {
+        ctx.clearRect(0, 0, w, h);
+        pulseTimer += 0.05;
+
+        // 열 위치 설정
+        const c2 = w / 2 - 105;
+        const c3 = w / 2 - 35;
+        const c5 = w / 2 + 35;
+        const c7 = w / 2 + 105;
+
+        const row1Y = 56;
+        const row2Y = 92;
+        const rowGcdY = 136;
+        const colLabelX = w / 2 - 180;
+
+        // 열 헤더
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+
+        // 밑 2
+        ctx.fillStyle = (currentMode === 2 || currentMode === 4) ? '#059669' : '#0284c7';
+        ctx.fillText((currentMode === 2 || currentMode === 4) ? '밑 2 (a=2)' : '밑 2의 열', c2, 26);
+
+        // 밑 3
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('밑 3 (제외)', c3, 26);
+
+        // 밑 5
+        ctx.fillStyle = (currentMode === 3 || currentMode === 4) ? '#059669' : '#0284c7';
+        ctx.fillText((currentMode === 3 || currentMode === 4) ? '밑 5 (b=2)' : '밑 5의 열', c5, 26);
+
+        // 밑 7
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('밑 7 (제외)', c7, 26);
+        ctx.restore();
+
+        // 행 라벨
+        ctx.save();
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 14px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('첫 번째 수 = ', colLabelX, row1Y);
+        ctx.fillText('두 번째 수 = ', colLabelX, row2Y);
+        ctx.fillStyle = '#0f766e';
+        ctx.fillText('최대공약수 = ', colLabelX, rowGcdY);
+        ctx.restore();
+
+        // 1행: 2ᵃ × 5³ × 7
+        const isASelected = (currentMode === 2 || currentMode === 4);
+        drawFactorCard(isASelected ? '2² (a=2)' : '2ᵃ', c2, row1Y, isASelected, false, 60, 28);
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = '11px Pretendard, sans-serif';
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillText('(없음)', c3, row1Y);
+        ctx.restore();
+        drawFactorCard('5³', c5, row1Y, false, false, 50, 28);
+        drawFactorCard('7', c7, row1Y, false, true, 50, 28);
+
+        // 2행: 2³ × 3 × 5ᵇ
+        const isBSelected = (currentMode === 3 || currentMode === 4);
+        drawFactorCard('2³', c2, row2Y, false, false, 60, 28);
+        drawFactorCard('3', c3, row2Y, false, true, 50, 28);
+        drawFactorCard(isBSelected ? '5² (b=2)' : '5ᵇ', c5, row2Y, isBSelected, false, 60, 28);
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = '11px Pretendard, sans-serif';
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillText('(없음)', c7, row2Y);
+        ctx.restore();
+
+        // 가로 분리선
+        ctx.save();
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(colLabelX - 45, 114);
+        ctx.lineTo(c7 + 45, 114);
+        ctx.stroke();
+        ctx.restore();
+
+        // 최대공약수 행 (100 = 2² × 5²)
+        const showGcd = (currentMode >= 1);
+        drawFactorCard(showGcd ? '2²' : '?', c2, rowGcdY, showGcd, !showGcd, 50, 28);
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = '11px Pretendard, sans-serif';
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillText('(제외)', c3, rowGcdY);
+        ctx.restore();
+        drawFactorCard(showGcd ? '5²' : '?', c5, rowGcdY, showGcd, !showGcd, 50, 28);
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = '11px Pretendard, sans-serif';
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillText('(제외)', c7, rowGcdY);
+        ctx.restore();
+
+        // 아래 트레이 (y: 172 ~ 216)
+        const trayW = Math.min(w - 36, 500);
+        const trayX = (w - trayW) / 2;
+        const trayY = 170;
+
+        ctx.save();
+        ctx.fillStyle = (currentMode === 4) ? '#ecfdf5' : '#f8fafc';
+        ctx.strokeStyle = (currentMode === 4) ? '#10b981' : '#cbd5e1';
+        ctx.lineWidth = (currentMode === 4) ? 2 : 1.5;
+        if (currentMode === 4) {
+          ctx.shadowColor = 'rgba(16, 185, 129, 0.35)';
+          ctx.shadowBlur = 10;
+        }
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(trayX, trayY, trayW, 46, 10);
+        else ctx.rect(trayX, trayY, trayW, 46);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+
+        if (currentMode === 0) {
+          ctx.fillStyle = '#64748b';
+          ctx.fillText('100 = 2² × 5² 과 각 밑의 지수를 비교하여 a와 b를 구해보세요.', w / 2, trayY + 23);
+        } else if (currentMode === 1) {
+          ctx.fillStyle = '#0284c7';
+          ctx.fillText('최대공약수 100 = 2² × 5² ➔ 밑 2의 지수는 2, 밑 5의 지수는 2', w / 2, trayY + 23);
+        } else if (currentMode === 2) {
+          ctx.fillStyle = '#059669';
+          ctx.fillText('밑 2의 지수: min(a, 3) = 2 ➔ a = 2 확정! 👑', w / 2, trayY + 23);
+        } else if (currentMode === 3) {
+          ctx.fillStyle = '#059669';
+          ctx.fillText('밑 5의 지수: min(3, b) = 2 ➔ b = 2 확정! 👑', w / 2, trayY + 23);
+        } else if (currentMode === 4) {
+          ctx.fillStyle = '#065f46';
+          ctx.fillText('👑 최종 정답: a = 2,  b = 2  ➔  a + b = 2 + 2 = 4', w / 2, trayY + 23);
+        }
+        ctx.restore();
+
+        // 마우스 호버 가이드 툴팁
+        if (hoveredCol) {
+          ctx.save();
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          let tipText = '';
+          let tipX = w / 2;
+
+          if (hoveredCol === 'col-2') {
+            tipText = '밑 2: 지수 a와 3 중 작은 것이 2가 되어야 하므로 a = 2! 👑';
+            tipX = c2;
+          } else if (hoveredCol === 'col-3') {
+            tipText = '밑 3: 두 번째 수에만 있으므로 최대공약수에서 제외됩니다.';
+            tipX = c3;
+          } else if (hoveredCol === 'col-5') {
+            tipText = '밑 5: 지수 3과 b 중 작은 것이 2가 되어야 하므로 b = 2! 👑';
+            tipX = c5;
+          } else if (hoveredCol === 'col-7') {
+            tipText = '밑 7: 첫 번째 수에만 있으므로 최대공약수에서 제외됩니다.';
+            tipX = c7;
+          }
+
+          const tipW = ctx.measureText(tipText).width + 16;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(tipX - tipW / 2, 2, tipW, 24, 6);
+          else ctx.rect(tipX - tipW / 2, 2, tipW, 24);
+          ctx.fill();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(tipText, tipX, 14);
+          ctx.restore();
+        }
+
+        // 하단 핵심 정리 박스 (y: 228 ~ 360)
+        const sumW = Math.min(w - 36, 510);
+        const sumX = (w - sumW) / 2;
+        const sumY = 226;
+        const sumH = 134;
+
+        ctx.save();
+        ctx.fillStyle = (currentMode === 4) ? '#fef3c7' : '#f8fafc';
+        ctx.strokeStyle = (currentMode === 4) ? '#f59e0b' : '#cbd5e1';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(sumX, sumY, sumW, sumH, 10);
+        else ctx.rect(sumX, sumY, sumW, sumH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 13px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('📌 미지 지수와 최대공약수 해결 프로세스 (p.21 스스로 확인하기 4):', sumX + 16, sumY + 22);
+
+        if (currentMode === 0) {
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = '#475569';
+          ctx.fillText('• 1단계: 주어진 최대공약수(100)를 소인수분해하여 2와 5의 거듭제곱으로 나타냅니다.', sumX + 16, sumY + 44);
+          ctx.fillText('• 2단계: 두 수의 밑 2와 밑 5의 지수 중 작은 것이 최대공약수의 지수가 됨을 이용합니다.', sumX + 16, sumY + 66);
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillStyle = '#0284c7';
+          ctx.fillText('💡 상단 버튼을 클릭하거나 정답을 입력하면 각 밑의 지수 매칭 및 a + b 합성이 진행됩니다.', sumX + 16, sumY + 96);
+        } else {
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillStyle = (currentMode >= 1) ? '#0284c7' : '#94a3b8';
+          ctx.fillText('• 1단계: 최대공약수 100을 소인수분해 ➔ 100 = 2² × 5²', sumX + 16, sumY + 44);
+
+          ctx.fillStyle = (currentMode === 2 || currentMode === 4) ? '#059669' : '#94a3b8';
+          ctx.fillText((currentMode === 2 || currentMode === 4) ? '• 2단계: 밑 2의 지수 비교 ➔ min(a, 3) = 2  ➔  a = 2' : '• 2단계: [a 분석] 버튼을 눌러 밑 2의 지수를 확인하세요.', sumX + 16, sumY + 66);
+
+          ctx.fillStyle = (currentMode === 3 || currentMode === 4) ? '#059669' : '#94a3b8';
+          ctx.fillText((currentMode === 3 || currentMode === 4) ? '• 3단계: 밑 5의 지수 비교 ➔ min(3, b) = 2  ➔  b = 2' : '• 3단계: [b 분석] 버튼을 눌러 밑 5의 지수를 확인하세요.', sumX + 16, sumY + 88);
+
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillStyle = (currentMode === 4) ? '#b45309' : '#94a3b8';
+          ctx.fillText((currentMode === 4) ? '💡 따라서 a + b = 2 + 2 = 4 (공통이 아닌 소인수 3과 7은 제외)' : '💡 상단 [⚡ a + b 결합] 버튼을 눌러 최종 합을 확인하세요.', sumX + 16, sumY + 112);
+        }
+        ctx.restore();
+
+        // 콘페티 애니메이션
+        if (particles.length > 0) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.22;
+            p.rot += p.vRot;
+            p.life -= p.decay;
+
+            if (p.life <= 0) {
+              particles.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+            ctx.restore();
+          }
+        }
+
+        container._animId_3_13 = requestAnimationFrame(render);
+      }
+
+      render();
     }
+
+    function renderForm_3_13(box) {
+      box.innerHTML = `
+        <div class="card" style="padding:16px 20px;">
+          <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
+            ✏️ [스스로 확인하기 4] 최대공약수와 미지수 지수 구하기 (p.21)
+          </div>
+          <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
+            두 수 2ᵃ × 5³ × 7,  2³ × 3 × 5ᵇ의 최대공약수가 100일 때, 다음 물음에 답하시오.
+          </p>
+
+          <!-- 숫자 퀵 입력 바 (Zero-Spoiler: 1~6 숫자 키패드 제공) -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; background:#f1f5f9; padding:8px 10px; border-radius:8px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; line-height:28px;">숫자 입력:</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-13" data-val="1" style="font-weight:700; min-width:32px;">1</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-13" data-val="2" style="font-weight:700; min-width:32px;">2</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-13" data-val="3" style="font-weight:700; min-width:32px;">3</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-13" data-val="4" style="font-weight:700; min-width:32px;">4</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-13" data-val="5" style="font-weight:700; min-width:32px;">5</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-insert-3-13" data-val="6" style="font-weight:700; min-width:32px;">6</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-backspace-3-13" style="font-weight:700;">⌫</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-num-clear-3-13" style="font-weight:700;">초기화</button>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
+            <!-- ⑴ a의 값 -->
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+                ⑴ 밑 2의 지수 a의 값:
+              </label>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:0.88rem; font-weight:600; color:#475569;">a =</span>
+                <input type="text" id="ans-3-13-1" class="form-control" style="width:120px;" placeholder="수 입력" autocomplete="off">
+              </div>
+            </div>
+
+            <!-- ⑵ b의 값 -->
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+                ⑵ 밑 5의 지수 b의 값:
+              </label>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:0.88rem; font-weight:600; color:#475569;">b =</span>
+                <input type="text" id="ans-3-13-2" class="form-control" style="width:120px;" placeholder="수 입력" autocomplete="off">
+              </div>
+            </div>
+
+            <!-- ⑶ a + b의 값 -->
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+                ⑶ a + b의 값:
+              </label>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:0.88rem; font-weight:600; color:#475569;">a + b =</span>
+                <input type="text" id="ans-3-13-3" class="form-control" style="width:120px;" placeholder="수 입력" autocomplete="off">
+              </div>
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="checkStep_3_13()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
+        </div>
+      `;
+
+      let lastFocusedInput = box.querySelector('#ans-3-13-1');
+      const inputs = box.querySelectorAll('input[type="text"]');
+      inputs.forEach(input => {
+        input.addEventListener('focus', () => {
+          lastFocusedInput = input;
+        });
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') checkStep_3_13();
+        });
+      });
+
+      box.querySelectorAll('.btn-num-insert-3-13').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = btn.getAttribute('data-val');
+          if (lastFocusedInput) {
+            lastFocusedInput.value = val;
+            lastFocusedInput.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      });
+
+      const backBtn = box.querySelector('.btn-num-backspace-3-13');
+      if (backBtn) {
+        backBtn.addEventListener('click', () => {
+          if (lastFocusedInput) {
+            lastFocusedInput.value = '';
+            lastFocusedInput.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      }
+
+      const clearBtn = box.querySelector('.btn-num-clear-3-13');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          if (lastFocusedInput) {
+            lastFocusedInput.value = '';
+            lastFocusedInput.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      }
+    }
+
     function checkStep_3_13() {
-      const v = document.getElementById('ans-3-13')?.value?.trim();
-      if (v === '4') {
-        completeSubStep('3-13', '🎉 <b>정답입니다!</b> 100 = 2² × 5²이므로 a = 2, b = 2가 되어 a + b = <b>4</b>입니다.');
+      const v1 = document.getElementById('ans-3-13-1')?.value?.trim();
+      const v2 = document.getElementById('ans-3-13-2')?.value?.trim();
+      const v3 = document.getElementById('ans-3-13-3')?.value?.trim();
+
+      const ok1 = (parseInt(v1, 10) === 2);
+      const ok2 = (parseInt(v2, 10) === 2);
+      const ok3 = (parseInt(v3, 10) === 4);
+
+      if (ok1 && ok2 && ok3) {
+        if (window._step3_13_triggerSuccess) {
+          window._step3_13_triggerSuccess();
+        }
+        completeSubStep('3-13', '🎉 <b>정답입니다!</b><br>• 최대공약수 100 = 2² × 5²<br>• 밑 2의 지수: min(a, 3) = 2 ➔ <b>a = 2</b><br>• 밑 5의 지수: min(3, b) = 2 ➔ <b>b = 2</b><br>• 따라서 a + b = 2 + 2 = <b>4</b>');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 100을 소인수분해하여 2와 5의 지수를 각각 비교해 보세요.');
+        if (!ok1) {
+          showFeedback(false, '❌ <b>⑴ a의 값을 다시 확인해 보세요.</b> 100 = 2² × 5²이므로 밑 2의 지수 a와 3 중 작은 것이 2가 되어야 합니다.');
+        } else if (!ok2) {
+          showFeedback(false, '❌ <b>⑵ b의 값을 다시 확인해 보세요.</b> 100 = 2² × 5²이므로 밑 5의 지수 3과 b 중 작은 것이 2가 되어야 합니다.');
+        } else if (!ok3) {
+          showFeedback(false, '❌ <b>⑶ a + b의 값을 다시 확인해 보세요.</b> a = 2, b = 2이므로 두 수의 합을 바르게 계산해 보세요.');
+        } else {
+          showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 100을 소인수분해하여 각 밑의 지수를 비교해 보세요.');
+        }
       }
     }
 
