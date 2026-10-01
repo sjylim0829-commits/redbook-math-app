@@ -21247,38 +21247,504 @@ function checkStep_1_12() {
 
     // 3-1 (p.18): 생각열기: 12와 16의 최대공약수
     function drawCanvas_3_1(container) {
-      createDefaultCanvas_3(container, '🎨 [3-1] 12와 16의 공약수 및 최대공약수 타일 분할기');
+      if (container._animId_3_1) {
+        cancelAnimationFrame(container._animId_3_1);
+        container._animId_3_1 = null;
+      }
+      container.innerHTML = '';
+
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; height:100%; box-sizing:border-box;">
+          <!-- 상단 상태 알림 및 인터랙터 조작 바 -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+            <div id="badge-3-1" style="font-size:0.86rem; font-weight:700; color:#1e293b; background:#f1f5f9; padding:6px 14px; border-radius:20px; border:1px solid #cbd5e1; flex:1; min-width:240px;">
+              가로 16 cm × 세로 12 cm 도안을 남는 공간 없이 채울 수 있는 정사각형을 탐구해 보세요!
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button id="btn-tile-1" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">1×1 타일 (192장)</button>
+              <button id="btn-tile-2" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">2×2 타일 (48장)</button>
+              <button id="btn-tile-4" class="btn btn-sm btn-primary" style="font-weight:700;">4×4 타일 (12장 👑)</button>
+              <button id="btn-tile-3" class="btn btn-sm btn-outline-danger" style="font-weight:700;">3×3 타일 (❌ 실패)</button>
+            </div>
+          </div>
+          <!-- Canvas 렌더링 영역 -->
+          <div style="flex:1; min-height:360px; position:relative;">
+            <canvas id="canvas-3-1" style="width:100%; height:100%; display:block; border-radius:12px; background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); border:1px solid #e2e8f0;"></canvas>
+          </div>
+        </div>
+      `;
+
+      const canvas = container.querySelector('#canvas-3-1');
+      const badgeStatus = container.querySelector('#badge-3-1');
+      const btnTile1 = container.querySelector('#btn-tile-1');
+      const btnTile2 = container.querySelector('#btn-tile-2');
+      const btnTile4 = container.querySelector('#btn-tile-4');
+      const btnTile3 = container.querySelector('#btn-tile-3');
+
+      const ctx = canvas.getContext('2d');
+      let w = 560, h = 390;
+      let currentTileSize = 4; // 1, 2, 3, 4
+      let animProgress = 0;
+      let mousePos = { x: -1, y: -1 };
+      let celebrated = false;
+      let particles = [];
+
+      function createConfetti() {
+        const colors = ['#f59e0b', '#10b981', '#6366f1', '#ec4899', '#3b82f6', '#eab308'];
+        particles = [];
+        for (let i = 0; i < 55; i++) {
+          particles.push({
+            x: w * 0.5 + (Math.random() - 0.5) * 200,
+            y: 120 + (Math.random() - 0.5) * 50,
+            vx: (Math.random() - 0.5) * 9,
+            vy: -Math.random() * 7 - 3,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.012
+          });
+        }
+      }
+
+      function resize() {
+        w = canvas.clientWidth || 560;
+        h = canvas.clientHeight || 390;
+        canvas.width = w;
+        canvas.height = h;
+      }
+      resize();
+
+      function selectTile(size) {
+        currentTileSize = size;
+        animProgress = 0;
+
+        [btnTile1, btnTile2, btnTile4, btnTile3].forEach(b => {
+          b.className = 'btn btn-sm btn-outline-secondary';
+        });
+        if (size === 1) btnTile1.className = 'btn btn-sm btn-info text-white';
+        else if (size === 2) btnTile2.className = 'btn btn-sm btn-success';
+        else if (size === 4) btnTile4.className = 'btn btn-sm btn-primary';
+        else if (size === 3) btnTile3.className = 'btn btn-sm btn-danger';
+
+        if (size === 1) {
+          badgeStatus.innerHTML = '한 변 1 cm: 가로 16장, 세로 12장으로 빈틈없이 채워집니다. (공약수 1)';
+          celebrated = false;
+        } else if (size === 2) {
+          badgeStatus.innerHTML = '한 변 2 cm: 가로 8장, 세로 6장으로 빈틈없이 채워집니다. (공약수 2)';
+          celebrated = false;
+        } else if (size === 4) {
+          badgeStatus.innerHTML = '🎉 한 변 4 cm: 빈틈없이 들어맞는 가장 큰 정사각형! ➔ <b>최대공약수 = 4</b> (12장 👑)';
+          if (!celebrated) {
+            celebrated = true;
+            createConfetti();
+            if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+          }
+        } else if (size === 3) {
+          badgeStatus.innerHTML = '❌ 한 변 3 cm: 16 ÷ 3 = 5... 나머지 1 cm가 남아 빈틈 발생! (16의 약수 아님)';
+          celebrated = false;
+          if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        }
+      }
+
+      btnTile1.addEventListener('click', () => { selectTile(1); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+      btnTile2.addEventListener('click', () => { selectTile(2); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+      btnTile4.addEventListener('click', () => { selectTile(4); });
+      btnTile3.addEventListener('click', () => { selectTile(3); });
+
+      window._step3_1_completeAll = function() {
+        selectTile(4);
+        createConfetti();
+      };
+
+      canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        mousePos.x = e.clientX - rect.left;
+        mousePos.y = e.clientY - rect.top;
+      });
+      canvas.addEventListener('mouseleave', () => {
+        mousePos.x = -1;
+        mousePos.y = -1;
+      });
+
+      function render() {
+        ctx.clearRect(0, 0, w, h);
+        animProgress += (1 - animProgress) * 0.14;
+
+        // Title and description
+        ctx.save();
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('📏 [생각열기] 가로 16 cm × 세로 12 cm 도안 나누기 (p.18)', w / 2, 22);
+        ctx.restore();
+
+        // Canvas Scale & Dimensions
+        const scale = 17; // 1cm = 17px
+        const rectW = 16 * scale; // 272px
+        const rectH = 12 * scale; // 204px
+        const rectX = (w - rectW) / 2;
+        const rectY = 56;
+
+        // Dimension labels
+        ctx.save();
+        ctx.font = 'bold 12px Pretendard, sans-serif';
+        ctx.textAlign = 'center';
+
+        // Top horizontal arrow (가로 16 cm)
+        ctx.fillStyle = '#2563eb';
+        ctx.fillText('가로 16 cm', rectX + rectW / 2, rectY - 14);
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(rectX, rectY - 8);
+        ctx.lineTo(rectX + rectW, rectY - 8);
+        ctx.moveTo(rectX + 6, rectY - 11);
+        ctx.lineTo(rectX, rectY - 8);
+        ctx.lineTo(rectX + 6, rectY - 5);
+        ctx.moveTo(rectX + rectW - 6, rectY - 11);
+        ctx.lineTo(rectX + rectW, rectY - 8);
+        ctx.lineTo(rectX + rectW - 6, rectY - 5);
+        ctx.stroke();
+
+        // Left vertical arrow (세로 12 cm)
+        ctx.fillText('세로', rectX - 28, rectY + rectH / 2 - 8);
+        ctx.fillText('12 cm', rectX - 28, rectY + rectH / 2 + 8);
+        ctx.beginPath();
+        ctx.moveTo(rectX - 10, rectY);
+        ctx.lineTo(rectX - 10, rectY + rectH);
+        ctx.moveTo(rectX - 13, rectY + 6);
+        ctx.lineTo(rectX - 10, rectY);
+        ctx.lineTo(rectX - 7, rectY + 6);
+        ctx.moveTo(rectX - 13, rectY + rectH - 6);
+        ctx.lineTo(rectX - 10, rectY + rectH);
+        ctx.lineTo(rectX - 7, rectY + rectH - 6);
+        ctx.stroke();
+        ctx.restore();
+
+        // Base Blueprint Rectangle Background
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.rect(rectX, rectY, rectW, rectH);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+
+        // Tiles drawing
+        const s = currentTileSize;
+        const tilePx = s * scale;
+        const cols = Math.floor(16 / s);
+        const rows = Math.floor(12 / s);
+        const remX = (16 % s) * scale;
+
+        let hoveredTile = null;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(rectX, rectY, rectW, rectH);
+        ctx.clip();
+
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const tx = rectX + c * tilePx;
+            const ty = rectY + r * tilePx;
+
+            const isHover = (
+              mousePos.x >= tx && mousePos.x < tx + tilePx &&
+              mousePos.y >= ty && mousePos.y < ty + tilePx
+            );
+            if (isHover) hoveredTile = { c, r, x: tx, y: ty };
+
+            if (s === 4) {
+              ctx.fillStyle = isHover ? '#fde68a' : '#fef3c7';
+              ctx.strokeStyle = '#d97706';
+              ctx.lineWidth = 1.5;
+            } else if (s === 2) {
+              ctx.fillStyle = isHover ? '#a7f3d0' : '#d1fae5';
+              ctx.strokeStyle = '#059669';
+              ctx.lineWidth = 1;
+            } else if (s === 1) {
+              ctx.fillStyle = isHover ? '#bae6fd' : '#e0f2fe';
+              ctx.strokeStyle = '#0284c7';
+              ctx.lineWidth = 0.5;
+            } else {
+              ctx.fillStyle = isHover ? '#fecaca' : '#fee2e2';
+              ctx.strokeStyle = '#dc2626';
+              ctx.lineWidth = 1;
+            }
+
+            ctx.fillRect(tx, ty, tilePx, tilePx);
+            ctx.strokeRect(tx, ty, tilePx, tilePx);
+
+            if (s === 4) {
+              ctx.fillStyle = '#b45309';
+              ctx.font = 'bold 12px Pretendard, sans-serif';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText('4×4', tx + tilePx / 2, ty + tilePx / 2);
+            }
+          }
+        }
+
+        // Draw Failure Remainder Hatch Strip for 3x3
+        if (s === 3 && remX > 0) {
+          const rx = rectX + cols * tilePx;
+          const ry = rectY;
+          const rw = remX;
+          const rh = rectH;
+
+          ctx.fillStyle = 'rgba(239, 68, 68, 0.2)';
+          ctx.fillRect(rx, ry, rw, rh);
+          ctx.strokeStyle = '#dc2626';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([4, 3]);
+          ctx.strokeRect(rx, ry, rw, rh);
+          ctx.setLineDash([]);
+
+          ctx.save();
+          ctx.translate(rx + rw / 2, ry + rh / 2);
+          ctx.rotate(Math.PI / 2);
+          ctx.fillStyle = '#b91c1c';
+          ctx.font = 'bold 11px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('남는 공간 1 cm (빈틈 발생 ❌)', 0, 4);
+          ctx.restore();
+        }
+        ctx.restore();
+
+        // Outer border
+        ctx.save();
+        ctx.strokeStyle = (s === 4) ? '#f59e0b' : (s === 3 ? '#ef4444' : '#334155');
+        ctx.lineWidth = (s === 4) ? 3 : 2;
+        if (s === 4) {
+          ctx.shadowColor = 'rgba(245, 158, 11, 0.4)';
+          ctx.shadowBlur = 10;
+        }
+        ctx.strokeRect(rectX, rectY, rectW, rectH);
+        ctx.restore();
+
+        // Hover tooltip
+        if (hoveredTile) {
+          ctx.save();
+          const tipText = `타일 [열 ${hoveredTile.c + 1}, 행 ${hoveredTile.r + 1}] (${s}×${s} cm)`;
+          ctx.font = 'bold 11px Pretendard, sans-serif';
+          const tw = ctx.measureText(tipText).width + 16;
+          const tipX = Math.min(Math.max(hoveredTile.x, 10), w - tw - 10);
+          const tipY = Math.max(hoveredTile.y - 24, 10);
+
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(tipX, tipY, tw, 20, 4);
+          else ctx.rect(tipX, tipY, tw, 20);
+          ctx.fill();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'left';
+          ctx.fillText(tipText, tipX + 8, tipY + 14);
+          ctx.restore();
+        }
+
+        // Bottom Math Analysis Card
+        const sumY = h - 85;
+        const sumW = Math.min(w - 30, 500);
+        const sumX = (w - sumW) / 2;
+
+        ctx.save();
+        ctx.fillStyle = (s === 4) ? '#fef3c7' : (s === 3 ? '#fee2e2' : '#f8fafc');
+        ctx.strokeStyle = (s === 4) ? '#f59e0b' : (s === 3 ? '#f87171' : '#cbd5e1');
+        ctx.lineWidth = (s === 4) ? 2 : 1;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(sumX, sumY, sumW, 72, 8);
+        else ctx.rect(sumX, sumY, sumW, 72);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        if (s === 4) {
+          ctx.fillStyle = '#92400e';
+          ctx.font = 'bold 13px Pretendard, sans-serif';
+          ctx.fillText('👑 최적의 최대 정사각형: 한 변 4 cm (가로 4장 × 세로 3장 = 총 12장)', w / 2, sumY + 24);
+
+          ctx.fillStyle = '#b45309';
+          ctx.font = 'bold 14px Pretendard, sans-serif';
+          ctx.fillText('16과 12의 공약수 {1, 2, 4} 중 가장 큰 수 ➔ 최대공약수 = 4', w / 2, sumY + 48);
+        } else if (s === 2) {
+          ctx.fillStyle = '#065f46';
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillText('한 변 2 cm: 16 ÷ 2 = 8장, 12 ÷ 2 = 6장 ➔ 빈틈없이 48장으로 채워짐', w / 2, sumY + 24);
+
+          ctx.fillStyle = '#059669';
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillText('2는 12와 16의 공약수이지만, 더 큰 정사각형 타일이 존재합니다.', w / 2, sumY + 48);
+        } else if (s === 1) {
+          ctx.fillStyle = '#0369a1';
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillText('한 변 1 cm: 16 ÷ 1 = 16장, 12 ÷ 1 = 12장 ➔ 빈틈없이 192장으로 채워짐', w / 2, sumY + 24);
+
+          ctx.fillStyle = '#0284c7';
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillText('1은 모든 자연수의 공약수입니다.', w / 2, sumY + 48);
+        } else {
+          ctx.fillStyle = '#991b1b';
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillText('한 변 3 cm: 12 ÷ 3 = 4장은 맞지만, 16 ÷ 3 = 5... 남은 공간 1 cm 발생!', w / 2, sumY + 24);
+
+          ctx.fillStyle = '#dc2626';
+          ctx.font = '12px Pretendard, sans-serif';
+          ctx.fillText('3은 12의 약수이지만 16의 약수가 아니므로 도안을 정사각형으로 나눌 수 없습니다.', w / 2, sumY + 48);
+        }
+        ctx.restore();
+
+        // Confetti animation
+        if (particles.length > 0) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.22;
+            p.rot += p.vRot;
+            p.life -= p.decay;
+
+            if (p.life <= 0) {
+              particles.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+            ctx.restore();
+          }
+        }
+
+        container._animId_3_1 = requestAnimationFrame(render);
+      }
+
+      render();
     }
+
     function renderForm_3_1(box) {
       box.innerHTML = `
-        <div class="card">
+        <div class="card" style="padding:16px 20px;">
           <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
             💡 [생각열기] 12와 16의 최대공약수 구하기 (p.18)
           </div>
           <p style="font-size:0.88rem; color:#475569; line-height:1.6; margin-bottom:12px;">
-            12의 약수는 1, 2, 3, 4, 6, 12이고 16의 약수는 1, 2, 4, 8, 16입니다. 두 수의 공약수 중 가장 큰 <b>최대공약수</b>를 구하시오.
+            가로의 길이가 16 cm, 세로의 길이가 12 cm인 직사각형 모양의 도안을 가능한 한 큰 정사각형 모양으로 남는 공간 없이 나누려고 합니다. 물음에 답하시오.
           </p>
-          <div style="margin-bottom:12px;">
-            <label style="font-size:0.82rem; font-weight:700; color:#334155;">최대공약수</label>
-            <input type="text" id="ans-3-1" class="input-text" placeholder="수 입력" style="width:100%; margin-top:4px;">
+
+          <!-- 퀵 숫자 입력 바 -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; background:#f1f5f9; padding:8px 10px; border-radius:8px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; line-height:28px;">퀵 입력:</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-insert-3-1" data-val="1" style="font-weight:700;">1</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-insert-3-1" data-val="2" style="font-weight:700;">2</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-insert-3-1" data-val="4" style="font-weight:700;">4</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-insert-3-1" data-val="8" style="font-weight:700;">8</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-insert-3-1" data-val="16" style="font-weight:700;">16</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-insert-3-1" data-val="," style="font-weight:700; min-width:32px;">,</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-clear-3-1" style="font-weight:700;">초기화</button>
           </div>
-          <button class="btn btn-primary" onclick="checkStep_3_1()" style="width:100%;">정답 확인 및 채점</button>
+
+          <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
+            <!-- ⑴ 16의 약수 -->
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+                ⑴ 16의 약수를 작은 수부터 차례로 모두 구하시오:
+              </label>
+              <input type="text" id="ans-3-1-1" class="form-control" placeholder="수 입력 (쉼표 구분)" autocomplete="off">
+            </div>
+
+            <!-- ⑵ 두 수의 최대공약수 -->
+            <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">
+                ⑵ 12의 약수는 1, 2, 3, 4, 6, 12입니다. 두 수 12와 16의 최대공약수를 구하시오:
+              </label>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:0.88rem; font-weight:600; color:#475569;">최대공약수:</span>
+                <input type="text" id="ans-3-1-2" class="form-control" style="width:120px;" placeholder="수 입력" autocomplete="off">
+              </div>
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="checkStep_3_1()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
-      const input = box.querySelector('#ans-3-1');
-      if (input) {
-        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkStep_3_1(); });
+
+      let lastFocusedInput = box.querySelector('#ans-3-1-1');
+      const inputs = box.querySelectorAll('input[type="text"]');
+      inputs.forEach(input => {
+        input.addEventListener('focus', () => {
+          lastFocusedInput = input;
+        });
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') checkStep_3_1();
+        });
+      });
+
+      box.querySelectorAll('.btn-quick-insert-3-1').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = btn.getAttribute('data-val');
+          if (lastFocusedInput) {
+            if (val === ',') {
+              if (lastFocusedInput.value && !lastFocusedInput.value.endsWith(' ') && !lastFocusedInput.value.endsWith(',')) {
+                lastFocusedInput.value += ', ';
+              }
+            } else {
+              if (lastFocusedInput.value && !lastFocusedInput.value.endsWith(' ') && !lastFocusedInput.value.endsWith(',')) {
+                lastFocusedInput.value += ', ' + val;
+              } else {
+                lastFocusedInput.value += val;
+              }
+            }
+            lastFocusedInput.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      });
+
+      const clearBtn = box.querySelector('.btn-quick-clear-3-1');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          if (lastFocusedInput) {
+            lastFocusedInput.value = '';
+            lastFocusedInput.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
       }
     }
+
     function checkStep_3_1() {
-      const v = document.getElementById('ans-3-1')?.value?.trim();
-      if (v === '4') {
-        completeSubStep('3-1', '🎉 <b>정답입니다!</b> 12와 16의 공약수는 1, 2, 4이며 그중 가장 큰 최대공약수는 <b>4</b>입니다.');
+      const v1 = document.getElementById('ans-3-1-1')?.value;
+      const v2 = normTxt(document.getElementById('ans-3-1-2')?.value);
+
+      const list1 = parseNumList(v1);
+      const ok1 = areListsEqual(list1, [1, 2, 4, 8, 16]);
+      const ok2 = (v2 === '4');
+
+      if (ok1 && ok2) {
+        if (window._step3_1_completeAll) {
+          window._step3_1_completeAll();
+        }
+        completeSubStep('3-1', '🎉 <b>정답입니다!</b><br>• 16의 약수: <b>1, 2, 4, 8, 16</b><br>• 12의 약수: 1, 2, 3, 4, 6, 12<br>• 두 수의 공약수: 1, 2, 4<br>따라서 가장 큰 정사각형 타일의 한 변의 길이는 최대공약수인 <b>4</b>(cm)입니다.');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 12와 16의 공통인 약수 중 가장 큰 수를 찾아보세요.');
+        if (!ok1 && ok2) {
+          showFeedback(false, '❌ <b>16의 약수를 다시 확인해 보세요.</b> 16을 나누어떨어지게 하는 자연수를 작은 수부터 모두 찾아보세요. (총 5개)');
+        } else if (ok1 && !ok2) {
+          showFeedback(false, '❌ <b>최대공약수를 다시 확인해 보세요.</b> 12와 16의 공약수 {1, 2, 4} 중에서 가장 큰 수를 찾아보세요.');
+        } else {
+          showFeedback(false, '❌ <b>다시 확인해 보세요.</b> ⑴ 16의 약수(1, 2, 4, 8, 16)와 ⑵ 12와 16의 최대공약수를 차례로 구해 보세요.');
+        }
       }
     }
 
