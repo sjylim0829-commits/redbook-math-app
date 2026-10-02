@@ -43314,77 +43314,543 @@ function checkStep_1_12() {
     // ==========================================
     function drawCanvas_5_1(container) {
       if (!container) return;
-      container.innerHTML = '';
-      const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 500;
-      canvas.height = container.clientHeight || 450;
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      canvas.style.display = 'block';
-      container.appendChild(canvas);
+      if (container._animId_5_1) {
+        cancelAnimationFrame(container._animId_5_1);
+        container._animId_5_1 = null;
+      }
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; height:100%; gap:10px;">
+          <!-- 상단 컨트롤러 및 설명 뱃지 바 -->
+          <div style="background:#ffffff; padding:12px 14px; border-radius:10px; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+              <span id="badge-5-1" style="font-size:0.88rem; font-weight:700; color:#1e293b;">
+                단계별 버튼을 눌러 알지오매스 소수 판별 블록코딩의 실행 원리를 확인해 보세요!
+              </span>
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+              <button id="btn-step1-5-1" class="btn btn-sm btn-outline-primary" style="font-weight:700;">1단계: 변수 초기화</button>
+              <button id="btn-step2-5-1" class="btn btn-sm btn-outline-primary" style="font-weight:700;">2단계: 반복 나눗셈</button>
+              <button id="btn-step3-5-1" class="btn btn-sm btn-outline-danger" style="font-weight:700;">3단계: 약수 개수 누적</button>
+              <button id="btn-step4-5-1" class="btn btn-sm btn-warning" style="font-weight:800; color:#1e293b;">4단계: 소수 판별 조건</button>
+              <button id="btn-reset-5-1" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">⟲ 초기화</button>
+            </div>
+          </div>
+          <!-- Canvas 영역 -->
+          <div style="flex:1; min-height:370px; position:relative;">
+            <canvas id="canvas-5-1" style="width:100%; height:100%; display:block; border-radius:12px; background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); border:1px solid #e2e8f0;"></canvas>
+          </div>
+        </div>
+      `;
+
+      const canvas = container.querySelector('#canvas-5-1');
+      const badgeStatus = container.querySelector('#badge-5-1');
+      const btnStep1 = container.querySelector('#btn-step1-5-1');
+      const btnStep2 = container.querySelector('#btn-step2-5-1');
+      const btnStep3 = container.querySelector('#btn-step3-5-1');
+      const btnStep4 = container.querySelector('#btn-step4-5-1');
+      const btnReset = container.querySelector('#btn-reset-5-1');
+
       const ctx = canvas.getContext('2d');
+      let w = 560, h = 400;
 
-      let animId;
-      let angle = 0;
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        w = rect.width || 560;
+        h = rect.height || 400;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+
+      const ro = new ResizeObserver(() => resize());
+      ro.observe(canvas);
+
+      let currentStep = 0;
+      let pulseTimer = 0;
+      let particles = [];
+      let hoveredBlockIdx = null;
+
+      function spawnConfetti(count = 60) {
+        const colors = ['#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#f43f5e'];
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: w / 2 + (Math.random() - 0.5) * 180,
+            y: 180 + (Math.random() - 0.5) * 60,
+            vx: (Math.random() - 0.5) * 12,
+            vy: (Math.random() - 0.85) * 11 - 2,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.01
+          });
+        }
+      }
+
+      function updateUI() {
+        if (btnStep1) btnStep1.className = `btn btn-sm ${currentStep === 1 ? 'btn-primary text-white' : 'btn-outline-primary'}`;
+        if (btnStep2) btnStep2.className = `btn btn-sm ${currentStep === 2 ? 'btn-primary text-white' : 'btn-outline-primary'}`;
+        if (btnStep3) btnStep3.className = `btn btn-sm ${currentStep === 3 ? 'btn-danger text-white' : 'btn-outline-danger'}`;
+        if (btnStep4) btnStep4.className = `btn btn-sm ${currentStep === 4 ? 'btn-warning text-dark font-weight-bold shadow-sm' : 'btn-outline-warning text-dark'}`;
+
+        if (badgeStatus) {
+          if (currentStep === 0) {
+            badgeStatus.innerText = '단계별 버튼을 눌러 알지오매스 소수 판별 블록코딩의 실행 원리를 확인해 보세요!';
+          } else if (currentStep === 1) {
+            badgeStatus.innerHTML = '1️⃣ <b>변수 초기화</b>: 자연수 <b>N</b>을 입력받고, 약수의 개수를 셀 변수 <b>D를 0</b>으로 초기화합니다.';
+          } else if (currentStep === 2) {
+            badgeStatus.innerHTML = '2️⃣ <b>반복 나눗셈</b>: <b>i = 1 부터 N 까지</b> 차례대로 N을 나누어 나머지가 0인지 검사합니다.';
+          } else if (currentStep === 3) {
+            badgeStatus.innerHTML = '3️⃣ <b>약수 개수 누적</b>: 나머지가 0인 약수를 발견할 때마다 <b>D = D + 1</b>로 카운트를 올립니다.';
+          } else if (currentStep === 4) {
+            badgeStatus.innerHTML = '👑 <b>소수 판별 조건</b>: 1부터 N까지의 약수의 개수 <b>D == 2</b> 이면 <b>소수</b>로 최종 판별합니다!';
+          }
+        }
+      }
+
+      btnStep1?.addEventListener('click', () => { currentStep = 1; updateUI(); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+      btnStep2?.addEventListener('click', () => { currentStep = 2; updateUI(); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+      btnStep3?.addEventListener('click', () => { currentStep = 3; updateUI(); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+      btnStep4?.addEventListener('click', () => { currentStep = 4; spawnConfetti(65); updateUI(); if (window.SoundFX && window.SoundFX.success) SoundFX.success(); });
+      btnReset?.addEventListener('click', () => { currentStep = 0; updateUI(); if (window.SoundFX && window.SoundFX.click) SoundFX.click(); });
+
+      window._step5_1_triggerSuccess = function() {
+        currentStep = 4;
+        updateUI();
+        spawnConfetti(70);
+      };
+
+      // 마우스 포인터 인터랙션
+      canvas.addEventListener('pointermove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        const cardBoxW = Math.min(w - 36, 540);
+        const cardBoxX = (w - cardBoxW) / 2;
+        const leftW = Math.floor(cardBoxW * 0.58) - 6;
+
+        hoveredBlockIdx = null;
+        if (mx >= cardBoxX && mx <= cardBoxX + leftW) {
+          const blockYPositions = [46, 82, 118, 154, 198];
+          const blockHeights = [32, 32, 32, 40, 38];
+          for (let i = 0; i < 5; i++) {
+            if (my >= blockYPositions[i] && my <= blockYPositions[i] + blockHeights[i]) {
+              hoveredBlockIdx = i;
+              break;
+            }
+          }
+        }
+        canvas.style.cursor = (hoveredBlockIdx !== null) ? 'pointer' : 'default';
+      });
+
+      canvas.addEventListener('pointerleave', () => {
+        hoveredBlockIdx = null;
+        canvas.style.cursor = 'default';
+      });
+
+      canvas.addEventListener('pointerdown', () => {
+        if (hoveredBlockIdx === 0 || hoveredBlockIdx === 1) {
+          currentStep = 1;
+          updateUI();
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        } else if (hoveredBlockIdx === 2) {
+          currentStep = 2;
+          updateUI();
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        } else if (hoveredBlockIdx === 3) {
+          currentStep = 3;
+          updateUI();
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        } else if (hoveredBlockIdx === 4) {
+          currentStep = 4;
+          spawnConfetti(60);
+          updateUI();
+          if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        }
+      });
+
       function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, w, h);
+        pulseTimer += 0.05;
 
-        // Grid lines
-        ctx.strokeStyle = '#1e293b';
-        ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 40) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-        }
-        for (let y = 0; y < canvas.height; y += 40) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-        }
-
-        // Badge & Title
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 16px "Pretendard", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('[5-1] 알지오매스 소수 판별 코딩 원리 (p.23)', canvas.width / 2, 40);
-
-        // Interactive visual placeholder
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
+        // 상단 제목 뱃지
+        const badgeW = Math.min(w - 36, 540);
+        const badgeX = (w - badgeW) / 2;
         ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.strokeStyle = '#10b981';
-        ctx.lineWidth = 3;
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(0, 0, 70, 0, Math.PI * 2);
+        if (ctx.roundRect) ctx.roundRect(badgeX, 10, badgeW, 28, 8);
+        else ctx.rect(badgeX, 10, badgeW, 28);
+        ctx.fill();
         ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 12px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('알지오매스(AlgeoMath) 블록코딩: 소수를 판별하는 알고리즘 (p.23)', w / 2, 24);
         ctx.restore();
 
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '13px "Pretendard", sans-serif';
-        ctx.fillText('알지오매스 코딩 인터랙터', cx, cy + 110);
+        const cardBoxW = Math.min(w - 36, 540);
+        const cardBoxX = (w - cardBoxW) / 2;
+        const leftW = Math.floor(cardBoxW * 0.58) - 6;
+        const rightW = cardBoxW - leftW - 12;
+        const rightX = cardBoxX + leftW + 12;
 
-        angle += 0.02;
-        animId = requestAnimationFrame(render);
+        // 1. 좌측 알지오매스 블록 스택 렌더링
+        const blocks = [
+          {
+            title: '▶ [입력] 자연수를 입력하세요 ➔ N',
+            color: '#ea580c',
+            bg: '#fff7ed',
+            activeStep: 1,
+            y: 46, h: 32, indent: 0
+          },
+          {
+            title: '📦 [변수] 약수의 개수 D = 0 으로 정하기',
+            color: '#d97706',
+            bg: '#fffbeb',
+            activeStep: 1,
+            y: 82, h: 32, indent: 0
+          },
+          {
+            title: '🔁 [반복] i 를 1부터 N까지 1씩 증가',
+            color: '#059669',
+            bg: '#f0fdf4',
+            activeStep: 2,
+            y: 118, h: 32, indent: 0
+          },
+          {
+            title: '🔍 만약 N % i == 0 이면\n     ➔ D 를 1 만큼 증가',
+            color: '#2563eb',
+            bg: '#eff6ff',
+            activeStep: 3,
+            y: 154, h: 40, indent: 14
+          },
+          {
+            title: '⭐ 만약 D == 2 라면 "소수" 출력\n     아니면 "합성수" 출력',
+            color: '#7c3aed',
+            bg: '#f5f3ff',
+            activeStep: 4,
+            y: 198, h: 38, indent: 0
+          }
+        ];
+
+        blocks.forEach((blk, idx) => {
+          const bx = cardBoxX + blk.indent;
+          const bw = leftW - blk.indent;
+          const isActive = (currentStep === blk.activeStep) || (blk.activeStep === 1 && currentStep >= 1 && currentStep <= 3 && idx === 1);
+          const isHovered = (hoveredBlockIdx === idx);
+
+          ctx.save();
+          let bgFill = blk.bg;
+          let strokeCol = blk.color;
+          let lineW = 1.6;
+
+          if (isActive) {
+            lineW = 2.4;
+            if (blk.activeStep === 4) {
+              const pulse = 6 + Math.sin(pulseTimer) * 3;
+              ctx.shadowColor = '#a855f7';
+              ctx.shadowBlur = pulse;
+            } else {
+              ctx.shadowColor = strokeCol;
+              ctx.shadowBlur = 5;
+            }
+          }
+
+          if (isHovered) lineW += 1;
+
+          ctx.fillStyle = bgFill;
+          ctx.strokeStyle = strokeCol;
+          ctx.lineWidth = lineW;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(bx, blk.y, bw, blk.h, 7);
+          else ctx.rect(bx, blk.y, bw, blk.h);
+          ctx.fill();
+          ctx.stroke();
+
+          // 좌측 컬러 악센트 바
+          ctx.fillStyle = blk.color;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(bx, blk.y, 6, blk.h, { topLeft: 7, bottomLeft: 7 });
+          else ctx.fillRect(bx, blk.y, 6, blk.h);
+          ctx.fill();
+
+          // 블록 텍스트
+          ctx.fillStyle = '#0f172a';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          const lines = blk.title.split('\n');
+          if (lines.length === 1) {
+            ctx.font = 'bold 11px Pretendard, sans-serif';
+            ctx.fillText(lines[0], bx + 14, blk.y + blk.h / 2);
+          } else {
+            ctx.font = 'bold 10.5px Pretendard, sans-serif';
+            ctx.fillText(lines[0], bx + 14, blk.y + blk.h * 0.32);
+            ctx.fillStyle = blk.color;
+            ctx.font = 'bold 10px Pretendard, sans-serif';
+            ctx.fillText(lines[1], bx + 14, blk.y + blk.h * 0.72);
+          }
+          ctx.restore();
+        });
+
+        // 2. 우측 실시간 메모리 & 실행 추적기
+        const rightY = 46;
+        const rightH = 190;
+
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(rightX, rightY, rightW, rightH, 8);
+        else ctx.rect(rightX, rightY, rightW, rightH);
+        ctx.fill();
+        ctx.stroke();
+
+        // 헤더
+        ctx.fillStyle = '#1e293b';
+        ctx.font = 'bold 11.5px Pretendard, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText('💻 실행 추적 (N = 7 예시)', rightX + 10, rightY + 10);
+
+        // 변수 상태 박스
+        ctx.font = '10.5px Pretendard, sans-serif';
+        ctx.fillStyle = '#475569';
+        ctx.fillText('• 입력 자연수 N = 7', rightX + 10, rightY + 30);
+
+        let dText = '• 약수 개수 D = ?';
+        let dColor = '#64748b';
+        if (currentStep === 1) {
+          dText = '• 약수 개수 D = 0 (초기화)';
+          dColor = '#d97706';
+        } else if (currentStep === 2) {
+          dText = '• 반복 진행: i = 1 ~ 7';
+          dColor = '#059669';
+        } else if (currentStep === 3) {
+          dText = '• 약수(1, 7) 발견 ➔ D = 2';
+          dColor = '#2563eb';
+        } else if (currentStep === 4) {
+          dText = '• 최종 약수 개수 D = 2';
+          dColor = '#7c3aed';
+        }
+
+        ctx.fillStyle = dColor;
+        ctx.font = 'bold 10.5px Pretendard, sans-serif';
+        ctx.fillText(dText, rightX + 10, rightY + 48);
+
+        // 루프 실행 상세 목록
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(rightX + 10, rightY + 68);
+        ctx.lineTo(rightX + rightW - 10, rightY + 68);
+        ctx.stroke();
+
+        ctx.font = '10px Pretendard, sans-serif';
+        ctx.fillStyle = '#334155';
+        ctx.fillText('나눗셈(나머지 0 검사):', rightX + 10, rightY + 74);
+
+        if (currentStep <= 1) {
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText('1단계: D=0 초기화 완료', rightX + 10, rightY + 92);
+          ctx.fillText('다음 단계를 눌러 나눗셈을', rightX + 10, rightY + 108);
+          ctx.fillText('확인해 보세요.', rightX + 10, rightY + 124);
+        } else if (currentStep === 2) {
+          ctx.fillStyle = '#16a34a';
+          ctx.fillText('• 7 ÷ 1 = 7 ... 0 (약수 O)', rightX + 10, rightY + 92);
+          ctx.fillStyle = '#64748b';
+          ctx.fillText('• 7 ÷ 2..6 ➔ 나머지 발생(X)', rightX + 10, rightY + 108);
+          ctx.fillStyle = '#16a34a';
+          ctx.fillText('• 7 ÷ 7 = 1 ... 0 (약수 O)', rightX + 10, rightY + 124);
+        } else if (currentStep >= 3) {
+          ctx.fillStyle = '#1e40af';
+          ctx.fillText('• i=1 일 때: D ➔ 1 증가', rightX + 10, rightY + 92);
+          ctx.fillStyle = '#64748b';
+          ctx.fillText('• i=2~6 일 때: D 변화 없음', rightX + 10, rightY + 108);
+          ctx.fillStyle = '#1e40af';
+          ctx.fillText('• i=7 일 때: D ➔ 2 증가', rightX + 10, rightY + 124);
+        }
+
+        // 하단 판정 뱃지
+        const badgeBoxY = rightY + 144;
+        ctx.fillStyle = (currentStep === 4) ? '#f5f3ff' : '#f8fafc';
+        ctx.strokeStyle = (currentStep === 4) ? '#c084fc' : '#e2e8f0';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(rightX + 8, badgeBoxY, rightW - 16, 36, 6);
+        else ctx.rect(rightX + 8, badgeBoxY, rightW - 16, 36);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 11px Pretendard, sans-serif';
+        if (currentStep === 4) {
+          ctx.fillStyle = '#6b21a8';
+          ctx.fillText('👑 D == 2 ➔ "소수" 판별!', rightX + rightW / 2, badgeBoxY + 18);
+        } else {
+          ctx.fillStyle = '#64748b';
+          ctx.fillText(currentStep >= 2 ? 'D 누적 중...' : '판별 대기', rightX + rightW / 2, badgeBoxY + 18);
+        }
+        ctx.restore();
+
+        // 3. 하단 단계별 해설 안내 박스
+        const infoY = Math.min(242, h * 0.59);
+        const infoW = cardBoxW;
+        const infoX = cardBoxX;
+        const infoH = Math.min(124, h - infoY - 12);
+
+        ctx.save();
+        ctx.fillStyle = (currentStep === 4) ? '#f0fdf4' : '#f8fafc';
+        ctx.strokeStyle = (currentStep === 4) ? '#86efac' : '#e2e8f0';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(infoX, infoY, infoW, infoH, 10);
+        else ctx.rect(infoX, infoY, infoW, infoH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 12px Pretendard, sans-serif';
+
+        if (currentStep === 0) {
+          ctx.fillStyle = '#334155';
+          ctx.fillText('💡 알지오매스 소수 판별 코딩의 핵심:', infoX + 16, infoY + 12);
+          ctx.font = '11.5px Pretendard, sans-serif';
+          ctx.fillStyle = '#64748b';
+          ctx.fillText('• 자연수 N을 1부터 N까지의 모든 수로 나누어 나머지가 0인 수를 찾습니다.', infoX + 16, infoY + 36);
+          ctx.fillText('• 나머지가 0인 수의 개수(약수의 개수 D)를 셉니다.', infoX + 16, infoY + 58);
+          ctx.fillText('• 상단의 단계별 버튼을 눌러 블록코딩의 실행 원리를 확인해 보세요!', infoX + 16, infoY + 82);
+        } else if (currentStep === 1) {
+          ctx.fillStyle = '#0369a1';
+          ctx.fillText('1️⃣ 1단계: 변수 입력 및 초기화 (N, D = 0):', infoX + 16, infoY + 12);
+          ctx.font = '11.5px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('• 판별할 자연수를 입력받아 변수 N에 저장합니다.', infoX + 16, infoY + 36);
+          ctx.fillText('• 약수의 개수를 누적할 변수 D를 0으로 정합니다.', infoX + 16, infoY + 58);
+          ctx.fillText('➔ 이제 1부터 N까지 나눗셈 루프를 시작할 준비가 되었습니다!', infoX + 16, infoY + 82);
+        } else if (currentStep === 2) {
+          ctx.fillStyle = '#0369a1';
+          ctx.fillText('2️⃣ 2단계: 1부터 N까지 반복 나눗셈 (i = 1 ~ N):', infoX + 16, infoY + 12);
+          ctx.font = '11.5px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('• i를 1부터 N까지 1씩 증가시키며 N을 i로 나눕니다.', infoX + 16, infoY + 36);
+          ctx.fillText('• "만약 N % i == 0 이면" 조건으로 나머지가 0인지(약수인지) 검사합니다.', infoX + 16, infoY + 58);
+          ctx.fillText('➔ 나머지가 0인 수를 발견하면 어떤 일이 일어나는지 확인해 보세요!', infoX + 16, infoY + 82);
+        } else if (currentStep === 3) {
+          ctx.fillStyle = '#b91c1c';
+          ctx.fillText('3️⃣ 3단계: 약수 개수 누적 (D = D + 1):', infoX + 16, infoY + 12);
+          ctx.font = '11.5px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('• 나머지가 0인 약수를 만날 때마다 D를 1씩 증가시킵니다.', infoX + 16, infoY + 36);
+          ctx.fillText('• 예: N = 7일 때 1과 7로 나누어떨어지므로 D는 최종적으로 2가 됩니다.', infoX + 16, infoY + 58);
+          ctx.fillText('➔ 이제 D의 값을 바탕으로 소수를 판별해 봅시다!', infoX + 16, infoY + 82);
+        } else if (currentStep === 4) {
+          ctx.fillStyle = '#166534';
+          ctx.fillText('👑 4단계: 소수 판별 조건 (D == 2 ➔ 소수):', infoX + 16, infoY + 12);
+          ctx.font = '11.5px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('• 1부터 N까지의 약수의 개수 D가 정확히 2개이면 "소수"로 판별합니다!', infoX + 16, infoY + 36);
+          ctx.fillText('• 소수는 1보다 큰 자연수 중 1과 자기 자신만을 약수로 갖기 때문입니다.', infoX + 16, infoY + 58);
+          ctx.fillStyle = '#059669';
+          ctx.fillText('➔ 우측 정답 입력창에 2를 입력해 보세요!', infoX + 16, infoY + 82);
+        }
+        ctx.restore();
+
+        // 파티클 렌더링
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.35;
+          p.rot += p.vRot;
+          p.life -= p.decay;
+
+          if (p.life <= 0) {
+            particles.splice(i, 1);
+            continue;
+          }
+
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.globalAlpha = Math.max(0, p.life);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+          ctx.restore();
+        }
+
+        container._animId_5_1 = requestAnimationFrame(render);
       }
+
       render();
 
       window._cleanup_step_5_1 = () => {
-        if (animId) cancelAnimationFrame(animId);
+        if (container._animId_5_1) {
+          cancelAnimationFrame(container._animId_5_1);
+          container._animId_5_1 = null;
+        }
+        ro.disconnect();
       };
     }
 
     function renderForm_5_1(box) {
       if (!box) return;
       box.innerHTML = `
-        <div class="question-card" style="padding:16px; background:#1e293b; border-radius:10px; margin-bottom:15px; border:1px solid #334155;">
-          <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 5-1. 알지오매스 소수 판별 코딩 원리 (p.23)</div>
-          <p style="font-size:14px; color:#cbd5e1; line-height:1.6; margin-bottom:12px;">
-            문제를 해결하고 답을 입력창에 작성하세요.
-          </p>
-          <div style="margin-bottom:12px;">
-            <input type="text" id="ans-5-1" class="form-control" placeholder="답 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
+        <div class="card" style="padding:16px 20px;">
+          <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
+            ✏️ [디지털 쏙 수학] 알지오매스 소수 판별 코딩 (p.23)
           </div>
+
+          <!-- 문제 안내 카드 -->
+          <div style="background:#f8fafc; border-left:4px solid #3b82f6; padding:10px 14px; border-radius:6px; margin-bottom:14px;">
+            <div style="font-weight:700; font-size:0.86rem; color:#1e40af; margin-bottom:4px;">
+              코딩 원리 및 문제
+            </div>
+            <div style="font-size:0.88rem; color:#1e293b; line-height:1.6; font-family:'Pretendard', sans-serif;">
+              자연수 <b>N</b>을 1부터 N까지의 수로 차례대로 나누어 나머지가 0인 수의 개수(약수의 개수 <b>D</b>)를 구해 소수인지 아닌지를 판별합니다.<br>
+              <span style="display:inline-block; margin-top:6px; color:#0f766e; font-weight:700;">
+                Q. 약수의 개수 D가 몇 개일 때 입력한 수 N이 소수라고 판별할 수 있나요?
+              </span>
+            </div>
+          </div>
+
+          <p style="font-size:0.88rem; color:#334155; line-height:1.6; margin-bottom:12px;">
+            소수가 되기 위한 약수의 개수를 입력창에 작성하세요.
+          </p>
+
+          <!-- 입력 필드 (Zero-Spoiler) -->
+          <div style="background:#fefce8; padding:12px 14px; border-radius:8px; border:1px solid #fef08a; margin-bottom:14px;">
+            <label for="ans-5-1" style="font-size:0.85rem; font-weight:700; color:#854d0e; display:block; margin-bottom:6px;">
+              약수의 개수 D:
+            </label>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="text" id="ans-5-1" class="form-control" style="width:100%; font-size:1rem;" placeholder="수 입력" autocomplete="off">
+            </div>
+          </div>
+
+          <!-- 퀵 숫자 키패드 -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; background:#f1f5f9; padding:8px 10px; border-radius:8px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; line-height:28px;">빠른 입력:</span>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-5-1" data-char="1" style="font-weight:700; min-width:32px;">1</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-5-1" data-char="2" style="font-weight:700; min-width:32px;">2</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-5-1" data-char="3" style="font-weight:700; min-width:32px;">3</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-5-1" data-char="4" style="font-weight:700; min-width:32px;">4</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-5-1" data-char="5" style="font-weight:700; min-width:32px;">5</button>
+            <button type="button" class="btn btn-sm btn-secondary btn-num-insert-5-1" data-char="0" style="font-weight:700; min-width:32px;">0</button>
+            <button type="button" class="btn btn-sm btn-outline-danger btn-num-clear-5-1" style="font-weight:700;">지우기</button>
+          </div>
+
           <button class="btn btn-primary" onclick="checkStep_5_1()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
@@ -43395,18 +43861,62 @@ function checkStep_1_12() {
           if (e.key === 'Enter') checkStep_5_1();
         });
       }
+
+      box.querySelectorAll('.btn-num-insert-5-1').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const char = btn.getAttribute('data-char');
+          if (input) {
+            input.value += char;
+            input.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      });
+
+      const clearBtn = box.querySelector('.btn-num-clear-5-1');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          if (input) {
+            input.value = '';
+            input.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      }
     }
 
     function checkStep_5_1() {
-      const v = normTxt(document.getElementById('ans-5-1')?.value);
-      const isCorrect = (v.length > 0);
-      if (isCorrect) {
-        completeSubStep('5-1', '🎉 <b>정답입니다!</b><br>• 정답 및 해설: 약수의 개수가 2개이면 소수');
+      const raw = document.getElementById('ans-5-1')?.value || '';
+      const v = (raw || '').trim().replace(/\s+/g, '');
+
+      if (!v || v.length === 0) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>값을 입력해 주세요.</b> 소수가 되기 위한 약수의 개수를 입력해 보세요.');
+        return;
+      }
+
+      const is2 = (v === '2' || v === '2개' || v.toLowerCase() === 'd=2' || v.toLowerCase() === 'd==2');
+
+      if (is2) {
+        if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        if (window._step5_1_triggerSuccess) {
+          window._step5_1_triggerSuccess();
+        }
+        completeSubStep('5-1', '🎉 <b>정답입니다!</b><br>• 소수는 1보다 큰 자연수 중에서 1과 자기 자신만을 약수로 가지는 수입니다.<br>• 따라서 1부터 N까지 나누어 나머지가 0인 약수의 개수(D)가 <b>2</b>개일 때 소수로 판별합니다.');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
-      } else {
+      } else if (v === '1' || v === '1개') {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>값을 입력해 주세요.</b>');
+        showFeedback(false, '❌ <b>1은 소수가 아닙니다!</b> 약수의 개수가 1개인 수는 1뿐이며, 소수는 약수의 개수가 2개이어야 합니다.');
+      } else {
+        const num = parseInt(v, 10);
+        if (!isNaN(num) && num >= 3) {
+          if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+          showFeedback(false, '❌ <b>약수가 3개 이상이면 합성수입니다!</b> 소수는 1과 자기 자신만을 약수로 가지므로 약수의 개수는 정확히 2개이어야 합니다.');
+        } else {
+          if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+          showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 소수의 정의에 따라 소수가 갖는 약수의 개수를 입력해 보세요. (예: 2)');
+        }
       }
     }
 
