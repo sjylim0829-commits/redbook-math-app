@@ -1048,6 +1048,11 @@
       // 1-10 Interactive Lab State (스스로 확인하기 4: 세균 분열과 거듭제곱)
       lab1_10: {
         hour: 0 // 0, 1, 2, 3, 4, 5
+      },
+      // 1-11 Interactive Lab State (스스로 확인하기 5: 거듭제곱 미지수 a, b)
+      lab1_11: {
+        tabIndex: 0, // 0: 식 1 (a 탐구), 1: 식 2 (b 탐구), 2: 종합 (a+b)
+        isSorted: false
       }
     };
 
@@ -1217,6 +1222,9 @@
       } else if (code === '1-10') {
         renderToolbar1_10();
         renderSubstep1_10();
+      } else if (code === '1-11') {
+        renderToolbar1_11();
+        renderSubstep1_11();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -1993,6 +2001,42 @@
       renderToolbar1_10();
       drawStep1_10Canvas();
     }
+
+    function renderToolbar1_11() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+      const curTab = state.lab1_11.tabIndex;
+      const isSorted = state.lab1_11.isSorted;
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569;">방정식 탐구:</span>
+        <button class="tool-btn ${curTab === 0 ? 'active' : ''}" onclick="setStep1_11Tab(0)">⑴ 식 1: 3^a 탐구</button>
+        <button class="tool-btn ${curTab === 1 ? 'active' : ''}" onclick="setStep1_11Tab(1)">⑵ 식 2: 2^b×5² 탐구</button>
+        <button class="tool-btn ${curTab === 2 ? 'active' : ''}" onclick="setStep1_11Tab(2)">⑶ 종합: a+b 계산</button>
+        ${curTab === 1 ? `
+          <span style="margin: 0 4px; color:#cbd5e1;">|</span>
+          <button class="tool-btn ${isSorted ? 'active' : ''}" style="background:${isSorted ? '#dcfce7' : '#f1f5f9'}; color:${isSorted ? '#15803d' : '#334155'}; font-weight:700;" onclick="toggleStep1_11Sort()">
+            ${isSorted ? '🔄 원래 순서로' : '🔀 밑별로 모으기'}
+          </button>
+        ` : ''}
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setStep1_11Tab(idx) {
+      state.lab1_11.tabIndex = idx;
+      state.lab1_11.isSorted = false;
+      renderToolbar1_11();
+      drawStep1_11Canvas();
+    }
+
+    function toggleStep1_11Sort() {
+      state.lab1_11.isSorted = !state.lab1_11.isSorted;
+      renderToolbar1_11();
+      drawStep1_11Canvas();
+    }
+
 
 
 
@@ -7867,7 +7911,551 @@
     }
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (1-11 to 6-2)
+    // SUBSTEP 1-11: 스스로 확인하기 5: 거듭제곱 미지수 a, b 구하기 (교과서 p.12)
+    // -------------------------------------------------------------
+    function renderSubstep1_11() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = '<b>[1-11] 스스로 확인하기 5: 거듭제곱 미지수 a, b 구하기 (교과서 12쪽 5번)</b><br>주어진 곱셈식을 만족시키는 자연수 a, b를 구하고 a+b의 값을 계산합니다.';
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="padding:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 12쪽 스스로 확인하기 5번</span>
+            <span style="font-size:0.8rem; color:#64748b; font-weight:600;">거듭제곱 미지수</span>
+          </div>
+
+          <h4 style="font-size:1.02rem; font-weight:800; color:#1e293b; margin-bottom:8px;">
+            다음을 만족시키는 자연수 $a, b$에 대하여 $a+b$의 값을 구하시오.
+          </h4>
+          <div style="background:#f1f5f9; border-radius:6px; padding:10px 14px; margin-bottom:14px; font-weight:700; font-size:0.92rem; color:#1e293b;">
+            • $3 \\times 3 \\times 3 \\times 3 = 3^a$<br>
+            • $2 \\times 5 \\times 2 \\times 5 \\times 2 = 2^b \\times 5^2$
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <!-- Q1 -->
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+              <div style="font-weight:700; font-size:0.88rem; color:#1e293b; margin-bottom:6px;">
+                ⑴ $3 \\times 3 \\times 3 \\times 3 = 3^a$ 에서 자연수 $a$의 값을 구하시오.
+              </div>
+              <input type="text" id="ans-1-11-1" class="proof-input-text" placeholder="답 입력" style="width:100%; max-width:240px;" autocomplete="off">
+            </div>
+
+            <!-- Q2 -->
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+              <div style="font-weight:700; font-size:0.88rem; color:#1e293b; margin-bottom:6px;">
+                ⑵ $2 \\times 5 \\times 2 \\times 5 \\times 2 = 2^b \\times 5^2$ 에서 자연수 $b$의 값을 구하시오.
+              </div>
+              <input type="text" id="ans-1-11-2" class="proof-input-text" placeholder="답 입력" style="width:100%; max-width:240px;" autocomplete="off">
+            </div>
+
+            <!-- Q3 -->
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+              <div style="font-weight:700; font-size:0.88rem; color:#1e293b; margin-bottom:6px;">
+                ⑶ $a + b$의 최종 값을 구하시오.
+              </div>
+              <input type="text" id="ans-1-11-3" class="proof-input-text" placeholder="답 입력" style="width:100%; max-width:240px;" autocomplete="off">
+            </div>
+
+            <!-- Q4 -->
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+              <div style="font-weight:700; font-size:0.88rem; color:#1e293b; margin-bottom:8px;">
+                ⑷ [개념 점검] 거듭제곱에서 같은 수의 곱셈 횟수를 나타내는 수학 용어는 무엇입니까?
+              </div>
+              <div style="display:flex; flex-direction:column; gap:6px; font-size:0.86rem; color:#334155;">
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                  <input type="radio" name="ans-1-11-4" value="1"> ① 밑
+                </label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                  <input type="radio" name="ans-1-11-4" value="2"> ② 지수
+                </label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                  <input type="radio" name="ans-1-11-4" value="3"> ③ 인수
+                </label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                  <input type="radio" name="ans-1-11-4" value="4"> ④ 계수
+                </label>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" onclick="gradeStep1_11()" style="padding:10px; font-weight:800; font-size:0.92rem; width:100%; margin-top:4px;">
+              ✅ 정답 확인 및 채점하기
+            </button>
+          </div>
+
+          <div id="feedback-1-11" style="display:none; margin-top:12px; padding:12px; border-radius:8px;"></div>
+        </div>
+      `;
+
+      drawStep1_11Canvas();
+
+      if (window.renderMathInElement) {
+        renderMathInElement(formArea, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    function drawStep1_11Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const curTab = state.lab1_11.tabIndex || 0;
+      const isSorted = state.lab1_11.isSorted || false;
+
+      // 1. Header (Title & Subtitle)
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(10.5, Math.min(12, Math.floor(width * 0.018)));
+
+      const tabTitles = [
+        '식 1: 3^a 탐구 [a = 4]',
+        '식 2: 2^b × 5² 탐구 [b = 3]',
+        '종합: a + b 계산 [4 + 3 = 7]'
+      ];
+      const headerTitle = two.makeText(`⚡ 스스로 확인하기 5: 거듭제곱 미지수 a, b 구하기 랩`, width / 2, 16);
+      headerTitle.size = titleSize;
+      headerTitle.weight = 800;
+      headerTitle.fill = '#1e293b';
+
+      const subTexts = [
+        '밑 3이 몇 번 곱해졌는지 세어 지수 a를 찾아보세요.',
+        '곱셈 교환법칙으로 밑 2와 5끼리 모아 지수 b를 찾아보세요.',
+        '식 1에서 구한 a = 4 와 식 2에서 구한 b = 3 을 더하여 최종값을 구하세요.'
+      ];
+      const headerSub = two.makeText(subTexts[curTab], width / 2, 33);
+      headerSub.size = subSize;
+      headerSub.weight = 600;
+      headerSub.fill = '#4f46e5';
+
+      // 2. Interactive Problem Tabs (y: 52 ~ 74)
+      const tabW = Math.min(130, Math.floor((width - 40) / 3));
+      const tabH = 24;
+      const totalTabsW = tabW * 3 + 16;
+      const startTabX = (width - totalTabsW) / 2;
+      const tabLabels = ['⑴ 식 1 (a 탐구)', '⑵ 식 2 (b 탐구)', '⑶ 종합 (a+b)'];
+
+      for (let i = 0; i < 3; i++) {
+        const tx = startTabX + i * (tabW + 8) + tabW / 2;
+        const isActive = (curTab === i);
+
+        const tabBg = two.makeRoundedRectangle(tx, 56, tabW, tabH, 6);
+        tabBg.fill = isActive ? '#4f46e5' : '#f1f5f9';
+        tabBg.stroke = isActive ? '#3730a3' : '#cbd5e1';
+        tabBg.linewidth = isActive ? 1.5 : 1;
+
+        const tabText = two.makeText(tabLabels[i], tx, 56);
+        tabText.size = (tabW < 100) ? 9.5 : 10.5;
+        tabText.weight = 800;
+        tabText.fill = isActive ? '#ffffff' : '#475569';
+      }
+
+      // 3. Target Equation Banner Card (y: 80 ~ 134)
+      const cardW = Math.min(width - 30, 680);
+      const cardH = 54;
+      const cardBg = two.makeRoundedRectangle(width / 2, 80 + cardH / 2, cardW, cardH, 8);
+      cardBg.fill = '#f8fafc';
+      cardBg.stroke = '#e2e8f0';
+      cardBg.linewidth = 1;
+
+      const eqTitles = [
+        '주어진 식 1:  3 × 3 × 3 × 3 = 3^a',
+        '주어진 식 2:  2 × 5 × 2 × 5 × 2 = 2^b × 5²',
+        '최종 계산 목표:  a + b 의 값을 구하시오.'
+      ];
+      const eqSubs = [
+        '밑 3이 연속해서 4번 곱해졌으므로 거듭제곱 지수 a = 4 입니다.',
+        '곱셈 교환법칙으로 밑이 같은 수끼리 모으면 2가 3번, 5가 2번 곱해집니다.',
+        '식 1에서 a = 4, 식 2에서 b = 3 이므로 a + b = 4 + 3 = 7 입니다.'
+      ];
+
+      const tProb = two.makeText(eqTitles[curTab], width / 2, 80 + 18);
+      tProb.size = (width < 600) ? 12 : 14;
+      tProb.weight = 800;
+      tProb.fill = '#1e293b';
+
+      const tProbSub = two.makeText(eqSubs[curTab], width / 2, 80 + 38);
+      tProbSub.size = (width < 600) ? 9.5 : 10.5;
+      tProbSub.weight = 600;
+      tProbSub.fill = '#64748b';
+
+      // 4. Middle Dynamic Arena (center Y: 240)
+      const arenaCenterY = 240;
+
+      if (curTab === 0) {
+        // Tab 0: 3 x 3 x 3 x 3 = 3^a -> a = 4
+        const chipW = Math.min(46, Math.floor((width - 60) / 7));
+        const totalW = 4 * chipW + 3 * 20;
+        const startX = (width - totalW) / 2 - 60;
+
+        let curX = startX;
+        for (let i = 0; i < 4; i++) {
+          const cx = curX + chipW / 2;
+          const chip = two.makeRoundedRectangle(cx, arenaCenterY - 18, chipW, 42, 6);
+          chip.fill = '#eff6ff';
+          chip.stroke = '#3b82f6';
+          chip.linewidth = 1.8;
+
+          const tVal = two.makeText('3', cx, arenaCenterY - 18);
+          tVal.size = 18; tVal.weight = 800; tVal.fill = '#1d4ed8';
+
+          curX += chipW;
+          if (i < 3) {
+            const times = two.makeText('×', curX + 10, arenaCenterY - 18);
+            times.size = 16; times.weight = 700; times.fill = '#94a3b8';
+            curX += 20;
+          }
+        }
+
+        // Badge above chips
+        const badgeCenterX = startX + totalW / 2;
+        const badge = two.makeRoundedRectangle(badgeCenterX, arenaCenterY - 56, 140, 22, 11);
+        badge.fill = '#dbeafe'; badge.stroke = '#3b82f6'; badge.linewidth = 1;
+        const bText = two.makeText('밑 3이 4번 곱해짐', badgeCenterX, arenaCenterY - 56);
+        bText.size = 10; bText.weight = 800; bText.fill = '#1d4ed8';
+
+        // Arrow
+        const arrow = two.makeText('➔', startX + totalW + 28, arenaCenterY - 18);
+        arrow.size = 22; arrow.weight = 800; arrow.fill = '#475569';
+
+        // Power Card
+        const pCardX = startX + totalW + 90;
+        const pCard = two.makeRoundedRectangle(pCardX, arenaCenterY - 18, 86, 68, 8);
+        pCard.fill = '#eff6ff'; pCard.stroke = '#2563eb'; pCard.linewidth = 2;
+
+        const b3 = two.makeText('3', pCardX - 8, arenaCenterY - 16);
+        b3.size = 28; b3.weight = 900; b3.fill = '#1d4ed8';
+
+        const e4 = two.makeText('4', pCardX + 14, arenaCenterY - 28);
+        e4.size = 18; e4.weight = 900; e4.fill = '#b45309';
+
+        const tagText = two.makeText('3⁴ = 3^a', pCardX, arenaCenterY + 8);
+        tagText.size = 9.5; tagText.weight = 700; tagText.fill = '#1d4ed8';
+
+        // Result Tag
+        const resText = two.makeText('따라서 미지수  a = 4', width / 2, arenaCenterY + 48);
+        resText.size = 13; resText.weight = 800; resText.fill = '#15803d';
+
+      } else if (curTab === 1) {
+        // Tab 1: 2 x 5 x 2 x 5 x 2 = 2^b x 5^2
+        if (!isSorted) {
+          // Shuffled original order: 2, 5, 2, 5, 2
+          const factors = [
+            { val: 2, col: '#4338ca', bg: '#eef2ff', bd: '#6366f1' },
+            { val: 5, col: '#0369a1', bg: '#e0f2fe', bd: '#0284c7' },
+            { val: 2, col: '#4338ca', bg: '#eef2ff', bd: '#6366f1' },
+            { val: 5, col: '#0369a1', bg: '#e0f2fe', bd: '#0284c7' },
+            { val: 2, col: '#4338ca', bg: '#eef2ff', bd: '#6366f1' }
+          ];
+
+          const chipW = Math.min(44, Math.floor((width - 60) / 8));
+          const totalW = 5 * chipW + 4 * 18;
+          const startX = (width - totalW) / 2;
+
+          let curX = startX;
+          for (let i = 0; i < 5; i++) {
+            const cx = curX + chipW / 2;
+            const chip = two.makeRoundedRectangle(cx, arenaCenterY - 24, chipW, 40, 6);
+            chip.fill = factors[i].bg;
+            chip.stroke = factors[i].bd;
+            chip.linewidth = 1.8;
+
+            const tVal = two.makeText(String(factors[i].val), cx, arenaCenterY - 24);
+            tVal.size = 17; tVal.weight = 800; tVal.fill = factors[i].col;
+
+            curX += chipW;
+            if (i < 4) {
+              const times = two.makeText('×', curX + 9, arenaCenterY - 24);
+              times.size = 15; times.weight = 700; times.fill = '#94a3b8';
+              curX += 18;
+            }
+          }
+
+          // Shuffled Notice Tag
+          const noteText = two.makeText('현재 2와 5가 섞여 있습니다. 아래 버튼을 눌러 밑별로 정렬해 보세요!', width / 2, arenaCenterY + 12);
+          noteText.size = 11; noteText.weight = 700; noteText.fill = '#475569';
+
+          // Action Button (Sort)
+          const btnW = 260; const btnH = 34; const btnY = arenaCenterY + 44;
+          const btnBg = two.makeRoundedRectangle(width / 2, btnY, btnW, btnH, 17);
+          btnBg.fill = '#4f46e5'; btnBg.stroke = '#4338ca'; btnBg.linewidth = 1.5;
+
+          const btnText = two.makeText('🔀 곱셈 교환법칙으로 밑별 모으기 (Click)', width / 2, btnY);
+          btnText.size = 11; btnText.weight = 800; btnText.fill = '#ffffff';
+
+        } else {
+          // Sorted order: (2 x 2 x 2) x (5 x 5)
+          const chipW = Math.min(40, Math.floor((width - 60) / 9));
+          const totalW = 5 * chipW + 4 * 16 + 28;
+          const startX = (width - totalW) / 2;
+
+          // 2 group (3 chips)
+          let curX = startX;
+          for (let i = 0; i < 3; i++) {
+            const cx = curX + chipW / 2;
+            const chip = two.makeRoundedRectangle(cx, arenaCenterY - 24, chipW, 40, 6);
+            chip.fill = '#eef2ff'; chip.stroke = '#6366f1'; chip.linewidth = 1.8;
+
+            const tVal = two.makeText('2', cx, arenaCenterY - 24);
+            tVal.size = 17; tVal.weight = 800; tVal.fill = '#4338ca';
+
+            curX += chipW;
+            if (i < 2) {
+              const times = two.makeText('×', curX + 8, arenaCenterY - 24);
+              times.size = 14; times.weight = 700; times.fill = '#94a3b8';
+              curX += 16;
+            }
+          }
+
+          // Badge 1 (2^3)
+          const g1CenterX = startX + (3 * chipW + 2 * 16) / 2;
+          const b1 = two.makeRoundedRectangle(g1CenterX, arenaCenterY - 56, 130, 22, 11);
+          b1.fill = '#e0e7ff'; b1.stroke = '#6366f1'; b1.linewidth = 1;
+          const bt1 = two.makeText('밑 2가 3개 (2³ ➔ b=3)', g1CenterX, arenaCenterY - 56);
+          bt1.size = 9.5; bt1.weight = 800; bt1.fill = '#4338ca';
+
+          // Group separator
+          const timesMid = two.makeText('×', curX + 14, arenaCenterY - 24);
+          timesMid.size = 18; timesMid.weight = 800; timesMid.fill = '#475569';
+          curX += 28;
+
+          // 5 group (2 chips)
+          const g2StartX = curX;
+          for (let i = 0; i < 2; i++) {
+            const cx = curX + chipW / 2;
+            const chip = two.makeRoundedRectangle(cx, arenaCenterY - 24, chipW, 40, 6);
+            chip.fill = '#e0f2fe'; chip.stroke = '#0284c7'; chip.linewidth = 1.8;
+
+            const tVal = two.makeText('5', cx, arenaCenterY - 24);
+            tVal.size = 17; tVal.weight = 800; tVal.fill = '#0369a1';
+
+            curX += chipW;
+            if (i < 1) {
+              const times = two.makeText('×', curX + 8, arenaCenterY - 24);
+              times.size = 14; times.weight = 700; times.fill = '#94a3b8';
+              curX += 16;
+            }
+          }
+
+          // Badge 2 (5^2)
+          const g2CenterX = g2StartX + (2 * chipW + 1 * 16) / 2;
+          const b2 = two.makeRoundedRectangle(g2CenterX, arenaCenterY - 56, 100, 22, 11);
+          b2.fill = '#bae6fd'; b2.stroke = '#0284c7'; b2.linewidth = 1;
+          const bt2 = two.makeText('밑 5가 2개 (5²)', g2CenterX, arenaCenterY - 56);
+          bt2.size = 9.5; bt2.weight = 800; bt2.fill = '#0369a1';
+
+          // Result Tag
+          const resText = two.makeText('정리: 2³ × 5² = 2^b × 5²  ➔  따라서 b = 3', width / 2, arenaCenterY + 14);
+          resText.size = 12; resText.weight = 800; resText.fill = '#15803d';
+
+          // Action Button (Unsort)
+          const btnW = 240; const btnH = 32; const btnY = arenaCenterY + 44;
+          const btnBg = two.makeRoundedRectangle(width / 2, btnY, btnW, btnH, 16);
+          btnBg.fill = '#059669'; btnBg.stroke = '#047857'; btnBg.linewidth = 1.5;
+
+          const btnText = two.makeText('🔄 원래 순서로 되돌리기 (Click)', width / 2, btnY);
+          btnText.size = 11; btnText.weight = 800; btnText.fill = '#ffffff';
+        }
+
+      } else if (curTab === 2) {
+        // Tab 2: Combined a + b calculation (4 + 3 = 7)
+        const bW = Math.min(130, Math.floor((width - 80) / 3));
+        const bH = 64;
+
+        const b1X = width / 2 - bW - 36;
+        const plusX = width / 2 - bW / 2 - 18;
+        const b2X = width / 2;
+        const eqX = width / 2 + bW / 2 + 18;
+        const bSumX = width / 2 + bW + 36;
+
+        // Block A (a = 4)
+        const blockA = two.makeRoundedRectangle(b1X, arenaCenterY - 20, bW, bH, 8);
+        blockA.fill = '#ede9fe'; blockA.stroke = '#8b5cf6'; blockA.linewidth = 2;
+
+        const tA = two.makeText('a = 4', b1X, arenaCenterY - 28);
+        tA.size = 18; tA.weight = 900; tA.fill = '#6d28d9';
+        const subA = two.makeText('식 1의 지수', b1X, arenaCenterY - 6);
+        subA.size = 9.5; subA.weight = 700; subA.fill = '#6d28d9';
+
+        // Plus
+        const plus = two.makeText('+', plusX, arenaCenterY - 20);
+        plus.size = 22; plus.weight = 800; plus.fill = '#475569';
+
+        // Block B (b = 3)
+        const blockB = two.makeRoundedRectangle(b2X, arenaCenterY - 20, bW, bH, 8);
+        blockB.fill = '#ccfbf1'; blockB.stroke = '#14b8a6'; blockB.linewidth = 2;
+
+        const tB = two.makeText('b = 3', b2X, arenaCenterY - 28);
+        tB.size = 18; tB.weight = 900; tB.fill = '#0f766e';
+        const subB = two.makeText('식 2의 지수', b2X, arenaCenterY - 6);
+        subB.size = 9.5; subB.weight = 700; subB.fill = '#0f766e';
+
+        // Equals
+        const eq = two.makeText('=', eqX, arenaCenterY - 20);
+        eq.size = 22; eq.weight = 800; eq.fill = '#475569';
+
+        // Block Sum (a + b = 7)
+        const blockSum = two.makeRoundedRectangle(bSumX, arenaCenterY - 20, bW, bH, 8);
+        blockSum.fill = '#fef3c7'; blockSum.stroke = '#f59e0b'; blockSum.linewidth = 2.5;
+
+        const tSum = two.makeText('a + b = 7', bSumX, arenaCenterY - 28);
+        tSum.size = 17; tSum.weight = 900; tSum.fill = '#b45309';
+        const subSum = two.makeText('👑 최종 정답', bSumX, arenaCenterY - 6);
+        subSum.size = 9.5; subSum.weight = 800; subSum.fill = '#b45309';
+
+        // Sum equation banner
+        const concl = two.makeText('최종 연산: a + b = 4 + 3 = 7', width / 2, arenaCenterY + 36);
+        concl.size = 13; concl.weight = 800; concl.fill = '#15803d';
+      }
+
+      // 5. Bottom Rule & Concept Banner (y: 356 ~ 418)
+      const bannerY = 356;
+      const bannerH = Math.max(54, height - bannerY - 8);
+      const bannerW = Math.min(width - 30, 680);
+
+      const bannerBg = two.makeRoundedRectangle(width / 2, bannerY + bannerH / 2, bannerW, bannerH, 8);
+      bannerBg.fill = '#f8fafc';
+      bannerBg.stroke = '#e2e8f0';
+      bannerBg.linewidth = 1;
+
+      const ruleLine1Y = (bannerH > 54) ? bannerY + 16 : bannerY + 14;
+      const ruleLine2Y = (bannerH > 54) ? bannerY + 36 : bannerY + 32;
+
+      const rule1 = two.makeText('💡 [거듭제곱과 지수의 뜻] 같은 수를 여러 번 곱할 때, 곱해진 횟수를 나타내는 수가 바로 "지수"입니다.', width / 2, ruleLine1Y);
+      rule1.size = (width < 600) ? 9.5 : 10.5;
+      rule1.weight = 700;
+      rule1.fill = '#334155';
+
+      const rule2 = two.makeText('📌 [교과서 문제 5] a = 4, b = 3 이므로 구하는 값은 a + b = 4 + 3 = 7 입니다!', width / 2, ruleLine2Y);
+      rule2.size = (width < 600) ? 9.5 : 10.5;
+      rule2.weight = 800;
+      rule2.fill = '#4338ca';
+
+      two.update();
+
+      // Bind Pointer Event on Canvas
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas') : null;
+      if (canvasEl) {
+        canvasEl.onpointerdown = (e) => {
+          const rect = canvasEl.getBoundingClientRect();
+          const px = (e.clientX - rect.left) * (width / rect.width);
+          const py = (e.clientY - rect.top) * (height / rect.height);
+
+          // 1. Check problem tabs (y: 56, h: 24)
+          if (py >= 44 && py <= 68) {
+            for (let i = 0; i < 3; i++) {
+              const tx = startTabX + i * (tabW + 8) + tabW / 2;
+              if (Math.abs(px - tx) <= tabW / 2) {
+                setStep1_11Tab(i);
+                return;
+              }
+            }
+          }
+
+          // 2. Check Sort/Unsort Button in Tab 1 (y: arenaCenterY + 44)
+          if (curTab === 1) {
+            const btnY = arenaCenterY + 44;
+            if (Math.abs(px - width / 2) <= 130 && Math.abs(py - btnY) <= 18) {
+              toggleStep1_11Sort();
+              return;
+            }
+          }
+        };
+      }
+    }
+
+    async function gradeStep1_11() {
+      const ans1 = cleanInput(document.getElementById('ans-1-11-1')?.value);
+      const ans2 = cleanInput(document.getElementById('ans-1-11-2')?.value);
+      const ans3 = cleanInput(document.getElementById('ans-1-11-3')?.value);
+      const ans4 = document.querySelector('input[name="ans-1-11-4"]:checked')?.value;
+
+      const fEl = document.getElementById('feedback-1-11');
+      if (!fEl) return;
+
+      const ok1 = (ans1 === '4');
+      const ok2 = (ans2 === '3');
+      const ok3 = (ans3 === '7');
+      const ok4 = (ans4 === '2');
+
+      if (ok1 && ok2 && ok3 && ok4) {
+        fEl.style.display = 'block';
+        fEl.className = 'verified-answer-card';
+        fEl.style.background = '#f0fdf4';
+        fEl.style.border = '1.5px solid #86efac';
+        fEl.innerHTML = `
+          <h4 style="color:#15803d; font-size:0.95rem; font-weight:800; margin-bottom:6px;">🎉 100점! 완벽합니다!</h4>
+          <div style="font-size:0.86rem; color:#166534; line-height:1.6;">
+            거듭제곱의 지수 미지수 $a, b$를 완벽하게 구하고 그 합을 도출했습니다.<br>
+            • <b>⑴ 식 1:</b> $3 \\times 3 \\times 3 \\times 3 = 3^4 = 3^a$ ➔ <b>$a = 4$</b><br>
+            • <b>⑵ 식 2:</b> $(2 \\times 2 \\times 2) \\times (5 \\times 5) = 2^3 \\times 5^2 = 2^b \\times 5^2$ ➔ <b>$b = 3$</b><br>
+            • <b>⑶ 최종합:</b> $a + b = 4 + 3 = $ <b>$7$</b><br>
+            • <b>⑷ 개념 점검:</b> 같은 수의 곱셈 횟수를 나타내는 수학 용어는 <b>'지수'</b>입니다.<br>
+            <div style="margin-top:8px; padding:8px 10px; background:#dcfce7; border-radius:6px; font-weight:700;">
+              💡 핵심 정리: 거듭제곱에서 밑이 같은 수의 곱셈 횟수가 지수가 되며, 곱셈 기호 순서를 바꾸어도 결과는 같으므로 같은 밑끼리 모아서 지수를 계산합니다!<br>
+              다음 활동 <b>[1-12] [생각 넓히기] 열차 승객과 소수 역 (교과서 13쪽)</b>가 해금되었습니다. 🔓
+            </div>
+          </div>
+        `;
+
+        if (!state.completedSubSteps.includes('1-11')) {
+          state.completedSubSteps.push('1-11');
+        }
+        if (!state.unlockedSubSteps.includes('1-12')) {
+          state.unlockedSubSteps.push('1-12');
+        }
+
+        updateSubStepPills(state.currentMainTab);
+
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('1-11', {
+              activityTitle: '[중1-1 소인수분해] [1-11] 스스로 확인하기 5: 거듭제곱 미지수 a, b',
+              answerText: `a=${ans1} | b=${ans2} | a+b=${ans3} | 용어=${ans4}`,
+              answers: { ans1, ans2, ans3, ans4 },
+              score: 100,
+              passed: true
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+      } else {
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            ${!ok1 ? '• ⑴ 3 × 3 × 3 × 3 에서 밑 3이 몇 번 곱해졌는지 세어 보세요.<br>' : ''}
+            ${!ok2 ? '• ⑵ 2 × 5 × 2 × 5 × 2 에서 밑 2가 총 몇 번 곱해졌는지 세어 보세요. (좌측 캔버스의 [밑별 모으기] 활용)<br>' : ''}
+            ${!ok3 ? '• ⑶ 구한 a의 값과 b의 값을 더해 보세요. (a + b)<br>' : ''}
+            ${!ok4 ? '• ⑷ 거듭제곱에서 곱해지는 수는 밑, 곱해진 횟수는 무엇인지 다시 확인해 보세요.<br>' : ''}
+            💡 좌측 캔버스의 탭(⑴~⑶)을 터치하여 각 식의 지수와 합산 과정을 시각적으로 확인해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (1-12 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -7989,6 +8577,11 @@
         state.lab1_10.hour = 0;
         renderToolbar1_10();
         drawStep1_10Canvas();
+      } else if (state.subStep === '1-11') {
+        state.lab1_11.tabIndex = 0;
+        state.lab1_11.isSorted = false;
+        renderToolbar1_11();
+        drawStep1_11Canvas();
       }
     }
 
@@ -8250,6 +8843,7 @@
         else if (state.subStep === '1-8') drawStep1_8Canvas();
         else if (state.subStep === '1-9') drawStep1_9Canvas();
         else if (state.subStep === '1-10') drawStep1_10Canvas();
+        else if (state.subStep === '1-11') drawStep1_11Canvas();
       }, 150);
     });
 
