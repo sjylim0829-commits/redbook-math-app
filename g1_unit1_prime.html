@@ -52462,59 +52462,366 @@ function checkStep_1_12() {
     function drawCanvas_7_6(container) {
       if (!container) return;
       container.innerHTML = '';
+
+      const wrap = document.createElement('div');
+      wrap.style.width = '100%';
+      wrap.style.height = '100%';
+      wrap.style.position = 'relative';
+      wrap.style.overflow = 'hidden';
+      wrap.style.display = 'flex';
+      wrap.style.flexDirection = 'column';
+      container.appendChild(wrap);
+
       const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 500;
-      canvas.height = container.clientHeight || 450;
       canvas.style.width = '100%';
       canvas.style.height = '100%';
       canvas.style.display = 'block';
-      container.appendChild(canvas);
+      canvas.style.flex = '1';
+      wrap.appendChild(canvas);
+
       const ctx = canvas.getContext('2d');
+      let dpr = window.devicePixelRatio || 1;
+      let width = 0;
+      let height = 0;
 
-      let animId;
-      let angle = 0;
+      // 상태 변수 (초기값: A=12 모순 상태를 먼저 보면서 18로 유도, 제로 스포일러)
+      let curA = 12;
+      let animId = null;
+      let confettiList = [];
+      let isSuccess = false;
+
+      function resize() {
+        const rect = wrap.getBoundingClientRect();
+        width = Math.max(rect.width, 320);
+        height = Math.max(rect.height, 360);
+        dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+
+      const ro = new ResizeObserver(() => {
+        resize();
+      });
+      ro.observe(wrap);
+
+      function triggerConfetti() {
+        confettiList = [];
+        for (let i = 0; i < 40; i++) {
+          confettiList.push({
+            x: width * 0.5 + (Math.random() - 0.5) * 200,
+            y: height * 0.45 + (Math.random() - 0.5) * 60,
+            vx: (Math.random() - 0.5) * 8,
+            vy: -Math.random() * 6 - 2,
+            size: Math.random() * 6 + 4,
+            color: ['#38bdf8', '#fb923c', '#10b981', '#f59e0b', '#ec4899'][Math.floor(Math.random() * 5)],
+            alpha: 1.0,
+            decay: Math.random() * 0.02 + 0.015
+          });
+        }
+      }
+
+      function updateSuccessState() {
+        if (curA === 18) {
+          if (!isSuccess) {
+            isSuccess = true;
+            triggerConfetti();
+          }
+        } else {
+          isSuccess = false;
+        }
+      }
+
+      // 외부 연동 API
+      window._step7_6_setA = (val) => {
+        curA = Number(val);
+        updateSuccessState();
+      };
+
+      window._step7_6_triggerSuccess = () => {
+        curA = 18;
+        updateSuccessState();
+        triggerConfetti();
+      };
+
+      let hitRegions = [];
+
       function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, width, height);
 
+        // 배경
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, width, height);
+
+        // 은은한 그리드
         ctx.strokeStyle = '#1e293b';
         ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 40) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        const gridStep = 40;
+        for (let x = 0; x < width; x += gridStep) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
         }
-        for (let y = 0; y < canvas.height; y += 40) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        for (let y = 0; y < height; y += gridStep) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
         }
 
+        hitRegions = [];
+
+        // 1. 상단 타이틀 배너
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.roundRect(16, 10, width - 32, 54, 8);
+        ctx.fill();
+        ctx.strokeStyle = '#334155';
+        ctx.stroke();
+
+        ctx.font = 'bold 14px "Pretendard", sans-serif';
         ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 16px "Pretendard", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('[7-6] 13번: [서술형] 세 수의 최대공약수(6)와 A (p.26)', canvas.width / 2, 40);
+        ctx.textAlign = 'left';
+        ctx.fillText('🔍 10 < A < 20 구간 수직선 & 최대공약수(6) 필터 시뮬레이터', 26, 28);
 
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.strokeStyle = '#f59e0b';
+        ctx.font = '11px "Pretendard", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('세 자연수 72, 60, A의 최대공약수가 6일 때, 10과 20 사이의 6의 배수(12, 18) 중 알맞은 A를 찾으세요!', 26, 46);
+
+        // 2. 수직선 영역 (10 ~ 20)
+        const lineY = 88;
+        const lineMargin = 30;
+        const lineW = width - lineMargin * 2;
+        const minVal = 10;
+        const maxVal = 20;
+
+        ctx.strokeStyle = '#475569';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(0, 0, 70, 0, Math.PI * 2);
+        ctx.moveTo(lineMargin, lineY);
+        ctx.lineTo(lineMargin + lineW, lineY);
         ctx.stroke();
-        ctx.restore();
 
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '13px "Pretendard", sans-serif';
-        ctx.fillText('심화 마무리 인터랙터', cx, cy + 110);
+        // 눈금 그리기 (10부터 20까지)
+        for (let n = minVal; n <= maxVal; n++) {
+          const nx = lineMargin + ((n - minVal) / (maxVal - minVal)) * lineW;
+          const isMultiple6 = (n === 12 || n === 18);
 
-        angle += 0.02;
+          ctx.strokeStyle = isMultiple6 ? '#38bdf8' : '#334155';
+          ctx.lineWidth = isMultiple6 ? 2 : 1;
+          ctx.beginPath();
+          ctx.moveTo(nx, lineY - (isMultiple6 ? 7 : 4));
+          ctx.lineTo(nx, lineY + (isMultiple6 ? 7 : 4));
+          ctx.stroke();
+
+          ctx.font = isMultiple6 ? 'bold 11px "Pretendard", sans-serif' : '10px "Pretendard", sans-serif';
+          ctx.fillStyle = isMultiple6 ? '#38bdf8' : '#64748b';
+          ctx.textAlign = 'center';
+          ctx.fillText(`${n}`, nx, lineY + 18);
+        }
+
+        // 6의 배수 핀 2개 (A=12, A=18)
+        const pinValues = [12, 18];
+        pinValues.forEach(pin => {
+          const px = lineMargin + ((pin - minVal) / (maxVal - minVal)) * lineW;
+          const isSelected = (curA === pin);
+          const py = lineY - 26;
+
+          ctx.fillStyle = isSelected ? (pin === 18 ? '#10b981' : '#ef4444') : '#1e293b';
+          ctx.beginPath();
+          ctx.roundRect(px - 28, py, 56, 22, 5);
+          ctx.fill();
+          ctx.strokeStyle = isSelected ? (pin === 18 ? '#34d399' : '#f87171') : '#475569';
+          ctx.lineWidth = isSelected ? 2 : 1;
+          ctx.stroke();
+
+          ctx.font = 'bold 11px "Pretendard", sans-serif';
+          ctx.fillStyle = isSelected ? '#ffffff' : '#cbd5e1';
+          ctx.textAlign = 'center';
+          ctx.fillText(`A=${pin}`, px, py + 15);
+
+          hitRegions.push({
+            x: px - 28, y: py, w: 56, h: 22,
+            action: () => {
+              curA = pin;
+              updateSuccessState();
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+            }
+          });
+        });
+
+        // 3. 중앙: 세 수 소인수분해 세로셈 실시간 비교기
+        const compareY = 126;
+        const compareH = 140;
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.roundRect(16, compareY, width - 32, compareH, 8);
+        ctx.fill();
+        ctx.strokeStyle = '#334155';
+        ctx.stroke();
+
+        ctx.font = 'bold 12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#38bdf8';
+        ctx.textAlign = 'left';
+        ctx.fillText('세 수의 소인수분해 세로셈 비교', 28, compareY + 22);
+
+        // 72와 60 행
+        ctx.font = '12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillText('• 72 =  2³  ×  3²', 36, compareY + 44);
+        ctx.fillText('• 60 =  2²  ×  3¹  ×  5', 36, compareY + 64);
+
+        // A 행 (현재 선택값)
+        let aFactorStr = '';
+        let gcdVal = 0;
+        let isGcd6 = false;
+
+        if (curA === 12) {
+          aFactorStr = '• 12 =  2²  ×  3¹';
+          gcdVal = 12;
+          isGcd6 = false;
+        } else if (curA === 18) {
+          aFactorStr = '• 18 =  2¹  ×  3²';
+          gcdVal = 6;
+          isGcd6 = true;
+        } else {
+          aFactorStr = `• A(${curA}) = 미확정`;
+          gcdVal = 0;
+          isGcd6 = false;
+        }
+
+        ctx.font = 'bold 12px "Pretendard", sans-serif';
+        ctx.fillStyle = isGcd6 ? '#34d399' : '#f87171';
+        ctx.fillText(aFactorStr, 36, compareY + 84);
+
+        // 최대공약수 결과 행
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(36, compareY + 92);
+        ctx.lineTo(width - 36, compareY + 92);
+        ctx.stroke();
+
+        ctx.font = 'bold 12px "Pretendard", sans-serif';
+        if (isGcd6) {
+          ctx.fillStyle = '#10b981';
+          ctx.fillText(`★ 최대공약수 = 2¹ × 3¹ = 6  (문제 조건과 완벽 일치! ✅)`, 36, compareY + 110);
+          ctx.font = '11px "Pretendard", sans-serif';
+          ctx.fillStyle = '#34d399';
+          ctx.fillText(`18의 2의 지수가 1이므로 세 수의 최대공약수가 6이 됩니다. (A = 18 확정!)`, 36, compareY + 128);
+        } else if (curA === 12) {
+          ctx.fillStyle = '#ef4444';
+          ctx.fillText(`❌ 최대공약수 = 2² × 3¹ = 12  ≠ 6 (모순 발생!)`, 36, compareY + 110);
+          ctx.font = '11px "Pretendard", sans-serif';
+          ctx.fillStyle = '#fca5a5';
+          ctx.fillText(`A=12이면 세 수의 최대공약수가 12가 되어 조건(최대공약수=6)에 위배됩니다.`, 36, compareY + 128);
+        } else {
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText(`최대공약수: 6의 배수 핀(A=12 또는 A=18)을 클릭해 보세요.`, 36, compareY + 114);
+        }
+
+        // 4. 하단 서술형 판정 & 연동 버튼
+        const bottomY = compareY + compareH + 10;
+        const bottomH = 68;
+
+        ctx.fillStyle = isGcd6 ? '#064e3b' : '#1e293b';
+        ctx.beginPath();
+        ctx.roundRect(16, bottomY, width - 32, bottomH, 8);
+        ctx.fill();
+        ctx.strokeStyle = isGcd6 ? '#10b981' : '#334155';
+        ctx.lineWidth = isGcd6 ? 2 : 1;
+        ctx.stroke();
+
+        ctx.font = 'bold 13px "Pretendard", sans-serif';
+        ctx.textAlign = 'left';
+        if (isGcd6) {
+          ctx.fillStyle = '#34d399';
+          ctx.fillText(`🎉 서술형 100점 만점: A = 18 확정!`, 28, bottomY + 26);
+          ctx.font = '11px "Pretendard", sans-serif';
+          ctx.fillStyle = '#a7f3d0';
+          ctx.fillText(`1단계(12, 18, 40%) + 2단계(12 모순, 30%) + 3단계(18 확정, 30%) 완벽 통과!`, 28, bottomY + 48);
+        } else {
+          ctx.fillStyle = '#cbd5e1';
+          ctx.fillText(`현재 선택: A = ${curA}`, 28, bottomY + 26);
+          ctx.font = '11px "Pretendard", sans-serif';
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText(`10보다 크고 20보다 작은 6의 배수는 12, 18입니다. 조건을 만족하는 수를 찾으세요.`, 28, bottomY + 48);
+        }
+
+        // 일치 시 [답안창에 18 입력 ➔] 버튼
+        if (isGcd6) {
+          const btnApplyW = 130;
+          const btnApplyX = width - 16 - btnApplyW - 12;
+          const btnApplyY = bottomY + 16;
+          const btnApplyH = 36;
+
+          ctx.fillStyle = '#10b981';
+          ctx.beginPath();
+          ctx.roundRect(btnApplyX, btnApplyY, btnApplyW, btnApplyH, 6);
+          ctx.fill();
+          ctx.strokeStyle = '#34d399';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          ctx.font = 'bold 12px "Pretendard", sans-serif';
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.fillText('답안창에 18 입력 ➔', btnApplyX + btnApplyW / 2, btnApplyY + 22);
+
+          hitRegions.push({
+            x: btnApplyX, y: btnApplyY, w: btnApplyW, h: btnApplyH,
+            action: () => {
+              const inp = document.getElementById('ans-7-6');
+              if (inp) {
+                inp.value = '18';
+                inp.focus();
+              }
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+            }
+          });
+        }
+
+        // 콘페티 렌더링
+        if (confettiList.length > 0) {
+          confettiList.forEach((c) => {
+            c.x += c.vx;
+            c.y += c.vy;
+            c.vy += 0.15;
+            c.alpha -= c.decay;
+
+            if (c.alpha > 0) {
+              ctx.save();
+              ctx.globalAlpha = Math.max(0, c.alpha);
+              ctx.fillStyle = c.color;
+              ctx.beginPath();
+              ctx.arc(c.x, c.y, c.size, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+          });
+          confettiList = confettiList.filter(c => c.alpha > 0);
+        }
+
         animId = requestAnimationFrame(render);
       }
+
+      function handleCanvasClick(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+
+        for (const region of hitRegions) {
+          if (clickX >= region.x && clickX <= region.x + region.w &&
+              clickY >= region.y && clickY <= region.y + region.h) {
+            region.action();
+            break;
+          }
+        }
+      }
+
+      canvas.addEventListener('click', handleCanvasClick);
       render();
 
       window._cleanup_step_7_6 = () => {
         if (animId) cancelAnimationFrame(animId);
+        if (ro) ro.disconnect();
+        canvas.removeEventListener('click', handleCanvasClick);
       };
     }
 
@@ -52522,10 +52829,28 @@ function checkStep_1_12() {
       if (!box) return;
       box.innerHTML = `
         <div class="question-card" style="padding:16px; background:#1e293b; border-radius:10px; margin-bottom:15px; border:1px solid #334155;">
-          <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 7-6. 13번: [서술형] 세 수의 최대공약수와 미지의 수 (p.26)</div>
-          <p style="font-size:14px; color:#cbd5e1; line-height:1.6; margin-bottom:12px;">
-            세 자연수 72, 60, A의 최대공약수가 6일 때, A의 값을 구하시오. (단, A는 10보다 크고 20보다 작다.)
-          </p>
+          <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 7-6. 13번: [서술형] 세 수의 최대공약수(6)와 A (p.26)</div>
+          
+          <div style="background:#0f172a; border:1px solid #334155; border-radius:8px; padding:12px; margin-bottom:12px;">
+            <div style="font-weight:700; color:#f8fafc; margin-bottom:8px; font-size:14px;">
+              13. 세 자연수 72, 60, A의 최대공약수가 6일 때, A의 값을 구하시오. (단, A는 10보다 크고 20보다 작다.) [서술형]
+            </div>
+            <div style="font-size:12px; color:#94a3b8; line-height:1.6; background:#1e293b; padding:8px; border-radius:6px;">
+              <b>[서술형 3단계 평가 기준]</b><br>
+              • 1단계: 10과 20 사이의 6의 배수 찾기 (12, 18) [40%]<br>
+              • 2단계: A=12일 때 최대공약수 검토 및 모순 확인 [30%]<br>
+              • 3단계: A=18일 때 최대공약수가 6이 됨을 확인하여 A 확정 [30%]
+            </div>
+          </div>
+
+          <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-7-6" data-val="6" style="font-weight:700; padding:5px 10px;">6</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-7-6" data-val="12" style="font-weight:700; padding:5px 10px;">12</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-7-6" data-val="18" style="font-weight:700; padding:5px 10px;">18</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-7-6" data-val="24" style="font-weight:700; padding:5px 10px;">24</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm btn-clear-7-6" style="font-size:12px; padding:5px 10px; margin-left:auto;">지우기</button>
+          </div>
+
           <div style="margin-bottom:12px;">
             <input type="text" id="ans-7-6" class="form-control" placeholder="수 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
           </div>
@@ -52534,6 +52859,29 @@ function checkStep_1_12() {
       `;
 
       const input = box.querySelector('#ans-7-6');
+
+      box.querySelectorAll('.btn-quick-7-6').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = btn.getAttribute('data-val');
+          if (input) {
+            input.value = val;
+            input.focus();
+          }
+          if (val === '12' || val === '18') {
+            if (window._step7_6_setA) window._step7_6_setA(Number(val));
+          }
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        });
+      });
+
+      box.querySelector('.btn-clear-7-6')?.addEventListener('click', () => {
+        if (input) {
+          input.value = '';
+          input.focus();
+        }
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      });
+
       if (input) {
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') checkStep_7_6();
@@ -52542,18 +52890,50 @@ function checkStep_1_12() {
     }
 
     function checkStep_7_6() {
-      const v = normTxt(document.getElementById('ans-7-6')?.value);
-      const isCorrect = (v.length > 0);
+      const raw = document.getElementById('ans-7-6')?.value || '';
+      const v = normTxt(raw);
+
+      if (!v) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>값을 입력해 주세요.</b><br>캔버스에서 10과 20 사이의 6의 배수(12, 18) 중 최대공약수가 6이 되는 A를 찾아보세요.');
+        return;
+      }
+
+      // 오답 맞춤형 피드백
+      if (v === '12') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>만약 A=12이면 72, 60, 12의 최대공약수는 12가 됩니다!</b><br>문제에서 최대공약수는 6이어야 합니다.');
+        return;
+      }
+
+      if (v === '6') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>6은 10보다 크고 20보다 작다는 조건(10 < A < 20)을 만족하지 않습니다!</b>');
+        return;
+      }
+
+      if (v === '24') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>24는 20보다 크므로 조건(10 < A < 20)을 만족하지 않습니다!</b>');
+        return;
+      }
+
+      // 정답 판정: 18 또는 십팔
+      const isCorrect = (v === '18' || v === '십팔');
+
       if (isCorrect) {
-        completeSubStep('7-6', '🎉 <b>정답입니다!</b><br>• 정답 및 해설: A = 18');
+        if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        if (window._step7_6_triggerSuccess) {
+          window._step7_6_triggerSuccess();
+        }
+        completeSubStep('7-6', '🎉 <b>정답입니다! [서술형 100점 만점]</b><br>• 1단계: 세 수의 최대공약수가 6이므로 A는 6의 배수입니다. 10보다 크고 20보다 작은 6의 배수는 12, 18입니다. [배점 40%]<br>• 2단계: 72와 60의 최대공약수는 $2^2 \times 3 = 12$입니다. 만약 A=12이면 세 수의 최대공약수가 12가 되므로 모순입니다. [배점 30%]<br>• 3단계: 따라서 $A = 18$ ($18 = 2 \times 3^2$) 이어야 세 수의 최대공약수가 $2 \times 3 = 6$이 됩니다. [배점 30%]');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>값을 입력해 주세요.</b>');
+        showFeedback(false, '❌ <b>다시 계산해 보세요!</b><br>10과 20 사이의 6의 배수는 12와 18뿐입니다. 이 중 세 수의 최대공약수가 6이 되는 수를 선택하세요.');
       }
     }
-
 
     // =========================================================
     // Step 7-7: 14번: [서술형] GCD/LCM 네트워크와 A+B+C (p.26)
