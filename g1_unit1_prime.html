@@ -1020,6 +1020,11 @@
       lab1_4: {
         step: 0, // 0: 전체, 1: 1지우기, 2: 2의배수, 3: 3의배수, 4: 5의배수, 5: 7의배수, 6: 25개 소수 완성
         selectedNum: null
+      },
+      // 1-5 Interactive Lab State (거듭제곱과 밑·지수)
+      lab1_5: {
+        base: 2, // 밑 (2, 3, 5)
+        exponent: 3 // 지수 (1, 2, 3, 4)
       }
     };
 
@@ -1171,6 +1176,9 @@
       } else if (code === '1-4') {
         renderToolbar1_4();
         renderSubstep1_4();
+      } else if (code === '1-5') {
+        renderToolbar1_5();
+        renderSubstep1_5();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -1767,6 +1775,50 @@
       }
       renderToolbar1_4();
       drawStep1_4Canvas();
+    }
+
+    function renderToolbar1_5() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+      const curBase = state.lab1_5.base;
+      const curExp = state.lab1_5.exponent;
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569;">밑(Base):</span>
+        <button class="tool-btn ${curBase === 2 ? 'active' : ''}" onclick="setStep1_5Base(2)">2</button>
+        <button class="tool-btn ${curBase === 3 ? 'active' : ''}" onclick="setStep1_5Base(3)">3</button>
+        <button class="tool-btn ${curBase === 5 ? 'active' : ''}" onclick="setStep1_5Base(5)">5</button>
+        <span style="margin: 0 4px; color:#cbd5e1;">|</span>
+        <span style="font-size:0.8rem; font-weight:800; color:#475569;">지수(Exp):</span>
+        <button class="tool-btn ${curExp === 1 ? 'active' : ''}" onclick="setStep1_5Exp(1)">1</button>
+        <button class="tool-btn ${curExp === 2 ? 'active' : ''}" onclick="setStep1_5Exp(2)">2</button>
+        <button class="tool-btn ${curExp === 3 ? 'active' : ''}" onclick="setStep1_5Exp(3)">3</button>
+        <button class="tool-btn ${curExp === 4 ? 'active' : ''}" onclick="setStep1_5Exp(4)">4</button>
+        <button class="tool-btn" style="background:#e0e7ff; color:#3730a3; font-weight:700;" onclick="adjustStep1_5Exp(1)">➕ 지수 증가</button>
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setStep1_5Base(b) {
+      state.lab1_5.base = b;
+      renderToolbar1_5();
+      drawStep1_5Canvas();
+    }
+
+    function setStep1_5Exp(e) {
+      state.lab1_5.exponent = e;
+      renderToolbar1_5();
+      drawStep1_5Canvas();
+    }
+
+    function adjustStep1_5Exp(delta) {
+      let nextExp = state.lab1_5.exponent + delta;
+      if (nextExp > 4) nextExp = 1;
+      if (nextExp < 1) nextExp = 4;
+      state.lab1_5.exponent = nextExp;
+      renderToolbar1_5();
+      drawStep1_5Canvas();
     }
 
     // -------------------------------------------------------------
@@ -4666,7 +4718,433 @@
     }
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (1-5 to 6-2)
+    // SUBSTEP 1-5: 5. 거듭제곱의 뜻 (밑과 지수, 교과서 p.11)
+    // -------------------------------------------------------------
+    function renderSubstep1_5() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[소수와 합성수] 5. 거듭제곱의 뜻과 밑·지수 (교과서 11쪽)</b><br>
+        같은 수를 여러 번 곱할 때 곱하는 수와 곱한 횟수를 이용하여 간단하게 나타내는 <b>거듭제곱</b>을 학습합니다.<br>
+        • <b>밑(Base):</b> 거듭하여 곱하는 수<br>
+        • <b>지수(Exponent):</b> 수를 거듭하여 곱한 횟수<br>
+        좌측 캔버스에서 밑과 지수를 변경하며 기하학적 블록(선, 면적, 입체 부피)과 곱셈 규칙을 탐구하고 아래 문제를 해결해 봅시다.
+      `;
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="padding:14px; margin-bottom:12px; background:#f8fafc; border:1px solid #e2e8f0;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-size:0.75rem; font-weight:800; padding:2px 8px; border-radius:4px;">개념 정리</span>
+            <span style="font-size:0.8rem; font-weight:700; color:#64748b;">거듭제곱의 표현과 읽기</span>
+          </div>
+          <div style="font-size:0.82rem; color:#334155; line-height:1.6; background:#ffffff; padding:8px 10px; border-radius:6px; border:1px solid #e2e8f0;">
+            • $2 \\times 2 = 2^2$ ($2$의 제곱)<br>
+            • $2 \\times 2 \\times 2 = 2^3$ ($2$의 세제곱)<br>
+            • $a^n$에서 $a$는 <b>밑</b>(곱하는 수), $n$은 <b>지수</b>(곱한 횟수)<br>
+            ⚠️ 주의: $2^3 = 2 \\times 2 \\times 2 = 8$ (곱셈 $2 \\times 3 = 6$과 다름!)
+          </div>
+        </div>
+
+        <div class="card" style="padding:14px; margin-bottom:12px;">
+          <!-- Question 1 -->
+          <div style="margin-bottom:14px;">
+            <label style="font-weight:800; font-size:0.88rem; color:#1e293b; display:block; margin-bottom:6px;">
+              ⑴ $3^5$에서 <b>밑</b>(거듭하여 곱하는 수)은 얼마입니까?
+            </label>
+            <input type="text" id="ans-1-5-base" class="proof-input-text" placeholder="답 입력" style="width:100px;" autocomplete="off">
+          </div>
+
+          <!-- Question 2 -->
+          <div style="margin-bottom:14px;">
+            <label style="font-weight:800; font-size:0.88rem; color:#1e293b; display:block; margin-bottom:6px;">
+              ⑵ $3^5$에서 <b>지수</b>(곱한 횟수)는 얼마입니까?
+            </label>
+            <input type="text" id="ans-1-5-exp" class="proof-input-text" placeholder="답 입력" style="width:100px;" autocomplete="off">
+          </div>
+
+          <!-- Question 3 -->
+          <div style="margin-bottom:14px;">
+            <label style="font-weight:800; font-size:0.88rem; color:#1e293b; display:block; margin-bottom:6px;">
+              ⑶ 거듭제곱 $2^4$의 계산 값을 구하시오. ($2 \\times 2 \\times 2 \\times 2$)
+            </label>
+            <input type="text" id="ans-1-5-calc" class="proof-input-text" placeholder="답 입력" style="width:120px;" autocomplete="off">
+          </div>
+
+          <!-- Question 4 -->
+          <div style="margin-bottom:16px;">
+            <label style="font-weight:800; font-size:0.88rem; color:#1e293b; display:block; margin-bottom:6px;">
+              ⑷ 다음 중 거듭제곱에 대한 설명으로 가장 올바른 것을 고르시오.
+            </label>
+            <div style="display:flex; flex-direction:column; gap:8px; font-size:0.86rem; color:#334155;">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="radio" name="ans-1-5-ox" value="1">
+                <span>① $2^3$은 $2 \\times 3$과 같으므로 계산 값은 $6$이다.</span>
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="radio" name="ans-1-5-ox" value="2">
+                <span>② $5 \\times 5 \\times 5$를 거듭제곱으로 나타내면 $5^3$이고, 밑은 $5$, 지수는 $3$이다.</span>
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="radio" name="ans-1-5-ox" value="3">
+                <span>③ $3^2$과 $2^3$의 계산 값은 서로 같다.</span>
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="radio" name="ans-1-5-ox" value="4">
+                <span>④ $2^1$의 계산 값은 $1$이다.</span>
+              </label>
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep1_5()" style="padding:10px; font-weight:800; font-size:0.92rem; width:100%;">
+            ✅ 정답 확인 및 채점하기
+          </button>
+        </div>
+
+        <div id="feedback-1-5" style="display:none; margin-top:10px; padding:12px; border-radius:8px;"></div>
+      `;
+
+      drawStep1_5Canvas();
+    }
+
+    function drawStep1_5Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const a = state.lab1_5.base || 2;
+      const n = state.lab1_5.exponent || 3;
+      const val = Math.pow(a, n);
+
+      // 1. Header (Title & Subtitle with responsive font sizes)
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(10.5, Math.min(12, Math.floor(width * 0.018)));
+
+      const headerTitle = two.makeText('⚡ 거듭제곱(Power)과 밑(Base)·지수(Exponent) 탐구 랩', width / 2, 16);
+      headerTitle.size = titleSize;
+      headerTitle.weight = 800;
+      headerTitle.fill = '#1e293b';
+
+      const readKorean = (n === 1) ? `${a}의 1제곱 (보통 ${a}로 표기)` :
+                         (n === 2) ? `${a}의 제곱 (Square)` :
+                         (n === 3) ? `${a}의 세제곱 (Cube)` :
+                         (n === 4) ? `${a}의 네제곱 (4th Power)` : `${a}의 ${n}제곱`;
+
+      const headerSub = two.makeText(`현재 선택: [밑 = ${a}], [지수 = ${n}] ➔ ${readKorean}`, width / 2, 33);
+      headerSub.size = subSize;
+      headerSub.weight = 600;
+      headerSub.fill = '#4f46e5';
+
+      // 2. Top Card: Formula & Structure Badge (y: 48 ~ 140)
+      const cardW = Math.min(width - 30, 680);
+      const cardTopY = 48;
+      const cardH = 88;
+      const cardBg = two.makeRoundedRectangle(width / 2, cardTopY + cardH / 2, cardW, cardH, 8);
+      cardBg.fill = '#f8fafc';
+      cardBg.stroke = '#e2e8f0';
+      cardBg.linewidth = 1;
+
+      // Left area of card: Power notation with base & exponent indicators
+      const notationCenterX = (width / 2) - (cardW * 0.26);
+      const notationCenterY = cardTopY + 44;
+
+      // Base 'a'
+      const baseText = two.makeText(String(a), notationCenterX - 10, notationCenterY + 4);
+      baseText.size = 32;
+      baseText.weight = 900;
+      baseText.fill = '#4338ca';
+
+      // Exponent 'n'
+      const expText = two.makeText(String(n), notationCenterX + 16, notationCenterY - 14);
+      expText.size = 20;
+      expText.weight = 900;
+      expText.fill = '#b45309';
+
+      // Arrows & Labels
+      const baseLabel = two.makeText('▲ 밑 (Base: 곱하는 수)', notationCenterX - 10, notationCenterY + 28);
+      baseLabel.size = 9.5;
+      baseLabel.weight = 800;
+      baseLabel.fill = '#4338ca';
+
+      const expLabel = two.makeText('지수 (Exp: 곱한 횟수) ▼', notationCenterX + 35, notationCenterY - 30);
+      expLabel.size = 9.5;
+      expLabel.weight = 800;
+      expLabel.fill = '#b45309';
+
+      // Divider inside top card
+      const dividerLine = two.makeLine(width / 2 - 20, cardTopY + 12, width / 2 - 20, cardTopY + cardH - 12);
+      dividerLine.stroke = '#e2e8f0';
+      dividerLine.linewidth = 1;
+
+      // Right area of card: Expansion equation
+      const eqCenterX = (width / 2) + (cardW * 0.22);
+      let factorStr = [];
+      for (let i = 0; i < n; i++) factorStr.push(String(a));
+      const multExpr = factorStr.join(' × ');
+
+      const eqLine1 = two.makeText(`${multExpr} = ${a}`, eqCenterX, notationCenterY - 10);
+      eqLine1.size = (width < 600) ? 12 : 14;
+      eqLine1.weight = 800;
+      eqLine1.fill = '#1e293b';
+
+      const supExp = two.makeText(String(n), eqCenterX + (multExpr.length * 4.2) + 14, notationCenterY - 16);
+      supExp.size = 11;
+      supExp.weight = 800;
+      supExp.fill = '#b45309';
+
+      const eqLine2 = two.makeText(`계산 결과: ${val}`, eqCenterX, notationCenterY + 16);
+      eqLine2.size = (width < 600) ? 12 : 13;
+      eqLine2.weight = 800;
+      eqLine2.fill = '#15803d';
+
+      // 3. Middle Section: Dynamic Visual Geometry (y: 144 ~ 365)
+      const labCenterY = 250;
+
+      if (n === 1) {
+        // 1D Linear Blocks
+        const blockSize = Math.min(48, Math.floor((width - 100) / a));
+        const startX = (width - a * blockSize) / 2;
+        for (let i = 0; i < a; i++) {
+          const bx = startX + i * blockSize + blockSize / 2;
+          const rect = two.makeRoundedRectangle(bx, labCenterY, blockSize - 4, blockSize - 4, 4);
+          rect.fill = '#e0e7ff';
+          rect.stroke = '#6366f1';
+          rect.linewidth = 1.5;
+
+          const numT = two.makeText(String(i + 1), bx, labCenterY);
+          numT.size = 12;
+          numT.weight = 700;
+          numT.fill = '#3730a3';
+        }
+        const cap = two.makeText(`1차원 선형 블록: ${a}개 ➔ ${a}^1 = ${val}`, width / 2, labCenterY + 45);
+        cap.size = 11.5; cap.weight = 700; cap.fill = '#475569';
+
+      } else if (n === 2) {
+        // 2D Square Grid (Area: a x a)
+        const cellSize = Math.min(36, Math.max(22, Math.floor(130 / a)));
+        const gridTotal = a * cellSize;
+        const startX = (width - gridTotal) / 2;
+        const startY = labCenterY - gridTotal / 2;
+
+        for (let r = 0; r < a; r++) {
+          for (let c = 0; c < a; c++) {
+            const cx = startX + c * cellSize + cellSize / 2;
+            const cy = startY + r * cellSize + cellSize / 2;
+            const cell = two.makeRoundedRectangle(cx, cy, cellSize - 3, cellSize - 3, 3);
+            cell.fill = '#dbeafe';
+            cell.stroke = '#3b82f6';
+            cell.linewidth = 1.2;
+
+            const idx = r * a + c + 1;
+            const idxT = two.makeText(String(idx), cx, cy);
+            idxT.size = (cellSize < 28) ? 8.5 : 10.5;
+            idxT.weight = 600;
+            idxT.fill = '#1e40af';
+          }
+        }
+        const cap = two.makeText(`2차원 정사각형 면적: 가로 ${a} × 세로 ${a} = ${val}개 타일 ➔ ${a}^2 = ${val}`, width / 2, labCenterY + gridTotal / 2 + 18);
+        cap.size = 11.5; cap.weight = 700; cap.fill = '#1d4ed8';
+
+      } else if (n === 3) {
+        // 3D Isometric Cube of a x a x a
+        const unit = (a === 2) ? 28 : (a === 3) ? 18 : 12;
+        const cos30 = 0.866;
+        const sin30 = 0.5;
+
+        for (let z = 0; z < a; z++) {
+          for (let y = a - 1; y >= 0; y--) {
+            for (let x = 0; x < a; x++) {
+              const isoX = (width / 2) + (x - y) * cos30 * unit;
+              const isoY = (labCenterY - 10) + (x + y) * sin30 * unit - z * unit;
+
+              // Top face
+              const pTop = two.makePath(
+                isoX, isoY - unit * sin30,
+                isoX + cos30 * unit, isoY,
+                isoX, isoY + unit * sin30,
+                isoX - cos30 * unit, isoY
+              );
+              pTop.fill = '#c7d2fe';
+              pTop.stroke = '#4338ca';
+              pTop.linewidth = 0.8;
+
+              // Left face
+              const pLeft = two.makePath(
+                isoX - cos30 * unit, isoY,
+                isoX, isoY + unit * sin30,
+                isoX, isoY + unit * sin30 + unit,
+                isoX - cos30 * unit, isoY + unit
+              );
+              pLeft.fill = '#818cf8';
+              pLeft.stroke = '#4338ca';
+              pLeft.linewidth = 0.8;
+
+              // Right face
+              const pRight = two.makePath(
+                isoX, isoY + unit * sin30,
+                isoX + cos30 * unit, isoY,
+                isoX + cos30 * unit, isoY + unit,
+                isoX, isoY + unit * sin30 + unit
+              );
+              pRight.fill = '#6366f1';
+              pRight.stroke = '#4338ca';
+              pRight.linewidth = 0.8;
+            }
+          }
+        }
+        const cap = two.makeText(`3차원 정육면체 부피: 가로 ${a} × 세로 ${a} × 높이 ${a} = ${val}개 큐브 ➔ ${a}^3 = ${val}`, width / 2, labCenterY + (a * unit * 0.8) + 30);
+        cap.size = 11.5; cap.weight = 700; cap.fill = '#3730a3';
+
+      } else {
+        // n >= 4: Exponential doubling/expansion tree
+        const nodeW = Math.min(width - 40, 520);
+        const steps = [];
+        for (let k = 1; k <= n; k++) {
+          steps.push({ p: k, v: Math.pow(a, k) });
+        }
+        const stepW = nodeW / steps.length;
+        const startX = (width - nodeW) / 2;
+
+        for (let i = 0; i < steps.length; i++) {
+          const sx = startX + i * stepW + stepW / 2;
+          const isFinal = (i === steps.length - 1);
+          const box = two.makeRoundedRectangle(sx, labCenterY - 10, stepW - 12, 54, 6);
+          box.fill = isFinal ? '#fef3c7' : '#f1f5f9';
+          box.stroke = isFinal ? '#f59e0b' : '#cbd5e1';
+          box.linewidth = isFinal ? 2 : 1;
+
+          const t1 = two.makeText(`${a}^${steps[i].p}`, sx, labCenterY - 20);
+          t1.size = 12; t1.weight = 800; t1.fill = isFinal ? '#92400e' : '#334155';
+
+          const t2 = two.makeText(`= ${steps[i].v}`, sx, labCenterY + 2);
+          t2.size = 11.5; t2.weight = 700; t2.fill = isFinal ? '#b45309' : '#64748b';
+
+          if (i < steps.length - 1) {
+            const arr = two.makeText('➔', sx + stepW / 2, labCenterY - 10);
+            arr.size = 14; arr.fill = '#94a3b8';
+          }
+        }
+        const cap = two.makeText(`지수적 급속 증가: 단계를 거듭할수록 ${a}배씩 폭발적으로 증가합니다! (종이접기/세균 증식 원리)`, width / 2, labCenterY + 45);
+        cap.size = 11.5; cap.weight = 700; cap.fill = '#b45309';
+      }
+
+      // 4. Bottom Misconception Alert & Comparison Banner (Strict budgeting y: 375 ~ 445)
+      const bannerY = 376;
+      const bannerH = Math.max(50, height - bannerY - 8);
+      const bannerW = Math.min(width - 30, 680);
+
+      const bannerBg = two.makeRoundedRectangle(width / 2, bannerY + bannerH / 2, bannerW, bannerH, 8);
+      bannerBg.fill = '#f0fdf4';
+      bannerBg.stroke = '#86efac';
+      bannerBg.linewidth = 1.2;
+
+      const compLine1Y = (bannerH > 52) ? bannerY + 16 : bannerY + 14;
+      const compLine2Y = (bannerH > 52) ? bannerY + 36 : bannerY + 32;
+
+      const compLine1 = two.makeText(
+        `💡 [거듭제곱] ${a}^${n} = ${val} (곱셈의 반복: ${multExpr})`,
+        width / 2, compLine1Y
+      );
+      compLine1.size = (width < 600) ? 10 : 11;
+      compLine1.weight = 800;
+      compLine1.fill = '#166534';
+
+      const compLine2 = two.makeText(
+        `⚠️ [흔한 오개념 주의] ${a} × ${n} = ${a * n} (덧셈의 반복: ${a}를 ${n}번 더함) ➔ 서로 전혀 다른 계산입니다!`,
+        width / 2, compLine2Y
+      );
+      compLine2.size = (width < 600) ? 9.5 : 10.5;
+      compLine2.weight = 700;
+      compLine2.fill = (val === a * n) ? '#166534' : '#dc2626';
+
+      two.update();
+    }
+
+    async function gradeStep1_5() {
+      const qBase = cleanInput(document.getElementById('ans-1-5-base')?.value);
+      const qExp = cleanInput(document.getElementById('ans-1-5-exp')?.value);
+      const qCalc = cleanInput(document.getElementById('ans-1-5-calc')?.value);
+      const qOx = document.querySelector('input[name="ans-1-5-ox"]:checked')?.value;
+
+      const fEl = document.getElementById('feedback-1-5');
+      if (!fEl) return;
+
+      const okBase = (qBase === '3');
+      const okExp = (qExp === '5');
+      const okCalc = (qCalc === '16');
+      const okOx = (qOx === '2');
+
+      if (okBase && okExp && okCalc && okOx) {
+        fEl.style.display = 'block';
+        fEl.className = 'verified-answer-card';
+        fEl.style.background = '#f0fdf4';
+        fEl.style.border = '1.5px solid #86efac';
+        fEl.innerHTML = `
+          <h4 style="color:#15803d; font-size:0.95rem; font-weight:800; margin-bottom:6px;">🎉 100점! 완벽합니다!</h4>
+          <div style="font-size:0.86rem; color:#166534; line-height:1.6;">
+            거듭제곱의 뜻과 밑, 지수의 개념을 완벽하게 마스터했습니다.<br>
+            • <b>⑴ $3^5$의 밑:</b> <b>$3$</b> (거듭하여 곱하는 수)<br>
+            • <b>⑵ $3^5$의 지수:</b> <b>$5$</b> (곱한 횟수)<br>
+            • <b>⑶ $2^4$의 계산 값:</b> $2 \\times 2 \\times 2 \\times 2 = $ <b>$16$</b><br>
+            • <b>⑷ 올바른 설명:</b> $5 \\times 5 \\times 5 = 5^3$이며 밑은 $5$, 지수는 $3$이다.<br>
+            <div style="margin-top:8px; padding:8px 10px; background:#dcfce7; border-radius:6px; font-weight:700;">
+              💡 핵심 정리: $a^n$에서 $a$는 <b>밑</b>, $n$은 <b>지수</b>이며, $2^3 \\ne 2 \\times 3$ 임을 항상 기억합시다!<br>
+              다음 활동 <b>[1-6] 문제 2 (거듭제곱으로 나타내기)</b>가 해금되었습니다. 🔓
+            </div>
+          </div>
+        `;
+
+        if (!state.completedSubSteps.includes('1-5')) {
+          state.completedSubSteps.push('1-5');
+        }
+        if (!state.unlockedSubSteps.includes('1-6')) {
+          state.unlockedSubSteps.push('1-6');
+        }
+
+        updateSubStepPills(state.currentMainTab);
+
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('1-5', {
+              activityTitle: '[중1-1 소인수분해] [1-5] 거듭제곱의 뜻 (밑과 지수)',
+              answerText: `밑: ${qBase} | 지수: ${qExp} | 계산: ${qCalc} | 보기: ${qOx}`,
+              answers: { base: qBase, exp: qExp, calc: qCalc, ox: qOx },
+              score: 100,
+              passed: true
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+      } else {
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            ${!okBase ? '• ⑴ $3^5$에서 거듭하여 곱해지는 수(아래에 적힌 큰 수)인 밑을 적어 보세요.<br>' : ''}
+            ${!okExp ? '• ⑵ $3^5$에서 곱한 횟수(오른쪽 위에 작게 적힌 수)인 지수를 적어 보세요.<br>' : ''}
+            ${!okCalc ? '• ⑶ $2^4 = 2 \\times 2 \\times 2 \\times 2$의 곱셈 결과를 다시 계산해 보세요. ($2 \\times 4 = 8$과 다릅니다!)<br>' : ''}
+            ${!okOx ? '• ⑷ 거듭제곱의 정의와 밑·지수의 명칭이 정확히 연결된 보기를 찾아보세요.<br>' : ''}
+            💡 좌측 캔버스의 밑과 지수 버튼을 조작하여 수식 구조와 오개념 안내를 참고해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (1-6 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -4760,6 +5238,11 @@
         state.lab1_4.selectedNum = null;
         renderToolbar1_4();
         drawStep1_4Canvas();
+      } else if (state.subStep === '1-5') {
+        state.lab1_5.base = 2;
+        state.lab1_5.exponent = 3;
+        renderToolbar1_5();
+        drawStep1_5Canvas();
       }
     }
 
@@ -5015,6 +5498,7 @@
         else if (state.subStep === '1-2') drawStep1_2Canvas();
         else if (state.subStep === '1-3') drawStep1_3Canvas();
         else if (state.subStep === '1-4') drawStep1_4Canvas();
+        else if (state.subStep === '1-5') drawStep1_5Canvas();
       }, 150);
     });
 
