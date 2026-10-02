@@ -1002,6 +1002,11 @@
         pairIndex: 0, // 0: (4, 6), 1: (9, 12)
         highlightCommon: false,
         selectedHop: null
+      },
+      // 1-1 Interactive Lab State
+      lab1_1: {
+        targetNum: 2, // Selected number (1, 2, 3, 4, 5, 6)
+        selectedDivisor: null
       }
     };
 
@@ -1141,6 +1146,9 @@
       } else if (code === '0-3') {
         renderToolbar0_3();
         renderSubstep0_3();
+      } else if (code === '1-1') {
+        renderToolbar1_1();
+        renderSubstep1_1();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -1628,6 +1636,31 @@
       state.lab0_3.highlightCommon = !state.lab0_3.highlightCommon;
       renderToolbar0_3();
       drawStep0_3Canvas();
+    }
+
+    function renderToolbar1_1() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+      const cur = state.lab1_1.targetNum;
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569;">🔬 탐구 수 선택:</span>
+        <button id="btn-num-1" class="tool-btn ${cur === 1 ? 'active' : ''}" onclick="setStep1_1Target(1)">1</button>
+        <button id="btn-num-2" class="tool-btn ${cur === 2 ? 'active' : ''}" onclick="setStep1_1Target(2)">2</button>
+        <button id="btn-num-3" class="tool-btn ${cur === 3 ? 'active' : ''}" onclick="setStep1_1Target(3)">3</button>
+        <button id="btn-num-4" class="tool-btn ${cur === 4 ? 'active' : ''}" onclick="setStep1_1Target(4)">4</button>
+        <button id="btn-num-5" class="tool-btn ${cur === 5 ? 'active' : ''}" onclick="setStep1_1Target(5)">5</button>
+        <button id="btn-num-6" class="tool-btn ${cur === 6 ? 'active' : ''}" onclick="setStep1_1Target(6)">6</button>
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setStep1_1Target(num) {
+      state.lab1_1.targetNum = num;
+      state.lab1_1.selectedDivisor = null;
+      renderToolbar1_1();
+      drawStep1_1Canvas();
     }
 
     // -------------------------------------------------------------
@@ -2599,7 +2632,591 @@
     }
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (1-1 to 6-2)
+    // SUBSTEP 1-1: 생각열기: 자연수의 분류와 약수의 개수 (교과서 p.9)
+    // -------------------------------------------------------------
+    const STEP1_1_CONFIG = {
+      1: {
+        val: 1,
+        divs: [1],
+        pairs: [[1, 1]],
+        count: 1,
+        category: 'one',
+        catLabel: '1',
+        tag: '약수 1개 (1)',
+        color: '#64748b',
+        bg: '#f1f5f9',
+        border: '#cbd5e1'
+      },
+      2: {
+        val: 2,
+        divs: [1, 2],
+        pairs: [[1, 2]],
+        count: 2,
+        category: 'prime',
+        catLabel: '소수',
+        tag: '약수 2개 (소수)',
+        color: '#059669',
+        bg: '#ecfdf5',
+        border: '#6ee7b7'
+      },
+      3: {
+        val: 3,
+        divs: [1, 3],
+        pairs: [[1, 3]],
+        count: 2,
+        category: 'prime',
+        catLabel: '소수',
+        tag: '약수 2개 (소수)',
+        color: '#059669',
+        bg: '#ecfdf5',
+        border: '#6ee7b7'
+      },
+      4: {
+        val: 4,
+        divs: [1, 2, 4],
+        pairs: [[1, 4], [2, 2]],
+        count: 3,
+        category: 'composite',
+        catLabel: '합성수',
+        tag: '약수 3개 이상 (합성수)',
+        color: '#4f46e5',
+        bg: '#eef2ff',
+        border: '#c7d2fe'
+      },
+      5: {
+        val: 5,
+        divs: [1, 5],
+        pairs: [[1, 5]],
+        count: 2,
+        category: 'prime',
+        catLabel: '소수',
+        tag: '약수 2개 (소수)',
+        color: '#059669',
+        bg: '#ecfdf5',
+        border: '#6ee7b7'
+      },
+      6: {
+        val: 6,
+        divs: [1, 2, 3, 6],
+        pairs: [[1, 6], [2, 3]],
+        count: 4,
+        category: 'composite',
+        catLabel: '합성수',
+        tag: '약수 3개 이상 (합성수)',
+        color: '#4f46e5',
+        bg: '#eef2ff',
+        border: '#c7d2fe'
+      }
+    };
+
+    function renderSubstep1_1() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[생각열기] 자연수의 분류와 약수의 개수 (교과서 9쪽)</b><br>
+        • 자연수는 약수의 개수에 따라 <b>1</b>, <b>소수(약수 2개)</b>, <b>합성수(약수 3개 이상)</b>로 분류할 수 있습니다.<br>
+        좌측 캔버스에서 각 수의 약수 분해 타일과 분류 버킷을 터치해 관찰하고, 아래 표와 질문을 해결해 보세요!
+      `;
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--secondary-color); padding: 12px 14px;">
+          <h4 style="font-size:0.92rem; font-weight:800; color:#1e293b; margin-bottom:10px;">
+            1. 다음은 $2, 3, 4, 5, 6$의 약수의 개수를 구하는 과정이다. 표를 완성하고 물음에 답하시오.
+          </h4>
+          
+          <!-- 교과서 9쪽 생각열기 표 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; margin-bottom:12px; overflow-x:auto;">
+            <div style="font-weight:800; font-size:0.86rem; color:#1e293b; margin-bottom:8px;">
+              📊 [활동 1] 약수 표 채우기
+            </div>
+            <table style="width:100%; border-collapse:collapse; text-align:center; font-size:0.85rem; background:#fff; border-radius:6px; overflow:hidden;">
+              <thead>
+                <tr style="background:#f1f5f9; color:#475569; font-weight:700; border-bottom:1px solid #e2e8f0;">
+                  <th style="padding:8px 6px; border-right:1px solid #e2e8f0; width:22%;">자연수</th>
+                  <th style="padding:8px 6px; border-right:1px solid #e2e8f0;">$2$</th>
+                  <th style="padding:8px 6px; border-right:1px solid #e2e8f0;">$3$</th>
+                  <th style="padding:8px 6px; border-right:1px solid #e2e8f0;">$4$</th>
+                  <th style="padding:8px 6px; border-right:1px solid #e2e8f0;">$5$</th>
+                  <th style="padding:8px 6px;">$6$</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom:1px solid #e2e8f0;">
+                  <td style="padding:8px 6px; font-weight:700; background:#f8fafc; border-right:1px solid #e2e8f0; color:#334155;">약수</td>
+                  <td style="padding:6px; border-right:1px solid #e2e8f0; font-weight:700; color:#059669;">$1, 2$</td>
+                  <td style="padding:6px; border-right:1px solid #e2e8f0;">
+                    <input type="text" id="ans-1-1-div3" class="proof-input-text" placeholder="답 입력" style="width:100%; min-width:65px; padding:4px 6px; font-size:0.82rem; text-align:center;" autocomplete="off">
+                  </td>
+                  <td style="padding:6px; border-right:1px solid #e2e8f0;">
+                    <input type="text" id="ans-1-1-div4" class="proof-input-text" placeholder="답 입력" style="width:100%; min-width:75px; padding:4px 6px; font-size:0.82rem; text-align:center;" autocomplete="off">
+                  </td>
+                  <td style="padding:6px; border-right:1px solid #e2e8f0;">
+                    <input type="text" id="ans-1-1-div5" class="proof-input-text" placeholder="답 입력" style="width:100%; min-width:65px; padding:4px 6px; font-size:0.82rem; text-align:center;" autocomplete="off">
+                  </td>
+                  <td style="padding:6px;">
+                    <input type="text" id="ans-1-1-div6" class="proof-input-text" placeholder="답 입력" style="width:100%; min-width:85px; padding:4px 6px; font-size:0.82rem; text-align:center;" autocomplete="off">
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div style="font-size:0.78rem; color:#64748b; margin-top:6px;">
+              * 약수를 작은 수부터 차례대로 쉼표(,)로 구분하여 입력하세요. <span style="color:#475569;">(예: 1, 2, 3)</span>
+            </div>
+          </div>
+
+          <!-- 질문 2: 약수가 2개인 수 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; margin-bottom:12px;">
+            <label style="font-size:0.85rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">
+              • 표에서 <b>약수가 2개인 수</b>를 작은 수부터 쉼표(,)로 구분하여 모두 쓰시오. <span style="font-size:0.78rem; color:#64748b; font-weight:500;">(예: 2, 4, 6)</span>
+            </label>
+            <input type="text" id="ans-1-1-primes" class="proof-input-text" placeholder="답 입력" style="width:100%; max-width:280px;" autocomplete="off">
+          </div>
+
+          <!-- 질문 3: 생각톡톡 공통점 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; margin-bottom:14px;">
+            <div style="font-weight:800; font-size:0.86rem; color:#1e293b; margin-bottom:6px;">
+              💬 [생각 톡톡] 약수가 2개인 수들의 공통점은 무엇일까요?
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <label style="font-size:0.84rem; color:#334155; display:flex; align-items:center; gap:6px; cursor:pointer; background:#fff; padding:6px 10px; border-radius:6px; border:1px solid #e2e8f0;">
+                <input type="radio" name="ans-1-1-prop" value="1" style="cursor:pointer;">
+                <span>① $1$과 자기 자신만을 약수로 가진다.</span>
+              </label>
+              <label style="font-size:0.84rem; color:#334155; display:flex; align-items:center; gap:6px; cursor:pointer; background:#fff; padding:6px 10px; border-radius:6px; border:1px solid #e2e8f0;">
+                <input type="radio" name="ans-1-1-prop" value="2" style="cursor:pointer;">
+                <span>② 모두 홀수이다.</span>
+              </label>
+              <label style="font-size:0.84rem; color:#334155; display:flex; align-items:center; gap:6px; cursor:pointer; background:#fff; padding:6px 10px; border-radius:6px; border:1px solid #e2e8f0;">
+                <input type="radio" name="ans-1-1-prop" value="3" style="cursor:pointer;">
+                <span>③ 모두 짝수이다.</span>
+              </label>
+              <label style="font-size:0.84rem; color:#334155; display:flex; align-items:center; gap:6px; cursor:pointer; background:#fff; padding:6px 10px; border-radius:6px; border:1px solid #e2e8f0;">
+                <input type="radio" name="ans-1-1-prop" value="4" style="cursor:pointer;">
+                <span>④ 약수의 개수가 3개 이상이다.</span>
+              </label>
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep1_1()" style="padding:10px; font-weight:800; font-size:0.92rem;">
+            ✅ 정답 확인 및 채점하기
+          </button>
+
+          <div id="feedback-1-1" style="display:none;"></div>
+        </div>
+      `;
+
+      drawStep1_1Canvas();
+    }
+
+    function drawStep1_1Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const curNum = state.lab1_1.targetNum || 2;
+      const curConfig = STEP1_1_CONFIG[curNum] || STEP1_1_CONFIG[2];
+
+      // 1. Header (Title & Subtitle with responsive sizes)
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(10.5, Math.min(12, Math.floor(width * 0.018)));
+
+      const titleY = Math.max(18, Math.min(24, Math.floor(height * 0.055)));
+      const subY = titleY + 20;
+
+      const title = two.makeText(`🏷️ 자연수 ${curNum}의 약수 분해 및 약수 개수 분류기`, width / 2, titleY);
+      title.size = titleSize;
+      title.weight = 800;
+      title.fill = '#1e293b';
+
+      const sub = two.makeText('두 수의 곱 분해를 관찰하고, 1 / 소수(2개) / 합성수(3개+) 버킷으로 분류해 보세요.', width / 2, subY);
+      sub.size = subSize;
+      sub.fill = '#64748b';
+
+      // 2. Bottom Banners (Budgeted bottom-up)
+      const summaryH = (height < 400) ? 34 : 38;
+      const summaryY = height - Math.floor(summaryH / 2) - 8;
+      
+      const inspectH = (height < 400) ? 22 : 26;
+      const inspectY = summaryY - Math.floor(summaryH / 2) - Math.floor(inspectH / 2) - 6;
+
+      // 3. Middle Dynamic Lab Area
+      const topLimit = subY + 14;
+      const bottomLimit = inspectY - Math.floor(inspectH / 2) - 8;
+      const availH = Math.max(160, bottomLimit - topLimit);
+      const midY = topLimit + Math.floor(availH / 2);
+
+      // Horizontal Split
+      const leftW = Math.max(150, Math.min(220, Math.floor(width * 0.38)));
+      const rightW = width - leftW - 36;
+      const leftCx = 18 + leftW / 2;
+      const rightStart = 18 + leftW + 12;
+
+      // Left Zone: Factorization & Divisors Card
+      const leftCard = two.makeRoundedRectangle(leftCx, midY, leftW, availH, 10);
+      leftCard.fill = '#ffffff';
+      leftCard.stroke = curConfig.border;
+      leftCard.linewidth = 2;
+
+      // Card Header Badge
+      const cardBadgeW = Math.min(130, leftW - 16);
+      const cardBadge = two.makeRoundedRectangle(leftCx, topLimit + 16, cardBadgeW, 22, 11);
+      cardBadge.fill = curConfig.bg;
+      cardBadge.stroke = curConfig.border;
+      cardBadge.linewidth = 1;
+
+      const cardBadgeTxt = two.makeText(`자연수 ${curNum}의 약수`, leftCx, topLimit + 16);
+      cardBadgeTxt.size = 11;
+      cardBadgeTxt.weight = 800;
+      cardBadgeTxt.fill = curConfig.color;
+
+      // Factorization Pairs
+      const pairs = curConfig.pairs;
+      const pairStartY = topLimit + 44;
+      for (let pIdx = 0; pIdx < pairs.length; pIdx++) {
+        const pair = pairs[pIdx];
+        const py = pairStartY + pIdx * 24;
+
+        const pairBox = two.makeRoundedRectangle(leftCx, py, leftW - 24, 20, 4);
+        pairBox.fill = '#f8fafc';
+        pairBox.stroke = '#e2e8f0';
+        pairBox.linewidth = 1;
+
+        const pairTxt = two.makeText(`${pair[0]} × ${pair[1]} = ${curNum}`, leftCx, py);
+        pairTxt.size = 11;
+        pairTxt.weight = 700;
+        pairTxt.fill = '#334155';
+      }
+
+      // Divisors Chips
+      const divs = curConfig.divs;
+      const divsLabelY = midY + 16;
+      const dLabel = two.makeText(`약수 목록 (${divs.length}개):`, leftCx, divsLabelY);
+      dLabel.size = 10.5;
+      dLabel.weight = 700;
+      dLabel.fill = '#64748b';
+
+      const chipRowY = divsLabelY + 22;
+      const chipSpacing = Math.min(28, Math.floor((leftW - 20) / (divs.length || 1)));
+      const startChipX = leftCx - ((divs.length - 1) * chipSpacing) / 2;
+
+      divs.forEach((d, idx) => {
+        const cx = startChipX + idx * chipSpacing;
+        const chipRect = two.makeRoundedRectangle(cx, chipRowY, 22, 20, 6);
+        chipRect.fill = curConfig.bg;
+        chipRect.stroke = curConfig.border;
+        chipRect.linewidth = 1.5;
+
+        const cTxt = two.makeText(`${d}`, cx, chipRowY);
+        cTxt.size = 10.5;
+        cTxt.weight = 800;
+        cTxt.fill = curConfig.color;
+      });
+
+      // Category Pill at bottom of left card
+      const catPillY = bottomLimit - 16;
+      const catPill = two.makeRoundedRectangle(leftCx, catPillY, leftW - 24, 22, 11);
+      catPill.fill = curConfig.bg;
+      catPill.stroke = curConfig.border;
+      catPill.linewidth = 1.2;
+
+      const catPillTxt = two.makeText(`분류: ${curConfig.tag}`, leftCx, catPillY);
+      catPillTxt.size = 10;
+      catPillTxt.weight = 800;
+      catPillTxt.fill = curConfig.color;
+
+      // Right Zone: Three Classification Pods (1 / 소수 / 합성수)
+      const podW = Math.floor((rightW - 16) / 3);
+      const pods = [
+        {
+          id: 'one',
+          title: '약수 1개',
+          label: '1',
+          nums: [1],
+          color: '#64748b',
+          bg: '#f8fafc',
+          border: '#cbd5e1',
+          activeBg: '#f1f5f9',
+          activeBorder: '#94a3b8'
+        },
+        {
+          id: 'prime',
+          title: '약수 2개',
+          label: '소수 (Prime)',
+          nums: [2, 3, 5],
+          color: '#059669',
+          bg: '#f0fdf4',
+          border: '#a7f3d0',
+          activeBg: '#ecfdf5',
+          activeBorder: '#10b981'
+        },
+        {
+          id: 'composite',
+          title: '약수 3개 이상',
+          label: '합성수 (Composite)',
+          nums: [4, 6],
+          color: '#4f46e5',
+          bg: '#f8fafc',
+          border: '#e2e8f0',
+          activeBg: '#eef2ff',
+          activeBorder: '#6366f1'
+        }
+      ];
+
+      const clickableChips = [];
+
+      pods.forEach((pod, podIdx) => {
+        const podCx = rightStart + podIdx * (podW + 8) + podW / 2;
+        const isActivePod = (curConfig.category === pod.id);
+
+        // Pod Container Box
+        const podBox = two.makeRoundedRectangle(podCx, midY, podW, availH, 10);
+        podBox.fill = isActivePod ? pod.activeBg : pod.bg;
+        podBox.stroke = isActivePod ? pod.activeBorder : pod.border;
+        podBox.linewidth = isActivePod ? 2.5 : 1.2;
+
+        // Pod Title Badge
+        const pBadgeW = Math.min(100, podW - 12);
+        const pBadge = two.makeRoundedRectangle(podCx, topLimit + 16, pBadgeW, 22, 11);
+        pBadge.fill = isActivePod ? '#ffffff' : pod.activeBg;
+        pBadge.stroke = isActivePod ? pod.color : pod.border;
+        pBadge.linewidth = 1;
+
+        const pBadgeTxt = two.makeText(pod.title, podCx, topLimit + 16);
+        pBadgeTxt.size = 10;
+        pBadgeTxt.weight = 800;
+        pBadgeTxt.fill = pod.color;
+
+        // Pod Sub-label
+        const pSub = two.makeText(pod.label, podCx, topLimit + 36);
+        pSub.size = (podW < 90) ? 9.5 : 11;
+        pSub.weight = 800;
+        pSub.fill = pod.color;
+
+        // Number Chips inside Pod
+        const chipStartY = topLimit + 64;
+        const chipR = Math.min(16, Math.floor(podW * 0.18));
+
+        pod.nums.forEach((nVal, nIdx) => {
+          const cy = chipStartY + nIdx * (chipR * 2 + 10);
+          const isSelected = (curNum === nVal);
+
+          const chipCircle = two.makeCircle(podCx, cy, chipR);
+          chipCircle.fill = isSelected ? pod.color : '#ffffff';
+          chipCircle.stroke = isSelected ? '#ffffff' : pod.color;
+          chipCircle.linewidth = 2;
+
+          if (isSelected) {
+            const glowRing = two.makeCircle(podCx, cy, chipR + 4);
+            glowRing.noFill();
+            glowRing.stroke = pod.color;
+            glowRing.linewidth = 2;
+          }
+
+          const cTxt = two.makeText(`${nVal}`, podCx, cy);
+          cTxt.size = 12;
+          cTxt.weight = 800;
+          cTxt.fill = isSelected ? '#ffffff' : pod.color;
+
+          clickableChips.push({ val: nVal, x: podCx, y: cy, r: chipR + 4 });
+        });
+
+        // Bottom note inside pod
+        const noteTxt = two.makeText(pod.id === 'one' ? '소수/합성수 X' : (pod.id === 'prime' ? '1과 자기 자신' : '3개 이상의 약수'), podCx, bottomLimit - 14);
+        noteTxt.size = (podW < 90) ? 8.5 : 9.5;
+        noteTxt.weight = 600;
+        noteTxt.fill = '#64748b';
+      });
+
+      // 4. Inspection Banner
+      let inspectionText = '';
+      let inspectColor = '#475569';
+      let inspectBg = '#f8fafc';
+      let inspectBorder = '#cbd5e1';
+
+      if (curNum === 1) {
+        inspectionText = '🟡 1은 약수가 1뿐이므로 [소수도 아니고 합성수도 아닙니다].';
+        inspectColor = '#475569';
+        inspectBg = '#f8fafc';
+        inspectBorder = '#cbd5e1';
+      } else if (curNum === 2) {
+        inspectionText = '🟢 2는 1과 자기 자신(2)만을 약수로 가지므로 [소수]이며, 소수 중 유일한 짝수입니다!';
+        inspectColor = '#065f46';
+        inspectBg = '#ecfdf5';
+        inspectBorder = '#6ee7b7';
+      } else if (curNum === 3) {
+        inspectionText = '🟢 3은 1과 자기 자신(3)만을 약수로 가지므로 [소수]입니다. (약수: 1, 3)';
+        inspectColor = '#065f46';
+        inspectBg = '#ecfdf5';
+        inspectBorder = '#6ee7b7';
+      } else if (curNum === 4) {
+        inspectionText = '🔵 4는 약수가 1, 2, 4로 3개이므로 [합성수]입니다. (1과 자기 자신 이외의 수 2를 약수로 가짐)';
+        inspectColor = '#3730a3';
+        inspectBg = '#eef2ff';
+        inspectBorder = '#c7d2fe';
+      } else if (curNum === 5) {
+        inspectionText = '🟢 5는 1과 자기 자신(5)만을 약수로 가지므로 [소수]입니다. (약수: 1, 5)';
+        inspectColor = '#065f46';
+        inspectBg = '#ecfdf5';
+        inspectBorder = '#6ee7b7';
+      } else if (curNum === 6) {
+        inspectionText = '🔵 6은 약수가 1, 2, 3, 6으로 4개이므로 [합성수]입니다. (1과 자기 자신 이외의 수 2, 3을 약수로 가짐)';
+        inspectColor = '#3730a3';
+        inspectBg = '#eef2ff';
+        inspectBorder = '#c7d2fe';
+      }
+
+      const inspectBox = two.makeRoundedRectangle(width / 2, inspectY, width - 36, inspectH, 6);
+      inspectBox.fill = inspectBg;
+      inspectBox.stroke = inspectBorder;
+      inspectBox.linewidth = 1.2;
+
+      const inspectMsg = two.makeText(inspectionText, width / 2, inspectY);
+      inspectMsg.size = (width < 600) ? 10.5 : 11.5;
+      inspectMsg.weight = 700;
+      inspectMsg.fill = inspectColor;
+
+      // 5. Bottom Summary Banner (Textbook Page 9 Summary Table)
+      const summaryBox = two.makeRoundedRectangle(width / 2, summaryY, width - 36, summaryH, 8);
+      summaryBox.fill = '#f0fdf4';
+      summaryBox.stroke = '#86efac';
+      summaryBox.linewidth = 1.5;
+
+      const sumLine1Y = (summaryH > 35) ? summaryY - 8 : summaryY - 6;
+      const sumLine2Y = (summaryH > 35) ? summaryY + 8 : summaryY + 6;
+
+      const sumLine1 = two.makeText('📌 [교과서 9쪽 생각열기] 자연수별 약수의 개수와 분류', width / 2, sumLine1Y);
+      sumLine1.size = (width < 600) ? 10 : 11;
+      sumLine1.weight = 700;
+      sumLine1.fill = '#166534';
+
+      const sumLine2 = two.makeText('2: [1,2] (2개, 소수) | 3: [1,3] (2개, 소수) | 4: [1,2,4] (3개, 합성수) | 5: [1,5] (2개, 소수) | 6: [1,2,3,6] (4개, 합성수)', width / 2, sumLine2Y);
+      sumLine2.size = (width < 600) ? 9.5 : 10.5;
+      sumLine2.weight = 800;
+      sumLine2.fill = '#15803d';
+
+      two.update();
+
+      // Bind Pointer Event on Canvas for Number Chip Click
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas') : null;
+      if (canvasEl) {
+        canvasEl.onpointerdown = (e) => {
+          const rect = canvasEl.getBoundingClientRect();
+          const px = (e.clientX - rect.left) * (width / rect.width);
+          const py = (e.clientY - rect.top) * (height / rect.height);
+
+          for (let i = 0; i < clickableChips.length; i++) {
+            const chip = clickableChips[i];
+            const dist = Math.hypot(px - chip.x, py - chip.y);
+            if (dist <= chip.r) {
+              setStep1_1Target(chip.val);
+              return;
+            }
+          }
+        };
+      }
+    }
+
+    async function gradeStep1_1() {
+      const div3Raw = cleanInput(document.getElementById('ans-1-1-div3')?.value);
+      const div4Raw = cleanInput(document.getElementById('ans-1-1-div4')?.value);
+      const div5Raw = cleanInput(document.getElementById('ans-1-1-div5')?.value);
+      const div6Raw = cleanInput(document.getElementById('ans-1-1-div6')?.value);
+      const primesRaw = cleanInput(document.getElementById('ans-1-1-primes')?.value);
+      const propVal = document.querySelector('input[name="ans-1-1-prop"]:checked')?.value;
+
+      const fEl = document.getElementById('feedback-1-1');
+      if (!fEl) return;
+
+      function checkNums(raw, expected) {
+        const nums = raw.split(',').map(s => parseInt(s.replace(/[^0-9]/g, ''))).filter(n => !isNaN(n));
+        if (nums.length !== expected.length) return false;
+        return expected.every((exp, idx) => nums[idx] === exp);
+      }
+
+      const ok3 = checkNums(div3Raw, [1, 3]);
+      const ok4 = checkNums(div4Raw, [1, 2, 4]);
+      const ok5 = checkNums(div5Raw, [1, 5]);
+      const ok6 = checkNums(div6Raw, [1, 2, 3, 6]);
+      const okPrimes = checkNums(primesRaw, [2, 3, 5]);
+      const okProp = (propVal === '1');
+
+      if (ok3 && ok4 && ok5 && ok6 && okPrimes && okProp) {
+        fEl.style.display = 'block';
+        fEl.className = 'verified-answer-card';
+        fEl.style.background = '#f0fdf4';
+        fEl.style.border = '1.5px solid #86efac';
+        fEl.innerHTML = `
+          <h4 style="color:#15803d; font-size:0.95rem; font-weight:800; margin-bottom:6px;">🎉 100점! 완벽합니다!</h4>
+          <div style="font-size:0.86rem; color:#166534; line-height:1.6;">
+            표의 약수와 약수가 2개인 수 및 공통점을 모두 정확하게 찾았습니다.<br>
+            • $3$의 약수: $1, 3$ (약수 2개)<br>
+            • $4$의 약수: $1, 2, 4$ (약수 3개)<br>
+            • $5$의 약수: $1, 5$ (약수 2개)<br>
+            • $6$의 약수: $1, 2, 3, 6$ (약수 4개)<br>
+            • 약수가 2개인 수: $2, 3, 5$<br>
+            • <b>공통점:</b> $1$과 자기 자신만을 약수로 가집니다.<br>
+            <div style="margin-top:8px; padding:8px 10px; background:#dcfce7; border-radius:6px; font-weight:700;">
+              💡 핵심 개념: $1$보다 큰 자연수 중에서 $1$과 자기 자신만을 약수로 가지는 수를 <b>소수</b>라고 합니다!<br>
+              다음 활동 <b>[1-2] 소수와 합성수의 뜻</b>이 해금되었습니다. 🔓
+            </div>
+          </div>
+        `;
+
+        if (!state.completedSubSteps.includes('1-1')) {
+          state.completedSubSteps.push('1-1');
+        }
+        if (!state.unlockedSubSteps.includes('1-2')) {
+          state.unlockedSubSteps.push('1-2');
+        }
+
+        updateSubStepPills(state.currentMainTab);
+
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('1-1', {
+              activityTitle: '[중1-1 소인수분해] [1-1] 생각열기: 자연수 분류와 약수 개수',
+              answerText: `표: 3(${div3Raw}), 4(${div4Raw}), 5(${div5Raw}), 6(${div6Raw}) | 소수: ${primesRaw} | 공통점: 1과 자기 자신만을 약수로 가짐`,
+              answers: { div3: div3Raw, div4: div4Raw, div5: div5Raw, div6: div6Raw, primes: primesRaw, prop: propVal },
+              score: 100,
+              passed: true
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+      } else {
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            ${!ok3 ? '• 3을 나누어떨어지게 하는 수(약수)를 작은 수부터 찾아 쉼표로 구분해 보세요.<br>' : ''}
+            ${!ok4 ? '• 4를 나누어떨어지게 하는 수(약수)를 작은 수부터 찾아 쉼표로 구분해 보세요.<br>' : ''}
+            ${!ok5 ? '• 5를 나누어떨어지게 하는 수(약수)를 작은 수부터 찾아 쉼표로 구분해 보세요.<br>' : ''}
+            ${!ok6 ? '• 6을 나누어떨어지게 하는 수(약수)를 작은 수부터 찾아 쉼표로 구분해 보세요.<br>' : ''}
+            ${!okPrimes ? '• 약수의 개수가 정확히 2개인 자연수들을 작은 수부터 모두 찾아보세요.<br>' : ''}
+            ${!okProp ? '• [생각톡톡] 약수가 2개인 수들의 공통적인 성질을 다시 선택해 보세요.<br>' : ''}
+            💡 좌측 캔버스에서 수를 선택하여 약수 분해 타일과 분류 버킷을 참고해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (1-2 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -2675,6 +3292,11 @@
         state.lab0_3.selectedHop = null;
         renderToolbar0_3();
         drawStep0_3Canvas();
+      } else if (state.subStep === '1-1') {
+        state.lab1_1.targetNum = 2;
+        state.lab1_1.selectedDivisor = null;
+        renderToolbar1_1();
+        drawStep1_1Canvas();
       }
     }
 
@@ -2926,6 +3548,7 @@
         if (state.subStep === '0-1') drawStep0_1Canvas();
         else if (state.subStep === '0-2') drawStep0_2Canvas();
         else if (state.subStep === '0-3') drawStep0_3Canvas();
+        else if (state.subStep === '1-1') drawStep1_1Canvas();
       }, 150);
     });
 
