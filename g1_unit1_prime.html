@@ -44558,77 +44558,498 @@ function checkStep_1_12() {
     // ==========================================
     function drawCanvas_5_3(container) {
       if (!container) return;
+      if (container._animId_5_3) {
+        cancelAnimationFrame(container._animId_5_3);
+        container._animId_5_3 = null;
+      }
       container.innerHTML = '';
+
       const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 500;
-      canvas.height = container.clientHeight || 450;
       canvas.style.width = '100%';
       canvas.style.height = '100%';
       canvas.style.display = 'block';
       container.appendChild(canvas);
       const ctx = canvas.getContext('2d');
 
-      let animId;
-      let angle = 0;
+      let w = container.clientWidth || 600;
+      let h = container.clientHeight || 450;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      ctx.scale(dpr, dpr);
+
+      const ro = new ResizeObserver(entries => {
+        for (const entry of entries) {
+          const nw = Math.floor(entry.contentRect.width);
+          const nh = Math.floor(entry.contentRect.height);
+          if (nw > 0 && nh > 0 && (nw !== w || nh !== h)) {
+            w = nw;
+            h = nh;
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            ctx.scale(dpr, dpr);
+          }
+        }
+      });
+      ro.observe(container);
+
+      // 상태 관리 변수
+      let N = 7;
+      let currentStep = 0; // 0: 대기, 1: 나눗셈 반복, 2: 나머지 0 검사, 3: 카운터 D 누적, 4: 소수 판정
+      let pulseTimer = 0;
+      const particles = [];
+      let hoveredBtn = null;
+
+      function spawnConfetti(count = 55) {
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: w / 2 + (Math.random() - 0.5) * 200,
+            y: h / 2 + (Math.random() - 0.5) * 80,
+            vx: (Math.random() - 0.5) * 8,
+            vy: (Math.random() - 0.8) * 8,
+            size: Math.random() * 5 + 4,
+            color: ['#38bdf8', '#4ade80', '#fbbf24', '#f43f5e', '#a855f7', '#60a5fa'][Math.floor(Math.random() * 6)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.02 + 0.015
+          });
+        }
+      }
+
+      function setStep(step) {
+        currentStep = step;
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        if (step === 4) {
+          spawnConfetti(60);
+          if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        }
+      }
+
+      function resetSimulation() {
+        currentStep = 0;
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      }
+
+      window._step5_3_triggerSuccess = function() {
+        currentStep = 4;
+        spawnConfetti(80);
+      };
+
+      // 마우스 포인터 인터랙션
+      canvas.addEventListener('pointermove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        hoveredBtn = null;
+        const barW = Math.min(w - 32, 580);
+        const barX = (w - barW) / 2;
+
+        // 4단계 컨트롤러 버튼 + 초기화 버튼 (y: 44 ~ 74)
+        const btnCount = 5;
+        const gap = 6;
+        const bW = Math.floor((barW - gap * (btnCount - 1)) / btnCount);
+        const bH = 30;
+        const bY = 44;
+
+        for (let i = 0; i < btnCount; i++) {
+          const bx = barX + i * (bW + gap);
+          if (mx >= bx && mx <= bx + bW && my >= bY && my <= bY + bH) {
+            hoveredBtn = (i < 4) ? { type: 'step', val: i + 1 } : { type: 'reset' };
+            break;
+          }
+        }
+
+        // 수 변경 칩 (N=7, N=12) (y: 80 ~ 102)
+        const chipW = 75;
+        const chipH = 22;
+        const chipY = 80;
+        const numChips = [7, 12];
+        for (let i = 0; i < numChips.length; i++) {
+          const cx = barX + 105 + i * (chipW + 6);
+          if (mx >= cx && mx <= cx + chipW && my >= chipY && my <= chipY + chipH) {
+            hoveredBtn = { type: 'num', val: numChips[i] };
+            break;
+          }
+        }
+
+        canvas.style.cursor = hoveredBtn ? 'pointer' : 'default';
+      });
+
+      canvas.addEventListener('pointerleave', () => {
+        hoveredBtn = null;
+        canvas.style.cursor = 'default';
+      });
+
+      canvas.addEventListener('pointerdown', () => {
+        if (!hoveredBtn) return;
+        if (hoveredBtn.type === 'step') {
+          setStep(hoveredBtn.val);
+        } else if (hoveredBtn.type === 'reset') {
+          resetSimulation();
+        } else if (hoveredBtn.type === 'num') {
+          N = hoveredBtn.val;
+          resetSimulation();
+        }
+      });
+
       function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, w, h);
+        pulseTimer += 0.05;
 
-        // Grid lines
-        ctx.strokeStyle = '#1e293b';
-        ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 40) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-        }
-        for (let y = 0; y < canvas.height; y += 40) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-        }
+        const barW = Math.min(w - 32, 580);
+        const barX = (w - barW) / 2;
 
-        // Badge & Title
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 16px "Pretendard", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('[5-3] 활동 2: 코딩 판별법 탐구 & 원리 (p.23)', canvas.width / 2, 40);
-
-        // Interactive visual placeholder
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
+        // 1. 상단 제목 헤더 뱃지
         ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.strokeStyle = '#10b981';
-        ctx.lineWidth = 3;
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(0, 0, 70, 0, Math.PI * 2);
+        if (ctx.roundRect) ctx.roundRect(barX, 8, barW, 28, 8);
+        else ctx.rect(barX, 8, barW, 28);
+        ctx.fill();
         ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 12px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('활동 2: 알지오매스 소수 판별 알고리즘 흐름도 & 원리 탐구 (p.23)', w / 2, 22);
         ctx.restore();
 
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '13px "Pretendard", sans-serif';
-        ctx.fillText('알지오매스 코딩 인터랙터', cx, cy + 110);
+        // 2. 4단계 분석 컨트롤러 버튼 5종 (y: 44 ~ 74)
+        const btnCount = 5;
+        const gap = 6;
+        const bW = Math.floor((barW - gap * (btnCount - 1)) / btnCount);
+        const bH = 30;
+        const bY = 44;
 
-        angle += 0.02;
-        animId = requestAnimationFrame(render);
+        const stepBtns = [
+          { step: 1, label: '1단계: 나눗셈 반복', bg: '#eff6ff', border: '#3b82f6', color: '#1e40af' },
+          { step: 2, label: '2단계: 나머지 0 검사', bg: '#ecfdf5', border: '#10b981', color: '#065f46' },
+          { step: 3, label: '3단계: 카운터 D 누적', bg: '#fef3c7', border: '#f59e0b', color: '#92400e' },
+          { step: 4, label: '4단계: 소수 판정', bg: '#f5f3ff', border: '#8b5cf6', color: '#5b21b6' },
+          { step: 0, label: '⟲ 초기화', bg: '#f1f5f9', border: '#94a3b8', color: '#475569' }
+        ];
+
+        for (let i = 0; i < btnCount; i++) {
+          const btn = stepBtns[i];
+          const bx = barX + i * (bW + gap);
+          const isAct = (currentStep === btn.step && btn.step !== 0);
+          const isHov = (hoveredBtn && ((btn.step !== 0 && hoveredBtn.type === 'step' && hoveredBtn.val === btn.step) || (btn.step === 0 && hoveredBtn.type === 'reset')));
+
+          ctx.save();
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(bx, bY, bW, bH, 6);
+          else ctx.rect(bx, bY, bW, bH);
+          ctx.fillStyle = isAct ? btn.border : (isHov ? '#ffffff' : btn.bg);
+          ctx.strokeStyle = btn.border;
+          ctx.lineWidth = isAct ? 2 : (isHov ? 2 : 1);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = isAct ? '#ffffff' : btn.color;
+          ctx.font = isAct ? 'bold 10.5px Pretendard, sans-serif' : '10px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(btn.label, bx + bW / 2, bY + bH / 2);
+          ctx.restore();
+        }
+
+        // 수 변경 미니 칩 (N=7, N=12)
+        const chipW = 75;
+        const chipH = 22;
+        const chipY = 80;
+        const numChips = [
+          { val: 7, label: 'N = 7 (소수)' },
+          { val: 12, label: 'N = 12 (합성)' }
+        ];
+
+        ctx.save();
+        ctx.font = '10px Pretendard, sans-serif';
+        ctx.fillStyle = '#64748b';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('알고리즘 검사 대상:', barX, chipY + chipH / 2);
+
+        for (let i = 0; i < numChips.length; i++) {
+          const nc = numChips[i];
+          const cx = barX + 105 + i * (chipW + 6);
+          const isSel = (N === nc.val);
+          const isHov = (hoveredBtn && hoveredBtn.type === 'num' && hoveredBtn.val === nc.val);
+
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(cx, chipY, chipW, chipH, 4);
+          else ctx.rect(cx, chipY, chipW, chipH);
+          ctx.fillStyle = isSel ? '#3b82f6' : (isHov ? '#e2e8f0' : '#ffffff');
+          ctx.strokeStyle = isSel ? '#1d4ed8' : '#cbd5e1';
+          ctx.lineWidth = 1;
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = isSel ? '#ffffff' : '#334155';
+          ctx.font = isSel ? 'bold 10px Pretendard, sans-serif' : '9.5px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(nc.label, cx + chipW / 2, chipY + chipH / 2);
+        }
+        ctx.restore();
+
+        // 3. 플로우차트 (Flowchart 순서도) 메인 카드
+        const flowY = 110;
+        const flowH = Math.min(220, h - flowY - 110);
+        ctx.save();
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(barX, flowY, barW, flowH, 10);
+        else ctx.rect(barX, flowY, barW, flowH);
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 1.5;
+        ctx.fill();
+        ctx.stroke();
+
+        const nodeW = Math.floor((barW - 32 - 16 * 4) / 5);
+        const nodeH = Math.floor(flowH * 0.72);
+        const nodeY = flowY + (flowH - nodeH) / 2;
+
+        const nodes = [
+          {
+            title: '1. N 입력',
+            sub: `자연수 N = ${N}`,
+            detail: '검사 대상 수 설정',
+            color: '#3b82f6',
+            bg: '#eff6ff'
+          },
+          {
+            title: '2. 초기화',
+            sub: 'D = 0, i = 1',
+            detail: '카운터 0으로 시작',
+            color: '#0284c7',
+            bg: '#f0f9ff'
+          },
+          {
+            title: '3. 나눗셈 반복',
+            sub: `i : 1 ~ ${N}`,
+            detail: '1부터 N까지 나눔',
+            color: '#10b981',
+            bg: '#ecfdf5'
+          },
+          {
+            title: '4. 나머지 검사',
+            sub: 'N % i == 0 ?',
+            detail: '참이면 D = D + 1',
+            color: '#f59e0b',
+            bg: '#fffbeb'
+          },
+          {
+            title: '5. 최종 판정',
+            sub: 'D == 2 ?',
+            detail: '소수 / 합성수',
+            color: '#8b5cf6',
+            bg: '#f5f3ff'
+          }
+        ];
+
+        for (let i = 0; i < 5; i++) {
+          const nd = nodes[i];
+          const nx = barX + 16 + i * (nodeW + 16);
+          const isActNode = (
+            (currentStep === 1 && (i === 0 || i === 1 || i === 2)) ||
+            (currentStep === 2 && i === 3) ||
+            (currentStep === 3 && i === 3) ||
+            (currentStep === 4 && i === 4)
+          );
+
+          ctx.save();
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(nx, nodeY, nodeW, nodeH, 8);
+          else ctx.rect(nx, nodeY, nodeW, nodeH);
+          ctx.fillStyle = isActNode ? '#ffffff' : nd.bg;
+          ctx.strokeStyle = isActNode ? nd.color : '#cbd5e1';
+          ctx.lineWidth = isActNode ? 2.5 : 1;
+          ctx.fill();
+          ctx.stroke();
+
+          if (isActNode) {
+            ctx.strokeStyle = nd.color;
+            ctx.lineWidth = 1 + Math.sin(pulseTimer * 3.5) * 1;
+            ctx.stroke();
+          }
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillStyle = nd.color;
+          ctx.font = 'bold 11px Pretendard, sans-serif';
+          ctx.fillText(nd.title, nx + nodeW / 2, nodeY + 12);
+
+          ctx.fillStyle = '#1e293b';
+          ctx.font = 'bold 12px monospace';
+          ctx.fillText(nd.sub, nx + nodeW / 2, nodeY + 36);
+
+          ctx.fillStyle = '#64748b';
+          ctx.font = '10px Pretendard, sans-serif';
+          ctx.fillText(nd.detail, nx + nodeW / 2, nodeY + 58);
+
+          if (i < 4) {
+            const arrStartX = nx + nodeW + 2;
+            const arrEndX = nx + nodeW + 14;
+            const arrMidY = nodeY + nodeH / 2;
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(arrStartX, arrMidY);
+            ctx.lineTo(arrEndX, arrMidY);
+            ctx.lineTo(arrEndX - 4, arrMidY - 3);
+            ctx.moveTo(arrEndX, arrMidY);
+            ctx.lineTo(arrEndX - 4, arrMidY + 3);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+        ctx.restore();
+
+        // 4. 하단 탐구 정리 박스 (Zero-Spoiler 엄수: 조작/채점 시에만 동적 표출)
+        const infoY = flowY + flowH + 12;
+        const infoH = Math.min(100, h - infoY - 10);
+        ctx.save();
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(barX, infoY, barW, infoH, 8);
+        else ctx.rect(barX, infoY, barW, infoH);
+
+        const infoBg = (currentStep === 0) ? '#f8fafc' : ((currentStep === 4) ? '#f0fdf4' : '#eff6ff');
+        const infoBorder = (currentStep === 0) ? '#e2e8f0' : ((currentStep === 4) ? '#86efac' : '#93c5fd');
+        ctx.fillStyle = infoBg;
+        ctx.strokeStyle = infoBorder;
+        ctx.lineWidth = 1.5;
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+
+        if (currentStep === 0) {
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillStyle = '#334155';
+          ctx.fillText('💡 소수 판별 알고리즘 탐구 가이드:', barX + 16, infoY + 14);
+          ctx.font = '11px Pretendard, sans-serif';
+          ctx.fillStyle = '#64748b';
+          ctx.fillText('• 상단의 [1단계: 나눗셈 반복]부터 [4단계: 소수 판정] 버튼을 차례대로 클릭해 보세요.', barX + 16, infoY + 38);
+          ctx.fillText('• 컴퓨터가 1부터 N까지 차례로 나누어 소수를 판별하는 수학적 알고리즘의 원리를 확인할 수 있습니다.', barX + 16, infoY + 58);
+        } else if (currentStep === 1) {
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e40af';
+          ctx.fillText('🔹 1단계: 나눗셈 반복 (루프 실행)', barX + 16, infoY + 14);
+          ctx.font = '11px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText(`• 수 N = ${N}에 대하여 1부터 ${N}까지의 모든 자연수(i)로 차례차례 나누어 봅니다.`, barX + 16, infoY + 38);
+          ctx.fillText(`• 실행 계산: ${N}÷1, ${N}÷2, ${N}÷3, ···, ${N}÷${N}`, barX + 16, infoY + 58);
+        } else if (currentStep === 2) {
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillStyle = '#065f46';
+          ctx.fillText('🔹 2단계: 나머지 0 검사 (N % i == 0)', barX + 16, infoY + 14);
+          ctx.font = '11px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('• 각 나눗셈에서 나누어떨어지는지(나머지가 0인지) 조건문으로 판별합니다.', barX + 16, infoY + 38);
+          ctx.fillText('• 나누어떨어지게 하는 수(나머지가 0인 수)가 바로 N의 약수입니다.', barX + 16, infoY + 58);
+        } else if (currentStep === 3) {
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillStyle = '#92400e';
+          ctx.fillText('🔹 3단계: 약수의 개수 카운터 D 누적 (D = D + 1)', barX + 16, infoY + 14);
+          ctx.font = '11px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('• 나머지가 0인 수를 찾을 때마다 변수 D의 값을 1씩 증가시켜 누적합니다.', barX + 16, infoY + 38);
+          ctx.fillText(`• ${N}의 약수 개수: 총 D = ${(N === 7 ? 2 : 6)}개 계산 완료`, barX + 16, infoY + 58);
+        } else if (currentStep === 4) {
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillStyle = '#166534';
+          ctx.fillText(`👑 4단계: 최종 판정 결과 (D = ${(N === 7 ? 2 : 6)})`, barX + 16, infoY + 14);
+          ctx.font = '11px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          if (N === 7) {
+            ctx.fillText('• 변수 D의 값이 정확히 2이므로, 7은 1과 자기 자신만을 약수로 가지는 [소수]입니다!', barX + 16, infoY + 38);
+            ctx.fillText('• 판정 기준: D == 2 이면 "소수", 아니면 "합성수"', barX + 16, infoY + 58);
+          } else {
+            ctx.fillText(`• 변수 D의 값이 ${6}으로 2가 아니므로, 12는 [합성수]입니다!`, barX + 16, infoY + 38);
+            ctx.fillText('• 판정 기준: D == 2 이면 "소수", 아니면 "합성수"', barX + 16, infoY + 58);
+          }
+        }
+        ctx.restore();
+
+        // 5. 파티클 애니메이션
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.35;
+          p.rot += p.vRot;
+          p.life -= p.decay;
+
+          if (p.life <= 0) {
+            particles.splice(i, 1);
+            continue;
+          }
+
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.globalAlpha = Math.max(0, p.life);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+          ctx.restore();
+        }
+
+        container._animId_5_3 = requestAnimationFrame(render);
       }
-      render();
+
+      container._animId_5_3 = requestAnimationFrame(render);
 
       window._cleanup_step_5_3 = () => {
-        if (animId) cancelAnimationFrame(animId);
+        if (container._animId_5_3) {
+          cancelAnimationFrame(container._animId_5_3);
+          container._animId_5_3 = null;
+        }
+        ro.disconnect();
       };
     }
 
     function renderForm_5_3(box) {
       if (!box) return;
       box.innerHTML = `
-        <div class="question-card" style="padding:16px; background:#1e293b; border-radius:10px; margin-bottom:15px; border:1px solid #334155;">
-          <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 5-3. 활동 2: 코딩 판별법 탐구 & 원리 (p.23)</div>
-          <p style="font-size:14px; color:#cbd5e1; line-height:1.6; margin-bottom:12px;">
-            문제를 해결하고 답을 입력창에 작성하세요.
-          </p>
-          <div style="margin-bottom:12px;">
-            <input type="text" id="ans-5-3" class="form-control" placeholder="답 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
+        <div class="card" style="padding:16px 20px;">
+          <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
+            ✏️ [활동 2] 코딩 판별법 탐구 & 원리 (p.23)
           </div>
+
+          <!-- 활동 2 안내 카드 -->
+          <div style="background:#f8fafc; border-left:4px solid #3b82f6; padding:10px 14px; border-radius:6px; margin-bottom:14px;">
+            <div style="font-weight:700; font-size:0.86rem; color:#1e40af; margin-bottom:4px;">
+              활동 2
+            </div>
+            <div style="font-size:0.88rem; color:#1e293b; line-height:1.6; font-family:'Pretendard', sans-serif;">
+              코딩에서 입력한 수가 소수인지 아닌지를 판별하는 방법을 이야기해 봅시다.
+            </div>
+          </div>
+
+          <p style="font-size:0.88rem; color:#334155; line-height:1.65; margin-bottom:14px;">
+            수(<i>N</i>)를 입력하면 1부터 입력한 수(<i>N</i>)까지의 수로 차례대로 나누어 나머지가 0인 수의 개수, 즉 <b>[ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ]</b>를 구해 수(<i>N</i>)가 소수인지 아닌지를 판별합니다. 빈칸에 들어갈 알맞은 핵심 개념은 무엇인가요?
+          </p>
+
+          <div style="margin-bottom:12px;">
+            <input type="text" id="ans-5-3" class="form-control" placeholder="용어 입력" style="font-size:0.95rem; width:100%;" autocomplete="off">
+          </div>
+
+          <!-- 퀵 용어 버튼 바 -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; background:#f1f5f9; padding:8px 10px; border-radius:8px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; line-height:28px;">빠른 선택:</span>
+            <button type="button" class="btn btn-sm btn-outline-primary btn-term-insert-5-3" data-term="약수의 개수" style="font-weight:700; padding:4px 10px;">약수의 개수</button>
+            <button type="button" class="btn btn-sm btn-outline-primary btn-term-insert-5-3" data-term="약수" style="font-weight:700; padding:4px 10px;">약수</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-term-insert-5-3" data-term="배수" style="font-weight:700; padding:4px 10px;">배수</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-term-insert-5-3" data-term="지수" style="font-weight:700; padding:4px 10px;">지수</button>
+            <button type="button" class="btn btn-sm btn-outline-danger btn-term-clear-5-3" style="font-weight:700; padding:4px 10px;">지우기</button>
+          </div>
+
           <button class="btn btn-primary" onclick="checkStep_5_3()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
@@ -44639,18 +45060,70 @@ function checkStep_1_12() {
           if (e.key === 'Enter') checkStep_5_3();
         });
       }
+
+      box.querySelectorAll('.btn-term-insert-5-3').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const term = btn.getAttribute('data-term');
+          if (input) {
+            input.value = term;
+            input.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      });
+
+      const clearBtn = box.querySelector('.btn-term-clear-5-3');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          if (input) {
+            input.value = '';
+            input.focus();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      }
     }
 
     function checkStep_5_3() {
-      const v = normTxt(document.getElementById('ans-5-3')?.value);
-      const isCorrect = (v.length > 0);
+      const raw = document.getElementById('ans-5-3')?.value || '';
+      const v = raw.trim().replace(/\s+/g, '');
+
+      if (!v || v.length === 0) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>용어를 입력해 주세요.</b>');
+        return;
+      }
+
+      const isCorrect = (
+        v === '약수의개수' ||
+        v === '약수개수' ||
+        v === '약수' ||
+        v === '약수의개수(d)' ||
+        v === '약수의개수(D)' ||
+        v === '약수의개수d' ||
+        v === '약수의개수D'
+      );
+
       if (isCorrect) {
-        completeSubStep('5-3', '🎉 <b>정답입니다!</b><br>• 정답 및 해설: 1부터 N까지 나누어 나머지가 0인 약수의 개수를 구하여 판별');
+        if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        if (window._step5_3_triggerSuccess) {
+          window._step5_3_triggerSuccess();
+        }
+        completeSubStep('5-3', '🎉 <b>정답입니다!</b><br>• 알지오매스 코딩은 1부터 N까지 나누어 나머지가 0인 수의 개수, 즉 <b>약수의 개수</b>를 세어 소수를 판별합니다.<br>• 약수의 개수가 2개이면 소수, 3개 이상이면 합성수입니다.<br>🎉 축하합니다! 5소단원 [5. 알지오매스 코딩]의 모든 탐구를 완수하였습니다!');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
+      } else if (v.includes('배수')) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>1부터 N까지 나누어떨어지게 하는 수는 배수가 아니라 무엇일까요?</b>');
+      } else if (v.includes('지수')) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>거듭제곱에서 곱해진 횟수를 나타내는 말이 지수입니다. 나누어떨어지는 수를 생각해 보세요.</b>');
+      } else if (v.includes('소인수')) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>소수인 인수를 소인수라고 합니다. 코딩에서는 모든 나눗셈을 검사하여 무엇의 개수를 셀까요?</b>');
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>값을 입력해 주세요.</b>');
+        showFeedback(false, '❌ <b>다시 생각해 보세요!</b> 1부터 N까지 나누어 나머지가 0인 수는 무엇의 정의일까요?');
       }
     }
 
