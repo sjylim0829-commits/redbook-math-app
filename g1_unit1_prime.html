@@ -48587,63 +48587,541 @@ function checkStep_1_12() {
     // ==========================================
     function drawCanvas_6_6(container) {
       if (!container) return;
+      if (typeof window._cleanup_step_6_6 === 'function') {
+        window._cleanup_step_6_6();
+      }
       container.innerHTML = '';
+
       const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 500;
-      canvas.height = container.clientHeight || 450;
       canvas.style.width = '100%';
       canvas.style.height = '100%';
       canvas.style.display = 'block';
+      canvas.style.cursor = 'default';
       container.appendChild(canvas);
       const ctx = canvas.getContext('2d');
 
+      // 5 Multiple Choice Options for Coprime Check
+      const options = [
+        {
+          no: '①',
+          pair: '13, 52',
+          fA: '13',
+          fB: '2² × 13',
+          common: '13',
+          gcd: 13,
+          isCoprime: false,
+          leftPrimes: [],
+          rightPrimes: ['2²'],
+          commonPrimes: ['13'],
+          note: '공약수 13 존재 ➔ 최대공약수 13 ≠ 1'
+        },
+        {
+          no: '②',
+          pair: '15, 27',
+          fA: '3 × 5',
+          fB: '3³',
+          common: '3',
+          gcd: 3,
+          isCoprime: false,
+          leftPrimes: ['5'],
+          rightPrimes: ['3²'],
+          commonPrimes: ['3'],
+          note: '공약수 3 존재 ➔ 최대공약수 3 ≠ 1'
+        },
+        {
+          no: '③',
+          pair: '36, 45',
+          fA: '2² × 3²',
+          fB: '3² × 5',
+          common: '3² (9)',
+          gcd: 9,
+          isCoprime: false,
+          leftPrimes: ['2²'],
+          rightPrimes: ['5'],
+          commonPrimes: ['3²'],
+          note: '공약수 9 존재 ➔ 최대공약수 9 ≠ 1'
+        },
+        {
+          no: '④',
+          pair: '35, 2 × 3²',
+          fA: '5 × 7',
+          fB: '2 × 3²',
+          common: '없음',
+          gcd: 1,
+          isCoprime: true,
+          leftPrimes: ['5', '7'],
+          rightPrimes: ['2', '3²'],
+          commonPrimes: [],
+          note: '공통인 소인수 없음! ➔ 최대공약수 1 (서로소 맞음!)'
+        },
+        {
+          no: '⑤',
+          pair: '2²×3×5, 2×3²×5²',
+          fA: '2² × 3 × 5',
+          fB: '2 × 3² × 5²',
+          common: '2 × 3 × 5 (30)',
+          gcd: 30,
+          isCoprime: false,
+          leftPrimes: ['2'],
+          rightPrimes: ['3', '5'],
+          commonPrimes: ['2', '3', '5'],
+          note: '공약수 30 존재 ➔ 최대공약수 30 ≠ 1'
+        }
+      ];
+
+      // State
+      const state = {
+        selectedOption: null, // Initially null for zero-spoiler
+        isSuccess: false,
+        pulse: 0,
+        particles: []
+      };
+
+      // Expose hooks
+      window._step6_6_selectVal = (val) => {
+        const item = options.find(o => o.no === val || o.no.includes(val) || val.includes(o.no));
+        if (item) {
+          state.selectedOption = item;
+        }
+      };
+
+      window._step6_6_triggerSuccess = () => {
+        state.isSuccess = true;
+        state.selectedOption = options[3]; // Option 4
+        createConfetti();
+      };
+
+      function createConfetti() {
+        state.particles = [];
+        const colors = ['#38bdf8', '#34d399', '#fbbf24', '#f43f5e', '#a855f7'];
+        for (let i = 0; i < 40; i++) {
+          state.particles.push({
+            x: canvas.width / (2 * (window.devicePixelRatio || 1)),
+            y: canvas.height / (2 * (window.devicePixelRatio || 1)),
+            vx: (Math.random() - 0.5) * 8,
+            vy: (Math.random() - 0.8) * 8,
+            r: Math.random() * 4 + 2,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.01
+          });
+        }
+      }
+
+      let hitBoxes = [];
+
+      function resizeCanvas() {
+        const rect = container.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        const w = rect.width || 600;
+        const h = rect.height || 480;
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resizeCanvas();
+
+      const ro = new ResizeObserver(() => resizeCanvas());
+      ro.observe(container);
+
+      // Render loop
       let animId;
-      let angle = 0;
       function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        state.pulse += 0.04;
+        hitBoxes = [];
 
-        // Grid lines
-        ctx.strokeStyle = '#1e293b';
+        const dpr = window.devicePixelRatio || 1;
+        const W = canvas.width / dpr;
+        const H = canvas.height / dpr;
+
+        ctx.clearRect(0, 0, W, H);
+
+        // Background
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+        bgGrad.addColorStop(0, '#090d16');
+        bgGrad.addColorStop(1, '#0f172a');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, W, H);
+
+        // Grid
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.025)';
         ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 40) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        for (let x = 0; x < W; x += 30) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
         }
-        for (let y = 0; y < canvas.height; y += 40) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        for (let y = 0; y < H; y += 30) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
         }
 
-        // Badge & Title
+        // --- Header Section ---
+        const titleY = 22;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 14px "Pretendard", -apple-system, sans-serif';
         ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 16px "Pretendard", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('[6-6] 06번: 두 수가 서로소인 것 고르기 (p.25)', canvas.width / 2, 40);
+        ctx.fillText('06. 두 수의 소인수 벤다이어그램 & 서로소 레이더', 18, titleY);
 
-        // Interactive visual placeholder
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
+        ctx.textAlign = 'right';
+        ctx.font = '12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('보기를 클릭하여 공통 소인수(교집합) 유무를 확인하세요', W - 18, titleY);
+
+        // --- Top: 5 Multiple Choice Cards ---
+        const cardsY = 44;
+        const cardH = 76;
+        const cardGap = 8;
+        const isNarrow = (W < 580);
+
+        let cardCoords = [];
+        if (!isNarrow) {
+          const cardW = (W - 36 - 4 * cardGap) / 5;
+          for (let i = 0; i < 5; i++) {
+            cardCoords.push({
+              x: 18 + i * (cardW + cardGap),
+              y: cardsY,
+              w: cardW,
+              h: cardH,
+              item: options[i]
+            });
+          }
+        } else {
+          // 2 Rows
+          const cW1 = (W - 36 - 2 * cardGap) / 3;
+          for (let i = 0; i < 3; i++) {
+            cardCoords.push({
+              x: 18 + i * (cW1 + cardGap),
+              y: cardsY,
+              w: cW1,
+              h: cardH,
+              item: options[i]
+            });
+          }
+          const cW2 = (W - 36 - cardGap) / 2;
+          for (let i = 3; i < 5; i++) {
+            cardCoords.push({
+              x: 18 + (i - 3) * (cW2 + cardGap),
+              y: cardsY + cardH + 6,
+              w: cW2,
+              h: cardH,
+              item: options[i]
+            });
+          }
+        }
+
+        cardCoords.forEach(({ x, y, w, h, item }) => {
+          const isSelected = (state.selectedOption && state.selectedOption.no === item.no);
+
+          hitBoxes.push({
+            type: 'card',
+            item: item,
+            x: x, y: y, w: w, h: h
+          });
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect(x, y, w, h, 8);
+
+          if (state.isSuccess && item.isCoprime) {
+            ctx.fillStyle = 'rgba(16, 185, 129, 0.2)';
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 2.5;
+          } else if (isSelected) {
+            ctx.fillStyle = item.isCoprime ? 'rgba(16, 185, 129, 0.15)' : 'rgba(2, 132, 199, 0.15)';
+            ctx.strokeStyle = item.isCoprime ? '#34d399' : '#38bdf8';
+            ctx.lineWidth = 2;
+          } else {
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1;
+          }
+          ctx.fill();
+          ctx.stroke();
+
+          // Badge & Pair Text
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+          ctx.font = 'bold 13.5px "Pretendard", sans-serif';
+          ctx.fillStyle = isSelected ? '#ffffff' : '#e2e8f0';
+          ctx.fillText(item.no, x + 8, y + 8);
+
+          ctx.font = '11px "Pretendard", sans-serif';
+          ctx.fillStyle = isSelected ? '#38bdf8' : '#cbd5e1';
+
+          // Truncate pair text if too long
+          const pairTxt = item.pair.length > 14 ? item.pair.slice(0, 13) + '…' : item.pair;
+          ctx.fillText(pairTxt, x + 26, y + 9);
+
+          // Sub info: GCD
+          ctx.font = '10.5px "Pretendard", sans-serif';
+          if (isSelected || state.isSuccess) {
+            if (item.isCoprime) {
+              ctx.fillStyle = '#34d399';
+              ctx.fillText('★ GCD = 1 (서로소)', x + 8, y + 30);
+            } else {
+              ctx.fillStyle = '#f87171';
+              ctx.fillText(`GCD = ${item.gcd} (서로소X)`, x + 8, y + 30);
+            }
+          } else {
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText('클릭하여 검사', x + 8, y + 30);
+          }
+
+          // Select button inside card
+          const btnW = w - 16;
+          const btnH = 20;
+          const bx = x + 8;
+          const by = y + h - btnH - 6;
+
+          hitBoxes.push({
+            type: 'btnSelect',
+            item: item,
+            x: bx, y: by, w: btnW, h: btnH
+          });
+
+          ctx.beginPath();
+          ctx.roundRect(bx, by, btnW, btnH, 4);
+          if (isSelected) {
+            ctx.fillStyle = item.isCoprime ? '#059669' : '#0284c7';
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 9.5px "Pretendard", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('✓ 선택됨', bx + btnW / 2, by + btnH / 2);
+          } else {
+            ctx.fillStyle = '#1e293b';
+            ctx.fill();
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '9.5px "Pretendard", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('검사 / 선택', bx + btnW / 2, by + btnH / 2);
+          }
+          ctx.restore();
+        });
+
+        // --- Bottom: Venn Diagram & Factor Analysis Lab ---
+        const botY = (!isNarrow) ? (cardsY + cardH + 12) : (cardsY + cardH * 2 + 16);
+        const botH = H - botY - 14;
+        const botW = W - 36;
+        const bx = 18;
+        const by = botY;
+
         ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.strokeStyle = '#f59e0b';
-        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(0, 0, 70, 0, Math.PI * 2);
+        ctx.roundRect(bx, by, botW, botH, 10);
+
+        const curItem = state.selectedOption;
+        if (state.isSuccess || (curItem && curItem.isCoprime)) {
+          ctx.fillStyle = 'rgba(16, 185, 129, 0.12)';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2;
+        } else if (curItem) {
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 1.5;
+        } else {
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+          ctx.strokeStyle = '#334155';
+          ctx.lineWidth = 1;
+        }
+        ctx.fill();
         ctx.stroke();
+
+        // Venn Diagram Section on Left
+        const vennAreaW = Math.min(botW * 0.48, 260);
+        const vCenterY = by + botH / 2;
+        const vRadius = Math.min(vennAreaW * 0.32, (botH - 40) * 0.42);
+        const circleDist = vRadius * 0.95;
+        const leftCircleX = bx + 20 + vRadius;
+        const rightCircleX = leftCircleX + circleDist;
+
+        if (curItem) {
+          // Left Circle (Set A)
+          ctx.beginPath();
+          ctx.arc(leftCircleX, vCenterY, vRadius, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(2, 132, 199, 0.15)';
+          ctx.fill();
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // Right Circle (Set B)
+          ctx.beginPath();
+          ctx.arc(rightCircleX, vCenterY, vRadius, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(217, 119, 6, 0.15)';
+          ctx.fill();
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // Circle Headers
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.font = 'bold 11px "Pretendard", sans-serif';
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillText('첫 번째 수', leftCircleX - 10, vCenterY - vRadius - 4);
+
+          ctx.fillStyle = '#fbbf24';
+          ctx.fillText('두 번째 수', rightCircleX + 10, vCenterY - vRadius - 4);
+
+          // Labels inside Venn Diagram
+          // 1. Left unique primes
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 12px "Pretendard", sans-serif';
+          ctx.fillStyle = '#e2e8f0';
+          const leftTxt = curItem.leftPrimes.join(', ') || ' ';
+          ctx.fillText(leftTxt, leftCircleX - (circleDist * 0.45), vCenterY);
+
+          // 2. Right unique primes
+          const rightTxt = curItem.rightPrimes.join(', ') || ' ';
+          ctx.fillText(rightTxt, rightCircleX + (circleDist * 0.45), vCenterY);
+
+          // 3. Middle Intersection (Common factors)
+          const midX = (leftCircleX + rightCircleX) / 2;
+          if (curItem.commonPrimes.length > 0) {
+            ctx.fillStyle = '#f87171';
+            ctx.font = 'bold 12px "Pretendard", sans-serif';
+            ctx.fillText(curItem.commonPrimes.join(', '), midX, vCenterY);
+
+            ctx.font = '10px "Pretendard", sans-serif';
+            ctx.fillText('(공약수)', midX, vCenterY + 16);
+          } else {
+            // Empty intersection: Coprime!
+            ctx.fillStyle = '#34d399';
+            ctx.font = 'bold 13px "Pretendard", sans-serif';
+            ctx.fillText('∅ (공집합)', midX, vCenterY - 6);
+
+            ctx.font = 'bold 10px "Pretendard", sans-serif';
+            ctx.fillText('공통 소인수 없음!', midX, vCenterY + 10);
+          }
+        } else {
+          // Default prompt
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 13px "Pretendard", sans-serif';
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText('위의 보기 카드 중 하나를 선택하세요', bx + vennAreaW / 2, vCenterY);
+        }
+
+        // Right side: Mathematical Explanation
+        const textX = bx + vennAreaW + 30;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+
+        if (curItem) {
+          ctx.font = 'bold 13px "Pretendard", sans-serif';
+          ctx.fillStyle = curItem.isCoprime ? '#34d399' : '#38bdf8';
+          ctx.fillText(`📊 보기 ${curItem.no} 상세 분석: [ ${curItem.pair} ]`, textX, by + 12);
+
+          ctx.font = '12px "Pretendard", sans-serif';
+          ctx.fillStyle = '#e2e8f0';
+          ctx.fillText(`• 첫 번째 수 소인수: ${curItem.fA}`, textX, by + 32);
+          ctx.fillText(`• 두 번째 수 소인수: ${curItem.fB}`, textX, by + 50);
+
+          ctx.font = 'bold 12.5px "Pretendard", sans-serif';
+          if (curItem.isCoprime) {
+            ctx.fillStyle = '#34d399';
+            ctx.fillText(`• 공통 소인수: 없음 ➔ 최대공약수 = 1`, textX, by + 72);
+            ctx.fillText(`★ 결론: 최대공약수가 1이므로 두 수는 [서로소]입니다! (정답)`, textX, by + 92);
+          } else {
+            ctx.fillStyle = '#f87171';
+            ctx.fillText(`• 공통 소인수: ${curItem.common} ➔ 최대공약수 = ${curItem.gcd}`, textX, by + 72);
+            ctx.fillText(`• 결론: 최대공약수가 1이 아니므로 [서로소가 아닙니다].`, textX, by + 92);
+          }
+        } else {
+          ctx.font = 'bold 12.5px "Pretendard", sans-serif';
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillText('🔍 [서로소 판별 가이드]', textX, by + 14);
+
+          ctx.font = '12px "Pretendard", sans-serif';
+          ctx.fillStyle = '#cbd5e1';
+          ctx.fillText('• 서로소: 최대공약수가 1인 두 자연수', textX, by + 36);
+          ctx.fillText('• 소인수분해했을 때 공통인 소인수가 전혀 없는 쌍을 찾으세요.', textX, by + 56);
+        }
         ctx.restore();
 
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '13px "Pretendard", sans-serif';
-        ctx.fillText('마무리 인터랙터', cx, cy + 110);
+        // Confetti
+        if (state.particles.length > 0) {
+          ctx.save();
+          for (let i = state.particles.length - 1; i >= 0; i--) {
+            const p = state.particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.15;
+            p.life -= p.decay;
+            if (p.life <= 0) {
+              state.particles.splice(i, 1);
+              continue;
+            }
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = p.life;
+            ctx.fill();
+          }
+          ctx.restore();
+        }
 
-        angle += 0.02;
         animId = requestAnimationFrame(render);
       }
+
+      // Pointer event handlers
+      function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top
+        };
+      }
+
+      function handlePointerDown(e) {
+        const p = getPos(e);
+        for (let i = hitBoxes.length - 1; i >= 0; i--) {
+          const b = hitBoxes[i];
+          if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) {
+            if (b.type === 'card' || b.type === 'btnSelect') {
+              state.selectedOption = b.item;
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+
+              // Auto sync to form input
+              const inp = document.getElementById('ans-6-6');
+              if (inp) {
+                inp.value = b.item.no;
+                inp.focus();
+              }
+              return;
+            }
+          }
+        }
+      }
+
+      function handlePointerMove(e) {
+        const p = getPos(e);
+        let hover = false;
+        for (let i = hitBoxes.length - 1; i >= 0; i--) {
+          const b = hitBoxes[i];
+          if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) {
+            hover = true;
+            break;
+          }
+        }
+        canvas.style.cursor = hover ? 'pointer' : 'default';
+      }
+
+      canvas.addEventListener('pointerdown', handlePointerDown);
+      canvas.addEventListener('pointermove', handlePointerMove);
+
       render();
 
       window._cleanup_step_6_6 = () => {
         if (animId) cancelAnimationFrame(animId);
+        ro.disconnect();
+        canvas.removeEventListener('pointerdown', handlePointerDown);
+        canvas.removeEventListener('pointermove', handlePointerMove);
       };
     }
 
@@ -48652,17 +49130,62 @@ function checkStep_1_12() {
       box.innerHTML = `
         <div class="question-card" style="padding:16px; background:#1e293b; border-radius:10px; margin-bottom:15px; border:1px solid #334155;">
           <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 6-6. 06번: 두 수가 서로소인 것 고르기 (p.25)</div>
-          <p style="font-size:14px; color:#cbd5e1; line-height:1.6; margin-bottom:12px;">
-            문제를 해결하고 답을 입력창에 작성하세요.
+          
+          <div style="background:#0f172a; border:1px solid #334155; border-radius:8px; padding:12px; margin-bottom:12px;">
+            <div style="font-weight:700; color:#f8fafc; margin-bottom:8px; font-size:14px;">06. 다음 중에서 두 수가 서로소인 것은?</div>
+            <div style="display:flex; flex-direction:column; gap:6px; font-size:13.5px; color:#cbd5e1; line-height:1.6;">
+              <div><b>①</b> 13, 52</div>
+              <div><b>②</b> 15, 27</div>
+              <div><b>③</b> 36, 45</div>
+              <div><b>④</b> 35, 2 × 3²</div>
+              <div><b>⑤</b> 2² × 3 × 5, 2 × 3² × 5²</div>
+            </div>
+          </div>
+
+          <p style="font-size:13px; color:#94a3b8; line-height:1.5; margin-bottom:10px;">
+            💡 서로소란 최대공약수가 1인 두 자연수를 말합니다. 공통인 소인수가 없는 두 수를 찾아보세요.
           </p>
+
+          <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-outline-info btn-sm btn-opt-6-6" data-val="①" style="font-weight:700; padding:5px 12px;">①</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-opt-6-6" data-val="②" style="font-weight:700; padding:5px 12px;">②</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-opt-6-6" data-val="③" style="font-weight:700; padding:5px 12px;">③</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-opt-6-6" data-val="④" style="font-weight:700; padding:5px 12px;">④</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-opt-6-6" data-val="⑤" style="font-weight:700; padding:5px 12px;">⑤</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm btn-clear-6-6" style="font-size:12px; padding:5px 10px; margin-left:auto;">초기화</button>
+          </div>
+
           <div style="margin-bottom:12px;">
-            <input type="text" id="ans-6-6" class="form-control" placeholder="답 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
+            <input type="text" id="ans-6-6" class="form-control" placeholder="번호 또는 보기 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
           </div>
           <button class="btn btn-primary" onclick="checkStep_6_6()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
 
       const input = box.querySelector('#ans-6-6');
+
+      box.querySelectorAll('.btn-opt-6-6').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = btn.getAttribute('data-val');
+          if (input) {
+            input.value = val;
+            input.focus();
+          }
+          if (window._step6_6_selectVal) {
+            window._step6_6_selectVal(val);
+          }
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        });
+      });
+
+      box.querySelector('.btn-clear-6-6')?.addEventListener('click', () => {
+        if (input) {
+          input.value = '';
+          input.focus();
+        }
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      });
+
       if (input) {
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') checkStep_6_6();
@@ -48671,15 +49194,54 @@ function checkStep_1_12() {
     }
 
     function checkStep_6_6() {
-      const v = normTxt(document.getElementById('ans-6-6')?.value);
-      const isCorrect = (v.length > 0);
+      const raw = document.getElementById('ans-6-6')?.value || '';
+      const v = normTxt(raw);
+
+      if (!v) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>번호를 입력해 주세요.</b><br>캔버스에서 각 보기의 벤다이어그램을 확인하여 서로소인 보기를 골라보세요.');
+        return;
+      }
+
+      // Check wrong options and give targeted feedback
+      if (v === '1' || v === '①' || v === '1번') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>13과 52는 공약수 13을 가지므로 서로소가 아닙니다.</b> ($52 = 13 \\times 4$)');
+        return;
+      }
+
+      if (v === '2' || v === '②' || v === '2번') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>15와 27은 공약수 3을 가지므로 서로소가 아닙니다.</b> ($15 = 3 \\times 5$, $27 = 3^3$)');
+        return;
+      }
+
+      if (v === '3' || v === '③' || v === '3번') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>36과 45는 공약수 9(3²)를 가지므로 서로소가 아닙니다.</b>');
+        return;
+      }
+
+      if (v === '5' || v === '⑤' || v === '5번') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>두 수는 공통인 소인수 2, 3, 5를 가지므로 최대공약수가 30입니다.</b> (서로소 아님)');
+        return;
+      }
+
+      // Check correct answer: 4, ④, 4번
+      const isCorrect = (v === '4' || v === '④' || v === '4번');
+
       if (isCorrect) {
-        completeSubStep('6-6', '🎉 <b>정답입니다!</b><br>• 정답 및 해설: 35 = 5 × 7 과 2 × 3² = 18 은 최대공약수가 1이므로 서로소');
+        if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        if (window._step6_6_triggerSuccess) {
+          window._step6_6_triggerSuccess();
+        }
+        completeSubStep('6-6', '🎉 <b>정답입니다!</b><br>• $35 = 5 \\times 7$ 이고, $2 \\times 3^2 = 18 = 2 \\times 3^2$ 입니다.<br>• 두 수는 공통인 소인수가 없으므로 <b>최대공약수가 1</b>입니다.<br>• 따라서 <b>④ 35, 2 × 3²</b>은 서로소입니다.<br><br>• 다른 보기 분석:<br>  ① 13, 52: 최대공약수 13<br>  ② 15, 27: 최대공약수 3<br>  ③ 36, 45: 최대공약수 9<br>  ⑤ 최대공약수 2 × 3 × 5 = 30');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>값을 입력해 주세요.</b>');
+        showFeedback(false, '❌ <b>다시 확인해 보세요!</b><br>서로소는 최대공약수가 1인 두 수입니다. 공통인 소인수가 없는 보기를 골라보세요.');
       }
     }
 
