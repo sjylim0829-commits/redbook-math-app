@@ -52941,59 +52941,432 @@ function checkStep_1_12() {
     function drawCanvas_7_7(container) {
       if (!container) return;
       container.innerHTML = '';
+
+      const wrap = document.createElement('div');
+      wrap.style.width = '100%';
+      wrap.style.height = '100%';
+      wrap.style.position = 'relative';
+      wrap.style.overflow = 'hidden';
+      wrap.style.display = 'flex';
+      wrap.style.flexDirection = 'column';
+      container.appendChild(wrap);
+
       const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 500;
-      canvas.height = container.clientHeight || 450;
       canvas.style.width = '100%';
       canvas.style.height = '100%';
       canvas.style.display = 'block';
-      container.appendChild(canvas);
+      canvas.style.flex = '1';
+      wrap.appendChild(canvas);
+
       const ctx = canvas.getContext('2d');
+      let dpr = window.devicePixelRatio || 1;
+      let width = 0;
+      let height = 0;
 
-      let animId;
-      let angle = 0;
+      // 탐색 상태 변수 (초기값: 모두 미도출, 제로 스포일러 준수)
+      let knownA = false;
+      let knownB = false;
+      let knownC = false;
+
+      let animId = null;
+      let confettiList = [];
+      let isSuccess = false;
+
+      function resize() {
+        const rect = wrap.getBoundingClientRect();
+        width = Math.max(rect.width, 320);
+        height = Math.max(rect.height, 360);
+        dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+
+      const ro = new ResizeObserver(() => {
+        resize();
+      });
+      ro.observe(wrap);
+
+      function triggerConfetti() {
+        confettiList = [];
+        for (let i = 0; i < 50; i++) {
+          confettiList.push({
+            x: width * 0.5 + (Math.random() - 0.5) * 240,
+            y: height * 0.45 + (Math.random() - 0.5) * 80,
+            vx: (Math.random() - 0.5) * 9,
+            vy: -Math.random() * 7 - 2,
+            size: Math.random() * 6 + 4,
+            color: ['#38bdf8', '#fb923c', '#10b981', '#f59e0b', '#ec4899', '#a78bfa'][Math.floor(Math.random() * 6)],
+            alpha: 1.0,
+            decay: Math.random() * 0.02 + 0.015
+          });
+        }
+      }
+
+      function updateSuccessState() {
+        if (knownA && knownB && knownC) {
+          if (!isSuccess) {
+            isSuccess = true;
+            triggerConfetti();
+          }
+        } else {
+          isSuccess = false;
+        }
+      }
+
+      // 외부 연동 API
+      window._step7_7_setAll = () => {
+        knownA = true;
+        knownB = true;
+        knownC = true;
+        updateSuccessState();
+      };
+
+      window._step7_7_triggerSuccess = () => {
+        knownA = true;
+        knownB = true;
+        knownC = true;
+        updateSuccessState();
+        triggerConfetti();
+      };
+
+      let hitRegions = [];
+
       function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, width, height);
 
+        // 배경
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, width, height);
+
+        // 은은한 그리드
         ctx.strokeStyle = '#1e293b';
         ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 40) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        const gridStep = 40;
+        for (let x = 0; x < width; x += gridStep) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
         }
-        for (let y = 0; y < canvas.height; y += 40) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        for (let y = 0; y < height; y += gridStep) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
         }
 
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 16px "Pretendard", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('[7-7] 14번: [서술형] GCD/LCM 네트워크와 A+B+C (p.26)', canvas.width / 2, 40);
+        hitRegions = [];
 
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.strokeStyle = '#f59e0b';
-        ctx.lineWidth = 3;
+        // 1. 상단 타이틀 배너
+        ctx.fillStyle = '#1e293b';
         ctx.beginPath();
-        ctx.arc(0, 0, 70, 0, Math.PI * 2);
+        ctx.roundRect(16, 10, width - 32, 54, 8);
+        ctx.fill();
+        ctx.strokeStyle = '#334155';
         ctx.stroke();
-        ctx.restore();
 
+        ctx.font = 'bold 14px "Pretendard", sans-serif';
+        ctx.fillStyle = '#38bdf8';
+        ctx.textAlign = 'left';
+        ctx.fillText('🕸️ GCD(역삼각형) / LCM(다이아몬드) 관계망 네트워크', 26, 28);
+
+        ctx.font = '11px "Pretendard", sans-serif';
         ctx.fillStyle = '#94a3b8';
-        ctx.font = '13px "Pretendard", sans-serif';
-        ctx.fillText('심화 마무리 인터랙터', cx, cy + 110);
+        ctx.fillText('노드를 클릭하여 미지수 A, B, C를 단계별로 해결하고, A + B + C 의 값을 구하세요!', 26, 46);
 
-        angle += 0.02;
+        // 2. 네트워크 그래프 노드 좌표 설정
+        const netY = 70;
+        const netH = 150;
+        const cxMid = width / 2;
+        const gapX = Math.min(130, (width - 120) / 2);
+
+        const node48 = { x: cxMid - gapX, y: netY + netH / 2 };
+        const nodeA  = { x: cxMid,        y: netY + netH / 2 };
+        const node54 = { x: cxMid + gapX, y: netY + netH / 2 };
+
+        const dia144 = { x: cxMid - gapX / 2, y: netY + 24 };
+        const tri12  = { x: cxMid - gapX / 2, y: netY + netH - 24 };
+        const diaC   = { x: cxMid + gapX / 2, y: netY + 24 };
+        const triB   = { x: cxMid + gapX / 2, y: netY + netH - 24 };
+
+        // 2-1. 연결선 그리기
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 1.5;
+
+        // 48 - 144 - A
+        ctx.beginPath(); ctx.moveTo(node48.x, node48.y); ctx.lineTo(dia144.x, dia144.y); ctx.lineTo(nodeA.x, nodeA.y); ctx.stroke();
+        // 48 - 12 - A
+        ctx.beginPath(); ctx.moveTo(node48.x, node48.y); ctx.lineTo(tri12.x, tri12.y); ctx.lineTo(nodeA.x, nodeA.y); ctx.stroke();
+        // A - C - 54
+        ctx.beginPath(); ctx.moveTo(nodeA.x, nodeA.y); ctx.lineTo(diaC.x, diaC.y); ctx.lineTo(node54.x, node54.y); ctx.stroke();
+        // A - B - 54
+        ctx.beginPath(); ctx.moveTo(nodeA.x, nodeA.y); ctx.lineTo(triB.x, triB.y); ctx.lineTo(node54.x, node54.y); ctx.stroke();
+
+        // 2-2. 연산 도형 그리기
+        // 다이아몬드 그리기 함수
+        function drawDiamond(pt, label, active, color) {
+          const s = 18;
+          ctx.fillStyle = active ? color : '#1e293b';
+          ctx.beginPath();
+          ctx.moveTo(pt.x, pt.y - s);
+          ctx.lineTo(pt.x + s + 4, pt.y);
+          ctx.lineTo(pt.x, pt.y + s);
+          ctx.lineTo(pt.x - s - 4, pt.y);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = active ? '#38bdf8' : '#64748b';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          ctx.font = 'bold 11px "Pretendard", sans-serif';
+          ctx.fillStyle = active ? '#ffffff' : '#cbd5e1';
+          ctx.textAlign = 'center';
+          ctx.fillText(label, pt.x, pt.y + 4);
+        }
+
+        // 역삼각형 그리기 함수
+        function drawInvTriangle(pt, label, active, color) {
+          const s = 18;
+          ctx.fillStyle = active ? color : '#1e293b';
+          ctx.beginPath();
+          ctx.moveTo(pt.x - s - 3, pt.y - s + 4);
+          ctx.lineTo(pt.x + s + 3, pt.y - s + 4);
+          ctx.lineTo(pt.x, pt.y + s);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = active ? '#fb923c' : '#64748b';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          ctx.font = 'bold 11px "Pretendard", sans-serif';
+          ctx.fillStyle = active ? '#ffffff' : '#cbd5e1';
+          ctx.textAlign = 'center';
+          ctx.fillText(label, pt.x, pt.y - 1);
+        }
+
+        // 다이아몬드 144 & 역삼각형 12 (주어진 조건)
+        drawDiamond(dia144, '144', true, '#0369a1');
+        drawInvTriangle(tri12, '12', true, '#c2410c');
+
+        // 다이아몬드 C & 역삼각형 B (미지수)
+        drawDiamond(diaC, knownC ? '108' : 'C', knownC, '#0369a1');
+        drawInvTriangle(triB, knownB ? '18' : 'B', knownB, '#c2410c');
+
+        // 2-3. 수 원형 노드 그리기 (48, A, 54)
+        function drawCircleNode(pt, label, sub, color, border) {
+          const r = 24;
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = border;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          ctx.font = 'bold 13px "Pretendard", sans-serif';
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.fillText(label, pt.x, pt.y + (sub ? -2 : 5));
+
+          if (sub) {
+            ctx.font = '10px "Pretendard", sans-serif';
+            ctx.fillStyle = '#e2e8f0';
+            ctx.fillText(sub, pt.x, pt.y + 12);
+          }
+        }
+
+        drawCircleNode(node48, '48', '2⁴×3', '#0369a1', '#38bdf8');
+        drawCircleNode(nodeA, knownA ? '36' : 'A', knownA ? '2²×3²' : '클릭', knownA ? '#059669' : '#d97706', knownA ? '#34d399' : '#f59e0b');
+        drawCircleNode(node54, '54', '2×3³', '#6d28d9', '#a78bfa');
+
+        // 노드 A 클릭 영역
+        hitRegions.push({
+          x: nodeA.x - 24, y: nodeA.y - 24, w: 48, h: 48,
+          action: () => {
+            knownA = !knownA;
+            updateSuccessState();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+
+        // 역삼각형 B 클릭 영역
+        hitRegions.push({
+          x: triB.x - 22, y: triB.y - 20, w: 44, h: 40,
+          action: () => {
+            if (!knownA) knownA = true;
+            knownB = !knownB;
+            updateSuccessState();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+
+        // 다이아몬드 C 클릭 영역
+        hitRegions.push({
+          x: diaC.x - 22, y: diaC.y - 20, w: 44, h: 40,
+          action: () => {
+            if (!knownA) knownA = true;
+            knownC = !knownC;
+            updateSuccessState();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+
+        // 3. 중앙: 단계별 도출 해설 패널
+        const stepY = netY + netH + 8;
+        const stepH = 68;
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.roundRect(16, stepY, width - 32, stepH, 8);
+        ctx.fill();
+        ctx.strokeStyle = '#334155';
+        ctx.stroke();
+
+        ctx.font = 'bold 11px "Pretendard", sans-serif';
+        ctx.textAlign = 'left';
+
+        // 1단계 요약
+        ctx.fillStyle = knownA ? '#34d399' : '#94a3b8';
+        ctx.fillText(`• [1단계] 48과 A: gcd=12, lcm=144 ➔ A = 36 (2²×3²) ${knownA ? '✓' : ''}`, 26, stepY + 20);
+
+        // 2단계 요약
+        ctx.fillStyle = (knownB && knownC) ? '#34d399' : '#94a3b8';
+        ctx.fillText(`• [2단계] 36과 54: 최대공약수 B = 18 ${knownB ? '✓' : ''}, 최소공배수 C = 108 ${knownC ? '✓' : ''}`, 26, stepY + 38);
+
+        // 빠른 자동 완성 버튼
+        const autoBtnW = 90;
+        const autoBtnH = 22;
+        const autoBtnX = width - 16 - autoBtnW - 10;
+        const autoBtnY = stepY + 12;
+
+        ctx.fillStyle = '#0f766e';
+        ctx.beginPath();
+        ctx.roundRect(autoBtnX, autoBtnY, autoBtnW, autoBtnH, 4);
+        ctx.fill();
+        ctx.strokeStyle = '#2dd4bf';
+        ctx.stroke();
+
+        ctx.font = 'bold 11px "Pretendard", sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.fillText('전체 자동 분석', autoBtnX + autoBtnW / 2, autoBtnY + 15);
+
+        hitRegions.push({
+          x: autoBtnX, y: autoBtnY, w: autoBtnW, h: autoBtnH,
+          action: () => {
+            knownA = true;
+            knownB = true;
+            knownC = true;
+            updateSuccessState();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+
+        // 4. 하단 서술형 최종 합산 디스플레이
+        const calcY = stepY + stepH + 8;
+        const calcH = 68;
+        const isMatched = (knownA && knownB && knownC);
+
+        ctx.fillStyle = isMatched ? '#064e3b' : '#1e293b';
+        ctx.beginPath();
+        ctx.roundRect(16, calcY, width - 32, calcH, 8);
+        ctx.fill();
+        ctx.strokeStyle = isMatched ? '#10b981' : '#334155';
+        ctx.lineWidth = isMatched ? 2 : 1;
+        ctx.stroke();
+
+        ctx.font = 'bold 13px "Pretendard", sans-serif';
+        ctx.textAlign = 'left';
+        if (isMatched) {
+          ctx.fillStyle = '#34d399';
+          ctx.fillText(`🎉 [3단계] 최종 합산 완성: A(36) + B(18) + C(108) = 162`, 28, calcY + 26);
+          ctx.font = '11px "Pretendard", sans-serif';
+          ctx.fillStyle = '#a7f3d0';
+          ctx.fillText(`1단계(A=36, 40%) + 2단계(B=18, C=108, 40%) + 3단계(합=162, 20%) = 100점 만점!`, 28, calcY + 48);
+        } else {
+          ctx.fillStyle = '#cbd5e1';
+          const aVal = knownA ? '36' : 'A';
+          const bVal = knownB ? '18' : 'B';
+          const cVal = knownC ? '108' : 'C';
+          ctx.fillText(`현재 상태: ${aVal} + ${bVal} + ${cVal}`, 28, calcY + 26);
+          ctx.font = '11px "Pretendard", sans-serif';
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText(`네트워크의 A, B, C 노드를 클릭하여 각 값을 모두 도출해 보세요.`, 28, calcY + 48);
+        }
+
+        // 일치 시 [답안창에 162 입력 ➔] 버튼
+        if (isMatched) {
+          const btnApplyW = 135;
+          const btnApplyX = width - 16 - btnApplyW - 12;
+          const btnApplyY = calcY + 16;
+          const btnApplyH = 36;
+
+          ctx.fillStyle = '#10b981';
+          ctx.beginPath();
+          ctx.roundRect(btnApplyX, btnApplyY, btnApplyW, btnApplyH, 6);
+          ctx.fill();
+          ctx.strokeStyle = '#34d399';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          ctx.font = 'bold 12px "Pretendard", sans-serif';
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.fillText('답안창에 162 입력 ➔', btnApplyX + btnApplyW / 2, btnApplyY + 22);
+
+          hitRegions.push({
+            x: btnApplyX, y: btnApplyY, w: btnApplyW, h: btnApplyH,
+            action: () => {
+              const inp = document.getElementById('ans-7-7');
+              if (inp) {
+                inp.value = '162';
+                inp.focus();
+              }
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+            }
+          });
+        }
+
+        // 콘페티 렌더링
+        if (confettiList.length > 0) {
+          confettiList.forEach((c) => {
+            c.x += c.vx;
+            c.y += c.vy;
+            c.vy += 0.15;
+            c.alpha -= c.decay;
+
+            if (c.alpha > 0) {
+              ctx.save();
+              ctx.globalAlpha = Math.max(0, c.alpha);
+              ctx.fillStyle = c.color;
+              ctx.beginPath();
+              ctx.arc(c.x, c.y, c.size, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+          });
+          confettiList = confettiList.filter(c => c.alpha > 0);
+        }
+
         animId = requestAnimationFrame(render);
       }
+
+      function handleCanvasClick(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+
+        for (const region of hitRegions) {
+          if (clickX >= region.x && clickX <= region.x + region.w &&
+              clickY >= region.y && clickY <= region.y + region.h) {
+            region.action();
+            break;
+          }
+        }
+      }
+
+      canvas.addEventListener('click', handleCanvasClick);
       render();
 
       window._cleanup_step_7_7 = () => {
         if (animId) cancelAnimationFrame(animId);
+        if (ro) ro.disconnect();
+        canvas.removeEventListener('click', handleCanvasClick);
       };
     }
 
@@ -53002,9 +53375,27 @@ function checkStep_1_12() {
       box.innerHTML = `
         <div class="question-card" style="padding:16px; background:#1e293b; border-radius:10px; margin-bottom:15px; border:1px solid #334155;">
           <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 7-7. 14번: [서술형] 최대공약수·최소공배수 연결 네트워크 (p.26)</div>
-          <p style="font-size:14px; color:#cbd5e1; line-height:1.6; margin-bottom:12px;">
-            아래 연결된 두 수의 최대공약수(역삼각형), 위에 연결된 두 수의 최소공배수(다이아몬드) 규칙에서 A+B+C의 값을 구하시오.
-          </p>
+          
+          <div style="background:#0f172a; border:1px solid #334155; border-radius:8px; padding:12px; margin-bottom:12px;">
+            <div style="font-weight:700; color:#f8fafc; margin-bottom:8px; font-size:14px;">
+              14. 다음 그림에서 [역삼각형]은 아래 연결된 두 수의 최대공약수이고, [다이아몬드]는 위에 연결된 두 수의 최소공배수이다. 이때 자연수 A, B, C에 대하여 A+B+C의 값을 구하시오. [서술형]
+            </div>
+            <div style="font-size:12px; color:#94a3b8; line-height:1.6; background:#1e293b; padding:8px; border-radius:6px;">
+              <b>[서술형 3단계 평가 기준]</b><br>
+              • 1단계: 48과 A의 관계에서 A = 36 구하기 (40%)<br>
+              • 2단계: 36과 54의 관계에서 B = 18, C = 108 구하기 (40%)<br>
+              • 3단계: A + B + C = 162 계산하기 (20%)
+            </div>
+          </div>
+
+          <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-7-7" data-val="36" style="font-weight:700; padding:5px 10px;">36</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-7-7" data-val="18" style="font-weight:700; padding:5px 10px;">18</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-7-7" data-val="108" style="font-weight:700; padding:5px 10px;">108</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-7-7" data-val="162" style="font-weight:700; padding:5px 10px;">162</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm btn-clear-7-7" style="font-size:12px; padding:5px 10px; margin-left:auto;">지우기</button>
+          </div>
+
           <div style="margin-bottom:12px;">
             <input type="text" id="ans-7-7" class="form-control" placeholder="수 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
           </div>
@@ -53013,6 +53404,29 @@ function checkStep_1_12() {
       `;
 
       const input = box.querySelector('#ans-7-7');
+
+      box.querySelectorAll('.btn-quick-7-7').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = btn.getAttribute('data-val');
+          if (input) {
+            input.value = val;
+            input.focus();
+          }
+          if (val === '162') {
+            if (window._step7_7_setAll) window._step7_7_setAll();
+          }
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        });
+      });
+
+      box.querySelector('.btn-clear-7-7')?.addEventListener('click', () => {
+        if (input) {
+          input.value = '';
+          input.focus();
+        }
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      });
+
       if (input) {
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') checkStep_7_7();
@@ -53021,15 +53435,54 @@ function checkStep_1_12() {
     }
 
     function checkStep_7_7() {
-      const v = normTxt(document.getElementById('ans-7-7')?.value);
-      const isCorrect = (v.length > 0);
+      const raw = document.getElementById('ans-7-7')?.value || '';
+      const v = normTxt(raw);
+
+      if (!v) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>값을 입력해 주세요.</b><br>캔버스에서 네트워크 관계망을 탐색하여 A, B, C를 구하고 더해 보세요.');
+        return;
+      }
+
+      // 오답 맞춤형 피드백
+      if (v === '36') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>36은 A의 값입니다!</b><br>B와 C를 구하여 A+B+C를 계산하세요.');
+        return;
+      }
+
+      if (v === '18') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>18은 B의 값입니다!</b><br>A(36)와 C(108)를 더해야 합니다.');
+        return;
+      }
+
+      if (v === '108') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>108은 C의 값입니다!</b><br>A(36)와 B(18)를 더해야 합니다.');
+        return;
+      }
+
+      if (v === '54') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>54는 A+B(36+18)의 값입니다!</b><br>C(108)를 더하세요.');
+        return;
+      }
+
+      // 정답 판정: 162 또는 백육십이
+      const isCorrect = (v === '162' || v === '백육십이');
+
       if (isCorrect) {
-        completeSubStep('7-7', '🎉 <b>정답입니다!</b><br>• 정답 및 해설: A=36, B=18, C=108 이므로 A+B+C=162');
+        if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        if (window._step7_7_triggerSuccess) {
+          window._step7_7_triggerSuccess();
+        }
+        completeSubStep('7-7', '🎉 <b>정답입니다! [서술형 100점 만점 & Tab 7 완결]</b><br>• 1단계: $48 = 2^4 \times 3$, $\gcd=12(2^2 \times 3)$, $\text{lcm}=144(2^4 \times 3^2)$ 이므로 $A = 2^2 \times 3^2 = <b>36</b>$ 입니다. [배점 40%]<br>• 2단계: $54 = 2 \times 3^3$ 이므로 36과 54의 $\gcd B = 2 \times 3^2 = <b>18</b>$, $\text{lcm} C = 2^2 \times 3^3 = <b>108</b>$ 입니다. [배점 40%]<br>• 3단계: 따라서 $A + B + C = 36 + 18 + 108 = <b>162</b>$ 입니다. [배점 20%]<br><br>🏆 <b>축하합니다! 7소단원 [7. 마무리 (심화·서술형 8~14번)]을 모두 완수하셨습니다!</b>');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>값을 입력해 주세요.</b>');
+        showFeedback(false, '❌ <b>다시 계산해 보세요!</b><br>1단계: A = 36, 2단계: B = 18, C = 108, 3단계: A+B+C = 162 입니다.');
       }
     }
 
