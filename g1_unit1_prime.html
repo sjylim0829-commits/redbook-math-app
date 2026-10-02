@@ -46637,63 +46637,660 @@ function checkStep_1_12() {
     // ==========================================
     function drawCanvas_6_3(container) {
       if (!container) return;
+      if (typeof window._cleanup_step_6_3 === 'function') {
+        window._cleanup_step_6_3();
+      }
       container.innerHTML = '';
+
       const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 500;
-      canvas.height = container.clientHeight || 450;
       canvas.style.width = '100%';
       canvas.style.height = '100%';
       canvas.style.display = 'block';
+      canvas.style.cursor = 'default';
       container.appendChild(canvas);
       const ctx = canvas.getContext('2d');
 
+      // State
+      const state = {
+        exp3: 1, // Exponent of 3 (1 ~ 16, target 13)
+        exp5: 1, // Exponent of 5 (1 ~ 8, target 4)
+        rot3: 0, // Visual rotation of dial 3 (radians)
+        targetRot3: 0,
+        rot5: 0, // Visual rotation of dial 5 (radians)
+        isSuccess: false,
+        pulse: 0,
+        particles: [],
+        hoverItem: null
+      };
+
+      // 3 powers table (cycle of 4: 3, 9, 7, 1)
+      const cycle3 = [3, 9, 7, 1];
+      const getDigit3 = (n) => cycle3[(n - 1) % 4];
+      const getDigit5 = (n) => 5; // Always 5
+
+      // Expose hooks
+      window._step6_3_setExp = (n3, n5) => {
+        if (n3) {
+          state.exp3 = Math.max(1, Math.min(16, n3));
+          state.targetRot3 = -((state.exp3 - 1) % 4) * (Math.PI / 2);
+        }
+        if (n5) state.exp5 = Math.max(1, Math.min(8, n5));
+      };
+
+      window._step6_3_triggerSuccess = () => {
+        state.isSuccess = true;
+        state.exp3 = 13;
+        state.exp5 = 4;
+        state.targetRot3 = -((13 - 1) % 4) * (Math.PI / 2);
+        createConfetti();
+      };
+
+      function createConfetti() {
+        state.particles = [];
+        const colors = ['#38bdf8', '#fbbf24', '#34d399', '#f43f5e', '#a855f7'];
+        for (let i = 0; i < 40; i++) {
+          state.particles.push({
+            x: canvas.width / (2 * (window.devicePixelRatio || 1)),
+            y: canvas.height / (2 * (window.devicePixelRatio || 1)),
+            vx: (Math.random() - 0.5) * 8,
+            vy: (Math.random() - 0.8) * 8,
+            r: Math.random() * 4 + 2,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.01
+          });
+        }
+      }
+
+      let hitBoxes = [];
+
+      function resizeCanvas() {
+        const rect = container.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        const w = rect.width || 600;
+        const h = rect.height || 480;
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resizeCanvas();
+
+      const ro = new ResizeObserver(() => resizeCanvas());
+      ro.observe(container);
+
+      // Render loop
       let animId;
-      let angle = 0;
       function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        state.pulse += 0.04;
+
+        // Smooth dial rotation lerp
+        state.rot3 += (state.targetRot3 - state.rot3) * 0.15;
+        state.rot5 += 0.02;
+
+        hitBoxes = [];
+        const dpr = window.devicePixelRatio || 1;
+        const W = canvas.width / dpr;
+        const H = canvas.height / dpr;
+
+        ctx.clearRect(0, 0, W, H);
+
+        // Background
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+        bgGrad.addColorStop(0, '#090d16');
+        bgGrad.addColorStop(1, '#0f172a');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, W, H);
 
         // Grid lines
-        ctx.strokeStyle = '#1e293b';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.025)';
         ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 40) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        for (let x = 0; x < W; x += 30) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
         }
-        for (let y = 0; y < canvas.height; y += 40) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        for (let y = 0; y < H; y += 30) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
         }
 
-        // Badge & Title
+        // --- Header ---
+        const titleY = 22;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 14px "Pretendard", -apple-system, sans-serif';
         ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 16px "Pretendard", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('[6-3] 03번: 거듭제곱의 일의 자리 규칙성 (p.25)', canvas.width / 2, 40);
+        ctx.fillText('03. 거듭제곱의 일의 자리 규칙성 탐색기 (3¹³ + 5⁴)', 18, titleY);
 
-        // Interactive visual placeholder
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
+        ctx.textAlign = 'right';
+        ctx.font = '12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('지수 버튼을 눌러 일의 자리 순환 규칙을 확인하세요', W - 18, titleY);
+
+        // --- Layout Splitting ---
+        const isNarrow = (W < 560);
+        const topH = 46;
+        const bottomH = 74;
+        const mainH = H - topH - bottomH - 10;
+
+        let leftW, rightW, leftX, rightX, mainY;
+        if (!isNarrow) {
+          mainY = topH;
+          leftW = (W - 36 - 12) * 0.55;
+          rightW = (W - 36 - 12) * 0.45;
+          leftX = 18;
+          rightX = leftX + leftW + 12;
+        } else {
+          mainY = topH;
+          leftW = W - 36;
+          rightW = W - 36;
+          leftX = 18;
+          rightX = 18;
+        }
+
+        // 1. Draw Dial 3 Section (Left Panel)
+        renderDial3Section(leftX, mainY, leftW, isNarrow ? (mainH * 0.58) : mainH);
+
+        // 2. Draw Dial 5 Section (Right Panel)
+        const dial5Y = isNarrow ? (mainY + mainH * 0.58 + 6) : mainY;
+        const dial5H = isNarrow ? (mainH * 0.42 - 6) : mainH;
+        renderDial5Section(rightX, dial5Y, rightW, dial5H);
+
+        // 3. Draw Bottom Combiner Section
+        renderBottomCombiner(18, H - bottomH - 6, W - 36, bottomH);
+
+        // 4. Draw Particles (if any)
+        if (state.particles.length > 0) {
+          ctx.save();
+          for (let i = state.particles.length - 1; i >= 0; i--) {
+            const p = state.particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.15; // gravity
+            p.life -= p.decay;
+            if (p.life <= 0) {
+              state.particles.splice(i, 1);
+              continue;
+            }
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = p.life;
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+
+        animId = requestAnimationFrame(render);
+      }
+
+      // --- Left Panel: 3의 거듭제곱 주기 룰렛 ---
+      function renderDial3Section(x, y, w, h) {
+        // Container Card
         ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.strokeStyle = '#f59e0b';
-        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(0, 0, 70, 0, Math.PI * 2);
+        ctx.roundRect(x, y, w, h, 10);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+        ctx.strokeStyle = (state.exp3 === 13) ? '#0284c7' : '#334155';
+        ctx.lineWidth = (state.exp3 === 13) ? 1.8 : 1.2;
+        ctx.fill();
         ctx.stroke();
         ctx.restore();
 
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '13px "Pretendard", sans-serif';
-        ctx.fillText('마무리 인터랙터', cx, cy + 110);
+        // Title Badge
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 13px "Pretendard", sans-serif';
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText('🌀 3의 거듭제곱 주기 룰렛 (주기 4)', x + 12, y + 10);
 
-        angle += 0.02;
-        animId = requestAnimationFrame(render);
+        ctx.font = '11px "Pretendard", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('일의 자리가 4단계 [3, 9, 7, 1]로 순환합니다.', x + 12, y + 27);
+
+        // Circular Dial Geometry
+        const dialCenterY = y + (h * 0.44);
+        const dialCenterX = x + (w * 0.35);
+        const radius = Math.min(w * 0.22, (h * 0.30));
+
+        // Dial Background Circle
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(dialCenterX, dialCenterY, radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#0f172a';
+        ctx.fill();
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Dial 4 Sectors (Rotating with state.rot3)
+        const sectorColors = ['#0284c7', '#0d9488', '#d97706', '#7c3aed'];
+        const digits = [3, 9, 7, 1];
+        const curActiveIdx = (state.exp3 - 1) % 4;
+
+        ctx.save();
+        ctx.translate(dialCenterX, dialCenterY);
+        ctx.rotate(state.rot3);
+
+        for (let i = 0; i < 4; i++) {
+          const startAngle = i * (Math.PI / 2) - Math.PI / 4;
+          const endAngle = startAngle + (Math.PI / 2);
+
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.arc(0, 0, radius - 2, startAngle, endAngle);
+          ctx.closePath();
+
+          const isSectorActive = (i === curActiveIdx);
+          ctx.fillStyle = isSectorActive ? sectorColors[i] : 'rgba(30, 41, 59, 0.6)';
+          ctx.fill();
+          ctx.strokeStyle = '#1e293b';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          // Sector Label
+          const midAngle = startAngle + Math.PI / 4;
+          const textR = radius * 0.65;
+          const tx = Math.cos(midAngle) * textR;
+          const ty = Math.sin(midAngle) * textR;
+
+          ctx.save();
+          ctx.translate(tx, ty);
+          ctx.rotate(-state.rot3); // Keep text upright
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = isSectorActive ? 'bold 16px "Pretendard", sans-serif' : 'bold 13px "Pretendard", sans-serif';
+          ctx.fillStyle = isSectorActive ? '#ffffff' : '#94a3b8';
+          ctx.fillText(digits[i].toString(), 0, 0);
+          ctx.restore();
+        }
+
+        // Center hub
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * 0.26, 0, Math.PI * 2);
+        ctx.fillStyle = '#0f172a';
+        ctx.fill();
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 11px "Pretendard", sans-serif';
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText('3ⁿ', 0, 0);
+
+        ctx.restore(); // Restore dial translate
+
+        // Fixed Pointer at 12 o'clock (Top of the dial)
+        const pointerY = dialCenterY - radius - 2;
+        ctx.beginPath();
+        ctx.moveTo(dialCenterX, pointerY + 6);
+        ctx.lineTo(dialCenterX - 6, pointerY - 7);
+        ctx.lineTo(dialCenterX + 6, pointerY - 7);
+        ctx.closePath();
+        ctx.fillStyle = '#f43f5e';
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Right side info inside Dial 3 panel
+        const infoX = dialCenterX + radius + 14;
+        const curDigit = getDigit3(state.exp3);
+        const rem = state.exp3 % 4;
+
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 13px "Pretendard", sans-serif';
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillText(`현재: 3^${state.exp3}`, infoX, dialCenterY - 45);
+
+        ctx.font = '12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText(`일의 자리: [ ${curDigit} ]`, infoX, dialCenterY - 26);
+
+        // Quotient & Remainder analysis
+        ctx.font = '11px "Pretendard", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        const q = Math.floor(state.exp3 / 4);
+        ctx.fillText(`${state.exp3} = 4 × ${q} + ${rem}`, infoX, dialCenterY - 6);
+
+        if (state.exp3 === 13) {
+          ctx.fillStyle = '#34d399';
+          ctx.font = 'bold 11px "Pretendard", sans-serif';
+          ctx.fillText('★ 교과서 문제 3¹³ 도달!', infoX, dialCenterY + 12);
+          ctx.fillText(`나머지 1 ➔ 첫 번째 수 [3]`, infoX, dialCenterY + 28);
+        } else {
+          ctx.fillStyle = '#cbd5e1';
+          ctx.fillText(rem === 0 ? '나머지 0 ➔ 4번째 수 [1]' : `나머지 ${rem} ➔ ${rem}번째 수 [${curDigit}]`, infoX, dialCenterY + 14);
+        }
+        ctx.restore();
+
+        // Exponent Selector Stepper & Buttons (Bottom of Left Panel)
+        const btnRowY = y + h - 42;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 11px "Pretendard", sans-serif';
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillText('지수 n 선택:', x + 12, btnRowY - 14);
+
+        // Buttons 1 ~ 13
+        const numBtns = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+        const btnW = Math.max(16, Math.min(24, (w - 24 - (numBtns.length - 1) * 3) / numBtns.length));
+        const btnH = 22;
+
+        numBtns.forEach((n, idx) => {
+          const bx = x + 12 + idx * (btnW + 3);
+          const by = btnRowY;
+          const isSelected = (state.exp3 === n);
+          const isTarget13 = (n === 13);
+
+          hitBoxes.push({ type: 'btnExp3', val: n, x: bx, y: by, w: btnW, h: btnH });
+
+          ctx.beginPath();
+          ctx.roundRect(bx, by, btnW, btnH, 4);
+
+          if (isSelected) {
+            ctx.fillStyle = isTarget13 ? '#059669' : '#0284c7';
+            ctx.fill();
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+          } else {
+            ctx.fillStyle = isTarget13 ? 'rgba(5, 150, 105, 0.25)' : '#1e293b';
+            ctx.fill();
+            ctx.strokeStyle = isTarget13 ? '#10b981' : '#334155';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = isSelected ? 'bold 10px "Pretendard", sans-serif' : '9.5px "Pretendard", sans-serif';
+          ctx.fillStyle = isSelected ? '#ffffff' : (isTarget13 ? '#34d399' : '#94a3b8');
+          ctx.fillText(n.toString(), bx + btnW / 2, by + btnH / 2);
+        });
       }
+
+      // --- Right Panel: 5의 거듭제곱 불변 룰렛 ---
+      function renderDial5Section(x, y, w, h) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, 10);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+        ctx.strokeStyle = (state.exp5 === 4) ? '#f59e0b' : '#334155';
+        ctx.lineWidth = (state.exp5 === 4) ? 1.8 : 1.2;
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+
+        // Title Badge
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 13px "Pretendard", sans-serif';
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillText('🔒 5의 거듭제곱 일의 자리 (불변 규칙)', x + 12, y + 10);
+
+        ctx.font = '11px "Pretendard", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('5ⁿ의 일의 자리는 항상 5입니다!', x + 12, y + 27);
+
+        // Geometry for 5 Dial
+        const dialCenterY = y + (h * 0.44);
+        const dialCenterX = x + (w * 0.32);
+        const radius = Math.min(w * 0.20, (h * 0.28));
+
+        // Dial 5 Circle (Golden lock style)
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(dialCenterX, dialCenterY, radius, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.15)';
+        ctx.fill();
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Outer teeth/gears decoration
+        for (let g = 0; g < 8; g++) {
+          const ga = g * (Math.PI / 4) + state.rot5;
+          const gx = dialCenterX + Math.cos(ga) * (radius + 3);
+          const gy = dialCenterY + Math.sin(ga) * (radius + 3);
+          ctx.beginPath();
+          ctx.arc(gx, gy, 2.5, 0, Math.PI * 2);
+          ctx.fillStyle = '#f59e0b';
+          ctx.fill();
+        }
+
+        // Center big "5"
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 26px "Pretendard", sans-serif';
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillText('5', dialCenterX, dialCenterY);
+
+        ctx.font = '10px "Pretendard", sans-serif';
+        ctx.fillStyle = '#fde68a';
+        ctx.fillText('항상 5', dialCenterX, dialCenterY + 18);
+        ctx.restore();
+
+        // Right side info
+        const infoX = dialCenterX + radius + 12;
+        const val5Map = { 1: 5, 2: 25, 3: 125, 4: 625, 5: 3125, 6: 15625 };
+        const calcVal5 = val5Map[state.exp5] || '5ⁿ';
+
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 13px "Pretendard", sans-serif';
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillText(`현재: 5^${state.exp5}`, infoX, dialCenterY - 42);
+
+        ctx.font = '12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillText(`= ${calcVal5}`, infoX, dialCenterY - 24);
+
+        ctx.font = '11px "Pretendard", sans-serif';
+        ctx.fillStyle = '#34d399';
+        ctx.fillText(`일의 자리: [ 5 ]`, infoX, dialCenterY - 5);
+
+        if (state.exp5 === 4) {
+          ctx.fillStyle = '#38bdf8';
+          ctx.font = 'bold 11px "Pretendard", sans-serif';
+          ctx.fillText('★ 교과서 문제 5⁴ 도달!', infoX, dialCenterY + 15);
+          ctx.font = '10.5px "Pretendard", sans-serif';
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText('5⁴ = 625 ➔ 일의 자리 5', infoX, dialCenterY + 30);
+        } else {
+          ctx.font = '10.5px "Pretendard", sans-serif';
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText('지수와 상관없이 일의 자리 5', infoX, dialCenterY + 16);
+        }
+
+        // Exponent m Stepper (Bottom of Right Panel)
+        const btnRowY = y + h - 42;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 11px "Pretendard", sans-serif';
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillText('지수 m 선택:', x + 12, btnRowY - 14);
+
+        const exp5Btns = [1, 2, 3, 4, 5, 6];
+        const btnW = Math.max(22, Math.min(32, (w - 24 - 5 * 5) / 6));
+        const btnH = 22;
+
+        exp5Btns.forEach((m, idx) => {
+          const bx = x + 12 + idx * (btnW + 5);
+          const by = btnRowY;
+          const isSelected = (state.exp5 === m);
+          const isTarget4 = (m === 4);
+
+          hitBoxes.push({ type: 'btnExp5', val: m, x: bx, y: by, w: btnW, h: btnH });
+
+          ctx.beginPath();
+          ctx.roundRect(bx, by, btnW, btnH, 4);
+          if (isSelected) {
+            ctx.fillStyle = isTarget4 ? '#d97706' : '#b45309';
+            ctx.fill();
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+          } else {
+            ctx.fillStyle = isTarget4 ? 'rgba(245, 158, 11, 0.2)' : '#1e293b';
+            ctx.fill();
+            ctx.strokeStyle = isTarget4 ? '#f59e0b' : '#334155';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = isSelected ? 'bold 10.5px "Pretendard", sans-serif' : '10px "Pretendard", sans-serif';
+          ctx.fillStyle = isSelected ? '#ffffff' : (isTarget4 ? '#fde68a' : '#94a3b8');
+          ctx.fillText(m.toString(), bx + btnW / 2, by + btnH / 2);
+        });
+      }
+
+      // --- Bottom Combiner Section: 일의 자리 합성 랩 ---
+      function renderBottomCombiner(x, y, w, h) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, 10);
+
+        const isExactTarget = (state.exp3 === 13 && state.exp5 === 4);
+        if (state.isSuccess) {
+          ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2;
+        } else if (isExactTarget) {
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.12)';
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 1.5;
+        } else {
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+          ctx.strokeStyle = '#334155';
+          ctx.lineWidth = 1;
+        }
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+
+        const d3 = getDigit3(state.exp3);
+        const d5 = getDigit5(state.exp5);
+        const sumDigit = (d3 + d5) % 10;
+
+        // Label
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 12px "Pretendard", sans-serif';
+        ctx.fillStyle = isExactTarget ? '#38bdf8' : '#94a3b8';
+        ctx.fillText('🔗 [일의 자리 합성 랩] 두 수의 일의 자리의 합:', x + 14, y + 10);
+
+        // Interactive Math Equation
+        ctx.font = 'bold 15px "Pretendard", sans-serif';
+        const eqY = y + 36;
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText(`(3^${state.exp3}의 일의 자리: ${d3})`, x + 14, eqY);
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillText(' + ', x + 185, eqY);
+
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillText(`(5^${state.exp5}의 일의 자리: ${d5})`, x + 208, eqY);
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillText(' = ', x + 380, eqY);
+
+        ctx.font = 'bold 17px "Pretendard", sans-serif';
+        ctx.fillStyle = isExactTarget ? '#34d399' : '#e2e8f0';
+        ctx.fillText(`[ ${sumDigit} ]`, x + 406, eqY);
+
+        // Copy button or Target hint
+        if (isExactTarget) {
+          const btnW = 90;
+          const btnH = 28;
+          const bx = x + w - btnW - 14;
+          const by = y + (h - btnH) / 2;
+
+          hitBoxes.push({ type: 'btnApplySum', val: sumDigit, x: bx, y: by, w: btnW, h: btnH });
+
+          ctx.beginPath();
+          ctx.roundRect(bx, by, btnW, btnH, 6);
+          ctx.fillStyle = '#0284c7';
+          ctx.fill();
+          ctx.strokeStyle = '#38bdf8';
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 11.5px "Pretendard", sans-serif';
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText('답안창에 입력 ➔', bx + btnW / 2, by + btnH / 2);
+        } else {
+          ctx.textAlign = 'right';
+          ctx.textBaseline = 'middle';
+          ctx.font = '11.5px "Pretendard", sans-serif';
+          ctx.fillStyle = '#64748b';
+          ctx.fillText('위에서 n=13과 m=4를 선택해 보세요', x + w - 16, y + h / 2);
+        }
+      }
+
+      // Pointer event handlers
+      function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top
+        };
+      }
+
+      function handlePointerDown(e) {
+        const p = getPos(e);
+        for (let i = hitBoxes.length - 1; i >= 0; i--) {
+          const b = hitBoxes[i];
+          if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) {
+            if (b.type === 'btnExp3') {
+              state.exp3 = b.val;
+              state.targetRot3 = -((state.exp3 - 1) % 4) * (Math.PI / 2);
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+              return;
+            } else if (b.type === 'btnExp5') {
+              state.exp5 = b.val;
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+              return;
+            } else if (b.type === 'btnApplySum') {
+              const inp = document.getElementById('ans-6-3');
+              if (inp) {
+                inp.value = b.val.toString();
+                inp.focus();
+              }
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+              return;
+            }
+          }
+        }
+      }
+
+      function handlePointerMove(e) {
+        const p = getPos(e);
+        let hover = false;
+        for (let i = hitBoxes.length - 1; i >= 0; i--) {
+          const b = hitBoxes[i];
+          if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) {
+            hover = true;
+            break;
+          }
+        }
+        canvas.style.cursor = hover ? 'pointer' : 'default';
+      }
+
+      canvas.addEventListener('pointerdown', handlePointerDown);
+      canvas.addEventListener('pointermove', handlePointerMove);
+
       render();
 
       window._cleanup_step_6_3 = () => {
         if (animId) cancelAnimationFrame(animId);
+        ro.disconnect();
+        canvas.removeEventListener('pointerdown', handlePointerDown);
+        canvas.removeEventListener('pointermove', handlePointerMove);
       };
     }
 
@@ -46702,17 +47299,55 @@ function checkStep_1_12() {
       box.innerHTML = `
         <div class="question-card" style="padding:16px; background:#1e293b; border-radius:10px; margin-bottom:15px; border:1px solid #334155;">
           <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 6-3. 03번: 거듭제곱의 일의 자리 규칙성 (p.25)</div>
-          <p style="font-size:14px; color:#cbd5e1; line-height:1.6; margin-bottom:12px;">
-            문제를 해결하고 답을 입력창에 작성하세요.
-          </p>
+          
+          <div style="background:#0f172a; border:1px solid #334155; border-radius:8px; padding:12px; margin-bottom:12px;">
+            <div style="font-weight:700; color:#f8fafc; margin-bottom:6px; font-size:14px;">03. 3¹³ + 5⁴ 의 일의 자리 숫자를 구하시오.</div>
+            <div style="font-size:13px; color:#94a3b8; line-height:1.6;">
+              💡 3의 거듭제곱과 5의 거듭제곱의 일의 자리가 반복되는 규칙성을 찾아 각각의 일의 자리 숫자를 더해 보세요.
+            </div>
+          </div>
+
+          <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-6-3" data-val="1" style="font-weight:700; padding:5px 10px;">1</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-6-3" data-val="2" style="font-weight:700; padding:5px 10px;">2</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-6-3" data-val="3" style="font-weight:700; padding:5px 10px;">3</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-6-3" data-val="4" style="font-weight:700; padding:5px 10px;">4</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-6-3" data-val="5" style="font-weight:700; padding:5px 10px;">5</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-6-3" data-val="6" style="font-weight:700; padding:5px 10px;">6</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-6-3" data-val="7" style="font-weight:700; padding:5px 10px;">7</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-6-3" data-val="8" style="font-weight:700; padding:5px 10px;">8</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-6-3" data-val="9" style="font-weight:700; padding:5px 10px;">9</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm btn-clear-6-3" style="font-size:12px; padding:5px 10px; margin-left:auto;">초기화</button>
+          </div>
+
           <div style="margin-bottom:12px;">
-            <input type="text" id="ans-6-3" class="form-control" placeholder="답 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
+            <input type="text" id="ans-6-3" class="form-control" placeholder="수 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
           </div>
           <button class="btn btn-primary" onclick="checkStep_6_3()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
 
       const input = box.querySelector('#ans-6-3');
+
+      box.querySelectorAll('.btn-quick-6-3').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = btn.getAttribute('data-val');
+          if (input) {
+            input.value = val;
+            input.focus();
+          }
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        });
+      });
+
+      box.querySelector('.btn-clear-6-3')?.addEventListener('click', () => {
+        if (input) {
+          input.value = '';
+          input.focus();
+        }
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      });
+
       if (input) {
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') checkStep_6_3();
@@ -46721,15 +47356,42 @@ function checkStep_1_12() {
     }
 
     function checkStep_6_3() {
-      const v = normTxt(document.getElementById('ans-6-3')?.value);
-      const isCorrect = (v.length > 0);
+      const raw = document.getElementById('ans-6-3')?.value || '';
+      const v = normTxt(raw);
+
+      if (!v) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>값을 입력해 주세요.</b><br>캔버스에서 3¹³과 5⁴의 일의 자리 규칙을 탐색한 후 정답 숫자를 입력해 보세요.');
+        return;
+      }
+
+      // Check specific common student errors
+      if (v === '3') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>3은 3¹³의 일의 자리 숫자입니다!</b><br>여기에 5⁴의 일의 자리 숫자를 더해야 전체 식(3¹³ + 5⁴)의 일의 자리가 됩니다.');
+        return;
+      }
+
+      if (v === '5') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>5는 5⁴의 일의 자리 숫자입니다!</b><br>3¹³의 일의 자리 숫자와 더해 보세요.');
+        return;
+      }
+
+      // Check correct answer 8
+      const isCorrect = (v === '8' || v === '팔');
+
       if (isCorrect) {
-        completeSubStep('6-3', '🎉 <b>정답입니다!</b><br>• 정답 및 해설: 3¹³의 일의 자리는 3, 5⁴의 일의 자리는 5 ➔ 3 + 5 = 8');
+        if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        if (window._step6_3_triggerSuccess) {
+          window._step6_3_triggerSuccess();
+        }
+        completeSubStep('6-3', '🎉 <b>정답입니다!</b><br>• 3의 거듭제곱의 일의 자리는 <b>3, 9, 7, 1</b>의 4개 숫자가 반복됩니다.<br>• 13 = 4 × 3 + 1 이므로 <b>3¹³의 일의 자리는 3</b>입니다.<br>• 5의 거듭제곱의 일의 자리는 항상 <b>5</b>입니다.<br>• 따라서 3¹³ + 5⁴의 일의 자리는 3 + 5 = <b>8</b>입니다.');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>값을 입력해 주세요.</b>');
+        showFeedback(false, '❌ <b>다시 확인해 보세요!</b><br>• 3의 거듭제곱의 일의 자리는 3, 9, 7, 1 (주기 4)로 반복됩니다.<br>• 5의 거듭제곱의 일의 자리는 항상 5입니다.<br>13 = 4 × 3 + 1 이므로 3¹³의 일의 자리(3)와 5⁴의 일의 자리(5)를 더해 보세요.');
       }
     }
 
