@@ -54551,59 +54551,314 @@ function checkStep_1_12() {
     function drawCanvas_8_3(container) {
       if (!container) return;
       container.innerHTML = '';
+
+      const wrap = document.createElement('div');
+      wrap.style.width = '100%';
+      wrap.style.height = '100%';
+      wrap.style.position = 'relative';
+      wrap.style.overflow = 'hidden';
+      wrap.style.display = 'flex';
+      wrap.style.flexDirection = 'column';
+      container.appendChild(wrap);
+
       const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 500;
-      canvas.height = container.clientHeight || 450;
       canvas.style.width = '100%';
       canvas.style.height = '100%';
       canvas.style.display = 'block';
-      container.appendChild(canvas);
+      canvas.style.flex = '1';
+      wrap.appendChild(canvas);
+
       const ctx = canvas.getContext('2d');
+      let dpr = window.devicePixelRatio || 1;
+      let width = 0;
+      let height = 0;
 
-      let animId;
-      let angle = 0;
+      // 몬드리안 색상 팔레트
+      const colorPalette = ['#ef4444', '#3b82f6', '#facc15', '#f8fafc', '#334155'];
+
+      // 나만의 몬드리안 아트 블록 레이아웃 (정규화 좌표: 0~1)
+      let blocks = [
+        { x: 0.0, y: 0.0, w: 0.6, h: 0.55, colorIdx: 0 }, // 대형 빨강
+        { x: 0.6, y: 0.0, w: 0.4, h: 0.35, colorIdx: 3 }, // 흰색
+        { x: 0.6, y: 0.35, w: 0.4, h: 0.20, colorIdx: 2 }, // 노랑
+        { x: 0.0, y: 0.55, w: 0.3, h: 0.45, colorIdx: 3 }, // 흰색
+        { x: 0.3, y: 0.55, w: 0.4, h: 0.45, colorIdx: 3 }, // 흰색
+        { x: 0.7, y: 0.55, w: 0.3, h: 0.45, colorIdx: 1 }  // 파랑
+      ];
+
+      let animId = null;
+      let confettiList = [];
+      let isCreated = true;
+
+      function resize() {
+        const rect = wrap.getBoundingClientRect();
+        width = Math.max(rect.width, 320);
+        height = Math.max(rect.height, 360);
+        dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+
+      const ro = new ResizeObserver(() => {
+        resize();
+      });
+      ro.observe(wrap);
+
+      function triggerConfetti() {
+        confettiList = [];
+        for (let i = 0; i < 40; i++) {
+          confettiList.push({
+            x: width * 0.5 + (Math.random() - 0.5) * 220,
+            y: height * 0.45 + (Math.random() - 0.5) * 80,
+            vx: (Math.random() - 0.5) * 8,
+            vy: -Math.random() * 6 - 2,
+            size: Math.random() * 6 + 4,
+            color: ['#ef4444', '#3b82f6', '#facc15', '#f8fafc', '#10b981'][Math.floor(Math.random() * 5)],
+            alpha: 1.0,
+            decay: Math.random() * 0.02 + 0.015
+          });
+        }
+      }
+
+      function downloadCanvasPNG() {
+        try {
+          const link = document.createElement('a');
+          link.download = 'mondrian_artwork.png';
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+          triggerConfetti();
+        } catch (err) {
+          console.error('Download error:', err);
+        }
+      }
+
+      function applyModernPreset() {
+        blocks = [
+          { x: 0.0, y: 0.0, w: 0.65, h: 0.6, colorIdx: 0 },
+          { x: 0.65, y: 0.0, w: 0.35, h: 0.35, colorIdx: 3 },
+          { x: 0.65, y: 0.35, w: 0.35, h: 0.25, colorIdx: 2 },
+          { x: 0.0, y: 0.6, w: 0.25, h: 0.4, colorIdx: 3 },
+          { x: 0.25, y: 0.6, w: 0.45, h: 0.4, colorIdx: 3 },
+          { x: 0.7, y: 0.6, w: 0.3, h: 0.4, colorIdx: 1 }
+        ];
+        triggerConfetti();
+      }
+
+      // 외부 연동 API
+      window._step8_3_applyPreset = applyModernPreset;
+      window._step8_3_downloadPNG = downloadCanvasPNG;
+      window._step8_3_triggerSuccess = () => {
+        triggerConfetti();
+      };
+
+      let hitRegions = [];
+
       function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, width, height);
 
+        // 배경
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, width, height);
+
+        // 은은한 그리드
         ctx.strokeStyle = '#1e293b';
         ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 40) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        const gridStep = 40;
+        for (let x = 0; x < width; x += gridStep) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
         }
-        for (let y = 0; y < canvas.height; y += 40) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        for (let y = 0; y < height; y += gridStep) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
         }
 
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 16px "Pretendard", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('[8-3] 활동 2: 분할 전략 & 나만의 몬드리안 아트 (p.28)', canvas.width / 2, 40);
+        hitRegions = [];
 
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.strokeStyle = '#f59e0b';
-        ctx.lineWidth = 3;
+        // 1. 상단 분할 전략 분석 배너
+        ctx.fillStyle = '#1e293b';
         ctx.beginPath();
-        ctx.arc(0, 0, 70, 0, Math.PI * 2);
+        ctx.roundRect(16, 8, width - 32, 56, 8);
+        ctx.fill();
+        ctx.strokeStyle = '#334155';
         ctx.stroke();
-        ctx.restore();
 
+        ctx.font = 'bold 13px "Pretendard", sans-serif';
+        ctx.fillStyle = '#38bdf8';
+        ctx.textAlign = 'left';
+        ctx.fillText('💡 [활동 2] 분할 전략 탐구 & 나만의 몬드리안 아트 (p.28)', 26, 26);
+
+        ctx.font = '11px "Pretendard", sans-serif';
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillText('• 전략 1: 소수(7)는 약수가 1과 자기 자신뿐이므로 1×7 한 가지만 가능하여 가장 먼저 배치!', 26, 42);
+        ctx.fillText('• 전략 2: 큰 수(12, 9)는 면적이 넓어 주변 셀 충돌로 형태가 빠르게 결정되므로 우선 배치!', 26, 56);
+
+        // 2. 중앙 몬드리안 캔버스 프레임 & 컨트롤 버튼
+        const frameTopY = 72;
+        const maxFrameH = height - frameTopY - 72;
+        const maxFrameW = width - 32;
+        const frameSize = Math.min(maxFrameH, maxFrameW, 250);
+        const frameStartX = (width - frameSize) / 2;
+        const frameStartY = frameTopY + (maxFrameH - frameSize) / 2;
+
+        // 상단 우측 유틸리티 버튼들
+        const btnH = 22;
+        const btnPresetW = 105;
+        const btnDownW = 115;
+        const btnResetW = 50;
+
+        const btnResetX = width - 16 - btnResetW - 8;
+        const btnDownX  = btnResetX - btnDownW - 6;
+        const btnPresetX = btnDownX - btnPresetW - 6;
+        const btnY = 16;
+
+        // 몬드리안 아트워크 블록들 렌더링
+        blocks.forEach((blk, idx) => {
+          const bx = frameStartX + blk.x * frameSize;
+          const by = frameStartY + blk.y * frameSize;
+          const bw = blk.w * frameSize;
+          const bh = blk.h * frameSize;
+
+          ctx.fillStyle = colorPalette[blk.colorIdx];
+          ctx.fillRect(bx, by, bw, bh);
+
+          // 굵은 검은색 경계선
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 4;
+          ctx.strokeRect(bx, by, bw, bh);
+
+          // 블록 클릭 시 색상 토글
+          hitRegions.push({
+            x: bx, y: by, w: bw, h: bh,
+            action: () => {
+              blk.colorIdx = (blk.colorIdx + 1) % colorPalette.length;
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+            }
+          });
+        });
+
+        // 캔버스 외곽 프레임
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 5;
+        ctx.strokeRect(frameStartX, frameStartY, frameSize, frameSize);
+
+        // 3. 하단 상태 배너 & 컨트롤 버튼
+        const bottomY = height - 60;
+        const bottomH = 52;
+
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.roundRect(16, bottomY, width - 32, bottomH, 8);
+        ctx.fill();
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.font = 'bold 12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#34d399';
+        ctx.textAlign = 'left';
+        ctx.fillText('🎨 나만의 몬드리안 작품: 블록을 클릭하여 색상을 변경해 보세요.', 28, bottomY + 22);
+
+        ctx.font = '11px "Pretendard", sans-serif';
         ctx.fillStyle = '#94a3b8';
-        ctx.font = '13px "Pretendard", sans-serif';
-        ctx.fillText('몬드리안 기하 프로젝트', cx, cy + 110);
+        ctx.fillText('작품 제목과 사용한 수학적 원리(소수·큰 수 전략)를 우측에 작성하세요.', 28, bottomY + 40);
 
-        angle += 0.02;
+        // 하단 버튼들
+        // [📷 PNG 이미지 다운로드] 버튼
+        const btnPngW = 110;
+        const btnPngX = width - 16 - btnPngW - 8;
+        const btnPngY = bottomY + 14;
+        const btnPngH = 26;
+
+        ctx.fillStyle = '#0f766e';
+        ctx.beginPath();
+        ctx.roundRect(btnPngX, btnPngY, btnPngW, btnPngH, 4);
+        ctx.fill();
+        ctx.strokeStyle = '#2dd4bf';
+        ctx.stroke();
+
+        ctx.font = 'bold 11px "Pretendard", sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.fillText('📷 PNG 다운로드', btnPngX + btnPngW / 2, btnPngY + 17);
+
+        hitRegions.push({
+          x: btnPngX, y: btnPngY, w: btnPngW, h: btnPngH,
+          action: () => {
+            downloadCanvasPNG();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+
+        // [🎨 프리셋] 버튼
+        const btnPreW = 80;
+        const btnPreX = btnPngX - btnPreW - 6;
+
+        ctx.fillStyle = '#334155';
+        ctx.beginPath();
+        ctx.roundRect(btnPreX, btnPngY, btnPreW, btnPngH, 4);
+        ctx.fill();
+        ctx.strokeStyle = '#475569';
+        ctx.stroke();
+
+        ctx.font = 'bold 11px "Pretendard", sans-serif';
+        ctx.fillStyle = '#cbd5e1';
+        ctx.textAlign = 'center';
+        ctx.fillText('🎨 프리셋', btnPreX + btnPreW / 2, btnPngY + 17);
+
+        hitRegions.push({
+          x: btnPreX, y: btnPngY, w: btnPreW, h: btnPngH,
+          action: () => {
+            applyModernPreset();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+
+        // 콘페티 렌더링
+        if (confettiList.length > 0) {
+          confettiList.forEach((c) => {
+            c.x += c.vx;
+            c.y += c.vy;
+            c.vy += 0.15;
+            c.alpha -= c.decay;
+
+            if (c.alpha > 0) {
+              ctx.save();
+              ctx.globalAlpha = Math.max(0, c.alpha);
+              ctx.fillStyle = c.color;
+              ctx.beginPath();
+              ctx.arc(c.x, c.y, c.size, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+          });
+          confettiList = confettiList.filter(c => c.alpha > 0);
+        }
+
         animId = requestAnimationFrame(render);
       }
+
+      function handleCanvasClick(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+
+        for (const region of hitRegions) {
+          if (clickX >= region.x && clickX <= region.x + region.w &&
+              clickY >= region.y && clickY <= region.y + region.h) {
+            region.action();
+            break;
+          }
+        }
+      }
+
+      canvas.addEventListener('click', handleCanvasClick);
       render();
 
       window._cleanup_step_8_3 = () => {
         if (animId) cancelAnimationFrame(animId);
+        if (ro) ro.disconnect();
+        canvas.removeEventListener('click', handleCanvasClick);
       };
     }
 
@@ -54612,17 +54867,52 @@ function checkStep_1_12() {
       box.innerHTML = `
         <div class="question-card" style="padding:16px; background:#1e293b; border-radius:10px; margin-bottom:15px; border:1px solid #334155;">
           <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 8-3. 활동 2: 분할 전략 & 나만의 몬드리안 아트 (p.28)</div>
-          <p style="font-size:14px; color:#cbd5e1; line-height:1.6; margin-bottom:12px;">
-            소수와 합성수를 활용한 나만의 작품을 완성하고 작품 설명을 작성하세요.
-          </p>
+          
+          <div style="background:#0f172a; border:1px solid #334155; border-radius:8px; padding:12px; margin-bottom:12px;">
+            <div style="font-weight:700; color:#f8fafc; margin-bottom:8px; font-size:14px;">
+              [활동 2] 직사각형 분해를 통해 알게 된 점(소수와 큰 수 우선 전략)을 정리하고, 나만의 몬드리안 작품 제목과 사용한 수학적 원리를 작성해 보세요.
+            </div>
+            <div style="font-size:12px; color:#94a3b8; line-height:1.6; background:#1e293b; padding:8px; border-radius:6px;">
+              <b>[교과서 예시 담화]</b><br>
+              "큰 수가 들어간 직사각형과 소수 7(1×7)처럼 한 가지 경우만 나오는 것을 먼저 찾고, 나머지 직사각형을 채워나갔다."
+            </div>
+          </div>
+
+          <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-8-3" data-val="소수와 큰 수 우선 전략" style="font-weight:700; padding:5px 10px;">소수와 큰 수 우선 전략</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-8-3" data-val="소인수분해 기하 모자이크" style="font-weight:700; padding:5px 10px;">소인수분해 기하 모자이크</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-8-3" data-val="소수 7의 단일 형태" style="font-weight:700; padding:5px 10px;">소수 7의 단일 형태</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm btn-clear-8-3" style="font-size:12px; padding:5px 10px; margin-left:auto;">지우기</button>
+          </div>
+
           <div style="margin-bottom:12px;">
-            <input type="text" id="ans-8-3" class="form-control" placeholder="작품 설명 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
+            <input type="text" id="ans-8-3" class="form-control" placeholder="작품 제목 및 설명 입력 (예: 소수와 기하학의 조화)" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
           </div>
           <button class="btn btn-primary" onclick="checkStep_8_3()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
 
       const input = box.querySelector('#ans-8-3');
+
+      box.querySelectorAll('.btn-quick-8-3').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = btn.getAttribute('data-val');
+          if (input) {
+            input.value = val;
+            input.focus();
+          }
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        });
+      });
+
+      box.querySelector('.btn-clear-8-3')?.addEventListener('click', () => {
+        if (input) {
+          input.value = '';
+          input.focus();
+        }
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      });
+
       if (input) {
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') checkStep_8_3();
@@ -54631,18 +54921,24 @@ function checkStep_1_12() {
     }
 
     function checkStep_8_3() {
-      const v = normTxt(document.getElementById('ans-8-3')?.value);
-      const isCorrect = (v.length > 0);
-      if (isCorrect) {
-        completeSubStep('8-3', '🎉 <b>정답입니다!</b><br>• 정답 및 해설: 나만의 몬드리안 작품 창작 및 수학적 설명을 완료하였습니다.');
-        const nextBtn = document.getElementById('btn-next-step');
-        if (nextBtn) nextBtn.style.display = 'inline-flex';
-      } else {
-        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>값을 입력해 주세요.</b>');
-      }
-    }
+      const raw = document.getElementById('ans-8-3')?.value || '';
+      const v = normTxt(raw);
 
+      if (!v || v.length < 3) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>작품 제목이나 분할 전략에 대해 3자 이상 작성해 주세요.</b><br>(보조 버튼을 클릭하여 입력할 수 있습니다)');
+        return;
+      }
+
+      // 3자 이상 입력 시 정답
+      if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+      if (window._step8_3_triggerSuccess) {
+        window._step8_3_triggerSuccess();
+      }
+      completeSubStep('8-3', '🎉 <b>정답입니다! 나만의 몬드리안 작품 창작 완료!</b><br>• 소수(7)와 큰 수(12, 9)를 먼저 배치하는 효과적인 분할 전략을 탐구하고 멋진 몬드리안 기하 작품을 완성하였습니다.<br>• 좌측 캔버스의 [📷 PNG 다운로드] 버튼으로 나만의 작품을 파일로 간직할 수 있습니다.');
+      const nextBtn = document.getElementById('btn-next-step');
+      if (nextBtn) nextBtn.style.display = 'inline-flex';
+    }
 
     // =========================================================
     // Step 8-4: 1단원 소인수분해 마스터 수료식 (p.28)
