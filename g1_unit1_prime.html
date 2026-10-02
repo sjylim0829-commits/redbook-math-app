@@ -1025,6 +1025,11 @@
       lab1_5: {
         base: 2, // 밑 (2, 3, 5)
         exponent: 3 // 지수 (1, 2, 3, 4)
+      },
+      // 1-6 Interactive Lab State (문제 2: 거듭제곱 묶기)
+      lab1_6: {
+        problemIndex: 0, // 0: 문제 ⑴, 1: 문제 ⑵
+        isPacked: false  // false: 전개식, true: 거듭제곱 합체
       }
     };
 
@@ -1179,6 +1184,9 @@
       } else if (code === '1-5') {
         renderToolbar1_5();
         renderSubstep1_5();
+      } else if (code === '1-6') {
+        renderToolbar1_6();
+        renderSubstep1_6();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -1819,6 +1827,38 @@
       state.lab1_5.exponent = nextExp;
       renderToolbar1_5();
       drawStep1_5Canvas();
+    }
+
+    function renderToolbar1_6() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+      const curProb = state.lab1_6.problemIndex;
+      const isPacked = state.lab1_6.isPacked;
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569;">문제 선택:</span>
+        <button class="tool-btn ${curProb === 0 ? 'active' : ''}" onclick="setStep1_6Problem(0)">⑴ 2×2×2×5×5</button>
+        <button class="tool-btn ${curProb === 1 ? 'active' : ''}" onclick="setStep1_6Problem(1)">⑵ 3×3×7×11×11×11</button>
+        <span style="margin: 0 4px; color:#cbd5e1;">|</span>
+        <button class="tool-btn ${isPacked ? 'active' : ''}" style="background:${isPacked ? '#dcfce7' : '#f1f5f9'}; color:${isPacked ? '#15803d' : '#334155'}; font-weight:700;" onclick="toggleStep1_6Pack()">
+          ${isPacked ? '📂 전개식으로 펼치기' : '📦 거듭제곱으로 묶기'}
+        </button>
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setStep1_6Problem(idx) {
+      state.lab1_6.problemIndex = idx;
+      state.lab1_6.isPacked = false;
+      renderToolbar1_6();
+      drawStep1_6Canvas();
+    }
+
+    function toggleStep1_6Pack() {
+      state.lab1_6.isPacked = !state.lab1_6.isPacked;
+      renderToolbar1_6();
+      drawStep1_6Canvas();
     }
 
     // -------------------------------------------------------------
@@ -5144,7 +5184,514 @@
     }
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (1-6 to 6-2)
+    // SUBSTEP 1-6: 6. 문제 2: 거듭제곱으로 나타내기 (교과서 p.11)
+    // -------------------------------------------------------------
+    function renderSubstep1_6() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[소수와 합성수] 6. 문제 2: 거듭제곱으로 나타내기 (교과서 11쪽)</b><br>
+        여러 인수가 곱해진 식을 같은 밑끼리 묶어 <b>거듭제곱</b>으로 나타냅니다.<br>
+        • 밑이 여러 개인 경우 밑이 작은 수부터 차례대로 나타냅니다.<br>
+        • 지수가 $1$인 경우는 보통 지수를 생략합니다. (예: $7^1 = 7$)<br>
+        좌측 캔버스에서 <b>[📦 거듭제곱으로 묶기]</b>를 조작하여 전개식과 거듭제곱을 비교 탐구하고 아래 문제를 해결해 봅시다.
+      `;
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="padding:14px; margin-bottom:12px; background:#f8fafc; border:1px solid #e2e8f0;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-size:0.75rem; font-weight:800; padding:2px 8px; border-radius:4px;">교과서 11쪽 문제 2</span>
+            <span style="font-size:0.8rem; font-weight:700; color:#64748b;">거듭제곱으로 나타내기</span>
+          </div>
+          <div style="font-size:0.82rem; color:#334155; line-height:1.6; background:#ffffff; padding:8px 10px; border-radius:6px; border:1px solid #e2e8f0;">
+            • 곱하는 수(밑)가 여러 개인 경우, 같은 수끼리 묶어 각각 거듭제곱으로 나타낸 후 곱셈 기호($\\times$)로 연결합니다.<br>
+            • 보통 밑이 작은 수부터 차례대로 적으며, 지수가 $1$인 경우는 지수를 생략합니다.
+          </div>
+        </div>
+
+        <div class="card" style="padding:14px; margin-bottom:12px;">
+          <!-- Question 1 -->
+          <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px dashed #e2e8f0;">
+            <label style="font-weight:800; font-size:0.88rem; color:#1e293b; display:block; margin-bottom:6px;">
+              ⑴ $2 \\times 2 \\times 2 \\times 5 \\times 5$를 거듭제곱으로 나타내시오.
+            </label>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px; font-size:0.86rem; color:#334155;">
+              <span>$2$의 지수:</span>
+              <input type="text" id="ans-1-6-1-exp2" class="proof-input-text" placeholder="답 입력" style="width:70px;" autocomplete="off">
+              <span>, $5$의 지수:</span>
+              <input type="text" id="ans-1-6-1-exp5" class="proof-input-text" placeholder="답 입력" style="width:70px;" autocomplete="off">
+            </div>
+            <div style="font-size:0.8rem; color:#64748b;">
+              전체 거듭제곱 식: <input type="text" id="ans-1-6-1-full" class="proof-input-text" placeholder="답 입력" style="width:160px;" autocomplete="off">
+              <span style="font-size:0.75rem; color:#94a3b8;">(예: 2^3 * 5^2 또는 2^3 × 5^2)</span>
+            </div>
+          </div>
+
+          <!-- Question 2 -->
+          <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px dashed #e2e8f0;">
+            <label style="font-weight:800; font-size:0.88rem; color:#1e293b; display:block; margin-bottom:6px;">
+              ⑵ $3 \\times 3 \\times 7 \\times 11 \\times 11 \\times 11$을 거듭제곱으로 나타내시오.
+            </label>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px; font-size:0.86rem; color:#334155;">
+              <span>$3$의 지수:</span>
+              <input type="text" id="ans-1-6-2-exp3" class="proof-input-text" placeholder="답 입력" style="width:65px;" autocomplete="off">
+              <span>, $7$의 지수:</span>
+              <input type="text" id="ans-1-6-2-exp7" class="proof-input-text" placeholder="답 입력" style="width:65px;" autocomplete="off">
+              <span>, $11$의 지수:</span>
+              <input type="text" id="ans-1-6-2-exp11" class="proof-input-text" placeholder="답 입력" style="width:65px;" autocomplete="off">
+            </div>
+            <div style="font-size:0.8rem; color:#64748b;">
+              전체 거듭제곱 식: <input type="text" id="ans-1-6-2-full" class="proof-input-text" placeholder="답 입력" style="width:200px;" autocomplete="off">
+              <span style="font-size:0.75rem; color:#94a3b8;">(예: 3^2 * 7 * 11^3)</span>
+            </div>
+          </div>
+
+          <!-- Question 3 -->
+          <div style="margin-bottom:16px;">
+            <label style="font-weight:800; font-size:0.88rem; color:#1e293b; display:block; margin-bottom:6px;">
+              ⑶ 밑이 여러 개인 거듭제곱의 표현 규칙에 대한 설명으로 가장 올바른 것을 고르시오.
+            </label>
+            <div style="display:flex; flex-direction:column; gap:8px; font-size:0.86rem; color:#334155;">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="radio" name="ans-1-6-3" value="1">
+                <span>① 밑이 다른 수라도 곱해진 횟수가 같으면 밑을 더할 수 있다.</span>
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="radio" name="ans-1-6-3" value="2">
+                <span>② 밑이 여러 개인 곱은 보통 밑이 작은 수부터 차례대로 나타내며, 지수가 1인 경우는 보통 생략한다.</span>
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="radio" name="ans-1-6-3" value="3">
+                <span>③ $3 \\times 3 \\times 7$은 밑이 다르므로 거듭제곱으로 나타낼 수 없다.</span>
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="radio" name="ans-1-6-3" value="4">
+                <span>④ $2^3 \\times 5^2$은 $(2 \\times 5)^5$과 같은 표현이다.</span>
+              </label>
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep1_6()" style="padding:10px; font-weight:800; font-size:0.92rem; width:100%;">
+            ✅ 정답 확인 및 채점하기
+          </button>
+        </div>
+
+        <div id="feedback-1-6" style="display:none; margin-top:10px; padding:12px; border-radius:8px;"></div>
+      `;
+
+      drawStep1_6Canvas();
+    }
+
+    function drawStep1_6Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const probIdx = state.lab1_6.problemIndex || 0;
+      const isPacked = state.lab1_6.isPacked || false;
+
+      // 1. Header (Title & Subtitle with responsive font sizes)
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(10.5, Math.min(12, Math.floor(width * 0.018)));
+
+      const probTitle = (probIdx === 0) ? '⑴ 2 × 2 × 2 × 5 × 5' : '⑵ 3 × 3 × 7 × 11 × 11 × 11';
+      const headerTitle = two.makeText(`⚡ 문제 2. 거듭제곱으로 묶기 랩 [문제 ${probTitle}]`, width / 2, 16);
+      headerTitle.size = titleSize;
+      headerTitle.weight = 800;
+      headerTitle.fill = '#1e293b';
+
+      const modeStr = isPacked ? '📦 거듭제곱으로 합체(Pack)된 상태' : '📂 개별 인수로 전개(Unpack)된 상태';
+      const headerSub = two.makeText(`${modeStr} - 캔버스 버튼을 클릭하여 합체/전개를 관찰해 보세요.`, width / 2, 33);
+      headerSub.size = subSize;
+      headerSub.weight = 600;
+      headerSub.fill = isPacked ? '#15803d' : '#4f46e5';
+
+      // 2. Top Card: Target Problem Expression Card (y: 48 ~ 124)
+      const cardW = Math.min(width - 30, 680);
+      const cardH = 76;
+      const cardBg = two.makeRoundedRectangle(width / 2, 48 + cardH / 2, cardW, cardH, 8);
+      cardBg.fill = '#f8fafc';
+      cardBg.stroke = '#e2e8f0';
+      cardBg.linewidth = 1;
+
+      const tProb = two.makeText(`주어진 곱셈식: ${probTitle}`, width / 2, 48 + 26);
+      tProb.size = (width < 600) ? 12 : 14;
+      tProb.weight = 800;
+      tProb.fill = '#1e293b';
+
+      const tProbSub = two.makeText(
+        (probIdx === 0) ? '밑 2가 3개 곱해져 있고, 밑 5가 2개 곱해져 있습니다.' :
+                          '밑 3이 2개, 밑 7이 1개, 밑 11이 3개 곱해져 있습니다.',
+        width / 2, 48 + 50
+      );
+      tProbSub.size = 11;
+      tProbSub.weight = 600;
+      tProbSub.fill = '#64748b';
+
+      // 3. Middle Section: Dynamic Interactive Merging Arena (y: 132 ~ 362)
+      const arenaCenterY = 245;
+
+      if (!isPacked) {
+        // UNPACKED MODE: Show individual number chips with grouping brackets
+        if (probIdx === 0) {
+          // Problem 1: 2, 2, 2, 5, 5
+          const factors = [
+            { val: 2, group: '2', col: '#8b5cf6', fill: '#f5f3ff', text: '#6d28d9' },
+            { val: 2, group: '2', col: '#8b5cf6', fill: '#f5f3ff', text: '#6d28d9' },
+            { val: 2, group: '2', col: '#8b5cf6', fill: '#f5f3ff', text: '#6d28d9' },
+            { val: 5, group: '5', col: '#f59e0b', fill: '#fef3c7', text: '#b45309' },
+            { val: 5, group: '5', col: '#f59e0b', fill: '#fef3c7', text: '#b45309' }
+          ];
+
+          const chipW = Math.min(46, Math.floor((width - 80) / 9));
+          const totalSeqW = 5 * chipW + 4 * 26;
+          const startSeqX = (width - totalSeqW) / 2;
+
+          let curX = startSeqX;
+          for (let i = 0; i < factors.length; i++) {
+            const cx = curX + chipW / 2;
+            const chip = two.makeRoundedRectangle(cx, arenaCenterY - 20, chipW, 44, 6);
+            chip.fill = factors[i].fill;
+            chip.stroke = factors[i].col;
+            chip.linewidth = 1.5;
+
+            const tVal = two.makeText(String(factors[i].val), cx, arenaCenterY - 20);
+            tVal.size = 16; tVal.weight = 800; tVal.fill = factors[i].text;
+
+            curX += chipW;
+            if (i < factors.length - 1) {
+              const times = two.makeText('×', curX + 13, arenaCenterY - 20);
+              times.size = 16; times.weight = 700; times.fill = '#94a3b8';
+              curX += 26;
+            }
+          }
+
+          // Group brackets / badges above chips
+          const g1CenterX = startSeqX + (3 * chipW + 2 * 26) / 2;
+          const g1Badge = two.makeRoundedRectangle(g1CenterX, arenaCenterY - 58, 120, 24, 12);
+          g1Badge.fill = '#ede9fe'; g1Badge.stroke = '#8b5cf6'; g1Badge.linewidth = 1;
+          const g1Text = two.makeText('밑 2가 3개 (2³)', g1CenterX, arenaCenterY - 58);
+          g1Text.size = 10.5; g1Text.weight = 800; g1Text.fill = '#6d28d9';
+
+          const g2StartX = startSeqX + 3 * chipW + 3 * 26;
+          const g2CenterX = g2StartX + (2 * chipW + 1 * 26) / 2;
+          const g2Badge = two.makeRoundedRectangle(g2CenterX, arenaCenterY - 58, 100, 24, 12);
+          g2Badge.fill = '#fef3c7'; g2Badge.stroke = '#f59e0b'; g2Badge.linewidth = 1;
+          const g2Text = two.makeText('밑 5가 2개 (5²)', g2CenterX, arenaCenterY - 58);
+          g2Text.size = 10.5; g2Text.weight = 800; g2Text.fill = '#b45309';
+
+        } else {
+          // Problem 2: 3, 3, 7, 11, 11, 11
+          const factors = [
+            { val: 3, group: '3', col: '#0284c7', fill: '#e0f2fe', text: '#0369a1' },
+            { val: 3, group: '3', col: '#0284c7', fill: '#e0f2fe', text: '#0369a1' },
+            { val: 7, group: '7', col: '#10b981', fill: '#ecfdf5', text: '#047857' },
+            { val: 11, group: '11', col: '#9333ea', fill: '#f3e8ff', text: '#7e22ce' },
+            { val: 11, group: '11', col: '#9333ea', fill: '#f3e8ff', text: '#7e22ce' },
+            { val: 11, group: '11', col: '#9333ea', fill: '#f3e8ff', text: '#7e22ce' }
+          ];
+
+          const chipW = Math.min(38, Math.floor((width - 90) / 11));
+          const totalSeqW = 6 * chipW + 5 * 20;
+          const startSeqX = (width - totalSeqW) / 2;
+
+          let curX = startSeqX;
+          for (let i = 0; i < factors.length; i++) {
+            const cx = curX + chipW / 2;
+            const chip = two.makeRoundedRectangle(cx, arenaCenterY - 20, chipW, 40, 6);
+            chip.fill = factors[i].fill;
+            chip.stroke = factors[i].col;
+            chip.linewidth = 1.5;
+
+            const tVal = two.makeText(String(factors[i].val), cx, arenaCenterY - 20);
+            tVal.size = 14; tVal.weight = 800; tVal.fill = factors[i].text;
+
+            curX += chipW;
+            if (i < factors.length - 1) {
+              const times = two.makeText('×', curX + 10, arenaCenterY - 20);
+              times.size = 14; times.weight = 700; times.fill = '#94a3b8';
+              curX += 20;
+            }
+          }
+
+          // Group brackets / badges above
+          const g1CenterX = startSeqX + (2 * chipW + 1 * 20) / 2;
+          const g1Badge = two.makeRoundedRectangle(g1CenterX, arenaCenterY - 58, 90, 22, 11);
+          g1Badge.fill = '#e0f2fe'; g1Badge.stroke = '#0284c7'; g1Badge.linewidth = 1;
+          const g1Text = two.makeText('3이 2개 (3²)', g1CenterX, arenaCenterY - 58);
+          g1Text.size = 9.5; g1Text.weight = 800; g1Text.fill = '#0369a1';
+
+          const g2StartX = startSeqX + 2 * chipW + 2 * 20;
+          const g2CenterX = g2StartX + chipW / 2;
+          const g2Badge = two.makeRoundedRectangle(g2CenterX, arenaCenterY - 58, 80, 22, 11);
+          g2Badge.fill = '#ecfdf5'; g2Badge.stroke = '#10b981'; g2Badge.linewidth = 1;
+          const g2Text = two.makeText('7이 1개 (7)', g2CenterX, arenaCenterY - 58);
+          g2Text.size = 9.5; g2Text.weight = 800; g2Text.fill = '#047857';
+
+          const g3StartX = startSeqX + 3 * chipW + 3 * 20;
+          const g3CenterX = g3StartX + (3 * chipW + 2 * 20) / 2;
+          const g3Badge = two.makeRoundedRectangle(g3CenterX, arenaCenterY - 58, 100, 22, 11);
+          g3Badge.fill = '#f3e8ff'; g3Badge.stroke = '#9333ea'; g3Badge.linewidth = 1;
+          const g3Text = two.makeText('11이 3개 (11³)', g3CenterX, arenaCenterY - 58);
+          g3Text.size = 9.5; g3Text.weight = 800; g3Text.fill = '#7e22ce';
+        }
+
+        // Canvas Action Button (Pack)
+        const packBtnW = 240;
+        const packBtnH = 38;
+        const packBtnY = arenaCenterY + 40;
+        const packBtnBg = two.makeRoundedRectangle(width / 2, packBtnY, packBtnW, packBtnH, 19);
+        packBtnBg.fill = '#4f46e5';
+        packBtnBg.stroke = '#4338ca';
+        packBtnBg.linewidth = 1.5;
+
+        const packBtnText = two.makeText('📦 거듭제곱으로 묶기 (Click)', width / 2, packBtnY);
+        packBtnText.size = 12; packBtnText.weight = 800; packBtnText.fill = '#ffffff';
+
+      } else {
+        // PACKED MODE: Show consolidated Power Cards!
+        if (probIdx === 0) {
+          // Problem 1: 2^3 x 5^2
+          const pCard1X = width / 2 - 80;
+          const pCard2X = width / 2 + 80;
+
+          // Card 1 (2^3)
+          const c1 = two.makeRoundedRectangle(pCard1X, arenaCenterY - 24, 110, 70, 8);
+          c1.fill = '#f5f3ff'; c1.stroke = '#8b5cf6'; c1.linewidth = 2;
+
+          const c1Base = two.makeText('2', pCard1X - 10, arenaCenterY - 22);
+          c1Base.size = 30; c1Base.weight = 900; c1Base.fill = '#6d28d9';
+
+          const c1Exp = two.makeText('3', pCard1X + 16, arenaCenterY - 36);
+          c1Exp.size = 19; c1Exp.weight = 900; c1Exp.fill = '#b45309';
+
+          const c1Tag = two.makeText('밑 2 (3번 곱함)', pCard1X, arenaCenterY + 2);
+          c1Tag.size = 9.5; c1Tag.weight = 700; c1Tag.fill = '#6d28d9';
+
+          // Multiply Sign
+          const mult = two.makeText('×', width / 2, arenaCenterY - 24);
+          mult.size = 24; mult.weight = 800; mult.fill = '#64748b';
+
+          // Card 2 (5^2)
+          const c2 = two.makeRoundedRectangle(pCard2X, arenaCenterY - 24, 110, 70, 8);
+          c2.fill = '#fef3c7'; c2.stroke = '#f59e0b'; c2.linewidth = 2;
+
+          const c2Base = two.makeText('5', pCard2X - 10, arenaCenterY - 22);
+          c2Base.size = 30; c2Base.weight = 900; c2Base.fill = '#b45309';
+
+          const c2Exp = two.makeText('2', pCard2X + 16, arenaCenterY - 36);
+          c2Exp.size = 19; c2Exp.weight = 900; c2Exp.fill = '#4338ca';
+
+          const c2Tag = two.makeText('밑 5 (2번 곱함)', pCard2X, arenaCenterY + 2);
+          c2Tag.size = 9.5; c2Tag.weight = 700; c2Tag.fill = '#b45309';
+
+          // Final equation banner
+          const finalEq = two.makeText('정답 표기: 2³ × 5²  (계산값: 8 × 25 = 200)', width / 2, arenaCenterY + 30);
+          finalEq.size = 12; finalEq.weight = 800; finalEq.fill = '#15803d';
+
+        } else {
+          // Problem 2: 3^2 x 7 x 11^3
+          const pCard1X = width / 2 - 120;
+          const pCard2X = width / 2;
+          const pCard3X = width / 2 + 120;
+
+          // Card 1 (3^2)
+          const c1 = two.makeRoundedRectangle(pCard1X, arenaCenterY - 24, 95, 70, 8);
+          c1.fill = '#e0f2fe'; c1.stroke = '#0284c7'; c1.linewidth = 2;
+          const c1Base = two.makeText('3', pCard1X - 8, arenaCenterY - 22);
+          c1Base.size = 28; c1Base.weight = 900; c1Base.fill = '#0369a1';
+          const c1Exp = two.makeText('2', pCard1X + 14, arenaCenterY - 34);
+          c1Exp.size = 18; c1Exp.weight = 900; c1Exp.fill = '#b45309';
+          const c1Tag = two.makeText('밑 3 (2번 곱함)', pCard1X, arenaCenterY + 2);
+          c1Tag.size = 9; c1Tag.weight = 700; c1Tag.fill = '#0369a1';
+
+          // Multiply 1
+          const mult1 = two.makeText('×', width / 2 - 60, arenaCenterY - 24);
+          mult1.size = 20; mult1.weight = 800; mult1.fill = '#64748b';
+
+          // Card 2 (7)
+          const c2 = two.makeRoundedRectangle(pCard2X, arenaCenterY - 24, 95, 70, 8);
+          c2.fill = '#ecfdf5'; c2.stroke = '#10b981'; c2.linewidth = 2;
+          const c2Base = two.makeText('7', pCard2X, arenaCenterY - 22);
+          c2Base.size = 28; c2Base.weight = 900; c2Base.fill = '#047857';
+          const c2Tag = two.makeText('지수 1 생략', pCard2X, arenaCenterY + 2);
+          c2Tag.size = 9; c2Tag.weight = 700; c2Tag.fill = '#047857';
+
+          // Multiply 2
+          const mult2 = two.makeText('×', width / 2 + 60, arenaCenterY - 24);
+          mult2.size = 20; mult2.weight = 800; mult2.fill = '#64748b';
+
+          // Card 3 (11^3)
+          const c3 = two.makeRoundedRectangle(pCard3X, arenaCenterY - 24, 95, 70, 8);
+          c3.fill = '#f3e8ff'; c3.stroke = '#9333ea'; c3.linewidth = 2;
+          const c3Base = two.makeText('11', pCard3X - 8, arenaCenterY - 22);
+          c3Base.size = 24; c3Base.weight = 900; c3Base.fill = '#7e22ce';
+          const c3Exp = two.makeText('3', pCard3X + 16, arenaCenterY - 34);
+          c3Exp.size = 18; c3Exp.weight = 900; c3Exp.fill = '#b45309';
+          const c3Tag = two.makeText('밑 11 (3번 곱함)', pCard3X, arenaCenterY + 2);
+          c3Tag.size = 9; c3Tag.weight = 700; c3Tag.fill = '#7e22ce';
+
+          // Final equation banner
+          const finalEq = two.makeText('정답 표기: 3² × 7 × 11³  (계산값: 9 × 7 × 1331 = 83,853)', width / 2, arenaCenterY + 30);
+          finalEq.size = 11.5; finalEq.weight = 800; finalEq.fill = '#15803d';
+        }
+
+        // Canvas Action Button (Unpack)
+        const unpackBtnW = 240;
+        const unpackBtnH = 38;
+        const unpackBtnY = arenaCenterY + 54;
+        const unpackBtnBg = two.makeRoundedRectangle(width / 2, unpackBtnY, unpackBtnW, unpackBtnH, 19);
+        unpackBtnBg.fill = '#059669';
+        unpackBtnBg.stroke = '#047857';
+        unpackBtnBg.linewidth = 1.5;
+
+        const unpackBtnText = two.makeText('📂 다시 전개식으로 펼치기 (Click)', width / 2, unpackBtnY);
+        unpackBtnText.size = 12; unpackBtnText.weight = 800; unpackBtnText.fill = '#ffffff';
+      }
+
+      // 4. Bottom Rule & Hint Banner (Strict budgeting y: 372 ~ 438)
+      const bannerY = 372;
+      const bannerH = Math.max(52, height - bannerY - 8);
+      const bannerW = Math.min(width - 30, 680);
+
+      const bannerBg = two.makeRoundedRectangle(width / 2, bannerY + bannerH / 2, bannerW, bannerH, 8);
+      bannerBg.fill = '#f8fafc';
+      bannerBg.stroke = '#e2e8f0';
+      bannerBg.linewidth = 1;
+
+      const ruleLine1Y = (bannerH > 52) ? bannerY + 16 : bannerY + 14;
+      const ruleLine2Y = (bannerH > 52) ? bannerY + 36 : bannerY + 32;
+
+      const rule1 = two.makeText('💡 [밑의 순서] 밑이 여러 개인 거듭제곱의 곱은 보통 밑이 작은 수부터 차례대로 나타냅니다.', width / 2, ruleLine1Y);
+      rule1.size = (width < 600) ? 10 : 11;
+      rule1.weight = 700;
+      rule1.fill = '#334155';
+
+      const rule2 = two.makeText('📌 [지수 1의 생략] 지수가 1인 거듭제곱은 보통 지수 1을 생략하여 나타냅니다. (예: 7¹ ➔ 7)', width / 2, ruleLine2Y);
+      rule2.size = (width < 600) ? 9.5 : 10.5;
+      rule2.weight = 800;
+      rule2.fill = '#4338ca';
+
+      two.update();
+
+      // Bind Pointer Event on Canvas for Pack/Unpack button
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas') : null;
+      if (canvasEl) {
+        canvasEl.onpointerdown = (e) => {
+          const rect = canvasEl.getBoundingClientRect();
+          const px = (e.clientX - rect.left) * (width / rect.width);
+          const py = (e.clientY - rect.top) * (height / rect.height);
+
+          // Check if clicked the toggle button
+          const btnY = !isPacked ? (arenaCenterY + 40) : (arenaCenterY + 54);
+          if (Math.abs(px - width / 2) <= 120 && Math.abs(py - btnY) <= 22) {
+            toggleStep1_6Pack();
+          }
+        };
+      }
+    }
+
+    async function gradeStep1_6() {
+      const q1Exp2 = cleanInput(document.getElementById('ans-1-6-1-exp2')?.value);
+      const q1Exp5 = cleanInput(document.getElementById('ans-1-6-1-exp5')?.value);
+      const q1Full = cleanInput(document.getElementById('ans-1-6-1-full')?.value);
+
+      const q2Exp3 = cleanInput(document.getElementById('ans-1-6-2-exp3')?.value);
+      const q2Exp7 = cleanInput(document.getElementById('ans-1-6-2-exp7')?.value);
+      const q2Exp11 = cleanInput(document.getElementById('ans-1-6-2-exp11')?.value);
+      const q2Full = cleanInput(document.getElementById('ans-1-6-2-full')?.value);
+
+      const q3 = document.querySelector('input[name="ans-1-6-3"]:checked')?.value;
+
+      const fEl = document.getElementById('feedback-1-6');
+      if (!fEl) return;
+
+      // Evaluation for Question 1
+      const ok1Exps = (q1Exp2 === '3' && q1Exp5 === '2');
+      const norm1 = q1Full.replace(/\s+/g, '').replace(/[\*xX]/g, '×').replace(/²/g, '^2').replace(/³/g, '^3');
+      const ok1Full = (norm1.includes('2^3') && norm1.includes('5^2'));
+      const ok1 = (ok1Exps || ok1Full) && (q1Exp2 === '' || q1Exp2 === '3') && (q1Exp5 === '' || q1Exp5 === '2');
+
+      // Evaluation for Question 2
+      const ok2Exps = (q2Exp3 === '2' && (q2Exp7 === '1' || q2Exp7 === '') && q2Exp11 === '3');
+      const norm2 = q2Full.replace(/\s+/g, '').replace(/[\*xX]/g, '×').replace(/²/g, '^2').replace(/³/g, '^3');
+      const ok2Full = (norm2.includes('3^2') && norm2.includes('7') && norm2.includes('11^3'));
+      const ok2 = (ok2Exps || ok2Full) && (q2Exp3 === '' || q2Exp3 === '2') && (q2Exp11 === '' || q2Exp11 === '3');
+
+      // Evaluation for Question 3
+      const ok3 = (q3 === '2');
+
+      if (ok1 && ok2 && ok3) {
+        fEl.style.display = 'block';
+        fEl.className = 'verified-answer-card';
+        fEl.style.background = '#f0fdf4';
+        fEl.style.border = '1.5px solid #86efac';
+        fEl.innerHTML = `
+          <h4 style="color:#15803d; font-size:0.95rem; font-weight:800; margin-bottom:6px;">🎉 100점! 완벽합니다!</h4>
+          <div style="font-size:0.86rem; color:#166534; line-height:1.6;">
+            여러 밑을 가진 곱셈식을 거듭제곱으로 완벽하게 나타냈습니다.<br>
+            • <b>⑴ $2 \\times 2 \\times 2 \\times 5 \\times 5$:</b> $2$가 $3$개, $5$가 $2$개 ➔ <b>$2^3 \\times 5^2$</b><br>
+            • <b>⑵ $3 \\times 3 \\times 7 \\times 11 \\times 11 \\times 11$:</b> $3$이 $2$개, $7$이 $1$개, $11$이 $3$개 ➔ <b>$3^2 \\times 7 \\times 11^3$</b><br>
+            • <b>⑶ 거듭제곱 규칙:</b> 밑이 여러 개인 경우 보통 밑이 작은 수부터 차례대로 나타내며, 지수가 $1$인 경우는 보통 생략합니다.<br>
+            <div style="margin-top:8px; padding:8px 10px; background:#dcfce7; border-radius:6px; font-weight:700;">
+              💡 핵심 개념: 밑이 다른 인수들은 각각 거듭제곱으로 묶은 후 곱셈 기호($\\times$)로 연결합니다!<br>
+              다음 활동 <b>[1-7] 스스로 확인하기 1 (소수와 합성수 판별, 교과서 12쪽)</b>이 해금되었습니다. 🔓
+            </div>
+          </div>
+        `;
+
+        if (!state.completedSubSteps.includes('1-6')) {
+          state.completedSubSteps.push('1-6');
+        }
+        if (!state.unlockedSubSteps.includes('1-7')) {
+          state.unlockedSubSteps.push('1-7');
+        }
+
+        updateSubStepPills(state.currentMainTab);
+
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('1-6', {
+              activityTitle: '[중1-1 소인수분해] [1-6] 문제 2: 거듭제곱으로 나타내기',
+              answerText: `(1) 2^${q1Exp2}*5^${q1Exp5} (${q1Full}) | (2) 3^${q2Exp3}*7*11^${q2Exp11} (${q2Full}) | 보기: ${q3}`,
+              answers: { q1Exp2, q1Exp5, q1Full, q2Exp3, q2Exp7, q2Exp11, q2Full, q3 },
+              score: 100,
+              passed: true
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+      } else {
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            ${!ok1 ? '• ⑴ $2 \\times 2 \\times 2 \\times 5 \\times 5$에서 $2$가 몇 번 곱해졌는지(지수), $5$가 몇 번 곱해졌는지(지수)를 다시 세어 보세요.<br>' : ''}
+            ${!ok2 ? '• ⑵ $3 \\times 3 \\times 7 \\times 11 \\times 11 \\times 11$에서 각 밑($3, 7, 11$)이 곱해진 횟수를 세어 보세요. ($7$은 $1$번 곱해졌으므로 지수 $1$을 생략할 수 있습니다)<br>' : ''}
+            ${!ok3 ? '• ⑶ 밑이 여러 개인 거듭제곱을 표기할 때의 수학적 규칙(밑의 정렬 순서, 지수 1의 생략 등)을 가장 바르게 설명한 보기를 선택해 보세요.<br>' : ''}
+            💡 좌측 캔버스의 [📦 거듭제곱으로 묶기] 버튼을 눌러 개별 인수가 묶이는 과정을 확인해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (1-7 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -5243,6 +5790,11 @@
         state.lab1_5.exponent = 3;
         renderToolbar1_5();
         drawStep1_5Canvas();
+      } else if (state.subStep === '1-6') {
+        state.lab1_6.problemIndex = 0;
+        state.lab1_6.isPacked = false;
+        renderToolbar1_6();
+        drawStep1_6Canvas();
       }
     }
 
@@ -5499,6 +6051,7 @@
         else if (state.subStep === '1-3') drawStep1_3Canvas();
         else if (state.subStep === '1-4') drawStep1_4Canvas();
         else if (state.subStep === '1-5') drawStep1_5Canvas();
+        else if (state.subStep === '1-6') drawStep1_6Canvas();
       }, 150);
     });
 
