@@ -996,6 +996,12 @@
         pairIndex: 0, // 0: (12, 18), 1: (45, 54)
         highlightCommon: false,
         selectedNumber: null
+      },
+      // 0-3 Interactive Lab State
+      lab0_3: {
+        pairIndex: 0, // 0: (4, 6), 1: (9, 12)
+        highlightCommon: false,
+        selectedHop: null
       }
     };
 
@@ -1132,6 +1138,9 @@
       } else if (code === '0-2') {
         renderToolbar0_2();
         renderSubstep0_2();
+      } else if (code === '0-3') {
+        renderToolbar0_3();
+        renderSubstep0_3();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -1592,6 +1601,33 @@
         <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
         <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
       `;
+    }
+
+    function renderToolbar0_3() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569;">🔬 탐구 대상:</span>
+        <button id="btn-pair-0" class="tool-btn ${state.lab0_3.pairIndex === 0 ? 'active' : ''}" onclick="setCommonMultiplePair(0)">(1) 4와 6</button>
+        <button id="btn-pair-1" class="tool-btn ${state.lab0_3.pairIndex === 1 ? 'active' : ''}" onclick="setCommonMultiplePair(1)">(2) 9와 12</button>
+        <button id="btn-toggle-common" class="tool-btn ${state.lab0_3.highlightCommon ? 'active' : ''}" onclick="toggleHighlightCommonMultiples()">✨ 공배수·최소공배수 점프 강조</button>
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setCommonMultiplePair(idx) {
+      state.lab0_3.pairIndex = idx;
+      state.lab0_3.selectedHop = null;
+      renderToolbar0_3();
+      drawStep0_3Canvas();
+    }
+
+    function toggleHighlightCommonMultiples() {
+      state.lab0_3.highlightCommon = !state.lab0_3.highlightCommon;
+      renderToolbar0_3();
+      drawStep0_3Canvas();
     }
 
     // -------------------------------------------------------------
@@ -2056,7 +2092,514 @@
     }
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (0-3 to 6-2)
+    // SUBSTEP 0-3: 되짚어 보기 3: 공배수와 최소공배수 (초5~6 복습, p.8)
+    // -------------------------------------------------------------
+    const MULTIPLE_PAIRS_CONFIG = [
+      {
+        title: '(1) 4와 6',
+        numA: 4,
+        numB: 6,
+        multiplesA: [4, 8, 12, 16, 20, 24, 28, 32, 36],
+        multiplesB: [6, 12, 18, 24, 30, 36],
+        common: [12, 24, 36],
+        lcm: 12,
+        maxRange: 40
+      },
+      {
+        title: '(2) 9와 12',
+        numA: 9,
+        numB: 12,
+        multiplesA: [9, 18, 27, 36, 45, 54, 63, 72],
+        multiplesB: [12, 24, 36, 48, 60, 72],
+        common: [36, 72],
+        lcm: 36,
+        maxRange: 75
+      }
+    ];
+
+    function renderSubstep0_3() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[되짚어 보기 3] 공배수와 최소공배수 (초5~6 연계)</b><br>
+        • 두 수의 공통인 배수를 <b>공배수</b>라고 합니다.<br>
+        • 공배수 중에서 가장 작은 수를 <b>최소공배수(LCM)</b>라고 합니다.<br>
+        • <b>핵심 성질:</b> 두 수의 공배수는 <b>최소공배수의 배수</b>입니다.<br>
+        좌측 캔버스에서 두 수의 점프 수직선을 관찰하고 공배수 충돌 기둥(✨) 및 최소공배수(👑)를 확인해 보세요!
+      `;
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--secondary-color); padding: 12px 14px;">
+          <h4 style="font-size:0.92rem; font-weight:800; color:#1e293b; margin-bottom:10px;">3. 다음 두 수의 공배수를 작은 것부터 3개 쓰고, 최소공배수를 각각 구하시오.</h4>
+          
+          <!-- (1) 4, 6 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; margin-bottom:10px;">
+            <div style="font-weight:800; font-size:0.88rem; color:#1e293b; margin-bottom:6px;">
+              (1) $4, 6$
+            </div>
+            
+            <div style="margin-bottom:8px;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:3px;">
+                • $4$와 $6$의 공배수 3개를 작은 수부터 쉼표(,)로 구분하여 입력하시오. <span style="font-size:0.78rem; color:#64748b; font-weight:500;">(예: 2, 4, 6)</span>
+              </label>
+              <input type="text" id="ans-0-3-1-common" class="proof-input-text" placeholder="답 입력" style="width:100%; max-width:280px;" autocomplete="off">
+            </div>
+
+            <div>
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:3px;">
+                • $4$와 $6$의 최소공배수를 입력하시오.
+              </label>
+              <input type="text" id="ans-0-3-1-lcm" class="proof-input-text" placeholder="답 입력" style="width:100%; max-width:140px;" autocomplete="off">
+            </div>
+          </div>
+
+          <!-- (2) 9, 12 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; margin-bottom:10px;">
+            <div style="font-weight:800; font-size:0.88rem; color:#1e293b; margin-bottom:6px;">
+              (2) $9, 12$
+            </div>
+
+            <div style="margin-bottom:8px;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:3px;">
+                • $9$와 $12$의 공배수 3개를 작은 수부터 쉼표(,)로 구분하여 입력하시오. <span style="font-size:0.78rem; color:#64748b; font-weight:500;">(예: 2, 4, 6)</span>
+              </label>
+              <input type="text" id="ans-0-3-2-common" class="proof-input-text" placeholder="답 입력" style="width:100%; max-width:280px;" autocomplete="off">
+            </div>
+
+            <div>
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:3px;">
+                • $9$와 $12$의 최소공배수를 입력하시오.
+              </label>
+              <input type="text" id="ans-0-3-2-lcm" class="proof-input-text" placeholder="답 입력" style="width:100%; max-width:140px;" autocomplete="off">
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep0_3()" style="padding:10px; font-weight:800; font-size:0.92rem;">
+            ✅ 정답 확인 및 채점하기
+          </button>
+
+          <div id="feedback-0-3" style="display:none;"></div>
+        </div>
+      `;
+
+      drawStep0_3Canvas();
+    }
+
+    function drawStep0_3Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const pair = MULTIPLE_PAIRS_CONFIG[state.lab0_3.pairIndex || 0];
+      const { numA, numB, multiplesA, multiplesB, common, lcm, maxRange } = pair;
+
+      // 1. Header (Title & Subtitle with responsive sizes)
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(10.5, Math.min(12, Math.floor(width * 0.018)));
+
+      const titleY = Math.max(18, Math.min(24, Math.floor(height * 0.055)));
+      const subY = titleY + 20;
+
+      const title = two.makeText(`🏷️ ${numA}와 ${numB}의 공배수와 최소공배수 점프 수직선 탐구`, width / 2, titleY);
+      title.size = titleSize;
+      title.weight = 800;
+      title.fill = '#1e293b';
+
+      const sub = two.makeText('두 수의 점프 궤적을 비교하고, 함께 착지하는 공배수(✨)와 첫 공배수(👑 LCM)를 확인해 보세요.', width / 2, subY);
+      sub.size = subSize;
+      sub.fill = '#64748b';
+
+      // 2. Bottom Banners (Budgeted from bottom up to prevent overlapping)
+      const summaryH = (height < 400) ? 34 : 38;
+      const summaryY = height - Math.floor(summaryH / 2) - 8;
+      
+      const inspectH = (height < 400) ? 22 : 26;
+      const inspectY = summaryY - Math.floor(summaryH / 2) - Math.floor(inspectH / 2) - 6;
+
+      // 3. Middle Dynamic Track Layout (Strict non-overlapping vertical & horizontal budgeting)
+      const topLimit = subY + 16;
+      const bottomLimit = inspectY - Math.floor(inspectH / 2) - 10;
+      const availH = Math.max(160, bottomLimit - topLimit);
+
+      const yTrack1 = topLimit + Math.floor(availH * 0.32);
+      const yTrack2 = topLimit + Math.floor(availH * 0.72);
+
+      const marginX = Math.max(48, Math.min(68, Math.floor(width * 0.09)));
+      const lineLen = width - marginX * 2;
+
+      function getX(val) {
+        return marginX + (val / maxRange) * lineLen;
+      }
+
+      // Vertical Collision Pillars for Common Multiples
+      common.forEach(cVal => {
+        if (cVal <= maxRange) {
+          const cx = getX(cVal);
+          const isLcm = (cVal === lcm);
+          const isHighlighted = state.lab0_3.highlightCommon;
+
+          // Glowing background pillar rect
+          const pillarH = (yTrack2 - yTrack1) + 40;
+          const pillarRect = two.makeRoundedRectangle(cx, (yTrack1 + yTrack2) / 2, isLcm ? 36 : 30, pillarH, 6);
+          pillarRect.fill = isLcm ? 'rgba(254, 240, 138, 0.45)' : (isHighlighted ? 'rgba(237, 233, 254, 0.6)' : 'rgba(241, 245, 249, 0.5)');
+          pillarRect.stroke = isLcm ? '#f59e0b' : (isHighlighted ? '#a78bfa' : '#cbd5e1');
+          pillarRect.linewidth = isLcm ? 2 : 1.2;
+
+          // Vertical connector beam line
+          const beam = two.makeLine(cx, yTrack1, cx, yTrack2);
+          beam.stroke = isLcm ? '#d97706' : '#8b5cf6';
+          beam.linewidth = isLcm ? 2.5 : 1.8;
+
+          // Center badge between tracks
+          const badgeY = (yTrack1 + yTrack2) / 2;
+          const badgeW = isLcm ? 76 : 64;
+          const badgeH = 20;
+          const centerBadge = two.makeRoundedRectangle(cx, badgeY, badgeW, badgeH, 10);
+          centerBadge.fill = isLcm ? '#fef3c7' : '#ede9fe';
+          centerBadge.stroke = isLcm ? '#f59e0b' : '#c4b5fd';
+          centerBadge.linewidth = 1.2;
+
+          const badgeTxt = two.makeText(isLcm ? `👑 LCM ${cVal}` : `✨ 공배수 ${cVal}`, cx, badgeY);
+          badgeTxt.size = isLcm ? 10.5 : 9.5;
+          badgeTxt.weight = 800;
+          badgeTxt.fill = isLcm ? '#92400e' : '#6d28d9';
+        }
+      });
+
+      // Axis Lines
+      // Track 1 Axis
+      const axis1 = two.makeLine(marginX - 15, yTrack1, width - marginX + 15, yTrack1);
+      axis1.stroke = '#94a3b8';
+      axis1.linewidth = 1.5;
+
+      const arrow1 = two.makePolygon(width - marginX + 17, yTrack1, 5, 3);
+      arrow1.rotation = Math.PI / 2;
+      arrow1.fill = '#94a3b8';
+
+      // Track 2 Axis
+      const axis2 = two.makeLine(marginX - 15, yTrack2, width - marginX + 15, yTrack2);
+      axis2.stroke = '#94a3b8';
+      axis2.linewidth = 1.5;
+
+      const arrow2 = two.makePolygon(width - marginX + 17, yTrack2, 5, 3);
+      arrow2.rotation = Math.PI / 2;
+      arrow2.fill = '#94a3b8';
+
+      // Track Title Badges
+      const trackBadgeW = Math.max(90, Math.min(115, Math.floor(width * 0.16)));
+      const badge1 = two.makeRoundedRectangle(marginX + 36, yTrack1 - 28, trackBadgeW, 20, 10);
+      badge1.fill = '#eef2ff'; badge1.stroke = '#c7d2fe'; badge1.linewidth = 1;
+      const bTxt1 = two.makeText(`🔵 ${numA}의 배수 (+${numA})`, marginX + 36, yTrack1 - 28);
+      bTxt1.size = 10.5; bTxt1.weight = 800; bTxt1.fill = '#4338ca';
+
+      const badge2 = two.makeRoundedRectangle(marginX + 36, yTrack2 + 28, trackBadgeW, 20, 10);
+      badge2.fill = '#fdf2f8'; badge2.stroke = '#fbcfe8'; badge2.linewidth = 1;
+      const bTxt2 = two.makeText(`🔴 ${numB}의 배수 (+${numB})`, marginX + 36, yTrack2 + 28);
+      bTxt2.size = 10.5; bTxt2.weight = 800; bTxt2.fill = '#db2777';
+
+      // Interactive Landing Nodes Collector
+      const landingNodes = [];
+
+      // Origin 0 Tick for Track 1
+      const tick0_1 = two.makeLine(getX(0), yTrack1 - 4, getX(0), yTrack1 + 4);
+      tick0_1.stroke = '#64748b'; tick0_1.linewidth = 1.5;
+      const t0Txt1 = two.makeText('0', getX(0), yTrack1 + 14);
+      t0Txt1.size = 10.5; t0Txt1.weight = 700; t0Txt1.fill = '#64748b';
+
+      // Track 1 Multiples (Arcs Upward)
+      for (let i = 0; i < multiplesA.length; i++) {
+        const prevVal = (i === 0) ? 0 : multiplesA[i - 1];
+        const curVal = multiplesA[i];
+        if (curVal > maxRange) break;
+
+        const x1 = getX(prevVal);
+        const x2 = getX(curVal);
+        const midX = (x1 + x2) / 2;
+        const arcH = Math.min(26, Math.max(14, (x2 - x1) * 0.42));
+
+        const curve = two.makeCurve(x1, yTrack1, midX, yTrack1 - arcH, x2, yTrack1, true);
+        curve.noFill();
+        const isCommon = common.includes(curVal);
+        curve.stroke = isCommon ? '#6366f1' : '#818cf8';
+        curve.linewidth = isCommon ? 2.5 : 1.8;
+
+        // Tick mark
+        const tick = two.makeLine(x2, yTrack1 - 4, x2, yTrack1 + 4);
+        tick.stroke = isCommon ? '#4f46e5' : '#94a3b8';
+        tick.linewidth = isCommon ? 2 : 1;
+
+        // Tick Label (below axis line)
+        const tTxt = two.makeText(`${curVal}`, x2, yTrack1 + 14);
+        tTxt.size = isCommon ? 11 : 10;
+        tTxt.weight = isCommon ? 800 : 600;
+        tTxt.fill = isCommon ? '#4338ca' : '#475569';
+
+        landingNodes.push({ track: 'A', val: curVal, x: x2, y: yTrack1, isCommon });
+      }
+
+      // Origin 0 Tick for Track 2
+      const tick0_2 = two.makeLine(getX(0), yTrack2 - 4, getX(0), yTrack2 + 4);
+      tick0_2.stroke = '#64748b'; tick0_2.linewidth = 1.5;
+      const t0Txt2 = two.makeText('0', getX(0), yTrack2 - 14);
+      t0Txt2.size = 10.5; t0Txt2.weight = 700; t0Txt2.fill = '#64748b';
+
+      // Track 2 Multiples (Arcs Downward)
+      for (let i = 0; i < multiplesB.length; i++) {
+        const prevVal = (i === 0) ? 0 : multiplesB[i - 1];
+        const curVal = multiplesB[i];
+        if (curVal > maxRange) break;
+
+        const x1 = getX(prevVal);
+        const x2 = getX(curVal);
+        const midX = (x1 + x2) / 2;
+        const arcH = Math.min(26, Math.max(14, (x2 - x1) * 0.42));
+
+        const curve = two.makeCurve(x1, yTrack2, midX, yTrack2 + arcH, x2, yTrack2, true);
+        curve.noFill();
+        const isCommon = common.includes(curVal);
+        curve.stroke = isCommon ? '#e11d48' : '#fb7185';
+        curve.linewidth = isCommon ? 2.5 : 1.8;
+
+        // Tick mark
+        const tick = two.makeLine(x2, yTrack2 - 4, x2, yTrack2 + 4);
+        tick.stroke = isCommon ? '#db2777' : '#94a3b8';
+        tick.linewidth = isCommon ? 2 : 1;
+
+        // Tick Label (above axis line)
+        const tTxt = two.makeText(`${curVal}`, x2, yTrack2 - 14);
+        tTxt.size = isCommon ? 11 : 10;
+        tTxt.weight = isCommon ? 800 : 600;
+        tTxt.fill = isCommon ? '#db2777' : '#475569';
+
+        landingNodes.push({ track: 'B', val: curVal, x: x2, y: yTrack2, isCommon });
+      }
+
+      // Render Interactive Node Dots
+      const selHop = state.lab0_3.selectedHop;
+      landingNodes.forEach(node => {
+        const isSel = (selHop && selHop.val === node.val && selHop.track === node.track);
+        const isLcm = (node.val === lcm);
+
+        const circle = two.makeCircle(node.x, node.y, (node.isCommon || isLcm) ? 6 : 5);
+        if (isLcm) {
+          circle.fill = '#fde047';
+          circle.stroke = '#b45309';
+          circle.linewidth = 2;
+        } else if (node.isCommon) {
+          circle.fill = '#c4b5fd';
+          circle.stroke = '#6d28d9';
+          circle.linewidth = 2;
+        } else if (node.track === 'A') {
+          circle.fill = isSel ? '#818cf8' : '#c7d2fe';
+          circle.stroke = '#4338ca';
+          circle.linewidth = isSel ? 2 : 1.2;
+        } else {
+          circle.fill = isSel ? '#fb7185' : '#fbcfe8';
+          circle.stroke = '#db2777';
+          circle.linewidth = isSel ? 2 : 1.2;
+        }
+
+        if (isSel) {
+          const aura = two.makeCircle(node.x, node.y, 11);
+          aura.noFill();
+          aura.stroke = node.track === 'A' ? '#4f46e5' : '#e11d48';
+          aura.linewidth = 2;
+        }
+      });
+
+      // 4. Selected Inspection Banner
+      let inspectionText = '💡 팁: 수직선의 점프 착지점(동그라미)을 클릭하면 배수 정보를 확인하고 공배수를 탐구할 수 있습니다!';
+      let inspectColor = '#475569';
+      let inspectBg = '#f8fafc';
+      let inspectBorder = '#cbd5e1';
+
+      if (selHop !== null) {
+        const sVal = selHop.val;
+        if (sVal === lcm) {
+          inspectionText = `👑 ${sVal}은(는) ${numA}와 ${numB}의 공배수 중 가장 작은 [최소공배수(LCM)]입니다! (${numA}×${sVal/numA}, ${numB}×${sVal/numB})`;
+          inspectColor = '#92400e';
+          inspectBg = '#fefce8';
+          inspectBorder = '#fde047';
+        } else if (common.includes(sVal)) {
+          inspectionText = `✨ ${sVal}은(는) ${numA}와 ${numB}의 [공배수]이며, 최소공배수(${lcm})의 ${sVal/lcm}배입니다! (${numA}×${sVal/numA}, ${numB}×${sVal/numB})`;
+          inspectColor = '#6d28d9';
+          inspectBg = '#ede9fe';
+          inspectBorder = '#c4b5fd';
+        } else if (selHop.track === 'A') {
+          inspectionText = `🔍 ${sVal}은(는) ${numA}의 배수(${numA}×${sVal/numA})이지만, ${numB}의 배수는 아닙니다.`;
+          inspectColor = '#4338ca';
+          inspectBg = '#eef2ff';
+          inspectBorder = '#c7d2fe';
+        } else {
+          inspectionText = `🔍 ${sVal}은(는) ${numB}의 배수(${numB}×${sVal/numB})이지만, ${numA}의 배수는 아닙니다.`;
+          inspectColor = '#be185d';
+          inspectBg = '#fdf2f8';
+          inspectBorder = '#fbcfe8';
+        }
+      } else if (state.lab0_3.highlightCommon) {
+        inspectionText = `✨ ${numA}와 ${numB}의 공배수: [${common.join(', ')}, ...] ➔ 가장 작은 공배수(최소공배수): ${lcm}`;
+        inspectColor = '#b45309';
+        inspectBg = '#fffbeb';
+        inspectBorder = '#fcd34d';
+      }
+
+      const inspectBox = two.makeRoundedRectangle(width / 2, inspectY, width - 36, inspectH, 6);
+      inspectBox.fill = inspectBg;
+      inspectBox.stroke = inspectBorder;
+      inspectBox.linewidth = 1.2;
+
+      const inspectMsg = two.makeText(inspectionText, width / 2, inspectY);
+      inspectMsg.size = (width < 600) ? 10.5 : 11.5;
+      inspectMsg.weight = 700;
+      inspectMsg.fill = inspectColor;
+
+      // 5. Bottom Summary Banner
+      const summaryBox = two.makeRoundedRectangle(width / 2, summaryY, width - 36, summaryH, 8);
+      summaryBox.fill = '#f0fdf4';
+      summaryBox.stroke = '#86efac';
+      summaryBox.linewidth = 1.5;
+
+      const sumLine1Y = (summaryH > 35) ? summaryY - 8 : summaryY - 6;
+      const sumLine2Y = (summaryH > 35) ? summaryY + 8 : summaryY + 6;
+
+      const sumLine1 = two.makeText(`📌 ${numA}의 배수: ${multiplesA.slice(0, 5).join(', ')} ...  |  ${numB}의 배수: ${multiplesB.slice(0, 5).join(', ')} ...`, width / 2, sumLine1Y);
+      sumLine1.size = (width < 600) ? 10 : 11;
+      sumLine1.weight = 700;
+      sumLine1.fill = '#166534';
+
+      const sumLine2 = two.makeText(`✨ 공배수: ${common.join(', ')} ...  |  👑 최소공배수(LCM): ${lcm}`, width / 2, sumLine2Y);
+      sumLine2.size = (width < 600) ? 10.5 : 11.5;
+      sumLine2.weight = 800;
+      sumLine2.fill = '#15803d';
+
+      two.update();
+
+      // Bind Pointer Event on Canvas for Landing Node Interaction
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas') : null;
+      if (canvasEl) {
+        canvasEl.onpointerdown = (e) => {
+          const rect = canvasEl.getBoundingClientRect();
+          const px = (e.clientX - rect.left) * (width / rect.width);
+          const py = (e.clientY - rect.top) * (height / rect.height);
+
+          for (let i = 0; i < landingNodes.length; i++) {
+            const node = landingNodes[i];
+            const dist = Math.hypot(px - node.x, py - node.y);
+            if (dist <= 16) {
+              if (state.lab0_3.selectedHop && state.lab0_3.selectedHop.val === node.val && state.lab0_3.selectedHop.track === node.track) {
+                state.lab0_3.selectedHop = null;
+              } else {
+                state.lab0_3.selectedHop = { track: node.track, val: node.val };
+              }
+              drawStep0_3Canvas();
+              return;
+            }
+          }
+        };
+      }
+    }
+
+    async function gradeStep0_3() {
+      const q1CommonRaw = cleanInput(document.getElementById('ans-0-3-1-common')?.value);
+      const q1Lcm = cleanInput(document.getElementById('ans-0-3-1-lcm')?.value);
+      const q2CommonRaw = cleanInput(document.getElementById('ans-0-3-2-common')?.value);
+      const q2Lcm = cleanInput(document.getElementById('ans-0-3-2-lcm')?.value);
+
+      const fEl = document.getElementById('feedback-0-3');
+      if (!fEl) return;
+
+      function checkNums(raw, expected) {
+        const nums = raw.split(',').map(s => parseInt(s.replace(/[^0-9]/g, ''))).filter(n => !isNaN(n));
+        if (nums.length < expected.length) return false;
+        return expected.every((exp, idx) => nums[idx] === exp);
+      }
+
+      const ok1_common = checkNums(q1CommonRaw, [12, 24, 36]);
+      const ok1_lcm = (q1Lcm === '12');
+      const ok2_common = checkNums(q2CommonRaw, [36, 72, 108]);
+      const ok2_lcm = (q2Lcm === '36');
+
+      if (ok1_common && ok1_lcm && ok2_common && ok2_lcm) {
+        fEl.style.display = 'block';
+        fEl.className = 'verified-answer-card';
+        fEl.style.background = '#f0fdf4';
+        fEl.style.border = '1.5px solid #86efac';
+        fEl.innerHTML = `
+          <h4 style="color:#15803d; font-size:0.95rem; font-weight:800; margin-bottom:6px;">🎉 100점! 완벽합니다! (되짚어 보기 전체 완료)</h4>
+          <div style="font-size:0.86rem; color:#166534; line-height:1.6;">
+            두 수의 공배수와 최소공배수를 모두 정확하게 구했습니다.<br>
+            • (1) $4$와 $6$의 공배수: $12, 24, 36, \\dots$ ➔ 최소공배수: $12$<br>
+            • (2) $9$와 $12$의 공배수: $36, 72, 108, \\dots$ ➔ 최소공배수: $36$<br>
+            <div style="margin-top:8px; padding:8px 10px; background:#dcfce7; border-radius:6px; font-weight:700;">
+              💡 핵심 성질: 두 수의 공배수는 <b>최소공배수의 배수</b>입니다!<br>
+              축하합니다! 0단원 [되짚어 보기]를 모두 완료하여 <b>1.1 소수와 합성수</b> 단원이 해금되었습니다. 🔓
+            </div>
+          </div>
+        `;
+
+        if (!state.completedSubSteps.includes('0-3')) {
+          state.completedSubSteps.push('0-3');
+        }
+        if (!state.unlockedTabs.includes(1)) {
+          state.unlockedTabs.push(1);
+        }
+        if (!state.unlockedSubSteps.includes('1-1')) {
+          state.unlockedSubSteps.push('1-1');
+        }
+
+        const tab1Btn = document.getElementById('tab-1');
+        if (tab1Btn) {
+          tab1Btn.classList.remove('locked');
+          tab1Btn.textContent = '1.1 소수와 합성수 🔓';
+          tab1Btn.disabled = false;
+        }
+
+        updateSubStepPills(state.currentMainTab);
+
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('0-3', {
+              activityTitle: '[중1-1 소인수분해] [0-3] 되짚어 보기 3: 공배수와 최소공배수',
+              answerText: `(1) 공배수: ${q1CommonRaw}, LCM: ${q1Lcm} | (2) 공배수: ${q2CommonRaw}, LCM: ${q2Lcm}`,
+              answers: { q1Common: q1CommonRaw, q1Lcm, q2Common: q2CommonRaw, q2Lcm },
+              score: 100,
+              passed: true
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+      } else {
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            ${!ok1_common ? '• (1) 4와 6의 배수를 각각 나열하여 공통으로 나타나는 배수를 작은 수부터 3개 찾아 쉼표로 구분해 보세요.<br>' : ''}
+            ${!ok1_lcm ? '• (1) 4와 6의 공배수 중 가장 작은 수(최소공배수)를 구해 보세요.<br>' : ''}
+            ${!ok2_common ? '• (2) 9와 12의 배수를 각각 나열하여 공통으로 나타나는 배수를 작은 수부터 3개 찾아 쉼표로 구분해 보세요.<br>' : ''}
+            ${!ok2_lcm ? '• (2) 9와 12의 공배수 중 가장 작은 수(최소공배수)를 구해 보세요.<br>' : ''}
+            💡 좌측 탐구 캔버스의 두 점프 수직선과 공배수 기둥(✨)을 참고하여 다시 작성해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (1-1 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -2126,6 +2669,12 @@
         state.lab0_2.selectedNumber = null;
         renderToolbar0_2();
         drawStep0_2Canvas();
+      } else if (state.subStep === '0-3') {
+        state.lab0_3.pairIndex = 0;
+        state.lab0_3.highlightCommon = false;
+        state.lab0_3.selectedHop = null;
+        renderToolbar0_3();
+        drawStep0_3Canvas();
       }
     }
 
@@ -2376,6 +2925,7 @@
       resizeTimer = setTimeout(() => {
         if (state.subStep === '0-1') drawStep0_1Canvas();
         else if (state.subStep === '0-2') drawStep0_2Canvas();
+        else if (state.subStep === '0-3') drawStep0_3Canvas();
       }, 150);
     });
 
