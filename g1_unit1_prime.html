@@ -47401,63 +47401,489 @@ function checkStep_1_12() {
     // ==========================================
     function drawCanvas_6_4(container) {
       if (!container) return;
+      if (typeof window._cleanup_step_6_4 === 'function') {
+        window._cleanup_step_6_4();
+      }
       container.innerHTML = '';
+
       const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 500;
-      canvas.height = container.clientHeight || 450;
       canvas.style.width = '100%';
       canvas.style.height = '100%';
       canvas.style.display = 'block';
+      canvas.style.cursor = 'default';
       container.appendChild(canvas);
       const ctx = canvas.getContext('2d');
 
+      // 5 Multiple Choice Options
+      const options = [
+        { no: '①', val: 2, isFactor: true, expr: '330 = 2 × 165', note: '330의 약수이자 소수 ➔ 소인수 맞음' },
+        { no: '②', val: 3, isFactor: true, expr: '330 = 3 × 110', note: '330의 약수이자 소수 ➔ 소인수 맞음' },
+        { no: '③', val: 5, isFactor: true, expr: '330 = 5 × 66', note: '330의 약수이자 소수 ➔ 소인수 맞음' },
+        { no: '④', val: 7, isFactor: false, expr: '330 ÷ 7 = 47 … 1', note: '나누어떨어지지 않음! ➔ 소인수 아님 (정답)' },
+        { no: '⑤', val: 11, isFactor: true, expr: '330 = 11 × 30', note: '330의 약수이자 소수 ➔ 소인수 맞음' }
+      ];
+
+      // State
+      const state = {
+        selectedOption: null, // User selected option item
+        inspectedMap: {},     // Track which options have been tested
+        isSuccess: false,
+        pulse: 0,
+        particles: []
+      };
+
+      // Expose hooks
+      window._step6_4_selectVal = (val) => {
+        const item = options.find(o => o.val === val || o.no === val || o.val.toString() === val);
+        if (item) {
+          state.selectedOption = item;
+          state.inspectedMap[item.val] = true;
+        }
+      };
+
+      window._step6_4_triggerSuccess = () => {
+        state.isSuccess = true;
+        const target = options.find(o => o.val === 7);
+        if (target) {
+          state.selectedOption = target;
+          state.inspectedMap[7] = true;
+        }
+        createConfetti();
+      };
+
+      function createConfetti() {
+        state.particles = [];
+        const colors = ['#38bdf8', '#34d399', '#fbbf24', '#f43f5e', '#a855f7'];
+        for (let i = 0; i < 40; i++) {
+          state.particles.push({
+            x: canvas.width / (2 * (window.devicePixelRatio || 1)),
+            y: canvas.height / (2 * (window.devicePixelRatio || 1)),
+            vx: (Math.random() - 0.5) * 8,
+            vy: (Math.random() - 0.8) * 8,
+            r: Math.random() * 4 + 2,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.01
+          });
+        }
+      }
+
+      let hitBoxes = [];
+
+      function resizeCanvas() {
+        const rect = container.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        const w = rect.width || 600;
+        const h = rect.height || 480;
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resizeCanvas();
+
+      const ro = new ResizeObserver(() => resizeCanvas());
+      ro.observe(container);
+
+      // Render loop
       let animId;
-      let angle = 0;
       function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        state.pulse += 0.04;
+        hitBoxes = [];
 
-        // Grid lines
-        ctx.strokeStyle = '#1e293b';
+        const dpr = window.devicePixelRatio || 1;
+        const W = canvas.width / dpr;
+        const H = canvas.height / dpr;
+
+        ctx.clearRect(0, 0, W, H);
+
+        // Background
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+        bgGrad.addColorStop(0, '#090d16');
+        bgGrad.addColorStop(1, '#0f172a');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, W, H);
+
+        // Subtle Grid
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.025)';
         ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 40) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        for (let x = 0; x < W; x += 30) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
         }
-        for (let y = 0; y < canvas.height; y += 40) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        for (let y = 0; y < H; y += 30) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
         }
 
-        // Badge & Title
+        // --- Header Section ---
+        const titleY = 22;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 14px "Pretendard", -apple-system, sans-serif';
         ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 16px "Pretendard", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('[6-4] 04번: 330의 소인수가 아닌 것 (p.25)', canvas.width / 2, 40);
+        ctx.fillText('04. 330의 소인수분해 & 소인수 필터 레이더', 18, titleY);
 
-        // Interactive visual placeholder
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
+        ctx.textAlign = 'right';
+        ctx.font = '12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('보기 카드를 클릭하여 소인수 여부를 확인하세요', W - 18, titleY);
+
+        // --- Top: 330 Prime Factorization Visualizer (Tree / Ladder) ---
+        const topBoxX = 18;
+        const topBoxY = 44;
+        const topBoxW = W - 36;
+        const topBoxH = Math.min(130, H * 0.28);
+
         ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.strokeStyle = '#f59e0b';
-        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(0, 0, 70, 0, Math.PI * 2);
+        ctx.roundRect(topBoxX, topBoxY, topBoxW, topBoxH, 10);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1.2;
+        ctx.fill();
         ctx.stroke();
+
+        // Top Box Title
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 12.5px "Pretendard", sans-serif';
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText('🌿 330 소인수분해 가지치기 분해 과정', topBoxX + 14, topBoxY + 10);
+
+        // Horizontal Step Nodes: 330 -> (2 x 165) -> (3 x 55) -> (5 x 11)
+        const steps = [
+          { num: 330, prime: 2, rem: 165 },
+          { num: 165, prime: 3, rem: 55 },
+          { num: 55, prime: 5, rem: 11 }
+        ];
+
+        const nodeAreaY = topBoxY + 36;
+        const nodeGap = Math.min(75, (topBoxW - 40) / 4);
+
+        // Draw start node 330
+        drawFactorNode(topBoxX + 28, nodeAreaY, '330', '#f8fafc', '#334155');
+
+        steps.forEach((st, i) => {
+          const nx = topBoxX + 28 + (i + 1) * nodeGap;
+          // Connecting arrow
+          ctx.beginPath();
+          ctx.moveTo(nx - nodeGap + 18, nodeAreaY);
+          ctx.lineTo(nx - 18, nodeAreaY);
+          ctx.strokeStyle = '#64748b';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          // Prime factor badge below arrow
+          ctx.beginPath();
+          ctx.arc(nx - nodeGap / 2, nodeAreaY - 14, 11, 0, Math.PI * 2);
+          ctx.fillStyle = '#0284c7';
+          ctx.fill();
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 10px "Pretendard", sans-serif';
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(`÷${st.prime}`, nx - nodeGap / 2, nodeAreaY - 14);
+
+          // Quotient node
+          const isFinal = (i === steps.length - 1);
+          drawFactorNode(nx, nodeAreaY, st.rem.toString(), isFinal ? '#34d399' : '#cbd5e1', isFinal ? '#059669' : '#334155');
+        });
+
+        // Prime factorization summary formula at bottom of top box
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.font = 'bold 12.5px "Pretendard", sans-serif';
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillText('• 소인수분해 결과: 330 = 2 × 3 × 5 × 11', topBoxX + 14, topBoxY + topBoxH - 10);
+
+        ctx.textAlign = 'right';
+        ctx.font = 'bold 12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#34d399';
+        ctx.fillText('➔ 330의 소인수: { 2, 3, 5, 11 }', topBoxX + topBoxW - 14, topBoxY + topBoxH - 10);
         ctx.restore();
 
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '13px "Pretendard", sans-serif';
-        ctx.fillText('마무리 인터랙터', cx, cy + 110);
+        // Helper to draw factor tree node
+        function drawFactorNode(cx, cy, txt, color, borderCol) {
+          ctx.beginPath();
+          ctx.roundRect(cx - 18, cy - 12, 36, 24, 6);
+          ctx.fillStyle = '#1e293b';
+          ctx.fill();
+          ctx.strokeStyle = borderCol;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
 
-        angle += 0.02;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 12px "Pretendard", sans-serif';
+          ctx.fillStyle = color;
+          ctx.fillText(txt, cx, cy);
+        }
+
+        // --- Middle: 5 Multiple Choice Interactive Cards ---
+        const cardsY = topBoxY + topBoxH + 12;
+        const isNarrow = (W < 560);
+        const cardH = 88;
+        const cardGap = 8;
+
+        let cardCoords = [];
+        if (!isNarrow) {
+          const cardW = (W - 36 - 4 * cardGap) / 5;
+          for (let i = 0; i < 5; i++) {
+            cardCoords.push({
+              x: 18 + i * (cardW + cardGap),
+              y: cardsY,
+              w: cardW,
+              h: cardH,
+              item: options[i]
+            });
+          }
+        } else {
+          // 2 rows layout (3 on first, 2 on second)
+          const cW1 = (W - 36 - 2 * cardGap) / 3;
+          for (let i = 0; i < 3; i++) {
+            cardCoords.push({
+              x: 18 + i * (cW1 + cardGap),
+              y: cardsY,
+              w: cW1,
+              h: cardH,
+              item: options[i]
+            });
+          }
+          const cW2 = (W - 36 - cardGap) / 2;
+          for (let i = 3; i < 5; i++) {
+            cardCoords.push({
+              x: 18 + (i - 3) * (cW2 + cardGap),
+              y: cardsY + cardH + 8,
+              w: cW2,
+              h: cardH,
+              item: options[i]
+            });
+          }
+        }
+
+        cardCoords.forEach(({ x, y, w, h, item }) => {
+          const isSelected = (state.selectedOption && state.selectedOption.val === item.val);
+          const isInspected = state.inspectedMap[item.val];
+
+          hitBoxes.push({
+            type: 'card',
+            item: item,
+            x: x, y: y, w: w, h: h
+          });
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect(x, y, w, h, 8);
+
+          if (state.isSuccess && item.val === 7) {
+            // Success highlight for answer
+            ctx.fillStyle = 'rgba(16, 185, 129, 0.2)';
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 2.5;
+          } else if (isSelected) {
+            ctx.fillStyle = item.isFactor ? 'rgba(2, 132, 199, 0.15)' : 'rgba(244, 63, 94, 0.15)';
+            ctx.strokeStyle = item.isFactor ? '#38bdf8' : '#fb7185';
+            ctx.lineWidth = 2;
+          } else if (isInspected) {
+            ctx.fillStyle = 'rgba(30, 41, 59, 0.7)';
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 1;
+          } else {
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1;
+          }
+          ctx.fill();
+          ctx.stroke();
+
+          // Option Badge & Number
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+          ctx.font = 'bold 15px "Pretendard", sans-serif';
+          ctx.fillStyle = isSelected ? '#ffffff' : '#e2e8f0';
+          ctx.fillText(`${item.no} ${item.val}`, x + 10, y + 10);
+
+          // Status Badge on Right
+          if (isInspected || state.isSuccess) {
+            ctx.textAlign = 'right';
+            ctx.font = 'bold 10.5px "Pretendard", sans-serif';
+            if (item.isFactor) {
+              ctx.fillStyle = '#34d399';
+              ctx.fillText('✓ 소인수', x + w - 8, y + 12);
+            } else {
+              ctx.fillStyle = '#fb7185';
+              ctx.fillText('✗ 소인수 아님', x + w - 8, y + 12);
+            }
+          }
+
+          // Division Formula
+          ctx.textAlign = 'left';
+          ctx.font = '10.5px "Pretendard", sans-serif';
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText(item.expr, x + 10, y + 36);
+
+          // Select button at bottom of card
+          const btnW = w - 16;
+          const btnH = 22;
+          const bx = x + 8;
+          const by = y + h - btnH - 6;
+
+          hitBoxes.push({
+            type: 'btnSelect',
+            item: item,
+            x: bx, y: by, w: btnW, h: btnH
+          });
+
+          ctx.beginPath();
+          ctx.roundRect(bx, by, btnW, btnH, 4);
+          if (isSelected) {
+            ctx.fillStyle = item.val === 7 ? '#f43f5e' : '#0284c7';
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 10px "Pretendard", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('✓ 선택됨', bx + btnW / 2, by + btnH / 2);
+          } else {
+            ctx.fillStyle = '#1e293b';
+            ctx.fill();
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.fillStyle = '#cbd5e1';
+            ctx.font = '10px "Pretendard", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('검사 / 선택', bx + btnW / 2, by + btnH / 2);
+          }
+          ctx.restore();
+        });
+
+        // --- Bottom: Inspection Detail & Final Conclusion ---
+        const detailY = (!isNarrow) ? (cardsY + cardH + 12) : (cardsY + cardH * 2 + 18);
+        const detailH = H - detailY - 14;
+        const detailW = W - 36;
+        const dx = 18;
+        const dy = detailY;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(dx, dy, detailW, detailH, 10);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.strokeStyle = (state.selectedOption && state.selectedOption.val === 7) ? '#fb7185' : '#334155';
+        ctx.lineWidth = 1.5;
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+
+        if (!state.selectedOption) {
+          ctx.font = 'bold 12.5px "Pretendard", sans-serif';
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillText('🔍 [소인수 판별 랩] 위 보기 카드 중 하나를 클릭해 보세요.', dx + 14, dy + 12);
+
+          ctx.font = '11.5px "Pretendard", sans-serif';
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText('• 330을 각 보기의 수로 나누어떨어지는지 확인하여, 330의 소인수가 아닌 수를 찾아냅니다.', dx + 14, dy + 34);
+        } else {
+          const item = state.selectedOption;
+          ctx.font = 'bold 13px "Pretendard", sans-serif';
+          ctx.fillStyle = item.isFactor ? '#38bdf8' : '#fb7185';
+          ctx.fillText(`🔍 [상세 분석] 보기 ${item.no} (수: ${item.val}) 검증:`, dx + 14, dy + 10);
+
+          ctx.font = '12px "Pretendard", sans-serif';
+          ctx.fillStyle = '#f8fafc';
+          ctx.fillText(`• 계산식: ${item.expr}`, dx + 14, dy + 30);
+
+          ctx.font = 'bold 12px "Pretendard", sans-serif';
+          if (item.isFactor) {
+            ctx.fillStyle = '#34d399';
+            ctx.fillText(`• 판정: ${item.val}은 330의 약수이자 소수이므로 [330의 소인수]입니다. (소인수가 아닌 것이 아님)`, dx + 14, dy + 48);
+          } else {
+            ctx.fillStyle = '#fb7185';
+            ctx.fillText(`• 판정: 330을 7로 나누면 나머지가 1이 생기므로 [7은 330의 소인수가 아닙니다!] ➔ 정답!`, dx + 14, dy + 48);
+          }
+        }
+        ctx.restore();
+
+        // Particles
+        if (state.particles.length > 0) {
+          ctx.save();
+          for (let i = state.particles.length - 1; i >= 0; i--) {
+            const p = state.particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.15;
+            p.life -= p.decay;
+            if (p.life <= 0) {
+              state.particles.splice(i, 1);
+              continue;
+            }
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = p.life;
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+
         animId = requestAnimationFrame(render);
       }
+
+      // Pointer Event Handlers
+      function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top
+        };
+      }
+
+      function handlePointerDown(e) {
+        const p = getPos(e);
+        for (let i = hitBoxes.length - 1; i >= 0; i--) {
+          const b = hitBoxes[i];
+          if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) {
+            if (b.type === 'card' || b.type === 'btnSelect') {
+              state.selectedOption = b.item;
+              state.inspectedMap[b.item.val] = true;
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+
+              // Auto sync to form input
+              const inp = document.getElementById('ans-6-4');
+              if (inp) {
+                inp.value = b.item.no; // Auto fill option number
+                inp.focus();
+              }
+              return;
+            }
+          }
+        }
+      }
+
+      function handlePointerMove(e) {
+        const p = getPos(e);
+        let hover = false;
+        for (let i = hitBoxes.length - 1; i >= 0; i--) {
+          const b = hitBoxes[i];
+          if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) {
+            hover = true;
+            break;
+          }
+        }
+        canvas.style.cursor = hover ? 'pointer' : 'default';
+      }
+
+      canvas.addEventListener('pointerdown', handlePointerDown);
+      canvas.addEventListener('pointermove', handlePointerMove);
+
       render();
 
       window._cleanup_step_6_4 = () => {
         if (animId) cancelAnimationFrame(animId);
+        ro.disconnect();
+        canvas.removeEventListener('pointerdown', handlePointerDown);
+        canvas.removeEventListener('pointermove', handlePointerMove);
       };
     }
 
@@ -47466,17 +47892,62 @@ function checkStep_1_12() {
       box.innerHTML = `
         <div class="question-card" style="padding:16px; background:#1e293b; border-radius:10px; margin-bottom:15px; border:1px solid #334155;">
           <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 6-4. 04번: 330의 소인수가 아닌 것 (p.25)</div>
-          <p style="font-size:14px; color:#cbd5e1; line-height:1.6; margin-bottom:12px;">
-            문제를 해결하고 답을 입력창에 작성하세요.
+          
+          <div style="background:#0f172a; border:1px solid #334155; border-radius:8px; padding:12px; margin-bottom:12px;">
+            <div style="font-weight:700; color:#f8fafc; margin-bottom:8px; font-size:14px;">04. 다음 중에서 330의 소인수가 아닌 것은?</div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(65px, 1fr)); gap:6px; font-size:13.5px; color:#cbd5e1;">
+              <div><b>①</b> 2</div>
+              <div><b>②</b> 3</div>
+              <div><b>③</b> 5</div>
+              <div><b>④</b> 7</div>
+              <div><b>⑤</b> 11</div>
+            </div>
+          </div>
+
+          <p style="font-size:13px; color:#94a3b8; line-height:1.5; margin-bottom:10px;">
+            💡 캔버스의 보기 카드를 클릭하거나 아래 보조 버튼을 눌러 번호 또는 수를 입력하세요.
           </p>
+
+          <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-outline-info btn-sm btn-opt-6-4" data-val="①" style="font-weight:700; padding:5px 10px;">① 2</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-opt-6-4" data-val="②" style="font-weight:700; padding:5px 10px;">② 3</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-opt-6-4" data-val="③" style="font-weight:700; padding:5px 10px;">③ 5</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-opt-6-4" data-val="④" style="font-weight:700; padding:5px 10px;">④ 7</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-opt-6-4" data-val="⑤" style="font-weight:700; padding:5px 10px;">⑤ 11</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm btn-clear-6-4" style="font-size:12px; padding:5px 10px; margin-left:auto;">초기화</button>
+          </div>
+
           <div style="margin-bottom:12px;">
-            <input type="text" id="ans-6-4" class="form-control" placeholder="답 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
+            <input type="text" id="ans-6-4" class="form-control" placeholder="번호 또는 수 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
           </div>
           <button class="btn btn-primary" onclick="checkStep_6_4()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
 
       const input = box.querySelector('#ans-6-4');
+
+      box.querySelectorAll('.btn-opt-6-4').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = btn.getAttribute('data-val');
+          if (input) {
+            input.value = val;
+            input.focus();
+          }
+          if (window._step6_4_selectVal) {
+            window._step6_4_selectVal(val);
+          }
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        });
+      });
+
+      box.querySelector('.btn-clear-6-4')?.addEventListener('click', () => {
+        if (input) {
+          input.value = '';
+          input.focus();
+        }
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      });
+
       if (input) {
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') checkStep_6_4();
@@ -47485,15 +47956,36 @@ function checkStep_1_12() {
     }
 
     function checkStep_6_4() {
-      const v = normTxt(document.getElementById('ans-6-4')?.value);
-      const isCorrect = (v.length > 0);
+      const raw = document.getElementById('ans-6-4')?.value || '';
+      const v = normTxt(raw);
+
+      if (!v) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>번호나 수를 입력해 주세요.</b><br>캔버스에서 330의 소인수분해와 각 보기의 나눗셈을 확인해 보세요.');
+        return;
+      }
+
+      // Check if user answered a correct prime factor by mistake (common student mistake)
+      if (['1', '①', '2', '1번', '2번', '②', '3', '3번', '③', '5', '5번', '⑤', '11'].includes(v)) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>해당 수는 330의 소인수가 맞습니다!</b> (330 = 2 × 3 × 5 × 11)<br>문제는 330의 소인수가 <b>아닌 것</b>을 묻고 있습니다.');
+        return;
+      }
+
+      // Correct answer check: 4, ④, 7, 4번, 7번
+      const isCorrect = (v === '4' || v === '④' || v === '7' || v === '4번' || v === '7번');
+
       if (isCorrect) {
-        completeSubStep('6-4', '🎉 <b>정답입니다!</b><br>• 정답 및 해설: 330 = 2 × 3 × 5 × 11 이므로 소인수가 아닌 것은 ④ 7');
+        if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        if (window._step6_4_triggerSuccess) {
+          window._step6_4_triggerSuccess();
+        }
+        completeSubStep('6-4', '🎉 <b>정답입니다!</b><br>• $330 = 2 \\times 3 \\times 5 \\times 11$ 이므로 330의 소인수는 <b>2, 3, 5, 11</b>입니다.<br>• 보기 중 <b>④ 7</b>은 $330 \\div 7 = 47 \\dots 1$ 로 330의 약수가 아니므로 소인수가 아닙니다.');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>값을 입력해 주세요.</b>');
+        showFeedback(false, '❌ <b>다시 확인해 보세요!</b><br>330을 소인수분해하면 $330 = 2 \\times 3 \\times 5 \\times 11$ 입니다. 이 중 330의 소인수가 아닌 번호를 골라보세요.');
       }
     }
 
