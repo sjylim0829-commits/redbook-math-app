@@ -51425,59 +51425,369 @@ function checkStep_1_12() {
     function drawCanvas_7_4(container) {
       if (!container) return;
       container.innerHTML = '';
+
+      const wrap = document.createElement('div');
+      wrap.style.width = '100%';
+      wrap.style.height = '100%';
+      wrap.style.position = 'relative';
+      wrap.style.overflow = 'hidden';
+      wrap.style.display = 'flex';
+      wrap.style.flexDirection = 'column';
+      container.appendChild(wrap);
+
       const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 500;
-      canvas.height = container.clientHeight || 450;
       canvas.style.width = '100%';
       canvas.style.height = '100%';
       canvas.style.display = 'block';
-      container.appendChild(canvas);
+      canvas.style.flex = '1';
+      wrap.appendChild(canvas);
+
       const ctx = canvas.getContext('2d');
+      let dpr = window.devicePixelRatio || 1;
+      let width = 0;
+      let height = 0;
 
-      let animId;
-      let angle = 0;
+      // 상태 변수 (초기값: a=2, b=5 임의 상태, 제로 스포일러 준수)
+      let curA = 2;
+      let curB = 5;
+      let animId = null;
+      let confettiList = [];
+      let isSuccess = false;
+
+      function resize() {
+        const rect = wrap.getBoundingClientRect();
+        width = Math.max(rect.width, 320);
+        height = Math.max(rect.height, 360);
+        dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+
+      const ro = new ResizeObserver(() => {
+        resize();
+      });
+      ro.observe(wrap);
+
+      function triggerConfetti() {
+        confettiList = [];
+        for (let i = 0; i < 40; i++) {
+          confettiList.push({
+            x: width * 0.5 + (Math.random() - 0.5) * 200,
+            y: height * 0.45 + (Math.random() - 0.5) * 60,
+            vx: (Math.random() - 0.5) * 8,
+            vy: -Math.random() * 6 - 2,
+            size: Math.random() * 6 + 4,
+            color: ['#38bdf8', '#fb923c', '#10b981', '#f59e0b', '#ec4899'][Math.floor(Math.random() * 5)],
+            alpha: 1.0,
+            decay: Math.random() * 0.02 + 0.015
+          });
+        }
+      }
+
+      function updateSuccessState() {
+        if (curA === 7 && curB === 3) {
+          if (!isSuccess) {
+            isSuccess = true;
+            triggerConfetti();
+          }
+        } else {
+          isSuccess = false;
+        }
+      }
+
+      // 외부 연동 API
+      window._step7_4_setAB = (a, b) => {
+        if (a !== undefined) curA = Number(a);
+        if (b !== undefined) curB = Number(b);
+        updateSuccessState();
+      };
+
+      window._step7_4_triggerSuccess = () => {
+        curA = 7;
+        curB = 3;
+        updateSuccessState();
+        triggerConfetti();
+      };
+
+      let hitRegions = [];
+
       function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, width, height);
 
+        // 배경
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, width, height);
+
+        // 은은한 그리드
         ctx.strokeStyle = '#1e293b';
         ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 40) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        const gridStep = 40;
+        for (let x = 0; x < width; x += gridStep) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
         }
-        for (let y = 0; y < canvas.height; y += 40) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        for (let y = 0; y < height; y += gridStep) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
         }
 
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 16px "Pretendard", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('[7-4] 11번: [서술형] 126과 45의 소인수 합 a+b (p.26)', canvas.width / 2, 40);
+        hitRegions = [];
 
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.strokeStyle = '#f59e0b';
-        ctx.lineWidth = 3;
+        // 1. 상단 타이틀 안내 배너
+        ctx.fillStyle = '#1e293b';
         ctx.beginPath();
-        ctx.arc(0, 0, 70, 0, Math.PI * 2);
+        ctx.roundRect(16, 10, width - 32, 60, 8);
+        ctx.fill();
+        ctx.strokeStyle = '#334155';
         ctx.stroke();
-        ctx.restore();
 
+        ctx.font = 'bold 14px "Pretendard", sans-serif';
+        ctx.fillStyle = '#38bdf8';
+        ctx.textAlign = 'left';
+        ctx.fillText('📝 [서술형] 126과 45의 소인수 가지치기 및 결합 연산기', 26, 30);
+
+        ctx.font = '12px "Pretendard", sans-serif';
         ctx.fillStyle = '#94a3b8';
-        ctx.font = '13px "Pretendard", sans-serif';
-        ctx.fillText('심화 마무리 인터랙터', cx, cy + 110);
+        ctx.fillText('126의 가장 큰 소인수 a 와 45의 가장 작은 소인수 b 를 찾아 a + b 를 구하세요!', 26, 50);
 
-        angle += 0.02;
+        // 2. 좌우 듀얼 분해도 (좌: 126, 우: 45)
+        const panelY = 78;
+        const panelH = 150;
+        const margin = 16;
+        const gap = 12;
+        const panelW = (width - margin * 2 - gap) / 2;
+
+        // 2-1. 좌측 패널 (126)
+        const leftX = margin;
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.roundRect(leftX, panelY, panelW, panelH, 8);
+        ctx.fill();
+        ctx.strokeStyle = (curA === 7) ? '#38bdf8' : '#334155';
+        ctx.lineWidth = (curA === 7) ? 2 : 1;
+        ctx.stroke();
+
+        ctx.font = 'bold 13px "Pretendard", sans-serif';
+        ctx.fillStyle = '#38bdf8';
+        ctx.textAlign = 'left';
+        ctx.fillText('126 의 소인수분해', leftX + 14, panelY + 24);
+
+        ctx.font = '12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillText('• 126 = 2 × 3² × 7', leftX + 14, panelY + 44);
+        ctx.fillText('• 소인수: { 2, 3, 7 }', leftX + 14, panelY + 62);
+        ctx.fillText('• 가장 큰 소인수 a 선택:', leftX + 14, panelY + 84);
+
+        // 126의 소인수 버튼 (2, 3, 7)
+        const aChips = [2, 3, 7];
+        let chipX = leftX + 14;
+        aChips.forEach(chipVal => {
+          const isSel = (curA === chipVal);
+          const isTarget = (chipVal === 7);
+          ctx.fillStyle = isSel ? (isTarget ? '#0284c7' : '#475569') : '#0f172a';
+          ctx.beginPath();
+          ctx.roundRect(chipX, panelY + 96, 48, 28, 6);
+          ctx.fill();
+          ctx.strokeStyle = isSel ? '#38bdf8' : '#334155';
+          ctx.lineWidth = isSel ? 2 : 1;
+          ctx.stroke();
+
+          ctx.font = 'bold 12px "Pretendard", sans-serif';
+          ctx.fillStyle = isSel ? '#ffffff' : '#94a3b8';
+          ctx.textAlign = 'center';
+          ctx.fillText(`${chipVal}`, chipX + 24, panelY + 114);
+
+          hitRegions.push({
+            x: chipX, y: panelY + 96, w: 48, h: 28,
+            action: () => {
+              curA = chipVal;
+              updateSuccessState();
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+            }
+          });
+
+          chipX += 54;
+        });
+
+        ctx.font = '11px "Pretendard", sans-serif';
+        ctx.textAlign = 'left';
+        if (curA === 7) {
+          ctx.fillStyle = '#34d399';
+          ctx.fillText('✓ 가장 큰 소인수 a = 7 선택됨', leftX + 14, panelY + 138);
+        } else {
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText(`현재 선택: a = ${curA}`, leftX + 14, panelY + 138);
+        }
+
+        // 2-2. 우측 패널 (45)
+        const rightX = margin + panelW + gap;
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.roundRect(rightX, panelY, panelW, panelH, 8);
+        ctx.fill();
+        ctx.strokeStyle = (curB === 3) ? '#fb923c' : '#334155';
+        ctx.lineWidth = (curB === 3) ? 2 : 1;
+        ctx.stroke();
+
+        ctx.font = 'bold 13px "Pretendard", sans-serif';
+        ctx.fillStyle = '#fb923c';
+        ctx.textAlign = 'left';
+        ctx.fillText('45 의 소인수분해', rightX + 14, panelY + 24);
+
+        ctx.font = '12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillText('• 45 = 3² × 5', rightX + 14, panelY + 44);
+        ctx.fillText('• 소인수: { 3, 5 }', rightX + 14, panelY + 62);
+        ctx.fillText('• 가장 작은 소인수 b 선택:', rightX + 14, panelY + 84);
+
+        // 45의 소인수 버튼 (3, 5)
+        const bChips = [3, 5];
+        let chipBX = rightX + 14;
+        bChips.forEach(chipVal => {
+          const isSel = (curB === chipVal);
+          const isTarget = (chipVal === 3);
+          ctx.fillStyle = isSel ? (isTarget ? '#ea580c' : '#475569') : '#0f172a';
+          ctx.beginPath();
+          ctx.roundRect(chipBX, panelY + 96, 48, 28, 6);
+          ctx.fill();
+          ctx.strokeStyle = isSel ? '#fb923c' : '#334155';
+          ctx.lineWidth = isSel ? 2 : 1;
+          ctx.stroke();
+
+          ctx.font = 'bold 12px "Pretendard", sans-serif';
+          ctx.fillStyle = isSel ? '#ffffff' : '#94a3b8';
+          ctx.textAlign = 'center';
+          ctx.fillText(`${chipVal}`, chipBX + 24, panelY + 114);
+
+          hitRegions.push({
+            x: chipBX, y: panelY + 96, w: 48, h: 28,
+            action: () => {
+              curB = chipVal;
+              updateSuccessState();
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+            }
+          });
+
+          chipBX += 54;
+        });
+
+        ctx.font = '11px "Pretendard", sans-serif';
+        ctx.textAlign = 'left';
+        if (curB === 3) {
+          ctx.fillStyle = '#34d399';
+          ctx.fillText('✓ 가장 작은 소인수 b = 3 선택됨', rightX + 14, panelY + 138);
+        } else {
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText(`현재 선택: b = ${curB}`, rightX + 14, panelY + 138);
+        }
+
+        // 3. 하단 결합 계산기 (a + b)
+        const calcY = panelY + panelH + 12;
+        const calcH = 74;
+        const isMatched = (curA === 7 && curB === 3);
+
+        ctx.fillStyle = isMatched ? '#064e3b' : '#1e293b';
+        ctx.beginPath();
+        ctx.roundRect(16, calcY, width - 32, calcH, 8);
+        ctx.fill();
+        ctx.strokeStyle = isMatched ? '#10b981' : '#334155';
+        ctx.lineWidth = isMatched ? 2 : 1;
+        ctx.stroke();
+
+        ctx.font = 'bold 14px "Pretendard", sans-serif';
+        ctx.textAlign = 'left';
+        if (isMatched) {
+          ctx.fillStyle = '#34d399';
+          ctx.fillText(`🎉 서술형 완벽 일치: a(=7) + b(=3) = 10`, 28, calcY + 30);
+          ctx.font = '12px "Pretendard", sans-serif';
+          ctx.fillStyle = '#a7f3d0';
+          ctx.fillText(`1단계(a=7, 40%) + 2단계(b=3, 40%) + 3단계(합=10, 20%) = 100점 만점!`, 28, calcY + 52);
+        } else {
+          ctx.fillStyle = '#cbd5e1';
+          ctx.fillText(`현재 결합식: a(=${curA}) + b(=${curB}) = ${curA + curB}`, 28, calcY + 30);
+          ctx.font = '12px "Pretendard", sans-serif';
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText(`126의 소인수 중 가장 큰 수 a 와 45의 소인수 중 가장 작은 수 b 를 바르게 선택하세요.`, 28, calcY + 52);
+        }
+
+        // 완성 시 [답안창에 10 입력 ➔] 버튼
+        if (isMatched) {
+          const btnApplyW = 130;
+          const btnApplyX = width - 16 - btnApplyW - 12;
+          const btnApplyY = calcY + 18;
+          const btnApplyH = 38;
+
+          ctx.fillStyle = '#10b981';
+          ctx.beginPath();
+          ctx.roundRect(btnApplyX, btnApplyY, btnApplyW, btnApplyH, 6);
+          ctx.fill();
+          ctx.strokeStyle = '#34d399';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          ctx.font = 'bold 12px "Pretendard", sans-serif';
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.fillText('답안창에 10 입력 ➔', btnApplyX + btnApplyW / 2, btnApplyY + 23);
+
+          hitRegions.push({
+            x: btnApplyX, y: btnApplyY, w: btnApplyW, h: btnApplyH,
+            action: () => {
+              const inp = document.getElementById('ans-7-4');
+              if (inp) {
+                inp.value = '10';
+                inp.focus();
+              }
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+            }
+          });
+        }
+
+        // 콘페티 렌더링
+        if (confettiList.length > 0) {
+          confettiList.forEach((c) => {
+            c.x += c.vx;
+            c.y += c.vy;
+            c.vy += 0.15;
+            c.alpha -= c.decay;
+
+            if (c.alpha > 0) {
+              ctx.save();
+              ctx.globalAlpha = Math.max(0, c.alpha);
+              ctx.fillStyle = c.color;
+              ctx.beginPath();
+              ctx.arc(c.x, c.y, c.size, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+          });
+          confettiList = confettiList.filter(c => c.alpha > 0);
+        }
+
         animId = requestAnimationFrame(render);
       }
+
+      function handleCanvasClick(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+
+        for (const region of hitRegions) {
+          if (clickX >= region.x && clickX <= region.x + region.w &&
+              clickY >= region.y && clickY <= region.y + region.h) {
+            region.action();
+            break;
+          }
+        }
+      }
+
+      canvas.addEventListener('click', handleCanvasClick);
       render();
 
       window._cleanup_step_7_4 = () => {
         if (animId) cancelAnimationFrame(animId);
+        if (ro) ro.disconnect();
+        canvas.removeEventListener('click', handleCanvasClick);
       };
     }
 
@@ -51485,10 +51795,29 @@ function checkStep_1_12() {
       if (!box) return;
       box.innerHTML = `
         <div class="question-card" style="padding:16px; background:#1e293b; border-radius:10px; margin-bottom:15px; border:1px solid #334155;">
-          <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 7-4. 11번: [서술형] 소인수분해와 최대·최소 소인수 (p.26)</div>
-          <p style="font-size:14px; color:#cbd5e1; line-height:1.6; margin-bottom:12px;">
-            126의 소인수 중에서 가장 큰 수를 a, 45의 소인수 중에서 가장 작은 수를 b라고 할 때, a+b의 값을 구하시오.
-          </p>
+          <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 7-4. 11번: [서술형] 126과 45의 소인수 합 a+b (p.26)</div>
+          
+          <div style="background:#0f172a; border:1px solid #334155; border-radius:8px; padding:12px; margin-bottom:12px;">
+            <div style="font-weight:700; color:#f8fafc; margin-bottom:8px; font-size:14px;">
+              11. 126의 소인수 중에서 가장 큰 수를 a, 45의 소인수 중에서 가장 작은 수를 b라고 할 때, a+b의 값을 구하시오. [서술형]
+            </div>
+            <div style="font-size:12px; color:#94a3b8; line-height:1.6; background:#1e293b; padding:8px; border-radius:6px;">
+              <b>[서술형 3단계 평가 기준]</b><br>
+              • 1단계: 126을 소인수분해하여 가장 큰 소인수 a 구하기 (40%)<br>
+              • 2단계: 45를 소인수분해하여 가장 작은 소인수 b 구하기 (40%)<br>
+              • 3단계: a + b의 값 계산하기 (20%)
+            </div>
+          </div>
+
+          <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-7-4" data-val="3" style="font-weight:700; padding:5px 10px;">3</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-7-4" data-val="5" style="font-weight:700; padding:5px 10px;">5</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-7-4" data-val="7" style="font-weight:700; padding:5px 10px;">7</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-7-4" data-val="10" style="font-weight:700; padding:5px 10px;">10</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-7-4" data-val="12" style="font-weight:700; padding:5px 10px;">12</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm btn-clear-7-4" style="font-size:12px; padding:5px 10px; margin-left:auto;">지우기</button>
+          </div>
+
           <div style="margin-bottom:12px;">
             <input type="text" id="ans-7-4" class="form-control" placeholder="수 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
           </div>
@@ -51497,6 +51826,33 @@ function checkStep_1_12() {
       `;
 
       const input = box.querySelector('#ans-7-4');
+
+      box.querySelectorAll('.btn-quick-7-4').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = btn.getAttribute('data-val');
+          if (input) {
+            input.value = val;
+            input.focus();
+          }
+          if (val === '7') {
+            if (window._step7_4_setAB) window._step7_4_setAB(7, undefined);
+          } else if (val === '3') {
+            if (window._step7_4_setAB) window._step7_4_setAB(undefined, 3);
+          } else if (val === '10') {
+            if (window._step7_4_setAB) window._step7_4_setAB(7, 3);
+          }
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        });
+      });
+
+      box.querySelector('.btn-clear-7-4')?.addEventListener('click', () => {
+        if (input) {
+          input.value = '';
+          input.focus();
+        }
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      });
+
       if (input) {
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') checkStep_7_4();
@@ -51505,18 +51861,56 @@ function checkStep_1_12() {
     }
 
     function checkStep_7_4() {
-      const v = normTxt(document.getElementById('ans-7-4')?.value);
-      const isCorrect = (v.length > 0);
+      const raw = document.getElementById('ans-7-4')?.value || '';
+      const v = normTxt(raw);
+
+      if (!v) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>값을 입력해 주세요.</b><br>캔버스에서 126과 45의 소인수를 분해하여 a와 b를 구해 더해 보세요.');
+        return;
+      }
+
+      // 오답 맞춤형 피드백
+      if (v === '7') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>7은 126의 가장 큰 소인수 a의 값입니다!</b><br>45의 가장 작은 소인수 b(=3)를 더해 보세요. (a + b)');
+        return;
+      }
+
+      if (v === '3') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>3은 45의 가장 작은 소인수 b의 값입니다!</b><br>126의 가장 큰 소인수 a(=7)와 더해 보세요. (a + b)');
+        return;
+      }
+
+      if (v === '12') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>45의 소인수 {3, 5} 중에서 가장 작은 수는 5가 아니라 3입니다!</b><br>(b = 3이므로 7 + 3을 계산해 보세요)');
+        return;
+      }
+
+      if (v === '5') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>5는 45의 소인수이지만 가장 작은 소인수가 아닙니다!</b><br>45의 소인수 {3, 5} 중 가장 작은 수는 3입니다.');
+        return;
+      }
+
+      // 정답 판정: 10 또는 십
+      const isCorrect = (v === '10' || v === '십');
+
       if (isCorrect) {
-        completeSubStep('7-4', '🎉 <b>정답입니다!</b><br>• 정답 및 해설: a=7, b=3 이므로 a+b=10');
+        if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        if (window._step7_4_triggerSuccess) {
+          window._step7_4_triggerSuccess();
+        }
+        completeSubStep('7-4', '🎉 <b>정답입니다! [서술형 100점 만점]</b><br>• 1단계: $126 = 2 \times 3^2 \times 7$ 이므로 126의 소인수는 2, 3, 7이고 가장 큰 수는 $a = 7$ 입니다. [배점 40%]<br>• 2단계: $45 = 3^2 \times 5$ 이므로 45의 소인수는 3, 5이고 가장 작은 수는 $b = 3$ 입니다. [배점 40%]<br>• 3단계: 따라서 $a + b = 7 + 3 = <b>10</b>$ 입니다. [배점 20%]');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>값을 입력해 주세요.</b>');
+        showFeedback(false, '❌ <b>다시 계산해 보세요!</b><br>126 = 2 × 3² × 7 (소인수 2, 3, 7 중 최대 a=7), 45 = 3² × 5 (소인수 3, 5 중 최소 b=3) 입니다.');
       }
     }
-
 
     // =========================================================
     // Step 7-5: 12번: [서술형] 1~12 곱의 소인수분해 지수 합 (p.26)
