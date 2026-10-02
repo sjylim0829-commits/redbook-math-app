@@ -45662,63 +45662,836 @@ function checkStep_1_12() {
     // ==========================================
     function drawCanvas_6_2(container) {
       if (!container) return;
+      if (typeof window._cleanup_step_6_2 === 'function') {
+        window._cleanup_step_6_2();
+      }
       container.innerHTML = '';
+
       const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 500;
-      canvas.height = container.clientHeight || 450;
       canvas.style.width = '100%';
       canvas.style.height = '100%';
       canvas.style.display = 'block';
+      canvas.style.cursor = 'default';
       container.appendChild(canvas);
       const ctx = canvas.getContext('2d');
 
+      // State
+      const statements = [
+        {
+          id: 'ㄱ',
+          text: '모든 소수는 약수가 2개이다.',
+          isTrue: true,
+          explanation: '소수는 1보다 큰 자연수 중 1과 자기 자신만을 약수로 가지므로 약수가 항상 2개입니다.'
+        },
+        {
+          id: 'ㄴ',
+          text: '2를 제외한 모든 짝수는 소수가 아니다.',
+          isTrue: true,
+          explanation: '2를 제외한 짝수는 모두 2의 배수이므로 약수가 1, 2, 자기 자신 등 최소 3개 이상(합성수)입니다.'
+        },
+        {
+          id: 'ㄷ',
+          text: '일의 자리 숫자가 3인 수는 모두 소수이다.',
+          isTrue: false,
+          explanation: '반례: 33(3×11), 63(3×21), 93(3×31) 등은 일의 자리가 3이지만 합성수입니다.'
+        },
+        {
+          id: 'ㄹ',
+          text: '약수의 개수가 3인 수는 합성수이다.',
+          isTrue: true,
+          explanation: '약수가 3개이면 1과 자기 자신 외에 약수를 가지므로 합성수입니다 (예: 4=2², 9=3², 25=5²).'
+        }
+      ];
+
+      const state = {
+        selectedCards: new Set(),
+        activeTab: 'ㄱ',
+        isSuccess: false,
+        pulseTime: 0,
+        hoveredCard: null,
+        hoveredTab: null,
+        hoveredNumBtn: null,
+        hoveredToggleBtn: null,
+        // Lab specific selected numbers
+        labNumG: 5,   // ㄱ 소수 선택
+        labNumN: 6,   // ㄴ 짝수 선택
+        labNumD: 33,  // ㄷ 일의 자리 3인 수 선택 (기본 33)
+        labNumR: 4    // ㄹ 약수 3개인 수 선택 (4, 9, 25, 49)
+      };
+
+      // Expose state and hooks
+      window._step6_2_selected = state.selectedCards;
+      window._step6_2_triggerSuccess = () => {
+        state.isSuccess = true;
+        // Automatically add ㄱ, ㄴ, ㄹ
+        state.selectedCards.add('ㄱ');
+        state.selectedCards.add('ㄴ');
+        state.selectedCards.delete('ㄷ');
+        state.selectedCards.add('ㄹ');
+      };
+
+      window._step6_2_syncFromInput = (val) => {
+        state.selectedCards.clear();
+        if (typeof val === 'string') {
+          if (val.includes('ㄱ')) state.selectedCards.add('ㄱ');
+          if (val.includes('ㄴ')) state.selectedCards.add('ㄴ');
+          if (val.includes('ㄷ')) state.selectedCards.add('ㄷ');
+          if (val.includes('ㄹ')) state.selectedCards.add('ㄹ');
+        }
+      };
+
+      // Clickable Hit Areas
+      let hitBoxes = [];
+
+      function getFactors(n) {
+        const factors = [];
+        for (let i = 1; i <= n; i++) {
+          if (n % i === 0) factors.push(i);
+        }
+        return factors;
+      }
+
+      function resizeCanvas() {
+        const rect = container.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        const w = rect.width || 600;
+        const h = rect.height || 480;
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resizeCanvas();
+
+      const ro = new ResizeObserver(() => {
+        resizeCanvas();
+      });
+      ro.observe(container);
+
+      // Render loop
       let animId;
-      let angle = 0;
       function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        state.pulseTime += 0.035;
+        hitBoxes = [];
 
-        // Grid lines
-        ctx.strokeStyle = '#1e293b';
+        const dpr = window.devicePixelRatio || 1;
+        const W = canvas.width / dpr;
+        const H = canvas.height / dpr;
+
+        ctx.clearRect(0, 0, W, H);
+
+        // Background gradient
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+        bgGrad.addColorStop(0, '#090d16');
+        bgGrad.addColorStop(1, '#0f172a');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, W, H);
+
+        // Subtle background grid
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
         ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 40) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        for (let x = 0; x < W; x += 30) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
         }
-        for (let y = 0; y < canvas.height; y += 40) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        for (let y = 0; y < H; y += 30) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
         }
 
-        // Badge & Title
+        // --- Header Section ---
+        const titleY = 24;
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 14px "Pretendard", -apple-system, sans-serif';
         ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 16px "Pretendard", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('[6-2] 02번: 소수와 합성수 옳은 보기 판별 (p.24)', canvas.width / 2, 40);
+        ctx.fillText('02. 소수와 합성수 성질 탐구 & 옳은 보기 판별', 18, titleY);
 
-        // Interactive visual placeholder
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
+        ctx.textAlign = 'right';
+        ctx.font = '12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('보기를 클릭하여 수학적 근거를 검증하세요', W - 18, titleY);
+
+        // --- 4 Proposition Cards Section ---
+        const cardAreaY = 38;
+        const cardH = 92;
+        const isNarrow = W < 540;
+        
+        let cardCoords = [];
+        if (!isNarrow) {
+          // 1 Row, 4 Columns
+          const gap = 8;
+          const cardW = (W - 36 - gap * 3) / 4;
+          for (let i = 0; i < 4; i++) {
+            cardCoords.push({
+              x: 18 + i * (cardW + gap),
+              y: cardAreaY,
+              w: cardW,
+              h: cardH,
+              item: statements[i]
+            });
+          }
+        } else {
+          // 2 Rows, 2 Columns
+          const gap = 8;
+          const cW = (W - 36 - gap) / 2;
+          const cH = 78;
+          for (let i = 0; i < 4; i++) {
+            const col = i % 2;
+            const row = Math.floor(i / 2);
+            cardCoords.push({
+              x: 18 + col * (cW + gap),
+              y: cardAreaY + row * (cH + 6),
+              w: cW,
+              h: cH,
+              item: statements[i]
+            });
+          }
+        }
+
+        cardCoords.forEach(({ x, y, w, h, item }) => {
+          const isSelected = state.selectedCards.has(item.id);
+          const isActiveLab = (state.activeTab === item.id);
+          const isHovered = (state.hoveredCard === item.id);
+
+          // Hitbox for card (clicking card activates lab)
+          hitBoxes.push({
+            type: 'card',
+            id: item.id,
+            x: x, y: y, w: w, h: h
+          });
+
+          // Card Background
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect(x, y, w, h, 8);
+
+          if (state.isSuccess) {
+            // Post-success highlight: True = Emerald, False = Rose
+            if (item.isTrue) {
+              ctx.fillStyle = 'rgba(16, 185, 129, 0.12)';
+              ctx.strokeStyle = '#10b981';
+            } else {
+              ctx.fillStyle = 'rgba(244, 63, 94, 0.12)';
+              ctx.strokeStyle = '#f43f5e';
+            }
+            ctx.lineWidth = 2;
+          } else if (isActiveLab) {
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.12)';
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2;
+          } else if (isHovered) {
+            ctx.fillStyle = 'rgba(30, 41, 59, 0.9)';
+            ctx.strokeStyle = '#64748b';
+            ctx.lineWidth = 1.5;
+          } else {
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1;
+          }
+          ctx.fill();
+          ctx.stroke();
+
+          // Card Header: Badge & Status
+          const badgeSize = 20;
+          ctx.beginPath();
+          ctx.roundRect(x + 7, y + 7, badgeSize, badgeSize, 5);
+          ctx.fillStyle = isActiveLab ? '#38bdf8' : (isSelected ? '#f59e0b' : '#334155');
+          ctx.fill();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 12px "Pretendard", sans-serif';
+          ctx.fillStyle = isActiveLab || isSelected ? '#0f172a' : '#cbd5e1';
+          ctx.fillText(item.id, x + 7 + badgeSize / 2, y + 7 + badgeSize / 2);
+
+          // Selection Toggle Checkbox / Button
+          const toggleW = 44;
+          const toggleH = 20;
+          const toggleX = x + w - toggleW - 7;
+          const toggleY = y + 7;
+
+          hitBoxes.push({
+            type: 'toggle',
+            id: item.id,
+            x: toggleX, y: toggleY, w: toggleW, h: toggleH
+          });
+
+          ctx.beginPath();
+          ctx.roundRect(toggleX, toggleY, toggleW, toggleH, 4);
+          if (isSelected) {
+            ctx.fillStyle = '#0284c7';
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 10.5px "Pretendard", sans-serif';
+            ctx.fillText('✓ 선택', toggleX + toggleW / 2, toggleY + toggleH / 2);
+          } else {
+            ctx.fillStyle = 'rgba(51, 65, 85, 0.8)';
+            ctx.fill();
+            ctx.strokeStyle = '#64748b';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '10px "Pretendard", sans-serif';
+            ctx.fillText('+ 선택', toggleX + toggleW / 2, toggleY + toggleH / 2);
+          }
+
+          // Card Text
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+          ctx.font = '11.5px "Pretendard", sans-serif';
+          ctx.fillStyle = '#e2e8f0';
+
+          // Multi-line wrap
+          const textMarginX = x + 8;
+          const textMarginY = y + 33;
+          const maxTextW = w - 16;
+          wrapText(ctx, item.text, textMarginX, textMarginY, maxTextW, 15);
+
+          // Success stamp (Only visible after complete success)
+          if (state.isSuccess) {
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'bottom';
+            ctx.font = 'bold 11px "Pretendard", sans-serif';
+            if (item.isTrue) {
+              ctx.fillStyle = '#34d399';
+              ctx.fillText('✓ 참(옳음)', x + w - 8, y + h - 5);
+            } else {
+              ctx.fillStyle = '#fb7185';
+              ctx.fillText('✗ 거짓(반례)', x + w - 8, y + h - 5);
+            }
+          } else if (isActiveLab) {
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'bottom';
+            ctx.font = '10px "Pretendard", sans-serif';
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillText('🔍 검증 중', x + w - 8, y + h - 5);
+          }
+
+          ctx.restore();
+        });
+
+        // --- Lab Tab Bar ---
+        const labY = !isNarrow ? (cardAreaY + cardH + 12) : (cardAreaY + 78 * 2 + 16);
+        const tabH = 30;
+        const tabGap = 6;
+        const tabW = Math.min(130, (W - 36 - tabGap * 3) / 4);
+
+        statements.forEach((st, i) => {
+          const tx = 18 + i * (tabW + tabGap);
+          const ty = labY;
+          const isActive = (state.activeTab === st.id);
+          const isHov = (state.hoveredTab === st.id);
+
+          hitBoxes.push({
+            type: 'tab',
+            id: st.id,
+            x: tx, y: ty, w: tabW, h: tabH
+          });
+
+          ctx.beginPath();
+          ctx.roundRect(tx, ty, tabW, tabH, 6);
+          if (isActive) {
+            ctx.fillStyle = '#0284c7';
+            ctx.fill();
+          } else if (isHov) {
+            ctx.fillStyle = '#1e293b';
+            ctx.fill();
+            ctx.strokeStyle = '#475569';
+            ctx.stroke();
+          } else {
+            ctx.fillStyle = '#0f172a';
+            ctx.fill();
+            ctx.strokeStyle = '#1e293b';
+            ctx.stroke();
+          }
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = isActive ? 'bold 12px "Pretendard", sans-serif' : '11.5px "Pretendard", sans-serif';
+          ctx.fillStyle = isActive ? '#ffffff' : '#94a3b8';
+          ctx.fillText(`[${st.id}] 검증 시뮬레이션`, tx + tabW / 2, ty + tabH / 2);
+        });
+
+        // --- Bottom Simulation Lab Panel ---
+        const panelY = labY + tabH + 8;
+        const panelH = H - panelY - 14;
+        const panelW = W - 36;
+        const px = 18;
+        const py = panelY;
+
         ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.strokeStyle = '#f59e0b';
-        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(0, 0, 70, 0, Math.PI * 2);
+        ctx.roundRect(px, py, panelW, panelH, 10);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 1.5;
+        ctx.fill();
         ctx.stroke();
         ctx.restore();
 
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '13px "Pretendard", sans-serif';
-        ctx.fillText('마무리 인터랙터', cx, cy + 110);
+        // Render Active Lab Content
+        if (state.activeTab === 'ㄱ') {
+          renderLabG(px + 16, py + 14, panelW - 32, panelH - 28);
+        } else if (state.activeTab === 'ㄴ') {
+          renderLabN(px + 16, py + 14, panelW - 32, panelH - 28);
+        } else if (state.activeTab === 'ㄷ') {
+          renderLabD(px + 16, py + 14, panelW - 32, panelH - 28);
+        } else if (state.activeTab === 'ㄹ') {
+          renderLabR(px + 16, py + 14, panelW - 32, panelH - 28);
+        }
 
-        angle += 0.02;
         animId = requestAnimationFrame(render);
       }
+
+      // --- Lab ㄱ: 소수의 약수 개수 검증 (항상 2개) ---
+      function renderLabG(lx, ly, lw, lh) {
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 13px "Pretendard", sans-serif';
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText('🔬 [ㄱ 검증] 소수의 약수 분석기', lx, ly);
+
+        ctx.font = '12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('소수를 클릭하여 약수를 직접 분해해 보세요:', lx, ly + 22);
+
+        // Number Buttons
+        const primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29];
+        const btnW = 34;
+        const btnH = 26;
+        const btnGap = 6;
+        const btnY = ly + 44;
+
+        primes.forEach((p, idx) => {
+          const bx = lx + idx * (btnW + btnGap);
+          if (bx + btnW <= lx + lw) {
+            const isSel = (state.labNumG === p);
+            hitBoxes.push({ type: 'numG', val: p, x: bx, y: btnY, w: btnW, h: btnH });
+
+            ctx.beginPath();
+            ctx.roundRect(bx, btnY, btnW, btnH, 5);
+            ctx.fillStyle = isSel ? '#0284c7' : '#1e293b';
+            ctx.fill();
+            ctx.strokeStyle = isSel ? '#38bdf8' : '#334155';
+            ctx.stroke();
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = isSel ? 'bold 12px "Pretendard", sans-serif' : '11.5px "Pretendard", sans-serif';
+            ctx.fillStyle = isSel ? '#ffffff' : '#cbd5e1';
+            ctx.fillText(p.toString(), bx + btnW / 2, btnY + btnH / 2);
+          }
+        });
+
+        // Detail Display
+        const p = state.labNumG;
+        const factors = getFactors(p);
+        const cardBoxY = btnY + btnH + 12;
+        const cardBoxH = lh - (cardBoxY - ly);
+
+        ctx.beginPath();
+        ctx.roundRect(lx, cardBoxY, lw, cardBoxH, 8);
+        ctx.fillStyle = 'rgba(30, 41, 59, 0.45)';
+        ctx.strokeStyle = '#334155';
+        ctx.stroke();
+        ctx.fill();
+
+        // Visual Factor Circles
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 13px "Pretendard", sans-serif';
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillText(`소수 ${p}의 약수 분해:`, lx + 14, cardBoxY + 14);
+
+        // Factor items
+        const fY = cardBoxY + 38;
+        factors.forEach((f, i) => {
+          const fx = lx + 14 + i * 75;
+          ctx.beginPath();
+          ctx.roundRect(fx, fY, 65, 34, 6);
+          ctx.fillStyle = (f === 1) ? '#0369a1' : '#0d9488';
+          ctx.fill();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 13px "Pretendard", sans-serif';
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(f.toString(), fx + 32, fY + 17);
+
+          ctx.font = '10px "Pretendard", sans-serif';
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText(f === 1 ? '1' : '자기 자신', fx + 32, fY + 44);
+        });
+
+        // Conclusion text
+        const conclY = cardBoxY + cardBoxH - 32;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.font = '12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillText(`• ${p}의 약수는 1과 ${p}뿐이므로 약수의 개수는 정확히 2개입니다! (소수의 기본 정의)`, lx + 14, conclY);
+      }
+
+      // --- Lab ㄴ: 짝수 체(Sieve) 필터 & 약수 분석기 ---
+      function renderLabN(lx, ly, lw, lh) {
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 13px "Pretendard", sans-serif';
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText('🔬 [ㄴ 검증] 짝수의 소수 여부 판정기', lx, ly);
+
+        ctx.font = '12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('짝수를 클릭하여 약수 개수와 소수 여부를 관찰하세요:', lx, ly + 22);
+
+        const evens = [2, 4, 6, 8, 10, 12, 14, 16, 20];
+        const btnW = 34;
+        const btnH = 26;
+        const btnGap = 6;
+        const btnY = ly + 44;
+
+        evens.forEach((n, idx) => {
+          const bx = lx + idx * (btnW + btnGap);
+          if (bx + btnW <= lx + lw) {
+            const isSel = (state.labNumN === n);
+            hitBoxes.push({ type: 'numN', val: n, x: bx, y: btnY, w: btnW, h: btnH });
+
+            ctx.beginPath();
+            ctx.roundRect(bx, btnY, btnW, btnH, 5);
+            ctx.fillStyle = isSel ? '#0284c7' : '#1e293b';
+            ctx.fill();
+            ctx.strokeStyle = isSel ? '#38bdf8' : '#334155';
+            ctx.stroke();
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = isSel ? 'bold 12px "Pretendard", sans-serif' : '11.5px "Pretendard", sans-serif';
+            ctx.fillStyle = isSel ? '#ffffff' : '#cbd5e1';
+            ctx.fillText(n.toString(), bx + btnW / 2, btnY + btnH / 2);
+          }
+        });
+
+        const n = state.labNumN;
+        const factors = getFactors(n);
+        const cardBoxY = btnY + btnH + 12;
+        const cardBoxH = lh - (cardBoxY - ly);
+
+        ctx.beginPath();
+        ctx.roundRect(lx, cardBoxY, lw, cardBoxH, 8);
+        ctx.fillStyle = 'rgba(30, 41, 59, 0.45)';
+        ctx.strokeStyle = '#334155';
+        ctx.stroke();
+        ctx.fill();
+
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 13px "Pretendard", sans-serif';
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillText(`짝수 ${n}의 분석:`, lx + 14, cardBoxY + 12);
+
+        // Formula & Breakdown
+        ctx.font = '12.5px "Pretendard", sans-serif';
+        if (n === 2) {
+          ctx.fillStyle = '#34d399';
+          ctx.fillText(`2는 약수가 1과 2뿐이므로 [유일한 짝수 소수]입니다!`, lx + 14, cardBoxY + 34);
+        } else {
+          ctx.fillStyle = '#f59e0b';
+          ctx.fillText(`${n} = 2 × ${n / 2} ➔ 1과 자기 자신 외에 항상 '2'를 약수로 가집니다.`, lx + 14, cardBoxY + 34);
+        }
+
+        ctx.font = '11.5px "Pretendard", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText(`• ${n}의 모든 약수 (${factors.length}개): [ ${factors.join(', ')} ]`, lx + 14, cardBoxY + 56);
+
+        // Conclusion
+        const conclY = cardBoxY + cardBoxH - 28;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 12px "Pretendard", sans-serif';
+        if (n === 2) {
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillText(`결론: 2는 소수이지만, 2를 제외한 모든 짝수는 약수가 3개 이상이므로 소수가 아닙니다! (ㄴ은 참)`, lx + 14, conclY);
+        } else {
+          ctx.fillStyle = '#34d399';
+          ctx.fillText(`결론: 약수가 3개 이상이므로 합성수입니다. 따라서 2를 제외한 모든 짝수는 소수가 아닙니다! (ㄴ은 참)`, lx + 14, conclY);
+        }
+      }
+
+      // --- Lab ㄷ: 일의 자리 숫자가 3인 수의 반례(Counterexample) 탐색기 ---
+      function renderLabD(lx, ly, lw, lh) {
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 13px "Pretendard", sans-serif';
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText('🔬 [ㄷ 검증] 일의 자리 3인 수 반례(Counterexample) 탐색기', lx, ly);
+
+        ctx.font = '12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('수들을 하나씩 눌러보며 소수가 아닌 수(반례)가 있는지 확인하세요:', lx, ly + 22);
+
+        const candidates = [3, 13, 23, 33, 43, 53, 63, 73, 83, 93];
+        const btnW = 34;
+        const btnH = 26;
+        const btnGap = 6;
+        const btnY = ly + 44;
+
+        candidates.forEach((num, idx) => {
+          const bx = lx + idx * (btnW + btnGap);
+          if (bx + btnW <= lx + lw) {
+            const isSel = (state.labNumD === num);
+            hitBoxes.push({ type: 'numD', val: num, x: bx, y: btnY, w: btnW, h: btnH });
+
+            ctx.beginPath();
+            ctx.roundRect(bx, btnY, btnW, btnH, 5);
+            ctx.fillStyle = isSel ? '#0284c7' : '#1e293b';
+            ctx.fill();
+            ctx.strokeStyle = isSel ? '#38bdf8' : '#334155';
+            ctx.stroke();
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = isSel ? 'bold 12px "Pretendard", sans-serif' : '11.5px "Pretendard", sans-serif';
+            ctx.fillStyle = isSel ? '#ffffff' : '#cbd5e1';
+            ctx.fillText(num.toString(), bx + btnW / 2, btnY + btnH / 2);
+          }
+        });
+
+        const num = state.labNumD;
+        const factors = getFactors(num);
+        const isComposite = factors.length > 2;
+
+        const cardBoxY = btnY + btnH + 12;
+        const cardBoxH = lh - (cardBoxY - ly);
+
+        ctx.beginPath();
+        ctx.roundRect(lx, cardBoxY, lw, cardBoxH, 8);
+        ctx.fillStyle = isComposite ? 'rgba(239, 68, 68, 0.12)' : 'rgba(30, 41, 59, 0.45)';
+        ctx.strokeStyle = isComposite ? '#f43f5e' : '#334155';
+        ctx.lineWidth = isComposite ? 1.5 : 1;
+        ctx.stroke();
+        ctx.fill();
+
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 13px "Pretendard", sans-serif';
+        ctx.fillStyle = isComposite ? '#fb7185' : '#f8fafc';
+        ctx.fillText(`수 ${num}의 분석 결과:`, lx + 14, cardBoxY + 12);
+
+        ctx.font = '12.5px "Pretendard", sans-serif';
+        if (isComposite) {
+          ctx.fillStyle = '#f87171';
+          if (num === 33) {
+            ctx.fillText(`💥 33 = 3 × 11 (3의 배수이므로 합성수입니다!)`, lx + 14, cardBoxY + 34);
+          } else if (num === 63) {
+            ctx.fillText(`💥 63 = 3 × 21 = 9 × 7 (3과 7의 배수이므로 합성수입니다!)`, lx + 14, cardBoxY + 34);
+          } else if (num === 93) {
+            ctx.fillText(`💥 93 = 3 × 31 (3의 배수이므로 합성수입니다!)`, lx + 14, cardBoxY + 34);
+          } else {
+            ctx.fillText(`💥 ${num}은 약수가 3개 이상이므로 합성수입니다!`, lx + 14, cardBoxY + 34);
+          }
+        } else {
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillText(`수 ${num}은 소수입니다. (약수: 1, ${num})`, lx + 14, cardBoxY + 34);
+        }
+
+        ctx.font = '11.5px "Pretendard", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText(`• ${num}의 약수 (${factors.length}개): [ ${factors.join(', ')} ]`, lx + 14, cardBoxY + 56);
+
+        // Highlight counterexample finding
+        const conclY = cardBoxY + cardBoxH - 28;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 12px "Pretendard", sans-serif';
+        if (isComposite) {
+          ctx.fillStyle = '#fb7185';
+          ctx.fillText(`⚡ 반례(Counterexample) 발견! 일의 자리가 3이어도 33, 63, 93은 합성수이므로 [ㄷ은 거짓]!`, lx + 14, conclY);
+        } else {
+          ctx.fillStyle = '#e2e8f0';
+          ctx.fillText(`💡 33이나 63, 93 버튼을 눌러보세요! 일의 자리가 3이어도 합성수인 반례가 존재합니다.`, lx + 14, conclY);
+        }
+      }
+
+      // --- Lab ㄹ: 약수가 3개인 수의 구조 (소수의 제곱수) ---
+      function renderLabR(lx, ly, lw, lh) {
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 13px "Pretendard", sans-serif';
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText('🔬 [ㄹ 검증] 약수의 개수가 3개인 수의 분해기', lx, ly);
+
+        ctx.font = '12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('약수가 3개인 수(소수의 제곱수)를 클릭하여 구조를 관찰하세요:', lx, ly + 22);
+
+        const squares = [4, 9, 25, 49, 121];
+        const btnW = 38;
+        const btnH = 26;
+        const btnGap = 8;
+        const btnY = ly + 44;
+
+        squares.forEach((sq, idx) => {
+          const bx = lx + idx * (btnW + btnGap);
+          if (bx + btnW <= lx + lw) {
+            const isSel = (state.labNumR === sq);
+            hitBoxes.push({ type: 'numR', val: sq, x: bx, y: btnY, w: btnW, h: btnH });
+
+            ctx.beginPath();
+            ctx.roundRect(bx, btnY, btnW, btnH, 5);
+            ctx.fillStyle = isSel ? '#0284c7' : '#1e293b';
+            ctx.fill();
+            ctx.strokeStyle = isSel ? '#38bdf8' : '#334155';
+            ctx.stroke();
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = isSel ? 'bold 12px "Pretendard", sans-serif' : '11.5px "Pretendard", sans-serif';
+            ctx.fillStyle = isSel ? '#ffffff' : '#cbd5e1';
+            ctx.fillText(sq.toString(), bx + btnW / 2, btnY + btnH / 2);
+          }
+        });
+
+        const sq = state.labNumR;
+        const factors = getFactors(sq);
+        const primeRoot = Math.round(Math.sqrt(sq));
+
+        const cardBoxY = btnY + btnH + 12;
+        const cardBoxH = lh - (cardBoxY - ly);
+
+        ctx.beginPath();
+        ctx.roundRect(lx, cardBoxY, lw, cardBoxH, 8);
+        ctx.fillStyle = 'rgba(30, 41, 59, 0.45)';
+        ctx.strokeStyle = '#334155';
+        ctx.stroke();
+        ctx.fill();
+
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 13px "Pretendard", sans-serif';
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillText(`수 ${sq} = ${primeRoot}² (소수 ${primeRoot}의 제곱):`, lx + 14, cardBoxY + 12);
+
+        ctx.font = '12.5px "Pretendard", sans-serif';
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText(`• ${sq}의 약수는 정확히 3개: [ 1, ${primeRoot}, ${sq} ]`, lx + 14, cardBoxY + 34);
+
+        ctx.font = '11.5px "Pretendard", sans-serif';
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillText(`• 소수는 약수가 2개뿐이어야 하므로, 약수가 3개인 수는 무조건 소수가 아닌 [합성수]입니다.`, lx + 14, cardBoxY + 56);
+
+        // Conclusion
+        const conclY = cardBoxY + cardBoxH - 28;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#34d399';
+        ctx.fillText(`결론: 약수의 개수가 3개인 수는 1과 자기 자신 외에 약수 1개를 더 가지므로 무조건 합성수! (ㄹ은 참)`, lx + 14, conclY);
+      }
+
+      // Text wrapping helper
+      function wrapText(context, text, x, y, maxWidth, lineHeight) {
+        const words = text.split(' ');
+        let line = '';
+        let curY = y;
+        for (let n = 0; n < words.length; n++) {
+          const testLine = line + words[n] + ' ';
+          const metrics = context.measureText(testLine);
+          const testWidth = metrics.width;
+          if (testWidth > maxWidth && n > 0) {
+            context.fillText(line, x, curY);
+            line = words[n] + ' ';
+            curY += lineHeight;
+          } else {
+            line = testLine;
+          }
+        }
+        context.fillText(line, x, curY);
+      }
+
+      // Pointer Event Handlers
+      function getCanvasPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top
+        };
+      }
+
+      function handlePointerDown(e) {
+        const pos = getCanvasPos(e);
+        // Check hitboxes in reverse order (topmost first)
+        for (let i = hitBoxes.length - 1; i >= 0; i--) {
+          const b = hitBoxes[i];
+          if (pos.x >= b.x && pos.x <= b.x + b.w && pos.y >= b.y && pos.y <= b.y + b.h) {
+            if (b.type === 'toggle') {
+              // Toggle selection
+              if (state.selectedCards.has(b.id)) {
+                state.selectedCards.delete(b.id);
+              } else {
+                state.selectedCards.add(b.id);
+              }
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+              syncToFormInput();
+              return;
+            } else if (b.type === 'card' || b.type === 'tab') {
+              state.activeTab = b.id;
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+              return;
+            } else if (b.type === 'numG') {
+              state.labNumG = b.val;
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+              return;
+            } else if (b.type === 'numN') {
+              state.labNumN = b.val;
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+              return;
+            } else if (b.type === 'numD') {
+              state.labNumD = b.val;
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+              return;
+            } else if (b.type === 'numR') {
+              state.labNumR = b.val;
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+              return;
+            }
+          }
+        }
+      }
+
+      function handlePointerMove(e) {
+        const pos = getCanvasPos(e);
+        let foundHover = false;
+        state.hoveredCard = null;
+        state.hoveredTab = null;
+
+        for (let i = hitBoxes.length - 1; i >= 0; i--) {
+          const b = hitBoxes[i];
+          if (pos.x >= b.x && pos.x <= b.x + b.w && pos.y >= b.y && pos.y <= b.y + b.h) {
+            foundHover = true;
+            if (b.type === 'card') state.hoveredCard = b.id;
+            if (b.type === 'tab') state.hoveredTab = b.id;
+            break;
+          }
+        }
+        canvas.style.cursor = foundHover ? 'pointer' : 'default';
+      }
+
+      function syncToFormInput() {
+        const input = document.getElementById('ans-6-2');
+        if (input) {
+          const order = ['ㄱ', 'ㄴ', 'ㄷ', 'ㄹ'];
+          const activeArr = order.filter(k => state.selectedCards.has(k));
+          input.value = activeArr.join(', ');
+        }
+      }
+
+      canvas.addEventListener('pointerdown', handlePointerDown);
+      canvas.addEventListener('pointermove', handlePointerMove);
+
       render();
 
       window._cleanup_step_6_2 = () => {
         if (animId) cancelAnimationFrame(animId);
+        ro.disconnect();
+        canvas.removeEventListener('pointerdown', handlePointerDown);
+        canvas.removeEventListener('pointermove', handlePointerMove);
       };
     }
 
@@ -45727,18 +46500,74 @@ function checkStep_1_12() {
       box.innerHTML = `
         <div class="question-card" style="padding:16px; background:#1e293b; border-radius:10px; margin-bottom:15px; border:1px solid #334155;">
           <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 6-2. 02번: 소수와 합성수 옳은 보기 판별 (p.24)</div>
-          <p style="font-size:14px; color:#cbd5e1; line-height:1.6; margin-bottom:12px;">
-            문제를 해결하고 답을 입력창에 작성하세요.
+          
+          <div style="background:#0f172a; border:1px solid #334155; border-radius:8px; padding:12px; margin-bottom:12px;">
+            <div style="font-weight:700; color:#f8fafc; margin-bottom:6px; font-size:14px;">02. 다음 보기 중에서 옳은 것을 모두 고르시오.</div>
+            <div style="font-size:13.5px; color:#cbd5e1; line-height:1.75;">
+              <b>ㄱ.</b> 모든 소수는 약수가 2개이다.<br>
+              <b>ㄴ.</b> 2를 제외한 모든 짝수는 소수가 아니다.<br>
+              <b>ㄷ.</b> 일의 자리 숫자가 3인 수는 모두 소수이다.<br>
+              <b>ㄹ.</b> 약수의 개수가 3인 수는 합성수이다.
+            </div>
+          </div>
+
+          <p style="font-size:13px; color:#94a3b8; line-height:1.5; margin-bottom:12px;">
+            💡 캔버스에서 각 보기를 클릭하여 수학적 근거와 반례를 직접 탐색하고, 옳은 보기를 모두 선택해 보세요.
           </p>
+
+          <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-outline-info btn-sm btn-opt-6-2" data-opt="ㄱ" style="font-weight:700; padding:5px 12px;">ㄱ</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-opt-6-2" data-opt="ㄴ" style="font-weight:700; padding:5px 12px;">ㄴ</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-opt-6-2" data-opt="ㄷ" style="font-weight:700; padding:5px 12px;">ㄷ</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-opt-6-2" data-opt="ㄹ" style="font-weight:700; padding:5px 12px;">ㄹ</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm btn-clear-6-2" style="font-size:12px; padding:5px 10px; margin-left:auto;">초기화</button>
+          </div>
+
           <div style="margin-bottom:12px;">
-            <input type="text" id="ans-6-2" class="form-control" placeholder="답 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
+            <input type="text" id="ans-6-2" class="form-control" placeholder="보기 기호 입력 (예: ㄱ, ㄴ)" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
           </div>
           <button class="btn btn-primary" onclick="checkStep_6_2()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
 
       const input = box.querySelector('#ans-6-2');
+
+      // Sync form buttons
+      box.querySelectorAll('.btn-opt-6-2').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const opt = btn.getAttribute('data-opt');
+          if (window._step6_2_selected) {
+            if (window._step6_2_selected.has(opt)) {
+              window._step6_2_selected.delete(opt);
+            } else {
+              window._step6_2_selected.add(opt);
+            }
+            const order = ['ㄱ', 'ㄴ', 'ㄷ', 'ㄹ'];
+            const activeArr = order.filter(k => window._step6_2_selected.has(k));
+            if (input) input.value = activeArr.join(', ');
+          } else if (input) {
+            if (input.value.includes(opt)) {
+              input.value = input.value.replace(new RegExp(`[\\s,]*${opt}`, 'g'), '').trim();
+            } else {
+              input.value = input.value ? `${input.value}, ${opt}` : opt;
+            }
+          }
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        });
+      });
+
+      box.querySelector('.btn-clear-6-2')?.addEventListener('click', () => {
+        if (input) input.value = '';
+        if (window._step6_2_selected) window._step6_2_selected.clear();
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      });
+
       if (input) {
+        input.addEventListener('input', () => {
+          if (window._step6_2_syncFromInput) {
+            window._step6_2_syncFromInput(input.value);
+          }
+        });
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') checkStep_6_2();
         });
@@ -45746,15 +46575,59 @@ function checkStep_1_12() {
     }
 
     function checkStep_6_2() {
-      const v = normTxt(document.getElementById('ans-6-2')?.value);
-      const isCorrect = (v.length > 0);
+      const raw = document.getElementById('ans-6-2')?.value || '';
+      const v = raw.trim();
+
+      // Collect selected options from input text or canvas set
+      let userSet = new Set();
+      if (window._step6_2_selected && window._step6_2_selected.size > 0) {
+        window._step6_2_selected.forEach(x => userSet.add(x));
+      }
+
+      // Also parse from text
+      const symbols = v.match(/[ㄱㄴㄷㄹ]/g);
+      if (symbols && symbols.length > 0) {
+        userSet = new Set(symbols);
+      } else {
+        // Fallback for number/alphabet representation: 1->ㄱ, 2->ㄴ, 3->ㄷ, 4->ㄹ
+        if (v.includes('1') || /a/i.test(v)) userSet.add('ㄱ');
+        if (v.includes('2') || /b/i.test(v)) userSet.add('ㄴ');
+        if (v.includes('3') || /c/i.test(v)) userSet.add('ㄷ');
+        if (v.includes('4') || /d/i.test(v)) userSet.add('ㄹ');
+      }
+
+      // Check condition: Must contain ㄱ, ㄴ, ㄹ and NOT contain ㄷ
+      const hasG = userSet.has('ㄱ');
+      const hasN = userSet.has('ㄴ');
+      const hasD = userSet.has('ㄷ');
+      const hasR = userSet.has('ㄹ');
+
+      const isCorrect = (hasG && hasN && hasR && !hasD);
+
       if (isCorrect) {
-        completeSubStep('6-2', '🎉 <b>정답입니다!</b><br>• 정답 및 해설: ㄱ, ㄴ, ㄹ이 옳음 (ㄷ의 반례: 33, 63 등)');
+        if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        if (window._step6_2_triggerSuccess) {
+          window._step6_2_triggerSuccess();
+        }
+        completeSubStep('6-2', '🎉 <b>정답입니다! 옳은 보기는 ㄱ, ㄴ, ㄹ입니다.</b><br>• <b>ㄱ(참)</b>: 소수는 1보다 큰 자연수 중 1과 자기 자신만을 약수로 가지므로 약수가 항상 2개입니다.<br>• <b>ㄴ(참)</b>: 2를 제외한 모든 짝수는 2의 배수이므로 약수가 1, 2, 자기 자신 등 3개 이상(합성수)입니다.<br>• <b>ㄷ(거짓)</b>: 33(3×11), 63(3×21), 93(3×31) 등은 일의 자리 숫자가 3이지만 합성수입니다 (반례).<br>• <b>ㄹ(참)</b>: 약수의 개수가 3개인 수(예: 4=2², 9=3², 25=5²)는 1과 자기 자신 외에 약수가 있으므로 합성수입니다.');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>값을 입력해 주세요.</b>');
+
+        if (userSet.size === 0) {
+          showFeedback(false, '❌ <b>옳은 보기를 1개 이상 선택해 주세요.</b><br>캔버스 카드나 보기 버튼 [ㄱ], [ㄴ], [ㄷ], [ㄹ]을 눌러 선택할 수 있습니다.');
+        } else if (hasD) {
+          showFeedback(false, '❌ <b>ㄷ은 옳지 않습니다! (반례 존재)</b><br>일의 자리 숫자가 3이어도 <b>33(3×11)</b>, <b>63(3×21)</b>, <b>93(3×31)</b> 등은 3의 배수인 <b>합성수</b>입니다.');
+        } else if (!hasG) {
+          showFeedback(false, '❌ <b>ㄱ을 다시 검토해 보세요.</b><br>소수의 정의는 1보다 큰 자연수 중 1과 자기 자신만을 약수로 가지는 수이므로 약수의 개수는 몇 개일까요?');
+        } else if (!hasN) {
+          showFeedback(false, '❌ <b>ㄴ을 다시 검토해 보세요.</b><br>짝수 중 소수는 2뿐이며, 2를 제외한 모든 짝수는 2를 약수로 가지므로 소수일까요, 합성수일까요?');
+        } else if (!hasR) {
+          showFeedback(false, '❌ <b>ㄹ을 다시 검토해 보세요.</b><br>약수가 3개인 수(예: 4=2², 9=3², 25=5²)는 소수일까요, 합성수일까요?');
+        } else {
+          showFeedback(false, '❌ <b>다시 확인해 보세요.</b><br>캔버스의 각 보기 검증 시뮬레이션을 통해 참과 거짓(반례)을 확인해 보세요.');
+        }
       }
     }
 
