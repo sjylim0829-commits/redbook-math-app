@@ -1053,6 +1053,12 @@
       lab1_11: {
         tabIndex: 0, // 0: 식 1 (a 탐구), 1: 식 2 (b 탐구), 2: 종합 (a+b)
         isSorted: false
+      },
+      // 1-12 Interactive Lab State ([생각 넓히기] 열차 승객과 소수 역)
+      lab1_12: {
+        mode: 0, // 0: 25번 역 탐구, 1: 승객 2명(소수) 역 탐구, 2: 전체 1~30번 역 탐색
+        selectedStation: 25, // 1~30
+        selectedPrimes: [] // array of selected prime numbers
       }
     };
 
@@ -1225,6 +1231,9 @@
       } else if (code === '1-11') {
         renderToolbar1_11();
         renderSubstep1_11();
+      } else if (code === '1-12') {
+        renderToolbar1_12();
+        renderSubstep1_12();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -2035,6 +2044,71 @@
       state.lab1_11.isSorted = !state.lab1_11.isSorted;
       renderToolbar1_11();
       drawStep1_11Canvas();
+    }
+
+    function renderToolbar1_12() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+      const curMode = state.lab1_12.mode;
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569;">열차 탐구 모드:</span>
+        <button class="tool-btn ${curMode === 0 ? 'active' : ''}" onclick="setStep1_12Mode(0)">⑴ 25번 역 탐구</button>
+        <button class="tool-btn ${curMode === 1 ? 'active' : ''}" onclick="setStep1_12Mode(1)">⑵ 승객 2명 역 탐색</button>
+        <button class="tool-btn ${curMode === 2 ? 'active' : ''}" onclick="setStep1_12Mode(2)">⑶ 전체 1~30 역 탐색</button>
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setStep1_12Mode(mode) {
+      state.lab1_12.mode = mode;
+      if (mode === 0) state.lab1_12.selectedStation = 25;
+      renderToolbar1_12();
+      drawStep1_12Canvas();
+    }
+
+    function selectStep1_12Station(num) {
+      state.lab1_12.selectedStation = num;
+      drawStep1_12Canvas();
+    }
+
+    function toggleStep1_12Prime(num) {
+      if (!state.lab1_12.selectedPrimes) state.lab1_12.selectedPrimes = [];
+      const idx = state.lab1_12.selectedPrimes.indexOf(num);
+      if (idx >= 0) {
+        state.lab1_12.selectedPrimes.splice(idx, 1);
+      } else {
+        state.lab1_12.selectedPrimes.push(num);
+        state.lab1_12.selectedPrimes.sort((a, b) => a - b);
+      }
+      updatePrimeChipsUI();
+      drawStep1_12Canvas();
+    }
+
+    function updatePrimeChipsUI() {
+      const container = document.getElementById('prime-chip-container-1-12');
+      if (container) {
+        const chips = container.querySelectorAll('.station-chip-btn');
+        chips.forEach(chip => {
+          const num = parseInt(chip.getAttribute('data-station-num'), 10);
+          if (state.lab1_12.selectedPrimes.includes(num)) {
+            chip.style.background = '#4f46e5';
+            chip.style.color = '#ffffff';
+            chip.style.borderColor = '#4338ca';
+            chip.style.fontWeight = '800';
+          } else {
+            chip.style.background = '#f8fafc';
+            chip.style.color = '#334155';
+            chip.style.borderColor = '#cbd5e1';
+            chip.style.fontWeight = '600';
+          }
+        });
+      }
+      const ansInput = document.getElementById('ans-1-12-3');
+      if (ansInput) {
+        ansInput.value = state.lab1_12.selectedPrimes.join(', ');
+      }
     }
 
 
@@ -8455,7 +8529,449 @@
     }
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (1-12 to 6-2)
+    // SUBSTEP 1-12: [생각 넓히기] 열차 승객과 소수 역 (교과서 p.12)
+    // -------------------------------------------------------------
+    const PRIME_LIST_30 = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29];
+
+    function getDivisors1_12(n) {
+      const res = [];
+      for (let i = 1; i <= n; i++) {
+        if (n % i === 0) res.push(i);
+      }
+      return res;
+    }
+
+    function renderSubstep1_12() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = '<b>[1-12] [생각 넓히기] 열차 승객과 소수 역 (교과서 12쪽)</b><br>출발역과 도착역 사이 1부터 30까지의 역에서 열차의 배수 운행 규칙과 내린 승객 수(약수의 개수)를 탐구합니다.';
+
+      const formArea = document.getElementById('form-work-area');
+      
+      // Generate 30 number buttons for interactive selection
+      let chipsHtml = '';
+      for (let i = 1; i <= 30; i++) {
+        const isSel = (state.lab1_12.selectedPrimes && state.lab1_12.selectedPrimes.includes(i));
+        chipsHtml += `
+          <button type="button" class="station-chip-btn" data-station-num="${i}" onclick="toggleStep1_12Prime(${i})" style="
+            width:32px; height:32px; border-radius:6px; font-size:0.82rem; cursor:pointer; transition:all 0.15s;
+            border:1px solid ${isSel ? '#4338ca' : '#cbd5e1'};
+            background:${isSel ? '#4f46e5' : '#f8fafc'};
+            color:${isSel ? '#ffffff' : '#334155'};
+            font-weight:${isSel ? '800' : '600'};
+          ">${i}</button>
+        `;
+      }
+
+      formArea.innerHTML = `
+        <div class="card" style="padding:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 12쪽 생각 넓히기</span>
+            <span style="font-size:0.8rem; color:#64748b; font-weight:600;">약수와 소수 역</span>
+          </div>
+
+          <div style="background:#f8fafc; border-left:4px solid #4f46e5; padding:10px 12px; border-radius:6px; font-size:0.84rem; color:#334155; line-height:1.55; margin-bottom:14px;">
+            🚅 출발역과 도착역 사이에 <b>1부터 30까지</b> 자연수가 적혀 있는 역이 30개 있습니다.<br>
+            • 첫 번째 열차의 승객은 <b>1의 배수</b> 역마다 1명씩 내렸습니다.<br>
+            • 두 번째 열차의 승객은 <b>2의 배수</b> 역마다 1명씩 내렸습니다.<br>
+            • $k$번째 열차의 승객은 <b>$k$의 배수</b> 역마다 1명씩 내렸습니다.<br>
+            이와 같은 과정을 반복하였을 때, 물음에 답해 보세요.
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:14px;">
+            <!-- Question 1 -->
+            <div>
+              <label style="font-size:0.86rem; font-weight:700; color:#1e293b; display:block; margin-bottom:4px;">
+                ⑴ 25가 적혀 있는 역에서 내린 승객은 모두 몇 명인지 구하시오.
+              </label>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <input type="text" id="ans-1-12-1" class="proof-input-text" placeholder="답 입력" style="width:140px;" autocomplete="off">
+                <span style="font-size:0.86rem; color:#475569; font-weight:700;">명</span>
+              </div>
+            </div>
+
+            <!-- Question 2 -->
+            <div>
+              <label style="font-size:0.86rem; font-weight:700; color:#1e293b; display:block; margin-bottom:4px;">
+                ⑵ 25번 역에 서는 열차의 번호를 모두 쓰시오. (25의 약수, 쉼표로 구분)
+              </label>
+              <input type="text" id="ans-1-12-2" class="proof-input-text" placeholder="답 입력" style="width:100%; max-width:240px;" autocomplete="off">
+            </div>
+
+            <!-- Question 3 -->
+            <div>
+              <label style="font-size:0.86rem; font-weight:700; color:#1e293b; display:block; margin-bottom:4px;">
+                ⑶ 내린 승객이 2명인 역에 적혀 있는 번호를 모두 구하시오.
+              </label>
+              <div style="font-size:0.75rem; color:#64748b; margin-bottom:6px;">
+                💡 아래 번호 버튼을 터치하여 승객이 2명인 역(소수)을 모두 선택하거나 직접 입력하세요.
+              </div>
+              <div id="prime-chip-container-1-12" style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:8px; max-width:360px;">
+                ${chipsHtml}
+              </div>
+              <input type="text" id="ans-1-12-3" class="proof-input-text" placeholder="답 입력" style="width:100%;" value="${(state.lab1_12.selectedPrimes || []).join(', ')}" autocomplete="off">
+            </div>
+
+            <!-- Question 4 -->
+            <div>
+              <label style="font-size:0.86rem; font-weight:700; color:#1e293b; display:block; margin-bottom:6px;">
+                ⑷ 내린 승객의 수가 2명인 역 번호들이 가진 공통적인 수학적 특징은 무엇인가요?
+              </label>
+              <div style="display:flex; flex-direction:column; gap:6px; font-size:0.84rem; color:#334155;">
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                  <input type="radio" name="ans-1-12-4" value="1"> ① 홀수이다
+                </label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                  <input type="radio" name="ans-1-12-4" value="2"> ② 짝수이다
+                </label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                  <input type="radio" name="ans-1-12-4" value="3"> ③ 약수가 2개인 수(소수)이다
+                </label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                  <input type="radio" name="ans-1-12-4" value="4"> ④ 합성수이다
+                </label>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" onclick="gradeStep1_12()" style="padding:10px; font-weight:800; font-size:0.92rem; width:100%; margin-top:4px;">
+              ✅ 정답 확인 및 채점하기
+            </button>
+          </div>
+
+          <div id="feedback-1-12" style="display:none; margin-top:12px; padding:12px; border-radius:8px;"></div>
+        </div>
+      `;
+
+      drawStep1_12Canvas();
+
+      if (window.renderMathInElement) {
+        renderMathInElement(formArea, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    function drawStep1_12Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const curMode = state.lab1_12.mode || 0;
+      const selStation = state.lab1_12.selectedStation || 25;
+
+      // 1. Header (Title & Subtitle)
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(10.5, Math.min(12, Math.floor(width * 0.018)));
+
+      const headerTitle = two.makeText('🚅 [생각 넓히기] 열차 승객과 소수 역 랩', width / 2, 16);
+      headerTitle.size = titleSize;
+      headerTitle.weight = 800;
+      headerTitle.fill = '#1e293b';
+
+      const subTexts = [
+        '25번 역에 멈추는 열차(약수)와 내린 승객 수를 탐구해 보세요.',
+        '내린 승객이 정확히 2명인 역들이 초록색으로 표시됩니다. 공통 특징을 찾아보세요.',
+        '1~30번 역을 자유롭게 터치하여 각 역의 정차 열차와 승객 수를 확인하세요.'
+      ];
+      const headerSub = two.makeText(subTexts[curMode], width / 2, 33);
+      headerSub.size = subSize;
+      headerSub.weight = 600;
+      headerSub.fill = '#4f46e5';
+
+      // 2. Mode Selector Tabs in Canvas
+      const tabNames = [
+        '⑴ 25번 역 탐구',
+        '⑵ 승객 2명 역 탐색',
+        '⑶ 전체 1~30 역 탐색'
+      ];
+      const tabW = Math.min(160, Math.floor((width - 48) / 3));
+      const startTabX = (width - (3 * tabW + 16)) / 2;
+
+      for (let i = 0; i < 3; i++) {
+        const tx = startTabX + i * (tabW + 8) + tabW / 2;
+        const isActive = (curMode === i);
+
+        const tabBg = two.makeRoundedRectangle(tx, 56, tabW, 24, 12);
+        tabBg.fill = isActive ? '#4f46e5' : '#f1f5f9';
+        tabBg.stroke = isActive ? '#4338ca' : '#cbd5e1';
+        tabBg.linewidth = isActive ? 1.5 : 1;
+
+        const tabT = two.makeText(tabNames[i], tx, 56);
+        tabT.size = (width < 600) ? 9.5 : 10.5;
+        tabT.weight = isActive ? 800 : 600;
+        tabT.fill = isActive ? '#ffffff' : '#475569';
+      }
+
+      // 3. 30 Train Stations Grid (10 columns x 3 rows)
+      const gridStartY = 78;
+      const gridPad = 16;
+      const colW = (width - 2 * gridPad) / 10;
+      const chipW = Math.max(34, colW - 4);
+      const chipH = 42;
+
+      const isPassed1_12 = state.completedSubSteps && state.completedSubSteps.includes('1-12');
+
+      for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 10; col++) {
+          const num = row * 10 + col + 1;
+          const cx = gridPad + col * colW + colW / 2;
+          const cy = gridStartY + row * 48 + chipH / 2;
+
+          const divs = getDivisors1_12(num);
+          const isPrime = PRIME_LIST_30.includes(num);
+          const isSelected = (num === selStation);
+
+          const chipBg = two.makeRoundedRectangle(cx, cy, chipW, chipH, 6);
+
+          if (isSelected) {
+            chipBg.fill = (curMode === 0) ? '#e0e7ff' : '#fef3c7';
+            chipBg.stroke = (curMode === 0) ? '#4338ca' : '#d97706';
+            chipBg.linewidth = 2.5;
+          } else if (curMode === 1 && isPrime) {
+            chipBg.fill = '#dcfce7';
+            chipBg.stroke = '#16a34a';
+            chipBg.linewidth = 2;
+          } else {
+            chipBg.fill = '#f8fafc';
+            chipBg.stroke = '#cbd5e1';
+            chipBg.linewidth = 1.2;
+          }
+
+          // Station number text
+          const tNum = two.makeText(String(num), cx, cy - 7);
+          tNum.size = 13;
+          tNum.weight = 800;
+          tNum.fill = (isSelected) ? '#1e293b' : (curMode === 1 && isPrime ? '#166534' : '#334155');
+
+          // Passenger badge text
+          let passText = `👥${divs.length}`;
+          let passColor = '#64748b';
+          let passWeight = 700;
+          if (curMode === 1 && isPrime) {
+            passText = isPassed1_12 ? '소수' : '👥2';
+            passColor = '#15803d';
+            passWeight = 800;
+          } else if (num === 25) {
+            passColor = '#4338ca';
+            passWeight = 800;
+          }
+
+          const tPass = two.makeText(passText, cx, cy + 9);
+          tPass.size = 9;
+          tPass.weight = passWeight;
+          tPass.fill = passColor;
+        }
+      }
+
+      // 4. Selected Station Detail Arena
+      const cardCenterY = 274;
+      const cardW = width - 32;
+      const cardH = 76;
+      const cardBg = two.makeRoundedRectangle(width / 2, cardCenterY, cardW, cardH, 8);
+      cardBg.fill = '#ffffff';
+      cardBg.stroke = '#cbd5e1';
+      cardBg.linewidth = 1.5;
+
+      const selDivs = getDivisors1_12(selStation);
+      const isSelPrime = PRIME_LIST_30.includes(selStation);
+
+      const dTitle = two.makeText(`🚉 [${selStation}번 역 정보]  ➔  총 내린 승객: ${selDivs.length}명`, width / 2, cardCenterY - 21);
+      dTitle.size = 12.5;
+      dTitle.weight = 800;
+      dTitle.fill = '#1e293b';
+
+      const dTrains = two.makeText(`정차 열차 (${selStation}의 약수): ${selDivs.map(d => d + '호').join(', ')}`, width / 2, cardCenterY);
+      dTrains.size = 11;
+      dTrains.weight = 700;
+      dTrains.fill = '#475569';
+
+      let dDesc = '';
+      let dDescColor = '#334155';
+      if (selStation === 1) {
+        dDesc = '💡 1은 약수가 1개뿐이므로 1호 열차만 서서 1명만 내렸습니다.';
+        dDescColor = '#64748b';
+      } else if (isSelPrime) {
+        dDesc = isPassed1_12
+          ? `✨ 약수가 1과 ${selStation} 2개뿐인 '소수' 역입니다! (내린 승객: 2명)`
+          : `✨ 약수가 1과 ${selStation} 2개뿐인 역입니다! (내린 승객: 2명)`;
+        dDescColor = '#15803d';
+      } else {
+        dDesc = `💡 약수가 3개 이상인 '합성수' 역입니다. (내린 승객: ${selDivs.length}명)`;
+        dDescColor = '#4338ca';
+      }
+
+      const dNote = two.makeText(dDesc, width / 2, cardCenterY + 21);
+      dNote.size = 11;
+      dNote.weight = 800;
+      dNote.fill = dDescColor;
+
+      // 5. Bottom Rule Banner
+      const bannerCenterY = 360;
+      const bannerH = 62;
+      const bannerBg = two.makeRoundedRectangle(width / 2, bannerCenterY, cardW, bannerH, 8);
+      bannerBg.fill = '#eef2ff';
+      bannerBg.stroke = '#c7d2fe';
+      bannerBg.linewidth = 1.5;
+
+      const rule1 = two.makeText('💡 [수학적 원리] k번째 열차는 k의 배수에 서므로, N번 역에 내린 승객 수는 \'N의 약수의 개수\'입니다.', width / 2, bannerCenterY - 10);
+      rule1.size = (width < 600) ? 9.5 : 10.5;
+      rule1.weight = 700;
+      rule1.fill = '#334155';
+
+      const rule2Text = isPassed1_12
+        ? '📌 [교과서 결론] 25번 역 승객: 3명 (1, 5, 25) | 승객이 2명인 역 = 30 이하의 소수 (10개)'
+        : '📌 [탐구 가이드] 상단 탭과 1~30번 역 버튼을 터치하여 각 역의 정차 열차(약수)와 승객 수를 조사해 보세요.';
+
+      const rule2 = two.makeText(rule2Text, width / 2, bannerCenterY + 11);
+      rule2.size = (width < 600) ? 9.5 : 10.5;
+      rule2.weight = 800;
+      rule2.fill = isPassed1_12 ? '#15803d' : '#4338ca';
+
+      two.update();
+
+      // Bind Pointer Event on Canvas
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas') : null;
+      if (canvasEl) {
+        canvasEl.onpointerdown = (e) => {
+          const rect = canvasEl.getBoundingClientRect();
+          const px = (e.clientX - rect.left) * (width / rect.width);
+          const py = (e.clientY - rect.top) * (height / rect.height);
+
+          // 1. Check mode tabs (y: 56, h: 24)
+          if (py >= 44 && py <= 68) {
+            for (let i = 0; i < 3; i++) {
+              const tx = startTabX + i * (tabW + 8) + tabW / 2;
+              if (Math.abs(px - tx) <= tabW / 2) {
+                setStep1_12Mode(i);
+                return;
+              }
+            }
+          }
+
+          // 2. Check 30 station chips
+          for (let row = 0; row < 3; row++) {
+            const cy = gridStartY + row * 48 + chipH / 2;
+            if (Math.abs(py - cy) <= chipH / 2) {
+              for (let col = 0; col < 10; col++) {
+                const cx = gridPad + col * colW + colW / 2;
+                if (Math.abs(px - cx) <= chipW / 2) {
+                  const num = row * 10 + col + 1;
+                  selectStep1_12Station(num);
+                  return;
+                }
+              }
+            }
+          }
+        };
+      }
+    }
+
+    async function gradeStep1_12() {
+      const ans1Raw = cleanInput(document.getElementById('ans-1-12-1')?.value);
+      const ans2Raw = cleanInput(document.getElementById('ans-1-12-2')?.value);
+      const ans3Raw = cleanInput(document.getElementById('ans-1-12-3')?.value);
+      const ans4 = document.querySelector('input[name="ans-1-12-4"]:checked')?.value;
+
+      const fEl = document.getElementById('feedback-1-12');
+      if (!fEl) return;
+
+      // 1. ans1: 3 or 3명
+      const norm1 = ans1Raw.replace(/명/g, '').trim();
+      const ok1 = (norm1 === '3');
+
+      // 2. ans2: 1, 5, 25 (divisors of 25)
+      const items2 = ans2Raw.replace(/호/g, '').split(/[, ]+/).map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n)).sort((a,b)=>a-b);
+      const ok2 = (items2.length === 3 && items2[0] === 1 && items2[1] === 5 && items2[2] === 25);
+
+      // 3. ans3: primes up to 30: 2, 3, 5, 7, 11, 13, 17, 19, 23, 29
+      const items3 = ans3Raw.replace(/번/g, '').split(/[, ]+/).map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n)).sort((a,b)=>a-b);
+      const ok3 = (items3.length === PRIME_LIST_30.length && items3.every((v, idx) => v === PRIME_LIST_30[idx]));
+
+      // 4. ans4: 3 (소수)
+      const ok4 = (ans4 === '3');
+
+      if (ok1 && ok2 && ok3 && ok4) {
+        fEl.style.display = 'block';
+        fEl.className = 'verified-answer-card';
+        fEl.style.background = '#f0fdf4';
+        fEl.style.border = '1.5px solid #86efac';
+        fEl.innerHTML = `
+          <h4 style="color:#15803d; font-size:0.95rem; font-weight:800; margin-bottom:6px;">🎉 100점! 완벽합니다!</h4>
+          <div style="font-size:0.86rem; color:#166534; line-height:1.6;">
+            열차의 정차 규칙과 약수·소수의 성질을 완벽하게 파악했습니다.<br>
+            • <b>⑴ 25번 역 내린 승객:</b> <b>3명</b> (25의 약수: 1, 5, 25)<br>
+            • <b>⑵ 25번 역 정차 열차:</b> <b>1호, 5호, 25호</b><br>
+            • <b>⑶ 승객이 2명인 역(소수):</b> <b>2, 3, 5, 7, 11, 13, 17, 19, 23, 29</b> (총 10개)<br>
+            • <b>⑷ 수학적 성질:</b> 내린 승객이 2명이라는 것은 약수가 1과 자기 자신뿐인 <b>소수(Prime)</b>를 뜻합니다.<br>
+            <div style="margin-top:10px; padding:10px; background:#e0e7ff; border-radius:6px; color:#4338ca; font-weight:700;">
+              🎊 축하합니다! <b>대단원 1-1 [소수와 합성수]</b>의 모든 탐구 활동을 성공적으로 마쳤습니다!<br>
+              다음 중단원 <b>[Tab 2. 소인수분해]</b>가 해금되었습니다. 🚀
+            </div>
+          </div>
+        `;
+
+        if (!state.completedSubSteps.includes('1-12')) {
+          state.completedSubSteps.push('1-12');
+        }
+        // Unlock Tab 2 and Step 2-1
+        if (!state.unlockedTabs.includes(2)) {
+          state.unlockedTabs.push(2);
+        }
+        if (!state.unlockedSubSteps.includes('2-1')) {
+          state.unlockedSubSteps.push('2-1');
+        }
+
+        renderMainTabs();
+        renderSubstepPills();
+
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('1-12', {
+              activityTitle: '[중1-1 소인수분해] [1-12] [생각 넓히기] 열차 승객과 소수 역',
+              answerText: `25번 승객: ${ans1Raw} | 25번 열차: ${ans2Raw} | 소수 역: ${ans3Raw} | 성질: 소수`,
+              answers: { ans1: ans1Raw, ans2: ans2Raw, ans3: ans3Raw, ans4 },
+              score: 100,
+              passed: true,
+              unitId: 'u1'
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+      } else {
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            ${!ok1 ? '• ⑴ 25번 역에 멈추는 열차(25의 약수)가 총 몇 대인지 세어 보세요.<br>' : ''}
+            ${!ok2 ? '• ⑵ 25의 약수를 작은 수부터 차례로 모두 써 보세요.<br>' : ''}
+            ${!ok3 ? '• ⑶ 내린 승객이 2명인 역은 약수가 2개인 수(소수)입니다. 30 이하의 소수를 빠짐없이 모두 찾아보세요. (좌측 캔버스의 ⑵번 탭 활용)<br>' : ''}
+            ${!ok4 ? '• ⑷ 약수가 1과 자기 자신 2개뿐인 자연수를 가리키는 수학 용어를 다시 확인해 보세요.<br>' : ''}
+            💡 좌측 캔버스의 탭(⑴~⑶)과 역 번호 버튼을 터치하여 각 역의 승객 수와 소수 여부를 시각적으로 확인해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (2-1 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -8582,6 +9098,13 @@
         state.lab1_11.isSorted = false;
         renderToolbar1_11();
         drawStep1_11Canvas();
+      } else if (state.subStep === '1-12') {
+        state.lab1_12.mode = 0;
+        state.lab1_12.selectedStation = 25;
+        state.lab1_12.selectedPrimes = [];
+        renderToolbar1_12();
+        updatePrimeChipsUI();
+        drawStep1_12Canvas();
       }
     }
 
@@ -8844,6 +9367,7 @@
         else if (state.subStep === '1-9') drawStep1_9Canvas();
         else if (state.subStep === '1-10') drawStep1_10Canvas();
         else if (state.subStep === '1-11') drawStep1_11Canvas();
+        else if (state.subStep === '1-12') drawStep1_12Canvas();
       }, 150);
     });
 
