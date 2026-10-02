@@ -51918,59 +51918,425 @@ function checkStep_1_12() {
     function drawCanvas_7_5(container) {
       if (!container) return;
       container.innerHTML = '';
+
+      const wrap = document.createElement('div');
+      wrap.style.width = '100%';
+      wrap.style.height = '100%';
+      wrap.style.position = 'relative';
+      wrap.style.overflow = 'hidden';
+      wrap.style.display = 'flex';
+      wrap.style.flexDirection = 'column';
+      container.appendChild(wrap);
+
       const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 500;
-      canvas.height = container.clientHeight || 450;
       canvas.style.width = '100%';
       canvas.style.height = '100%';
       canvas.style.display = 'block';
-      container.appendChild(canvas);
+      canvas.style.flex = '1';
+      wrap.appendChild(canvas);
+
       const ctx = canvas.getContext('2d');
+      let dpr = window.devicePixelRatio || 1;
+      let width = 0;
+      let height = 0;
 
-      let animId;
-      let angle = 0;
+      // 1~12 수 데이터 정의
+      const numbersData = [
+        { num: 1, c2: 0, c3: 0, c5: 0, str: '-' },
+        { num: 2, c2: 1, c3: 0, c5: 0, str: '2¹' },
+        { num: 3, c2: 0, c3: 1, c5: 0, str: '3¹' },
+        { num: 4, c2: 2, c3: 0, c5: 0, str: '2²' },
+        { num: 5, c2: 0, c3: 0, c5: 1, str: '5¹' },
+        { num: 6, c2: 1, c3: 1, c5: 0, str: '2×3' },
+        { num: 7, c2: 0, c3: 0, c5: 0, str: '7¹' },
+        { num: 8, c2: 3, c3: 0, c5: 0, str: '2³' },
+        { num: 9, c2: 0, c3: 2, c5: 0, str: '3²' },
+        { num: 10, c2: 1, c3: 0, c5: 1, str: '2×5' },
+        { num: 11, c2: 0, c3: 0, c5: 0, str: '11¹' },
+        { num: 12, c2: 2, c3: 1, c5: 0, str: '2²×3' }
+      ];
+
+      // 각 카드의 분해 여부 상태 (초기값: 1~3만 분해됨, 제로 스포일러 준수)
+      let decomposed = [true, true, true, false, false, false, false, false, false, false, false, false];
+
+      let animId = null;
+      let confettiList = [];
+      let isSuccess = false;
+
+      function resize() {
+        const rect = wrap.getBoundingClientRect();
+        width = Math.max(rect.width, 320);
+        height = Math.max(rect.height, 360);
+        dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+
+      const ro = new ResizeObserver(() => {
+        resize();
+      });
+      ro.observe(wrap);
+
+      function triggerConfetti() {
+        confettiList = [];
+        for (let i = 0; i < 40; i++) {
+          confettiList.push({
+            x: width * 0.5 + (Math.random() - 0.5) * 200,
+            y: height * 0.45 + (Math.random() - 0.5) * 60,
+            vx: (Math.random() - 0.5) * 8,
+            vy: -Math.random() * 6 - 2,
+            size: Math.random() * 6 + 4,
+            color: ['#38bdf8', '#fb923c', '#10b981', '#f59e0b', '#ec4899'][Math.floor(Math.random() * 5)],
+            alpha: 1.0,
+            decay: Math.random() * 0.02 + 0.015
+          });
+        }
+      }
+
+      function getCounts() {
+        let x = 0, y = 0, z = 0;
+        decomposed.forEach((isDec, idx) => {
+          if (isDec) {
+            x += numbersData[idx].c2;
+            y += numbersData[idx].c3;
+            z += numbersData[idx].c5;
+          }
+        });
+        return { x, y, z };
+      }
+
+      function updateSuccessState() {
+        const { x, y, z } = getCounts();
+        if (x === 10 && y === 5 && z === 2) {
+          if (!isSuccess) {
+            isSuccess = true;
+            triggerConfetti();
+          }
+        } else {
+          isSuccess = false;
+        }
+      }
+
+      // 외부 연동 API
+      window._step7_5_setAllDecomposed = () => {
+        decomposed = Array(12).fill(true);
+        updateSuccessState();
+      };
+
+      window._step7_5_triggerSuccess = () => {
+        decomposed = Array(12).fill(true);
+        updateSuccessState();
+        triggerConfetti();
+      };
+
+      let hitRegions = [];
+
       function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, width, height);
 
+        // 배경
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, width, height);
+
+        // 은은한 그리드
         ctx.strokeStyle = '#1e293b';
         ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 40) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        const gridStep = 40;
+        for (let x = 0; x < width; x += gridStep) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
         }
-        for (let y = 0; y < canvas.height; y += 40) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        for (let y = 0; y < height; y += gridStep) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
         }
 
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 16px "Pretendard", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('[7-5] 12번: [서술형] 1~12 곱의 소인수분해 지수 합 (p.26)', canvas.width / 2, 40);
+        hitRegions = [];
 
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.strokeStyle = '#f59e0b';
-        ctx.lineWidth = 3;
+        // 1. 상단 타이틀 배너
+        ctx.fillStyle = '#1e293b';
         ctx.beginPath();
-        ctx.arc(0, 0, 70, 0, Math.PI * 2);
+        ctx.roundRect(16, 10, width - 32, 54, 8);
+        ctx.fill();
+        ctx.strokeStyle = '#334155';
         ctx.stroke();
-        ctx.restore();
 
+        ctx.font = 'bold 14px "Pretendard", sans-serif';
+        ctx.fillStyle = '#38bdf8';
+        ctx.textAlign = 'left';
+        ctx.fillText('🏭 1~12 곱 소인수 컨베이어 벨트 & 누적 지수 카운터', 26, 28);
+
+        ctx.font = '11px "Pretendard", sans-serif';
         ctx.fillStyle = '#94a3b8';
-        ctx.font = '13px "Pretendard", sans-serif';
-        ctx.fillText('심화 마무리 인터랙터', cx, cy + 110);
+        ctx.fillText('1부터 12까지 카드를 클릭하여 2, 3, 5의 지수를 누적하고, x + y + z 의 값을 구하세요!', 26, 46);
 
-        angle += 0.02;
+        // 2. 1~12 수 카드 레일 (2줄: 1~6, 7~12)
+        const cardStartY = 70;
+        const cardH = 34;
+        const cols = 6;
+        const cardGap = 6;
+        const cardMargin = 16;
+        const cardW = (width - cardMargin * 2 - cardGap * (cols - 1)) / cols;
+
+        for (let i = 0; i < 12; i++) {
+          const row = Math.floor(i / cols);
+          const col = i % cols;
+          const cx = cardMargin + col * (cardW + cardGap);
+          const cy = cardStartY + row * (cardH + cardGap);
+          const isDec = decomposed[i];
+          const item = numbersData[i];
+
+          ctx.fillStyle = isDec ? '#0284c7' : '#1e293b';
+          ctx.beginPath();
+          ctx.roundRect(cx, cy, cardW, cardH, 5);
+          ctx.fill();
+          ctx.strokeStyle = isDec ? '#38bdf8' : '#334155';
+          ctx.lineWidth = isDec ? 1.5 : 1;
+          ctx.stroke();
+
+          ctx.font = 'bold 12px "Pretendard", sans-serif';
+          ctx.fillStyle = isDec ? '#ffffff' : '#94a3b8';
+          ctx.textAlign = 'center';
+          ctx.fillText(`${item.num}`, cx + cardW / 2, cy + 15);
+
+          ctx.font = '10px "Pretendard", sans-serif';
+          ctx.fillStyle = isDec ? '#bae6fd' : '#64748b';
+          ctx.fillText(isDec ? item.str : '클릭', cx + cardW / 2, cy + 28);
+
+          hitRegions.push({
+            x: cx, y: cy, w: cardW, h: cardH,
+            action: () => {
+              decomposed[i] = !decomposed[i];
+              updateSuccessState();
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+            }
+          });
+        }
+
+        // 빠른 버튼 (전체 분해 / 초기화)
+        const btnRowY = cardStartY + 2 * (cardH + cardGap) + 4;
+        const btnAllW = 100;
+        const btnResetW = 60;
+        const btnAllX = 16;
+        const btnResetX = btnAllX + btnAllW + 8;
+        const btnH = 24;
+
+        ctx.fillStyle = '#0f766e';
+        ctx.beginPath();
+        ctx.roundRect(btnAllX, btnRowY, btnAllW, btnH, 4);
+        ctx.fill();
+        ctx.strokeStyle = '#2dd4bf';
+        ctx.stroke();
+        ctx.font = 'bold 11px "Pretendard", sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.fillText('전체 일괄 분해', btnAllX + btnAllW / 2, btnRowY + 16);
+
+        hitRegions.push({
+          x: btnAllX, y: btnRowY, w: btnAllW, h: btnH,
+          action: () => {
+            decomposed = Array(12).fill(true);
+            updateSuccessState();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+
+        ctx.fillStyle = '#334155';
+        ctx.beginPath();
+        ctx.roundRect(btnResetX, btnRowY, btnResetW, btnH, 4);
+        ctx.fill();
+        ctx.font = 'bold 11px "Pretendard", sans-serif';
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillText('초기화', btnResetX + btnResetW / 2, btnRowY + 16);
+
+        hitRegions.push({
+          x: btnResetX, y: btnRowY, w: btnResetW, h: btnH,
+          action: () => {
+            decomposed = Array(12).fill(false);
+            updateSuccessState();
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+
+        // 3. 지수 카운터 버킷 3종 (2: x, 3: y, 5: z)
+        const { x: curX, y: curY, z: curZ } = getCounts();
+        const bucketY = btnRowY + btnH + 10;
+        const bucketH = 68;
+        const bucketGap = 8;
+        const bucketMargin = 16;
+        const bucketW = (width - bucketMargin * 2 - bucketGap * 2) / 3;
+
+        // 버킷 2
+        const b2x = bucketMargin;
+        ctx.fillStyle = (curX === 10) ? '#0369a1' : '#1e293b';
+        ctx.beginPath();
+        ctx.roundRect(b2x, bucketY, bucketW, bucketH, 6);
+        ctx.fill();
+        ctx.strokeStyle = (curX === 10) ? '#38bdf8' : '#334155';
+        ctx.lineWidth = (curX === 10) ? 2 : 1;
+        ctx.stroke();
+
+        ctx.font = 'bold 12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#38bdf8';
+        ctx.textAlign = 'center';
+        ctx.fillText('소인수 2의 지수 (x)', b2x + bucketW / 2, bucketY + 18);
+        ctx.font = 'bold 18px "Pretendard", sans-serif';
+        ctx.fillStyle = (curX === 10) ? '#34d399' : '#ffffff';
+        ctx.fillText(`x = ${curX} / 10`, b2x + bucketW / 2, bucketY + 42);
+        ctx.font = '10px "Pretendard", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('2, 4(2개), 6, 8(3개), 10, 12(2개)', b2x + bucketW / 2, bucketY + 58);
+
+        // 버킷 3
+        const b3x = bucketMargin + bucketW + bucketGap;
+        ctx.fillStyle = (curY === 5) ? '#c2410c' : '#1e293b';
+        ctx.beginPath();
+        ctx.roundRect(b3x, bucketY, bucketW, bucketH, 6);
+        ctx.fill();
+        ctx.strokeStyle = (curY === 5) ? '#fb923c' : '#334155';
+        ctx.lineWidth = (curY === 5) ? 2 : 1;
+        ctx.stroke();
+
+        ctx.font = 'bold 12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#fb923c';
+        ctx.textAlign = 'center';
+        ctx.fillText('소인수 3의 지수 (y)', b3x + bucketW / 2, bucketY + 18);
+        ctx.font = 'bold 18px "Pretendard", sans-serif';
+        ctx.fillStyle = (curY === 5) ? '#34d399' : '#ffffff';
+        ctx.fillText(`y = ${curY} / 5`, b3x + bucketW / 2, bucketY + 42);
+        ctx.font = '10px "Pretendard", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('3, 6, 9(2개), 12', b3x + bucketW / 2, bucketY + 58);
+
+        // 버킷 5
+        const b5x = bucketMargin + 2 * (bucketW + bucketGap);
+        ctx.fillStyle = (curZ === 2) ? '#047857' : '#1e293b';
+        ctx.beginPath();
+        ctx.roundRect(b5x, bucketY, bucketW, bucketH, 6);
+        ctx.fill();
+        ctx.strokeStyle = (curZ === 2) ? '#34d399' : '#334155';
+        ctx.lineWidth = (curZ === 2) ? 2 : 1;
+        ctx.stroke();
+
+        ctx.font = 'bold 12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#34d399';
+        ctx.textAlign = 'center';
+        ctx.fillText('소인수 5의 지수 (z)', b5x + bucketW / 2, bucketY + 18);
+        ctx.font = 'bold 18px "Pretendard", sans-serif';
+        ctx.fillStyle = (curZ === 2) ? '#34d399' : '#ffffff';
+        ctx.fillText(`z = ${curZ} / 2`, b5x + bucketW / 2, bucketY + 42);
+        ctx.font = '10px "Pretendard", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('5, 10', b5x + bucketW / 2, bucketY + 58);
+
+        // 4. 하단 합산 디스플레이 (x + y + z)
+        const calcY = bucketY + bucketH + 10;
+        const calcH = 68;
+        const isMatched = (curX === 10 && curY === 5 && curZ === 2);
+        const totalSum = curX + curY + curZ;
+
+        ctx.fillStyle = isMatched ? '#064e3b' : '#1e293b';
+        ctx.beginPath();
+        ctx.roundRect(16, calcY, width - 32, calcH, 8);
+        ctx.fill();
+        ctx.strokeStyle = isMatched ? '#10b981' : '#334155';
+        ctx.lineWidth = isMatched ? 2 : 1;
+        ctx.stroke();
+
+        ctx.font = 'bold 13px "Pretendard", sans-serif';
+        ctx.textAlign = 'left';
+        if (isMatched) {
+          ctx.fillStyle = '#34d399';
+          ctx.fillText(`🎉 서술형 완벽 일치: x(10) + y(5) + z(2) = 17`, 28, calcY + 26);
+          ctx.font = '12px "Pretendard", sans-serif';
+          ctx.fillStyle = '#a7f3d0';
+          ctx.fillText(`소인수분해 식: 2¹⁰ × 3⁵ × 5² × 7 × 11 (100점 만점!)`, 28, calcY + 48);
+        } else {
+          ctx.fillStyle = '#cbd5e1';
+          ctx.fillText(`현재 합산: x(${curX}) + y(${curY}) + z(${curZ}) = ${totalSum}`, 28, calcY + 26);
+          ctx.font = '11px "Pretendard", sans-serif';
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText(`1부터 12까지 모든 수를 분해하여 소인수 2, 3, 5의 지수를 누적해 보세요.`, 28, calcY + 48);
+        }
+
+        // 일치 시 [답안창에 17 입력 ➔] 버튼
+        if (isMatched) {
+          const btnApplyW = 130;
+          const btnApplyX = width - 16 - btnApplyW - 12;
+          const btnApplyY = calcY + 16;
+          const btnApplyH = 36;
+
+          ctx.fillStyle = '#10b981';
+          ctx.beginPath();
+          ctx.roundRect(btnApplyX, btnApplyY, btnApplyW, btnApplyH, 6);
+          ctx.fill();
+          ctx.strokeStyle = '#34d399';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          ctx.font = 'bold 12px "Pretendard", sans-serif';
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.fillText('답안창에 17 입력 ➔', btnApplyX + btnApplyW / 2, btnApplyY + 22);
+
+          hitRegions.push({
+            x: btnApplyX, y: btnApplyY, w: btnApplyW, h: btnApplyH,
+            action: () => {
+              const inp = document.getElementById('ans-7-5');
+              if (inp) {
+                inp.value = '17';
+                inp.focus();
+              }
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+            }
+          });
+        }
+
+        // 콘페티 렌더링
+        if (confettiList.length > 0) {
+          confettiList.forEach((c) => {
+            c.x += c.vx;
+            c.y += c.vy;
+            c.vy += 0.15;
+            c.alpha -= c.decay;
+
+            if (c.alpha > 0) {
+              ctx.save();
+              ctx.globalAlpha = Math.max(0, c.alpha);
+              ctx.fillStyle = c.color;
+              ctx.beginPath();
+              ctx.arc(c.x, c.y, c.size, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+          });
+          confettiList = confettiList.filter(c => c.alpha > 0);
+        }
+
         animId = requestAnimationFrame(render);
       }
+
+      function handleCanvasClick(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+
+        for (const region of hitRegions) {
+          if (clickX >= region.x && clickX <= region.x + region.w &&
+              clickY >= region.y && clickY <= region.y + region.h) {
+            region.action();
+            break;
+          }
+        }
+      }
+
+      canvas.addEventListener('click', handleCanvasClick);
       render();
 
       window._cleanup_step_7_5 = () => {
         if (animId) cancelAnimationFrame(animId);
+        if (ro) ro.disconnect();
+        canvas.removeEventListener('click', handleCanvasClick);
       };
     }
 
@@ -51978,10 +52344,28 @@ function checkStep_1_12() {
       if (!box) return;
       box.innerHTML = `
         <div class="question-card" style="padding:16px; background:#1e293b; border-radius:10px; margin-bottom:15px; border:1px solid #334155;">
-          <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 7-5. 12번: [서술형] 연속된 수의 곱과 소인수분해 (p.26)</div>
-          <p style="font-size:14px; color:#cbd5e1; line-height:1.6; margin-bottom:12px;">
-            1×2×3×…×10×11×12를 소인수분해하면 2ˣ×3ʸ×5ᶻ×7×11일 때, 자연수 x, y, z에 대하여 x+y+z의 값을 구하시오.
-          </p>
+          <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 7-5. 12번: [서술형] 1~12 곱의 소인수분해 지수 합 (p.26)</div>
+          
+          <div style="background:#0f172a; border:1px solid #334155; border-radius:8px; padding:12px; margin-bottom:12px;">
+            <div style="font-weight:700; color:#f8fafc; margin-bottom:8px; font-size:14px;">
+              12. 1 × 2 × 3 × … × 10 × 11 × 12를 소인수분해하면 2ˣ × 3ʸ × 5ᶻ × 7 × 11일 때, 자연수 x, y, z에 대하여 x+y+z의 값을 구하시오. [서술형]
+            </div>
+            <div style="font-size:12px; color:#94a3b8; line-height:1.6; background:#1e293b; padding:8px; border-radius:6px;">
+              <b>[서술형 2단계 평가 기준]</b><br>
+              • 1단계: 1부터 12까지 수를 각각 소인수분해하여 2, 3, 5의 지수 x, y, z 구하기 (60%)<br>
+              • 2단계: x + y + z 의 값 계산하기 (40%)
+            </div>
+          </div>
+
+          <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-7-5" data-val="10" style="font-weight:700; padding:5px 10px;">10</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-7-5" data-val="5" style="font-weight:700; padding:5px 10px;">5</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-7-5" data-val="2" style="font-weight:700; padding:5px 10px;">2</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-7-5" data-val="15" style="font-weight:700; padding:5px 10px;">15</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-7-5" data-val="17" style="font-weight:700; padding:5px 10px;">17</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm btn-clear-7-5" style="font-size:12px; padding:5px 10px; margin-left:auto;">지우기</button>
+          </div>
+
           <div style="margin-bottom:12px;">
             <input type="text" id="ans-7-5" class="form-control" placeholder="수 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
           </div>
@@ -51990,6 +52374,29 @@ function checkStep_1_12() {
       `;
 
       const input = box.querySelector('#ans-7-5');
+
+      box.querySelectorAll('.btn-quick-7-5').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = btn.getAttribute('data-val');
+          if (input) {
+            input.value = val;
+            input.focus();
+          }
+          if (val === '17') {
+            if (window._step7_5_setAllDecomposed) window._step7_5_setAllDecomposed();
+          }
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        });
+      });
+
+      box.querySelector('.btn-clear-7-5')?.addEventListener('click', () => {
+        if (input) {
+          input.value = '';
+          input.focus();
+        }
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      });
+
       if (input) {
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') checkStep_7_5();
@@ -51998,18 +52405,56 @@ function checkStep_1_12() {
     }
 
     function checkStep_7_5() {
-      const v = normTxt(document.getElementById('ans-7-5')?.value);
-      const isCorrect = (v.length > 0);
+      const raw = document.getElementById('ans-7-5')?.value || '';
+      const v = normTxt(raw);
+
+      if (!v) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>값을 입력해 주세요.</b><br>캔버스에서 1부터 12까지 각 수의 소인수를 분해하여 지수 x, y, z를 구하고 더해 보세요.');
+        return;
+      }
+
+      // 오답 맞춤형 피드백
+      if (v === '10') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>10은 2의 지수 x의 값입니다!</b><br>y(=5)와 z(=2)를 함께 더해 보세요. (x + y + z)');
+        return;
+      }
+
+      if (v === '5') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>5는 3의 지수 y의 값입니다!</b><br>x(=10)와 z(=2)를 함께 더해 보세요. (x + y + z)');
+        return;
+      }
+
+      if (v === '2') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>2는 5의 지수 z의 값입니다!</b><br>x(=10)와 y(=5)를 함께 더해 보세요. (x + y + z)');
+        return;
+      }
+
+      if (v === '15') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>5의 지수 z(=2)가 빠졌습니다!</b><br>x(=10) + y(=5) + z(=2) 세 지수를 모두 더하세요.');
+        return;
+      }
+
+      // 정답 판정: 17 또는 십칠
+      const isCorrect = (v === '17' || v === '십칠');
+
       if (isCorrect) {
-        completeSubStep('7-5', '🎉 <b>정답입니다!</b><br>• 정답 및 해설: x=10, y=5, z=2 이므로 x+y+z=17');
+        if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        if (window._step7_5_triggerSuccess) {
+          window._step7_5_triggerSuccess();
+        }
+        completeSubStep('7-5', '🎉 <b>정답입니다! [서술형 100점 만점]</b><br>• 1단계: 1부터 12까지의 수를 소인수분해하여 2, 3, 5의 지수를 구하면:<br>  - 2의 지수: $x = 1+2+1+3+1+2 = 10$<br>  - 3의 지수: $y = 1+1+2+1 = 5$<br>  - 5의 지수: $z = 1+1 = 2$<br>  [소인수분해 식: $2^{10} \times 3^5 \times 5^2 \times 7 \times 11$, 배점 60%]<br>• 2단계: 따라서 $x + y + z = 10 + 5 + 2 = <b>17</b>$ 입니다. [배점 40%]');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>값을 입력해 주세요.</b>');
+        showFeedback(false, '❌ <b>다시 계산해 보세요!</b><br>2의 거듭제곱(2, 4, 6, 8, 10, 12), 3의 거듭제곱(3, 6, 9, 12), 5의 거듭제곱(5, 10)에서 각 소인수의 지수를 정확히 세어 보세요.');
       }
     }
-
 
     // =========================================================
     // Step 7-6: 13번: [서술형] 세 수의 최대공약수(6)와 A (p.26)
