@@ -1030,6 +1030,10 @@
       lab1_6: {
         problemIndex: 0, // 0: 문제 ⑴, 1: 문제 ⑵
         isPacked: false  // false: 전개식, true: 거듭제곱 합체
+      },
+      // 1-7 Interactive Lab State (스스로 확인하기 1)
+      lab1_7: {
+        selectedNumber: 8 // 8, 17, 39, 53
       }
     };
 
@@ -1187,6 +1191,9 @@
       } else if (code === '1-6') {
         renderToolbar1_6();
         renderSubstep1_6();
+      } else if (code === '1-7') {
+        renderToolbar1_7();
+        renderSubstep1_7();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -1859,6 +1866,28 @@
       state.lab1_6.isPacked = !state.lab1_6.isPacked;
       renderToolbar1_6();
       drawStep1_6Canvas();
+    }
+
+    function renderToolbar1_7() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+      const cur = state.lab1_7.selectedNumber;
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569;">판별 수 선택:</span>
+        <button class="tool-btn ${cur === 8 ? 'active' : ''}" onclick="setStep1_7Selected(8)">8</button>
+        <button class="tool-btn ${cur === 17 ? 'active' : ''}" onclick="setStep1_7Selected(17)">17</button>
+        <button class="tool-btn ${cur === 39 ? 'active' : ''}" onclick="setStep1_7Selected(39)">39</button>
+        <button class="tool-btn ${cur === 53 ? 'active' : ''}" onclick="setStep1_7Selected(53)">53</button>
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setStep1_7Selected(num) {
+      state.lab1_7.selectedNumber = num;
+      renderToolbar1_7();
+      drawStep1_7Canvas();
     }
 
     // -------------------------------------------------------------
@@ -5691,7 +5720,425 @@
     }
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (1-7 to 6-2)
+    // SUBSTEP 1-7: 7. 스스로 확인하기 1: 소수와 합성수 판별 (교과서 p.12)
+    // -------------------------------------------------------------
+    const STEP1_7_DATA = {
+      8: {
+        num: 8,
+        divisors: [1, 2, 4, 8],
+        divCount: 4,
+        type: '합성수',
+        desc: '1과 자기 자신(8) 이외에 2, 4를 약수로 가지므로 약수가 4개인 합성수입니다.',
+        equations: ['1 × 8 = 8', '2 × 4 = 8'],
+        isPrime: false
+      },
+      17: {
+        num: 17,
+        divisors: [1, 17],
+        divCount: 2,
+        type: '소수',
+        desc: '1보다 큰 자연수 중 1과 자기 자신(17)만을 약수로 가지므로 약수가 2개인 소수입니다.',
+        equations: ['1 × 17 = 17'],
+        isPrime: true
+      },
+      39: {
+        num: 39,
+        divisors: [1, 3, 13, 39],
+        divCount: 4,
+        type: '합성수',
+        desc: '1과 자기 자신(39) 이외에 3, 13을 약수로 가집니다 (3 × 13 = 39). 약수가 4개인 합성수입니다.',
+        equations: ['1 × 39 = 39', '3 × 13 = 39'],
+        isPrime: false
+      },
+      53: {
+        num: 53,
+        divisors: [1, 53],
+        divCount: 2,
+        type: '소수',
+        desc: '1보다 큰 자연수 중 1과 자기 자신(53)만을 약수로 가지므로 약수가 2개인 소수입니다.',
+        equations: ['1 × 53 = 53'],
+        isPrime: true
+      }
+    };
+
+    function renderSubstep1_7() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[스스로 확인하기 1] 소수와 합성수 판별 (교과서 12쪽)</b><br>
+        주어진 네 수 $8, 17, 39, 53$의 약수를 구하고, 소수인지 합성수인지 판별합니다.<br>
+        • <b>소수:</b> $1$보다 큰 자연수 중 $1$과 자기 자신만을 약수로 가지는 수 (약수 2개)<br>
+        • <b>합성수:</b> $1$보다 큰 자연수 중 $1$과 자기 자신 이외의 수를 약수로 가지는 수 (약수 3개 이상)<br>
+        좌측 캔버스에서 각 수를 선택하여 약수 분해식과 분류 저울을 확인하고 문제를 해결해 봅시다.
+      `;
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="padding:14px; margin-bottom:12px; background:#f8fafc; border:1px solid #e2e8f0;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-size:0.75rem; font-weight:800; padding:2px 8px; border-radius:4px;">교과서 12쪽 1번</span>
+            <span style="font-size:0.8rem; font-weight:700; color:#64748b;">소수와 합성수 구분</span>
+          </div>
+          <div style="font-size:0.82rem; color:#334155; line-height:1.6; background:#ffffff; padding:8px 10px; border-radius:6px; border:1px solid #e2e8f0;">
+            다음 수가 <b>소수</b>인지 <b>합성수</b>인지 쓰시오.<br>
+            (입력창에 <b>소수</b> 또는 <b>합성수</b>를 입력하세요)
+          </div>
+        </div>
+
+        <div class="card" style="padding:14px; margin-bottom:12px;">
+          <!-- Question 1 -->
+          <div style="margin-bottom:12px; display:flex; align-items:center; gap:12px;">
+            <label style="font-weight:800; font-size:0.88rem; color:#1e293b; min-width:80px;">
+              ⑴ $8$ :
+            </label>
+            <input type="text" id="ans-1-7-1" class="proof-input-text" placeholder="답 입력" style="width:140px;" autocomplete="off">
+          </div>
+
+          <!-- Question 2 -->
+          <div style="margin-bottom:12px; display:flex; align-items:center; gap:12px;">
+            <label style="font-weight:800; font-size:0.88rem; color:#1e293b; min-width:80px;">
+              ⑵ $17$ :
+            </label>
+            <input type="text" id="ans-1-7-2" class="proof-input-text" placeholder="답 입력" style="width:140px;" autocomplete="off">
+          </div>
+
+          <!-- Question 3 -->
+          <div style="margin-bottom:12px; display:flex; align-items:center; gap:12px;">
+            <label style="font-weight:800; font-size:0.88rem; color:#1e293b; min-width:80px;">
+              ⑶ $39$ :
+            </label>
+            <input type="text" id="ans-1-7-3" class="proof-input-text" placeholder="답 입력" style="width:140px;" autocomplete="off">
+          </div>
+
+          <!-- Question 4 -->
+          <div style="margin-bottom:14px; display:flex; align-items:center; gap:12px;">
+            <label style="font-weight:800; font-size:0.88rem; color:#1e293b; min-width:80px;">
+              ⑷ $53$ :
+            </label>
+            <input type="text" id="ans-1-7-4" class="proof-input-text" placeholder="답 입력" style="width:140px;" autocomplete="off">
+          </div>
+
+          <!-- Question 5 -->
+          <div style="margin-bottom:16px; padding-top:10px; border-top:1px dashed #e2e8f0;">
+            <label style="font-weight:800; font-size:0.88rem; color:#1e293b; display:block; margin-bottom:6px;">
+              ⑸ 위 네 수 중 $39$에 대한 설명으로 가장 올바른 것을 고르시오.
+            </label>
+            <div style="display:flex; flex-direction:column; gap:8px; font-size:0.86rem; color:#334155;">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="radio" name="ans-1-7-5" value="1">
+                <span>① 일의 자리가 $9$인 홀수이므로 소수이다.</span>
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="radio" name="ans-1-7-5" value="2">
+                <span>② $3 \\times 13 = 39$이므로 $1$과 자기 자신 이외의 약수를 갖는 <b>합성수</b>이다.</span>
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="radio" name="ans-1-7-5" value="3">
+                <span>③ $39$는 $2$의 배수이므로 합성수이다.</span>
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="radio" name="ans-1-7-5" value="4">
+                <span>④ $39$의 약수는 $1$과 $39$뿐이므로 소수이다.</span>
+              </label>
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep1_7()" style="padding:10px; font-weight:800; font-size:0.92rem; width:100%;">
+            ✅ 정답 확인 및 채점하기
+          </button>
+        </div>
+
+        <div id="feedback-1-7" style="display:none; margin-top:10px; padding:12px; border-radius:8px;"></div>
+      `;
+
+      drawStep1_7Canvas();
+    }
+
+    function drawStep1_7Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const curNum = state.lab1_7.selectedNumber || 8;
+      const data = STEP1_7_DATA[curNum] || STEP1_7_DATA[8];
+
+      // 1. Header (Title & Subtitle with responsive font sizes)
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(10.5, Math.min(12, Math.floor(width * 0.018)));
+
+      const headerTitle = two.makeText('🔬 스스로 확인하기 1. 소수와 합성수 판별 랩', width / 2, 16);
+      headerTitle.size = titleSize;
+      headerTitle.weight = 800;
+      headerTitle.fill = '#1e293b';
+
+      const headerSub = two.makeText(`현재 선택 수: [${data.num}] ➔ 약수 ${data.divCount}개 ➔ ${data.type}`, width / 2, 33);
+      headerSub.size = subSize;
+      headerSub.weight = 600;
+      headerSub.fill = data.isPrime ? '#059669' : '#ea580c';
+
+      // 2. Top Card: 4 Number Chips Selector (y: 48 ~ 124)
+      const cardW = Math.min(width - 30, 680);
+      const cardH = 76;
+      const cardBg = two.makeRoundedRectangle(width / 2, 48 + cardH / 2, cardW, cardH, 8);
+      cardBg.fill = '#f8fafc';
+      cardBg.stroke = '#e2e8f0';
+      cardBg.linewidth = 1;
+
+      const numList = [8, 17, 39, 53];
+      const chipW = Math.min(76, Math.floor((cardW - 60) / 4));
+      const chipSpacing = chipW + 12;
+      const startChipX = (width / 2) - ((4 * chipSpacing - 12) / 2) + chipW / 2;
+
+      for (let i = 0; i < numList.length; i++) {
+        const n = numList[i];
+        const cx = startChipX + i * chipSpacing;
+        const cy = 48 + 38;
+        const isSel = (n === curNum);
+
+        const chipBg = two.makeRoundedRectangle(cx, cy, chipW, 44, 8);
+        chipBg.fill = isSel ? (STEP1_7_DATA[n].isPrime ? '#ecfdf5' : '#fff7ed') : '#ffffff';
+        chipBg.stroke = isSel ? (STEP1_7_DATA[n].isPrime ? '#10b981' : '#f97316') : '#cbd5e1';
+        chipBg.linewidth = isSel ? 2.5 : 1;
+
+        const tNum = two.makeText(String(n), cx, cy - 6);
+        tNum.size = 15; tNum.weight = 800;
+        tNum.fill = isSel ? (STEP1_7_DATA[n].isPrime ? '#047857' : '#c2410c') : '#334155';
+
+        const tBadge = two.makeText(STEP1_7_DATA[n].type, cx, cy + 12);
+        tBadge.size = 9.5; tBadge.weight = 700;
+        tBadge.fill = isSel ? (STEP1_7_DATA[n].isPrime ? '#059669' : '#ea580c') : '#94a3b8';
+      }
+
+      // 3. Middle Section: Decomposition & Sorting Buckets Arena (y: 132 ~ 362)
+      const arenaCenterY = 245;
+
+      // Left area: Divisor Blocks & Equations
+      const leftCenterX = (width / 2) - (cardW * 0.24);
+      const decBoxW = cardW * 0.44;
+      const decBoxH = 180;
+      const decBox = two.makeRoundedRectangle(leftCenterX, arenaCenterY, decBoxW, decBoxH, 8);
+      decBox.fill = '#ffffff';
+      decBox.stroke = '#e2e8f0';
+      decBox.linewidth = 1;
+
+      const tDecTitle = two.makeText(`🔍 [수 ${data.num}]의 약수 분해`, leftCenterX, arenaCenterY - 68);
+      tDecTitle.size = 12; tDecTitle.weight = 800; tDecTitle.fill = '#1e293b';
+
+      // Draw multiplication equations
+      for (let i = 0; i < data.equations.length; i++) {
+        const eqY = arenaCenterY - 38 + i * 26;
+        const eqText = two.makeText(`• ${data.equations[i]}`, leftCenterX, eqY);
+        eqText.size = 12; eqText.weight = 700; eqText.fill = '#334155';
+      }
+
+      // Divisor chips row
+      const divs = data.divisors;
+      const divChipW = Math.min(32, Math.floor((decBoxW - 30) / divs.length));
+      const divStartX = leftCenterX - ((divs.length * (divChipW + 6) - 6) / 2) + divChipW / 2;
+      const divY = arenaCenterY + 28;
+
+      for (let i = 0; i < divs.length; i++) {
+        const dcx = divStartX + i * (divChipW + 6);
+        const dChip = two.makeRoundedRectangle(dcx, divY, divChipW, 26, 4);
+        dChip.fill = '#f1f5f9';
+        dChip.stroke = '#cbd5e1';
+        dChip.linewidth = 1;
+
+        const dt = two.makeText(String(divs[i]), dcx, divY);
+        dt.size = 11; dt.weight = 800; dt.fill = '#1e293b';
+      }
+
+      const tDivCount = two.makeText(`약수 총 ${data.divCount}개 (${data.divCount === 2 ? '1과 자기 자신만' : '3개 이상'})`, leftCenterX, arenaCenterY + 62);
+      tDivCount.size = 10.5; tDivCount.weight = 800;
+      tDivCount.fill = data.isPrime ? '#059669' : '#ea580c';
+
+      // Right area: Two Sorting Buckets (Prime vs Composite)
+      const rightCenterX = (width / 2) + (cardW * 0.24);
+      const bktW = (cardW * 0.44) / 2 - 8;
+      const bktH = 180;
+      const bktPrimeX = rightCenterX - bktW / 2 - 4;
+      const bktCompX = rightCenterX + bktW / 2 + 4;
+
+      // Prime Bucket
+      const isPrimeTarget = data.isPrime;
+      const bktPrime = two.makeRoundedRectangle(bktPrimeX, arenaCenterY, bktW, bktH, 8);
+      bktPrime.fill = isPrimeTarget ? '#ecfdf5' : '#f8fafc';
+      bktPrime.stroke = isPrimeTarget ? '#10b981' : '#cbd5e1';
+      bktPrime.linewidth = isPrimeTarget ? 2.5 : 1;
+
+      const pTitle = two.makeText('🟢 소수 (Prime)', bktPrimeX, arenaCenterY - 65);
+      pTitle.size = 11; pTitle.weight = 800; pTitle.fill = isPrimeTarget ? '#047857' : '#64748b';
+
+      const pSub = two.makeText('약수가 2개뿐인 수', bktPrimeX, arenaCenterY - 45);
+      pSub.size = 9.5; pSub.weight = 600; pSub.fill = isPrimeTarget ? '#059669' : '#94a3b8';
+
+      // Composite Bucket
+      const isCompTarget = !data.isPrime;
+      const bktComp = two.makeRoundedRectangle(bktCompX, arenaCenterY, bktW, bktH, 8);
+      bktComp.fill = isCompTarget ? '#fff7ed' : '#f8fafc';
+      bktComp.stroke = isCompTarget ? '#f97316' : '#cbd5e1';
+      bktComp.linewidth = isCompTarget ? 2.5 : 1;
+
+      const cTitle = two.makeText('🟠 합성수', bktCompX, arenaCenterY - 65);
+      cTitle.size = 11; cTitle.weight = 800; cTitle.fill = isCompTarget ? '#c2410c' : '#64748b';
+
+      const cSub = two.makeText('약수가 3개 이상인 수', bktCompX, arenaCenterY - 45);
+      cSub.size = 9.5; cSub.weight = 600; cSub.fill = isCompTarget ? '#ea580c' : '#94a3b8';
+
+      // Show landing badge inside targeted bucket
+      const targetBktX = isPrimeTarget ? bktPrimeX : bktCompX;
+      const landBadge = two.makeRoundedRectangle(targetBktX, arenaCenterY + 15, 68, 56, 8);
+      landBadge.fill = isPrimeTarget ? '#10b981' : '#f97316';
+      landBadge.stroke = isPrimeTarget ? '#047857' : '#c2410c';
+      landBadge.linewidth = 2;
+
+      const landNum = two.makeText(String(data.num), targetBktX, arenaCenterY + 8);
+      landNum.size = 22; landNum.weight = 900; landNum.fill = '#ffffff';
+
+      const landTag = two.makeText(`【${data.type}】`, targetBktX, arenaCenterY + 30);
+      landTag.size = 10; landTag.weight = 800; landTag.fill = '#ffffff';
+
+      // 4. Bottom Rule & Summary Banner (Strict budgeting y: 372 ~ 438)
+      const bannerY = 372;
+      const bannerH = Math.max(52, height - bannerY - 8);
+      const bannerW = Math.min(width - 30, 680);
+
+      const bannerBg = two.makeRoundedRectangle(width / 2, bannerY + bannerH / 2, bannerW, bannerH, 8);
+      bannerBg.fill = '#f8fafc';
+      bannerBg.stroke = '#e2e8f0';
+      bannerBg.linewidth = 1;
+
+      const line1Y = (bannerH > 52) ? bannerY + 16 : bannerY + 14;
+      const line2Y = (bannerH > 52) ? bannerY + 36 : bannerY + 32;
+
+      const sumLine1 = two.makeText(
+        `📌 [약수 목록] ${data.num}의 약수: ${data.divisors.join(', ')} (총 ${data.divCount}개)`,
+        width / 2, line1Y
+      );
+      sumLine1.size = (width < 600) ? 10.5 : 11.5;
+      sumLine1.weight = 800;
+      sumLine1.fill = '#1e293b';
+
+      const sumLine2 = two.makeText(
+        `💡 [판정 근거] ${data.desc}`,
+        width / 2, line2Y
+      );
+      sumLine2.size = (width < 600) ? 9.5 : 10.5;
+      sumLine2.weight = 700;
+      sumLine2.fill = data.isPrime ? '#047857' : '#c2410c';
+
+      two.update();
+
+      // Bind Pointer Event on Canvas for top number chips
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas') : null;
+      if (canvasEl) {
+        canvasEl.onpointerdown = (e) => {
+          const rect = canvasEl.getBoundingClientRect();
+          const px = (e.clientX - rect.left) * (width / rect.width);
+          const py = (e.clientY - rect.top) * (height / rect.height);
+
+          for (let i = 0; i < numList.length; i++) {
+            const cx = startChipX + i * chipSpacing;
+            const cy = 48 + 38;
+            if (Math.abs(px - cx) <= chipW / 2 && Math.abs(py - cy) <= 22) {
+              setStep1_7Selected(numList[i]);
+              return;
+            }
+          }
+        };
+      }
+    }
+
+    async function gradeStep1_7() {
+      const q1 = cleanInput(document.getElementById('ans-1-7-1')?.value);
+      const q2 = cleanInput(document.getElementById('ans-1-7-2')?.value);
+      const q3 = cleanInput(document.getElementById('ans-1-7-3')?.value);
+      const q4 = cleanInput(document.getElementById('ans-1-7-4')?.value);
+      const q5 = document.querySelector('input[name="ans-1-7-5"]:checked')?.value;
+
+      const fEl = document.getElementById('feedback-1-7');
+      if (!fEl) return;
+
+      const ok1 = (q1 === '합성수');
+      const ok2 = (q2 === '소수');
+      const ok3 = (q3 === '합성수');
+      const ok4 = (q4 === '소수');
+      const ok5 = (q5 === '2');
+
+      if (ok1 && ok2 && ok3 && ok4 && ok5) {
+        fEl.style.display = 'block';
+        fEl.className = 'verified-answer-card';
+        fEl.style.background = '#f0fdf4';
+        fEl.style.border = '1.5px solid #86efac';
+        fEl.innerHTML = `
+          <h4 style="color:#15803d; font-size:0.95rem; font-weight:800; margin-bottom:6px;">🎉 100점! 완벽합니다!</h4>
+          <div style="font-size:0.86rem; color:#166534; line-height:1.6;">
+            주어진 네 수의 소수·합성수 판별을 완벽하게 해결했습니다.<br>
+            • <b>⑴ $8$:</b> 약수 $1, 2, 4, 8$ ($4$개) ➔ <b>합성수</b><br>
+            • <b>⑵ $17$:</b> 약수 $1, 17$ ($2$개) ➔ <b>소수</b><br>
+            • <b>⑶ $39$:</b> 약수 $1, 3, 13, 39$ ($4$개, $3 \\times 13 = 39$) ➔ <b>합성수</b><br>
+            • <b>⑷ $53$:</b> 약수 $1, 53$ ($2$개) ➔ <b>소수</b><br>
+            • <b>⑸ $39$의 특징:</b> $3 \\times 13 = 39$이므로 약수가 4개인 합성수입니다.<br>
+            <div style="margin-top:8px; padding:8px 10px; background:#dcfce7; border-radius:6px; font-weight:700;">
+              💡 핵심 정리: $39$처럼 일의 자리가 홀수이더라도 $3$이나 $13$의 배수가 될 수 있으므로 반드시 약수를 꼼꼼히 확인해야 합니다!<br>
+              다음 활동 <b>[1-8] 스스로 확인하기 2 (거듭제곱 표현, 교과서 12쪽)</b>가 해금되었습니다. 🔓
+            </div>
+          </div>
+        `;
+
+        if (!state.completedSubSteps.includes('1-7')) {
+          state.completedSubSteps.push('1-7');
+        }
+        if (!state.unlockedSubSteps.includes('1-8')) {
+          state.unlockedSubSteps.push('1-8');
+        }
+
+        updateSubStepPills(state.currentMainTab);
+
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('1-7', {
+              activityTitle: '[중1-1 소인수분해] [1-7] 스스로 확인하기 1: 소수와 합성수 판별',
+              answerText: `8:${q1} | 17:${q2} | 39:${q3} | 53:${q4} | 보기:${q5}`,
+              answers: { ans1: q1, ans2: q2, ans3: q3, ans4: q4, ans5: q5 },
+              score: 100,
+              passed: true
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+      } else {
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            ${!ok1 ? '• ⑴ $8$의 약수를 모두 구해 보세요. (1과 8 이외의 약수가 있는지 확인)<br>' : ''}
+            ${!ok2 ? '• ⑵ $17$을 나누어떨어지게 하는 $1$보다 크고 $17$보다 작은 자연수가 있는지 확인해 보세요.<br>' : ''}
+            ${!ok3 ? '• ⑶ $39$의 각 자리 숫자의 합($3+9=12$)이 $3$의 배수임을 이용해 보세요. ($3 \\times 13 = 39$)<br>' : ''}
+            ${!ok4 ? '• ⑷ $53$이 소수인지 합성수인지 약수를 직접 구하여 판별해 보세요.<br>' : ''}
+            ${!ok5 ? '• ⑸ $39$에 대한 바른 설명을 다시 골라보세요.<br>' : ''}
+            💡 좌측 캔버스 상단의 숫자 칩(8, 17, 39, 53)을 터치하여 각 수의 약수 분해식을 확인해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (1-8 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -5795,6 +6242,10 @@
         state.lab1_6.isPacked = false;
         renderToolbar1_6();
         drawStep1_6Canvas();
+      } else if (state.subStep === '1-7') {
+        state.lab1_7.selectedNumber = 8;
+        renderToolbar1_7();
+        drawStep1_7Canvas();
       }
     }
 
@@ -6052,6 +6503,7 @@
         else if (state.subStep === '1-4') drawStep1_4Canvas();
         else if (state.subStep === '1-5') drawStep1_5Canvas();
         else if (state.subStep === '1-6') drawStep1_6Canvas();
+        else if (state.subStep === '1-7') drawStep1_7Canvas();
       }, 150);
     });
 
