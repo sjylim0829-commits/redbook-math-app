@@ -50940,59 +50940,369 @@ function checkStep_1_12() {
     function drawCanvas_7_3(container) {
       if (!container) return;
       container.innerHTML = '';
+
+      const wrap = document.createElement('div');
+      wrap.style.width = '100%';
+      wrap.style.height = '100%';
+      wrap.style.position = 'relative';
+      wrap.style.overflow = 'hidden';
+      wrap.style.display = 'flex';
+      wrap.style.flexDirection = 'column';
+      container.appendChild(wrap);
+
       const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 500;
-      canvas.height = container.clientHeight || 450;
       canvas.style.width = '100%';
       canvas.style.height = '100%';
       canvas.style.display = 'block';
-      container.appendChild(canvas);
+      canvas.style.flex = '1';
+      wrap.appendChild(canvas);
+
       const ctx = canvas.getContext('2d');
+      let dpr = window.devicePixelRatio || 1;
+      let width = 0;
+      let height = 0;
 
-      let animId;
-      let angle = 0;
+      // 상태 변수 (초기값: A=35, B=1 불완전 상태, 제로 스포일러)
+      let curA = 35;
+      let curB = 1;
+      let animId = null;
+      let confettiList = [];
+      let isSuccess = false;
+
+      function resize() {
+        const rect = wrap.getBoundingClientRect();
+        width = Math.max(rect.width, 320);
+        height = Math.max(rect.height, 360);
+        dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+
+      const ro = new ResizeObserver(() => {
+        resize();
+      });
+      ro.observe(wrap);
+
+      function triggerConfetti() {
+        confettiList = [];
+        for (let i = 0; i < 40; i++) {
+          confettiList.push({
+            x: width * 0.5 + (Math.random() - 0.5) * 200,
+            y: height * 0.45 + (Math.random() - 0.5) * 60,
+            vx: (Math.random() - 0.5) * 8,
+            vy: -Math.random() * 6 - 2,
+            size: Math.random() * 6 + 4,
+            color: ['#38bdf8', '#fb923c', '#10b981', '#f59e0b', '#ec4899'][Math.floor(Math.random() * 5)],
+            alpha: 1.0,
+            decay: Math.random() * 0.02 + 0.015
+          });
+        }
+      }
+
+      function updateSuccessState() {
+        if (curA === 70 && curB === 3) {
+          if (!isSuccess) {
+            isSuccess = true;
+            triggerConfetti();
+          }
+        } else {
+          isSuccess = false;
+        }
+      }
+
+      // 외부 연동 API
+      window._step7_3_setFraction = (num, den) => {
+        curA = Number(num) || 70;
+        curB = Number(den) || 3;
+        updateSuccessState();
+      };
+
+      window._step7_3_triggerSuccess = () => {
+        curA = 70;
+        curB = 3;
+        updateSuccessState();
+        triggerConfetti();
+      };
+
+      let hitRegions = [];
+
       function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, width, height);
 
+        // 배경
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, width, height);
+
+        // 그리드 패턴
         ctx.strokeStyle = '#1e293b';
         ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 40) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        const gridStep = 40;
+        for (let x = 0; x < width; x += gridStep) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
         }
-        for (let y = 0; y < canvas.height; y += 40) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        for (let y = 0; y < height; y += gridStep) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
         }
 
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 16px "Pretendard", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('[7-3] 10번: 자연수가 되게 하는 가장 작은 분수 (p.25)', canvas.width / 2, 40);
+        hitRegions = [];
 
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.strokeStyle = '#f59e0b';
-        ctx.lineWidth = 3;
+        // 1. 상단 안내 카드
+        ctx.fillStyle = '#1e293b';
         ctx.beginPath();
-        ctx.arc(0, 0, 70, 0, Math.PI * 2);
+        ctx.roundRect(16, 10, width - 32, 60, 8);
+        ctx.fill();
+        ctx.strokeStyle = '#334155';
         ctx.stroke();
-        ctx.restore();
 
+        ctx.font = 'bold 14px "Pretendard", sans-serif';
+        ctx.fillStyle = '#38bdf8';
+        ctx.textAlign = 'left';
+        ctx.fillText('⚙️ 자연수가 되게 하는 가장 작은 기약분수 A/B 조립기', 26, 30);
+
+        ctx.font = '12px "Pretendard", sans-serif';
         ctx.fillStyle = '#94a3b8';
-        ctx.font = '13px "Pretendard", sans-serif';
-        ctx.fillText('심화 마무리 인터랙터', cx, cy + 110);
+        ctx.fillText('세 수 9/5, 36/7, 15/14 에 각각 A/B를 곱했을 때 모두 자연수가 되는 가장 작은 분수를 찾으세요!', 26, 50);
 
-        angle += 0.02;
+        // 2. 세 분수 곱셈 슬롯 (가로 3칸 분할)
+        const slotY = 78;
+        const slotH = 76;
+        const slotMargin = 16;
+        const slotGap = 8;
+        const totalW = width - slotMargin * 2;
+        const slotW = (totalW - slotGap * 2) / 3;
+
+        const fractions = [
+          { name: '9/5', num: 9, den: 5, reqA: '5의 배수', reqB: '9의 약수' },
+          { name: '36/7', num: 36, den: 7, reqA: '7의 배수', reqB: '36의 약수' },
+          { name: '15/14', num: 15, den: 14, reqA: '14의 배수', reqB: '15의 약수' }
+        ];
+
+        fractions.forEach((f, idx) => {
+          const sx = slotMargin + idx * (slotW + slotGap);
+          // 곱셈 결과 계산: (f.num * curA) / (f.den * curB) 가 정수인지 검사
+          const totalNum = f.num * curA;
+          const totalDen = f.den * curB;
+          const isNat = (totalNum % totalDen === 0);
+
+          ctx.fillStyle = isNat ? '#064e3b' : '#1e293b';
+          ctx.beginPath();
+          ctx.roundRect(sx, slotY, slotW, slotH, 6);
+          ctx.fill();
+          ctx.strokeStyle = isNat ? '#10b981' : '#334155';
+          ctx.lineWidth = isNat ? 1.5 : 1;
+          ctx.stroke();
+
+          ctx.font = 'bold 12px "Pretendard", sans-serif';
+          ctx.fillStyle = isNat ? '#34d399' : '#38bdf8';
+          ctx.textAlign = 'center';
+          ctx.fillText(`[슬롯 ${idx+1}]  ${f.name} × A/B`, sx + slotW / 2, slotY + 20);
+
+          ctx.font = '11px "Pretendard", sans-serif';
+          ctx.fillStyle = '#cbd5e1';
+          ctx.fillText(`• A: ${f.reqA}`, sx + slotW / 2, slotY + 38);
+          ctx.fillText(`• B: ${f.reqB}`, sx + slotW / 2, slotY + 52);
+
+          ctx.font = 'bold 11px "Pretendard", sans-serif';
+          if (isNat) {
+            ctx.fillStyle = '#10b981';
+            ctx.fillText(`= ${totalNum / totalDen} (자연수 ✅)`, sx + slotW / 2, slotY + 68);
+          } else {
+            ctx.fillStyle = '#f87171';
+            ctx.fillText('자연수 아님 ❌', sx + slotW / 2, slotY + 68);
+          }
+        });
+
+        // 3. 중앙 듀얼 조립기 트레이 (분자 A 트레이 vs 분모 B 트레이)
+        const trayY = slotY + slotH + 12;
+        const trayH = 88;
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.roundRect(16, trayY, width - 32, trayH, 8);
+        ctx.fill();
+        ctx.strokeStyle = '#334155';
+        ctx.stroke();
+
+        // 3-1. 분자 A 행
+        ctx.font = 'bold 12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#38bdf8';
+        ctx.textAlign = 'left';
+        ctx.fillText('분자 A (5, 7, 14의 최소공배수):', 26, trayY + 24);
+
+        const aOptions = [35, 70, 140];
+        let aBtnX = 225;
+        aOptions.forEach(opt => {
+          const isSel = (curA === opt);
+          ctx.fillStyle = isSel ? '#0284c7' : '#334155';
+          ctx.beginPath();
+          ctx.roundRect(aBtnX, trayY + 10, 56, 22, 4);
+          ctx.fill();
+          if (isSel) {
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+          }
+
+          ctx.font = 'bold 11px "Pretendard", sans-serif';
+          ctx.fillStyle = isSel ? '#ffffff' : '#cbd5e1';
+          ctx.textAlign = 'center';
+          ctx.fillText(`A=${opt}`, aBtnX + 28, trayY + 25);
+
+          hitRegions.push({
+            x: aBtnX, y: trayY + 10, w: 56, h: 22,
+            action: () => {
+              curA = opt;
+              updateSuccessState();
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+            }
+          });
+          aBtnX += 62;
+        });
+
+        // 3-2. 분모 B 행
+        ctx.font = 'bold 12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#fb923c';
+        ctx.textAlign = 'left';
+        ctx.fillText('분모 B (9, 36, 15의 최대공약수):', 26, trayY + 62);
+
+        const bOptions = [1, 3, 9];
+        let bBtnX = 225;
+        bOptions.forEach(opt => {
+          const isSel = (curB === opt);
+          ctx.fillStyle = isSel ? '#ea580c' : '#334155';
+          ctx.beginPath();
+          ctx.roundRect(bBtnX, trayY + 48, 56, 22, 4);
+          ctx.fill();
+          if (isSel) {
+            ctx.strokeStyle = '#fb923c';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+          }
+
+          ctx.font = 'bold 11px "Pretendard", sans-serif';
+          ctx.fillStyle = isSel ? '#ffffff' : '#cbd5e1';
+          ctx.textAlign = 'center';
+          ctx.fillText(`B=${opt}`, bBtnX + 28, trayY + 63);
+
+          hitRegions.push({
+            x: bBtnX, y: trayY + 48, w: 56, h: 22,
+            action: () => {
+              curB = opt;
+              updateSuccessState();
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+            }
+          });
+          bBtnX += 62;
+        });
+
+        // 4. 하단 완성 카드 & 연동 버튼
+        const bottomY = trayY + trayH + 12;
+        const bottomH = 68;
+        const allNat = (curA === 70 && curB === 3);
+
+        ctx.fillStyle = allNat ? '#064e3b' : '#1e293b';
+        ctx.beginPath();
+        ctx.roundRect(16, bottomY, width - 32, bottomH, 8);
+        ctx.fill();
+        ctx.strokeStyle = allNat ? '#10b981' : '#334155';
+        ctx.lineWidth = allNat ? 2 : 1;
+        ctx.stroke();
+
+        ctx.font = 'bold 13px "Pretendard", sans-serif';
+        ctx.textAlign = 'left';
+        if (allNat) {
+          ctx.fillStyle = '#34d399';
+          ctx.fillText(`🎉 완성된 가장 작은 기약분수: A/B = 70/3 (모두 자연수 성립!)`, 28, bottomY + 28);
+          ctx.font = '12px "Pretendard", sans-serif';
+          ctx.fillStyle = '#a7f3d0';
+          ctx.fillText(`A = lcm(5, 7, 14) = 70, B = gcd(9, 36, 15) = 3`, 28, bottomY + 48);
+        } else {
+          ctx.fillStyle = '#cbd5e1';
+          ctx.fillText(`현재 조합: A/B = ${curA}/${curB}`, 28, bottomY + 28);
+          ctx.font = '12px "Pretendard", sans-serif';
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText(`가장 작은 분수가 되려면 분자 A는 최소(최소공배수), 분모 B는 최대(최대공약수)여야 합니다.`, 28, bottomY + 48);
+        }
+
+        // 완성 시 [답안창에 70/3 입력 ➔] 버튼
+        if (allNat) {
+          const btnApplyW = 135;
+          const btnApplyX = width - 16 - btnApplyW - 12;
+          const btnApplyY = bottomY + 16;
+          const btnApplyH = 36;
+
+          ctx.fillStyle = '#10b981';
+          ctx.beginPath();
+          ctx.roundRect(btnApplyX, btnApplyY, btnApplyW, btnApplyH, 6);
+          ctx.fill();
+          ctx.strokeStyle = '#34d399';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          ctx.font = 'bold 12px "Pretendard", sans-serif';
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.fillText('답안창에 70/3 입력 ➔', btnApplyX + btnApplyW / 2, btnApplyY + 22);
+
+          hitRegions.push({
+            x: btnApplyX, y: btnApplyY, w: btnApplyW, h: btnApplyH,
+            action: () => {
+              const inp = document.getElementById('ans-7-3');
+              if (inp) {
+                inp.value = '70/3';
+                inp.focus();
+              }
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+            }
+          });
+        }
+
+        // 콘페티 렌더링
+        if (confettiList.length > 0) {
+          confettiList.forEach((c) => {
+            c.x += c.vx;
+            c.y += c.vy;
+            c.vy += 0.15;
+            c.alpha -= c.decay;
+
+            if (c.alpha > 0) {
+              ctx.save();
+              ctx.globalAlpha = Math.max(0, c.alpha);
+              ctx.fillStyle = c.color;
+              ctx.beginPath();
+              ctx.arc(c.x, c.y, c.size, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+          });
+          confettiList = confettiList.filter(c => c.alpha > 0);
+        }
+
         animId = requestAnimationFrame(render);
       }
+
+      function handleCanvasClick(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+
+        for (const region of hitRegions) {
+          if (clickX >= region.x && clickX <= region.x + region.w &&
+              clickY >= region.y && clickY <= region.y + region.h) {
+            region.action();
+            break;
+          }
+        }
+      }
+
+      canvas.addEventListener('click', handleCanvasClick);
       render();
 
       window._cleanup_step_7_3 = () => {
         if (animId) cancelAnimationFrame(animId);
+        if (ro) ro.disconnect();
+        canvas.removeEventListener('click', handleCanvasClick);
       };
     }
 
@@ -51001,9 +51311,24 @@ function checkStep_1_12() {
       box.innerHTML = `
         <div class="question-card" style="padding:16px; background:#1e293b; border-radius:10px; margin-bottom:15px; border:1px solid #334155;">
           <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 7-3. 10번: 자연수가 되게 하는 가장 작은 분수 (p.25)</div>
-          <p style="font-size:14px; color:#cbd5e1; line-height:1.6; margin-bottom:12px;">
-            세 수 9/5, 36/7, 15/14 중에서 어느 것을 택하여 곱해도 자연수가 되는 가장 작은 분수를 구하시오.
-          </p>
+          
+          <div style="background:#0f172a; border:1px solid #334155; border-radius:8px; padding:12px; margin-bottom:12px;">
+            <div style="font-weight:700; color:#f8fafc; margin-bottom:6px; font-size:14px;">
+              10. 세 수 9/5, 36/7, 15/14 중에서 어느 것을 택하여 곱해도 자연수가 되는 가장 작은 분수를 구하시오.
+            </div>
+            <div style="font-size:13px; color:#94a3b8; line-height:1.6;">
+              💡 구하는 분수를 A/B라고 할 때, 곱하여 자연수가 되려면 분자 A는 분모들의 최소공배수, 분모 B는 분자들의 최대공약수여야 합니다.
+            </div>
+          </div>
+
+          <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-7-3" data-val="70/3" style="font-weight:700; padding:5px 10px;">70/3</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-7-3" data-val="3/70" style="font-weight:700; padding:5px 10px;">3/70</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-7-3" data-val="70" style="font-weight:700; padding:5px 10px;">70</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-7-3" data-val="3" style="font-weight:700; padding:5px 10px;">3</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm btn-clear-7-3" style="font-size:12px; padding:5px 10px; margin-left:auto;">지우기</button>
+          </div>
+
           <div style="margin-bottom:12px;">
             <input type="text" id="ans-7-3" class="form-control" placeholder="기약분수 입력 (예: a/b)" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
           </div>
@@ -51012,6 +51337,35 @@ function checkStep_1_12() {
       `;
 
       const input = box.querySelector('#ans-7-3');
+
+      box.querySelectorAll('.btn-quick-7-3').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = btn.getAttribute('data-val');
+          if (input) {
+            input.value = val;
+            input.focus();
+          }
+          if (val === '70/3') {
+            if (window._step7_3_setFraction) window._step7_3_setFraction(70, 3);
+          } else if (val === '3/70') {
+            if (window._step7_3_setFraction) window._step7_3_setFraction(3, 70);
+          } else if (val === '70') {
+            if (window._step7_3_setFraction) window._step7_3_setFraction(70, 1);
+          } else if (val === '3') {
+            if (window._step7_3_setFraction) window._step7_3_setFraction(3, 1);
+          }
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        });
+      });
+
+      box.querySelector('.btn-clear-7-3')?.addEventListener('click', () => {
+        if (input) {
+          input.value = '';
+          input.focus();
+        }
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      });
+
       if (input) {
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') checkStep_7_3();
@@ -51020,18 +51374,50 @@ function checkStep_1_12() {
     }
 
     function checkStep_7_3() {
-      const v = normTxt(document.getElementById('ans-7-3')?.value);
-      const isCorrect = (v.length > 0);
+      const raw = document.getElementById('ans-7-3')?.value || '';
+      const v = normTxt(raw).replace(/\s+/g, '');
+
+      if (!v) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>값을 입력해 주세요.</b><br>캔버스에서 분자(최소공배수)와 분모(최대공약수)를 조작하여 가장 작은 분수를 찾아보세요.');
+        return;
+      }
+
+      // 오답 맞춤형 피드백
+      if (v === '3/70' || v === '70분의3') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>분자와 분모가 바뀌었습니다!</b><br>분수 A/B에서 분자 A가 분모들의 배수, 분모 B가 분자들의 약수여야 합니다.');
+        return;
+      }
+
+      if (v === '70') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>70은 분자 A의 값입니다!</b><br>분모 B=3을 포함하여 기약분수(70/3) 형태로 입력하세요.');
+        return;
+      }
+
+      if (v === '3') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>3은 분모 B의 값입니다!</b><br>분자 A=70을 포함하여 기약분수(70/3) 형태로 입력하세요.');
+        return;
+      }
+
+      // 정답 판정: 70/3 또는 3분의70
+      const isCorrect = (v === '70/3' || v === '3분의70');
+
       if (isCorrect) {
-        completeSubStep('7-3', '🎉 <b>정답입니다!</b><br>• 정답 및 해설: 70/3');
+        if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        if (window._step7_3_triggerSuccess) {
+          window._step7_3_triggerSuccess();
+        }
+        completeSubStep('7-3', '🎉 <b>정답입니다!</b><br>• 구하는 분수를 $\\frac{A}{B}$ ($A, B$는 서로소)라 하면:<br>  - $A$는 분모 5, 7, 14의 최소공배수이어야 하므로 $A = \\text{lcm}(5, 7, 14) = <b>70</b>$<br>  - $B$는 분자 9, 36, 15의 최대공약수이어야 하므로 $B = \\gcd(9, 36, 15) = <b>3</b>$<br>• 따라서 구하는 가장 작은 기약분수는 <b>70/3</b> ($\\frac{70}{3}$) 입니다.');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>값을 입력해 주세요.</b>');
+        showFeedback(false, '❌ <b>다시 계산해 보세요!</b><br>분자 A는 분모(5, 7, 14)의 최소공배수, 분모 B는 분자(9, 36, 15)의 최대공약수입니다.');
       }
     }
-
 
     // =========================================================
     // Step 7-4: 11번: [서술형] 126과 45의 소인수 합 a+b (p.26)
