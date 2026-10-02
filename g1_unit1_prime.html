@@ -49251,63 +49251,469 @@ function checkStep_1_12() {
     // ==========================================
     function drawCanvas_6_7(container) {
       if (!container) return;
+      if (typeof window._cleanup_step_6_7 === 'function') {
+        window._cleanup_step_6_7();
+      }
       container.innerHTML = '';
+
       const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 500;
-      canvas.height = container.clientHeight || 450;
       canvas.style.width = '100%';
       canvas.style.height = '100%';
       canvas.style.display = 'block';
+      canvas.style.cursor = 'default';
       container.appendChild(canvas);
       const ctx = canvas.getContext('2d');
 
+      // 5 Multiple Choice Options
+      const options = [
+        { no: '①', gcd: '2² × 3', lcm: '2² × 3 × 5', isCorrect: false, errorNote: 'LCM에 7 누락, 2의 지수 오류' },
+        { no: '②', gcd: '2² × 3', lcm: '2² × 3 × 7', isCorrect: false, errorNote: 'LCM에 5 누락, 2의 지수 오류' },
+        { no: '③', gcd: '2² × 3', lcm: '2² × 3 × 5 × 7', isCorrect: false, errorNote: 'LCM에서 2의 지수(2³이어야 함) 오류' },
+        { no: '④', gcd: '2² × 3', lcm: '2³ × 3 × 5 × 7', isCorrect: true, errorNote: '정답! GCD와 LCM 모두 완벽' },
+        { no: '⑤', gcd: '2³ × 3', lcm: '2³ × 3 × 5 × 7', isCorrect: false, errorNote: 'GCD에서 2의 지수(2²이어야 함) 오류' }
+      ];
+
+      // Prime Factor Columns Data
+      const columns = [
+        { prime: 2, expA: '2³', expB: '2²', minExp: '2²', maxExp: '2³', desc: '지수 비교: min(3,2)=2, max(3,2)=3' },
+        { prime: 3, expA: '3', expB: '3', minExp: '3', maxExp: '3', desc: '지수 비교: min(1,1)=1, max(1,1)=1' },
+        { prime: 5, expA: '5', expB: '-', minExp: '-', maxExp: '5', desc: '수 A에만 있음: GCD 제외, LCM 포함' },
+        { prime: 7, expA: '-', expB: '7', minExp: '-', maxExp: '7', desc: '수 B에만 있음: GCD 제외, LCM 포함' }
+      ];
+
+      // State
+      const state = {
+        selectedOption: null, // Initially null for zero-spoiler
+        selectedCol: 0,       // Currently focused prime column (0 to 3)
+        isSuccess: false,
+        pulse: 0,
+        particles: []
+      };
+
+      // Expose hooks
+      window._step6_7_selectVal = (val) => {
+        const item = options.find(o => o.no === val || o.no.includes(val) || val.includes(o.no));
+        if (item) {
+          state.selectedOption = item;
+        }
+      };
+
+      window._step6_7_triggerSuccess = () => {
+        state.isSuccess = true;
+        state.selectedOption = options[3]; // Option 4
+        createGrandConfetti();
+      };
+
+      function createGrandConfetti() {
+        state.particles = [];
+        const colors = ['#38bdf8', '#34d399', '#fbbf24', '#f43f5e', '#a855f7', '#ec4899'];
+        for (let i = 0; i < 60; i++) {
+          state.particles.push({
+            x: canvas.width / (2 * (window.devicePixelRatio || 1)),
+            y: canvas.height / (2 * (window.devicePixelRatio || 1)),
+            vx: (Math.random() - 0.5) * 10,
+            vy: (Math.random() - 0.9) * 10,
+            r: Math.random() * 4 + 2,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            life: 1.0,
+            decay: Math.random() * 0.012 + 0.008
+          });
+        }
+      }
+
+      let hitBoxes = [];
+
+      function resizeCanvas() {
+        const rect = container.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        const w = rect.width || 600;
+        const h = rect.height || 480;
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resizeCanvas();
+
+      const ro = new ResizeObserver(() => resizeCanvas());
+      ro.observe(container);
+
+      // Render loop
       let animId;
-      let angle = 0;
       function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        state.pulse += 0.04;
+        hitBoxes = [];
 
-        // Grid lines
-        ctx.strokeStyle = '#1e293b';
+        const dpr = window.devicePixelRatio || 1;
+        const W = canvas.width / dpr;
+        const H = canvas.height / dpr;
+
+        ctx.clearRect(0, 0, W, H);
+
+        // Background
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+        bgGrad.addColorStop(0, '#090d16');
+        bgGrad.addColorStop(1, '#0f172a');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, W, H);
+
+        // Grid
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.025)';
         ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 40) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        for (let x = 0; x < W; x += 30) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
         }
-        for (let y = 0; y < canvas.height; y += 40) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        for (let y = 0; y < H; y += 30) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
         }
 
-        // Badge & Title
+        // --- Header Section ---
+        const titleY = 22;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 14px "Pretendard", -apple-system, sans-serif';
         ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 16px "Pretendard", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('[6-7] 07번: 최대공약수와 최소공배수 구하기 (p.25)', canvas.width / 2, 40);
+        ctx.fillText('07. 거듭제곱 세로 정렬 및 GCD / LCM 듀얼 추출기', 18, titleY);
 
-        // Interactive visual placeholder
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
+        ctx.textAlign = 'right';
+        ctx.font = '12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('소인수 열을 클릭하여 지수 비교 원리를 탐색하세요', W - 18, titleY);
+
+        // --- Top: Vertical Alignment Factor Grid (y=44 ~ 155) ---
+        const gridX = 18;
+        const gridY = 44;
+        const gridW = W - 36;
+        const gridH = 110;
+
         ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.strokeStyle = '#f59e0b';
-        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(0, 0, 70, 0, Math.PI * 2);
+        ctx.roundRect(gridX, gridY, gridW, gridH, 10);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1.2;
+        ctx.fill();
         ctx.stroke();
+
+        // Row Labels on Left
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText('수 A:', gridX + 14, gridY + 36);
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillText('수 B:', gridX + 14, gridY + 68);
+
+        // 4 Columns: 2, 3, 5, 7
+        const colStartX = gridX + 80;
+        const colW = Math.min(95, (gridW - 100) / 4);
+
+        columns.forEach((col, idx) => {
+          const cx = colStartX + idx * colW;
+          const isFocused = (state.selectedCol === idx);
+
+          hitBoxes.push({
+            type: 'col',
+            idx: idx,
+            x: cx - 6, y: gridY + 8, w: colW - 4, h: gridH - 16
+          });
+
+          // Highlight focused column
+          if (isFocused) {
+            ctx.beginPath();
+            ctx.roundRect(cx - 6, gridY + 8, colW - 4, gridH - 16, 6);
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.12)';
+            ctx.fill();
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+          }
+
+          // Column Header (Prime Base)
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.font = 'bold 11.5px "Pretendard", sans-serif';
+          ctx.fillStyle = isFocused ? '#38bdf8' : '#94a3b8';
+          ctx.fillText(`[밑 ${col.prime}]`, cx + colW / 2 - 8, gridY + 12);
+
+          // Row A factor
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 13px "Pretendard", sans-serif';
+          ctx.fillStyle = (col.expA !== '-') ? '#e2e8f0' : '#475569';
+          ctx.fillText(col.expA, cx + colW / 2 - 8, gridY + 36);
+
+          // Row B factor
+          ctx.fillStyle = (col.expB !== '-') ? '#e2e8f0' : '#475569';
+          ctx.fillText(col.expB, cx + colW / 2 - 8, gridY + 68);
+
+          // Division / Extracted Mini Badges
+          ctx.font = '10px "Pretendard", sans-serif';
+          ctx.fillStyle = '#34d399';
+          ctx.fillText(`min:${col.minExp}`, cx + colW / 2 - 8, gridY + 92);
+        });
         ctx.restore();
 
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '13px "Pretendard", sans-serif';
-        ctx.fillText('마무리 인터랙터', cx, cy + 110);
+        // --- Middle: Dual Extraction Rails (GCD & LCM) (y=162 ~ 265) ---
+        const railY = gridY + gridH + 8;
+        const railH = 92;
+        const railW = W - 36;
+        const rx = 18;
+        const ry = railY;
 
-        angle += 0.02;
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(rx, ry, railW, railH, 10);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1.2;
+        ctx.fill();
+        ctx.stroke();
+
+        // Rail 1: GCD (Top Half)
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText('🔵 최대공약수(GCD) 추출 [작은 지수]:', rx + 14, ry + 24);
+
+        ctx.font = 'bold 15px "Pretendard", sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('2² × 3', rx + 245, ry + 24);
+
+        ctx.font = '11px "Pretendard", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('(공통인 소인수 2와 3 중 작은 지수 선택)', rx + 320, ry + 24);
+
+        // Divider
+        ctx.beginPath();
+        ctx.moveTo(rx + 14, ry + 46);
+        ctx.lineTo(rx + railW - 14, ry + 46);
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Rail 2: LCM (Bottom Half)
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillText('🟠 최소공배수(LCM) 추출 [큰 지수]:', rx + 14, ry + 68);
+
+        ctx.font = 'bold 15px "Pretendard", sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('2³ × 3 × 5 × 7', rx + 245, ry + 68);
+
+        ctx.font = '11px "Pretendard", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('(모든 소인수 2, 3, 5, 7 중 큰 지수 선택)', rx + 380, ry + 68);
+        ctx.restore();
+
+        // --- Bottom: 5 Multiple Choice Options (y=268 ~ H-12) ---
+        const cardsY = ry + railH + 8;
+        const botH = H - cardsY - 12;
+        const cardH = Math.min(84, botH);
+        const cardGap = 8;
+        const isNarrow = (W < 580);
+
+        let cardCoords = [];
+        if (!isNarrow) {
+          const cardW = (W - 36 - 4 * cardGap) / 5;
+          for (let i = 0; i < 5; i++) {
+            cardCoords.push({
+              x: 18 + i * (cardW + cardGap),
+              y: cardsY,
+              w: cardW,
+              h: cardH,
+              item: options[i]
+            });
+          }
+        } else {
+          // 2 Rows
+          const cW1 = (W - 36 - 2 * cardGap) / 3;
+          for (let i = 0; i < 3; i++) {
+            cardCoords.push({
+              x: 18 + i * (cW1 + cardGap),
+              y: cardsY,
+              w: cW1,
+              h: cardH * 0.9,
+              item: options[i]
+            });
+          }
+          const cW2 = (W - 36 - cardGap) / 2;
+          for (let i = 3; i < 5; i++) {
+            cardCoords.push({
+              x: 18 + (i - 3) * (cW2 + cardGap),
+              y: cardsY + cardH * 0.9 + 6,
+              w: cW2,
+              h: cardH * 0.9,
+              item: options[i]
+            });
+          }
+        }
+
+        cardCoords.forEach(({ x, y, w, h, item }) => {
+          const isSelected = (state.selectedOption && state.selectedOption.no === item.no);
+
+          hitBoxes.push({
+            type: 'card',
+            item: item,
+            x: x, y: y, w: w, h: h
+          });
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect(x, y, w, h, 8);
+
+          if (state.isSuccess && item.isCorrect) {
+            ctx.fillStyle = 'rgba(16, 185, 129, 0.2)';
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 2.5;
+          } else if (isSelected) {
+            ctx.fillStyle = item.isCorrect ? 'rgba(16, 185, 129, 0.15)' : 'rgba(2, 132, 199, 0.15)';
+            ctx.strokeStyle = item.isCorrect ? '#34d399' : '#38bdf8';
+            ctx.lineWidth = 2;
+          } else {
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1;
+          }
+          ctx.fill();
+          ctx.stroke();
+
+          // Option Badge
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+          ctx.font = 'bold 13px "Pretendard", sans-serif';
+          ctx.fillStyle = isSelected ? '#ffffff' : '#e2e8f0';
+          ctx.fillText(item.no, x + 8, y + 8);
+
+          // GCD line
+          ctx.font = '10.5px "Pretendard", sans-serif';
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillText(`최대: ${item.gcd}`, x + 8, y + 26);
+
+          // LCM line
+          ctx.fillStyle = '#fbbf24';
+          ctx.fillText(`최소: ${item.lcm}`, x + 8, y + 42);
+
+          // Select button
+          const btnW = w - 16;
+          const btnH = 18;
+          const bx = x + 8;
+          const by = y + h - btnH - 6;
+
+          hitBoxes.push({
+            type: 'btnSelect',
+            item: item,
+            x: bx, y: by, w: btnW, h: btnH
+          });
+
+          ctx.beginPath();
+          ctx.roundRect(bx, by, btnW, btnH, 4);
+          if (isSelected) {
+            ctx.fillStyle = item.isCorrect ? '#059669' : '#0284c7';
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 9.5px "Pretendard", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('✓ 선택됨', bx + btnW / 2, by + btnH / 2);
+          } else {
+            ctx.fillStyle = '#1e293b';
+            ctx.fill();
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '9.5px "Pretendard", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('선택', bx + btnW / 2, by + btnH / 2);
+          }
+          ctx.restore();
+        });
+
+        // Confetti
+        if (state.particles.length > 0) {
+          ctx.save();
+          for (let i = state.particles.length - 1; i >= 0; i--) {
+            const p = state.particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.15;
+            p.life -= p.decay;
+            if (p.life <= 0) {
+              state.particles.splice(i, 1);
+              continue;
+            }
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = p.life;
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+
         animId = requestAnimationFrame(render);
       }
+
+      // Pointer Event Handlers
+      function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top
+        };
+      }
+
+      function handlePointerDown(e) {
+        const p = getPos(e);
+        for (let i = hitBoxes.length - 1; i >= 0; i--) {
+          const b = hitBoxes[i];
+          if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) {
+            if (b.type === 'col') {
+              state.selectedCol = b.idx;
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+              return;
+            } else if (b.type === 'card' || b.type === 'btnSelect') {
+              state.selectedOption = b.item;
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+
+              // Auto sync to form input
+              const inp = document.getElementById('ans-6-7');
+              if (inp) {
+                inp.value = b.item.no;
+                inp.focus();
+              }
+              return;
+            }
+          }
+        }
+      }
+
+      function handlePointerMove(e) {
+        const p = getPos(e);
+        let hover = false;
+        for (let i = hitBoxes.length - 1; i >= 0; i--) {
+          const b = hitBoxes[i];
+          if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) {
+            hover = true;
+            break;
+          }
+        }
+        canvas.style.cursor = hover ? 'pointer' : 'default';
+      }
+
+      canvas.addEventListener('pointerdown', handlePointerDown);
+      canvas.addEventListener('pointermove', handlePointerMove);
+
       render();
 
       window._cleanup_step_6_7 = () => {
         if (animId) cancelAnimationFrame(animId);
+        ro.disconnect();
+        canvas.removeEventListener('pointerdown', handlePointerDown);
+        canvas.removeEventListener('pointermove', handlePointerMove);
       };
     }
 
@@ -49316,17 +49722,64 @@ function checkStep_1_12() {
       box.innerHTML = `
         <div class="question-card" style="padding:16px; background:#1e293b; border-radius:10px; margin-bottom:15px; border:1px solid #334155;">
           <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 6-7. 07번: 최대공약수와 최소공배수 구하기 (p.25)</div>
-          <p style="font-size:14px; color:#cbd5e1; line-height:1.6; margin-bottom:12px;">
-            문제를 해결하고 답을 입력창에 작성하세요.
+          
+          <div style="background:#0f172a; border:1px solid #334155; border-radius:8px; padding:12px; margin-bottom:12px;">
+            <div style="font-weight:700; color:#f8fafc; margin-bottom:8px; font-size:14px;">
+              07. 두 수 2³ × 3 × 5, 2² × 3 × 7 의 최대공약수와 최소공배수를 차례대로 구하면?
+            </div>
+            <div style="display:flex; flex-direction:column; gap:5px; font-size:13.5px; color:#cbd5e1; line-height:1.6;">
+              <div><b>①</b> 2² × 3, 2² × 3 × 5</div>
+              <div><b>②</b> 2² × 3, 2² × 3 × 7</div>
+              <div><b>③</b> 2² × 3, 2² × 3 × 5 × 7</div>
+              <div><b>④</b> 2² × 3, 2³ × 3 × 5 × 7</div>
+              <div><b>⑤</b> 2³ × 3, 2³ × 3 × 5 × 7</div>
+            </div>
+          </div>
+
+          <p style="font-size:13px; color:#94a3b8; line-height:1.5; margin-bottom:10px;">
+            💡 거듭제곱으로 나타낸 두 수의 최대공약수는 공통인 소인수의 작은 지수를, 최소공배수는 모든 소인수의 큰 지수를 택합니다.
           </p>
+
+          <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-outline-info btn-sm btn-opt-6-7" data-val="①" style="font-weight:700; padding:5px 12px;">①</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-opt-6-7" data-val="②" style="font-weight:700; padding:5px 12px;">②</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-opt-6-7" data-val="③" style="font-weight:700; padding:5px 12px;">③</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-opt-6-7" data-val="④" style="font-weight:700; padding:5px 12px;">④</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-opt-6-7" data-val="⑤" style="font-weight:700; padding:5px 12px;">⑤</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm btn-clear-6-7" style="font-size:12px; padding:5px 10px; margin-left:auto;">초기화</button>
+          </div>
+
           <div style="margin-bottom:12px;">
-            <input type="text" id="ans-6-7" class="form-control" placeholder="답 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
+            <input type="text" id="ans-6-7" class="form-control" placeholder="번호 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
           </div>
           <button class="btn btn-primary" onclick="checkStep_6_7()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
 
       const input = box.querySelector('#ans-6-7');
+
+      box.querySelectorAll('.btn-opt-6-7').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = btn.getAttribute('data-val');
+          if (input) {
+            input.value = val;
+            input.focus();
+          }
+          if (window._step6_7_selectVal) {
+            window._step6_7_selectVal(val);
+          }
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        });
+      });
+
+      box.querySelector('.btn-clear-6-7')?.addEventListener('click', () => {
+        if (input) {
+          input.value = '';
+          input.focus();
+        }
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      });
+
       if (input) {
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') checkStep_6_7();
@@ -49335,15 +49788,54 @@ function checkStep_1_12() {
     }
 
     function checkStep_6_7() {
-      const v = normTxt(document.getElementById('ans-6-7')?.value);
-      const isCorrect = (v.length > 0);
+      const raw = document.getElementById('ans-6-7')?.value || '';
+      const v = normTxt(raw);
+
+      if (!v) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>번호를 입력해 주세요.</b><br>캔버스에서 두 수의 소인수별 지수를 비교하여 정답 번호를 골라보세요.');
+        return;
+      }
+
+      // Check wrong options and give targeted feedback
+      if (v === '1' || v === '①' || v === '1번') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>최소공배수에 소인수 7이 빠졌으며 2의 지수가 작습니다!</b><br>최소공배수는 모든 소인수(2, 3, 5, 7)의 큰 지수를 택해야 합니다.');
+        return;
+      }
+
+      if (v === '2' || v === '②' || v === '2번') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>최소공배수에 소인수 5가 빠졌으며 2의 지수가 작습니다!</b><br>최소공배수는 모든 소인수(2, 3, 5, 7)의 큰 지수를 택해야 합니다.');
+        return;
+      }
+
+      if (v === '3' || v === '③' || v === '3번') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>최소공배수에서 2의 지수는 큰 쪽(2³)을 택해야 합니다!</b>');
+        return;
+      }
+
+      if (v === '5' || v === '⑤' || v === '5번') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>최대공약수에서 2의 지수는 작은 쪽(2²)을 택해야 합니다!</b>');
+        return;
+      }
+
+      // Correct answer check: 4, ④, 4번
+      const isCorrect = (v === '4' || v === '④' || v === '4번');
+
       if (isCorrect) {
-        completeSubStep('6-7', '🎉 <b>정답입니다!</b><br>• 정답 및 해설: 최대공약수: 2² × 3, 최소공배수: 2³ × 3 × 5 × 7');
+        if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        if (window._step6_7_triggerSuccess) {
+          window._step6_7_triggerSuccess();
+        }
+        completeSubStep('6-7', '🎉 <b>정답입니다!</b><br>• <b>최대공약수(GCD)</b>: 공통인 소인수 중 지수가 작거나 같은 것을 택하므로 $2^2 \\times 3$ 입니다.<br>• <b>최소공배수(LCM)</b>: 모든 소인수 중 지수가 크거나 같은 것을 택하므로 $2^3 \\times 3 \\times 5 \\times 7$ 입니다.<br>• 따라서 차례대로 바르게 구한 것은 <b>④ 2² × 3, 2³ × 3 × 5 × 7</b> 입니다.<br><br>🏆 <b>축하합니다! 6소단원 [6. 마무리 (기초·기본 1~7번)]을 모두 완수하셨습니다!</b>');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>값을 입력해 주세요.</b>');
+        showFeedback(false, '❌ <b>다시 확인해 보세요!</b><br>최대공약수는 공통 소인수의 작은 지수를, 최소공배수는 모든 소인수의 큰 지수를 택합니다.');
       }
     }
 
