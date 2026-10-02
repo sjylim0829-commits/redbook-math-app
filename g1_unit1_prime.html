@@ -671,7 +671,7 @@
       <div class="activity-layout">
         <!-- Left Plane Section (60fps Canvas) -->
         <div class="plane-section">
-          <div class="plane-toolbar">
+          <div class="plane-toolbar" id="plane-toolbar">
             <span style="font-size:0.8rem; font-weight:800; color:#475569;">🔬 탐구 모드:</span>
             <button id="btn-mode-6" class="tool-btn active" onclick="setDivisorTarget(6)">6의 약수 블록</button>
             <button id="btn-mode-13" class="tool-btn" onclick="setDivisorTarget(13)">13의 약수 블록</button>
@@ -917,6 +917,12 @@
         blockRows: 2,
         multiplesHopCount: 4,
         selectedDivisor: 1
+      },
+      // 0-2 Interactive Lab State
+      lab0_2: {
+        pairIndex: 0, // 0: (12, 18), 1: (45, 54)
+        highlightCommon: false,
+        selectedNumber: null
       }
     };
 
@@ -1046,12 +1052,15 @@
       const missionEl = document.getElementById('mission-text');
       const formArea = document.getElementById('form-work-area');
 
-      // Toolbar visibility
-      const toolbar = document.querySelector('.plane-toolbar');
+      // Toolbar and Substep rendering
       if (code === '0-1') {
-        if (toolbar) toolbar.style.display = 'flex';
+        renderToolbar0_1();
         renderSubstep0_1();
+      } else if (code === '0-2') {
+        renderToolbar0_2();
+        renderSubstep0_2();
       } else {
+        const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
         renderScaffoldSubstep(code);
       }
@@ -1481,7 +1490,496 @@
     }
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (0-2 to 6-2)
+    // Toolbar Renderers for Substeps
+    // -------------------------------------------------------------
+    function renderToolbar0_1() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569;">🔬 탐구 모드:</span>
+        <button id="btn-mode-6" class="tool-btn ${state.lab0_1.mode === 'divisor' && state.lab0_1.targetNum === 6 ? 'active' : ''}" onclick="setDivisorTarget(6)">6의 약수 블록</button>
+        <button id="btn-mode-13" class="tool-btn ${state.lab0_1.mode === 'divisor' && state.lab0_1.targetNum === 13 ? 'active' : ''}" onclick="setDivisorTarget(13)">13의 약수 블록</button>
+        <button id="btn-mode-24" class="tool-btn ${state.lab0_1.mode === 'multiple' && state.lab0_1.targetNum === 24 ? 'active' : ''}" onclick="setMultipleTarget(24)">24의 배수 수직선</button>
+        <button id="btn-mode-36" class="tool-btn ${state.lab0_1.mode === 'multiple' && state.lab0_1.targetNum === 36 ? 'active' : ''}" onclick="setMultipleTarget(36)">36의 배수 수직선</button>
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function renderToolbar0_2() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569;">🔬 탐구 대상:</span>
+        <button id="btn-pair-0" class="tool-btn ${state.lab0_2.pairIndex === 0 ? 'active' : ''}" onclick="setVennPair(0)">(1) 12와 18</button>
+        <button id="btn-pair-1" class="tool-btn ${state.lab0_2.pairIndex === 1 ? 'active' : ''}" onclick="setVennPair(1)">(2) 45와 54</button>
+        <button id="btn-toggle-common" class="tool-btn ${state.lab0_2.highlightCommon ? 'active' : ''}" onclick="toggleHighlightCommon()">✨ 공약수·최대공약수 강조</button>
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    // -------------------------------------------------------------
+    // SUBSTEP 0-2: 되짚어 보기 2: 공약수와 최대공약수 (초5~6 복습, p.8)
+    // -------------------------------------------------------------
+    const VENN_PAIRS_CONFIG = [
+      {
+        title: '(1) 12와 18',
+        numA: 12,
+        numB: 18,
+        divsA: [1, 2, 3, 4, 6, 12],
+        divsB: [1, 2, 3, 6, 9, 18],
+        common: [1, 2, 3, 6],
+        onlyA: [4, 12],
+        onlyB: [9, 18],
+        gcd: 6
+      },
+      {
+        title: '(2) 45와 54',
+        numA: 45,
+        numB: 54,
+        divsA: [1, 3, 5, 9, 15, 45],
+        divsB: [1, 2, 3, 6, 9, 18, 27, 54],
+        common: [1, 3, 9],
+        onlyA: [5, 15, 45],
+        onlyB: [2, 6, 18, 27, 54],
+        gcd: 9
+      }
+    ];
+
+    function setVennPair(idx) {
+      state.lab0_2.pairIndex = idx;
+      state.lab0_2.selectedNumber = null;
+      renderToolbar0_2();
+      drawStep0_2Canvas();
+    }
+
+    function toggleHighlightCommon() {
+      state.lab0_2.highlightCommon = !state.lab0_2.highlightCommon;
+      renderToolbar0_2();
+      drawStep0_2Canvas();
+    }
+
+    function renderSubstep0_2() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[되짚어 보기 2] 공약수와 최대공약수 (초5~6 연계)</b><br>
+        • 두 수의 공통인 약수를 <b>공약수</b>라고 합니다.<br>
+        • 공약수 중에서 가장 큰 수를 <b>최대공약수(GCD)</b>라고 합니다.<br>
+        • <b>핵심 성질:</b> 두 수의 공약수는 <b>최대공약수의 약수</b>입니다.<br>
+        좌측 벤다이어그램에서 겹치는 부분의 공약수와 최대공약수(👑)를 확인하고 문제를 해결해 보세요!
+      `;
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--secondary-color);">
+          <h4 style="font-size:0.92rem; font-weight:800; color:#1e293b; margin-bottom:12px;">2. 다음 두 수의 공약수와 최대공약수를 각각 구하시오.</h4>
+          
+          <!-- (1) 12, 18 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:14px;">
+            <div style="font-weight:800; font-size:0.88rem; color:#1e293b; margin-bottom:8px;">
+              (1) $12, 18$
+            </div>
+            
+            <div style="margin-bottom:10px;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">
+                • $12$와 $18$의 공약수를 작은 수부터 쉼표(,)로 구분하여 입력하시오. <span style="font-size:0.78rem; color:#64748b; font-weight:500;">(예: 1, 2, 4)</span>
+              </label>
+              <input type="text" id="ans-0-2-1-common" class="proof-input-text" placeholder="답 입력" style="width:100%; max-width:280px;" autocomplete="off">
+            </div>
+
+            <div>
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">
+                • $12$와 $18$의 최대공약수를 입력하시오.
+              </label>
+              <input type="text" id="ans-0-2-1-gcd" class="proof-input-text" placeholder="답 입력" style="width:100%; max-width:140px;" autocomplete="off">
+            </div>
+          </div>
+
+          <!-- (2) 45, 54 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:14px;">
+            <div style="font-weight:800; font-size:0.88rem; color:#1e293b; margin-bottom:8px;">
+              (2) $45, 54$
+            </div>
+
+            <div style="margin-bottom:10px;">
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">
+                • $45$와 $54$의 공약수를 작은 수부터 쉼표(,)로 구분하여 입력하시오. <span style="font-size:0.78rem; color:#64748b; font-weight:500;">(예: 1, 2, 4)</span>
+              </label>
+              <input type="text" id="ans-0-2-2-common" class="proof-input-text" placeholder="답 입력" style="width:100%; max-width:280px;" autocomplete="off">
+            </div>
+
+            <div>
+              <label style="font-size:0.84rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">
+                • $45$와 $54$의 최대공약수를 입력하시오.
+              </label>
+              <input type="text" id="ans-0-2-2-gcd" class="proof-input-text" placeholder="답 입력" style="width:100%; max-width:140px;" autocomplete="off">
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep0_2()" style="padding:10px; font-weight:800; font-size:0.92rem;">
+            ✅ 정답 확인 및 채점하기
+          </button>
+
+          <div id="feedback-0-2" style="display:none;"></div>
+        </div>
+      `;
+
+      drawStep0_2Canvas();
+    }
+
+    function drawStep0_2Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const pair = VENN_PAIRS_CONFIG[state.lab0_2.pairIndex || 0];
+      const { numA, numB, divsA, divsB, common, onlyA, onlyB, gcd } = pair;
+
+      // 1. Title & Subtitle
+      const title = two.makeText(`🏷️ ${numA}와 ${numB}의 공약수와 최대공약수 벤다이어그램 탐구`, width / 2, 26);
+      title.size = 15;
+      title.weight = 800;
+      title.fill = '#1e293b';
+
+      const sub = two.makeText('두 수의 약수를 비교하고, 가운데 겹치는 공약수와 가장 큰 최대공약수(👑)를 확인해 보세요.', width / 2, 48);
+      sub.size = 12;
+      sub.fill = '#64748b';
+
+      // 2. Pair switch pills on canvas
+      const p1Btn = two.makeRoundedRectangle(width / 2 - 75, 78, 120, 26, 6);
+      p1Btn.fill = (state.lab0_2.pairIndex === 0) ? '#4f46e5' : '#ffffff';
+      p1Btn.stroke = (state.lab0_2.pairIndex === 0) ? '#4338ca' : '#cbd5e1';
+      p1Btn.linewidth = 1.5;
+      const p1Txt = two.makeText('(1) 12와 18', width / 2 - 75, 78);
+      p1Txt.size = 12; p1Txt.weight = 700;
+      p1Txt.fill = (state.lab0_2.pairIndex === 0) ? '#ffffff' : '#475569';
+
+      const p2Btn = two.makeRoundedRectangle(width / 2 + 75, 78, 120, 26, 6);
+      p2Btn.fill = (state.lab0_2.pairIndex === 1) ? '#4f46e5' : '#ffffff';
+      p2Btn.stroke = (state.lab0_2.pairIndex === 1) ? '#4338ca' : '#cbd5e1';
+      p2Btn.linewidth = 1.5;
+      const p2Txt = two.makeText('(2) 45와 54', width / 2 + 75, 78);
+      p2Txt.size = 12; p2Txt.weight = 700;
+      p2Txt.fill = (state.lab0_2.pairIndex === 1) ? '#ffffff' : '#475569';
+
+      // 3. Venn Diagram Circles
+      const cy = 200;
+      const R = Math.min(125, Math.max(105, Math.floor(width * 0.2)));
+      const D = Math.floor(R * 1.15);
+      const cx1 = width / 2 - D / 2;
+      const cx2 = width / 2 + D / 2;
+
+      // Circle A
+      const cA = two.makeCircle(cx1, cy, R);
+      cA.fill = 'rgba(99, 102, 241, 0.08)';
+      cA.stroke = '#6366f1';
+      cA.linewidth = 2.5;
+
+      // Circle B
+      const cB = two.makeCircle(cx2, cy, R);
+      cB.fill = 'rgba(236, 72, 153, 0.08)';
+      cB.stroke = '#ec4899';
+      cB.linewidth = 2.5;
+
+      // Badges above circles
+      const labelAY = cy - R - 14;
+      const badgeA = two.makeRoundedRectangle(cx1, labelAY, 90, 22, 11);
+      badgeA.fill = '#eef2ff'; badgeA.stroke = '#c7d2fe'; badgeA.linewidth = 1;
+      const txtA = two.makeText(`${numA}의 약수`, cx1, labelAY);
+      txtA.size = 12; txtA.weight = 800; txtA.fill = '#4338ca';
+
+      const badgeB = two.makeRoundedRectangle(cx2, labelAY, 90, 22, 11);
+      badgeB.fill = '#fdf2f8'; badgeB.stroke = '#fbcfe8'; badgeB.linewidth = 1;
+      const txtB = two.makeText(`${numB}의 약수`, cx2, labelAY);
+      txtB.size = 12; txtB.weight = 800; txtB.fill = '#db2777';
+
+      const badgeCommon = two.makeRoundedRectangle(width / 2, labelAY, 120, 22, 11);
+      badgeCommon.fill = '#fef3c7'; badgeCommon.stroke = '#fde68a'; badgeCommon.linewidth = 1;
+      const txtCommon = two.makeText(`✨ 공약수 (${common.length}개)`, width / 2, labelAY);
+      txtCommon.size = 12; txtCommon.weight = 800; txtCommon.fill = '#b45309';
+
+      // 4. Interactive Chips Data & Positions
+      const interactiveChips = [];
+
+      // Only A items
+      const leftX = cx1 - R * 0.35;
+      if (onlyA.length === 2) {
+        interactiveChips.push({ val: onlyA[0], x: leftX, y: cy - 28, type: 'onlyA' });
+        interactiveChips.push({ val: onlyA[1], x: leftX, y: cy + 28, type: 'onlyA' });
+      } else if (onlyA.length === 3) {
+        interactiveChips.push({ val: onlyA[0], x: leftX, y: cy - 42, type: 'onlyA' });
+        interactiveChips.push({ val: onlyA[1], x: leftX, y: cy, type: 'onlyA' });
+        interactiveChips.push({ val: onlyA[2], x: leftX, y: cy + 42, type: 'onlyA' });
+      }
+
+      // Only B items
+      const rightX = cx2 + R * 0.35;
+      if (onlyB.length === 2) {
+        interactiveChips.push({ val: onlyB[0], x: rightX, y: cy - 28, type: 'onlyB' });
+        interactiveChips.push({ val: onlyB[1], x: rightX, y: cy + 28, type: 'onlyB' });
+      } else if (onlyB.length === 5) {
+        interactiveChips.push({ val: onlyB[0], x: rightX - 25, y: cy - 32, type: 'onlyB' });
+        interactiveChips.push({ val: onlyB[1], x: rightX - 25, y: cy + 32, type: 'onlyB' });
+        interactiveChips.push({ val: onlyB[2], x: rightX + 26, y: cy - 46, type: 'onlyB' });
+        interactiveChips.push({ val: onlyB[3], x: rightX + 26, y: cy, type: 'onlyB' });
+        interactiveChips.push({ val: onlyB[4], x: rightX + 26, y: cy + 46, type: 'onlyB' });
+      }
+
+      // Common items (Intersection)
+      const midX = width / 2;
+      if (common.length === 4) {
+        interactiveChips.push({ val: common[0], x: midX, y: cy - 54, type: 'common' });
+        interactiveChips.push({ val: common[1], x: midX, y: cy - 18, type: 'common' });
+        interactiveChips.push({ val: common[2], x: midX, y: cy + 18, type: 'common' });
+        interactiveChips.push({ val: common[3], x: midX, y: cy + 54, type: 'common' });
+      } else if (common.length === 3) {
+        interactiveChips.push({ val: common[0], x: midX, y: cy - 42, type: 'common' });
+        interactiveChips.push({ val: common[1], x: midX, y: cy, type: 'common' });
+        interactiveChips.push({ val: common[2], x: midX, y: cy + 42, type: 'common' });
+      }
+
+      // Render Each Chip
+      interactiveChips.forEach(chip => {
+        const isSel = (state.lab0_2.selectedNumber === chip.val);
+        const isCommon = (chip.type === 'common');
+        const isGcd = (chip.val === gcd);
+        const chipW = isGcd ? 56 : 44;
+        const chipH = 28;
+
+        const rect = two.makeRoundedRectangle(chip.x, chip.y, chipW, chipH, 6);
+
+        if (isCommon) {
+          if (isGcd) {
+            rect.fill = '#fde047';
+            rect.stroke = '#b45309';
+            rect.linewidth = 2.5;
+          } else {
+            rect.fill = state.lab0_2.highlightCommon ? '#fef08a' : '#fef3c7';
+            rect.stroke = state.lab0_2.highlightCommon ? '#d97706' : '#f59e0b';
+            rect.linewidth = state.lab0_2.highlightCommon ? 2 : 1.5;
+          }
+        } else if (chip.type === 'onlyA') {
+          rect.fill = isSel ? '#c7d2fe' : '#eef2ff';
+          rect.stroke = isSel ? '#4338ca' : '#a5b4fc';
+          rect.linewidth = isSel ? 2 : 1.2;
+        } else {
+          rect.fill = isSel ? '#fbcfe8' : '#fdf2f8';
+          rect.stroke = isSel ? '#db2777' : '#f472b6';
+          rect.linewidth = isSel ? 2 : 1.2;
+        }
+
+        const labelText = isGcd ? `👑 ${chip.val}` : `${chip.val}`;
+        const chipTxt = two.makeText(labelText, chip.x, chip.y);
+        chipTxt.size = isGcd ? 12 : 13;
+        chipTxt.weight = 800;
+
+        if (isCommon) {
+          chipTxt.fill = isGcd ? '#78350f' : '#92400e';
+        } else if (chip.type === 'onlyA') {
+          chipTxt.fill = '#3730a3';
+        } else {
+          chipTxt.fill = '#9d174d';
+        }
+
+        if (isSel) {
+          const aura = two.makeRoundedRectangle(chip.x, chip.y, chipW + 8, chipH + 8, 8);
+          aura.noFill();
+          aura.stroke = '#4f46e5';
+          aura.linewidth = 2;
+        }
+      });
+
+      // 5. Selected Inspection Banner
+      const selNum = state.lab0_2.selectedNumber;
+      let inspectionText = '💡 팁: 번호 칩을 클릭하면 약수 및 공약수 성질을 자세히 관찰할 수 있습니다!';
+      let inspectColor = '#475569';
+      let inspectBg = '#f8fafc';
+      let inspectBorder = '#cbd5e1';
+
+      if (selNum !== null) {
+        if (selNum === gcd) {
+          inspectionText = `👑 ${selNum}은(는) 공약수 [${common.join(', ')}] 중 가장 큰 [최대공약수(GCD)]입니다!`;
+          inspectColor = '#92400e';
+          inspectBg = '#fefce8';
+          inspectBorder = '#fde047';
+        } else if (common.includes(selNum)) {
+          inspectionText = `✨ ${selNum}은(는) ${numA}와 ${numB}를 모두 나누어떨어지게 하는 [공약수]입니다! (${numA}÷${selNum}=${numA/selNum}, ${numB}÷${selNum}=${numB/selNum})`;
+          inspectColor = '#b45309';
+          inspectBg = '#fffbeb';
+          inspectBorder = '#fcd34d';
+        } else if (onlyA.includes(selNum)) {
+          inspectionText = `🔍 ${selNum}은(는) ${numA}의 약수이지만(${numA} = ${selNum}×${numA/selNum}), ${numB}의 약수는 아닙니다.`;
+          inspectColor = '#4338ca';
+          inspectBg = '#eef2ff';
+          inspectBorder = '#c7d2fe';
+        } else if (onlyB.includes(selNum)) {
+          inspectionText = `🔍 ${selNum}은(는) ${numB}의 약수이지만(${numB} = ${selNum}×${numB/selNum}), ${numA}의 약수는 아닙니다.`;
+          inspectColor = '#be185d';
+          inspectBg = '#fdf2f8';
+          inspectBorder = '#fbcfe8';
+        }
+      }
+
+      const inspectY = height - 76;
+      const inspectBox = two.makeRoundedRectangle(width / 2, inspectY, width - 40, 28, 6);
+      inspectBox.fill = inspectBg;
+      inspectBox.stroke = inspectBorder;
+      inspectBox.linewidth = 1.2;
+
+      const inspectMsg = two.makeText(inspectionText, width / 2, inspectY);
+      inspectMsg.size = 11.5;
+      inspectMsg.weight = 700;
+      inspectMsg.fill = inspectColor;
+
+      // 6. Bottom Summary Banner
+      const summaryY = height - 32;
+      const summaryBox = two.makeRoundedRectangle(width / 2, summaryY, width - 40, 42, 8);
+      summaryBox.fill = '#f0fdf4';
+      summaryBox.stroke = '#86efac';
+      summaryBox.linewidth = 1.5;
+
+      const sumLine1 = two.makeText(`📌 ${numA}의 약수: ${divsA.join(', ')}  |  ${numB}의 약수: ${divsB.join(', ')}`, width / 2, summaryY - 9);
+      sumLine1.size = 11;
+      sumLine1.weight = 700;
+      sumLine1.fill = '#166534';
+
+      const sumLine2 = two.makeText(`✨ 공약수: ${common.join(', ')}  |  👑 최대공약수(GCD): ${gcd}  (공약수는 최대공약수의 약수입니다)`, width / 2, summaryY + 9);
+      sumLine2.size = 11.5;
+      sumLine2.weight = 800;
+      sumLine2.fill = '#15803d';
+
+      two.update();
+
+      // Bind Real Pointer Event on Canvas
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas') : null;
+      if (canvasEl) {
+        canvasEl.onpointerdown = (e) => {
+          const rect = canvasEl.getBoundingClientRect();
+          const px = (e.clientX - rect.left) * (width / rect.width);
+          const py = (e.clientY - rect.top) * (height / rect.height);
+
+          // Check click on Pair 1 button
+          if (Math.abs(px - (width / 2 - 75)) <= 60 && Math.abs(py - 78) <= 14) {
+            setVennPair(0);
+            return;
+          }
+          // Check click on Pair 2 button
+          if (Math.abs(px - (width / 2 + 75)) <= 60 && Math.abs(py - 78) <= 14) {
+            setVennPair(1);
+            return;
+          }
+
+          // Check click on interactive chips
+          for (let i = 0; i < interactiveChips.length; i++) {
+            const chip = interactiveChips[i];
+            const isGcd = (chip.val === gcd);
+            const halfW = isGcd ? 28 : 22;
+            const halfH = 14;
+
+            if (Math.abs(px - chip.x) <= halfW && Math.abs(py - chip.y) <= halfH) {
+              state.lab0_2.selectedNumber = (state.lab0_2.selectedNumber === chip.val) ? null : chip.val;
+              drawStep0_2Canvas();
+              return;
+            }
+          }
+        };
+      }
+    }
+
+    async function gradeStep0_2() {
+      const q1Common = cleanInput(document.getElementById('ans-0-2-1-common')?.value);
+      const q1Gcd = cleanInput(document.getElementById('ans-0-2-1-gcd')?.value);
+      const q2Common = cleanInput(document.getElementById('ans-0-2-2-common')?.value);
+      const q2Gcd = cleanInput(document.getElementById('ans-0-2-2-gcd')?.value);
+
+      const fEl = document.getElementById('feedback-0-2');
+      if (!fEl) return;
+
+      const ok1Common = (q1Common === '1,2,3,6');
+      const ok1Gcd = (q1Gcd === '6');
+      const ok2Common = (q2Common === '1,3,9');
+      const ok2Gcd = (q2Gcd === '9');
+
+      if (ok1Common && ok1Gcd && ok2Common && ok2Gcd) {
+        fEl.style.display = 'block';
+        fEl.className = 'verified-answer-card';
+        fEl.innerHTML = `
+          <h4>🎉 100점 완벽 해결! (공약수와 최대공약수 마스터)</h4>
+          <p>
+            • <b>(1) 12와 18</b><br>
+            &nbsp;&nbsp;- $12$의 약수: $1, 2, 3, 4, 6, 12$<br>
+            &nbsp;&nbsp;- $18$의 약수: $1, 2, 3, 6, 9, 18$<br>
+            &nbsp;&nbsp;$\\rightarrow$ 공약수: <b>$1, 2, 3, 6$</b> / 최대공약수: <b>$6$</b><br><br>
+            • <b>(2) 45와 54</b><br>
+            &nbsp;&nbsp;- $45$의 약수: $1, 3, 5, 9, 15, 45$<br>
+            &nbsp;&nbsp;- $54$의 약수: $1, 2, 3, 6, 9, 18, 27, 54$<br>
+            &nbsp;&nbsp;$\\rightarrow$ 공약수: <b>$1, 3, 9$</b> / 최대공약수: <b>$9$</b><br><br>
+            💡 <b>핵심 수학 원리:</b> 두 수의 공약수는 <b>최대공약수의 약수</b>입니다!<br>
+            (예: $12$와 $18$의 공약수 $1, 2, 3, 6$은 모두 최대공약수 $6$의 약수입니다.)<br><br>
+            🌟 다음 단계인 <b>[0-3] 되짚어 보기 3: 공배수와 최소공배수</b>가 해금되었습니다!
+          </p>
+        `;
+
+        if (!state.completedSubSteps.includes('0-2')) {
+          state.completedSubSteps.push('0-2');
+        }
+        if (!state.unlockedSubSteps.includes('0-3')) {
+          state.unlockedSubSteps.push('0-3');
+        }
+
+        updateSubStepPills(0);
+
+        // Supabase DB save (SDK normalization with answerText & u1)
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('0-2', {
+              activityTitle: '[중1-1 소인수분해] [0-2] 되짚어 보기 2: 공약수와 최대공약수',
+              answerText: `(1) 공약수: ${q1Common}, 최대공약수: ${q1Gcd} | (2) 공약수: ${q2Common}, 최대공약수: ${q2Gcd}`,
+              answers: { q1Common, q1Gcd, q2Common, q2Gcd },
+              score: 100,
+              passed: true
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save notice:', e);
+          }
+        }
+      } else {
+        fEl.style.display = 'block';
+        fEl.className = 'card';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            ${(!ok1Common || !ok1Gcd) ? '• <b>(1) 12와 18:</b><br>' : ''}
+            ${!ok1Common ? '&nbsp;&nbsp;- 12와 18을 동시에 나누어떨어지게 하는 공통인 약수를 작은 수부터 모두 찾아 쉼표로 구분해 보세요.<br>' : ''}
+            ${!ok1Gcd ? '&nbsp;&nbsp;- 12와 18의 공약수 중에서 가장 큰 수를 찾아 최대공약수로 입력하세요.<br>' : ''}
+            ${(!ok2Common || !ok2Gcd) ? '• <b>(2) 45와 54:</b><br>' : ''}
+            ${!ok2Common ? '&nbsp;&nbsp;- 45와 54를 동시에 나누어떨어지게 하는 공통인 약수를 작은 수부터 모두 찾아 쉼표로 구분해 보세요.<br>' : ''}
+            ${!ok2Gcd ? '&nbsp;&nbsp;- 45와 54의 공약수 중에서 가장 큰 수를 찾아 최대공약수로 입력하세요.<br>' : ''}
+            💡 좌측 캔버스의 벤다이어그램에서 겹치는 부분의 수와 👑 왕관 마크를 참고해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (0-3 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -1543,8 +2041,14 @@
         state.lab0_1.blockCols = 3;
         state.lab0_1.blockRows = 2;
         state.lab0_1.multiplesHopCount = 4;
-        updateLabButtons();
+        renderToolbar0_1();
         drawStep0_1Canvas();
+      } else if (state.subStep === '0-2') {
+        state.lab0_2.pairIndex = 0;
+        state.lab0_2.highlightCommon = false;
+        state.lab0_2.selectedNumber = null;
+        renderToolbar0_2();
+        drawStep0_2Canvas();
       }
     }
 
