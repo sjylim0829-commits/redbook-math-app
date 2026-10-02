@@ -45146,77 +45146,438 @@ function checkStep_1_12() {
     // ==========================================
     function drawCanvas_6_1(container) {
       if (!container) return;
+      if (container._animId_6_1) {
+        cancelAnimationFrame(container._animId_6_1);
+        container._animId_6_1 = null;
+      }
       container.innerHTML = '';
+
       const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 500;
-      canvas.height = container.clientHeight || 450;
       canvas.style.width = '100%';
       canvas.style.height = '100%';
       canvas.style.display = 'block';
       container.appendChild(canvas);
       const ctx = canvas.getContext('2d');
 
-      let animId;
-      let angle = 0;
+      let w = container.clientWidth || 600;
+      let h = container.clientHeight || 450;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      ctx.scale(dpr, dpr);
+
+      const ro = new ResizeObserver(entries => {
+        for (const entry of entries) {
+          const nw = Math.floor(entry.contentRect.width);
+          const nh = Math.floor(entry.contentRect.height);
+          if (nw > 0 && nh > 0 && (nw !== w || nh !== h)) {
+            w = nw;
+            h = nh;
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            ctx.scale(dpr, dpr);
+          }
+        }
+      });
+      ro.observe(container);
+
+      // 상태 관리 변수
+      const targetPrimes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31];
+      const primeSet = new Set(targetPrimes);
+      const selectedDays = new Set();
+      window._step6_1_selected = selectedDays;
+
+      let hoveredDay = null;
+      let hoveredResetBtn = false;
+      let isSuccessRevealed = false;
+      let pulseTimer = 0;
+      const particles = [];
+
+      function spawnConfetti(count = 60) {
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: w / 2 + (Math.random() - 0.5) * 260,
+            y: h / 2 + (Math.random() - 0.5) * 120,
+            vx: (Math.random() - 0.5) * 8,
+            vy: (Math.random() - 0.8) * 8,
+            size: Math.random() * 5 + 4,
+            color: ['#fbbf24', '#f59e0b', '#38bdf8', '#4ade80', '#f43f5e', '#a855f7'][Math.floor(Math.random() * 6)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.02 + 0.015
+          });
+        }
+      }
+
+      window._step6_1_triggerSuccess = function() {
+        isSuccessRevealed = true;
+        targetPrimes.forEach(p => selectedDays.add(p));
+        spawnConfetti(70);
+      };
+
+      // 달력 레이아웃 계산 함수
+      function getCalendarLayout() {
+        const calW = Math.min(w - 32, 520);
+        const calH = Math.min(270, h - 130);
+        const calX = (w - calW) / 2;
+        const calY = 82;
+        const headerH = 32;
+        const gridH = calH - headerH;
+        const cellW = (calW - 14) / 7;
+        const cellH = gridH / 5;
+        return { calW, calH, calX, calY, headerH, cellW, cellH };
+      }
+
+      // 포인터 인터랙션
+      canvas.addEventListener('pointermove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        hoveredDay = null;
+        hoveredResetBtn = false;
+
+        const layout = getCalendarLayout();
+        const barW = layout.calW;
+        const barX = layout.calX;
+
+        // 초기화 버튼 히트 테스트 (y: 46 ~ 74, 오른쪽 정렬)
+        const btnW = 90;
+        const btnH = 26;
+        const btnX = barX + barW - btnW;
+        const btnY = 48;
+        if (mx >= btnX && mx <= btnX + btnW && my >= btnY && my <= btnY + btnH) {
+          hoveredResetBtn = true;
+          canvas.style.cursor = 'pointer';
+          return;
+        }
+
+        // 1~31일 날짜 셀 히트 테스트 (Day 1은 일요일=Col 0)
+        for (let d = 1; d <= 31; d++) {
+          const col = (d - 1) % 7;
+          const row = Math.floor((d - 1) / 7);
+          const cx = layout.calX + 7 + col * layout.cellW;
+          const cy = layout.calY + layout.headerH + row * layout.cellH;
+          if (mx >= cx && mx <= cx + layout.cellW && my >= cy && my <= cy + layout.cellH) {
+            hoveredDay = d;
+            break;
+          }
+        }
+
+        canvas.style.cursor = (hoveredDay !== null || hoveredResetBtn) ? 'pointer' : 'default';
+      });
+
+      canvas.addEventListener('pointerleave', () => {
+        hoveredDay = null;
+        hoveredResetBtn = false;
+        canvas.style.cursor = 'default';
+      });
+
+      canvas.addEventListener('pointerdown', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        if (hoveredResetBtn) {
+          selectedDays.clear();
+          isSuccessRevealed = false;
+          const inp = document.getElementById('ans-6-1');
+          if (inp) inp.value = '';
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          return;
+        }
+
+        if (hoveredDay !== null) {
+          const d = hoveredDay;
+          if (selectedDays.has(d)) {
+            selectedDays.delete(d);
+          } else {
+            selectedDays.add(d);
+          }
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+
+          // 폼 입력창에 실시간 동기화
+          const inp = document.getElementById('ans-6-1');
+          if (inp) {
+            const sorted = Array.from(selectedDays).sort((a, b) => a - b);
+            inp.value = sorted.length > 0 ? sorted.join(', ') : '';
+          }
+        }
+      });
+
       function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, w, h);
+        pulseTimer += 0.05;
 
-        // Grid lines
-        ctx.strokeStyle = '#1e293b';
-        ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 40) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-        }
-        for (let y = 0; y < canvas.height; y += 40) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-        }
+        const isSolved = isSuccessRevealed || (typeof state !== 'undefined' && state.completedSteps && state.completedSteps.has('6-1'));
+        const layout = getCalendarLayout();
+        const barW = layout.calW;
+        const barX = layout.calX;
 
-        // Badge & Title
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 16px "Pretendard", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('[6-1] 01번: 달력에서 소수인 날짜 찾기 (p.24)', canvas.width / 2, 40);
-
-        // Interactive visual placeholder
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
+        // 1. 상단 제목 헤더 뱃지 (y: 10 ~ 38)
         ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.strokeStyle = '#f59e0b';
-        ctx.lineWidth = 3;
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(0, 0, 70, 0, Math.PI * 2);
+        if (ctx.roundRect) ctx.roundRect(barX, 10, barW, 28, 8);
+        else ctx.rect(barX, 10, barW, 28);
+        ctx.fill();
         ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 12px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('01번: 달력에서 소수인 날짜 찾기 (교과서 p.24)', w / 2, 24);
         ctx.restore();
 
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '13px "Pretendard", sans-serif';
-        ctx.fillText('마무리 인터랙터', cx, cy + 110);
+        // 2. 상단 상태 바 & 초기화 버튼 (y: 46 ~ 74)
+        ctx.save();
+        ctx.font = 'bold 12.5px Pretendard, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#1e40af';
+        ctx.fillText(`📌 선택한 날짜: ${selectedDays.size}개`, barX + 4, 61);
 
-        angle += 0.02;
-        animId = requestAnimationFrame(render);
+        // 초기화 버튼
+        const btnW = 90;
+        const btnH = 26;
+        const btnX = barX + barW - btnW;
+        const btnY = 48;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(btnX, btnY, btnW, btnH, 6);
+        else ctx.rect(btnX, btnY, btnW, btnH);
+        ctx.fillStyle = hoveredResetBtn ? '#ffffff' : '#f1f5f9';
+        ctx.strokeStyle = hoveredResetBtn ? '#ef4444' : '#cbd5e1';
+        ctx.lineWidth = hoveredResetBtn ? 1.8 : 1;
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 11px Pretendard, sans-serif';
+        ctx.fillStyle = hoveredResetBtn ? '#ef4444' : '#475569';
+        ctx.fillText('⟲ 선택 초기화', btnX + btnW / 2, btnY + btnH / 2);
+        ctx.restore();
+
+        // 3. 달력 외곽 카드 박스
+        ctx.save();
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(layout.calX, layout.calY, layout.calW, layout.calH, 10);
+        else ctx.rect(layout.calX, layout.calY, layout.calW, layout.calH);
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1.5;
+        ctx.fill();
+        ctx.stroke();
+
+        // 달력 요일 헤더 (일, 월, 화, 수, 목, 금, 토)
+        const dayNames = [
+          { name: '일', color: '#ef4444' },
+          { name: '월', color: '#334155' },
+          { name: '화', color: '#334155' },
+          { name: '수', color: '#334155' },
+          { name: '목', color: '#334155' },
+          { name: '금', color: '#334155' },
+          { name: '토', color: '#3b82f6' }
+        ];
+
+        // 헤더 배경
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(layout.calX, layout.calY, layout.calW, layout.headerH, [10, 10, 0, 0]);
+        else ctx.rect(layout.calX, layout.calY, layout.calW, layout.headerH);
+        ctx.fill();
+
+        // 요일 구분선
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(layout.calX, layout.calY + layout.headerH);
+        ctx.lineTo(layout.calX + layout.calW, layout.calY + layout.headerH);
+        ctx.stroke();
+
+        for (let i = 0; i < 7; i++) {
+          const hx = layout.calX + 7 + i * layout.cellW + layout.cellW / 2;
+          const hy = layout.calY + layout.headerH / 2;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 12px Pretendard, sans-serif';
+          ctx.fillStyle = dayNames[i].color;
+          ctx.fillText(dayNames[i].name, hx, hy);
+        }
+
+        // 4. 날짜 셀 (1일 ~ 31일)
+        for (let d = 1; d <= 31; d++) {
+          const col = (d - 1) % 7;
+          const row = Math.floor((d - 1) / 7);
+          const cx = layout.calX + 7 + col * layout.cellW;
+          const cy = layout.calY + layout.headerH + row * layout.cellH;
+          const midX = cx + layout.cellW / 2;
+          const midY = cy + layout.cellH / 2;
+
+          const isHovered = (hoveredDay === d);
+          const isSelected = selectedDays.has(d);
+          const isPrime = primeSet.has(d);
+
+          // 셀 호버 배경
+          if (isHovered) {
+            ctx.fillStyle = '#f1f5f9';
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(cx + 2, cy + 2, layout.cellW - 4, layout.cellH - 4, 6);
+            else ctx.rect(cx + 2, cy + 2, layout.cellW - 4, layout.cellH - 4);
+            ctx.fill();
+          }
+
+          // 숫자 텍스트 색상
+          let numColor = '#1e293b';
+          if (col === 0) numColor = '#dc2626'; // 일요일
+          else if (col === 6) numColor = '#2563eb'; // 토요일
+
+          // ◯표 (선택된 날짜 마킹)
+          if (isSelected) {
+            ctx.save();
+            const circleR = Math.min(layout.cellW, layout.cellH) * 0.38;
+            ctx.beginPath();
+            ctx.arc(midX, midY, circleR, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.08)';
+            ctx.fill();
+            ctx.strokeStyle = '#e11d48';
+            ctx.lineWidth = 2.2;
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          // 정답 확인 후 소수 11개 황금색 영롱한 이펙트
+          if (isSolved && isPrime) {
+            ctx.save();
+            const glowR = Math.min(layout.cellW, layout.cellH) * 0.42;
+            const glowAlpha = 0.5 + Math.sin(pulseTimer * 3 + d) * 0.25;
+            ctx.beginPath();
+            ctx.arc(midX, midY, glowR, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(245, 158, 11, ${glowAlpha})`;
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(254, 243, 199, 0.25)';
+            ctx.fill();
+            ctx.restore();
+          }
+
+          // 날짜 숫자 렌더링
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = (isSelected || (isSolved && isPrime)) ? 'bold 14px Pretendard, sans-serif' : '13px Pretendard, sans-serif';
+          ctx.fillStyle = numColor;
+          ctx.fillText(String(d), midX, midY);
+        }
+        ctx.restore();
+
+        // 5. 하단 안내 및 요약 박스 (Zero-Spoiler 엄수)
+        const infoY = layout.calY + layout.calH + 10;
+        const infoH = Math.min(58, h - infoY - 8);
+        ctx.save();
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(barX, infoY, barW, infoH, 8);
+        else ctx.rect(barX, infoY, barW, infoH);
+
+        ctx.fillStyle = isSolved ? '#f0fdf4' : '#f8fafc';
+        ctx.strokeStyle = isSolved ? '#86efac' : '#e2e8f0';
+        ctx.lineWidth = 1.2;
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        if (!isSolved) {
+          ctx.font = 'bold 11.5px Pretendard, sans-serif';
+          ctx.fillStyle = '#334155';
+          ctx.fillText('💡 달력 인터랙션:', barX + 14, infoY + 18);
+          ctx.font = '11px Pretendard, sans-serif';
+          ctx.fillStyle = '#64748b';
+          ctx.fillText('• 달력에서 1부터 31까지의 날짜 중 약수가 1과 자기 자신뿐인 날짜를 클릭하여 ◯표 하세요.', barX + 14, infoY + 38);
+        } else {
+          ctx.font = 'bold 11.5px Pretendard, sans-serif';
+          ctx.fillStyle = '#166534';
+          ctx.fillText('👑 소수 11개 발견 완료!', barX + 14, infoY + 18);
+          ctx.font = '11px Pretendard, sans-serif';
+          ctx.fillStyle = '#15803d';
+          ctx.fillText('• 1~31 중 소수는 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31 로 총 11개입니다.', barX + 14, infoY + 38);
+        }
+        ctx.restore();
+
+        // 6. 파티클 애니메이션
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.35;
+          p.rot += p.vRot;
+          p.life -= p.decay;
+
+          if (p.life <= 0) {
+            particles.splice(i, 1);
+            continue;
+          }
+
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.globalAlpha = Math.max(0, p.life);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+          ctx.restore();
+        }
+
+        container._animId_6_1 = requestAnimationFrame(render);
       }
-      render();
+
+      container._animId_6_1 = requestAnimationFrame(render);
 
       window._cleanup_step_6_1 = () => {
-        if (animId) cancelAnimationFrame(animId);
+        if (container._animId_6_1) {
+          cancelAnimationFrame(container._animId_6_1);
+          container._animId_6_1 = null;
+        }
+        ro.disconnect();
       };
     }
 
     function renderForm_6_1(box) {
       if (!box) return;
       box.innerHTML = `
-        <div class="question-card" style="padding:16px; background:#1e293b; border-radius:10px; margin-bottom:15px; border:1px solid #334155;">
-          <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 6-1. 01번: 달력에서 소수인 날짜 찾기 (p.24)</div>
-          <p style="font-size:14px; color:#cbd5e1; line-height:1.6; margin-bottom:12px;">
-            문제를 해결하고 답을 입력창에 작성하세요.
-          </p>
-          <div style="margin-bottom:12px;">
-            <input type="text" id="ans-6-1" class="form-control" placeholder="답 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
+        <div class="card" style="padding:16px 20px;">
+          <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
+            ✏️ [스스로 마무리하기 1번] 소수인 날짜 찾기 (p.24 01번)
           </div>
+
+          <!-- 문제 안내 카드 -->
+          <div style="background:#f8fafc; border-left:4px solid #3b82f6; padding:10px 14px; border-radius:6px; margin-bottom:14px;">
+            <div style="font-weight:700; font-size:0.86rem; color:#1e40af; margin-bottom:4px;">
+              01번
+            </div>
+            <div style="font-size:0.88rem; color:#1e293b; line-height:1.6; font-family:'Pretendard', sans-serif;">
+              다음 달력에서 소수인 날짜를 모두 찾아 ◯표를 하시오.
+            </div>
+          </div>
+
+          <p style="font-size:0.88rem; color:#334155; line-height:1.65; margin-bottom:12px;">
+            좌측 달력에서 날짜를 직접 클릭해 보거나, 소수인 날짜들을 쉼표(,)로 구분하여 입력하거나 소수의 총 개수를 입력하세요.
+          </p>
+
+          <div style="margin-bottom:12px;">
+            <input type="text" id="ans-6-1" class="form-control" placeholder="날짜 입력 (쉼표 구분) 또는 개수" style="font-size:0.95rem; width:100%;" autocomplete="off">
+          </div>
+
+          <!-- 퀵 보조 버튼 바 -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; background:#f1f5f9; padding:8px 10px; border-radius:8px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; line-height:28px;">빠른 선택:</span>
+            <button type="button" class="btn btn-sm btn-outline-primary btn-quick-6-1" data-val="11" style="font-weight:700; padding:4px 12px;">11개</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-clear-cal-6-1" style="font-weight:700; padding:4px 10px;">달력 선택 동기화</button>
+            <button type="button" class="btn btn-sm btn-outline-danger btn-clear-text-6-1" style="font-weight:700; padding:4px 10px;">지우기</button>
+          </div>
+
           <button class="btn btn-primary" onclick="checkStep_6_1()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
@@ -45227,18 +45588,71 @@ function checkStep_1_12() {
           if (e.key === 'Enter') checkStep_6_1();
         });
       }
+
+      box.querySelector('.btn-quick-6-1')?.addEventListener('click', () => {
+        if (input) {
+          input.value = '11개';
+          input.focus();
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        }
+      });
+
+      box.querySelector('.btn-clear-cal-6-1')?.addEventListener('click', () => {
+        if (input && window._step6_1_selected) {
+          const sorted = Array.from(window._step6_1_selected).sort((a, b) => a - b);
+          input.value = sorted.length > 0 ? sorted.join(', ') : '';
+          input.focus();
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        }
+      });
+
+      box.querySelector('.btn-clear-text-6-1')?.addEventListener('click', () => {
+        if (input) {
+          input.value = '';
+          input.focus();
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        }
+      });
     }
 
     function checkStep_6_1() {
-      const v = normTxt(document.getElementById('ans-6-1')?.value);
-      const isCorrect = (v.length > 0);
+      const raw = document.getElementById('ans-6-1')?.value || '';
+      const v = raw.trim().replace(/\s+/g, '');
+      const targetPrimes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31];
+
+      // a) 개수 입력 검사: '11', '11개', '총11개'
+      const isCountMatch = (v === '11' || v === '11개' || v === '총11개' || v === '11개입니다');
+
+      // b) 날짜 목록 파싱 검사 (순서 무관, 쉼표 또는 공백 구분)
+      const parsedNums = (raw.match(/\d+/g) || []).map(Number);
+      const uniqueSorted = Array.from(new Set(parsedNums)).sort((a, b) => a - b);
+      const isListMatch = (uniqueSorted.length === 11 && uniqueSorted.every((n, i) => n === targetPrimes[i]));
+
+      // c) 캔버스에서 소수 11개를 정확히 클릭 선택한 상태
+      const sel = window._step6_1_selected;
+      const isCanvasMatch = (sel && sel.size === 11 && targetPrimes.every(p => sel.has(p)));
+
+      const isCorrect = (isCountMatch || isListMatch || isCanvasMatch);
+
       if (isCorrect) {
-        completeSubStep('6-1', '🎉 <b>정답입니다!</b><br>• 정답 및 해설: 소수는 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31 (총 11개)');
+        if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        if (window._step6_1_triggerSuccess) {
+          window._step6_1_triggerSuccess();
+        }
+        completeSubStep('6-1', '🎉 <b>정답입니다!</b><br>• 1부터 31까지의 자연수 중 소수는 <b>2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31</b>의 총 <b>11개</b>입니다.<br>• 1은 소수도 합성수도 아니며, 짝수 중 소수는 2뿐입니다.');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>값을 입력해 주세요.</b>');
+        if (!v && (!sel || sel.size === 0)) {
+          showFeedback(false, '❌ <b>답을 입력하거나 달력에서 소수인 날짜를 선택해 보세요.</b>');
+        } else if (parsedNums.includes(1) || (sel && sel.has(1))) {
+          showFeedback(false, '❌ <b>1은 소수가 아닙니다!</b> 1은 약수가 1개뿐이므로 소수도 합성수도 아닙니다.');
+        } else if (parsedNums.some(n => n > 2 && n % 2 === 0) || (sel && Array.from(sel).some(n => n > 2 && n % 2 === 0))) {
+          showFeedback(false, '❌ <b>2를 제외한 모든 짝수는 합성수입니다!</b> (예: 4, 6, 8, 10 등은 2의 배수이므로 소수가 아님)');
+        } else {
+          showFeedback(false, '❌ 다시 확인해 보세요. 1은 소수가 아니며, 2를 제외한 모든 짝수는 합성수입니다. 약수가 1과 자기 자신뿐인 수를 찾아보세요.');
+        }
       }
     }
 
