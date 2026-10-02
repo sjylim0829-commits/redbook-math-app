@@ -54941,83 +54941,420 @@ function checkStep_1_12() {
     }
 
     // =========================================================
-    // Step 8-4: 1단원 소인수분해 마스터 수료식 (p.28)
+    // Step 8-4: 1단원 소인수분해 마스터 수료식 & 학습 일기 (p.28)
     // =========================================================
     function drawCanvas_8_4(container) {
       if (!container) return;
       container.innerHTML = '';
+
+      const wrap = document.createElement('div');
+      wrap.style.width = '100%';
+      wrap.style.height = '100%';
+      wrap.style.position = 'relative';
+      wrap.style.overflow = 'hidden';
+      wrap.style.display = 'flex';
+      wrap.style.flexDirection = 'column';
+      container.appendChild(wrap);
+
+      // 상단 컨트롤 툴바
+      const topBar = document.createElement('div');
+      topBar.style.padding = '8px 12px';
+      topBar.style.display = 'flex';
+      topBar.style.alignItems = 'center';
+      topBar.style.justifyContent = 'space-between';
+      topBar.style.background = '#0f172a';
+      topBar.style.borderBottom = '1px solid #1e293b';
+      topBar.style.flexShrink = '0';
+      topBar.innerHTML = `
+        <span style="font-size:12px; font-weight:700; color:#fbbf24; display:flex; align-items:center; gap:5px;">
+          <span>🎓</span> 1단원 소인수분해 공식 디지털 수료증
+        </span>
+        <div style="display:flex; gap:6px;">
+          <button type="button" id="btn-confetti-8-4" class="btn btn-sm btn-outline-warning" style="font-size:11px; padding:3px 8px; font-weight:700;">
+            🎉 축하 폭죽
+          </button>
+          <button type="button" id="btn-download-cert-8-4" class="btn btn-sm btn-warning" style="font-size:11px; padding:3px 10px; font-weight:700; color:#0f172a;">
+            📜 수료증 PNG 다운로드
+          </button>
+        </div>
+      `;
+      wrap.appendChild(topBar);
+
       const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 500;
-      canvas.height = container.clientHeight || 450;
       canvas.style.width = '100%';
       canvas.style.height = '100%';
       canvas.style.display = 'block';
-      container.appendChild(canvas);
+      canvas.style.flex = '1';
+      wrap.appendChild(canvas);
+
       const ctx = canvas.getContext('2d');
+      let dpr = window.devicePixelRatio || 1;
+      let width = 0;
+      let height = 0;
 
-      let animId;
-      let angle = 0;
+      let animId = null;
+      let confettiList = [];
+      let isMasterRibbon = (window.state && window.state.completedSteps && window.state.completedSteps.has('8-4')) || false;
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        width = Math.max(rect.width, 320);
+        height = Math.max(rect.height, 340);
+        dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+
+      const ro = new ResizeObserver(() => {
+        resize();
+      });
+      ro.observe(canvas);
+
+      function triggerConfetti(count = 55) {
+        for (let i = 0; i < count; i++) {
+          confettiList.push({
+            x: width * 0.5 + (Math.random() - 0.5) * (width * 0.7),
+            y: height * 0.4 + (Math.random() - 0.5) * 120,
+            vx: (Math.random() - 0.5) * 9,
+            vy: -Math.random() * 8 - 3,
+            size: Math.random() * 7 + 4,
+            rotation: Math.random() * Math.PI * 2,
+            vrot: (Math.random() - 0.5) * 0.2,
+            color: ['#f59e0b', '#fbbf24', '#ef4444', '#3b82f6', '#10b981', '#a855f7', '#f8fafc'][Math.floor(Math.random() * 7)],
+            alpha: 1.0,
+            decay: Math.random() * 0.015 + 0.01
+          });
+        }
+      }
+
+      // 초기 로드 시 축하 폭죽 1회 발사
+      setTimeout(() => { triggerConfetti(45); }, 200);
+
+      function downloadCertificatePNG() {
+        try {
+          const link = document.createElement('a');
+          link.download = 'g1_unit1_certificate.png';
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+          triggerConfetti(35);
+        } catch (err) {
+          console.error('Certificate download error:', err);
+        }
+      }
+
+      // 툴바 버튼 이벤트 바인딩
+      const btnConfetti = topBar.querySelector('#btn-confetti-8-4');
+      if (btnConfetti) {
+        btnConfetti.addEventListener('click', () => {
+          triggerConfetti(50);
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        });
+      }
+      const btnDownload = topBar.querySelector('#btn-download-cert-8-4');
+      if (btnDownload) {
+        btnDownload.addEventListener('click', () => {
+          downloadCertificatePNG();
+          if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        });
+      }
+
+      // 외부 연동 API
+      window._step8_4_triggerConfetti = triggerConfetti;
+      window._step8_4_downloadPNG = downloadCertificatePNG;
+      window._step8_4_setMasterRibbon = () => {
+        isMasterRibbon = true;
+        triggerConfetti(65);
+      };
+
       function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, width, height);
 
-        ctx.strokeStyle = '#1e293b';
+        // 1. 전체 배경 (고급 다크 네이비 그라데이션)
+        const bgGrad = ctx.createLinearGradient(0, 0, width, height);
+        bgGrad.addColorStop(0, '#090d16');
+        bgGrad.addColorStop(1, '#0f172a');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, width, height);
+
+        // 미세 그리드 배경 장식
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
         ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 40) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        const gridStep = 32;
+        for (let x = 0; x < width; x += gridStep) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
         }
-        for (let y = 0; y < canvas.height; y += 40) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        for (let y = 0; y < height; y += gridStep) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
         }
 
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 16px "Pretendard", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('[8-4] 1단원 소인수분해 마스터 수료식 (p.28)', canvas.width / 2, 40);
+        // 2. 디지털 수료증 본체 영역 계산
+        const marginX = Math.max(16, (width - 560) / 2);
+        const marginY = Math.max(12, (height - 400) / 2);
+        const certW = width - marginX * 2;
+        const certH = height - marginY * 2;
+        const certX = marginX;
+        const certY = marginY;
 
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.strokeStyle = '#f59e0b';
+        // 수료증 본체 배경 패널
+        const certBg = ctx.createLinearGradient(certX, certY, certX + certW, certY + certH);
+        certBg.addColorStop(0, '#0d1527');
+        certBg.addColorStop(1, '#0b1120');
+        ctx.fillStyle = certBg;
+        ctx.beginPath();
+        ctx.roundRect(certX, certY, certW, certH, 12);
+        ctx.fill();
+
+        // 외곽 1차 골드 프레임
+        ctx.strokeStyle = '#d97706';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(0, 0, 70, 0, Math.PI * 2);
+        ctx.roundRect(certX, certY, certW, certH, 12);
+        ctx.stroke();
+
+        // 내측 2차 점선 골드 프레임
+        const innerGap = 8;
+        ctx.save();
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+        ctx.roundRect(certX + innerGap, certY + innerGap, certW - innerGap * 2, certH - innerGap * 2, 8);
         ctx.stroke();
         ctx.restore();
 
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '13px "Pretendard", sans-serif';
-        ctx.fillText('1단원 마스터 수료식', cx, cy + 110);
+        // 네 모서리 클래식 골드 코너 장식
+        const cornerSize = 14;
+        ctx.fillStyle = '#fbbf24';
+        const corners = [
+          { x: certX + innerGap + 4, y: certY + innerGap + 4 },
+          { x: certX + certW - innerGap - 4 - cornerSize, y: certY + innerGap + 4 },
+          { x: certX + innerGap + 4, y: certY + certH - innerGap - 4 - cornerSize },
+          { x: certX + certW - innerGap - 4 - cornerSize, y: certY + certH - innerGap - 4 - cornerSize }
+        ];
+        corners.forEach(c => {
+          ctx.beginPath();
+          ctx.moveTo(c.x, c.y + cornerSize / 2);
+          ctx.lineTo(c.x + cornerSize / 2, c.y);
+          ctx.lineTo(c.x + cornerSize, c.y + cornerSize / 2);
+          ctx.lineTo(c.x + cornerSize / 2, c.y + cornerSize);
+          ctx.closePath();
+          ctx.fill();
+        });
 
-        angle += 0.02;
+        // 3. 수료증 상단 엠블럼 및 헤더
+        const centerX = certX + certW / 2;
+        let curY = certY + 32;
+
+        // 상단 골드 서브타이틀
+        ctx.font = 'bold 11px "Pretendard", sans-serif';
+        ctx.fillStyle = '#fbbf24';
+        ctx.textAlign = 'center';
+        ctx.letterSpacing = '2px';
+        ctx.fillText('★ 2026 MATHEMATICS MASTER CERTIFICATE ★', centerX, curY);
+
+        curY += 28;
+
+        // 대제목: 1단원 [소인수분해] 마스터 수료증
+        ctx.font = 'bold 20px "Pretendard", sans-serif';
+        ctx.fillStyle = '#fef08a';
+        ctx.fillText('1단원 [소인수분해] 마스터 수료증', centerX, curY);
+
+        curY += 12;
+        // 제목 하단 황금빛 구분선
+        const divW = Math.min(certW * 0.7, 300);
+        ctx.strokeStyle = '#eab308';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(centerX - divW / 2, curY);
+        ctx.lineTo(centerX + divW / 2, curY);
+        ctx.stroke();
+
+        curY += 26;
+
+        // 4. 학생 인적사항 (로그인 세션 실시간 반영)
+        const stName = (window.state && (window.state.studentName || (window.state.currentStudent && window.state.currentStudent.name))) || '영서중 학생';
+        const stId = (window.state && (window.state.studentId || (window.state.currentStudent && window.state.currentStudent.id))) || 'G1-Math';
+
+        ctx.font = 'bold 14px "Pretendard", sans-serif';
+        ctx.fillStyle = '#f8fafc';
+        ctx.textAlign = 'center';
+        ctx.fillText(`성 명 : ${stName}     (학 번 : ${stId})`, centerX, curY);
+
+        curY += 28;
+
+        // 5. 수료 공인 본문
+        ctx.font = '12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#cbd5e1';
+        ctx.textAlign = 'center';
+        const lineHeight = 19;
+        const textLines = [
+          '위 학생은 2026학년도 중학교 1학년 수학 1단원',
+          '【소수와 합성수, 소인수분해, 최대공약수와 최소공배수,',
+          '알지오매스 코딩, 미래 역량 프로젝트】 등',
+          '총 80개 전 탐구 서브스텝을 성실히 이수하였으므로',
+          '본 1단원 소인수분해 공식 마스터 수료증을 수여합니다.'
+        ];
+
+        textLines.forEach(tl => {
+          ctx.fillText(tl, centerX, curY);
+          curY += lineHeight;
+        });
+
+        curY += 14;
+
+        // 6. 발급일자 및 교육과 인증 직인
+        const todayStr = new Date().toLocaleDateString('ko-KR', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+        ctx.font = '12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.textAlign = 'center';
+        ctx.fillText(todayStr, centerX, curY);
+
+        curY += 22;
+
+        ctx.font = 'bold 14px "Pretendard", sans-serif';
+        ctx.fillStyle = '#f1f5f9';
+        ctx.fillText('영서중학교 수학교육과', centerX, curY);
+
+        // 공식 인증 붉은 직인 렌더링 (영서중학교 수학교육과 인)
+        const stampX = centerX + 105;
+        const stampY = curY - 22;
+        const stampW = 46;
+        const stampH = 46;
+
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(stampX, stampY, stampW, stampH);
+
+        ctx.fillStyle = '#ef4444';
+        ctx.font = 'bold 9px "Pretendard", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('영서중학', stampX + stampW / 2, stampY + 14);
+        ctx.fillText('수학교육', stampX + stampW / 2, stampY + 27);
+        ctx.fillText('과   인', stampX + stampW / 2, stampY + 40);
+
+        // 7. 황금빛 마스터 리본 (수료 완료 상태 표시)
+        if (isMasterRibbon) {
+          ctx.save();
+          ctx.translate(certX + 38, certY + 38);
+          ctx.rotate(-Math.PI / 4);
+
+          // 리본 배경
+          ctx.fillStyle = '#f59e0b';
+          ctx.fillRect(-65, -12, 130, 24);
+          ctx.strokeStyle = '#fef08a';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(-65, -12, 130, 24);
+
+          // 리본 텍스트
+          ctx.fillStyle = '#0f172a';
+          ctx.font = 'bold 11px "Pretendard", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('★ MASTER ★', 0, 0);
+
+          ctx.restore();
+        }
+
+        // 8. 60fps 축하 폭죽(Confetti) 파티클 렌더링
+        for (let i = confettiList.length - 1; i >= 0; i--) {
+          const p = confettiList[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.18; // 중력
+          p.vx *= 0.98;
+          p.rotation += p.vrot;
+          p.alpha -= p.decay;
+
+          if (p.alpha <= 0 || p.y > height + 20) {
+            confettiList.splice(i, 1);
+            continue;
+          }
+
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rotation);
+          ctx.globalAlpha = p.alpha;
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+          ctx.restore();
+        }
+
         animId = requestAnimationFrame(render);
       }
       render();
 
       window._cleanup_step_8_4 = () => {
         if (animId) cancelAnimationFrame(animId);
+        if (ro) ro.disconnect();
       };
     }
 
+    // =========================================================
+    // Step 8-4 워크 폼 렌더러
+    // =========================================================
     function renderForm_8_4(box) {
       if (!box) return;
       box.innerHTML = `
         <div class="question-card" style="padding:16px; background:#1e293b; border-radius:10px; margin-bottom:15px; border:1px solid #334155;">
-          <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 8-4. 1단원 소인수분해 마스터 수료식 (p.28)</div>
-          <p style="font-size:14px; color:#cbd5e1; line-height:1.6; margin-bottom:12px;">
-            1단원 [소인수분해]를 배우며 느낀 점이나 새롭게 알게 된 점을 학습 일기로 작성하세요.
-          </p>
-          <div style="margin-bottom:12px;">
-            <input type="text" id="ans-8-4" class="form-control" placeholder="학습 일기 작성" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
+          <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 8-4. 1단원 소인수분해 마스터 수료식 & 학습 일기 (p.28)</div>
+          
+          <div style="background:#0f172a; border:1px solid #334155; border-radius:8px; padding:12px; margin-bottom:12px;">
+            <div style="font-weight:700; color:#f8fafc; margin-bottom:6px; font-size:14px;">
+              🏆 1단원 [소인수분해] 대단원 완강 성찰 일기
+            </div>
+            <div style="font-size:12px; color:#cbd5e1; line-height:1.6;">
+              1단원 '소인수분해'의 모든 탐구(소수, 합성수, 소인수분해, 최대공약수, 최소공배수, 알지오매스, 창의융합)를 완주했습니다! 1단원을 학습하며 가장 기억에 남는 개념이나 새롭게 깨달은 점을 자유롭게 기록해 보세요.
+            </div>
           </div>
-          <button class="btn btn-primary" onclick="checkStep_8_4()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
+
+          <div style="margin-bottom:8px;">
+            <div style="font-size:12px; color:#94a3b8; margin-bottom:6px; font-weight:600;">✨ 빠른 키워드 태그 (클릭 시 입력창에 추가됩니다):</div>
+            <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-outline-info btn-sm btn-quick-8-4" data-val="소수의 성질과 규칙" style="font-weight:700; padding:4px 8px; font-size:12px;">소수의 성질과 규칙</button>
+              <button type="button" class="btn btn-outline-info btn-sm btn-quick-8-4" data-val="소인수분해의 유용성" style="font-weight:700; padding:4px 8px; font-size:12px;">소인수분해의 유용성</button>
+              <button type="button" class="btn btn-outline-info btn-sm btn-quick-8-4" data-val="소수로 나타낸 기하학" style="font-weight:700; padding:4px 8px; font-size:12px;">소수로 나타낸 기하학</button>
+              <button type="button" class="btn btn-outline-info btn-sm btn-quick-8-4" data-val="최대공약수와 실생활" style="font-weight:700; padding:4px 8px; font-size:12px;">최대공약수와 실생활</button>
+              <button type="button" class="btn btn-outline-secondary btn-sm btn-clear-8-4" style="font-size:11px; padding:4px 8px; margin-left:auto;">지우기</button>
+            </div>
+          </div>
+
+          <div style="margin-bottom:12px;">
+            <input type="text" id="ans-8-4" class="form-control" placeholder="학습 일기 작성 (1단원을 배우며 느낀 점)" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:14px;">
+          </div>
+          <button class="btn btn-primary" onclick="checkStep_8_4()" style="width:100%; font-weight:700; padding:10px; background:#0284c7; border:none;">대단원 수료 및 일기 제출</button>
         </div>
       `;
 
       const input = box.querySelector('#ans-8-4');
+
+      box.querySelectorAll('.btn-quick-8-4').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = btn.getAttribute('data-val');
+          if (input) {
+            if (!input.value.trim()) {
+              input.value = val + '에 대해 깊이 있게 탐구하고 배울 수 있었습니다.';
+            } else {
+              input.value = input.value.trim() + ', ' + val;
+            }
+            input.focus();
+          }
+        });
+      });
+
+      const clearBtn = box.querySelector('.btn-clear-8-4');
+      if (clearBtn && input) {
+        clearBtn.addEventListener('click', () => {
+          input.value = '';
+          input.focus();
+        });
+      }
+
       if (input) {
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') checkStep_8_4();
@@ -55025,16 +55362,34 @@ function checkStep_1_12() {
       }
     }
 
+    // =========================================================
+    // Step 8-4 채점 및 완강 판정
+    // =========================================================
     function checkStep_8_4() {
-      const v = normTxt(document.getElementById('ans-8-4')?.value);
-      const isCorrect = (v.length > 0);
-      if (isCorrect) {
-        completeSubStep('8-4', '🎉 <b>축하합니다! 1단원 [소인수분해] 마스터 수료 완료!</b><br>• 성찰 일기가 정상 기록되었으며 공식 수료증이 발급되었습니다.');
-        const nextBtn = document.getElementById('btn-next-step');
-        if (nextBtn) nextBtn.style.display = 'inline-flex';
-      } else {
+      const raw = document.getElementById('ans-8-4')?.value || '';
+      const v = normTxt(raw);
+
+      if (!v || v.length < 5) {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>학습 일기를 작성해 주세요.</b>');
+        showFeedback(false, '❌ <b>1단원을 배우며 느낀 점을 5자 이상 작성해 주세요.</b><br>(위의 퀵 키워드 태그 버튼을 클릭하여 쉽게 작성할 수 있습니다)');
+        return;
+      }
+
+      // 5자 이상 작성 시 정답 통과
+      if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+      if (window._step8_4_setMasterRibbon) {
+        window._step8_4_setMasterRibbon();
+      }
+
+      completeSubStep('8-4', '🎓 <b>축하합니다! 1단원 [소인수분해] 마스터 달성을 진심으로 축하합니다!</b><br>• 총 80개 전 탐구 서브스텝을 완강하고 영서중 공식 마스터 디지털 수료증이 발급되었습니다.<br>• 좌측 캔버스의 [📜 수료증 PNG 다운로드] 버튼으로 나만의 수료증을 소장하세요!');
+
+      const nextBtn = document.getElementById('btn-next-step');
+      if (nextBtn) {
+        nextBtn.style.display = 'inline-flex';
+        nextBtn.innerText = '🏆 1단원 전체 완강 완료!';
+        nextBtn.onclick = () => {
+          alert('🎉 축하합니다! 중1 수학 1단원 [소인수분해] 전 탐구 과정을 성공적으로 수료하셨습니다!');
+        };
       }
     }
 
