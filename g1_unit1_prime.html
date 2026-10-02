@@ -47995,63 +47995,486 @@ function checkStep_1_12() {
     // ==========================================
     function drawCanvas_6_5(container) {
       if (!container) return;
+      if (typeof window._cleanup_step_6_5 === 'function') {
+        window._cleanup_step_6_5();
+      }
       container.innerHTML = '';
+
       const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 500;
-      canvas.height = container.clientHeight || 450;
       canvas.style.width = '100%';
       canvas.style.height = '100%';
       canvas.style.display = 'block';
+      canvas.style.cursor = 'default';
       container.appendChild(canvas);
       const ctx = canvas.getContext('2d');
 
+      // State: 84 = 2^2 x 3 x 7
+      const state = {
+        remove3: false, // Divide by 3
+        remove7: false, // Divide by 7
+        isSuccess: false,
+        pulse: 0,
+        particles: []
+      };
+
+      // Expose hooks
+      window._step6_5_setPreset = (rem3, rem7) => {
+        state.remove3 = rem3;
+        state.remove7 = rem7;
+      };
+
+      window._step6_5_triggerSuccess = () => {
+        state.isSuccess = true;
+        state.remove3 = true;
+        state.remove7 = true;
+        createConfetti();
+      };
+
+      function createConfetti() {
+        state.particles = [];
+        const colors = ['#38bdf8', '#34d399', '#fbbf24', '#f43f5e', '#a855f7'];
+        for (let i = 0; i < 40; i++) {
+          state.particles.push({
+            x: canvas.width / (2 * (window.devicePixelRatio || 1)),
+            y: canvas.height / (2 * (window.devicePixelRatio || 1)),
+            vx: (Math.random() - 0.5) * 8,
+            vy: (Math.random() - 0.8) * 8,
+            r: Math.random() * 4 + 2,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.01
+          });
+        }
+      }
+
+      let hitBoxes = [];
+
+      function resizeCanvas() {
+        const rect = container.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        const w = rect.width || 600;
+        const h = rect.height || 480;
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resizeCanvas();
+
+      const ro = new ResizeObserver(() => resizeCanvas());
+      ro.observe(container);
+
+      // Render loop
       let animId;
-      let angle = 0;
       function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        state.pulse += 0.04;
+        hitBoxes = [];
 
-        // Grid lines
-        ctx.strokeStyle = '#1e293b';
+        const dpr = window.devicePixelRatio || 1;
+        const W = canvas.width / dpr;
+        const H = canvas.height / dpr;
+
+        ctx.clearRect(0, 0, W, H);
+
+        // Background
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+        bgGrad.addColorStop(0, '#090d16');
+        bgGrad.addColorStop(1, '#0f172a');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, W, H);
+
+        // Subtle Grid
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.025)';
         ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 40) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        for (let x = 0; x < W; x += 30) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
         }
-        for (let y = 0; y < canvas.height; y += 40) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        for (let y = 0; y < H; y += 30) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
         }
 
-        // Badge & Title
+        // --- Header Section ---
+        const titleY = 22;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 14px "Pretendard", -apple-system, sans-serif';
         ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 16px "Pretendard", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('[6-5] 05번: 나누어 제곱수 만들기 (p.25)', canvas.width / 2, 40);
+        ctx.fillText('05. 84 소인수 블록 정사각 타일러 (나누어 제곱수 만들기)', 18, titleY);
 
-        // Interactive visual placeholder
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
+        ctx.textAlign = 'right';
+        ctx.font = '12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('소인수를 나누어 지수를 모두 짝수로 만드세요', W - 18, titleY);
+
+        // Calculate Current Division State
+        let a = 1;
+        if (state.remove3) a *= 3;
+        if (state.remove7) a *= 7;
+        const remainingNum = 84 / a;
+
+        // Is it a perfect square?
+        const sqrtRem = Math.round(Math.sqrt(remainingNum));
+        const isSquare = (sqrtRem * sqrtRem === remainingNum);
+
+        // --- Top: 84 Prime Factor Block Shelf (y=44 ~ 150) ---
+        const shelfX = 18;
+        const shelfY = 44;
+        const shelfW = W - 36;
+        const shelfH = 100;
+
         ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.strokeStyle = '#f59e0b';
-        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(0, 0, 70, 0, Math.PI * 2);
+        ctx.roundRect(shelfX, shelfY, shelfW, shelfH, 10);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1.2;
+        ctx.fill();
         ctx.stroke();
+
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 12.5px "Pretendard", sans-serif';
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText('🧩 84의 소인수 블록 구조: 84 = 2² × 3 × 7', shelfX + 14, shelfY + 10);
+
+        // 4 Factor Blocks: [2], [2], [3], [7]
+        const blockY = shelfY + 36;
+        const blockW = 62;
+        const blockH = 46;
+        const blockGap = 12;
+
+        const blocks = [
+          { prime: 2, power: 1, isRemovable: false, active: true, color: '#0284c7', label: '2¹' },
+          { prime: 2, power: 2, isRemovable: false, active: true, color: '#0284c7', label: '2¹' },
+          { prime: 3, power: 1, isRemovable: true, active: !state.remove3, color: '#d97706', label: '3¹', key: 'rem3' },
+          { prime: 7, power: 1, isRemovable: true, active: !state.remove7, color: '#7c3aed', label: '7¹', key: 'rem7' }
+        ];
+
+        blocks.forEach((blk, idx) => {
+          const bx = shelfX + 14 + idx * (blockW + blockGap);
+
+          // Hitbox for removable blocks
+          if (blk.isRemovable) {
+            hitBoxes.push({ type: 'toggleBlock', key: blk.key, x: bx, y: blockY, w: blockW, h: blockH });
+          }
+
+          ctx.beginPath();
+          ctx.roundRect(bx, blockY, blockW, blockH, 8);
+
+          if (blk.active) {
+            ctx.fillStyle = blk.color;
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 17px "Pretendard", sans-serif';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(blk.prime.toString(), bx + blockW / 2, blockY + 18);
+
+            ctx.font = '10px "Pretendard", sans-serif';
+            ctx.fillStyle = '#e2e8f0';
+            ctx.fillText(blk.isRemovable ? '(지수 1: 홀수)' : '(짝수 짝 있음)', bx + blockW / 2, blockY + 34);
+          } else {
+            // Divided / Removed state
+            ctx.fillStyle = 'rgba(30, 41, 59, 0.4)';
+            ctx.fill();
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Diagonal slash
+            ctx.beginPath();
+            ctx.moveTo(bx + 4, blockY + 4);
+            ctx.lineTo(bx + blockW - 4, blockY + blockH - 4);
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.7)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 12px "Pretendard", sans-serif';
+            ctx.fillStyle = '#f87171';
+            ctx.fillText(`÷ ${blk.prime} (제거)`, bx + blockW / 2, blockY + blockH / 2);
+          }
+        });
+
+        // Instructions on the right side of shelf
+        const rightInfoX = shelfX + 14 + 4 * (blockW + blockGap) + 10;
+        if (shelfW - (rightInfoX - shelfX) > 100) {
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.font = '11px "Pretendard", sans-serif';
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText('블록 클릭 시 나눗셈 토글 ➔', rightInfoX, blockY + blockH / 2);
+        }
         ctx.restore();
 
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '13px "Pretendard", sans-serif';
-        ctx.fillText('마무리 인터랙터', cx, cy + 110);
+        // --- Middle: Division Experiment Bench & Preset Buttons (y=154 ~ 220) ---
+        const midY = shelfY + shelfH + 10;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 12px "Pretendard", sans-serif';
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillText('나누는 수 a 실험대:', shelfX, midY + 12);
 
-        angle += 0.02;
+        // Preset Action Buttons
+        const presets = [
+          { label: '84 그대로 (a=1)', r3: false, r7: false },
+          { label: '3만 나누기 (a=3)', r3: true, r7: false },
+          { label: '7만 나누기 (a=7)', r3: false, r7: true },
+          { label: '3과 7 모두 나누기 (a=21)', r3: true, r7: true }
+        ];
+
+        const pBtnH = 26;
+        const pBtnY = midY;
+        let curBtnX = shelfX + 120;
+
+        presets.forEach((pr, i) => {
+          const isCurrent = (state.remove3 === pr.r3 && state.remove7 === pr.r7);
+          const pBtnW = (pr.r3 && pr.r7) ? 148 : 105;
+
+          if (curBtnX + pBtnW <= shelfX + shelfW) {
+            hitBoxes.push({ type: 'preset', r3: pr.r3, r7: pr.r7, x: curBtnX, y: pBtnY, w: pBtnW, h: pBtnH });
+
+            ctx.beginPath();
+            ctx.roundRect(curBtnX, pBtnY, pBtnW, pBtnH, 5);
+            if (isCurrent) {
+              ctx.fillStyle = (pr.r3 && pr.r7) ? '#059669' : '#0284c7';
+              ctx.fill();
+              ctx.strokeStyle = '#38bdf8';
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+            } else {
+              ctx.fillStyle = '#1e293b';
+              ctx.fill();
+              ctx.strokeStyle = '#334155';
+              ctx.lineWidth = 1;
+              ctx.stroke();
+            }
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = isCurrent ? 'bold 11px "Pretendard", sans-serif' : '10.5px "Pretendard", sans-serif';
+            ctx.fillStyle = isCurrent ? '#ffffff' : '#94a3b8';
+            ctx.fillText(pr.label, curBtnX + pBtnW / 2, pBtnY + pBtnH / 2);
+
+            curBtnX += pBtnW + 6;
+          }
+        });
+
+        // --- Bottom: Square Tile Grid & Conclusion Panel (y=190 ~ H-14) ---
+        const botY = midY + pBtnH + 12;
+        const botH = H - botY - 14;
+        const botW = W - 36;
+        const bx = 18;
+        const by = botY;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(bx, by, botW, botH, 10);
+        if (state.isSuccess) {
+          ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2;
+        } else if (isSquare) {
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.12)';
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 1.5;
+        } else {
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+          ctx.strokeStyle = '#334155';
+          ctx.lineWidth = 1;
+        }
+        ctx.fill();
+        ctx.stroke();
+
+        // Left side: Square Tile Visualizer
+        const tileAreaW = Math.min(botW * 0.42, 170);
+        const tileCenterX = bx + tileAreaW / 2 + 10;
+        const tileCenterY = by + botH / 2;
+
+        if (isSquare && remainingNum === 4) {
+          // Draw 2x2 Square Grid
+          const tileSize = 28;
+          ctx.save();
+          ctx.translate(tileCenterX - tileSize, tileCenterY - tileSize);
+          for (let r = 0; r < 2; r++) {
+            for (let c = 0; c < 2; c++) {
+              ctx.beginPath();
+              ctx.roundRect(c * (tileSize + 3), r * (tileSize + 3), tileSize, tileSize, 4);
+              ctx.fillStyle = '#0284c7';
+              ctx.fill();
+              ctx.strokeStyle = '#38bdf8';
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.font = 'bold 12px "Pretendard", sans-serif';
+              ctx.fillStyle = '#ffffff';
+              ctx.fillText('1', c * (tileSize + 3) + tileSize / 2, r * (tileSize + 3) + tileSize / 2);
+            }
+          }
+          ctx.restore();
+
+          // Dimensions labels: 2 by 2
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.font = 'bold 12px "Pretendard", sans-serif';
+          ctx.fillStyle = '#34d399';
+          ctx.fillText('가로 2', tileCenterX, tileCenterY - tileSize - 4);
+          ctx.textBaseline = 'top';
+          ctx.fillText('2 × 2 = 4 (b=2)', tileCenterX, tileCenterY + tileSize + 6);
+        } else {
+          // Incomplete / non-square tile representation
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 13px "Pretendard", sans-serif';
+          ctx.fillStyle = '#f87171';
+          ctx.fillText(`남은 수: ${remainingNum}`, tileCenterX, tileCenterY - 14);
+
+          ctx.font = '11px "Pretendard", sans-serif';
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText('정사각 타일 불가 (제곱수 아님)', tileCenterX, tileCenterY + 12);
+        }
+
+        // Right side: Mathematical Analysis & Equation
+        const infoX = bx + tileAreaW + 24;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+
+        ctx.font = 'bold 13px "Pretendard", sans-serif';
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillText(`현재 나눗셈: 84 ÷ a = ${remainingNum}`, infoX, by + 14);
+
+        ctx.font = '12px "Pretendard", sans-serif';
+        if (isSquare) {
+          ctx.fillStyle = '#34d399';
+          ctx.fillText(`• 나누는 수 a = ${a} (지수가 홀수인 3과 7의 곱: 3 × 7 = 21)`, infoX, by + 34);
+          ctx.fillText(`• 남은 수 84 ÷ 21 = 4 = 2² ➔ b = 2`, infoX, by + 52);
+
+          ctx.font = 'bold 14px "Pretendard", sans-serif';
+          ctx.fillStyle = '#fbbf24';
+          ctx.fillText(`★ 최종 결과: a + b = 21 + 2 = [ 23 ]`, infoX, by + 74);
+
+          // Copy to input button
+          const btnW = 96;
+          const btnH = 26;
+          const btnX = bx + botW - btnW - 14;
+          const btnY = by + botH - btnH - 12;
+
+          hitBoxes.push({ type: 'btnApplyAns', val: 23, x: btnX, y: btnY, w: btnW, h: btnH });
+
+          ctx.beginPath();
+          ctx.roundRect(btnX, btnY, btnW, btnH, 5);
+          ctx.fillStyle = '#0284c7';
+          ctx.fill();
+          ctx.strokeStyle = '#38bdf8';
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 11px "Pretendard", sans-serif';
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText('답안창에 입력 ➔', btnX + btnW / 2, btnY + btnH / 2);
+        } else {
+          ctx.fillStyle = '#f87171';
+          ctx.fillText(`• 나누는 수 a = ${a}`, infoX, by + 34);
+          ctx.fillText(`• 84 ÷ ${a} = ${remainingNum} ➔ 제곱수가 아닙니다!`, infoX, by + 52);
+
+          ctx.font = '11.5px "Pretendard", sans-serif';
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText('💡 지수가 1(홀수)인 소인수 3과 7을 모두 나누어야 지수가 짝수가 됩니다.', infoX, by + 74);
+        }
+        ctx.restore();
+
+        // Confetti
+        if (state.particles.length > 0) {
+          ctx.save();
+          for (let i = state.particles.length - 1; i >= 0; i--) {
+            const p = state.particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.15;
+            p.life -= p.decay;
+            if (p.life <= 0) {
+              state.particles.splice(i, 1);
+              continue;
+            }
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = p.life;
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+
         animId = requestAnimationFrame(render);
       }
+
+      // Pointer Event Handlers
+      function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top
+        };
+      }
+
+      function handlePointerDown(e) {
+        const p = getPos(e);
+        for (let i = hitBoxes.length - 1; i >= 0; i--) {
+          const b = hitBoxes[i];
+          if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) {
+            if (b.type === 'toggleBlock') {
+              if (b.key === 'rem3') state.remove3 = !state.remove3;
+              if (b.key === 'rem7') state.remove7 = !state.remove7;
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+              return;
+            } else if (b.type === 'preset') {
+              state.remove3 = b.r3;
+              state.remove7 = b.r7;
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+              return;
+            } else if (b.type === 'btnApplyAns') {
+              const inp = document.getElementById('ans-6-5');
+              if (inp) {
+                inp.value = b.val.toString();
+                inp.focus();
+              }
+              if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+              return;
+            }
+          }
+        }
+      }
+
+      function handlePointerMove(e) {
+        const p = getPos(e);
+        let hover = false;
+        for (let i = hitBoxes.length - 1; i >= 0; i--) {
+          const b = hitBoxes[i];
+          if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) {
+            hover = true;
+            break;
+          }
+        }
+        canvas.style.cursor = hover ? 'pointer' : 'default';
+      }
+
+      canvas.addEventListener('pointerdown', handlePointerDown);
+      canvas.addEventListener('pointermove', handlePointerMove);
+
       render();
 
       window._cleanup_step_6_5 = () => {
         if (animId) cancelAnimationFrame(animId);
+        ro.disconnect();
+        canvas.removeEventListener('pointerdown', handlePointerDown);
+        canvas.removeEventListener('pointermove', handlePointerMove);
       };
     }
 
@@ -48060,17 +48483,51 @@ function checkStep_1_12() {
       box.innerHTML = `
         <div class="question-card" style="padding:16px; background:#1e293b; border-radius:10px; margin-bottom:15px; border:1px solid #334155;">
           <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 6-5. 05번: 나누어 제곱수 만들기 (p.25)</div>
-          <p style="font-size:14px; color:#cbd5e1; line-height:1.6; margin-bottom:12px;">
-            문제를 해결하고 답을 입력창에 작성하세요.
-          </p>
+          
+          <div style="background:#0f172a; border:1px solid #334155; border-radius:8px; padding:12px; margin-bottom:12px;">
+            <div style="font-weight:700; color:#f8fafc; margin-bottom:6px; font-size:14px;">05. 84를 가장 작은 자연수 a로 나누어 어떤 자연수 b의 제곱이 되도록 할 때, a+b의 값을 구하시오.</div>
+            <div style="font-size:13px; color:#94a3b8; line-height:1.6;">
+              💡 84를 소인수분해하여 지수가 홀수인 소인수를 찾아 나누어보세요. (모든 소인수의 지수가 짝수가 되어야 제곱수가 됩니다.)
+            </div>
+          </div>
+
+          <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-6-5" data-val="2" style="font-weight:700; padding:5px 10px;">2</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-6-5" data-val="3" style="font-weight:700; padding:5px 10px;">3</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-6-5" data-val="7" style="font-weight:700; padding:5px 10px;">7</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-6-5" data-val="21" style="font-weight:700; padding:5px 10px;">21</button>
+            <button type="button" class="btn btn-outline-info btn-sm btn-quick-6-5" data-val="23" style="font-weight:700; padding:5px 10px;">23</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm btn-clear-6-5" style="font-size:12px; padding:5px 10px; margin-left:auto;">초기화</button>
+          </div>
+
           <div style="margin-bottom:12px;">
-            <input type="text" id="ans-6-5" class="form-control" placeholder="답 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
+            <input type="text" id="ans-6-5" class="form-control" placeholder="수 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
           </div>
           <button class="btn btn-primary" onclick="checkStep_6_5()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
 
       const input = box.querySelector('#ans-6-5');
+
+      box.querySelectorAll('.btn-quick-6-5').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = btn.getAttribute('data-val');
+          if (input) {
+            input.value = val;
+            input.focus();
+          }
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+        });
+      });
+
+      box.querySelector('.btn-clear-6-5')?.addEventListener('click', () => {
+        if (input) {
+          input.value = '';
+          input.focus();
+        }
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      });
+
       if (input) {
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') checkStep_6_5();
@@ -48079,15 +48536,48 @@ function checkStep_1_12() {
     }
 
     function checkStep_6_5() {
-      const v = normTxt(document.getElementById('ans-6-5')?.value);
-      const isCorrect = (v.length > 0);
+      const raw = document.getElementById('ans-6-5')?.value || '';
+      const v = normTxt(raw);
+
+      if (!v) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>값을 입력해 주세요.</b><br>84를 나누어 제곱수가 되도록 하는 a와 b를 구해 a+b의 값을 입력해 보세요.');
+        return;
+      }
+
+      // Check common student intermediate answers
+      if (v === '21') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>21은 나누는 수 a의 값입니다!</b><br>문제에서 요구하는 것은 $a+b$의 값입니다. $b$의 값(2)을 더해 보세요.');
+        return;
+      }
+
+      if (v === '2') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>2는 b의 값입니다!</b><br>문제에서 요구하는 것은 $a+b$의 값입니다. $a=21$과 더해 보세요.');
+        return;
+      }
+
+      if (v === '4') {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>4는 제곱수(b²)의 결과입니다!</b><br>$b^2 = 4$ 이므로 $b = 2$입니다. $a=21$과 더해 $a+b$를 구하세요.');
+        return;
+      }
+
+      // Correct answer check: 23
+      const isCorrect = (v === '23' || v === '이십삼');
+
       if (isCorrect) {
-        completeSubStep('6-5', '🎉 <b>정답입니다!</b><br>• 정답 및 해설: 84 = 2² × 3 × 7 ➔ a = 21, b = 2 ➔ a + b = 23');
+        if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        if (window._step6_5_triggerSuccess) {
+          window._step6_5_triggerSuccess();
+        }
+        completeSubStep('6-5', '🎉 <b>정답입니다!</b><br>• $84 = 2^2 \\times 3 \\times 7$ 입니다.<br>• 어떤 자연수의 제곱이 되려면 모든 소인수의 지수가 짝수이어야 합니다.<br>• 지수가 홀수인 소인수는 3과 7이므로 가장 작은 자연수 $a = 3 \\times 7 = <b>21</b>$ 입니다.<br>• 이때 $84 \\div 21 = 4 = 2^2$ 이므로 $b = <b>2</b>$ 입니다.<br>• 따라서 $a + b = 21 + 2 = <b>23</b>$ 입니다.');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>값을 입력해 주세요.</b>');
+        showFeedback(false, '❌ <b>다시 확인해 보세요!</b><br>• $84 = 2^2 \\times 3 \\times 7$ 에서 지수가 홀수인 소인수를 나누어야 합니다.<br>• $a = 3 \\times 7 = 21$, $84 \\div 21 = 4 = 2^2$ (즉 $b=2$)를 구한 후 $a+b$를 계산해 보세요.');
       }
     }
 
