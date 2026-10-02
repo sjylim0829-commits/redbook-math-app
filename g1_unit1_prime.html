@@ -43926,99 +43926,629 @@ function checkStep_1_12() {
     // ==========================================
     function drawCanvas_5_2(container) {
       if (!container) return;
-      container.innerHTML = '';
-      const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth || 500;
-      canvas.height = container.clientHeight || 450;
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      canvas.style.display = 'block';
-      container.appendChild(canvas);
+      if (container._animId_5_2) {
+        cancelAnimationFrame(container._animId_5_2);
+        container._animId_5_2 = null;
+      }
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; height:100%; gap:10px;">
+          <!-- 상단 컨트롤러 및 설명 뱃지 바 -->
+          <div style="background:#ffffff; padding:12px 14px; border-radius:10px; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+              <span id="badge-5-2" style="font-size:0.88rem; font-weight:700; color:#1e293b;">
+                수 버튼을 눌러 알지오매스 가상 런타임에서 소수/합성수를 판별해 보세요!
+              </span>
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+              <button id="btn-num-115" class="btn btn-sm btn-outline-primary" style="font-weight:700;">115 판별</button>
+              <button id="btn-num-269" class="btn btn-sm btn-outline-primary" style="font-weight:700;">269 판별</button>
+              <button id="btn-num-2027" class="btn btn-sm btn-outline-primary" style="font-weight:700;">2027 판별</button>
+              <button id="btn-reset-5-2" class="btn btn-sm btn-outline-secondary" style="font-weight:700;">⟲ 초기화</button>
+            </div>
+          </div>
+          <!-- Canvas 영역 -->
+          <div style="flex:1; min-height:370px; position:relative;">
+            <canvas id="canvas-5-2" style="width:100%; height:100%; display:block; border-radius:12px; background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); border:1px solid #e2e8f0;"></canvas>
+          </div>
+        </div>
+      `;
+
+      const canvas = container.querySelector('#canvas-5-2');
+      const badgeStatus = container.querySelector('#badge-5-2');
+      const btn115 = container.querySelector('#btn-num-115');
+      const btn269 = container.querySelector('#btn-num-269');
+      const btn2027 = container.querySelector('#btn-num-2027');
+      const btnReset = container.querySelector('#btn-reset-5-2');
+
       const ctx = canvas.getContext('2d');
+      let w = 560, h = 400;
 
-      let animId;
-      let angle = 0;
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        w = rect.width || 560;
+        h = rect.height || 400;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+
+      const ro = new ResizeObserver(() => resize());
+      ro.observe(canvas);
+
+      let selectedNum = null;
+      let testedNums = { 115: false, 269: false, 2027: false };
+      let scanProgress = 0;
+      let pulseTimer = 0;
+      let particles = [];
+      let hoveredCardIdx = null;
+
+      function spawnConfetti(count = 60) {
+        const colors = ['#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#f43f5e'];
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: w / 2 + (Math.random() - 0.5) * 180,
+            y: 180 + (Math.random() - 0.5) * 60,
+            vx: (Math.random() - 0.5) * 12,
+            vy: (Math.random() - 0.85) * 11 - 2,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.25,
+            life: 1.0,
+            decay: Math.random() * 0.015 + 0.01
+          });
+        }
+      }
+
+      function selectNumber(num) {
+        selectedNum = num;
+        testedNums[num] = true;
+        scanProgress = 0;
+        updateUI();
+        if (num === 269 || num === 2027) {
+          spawnConfetti(45);
+        }
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      }
+
+      function updateUI() {
+        if (btn115) btn115.className = `btn btn-sm ${selectedNum === 115 ? 'btn-primary text-white' : (testedNums[115] ? 'btn-outline-danger' : 'btn-outline-primary')}`;
+        if (btn269) btn269.className = `btn btn-sm ${selectedNum === 269 ? 'btn-primary text-white' : (testedNums[269] ? 'btn-outline-success' : 'btn-outline-primary')}`;
+        if (btn2027) btn2027.className = `btn btn-sm ${selectedNum === 2027 ? 'btn-primary text-white' : (testedNums[2027] ? 'btn-outline-success' : 'btn-outline-primary')}`;
+
+        if (badgeStatus) {
+          if (!selectedNum) {
+            badgeStatus.innerText = '수 버튼을 눌러 알지오매스 가상 런타임에서 소수/합성수를 판별해 보세요!';
+          } else if (selectedNum === 115) {
+            badgeStatus.innerHTML = '🔍 <b>115 판별 결과</b>: 115는 5의 배수(5×23)로 약수가 4개이므로 <b>합성수(소수가 아님)</b>입니다!';
+          } else if (selectedNum === 269) {
+            badgeStatus.innerHTML = '👑 <b>269 판별 결과</b>: 1과 269 외에 약수가 없으므로(D = 2) <b>소수</b>입니다!';
+          } else if (selectedNum === 2027) {
+            badgeStatus.innerHTML = '👑 <b>2027 판별 결과</b>: 1과 2027 외에 약수가 없으므로(D = 2) <b>소수</b>입니다!';
+          }
+        }
+      }
+
+      btn115?.addEventListener('click', () => selectNumber(115));
+      btn269?.addEventListener('click', () => selectNumber(269));
+      btn2027?.addEventListener('click', () => selectNumber(2027));
+      btnReset?.addEventListener('click', () => {
+        selectedNum = null;
+        testedNums = { 115: false, 269: false, 2027: false };
+        scanProgress = 0;
+        updateUI();
+        if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+      });
+
+      window._step5_2_triggerSuccess = function() {
+        testedNums = { 115: true, 269: true, 2027: true };
+        selectedNum = 2027;
+        updateUI();
+        spawnConfetti(70);
+      };
+
+      // 마우스 포인터 인터랙션 (카드 클릭)
+      canvas.addEventListener('pointermove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        const cardBoxW = Math.min(w - 36, 540);
+        const cardBoxX = (w - cardBoxW) / 2;
+        const cardY = 46;
+        const cardH = 88;
+        const cardGap = 8;
+        const cardW = (cardBoxW - cardGap * 2) / 3;
+
+        hoveredCardIdx = null;
+        if (my >= cardY && my <= cardY + cardH) {
+          for (let i = 0; i < 3; i++) {
+            const cx = cardBoxX + i * (cardW + cardGap);
+            if (mx >= cx && mx <= cx + cardW) {
+              hoveredCardIdx = i;
+              break;
+            }
+          }
+        }
+        canvas.style.cursor = (hoveredCardIdx !== null) ? 'pointer' : 'default';
+      });
+
+      canvas.addEventListener('pointerleave', () => {
+        hoveredCardIdx = null;
+        canvas.style.cursor = 'default';
+      });
+
+      canvas.addEventListener('pointerdown', () => {
+        if (hoveredCardIdx === 0) selectNumber(115);
+        else if (hoveredCardIdx === 1) selectNumber(269);
+        else if (hoveredCardIdx === 2) selectNumber(2027);
+      });
+
       function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, w, h);
+        pulseTimer += 0.05;
+        if (scanProgress < 1) scanProgress = Math.min(1, scanProgress + 0.05);
 
-        // Grid lines
-        ctx.strokeStyle = '#1e293b';
-        ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 40) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-        }
-        for (let y = 0; y < canvas.height; y += 40) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-        }
-
-        // Badge & Title
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 16px "Pretendard", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('[5-2] 활동 1: 큰 수 소수 판별 실행 (p.23)', canvas.width / 2, 40);
-
-        // Interactive visual placeholder
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
+        // 상단 제목 뱃지
+        const badgeW = Math.min(w - 36, 540);
+        const badgeX = (w - badgeW) / 2;
         ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.strokeStyle = '#10b981';
-        ctx.lineWidth = 3;
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(0, 0, 70, 0, Math.PI * 2);
+        if (ctx.roundRect) ctx.roundRect(badgeX, 10, badgeW, 28, 8);
+        else ctx.rect(badgeX, 10, badgeW, 28);
+        ctx.fill();
         ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 12px Pretendard, sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('활동 1: 큰 수(115, 269, 2027)의 소수/합성수 코딩 판별 (p.23)', w / 2, 24);
         ctx.restore();
 
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '13px "Pretendard", sans-serif';
-        ctx.fillText('알지오매스 코딩 인터랙터', cx, cy + 110);
+        const cardBoxW = Math.min(w - 36, 540);
+        const cardBoxX = (w - cardBoxW) / 2;
+        const cardY = 46;
+        const cardH = 88;
+        const cardGap = 8;
+        const cardW = (cardBoxW - cardGap * 2) / 3;
 
-        angle += 0.02;
-        animId = requestAnimationFrame(render);
+        const numbersData = [
+          { num: 115, isPrime: false, divisors: '1, 5, 23, 115', count: 4, reason: '합성수 (5×23)' },
+          { num: 269, isPrime: true, divisors: '1, 269', count: 2, reason: '소수 (D = 2)' },
+          { num: 2027, isPrime: true, divisors: '1, 2027', count: 2, reason: '소수 (D = 2)' }
+        ];
+
+        // 1. 대시보드 카드 3종
+        numbersData.forEach((item, idx) => {
+          const cx = cardBoxX + idx * (cardW + cardGap);
+          const isSelected = (selectedNum === item.num);
+          const isTested = testedNums[item.num];
+          const isHovered = (hoveredCardIdx === idx);
+
+          ctx.save();
+          let bgCol = '#ffffff';
+          let borderCol = '#e2e8f0';
+          let lineW = 1.2;
+
+          if (isTested) {
+            if (item.isPrime) {
+              bgCol = isSelected ? '#f0fdf4' : '#fafafa';
+              borderCol = '#22c55e';
+            } else {
+              bgCol = isSelected ? '#fef2f2' : '#fafafa';
+              borderCol = '#ef4444';
+            }
+            lineW = isSelected ? 2.2 : 1.6;
+          } else if (isSelected) {
+            bgCol = '#eff6ff';
+            borderCol = '#3b82f6';
+            lineW = 2;
+          }
+
+          if (isHovered) lineW += 1;
+
+          ctx.fillStyle = bgCol;
+          ctx.strokeStyle = borderCol;
+          ctx.lineWidth = lineW;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(cx, cardY, cardW, cardH, 8);
+          else ctx.rect(cx, cardY, cardW, cardH);
+          ctx.fill();
+          ctx.stroke();
+
+          // 카드 헤더 (수 표시)
+          ctx.font = 'bold 13.5px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillStyle = isSelected ? '#1e293b' : '#334155';
+          ctx.fillText(`N = ${item.num}`, cx + cardW / 2, cardY + 8);
+
+          // 약수 정보
+          ctx.font = '10.5px Pretendard, sans-serif';
+          if (!isTested) {
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText('약수: ? (D = ?)', cx + cardW / 2, cardY + 28);
+          } else {
+            ctx.fillStyle = '#475569';
+            ctx.fillText(`D = ${item.count}개`, cx + cardW / 2, cardY + 28);
+          }
+
+          // 하단 판정 뱃지
+          const badgePillY = cardY + 48;
+          const badgePillH = 26;
+          let pillBg = '#f1f5f9';
+          let pillBorder = '#e2e8f0';
+          let pillText = '판별 대기 🔍';
+          let pillColor = '#64748b';
+
+          if (isTested) {
+            if (item.isPrime) {
+              pillBg = '#dcfce7';
+              pillBorder = '#86efac';
+              pillText = '👑 소수 (Prime)';
+              pillColor = '#15803d';
+            } else {
+              pillBg = '#fee2e2';
+              pillBorder = '#fca5a5';
+              pillText = '❌ 합성수';
+              pillColor = '#dc2626';
+            }
+          }
+
+          ctx.fillStyle = pillBg;
+          ctx.strokeStyle = pillBorder;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(cx + 6, badgePillY, cardW - 12, badgePillH, 6);
+          else ctx.rect(cx + 6, badgePillY, cardW - 12, badgePillH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.font = 'bold 10.5px Pretendard, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = pillColor;
+          ctx.fillText(pillText, cx + cardW / 2, badgePillY + badgePillH / 2);
+          ctx.restore();
+        });
+
+        // 2. 가상 터미널 / 콘솔 영역
+        const termY = 142;
+        const termH = 92;
+
+        ctx.save();
+        ctx.fillStyle = '#0f172a';
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(cardBoxX, termY, cardBoxW, termH, 8);
+        else ctx.rect(cardBoxX, termY, cardBoxW, termH);
+        ctx.fill();
+        ctx.stroke();
+
+        // 터미널 헤더 바
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(cardBoxX, termY, cardBoxW, 22, { topLeft: 8, topRight: 8 });
+        else ctx.fillRect(cardBoxX, termY, cardBoxW, 22);
+        ctx.fill();
+
+        // 터미널 장식 점 3개
+        const dotColors = ['#ef4444', '#f59e0b', '#10b981'];
+        for (let i = 0; i < 3; i++) {
+          ctx.fillStyle = dotColors[i];
+          ctx.beginPath();
+          ctx.arc(cardBoxX + 14 + i * 12, termY + 11, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.font = '10px monospace';
+        ctx.fillStyle = '#94a3b8';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('AlgeoMath_Runtime_v1.0', cardBoxX + cardBoxW - 12, termY + 11);
+
+        // 콘솔 텍스트 출력
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = '11px monospace';
+
+        if (!selectedNum) {
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillText('> [대기 중] 상단에서 판별할 수(115, 269, 2027)를 클릭하세요.', cardBoxX + 14, termY + 28);
+          ctx.fillStyle = '#64748b';
+          ctx.fillText('> 알고리즘: 1부터 N까지 차례대로 나누어 약수 개수(D)를 카운트합니다.', cardBoxX + 14, termY + 48);
+          ctx.fillText('> 판별 기준: D == 2 이면 "소수", 아니면 "합성수"', cardBoxX + 14, termY + 68);
+        } else if (selectedNum === 115) {
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillText('> N = 115 루프 실행: 1부터 115까지 나머지 0 검사 완료', cardBoxX + 14, termY + 28);
+          ctx.fillStyle = '#fca5a5';
+          ctx.fillText('> 약수 발견: 1, 5, 23, 115  ➔  약수의 개수 D = 4', cardBoxX + 14, termY + 48);
+          ctx.fillStyle = '#f87171';
+          ctx.font = 'bold 11px monospace';
+          ctx.fillText('> 결과: D ≠ 2 이므로 [합성수] 판정! (5의 배수, 5×23)', cardBoxX + 14, termY + 68);
+        } else if (selectedNum === 269) {
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillText('> N = 269 루프 실행: 1부터 269까지 나머지 0 검사 완료', cardBoxX + 14, termY + 28);
+          ctx.fillStyle = '#86efac';
+          ctx.fillText('> 약수 발견: 1, 269  ➔  약수의 개수 D = 2', cardBoxX + 14, termY + 48);
+          ctx.fillStyle = '#4ade80';
+          ctx.font = 'bold 11px monospace';
+          ctx.fillText('> 결과: D == 2 이므로 [소수 (Prime)] 판정!', cardBoxX + 14, termY + 68);
+        } else if (selectedNum === 2027) {
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillText('> N = 2027 루프 실행: 1부터 2027까지 나머지 0 검사 완료', cardBoxX + 14, termY + 28);
+          ctx.fillStyle = '#86efac';
+          ctx.fillText('> 약수 발견: 1, 2027  ➔  약수의 개수 D = 2', cardBoxX + 14, termY + 48);
+          ctx.fillStyle = '#4ade80';
+          ctx.font = 'bold 11px monospace';
+          ctx.fillText('> 결과: D == 2 이므로 [소수 (Prime)] 판정!', cardBoxX + 14, termY + 68);
+        }
+        ctx.restore();
+
+        // 3. 하단 설명 박스
+        const infoY = Math.min(242, h * 0.59);
+        const infoW = cardBoxW;
+        const infoX = cardBoxX;
+        const infoH = Math.min(124, h - infoY - 12);
+
+        ctx.save();
+        ctx.fillStyle = (selectedNum === 269 || selectedNum === 2027) ? '#f0fdf4' : '#f8fafc';
+        ctx.strokeStyle = (selectedNum === 269 || selectedNum === 2027) ? '#86efac' : '#e2e8f0';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(infoX, infoY, infoW, infoH, 10);
+        else ctx.rect(infoX, infoY, infoW, infoH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 12px Pretendard, sans-serif';
+
+        if (!selectedNum) {
+          ctx.fillStyle = '#334155';
+          ctx.fillText('💡 활동 1 핵심 탐구:', infoX + 16, infoY + 12);
+          ctx.font = '11.5px Pretendard, sans-serif';
+          ctx.fillStyle = '#64748b';
+          ctx.fillText('• 큰 수는 손으로 직접 나누어 소수인지 판별하기에 시간이 오래 걸립니다.', infoX + 16, infoY + 36);
+          ctx.fillText('• 알지오매스 코딩을 이용하면 컴퓨터가 1부터 N까지 순식간에 약수의 개수를 계산합니다.', infoX + 16, infoY + 58);
+          ctx.fillText('• 위의 수 버튼을 눌러 각 수의 약수 개수와 소수/합성수 판별 결과를 확인해 보세요!', infoX + 16, infoY + 82);
+        } else if (selectedNum === 115) {
+          ctx.fillStyle = '#b91c1c';
+          ctx.fillText('🔍 115 판별 분석 (합성수):', infoX + 16, infoY + 12);
+          ctx.font = '11.5px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('• 115는 일의 자리 숫자가 5이므로 5의 배수입니다. (115 = 5 × 23)', infoX + 16, infoY + 36);
+          ctx.fillText('• 115의 약수는 1, 5, 23, 115 로 총 4개(D = 4)입니다.', infoX + 16, infoY + 58);
+          ctx.fillStyle = '#dc2626';
+          ctx.fillText('➔ 약수의 개수가 2개가 아니므로 115는 "합성수"입니다!', infoX + 16, infoY + 82);
+        } else if (selectedNum === 269) {
+          ctx.fillStyle = '#166534';
+          ctx.fillText('👑 269 판별 분석 (소수):', infoX + 16, infoY + 12);
+          ctx.font = '11.5px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('• 269는 2, 3, 5, 7, 11, 13 등 어떤 작은 소수로도 나누어떨어지지 않습니다.', infoX + 16, infoY + 36);
+          ctx.fillText('• 269의 약수는 1과 269뿐으로 총 2개(D = 2)입니다.', infoX + 16, infoY + 58);
+          ctx.fillStyle = '#059669';
+          ctx.fillText('➔ 1과 자기 자신만을 약수로 가지므로 269는 "소수"입니다!', infoX + 16, infoY + 82);
+        } else if (selectedNum === 2027) {
+          ctx.fillStyle = '#166534';
+          ctx.fillText('👑 2027 판별 분석 (소수):', infoX + 16, infoY + 12);
+          ctx.font = '11.5px Pretendard, sans-serif';
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText('• 2027은 45 이하의 어떤 소수로도 나누어떨어지지 않는 매우 큰 소수입니다.', infoX + 16, infoY + 36);
+          ctx.fillText('• 2027의 약수는 1과 2027뿐으로 총 2개(D = 2)입니다.', infoX + 16, infoY + 58);
+          ctx.fillStyle = '#059669';
+          ctx.fillText('➔ 1과 자기 자신만을 약수로 가지므로 2027은 "소수"입니다!', infoX + 16, infoY + 82);
+        }
+        ctx.restore();
+
+        // 파티클 렌더링
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.35;
+          p.rot += p.vRot;
+          p.life -= p.decay;
+
+          if (p.life <= 0) {
+            particles.splice(i, 1);
+            continue;
+          }
+
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.globalAlpha = Math.max(0, p.life);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+          ctx.restore();
+        }
+
+        container._animId_5_2 = requestAnimationFrame(render);
       }
+
       render();
 
       window._cleanup_step_5_2 = () => {
-        if (animId) cancelAnimationFrame(animId);
+        if (container._animId_5_2) {
+          cancelAnimationFrame(container._animId_5_2);
+          container._animId_5_2 = null;
+        }
+        ro.disconnect();
       };
     }
 
     function renderForm_5_2(box) {
       if (!box) return;
       box.innerHTML = `
-        <div class="question-card" style="padding:16px; background:#1e293b; border-radius:10px; margin-bottom:15px; border:1px solid #334155;">
-          <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:8px;">Step 5-2. 활동 1: 큰 수 소수 판별 실행 (p.23)</div>
-          <p style="font-size:14px; color:#cbd5e1; line-height:1.6; margin-bottom:12px;">
-            문제를 해결하고 답을 입력창에 작성하세요.
-          </p>
-          <div style="margin-bottom:12px;">
-            <input type="text" id="ans-5-2" class="form-control" placeholder="답 입력" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:#fff; font-size:15px;">
+        <div class="card" style="padding:16px 20px;">
+          <div style="font-weight:800; font-size:1.02rem; margin-bottom:8px; color:#1e293b;">
+            ✏️ [활동 1] 큰 수의 소수 판별하기 (p.23)
           </div>
+
+          <!-- 문제 안내 카드 -->
+          <div style="background:#f8fafc; border-left:4px solid #3b82f6; padding:10px 14px; border-radius:6px; margin-bottom:14px;">
+            <div style="font-weight:700; font-size:0.86rem; color:#1e40af; margin-bottom:4px;">
+              활동 1
+            </div>
+            <div style="font-size:0.88rem; color:#1e293b; line-height:1.6; font-family:'Pretendard', sans-serif;">
+              알지오매스 코딩을 실행하여 세 수 <b>115, 269, 2027</b>이 소수인지 아닌지를 각각 확인해 보자.
+            </div>
+          </div>
+
+          <p style="font-size:0.88rem; color:#334155; line-height:1.6; margin-bottom:12px;">
+            세 수가 소수인지 합성수인지 각각 입력하세요. (소수 또는 합성수)
+          </p>
+
+          <!-- 3개 입력 필드 -->
+          <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
+            <div style="display:flex; align-items:center; gap:10px; background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <span style="font-weight:800; font-size:0.92rem; color:#1e293b; min-width:65px;">• 115:</span>
+              <input type="text" id="ans-5-2-1" class="form-control ans-field-5-2" placeholder="소수 또는 합성수" style="font-size:0.95rem; width:100%;" autocomplete="off">
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <span style="font-weight:800; font-size:0.92rem; color:#1e293b; min-width:65px;">• 269:</span>
+              <input type="text" id="ans-5-2-2" class="form-control ans-field-5-2" placeholder="소수 또는 합성수" style="font-size:0.95rem; width:100%;" autocomplete="off">
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <span style="font-weight:800; font-size:0.92rem; color:#1e293b; min-width:65px;">• 2027:</span>
+              <input type="text" id="ans-5-2-3" class="form-control ans-field-5-2" placeholder="소수 또는 합성수" style="font-size:0.95rem; width:100%;" autocomplete="off">
+            </div>
+          </div>
+
+          <!-- 퀵 선택 버튼 바 -->
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; background:#f1f5f9; padding:8px 10px; border-radius:8px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; line-height:30px;">빠른 선택:</span>
+            <button type="button" class="btn btn-sm btn-success btn-insert-word-5-2" data-word="소수" style="font-weight:700; padding:4px 14px;">소수</button>
+            <button type="button" class="btn btn-sm btn-warning text-dark btn-insert-word-5-2" data-word="합성수" style="font-weight:700; padding:4px 14px;">합성수</button>
+            <button type="button" class="btn btn-sm btn-outline-danger btn-clear-word-5-2" style="font-weight:700; padding:4px 12px;">지우기</button>
+          </div>
+
+          <!-- 숨겨진 단일 호환 입력칸 (ans-5-2) -->
+          <input type="hidden" id="ans-5-2" value="">
+
           <button class="btn btn-primary" onclick="checkStep_5_2()" style="width:100%; font-weight:700; padding:10px;">정답 확인 및 채점</button>
         </div>
       `;
 
-      const input = box.querySelector('#ans-5-2');
-      if (input) {
-        input.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') checkStep_5_2();
+      let focusedInput = null;
+      const inputs = [
+        box.querySelector('#ans-5-2-1'),
+        box.querySelector('#ans-5-2-2'),
+        box.querySelector('#ans-5-2-3')
+      ];
+
+      inputs.forEach(inp => {
+        if (inp) {
+          inp.addEventListener('focus', () => { focusedInput = inp; });
+          inp.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') checkStep_5_2();
+          });
+        }
+      });
+
+      box.querySelectorAll('.btn-insert-word-5-2').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const word = btn.getAttribute('data-word');
+          let target = focusedInput;
+          if (!target || target.value) {
+            target = inputs.find(inp => inp && !inp.value.trim()) || focusedInput || inputs[0];
+          }
+          if (target) {
+            target.value = word;
+            target.focus();
+            const nextIdx = inputs.indexOf(target) + 1;
+            if (nextIdx < inputs.length) focusedInput = inputs[nextIdx];
+            if (window.SoundFX && window.SoundFX.click) SoundFX.click();
+          }
+        });
+      });
+
+      const clearBtn = box.querySelector('.btn-clear-word-5-2');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          if (focusedInput && focusedInput.value) {
+            focusedInput.value = '';
+            focusedInput.focus();
+          } else {
+            const lastFilled = [...inputs].reverse().find(inp => inp && inp.value.trim());
+            if (lastFilled) {
+              lastFilled.value = '';
+              focusedInput = lastFilled;
+              lastFilled.focus();
+            } else {
+              inputs.forEach(inp => { if (inp) inp.value = ''; });
+              focusedInput = inputs[0];
+              if (inputs[0]) inputs[0].focus();
+            }
+          }
+          if (window.SoundFX && window.SoundFX.click) SoundFX.click();
         });
       }
     }
 
     function checkStep_5_2() {
-      const v = normTxt(document.getElementById('ans-5-2')?.value);
-      const isCorrect = (v.length > 0);
-      if (isCorrect) {
-        completeSubStep('5-2', '🎉 <b>정답입니다!</b><br>• 정답 및 해설: 115는 합성수, 269는 소수, 2027은 소수');
+      const v1 = (document.getElementById('ans-5-2-1')?.value || '').trim();
+      const v2 = (document.getElementById('ans-5-2-2')?.value || '').trim();
+      const v3 = (document.getElementById('ans-5-2-3')?.value || '').trim();
+      const vCombined = (document.getElementById('ans-5-2')?.value || '').trim();
+
+      let a1 = v1, a2 = v2, a3 = v3;
+      if (!a1 && !a2 && !a3 && vCombined) {
+        const parts = vCombined.split(/[,\s/]+/).filter(Boolean);
+        if (parts.length >= 3) {
+          a1 = parts[0];
+          a2 = parts[1];
+          a3 = parts[2];
+        }
+      }
+
+      const combinedInput = document.getElementById('ans-5-2');
+      if (combinedInput) {
+        combinedInput.value = `${a1}, ${a2}, ${a3}`;
+      }
+
+      if (!a1 || !a2 || !a3) {
+        if (window.SoundFX && window.SoundFX.error) SoundFX.error();
+        showFeedback(false, '❌ <b>모든 칸에 답을 입력해 주세요.</b> 115, 269, 2027이 각각 소수인지 합성수인지 입력해 보세요.');
+        return;
+      }
+
+      const isComposite = (s) => (s === '합성수' || s === '소수아님' || s === '소수 아님' || s === 'X' || s === 'x');
+      const isPrime = (s) => (s === '소수' || s === 'O' || s === 'o');
+
+      const c1 = isComposite(a1);
+      const c2 = isPrime(a2);
+      const c3 = isPrime(a3);
+
+      if (c1 && c2 && c3) {
+        if (window.SoundFX && window.SoundFX.success) SoundFX.success();
+        if (window._step5_2_triggerSuccess) {
+          window._step5_2_triggerSuccess();
+        }
+        completeSubStep('5-2', '🎉 <b>정답입니다!</b><br>• 115: 5 × 23 = 115 이므로 약수가 1, 5, 23, 115 로 4개 ➔ <b>합성수</b><br>• 269: 1과 269만을 약수로 가짐 ➔ <b>소수</b><br>• 2027: 1과 2027만을 약수로 가짐 ➔ <b>소수</b>');
         const nextBtn = document.getElementById('btn-next-step');
         if (nextBtn) nextBtn.style.display = 'inline-flex';
       } else {
         if (window.SoundFX && window.SoundFX.error) SoundFX.error();
-        showFeedback(false, '❌ <b>값을 입력해 주세요.</b>');
+        if (isPrime(a1)) {
+          showFeedback(false, '❌ <b>115는 일의 자리가 5이므로 5의 배수(5×23)입니다. 즉 합성수입니다.</b>');
+        } else if (!c2) {
+          showFeedback(false, '❌ <b>269를 다시 확인해 보세요!</b> 269는 1과 269 이외에 나누어떨어지는 수가 없는 <b>소수</b>입니다.');
+        } else if (!c3) {
+          showFeedback(false, '❌ <b>2027을 다시 확인해 보세요!</b> 2027은 1과 2027 이외에 나누어떨어지는 수가 없는 <b>소수</b>입니다.');
+        } else {
+          showFeedback(false, '❌ <b>다시 확인해 보세요.</b> 알지오매스 코딩 시뮬레이터에서 각 수의 약수 개수(D)를 확인한 후 소수 또는 합성수를 입력해 보세요.');
+        }
       }
     }
 
