@@ -1255,6 +1255,10 @@
       // 5-1 Interactive Calendar Lab State (1. 01번 달력 소수 찾기, p.24)
       lab5_1: {
         selectedDates: [] // Array of numbers
+      },
+      // 5-2 Interactive Propositions Lab State (2. 02번 명제 판정, p.24)
+      lab5_2: {
+        selectedProp: 0 // 0: 전체, 1: ㄱ, 2: ㄴ, 3: ㄷ, 4: ㄹ
       }
     };
 
@@ -1538,6 +1542,9 @@
       } else if (code === '5-1') {
         renderToolbar5_1();
         renderSubstep5_1();
+      } else if (code === '5-2') {
+        renderToolbar5_2();
+        renderSubstep5_2();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -4381,6 +4388,58 @@
         disp.innerHTML = `선택된 날짜 (총 ${sel.length}개): <b style="color:#4f46e5;">${sel.join(', ')}</b>`;
       }
     }
+    // -------------------------------------------------------------
+    // SUBSTEP 5-2: Toolbar & Handlers (2. 02번 소수/합성수 명제 판정, p.24)
+    // -------------------------------------------------------------
+    function renderToolbar5_2() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const curProp = (state.lab5_2 && state.lab5_2.selectedProp !== undefined) ? state.lab5_2.selectedProp : 0;
+
+      tb.innerHTML = `
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <span style="font-size:0.8rem; font-weight:800; color:#475569;">[명제 탐구]:</span>
+          <button class="btn btn-sm ${curProp === 0 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_2Prop(0)">🌐 보기 전체</button>
+          <button class="btn btn-sm ${curProp === 1 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_2Prop(1)">ㄱ 보기 (정의)</button>
+          <button class="btn btn-sm ${curProp === 2 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_2Prop(2)">ㄴ 보기 (짝수)</button>
+          <button class="btn btn-sm ${curProp === 3 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_2Prop(3)" style="${curProp === 3 ? 'background:#e11d48;border-color:#e11d48;color:#fff;' : ''}">ㄷ 보기 (반례)</button>
+          <button class="btn btn-sm ${curProp === 4 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_2Prop(4)">ㄹ 보기 (약수3개)</button>
+          <button class="btn btn-sm btn-outline" onclick="resetLab5_2()" title="화면 초기화">🔄 초기화</button>
+          <button class="btn btn-sm btn-outline" onclick="teacherPassStep5_2()" style="border-color:#e2e8f0; color:#94a3b8;" title="교사 정답 패스">💡 패스</button>
+        </div>
+      `;
+    }
+
+    function setStep5_2Prop(p) {
+      if (!state.lab5_2) state.lab5_2 = { selectedProp: 0 };
+      state.lab5_2.selectedProp = p;
+      renderToolbar5_2();
+      drawStep5_2Canvas();
+    }
+
+    function resetLab5_2() {
+      if (!state.lab5_2) state.lab5_2 = { selectedProp: 0 };
+      state.lab5_2.selectedProp = 0;
+      renderToolbar5_2();
+      drawStep5_2Canvas();
+    }
+
+    function teacherPassStep5_2() {
+      const c1 = document.getElementById('chk-5-2-1');
+      const c2 = document.getElementById('chk-5-2-2');
+      const c3 = document.getElementById('chk-5-2-3');
+      const c4 = document.getElementById('chk-5-2-4');
+      const counterEl = document.getElementById('ans-5-2-counter');
+      if (c1) c1.checked = true;
+      if (c2) c2.checked = true;
+      if (c3) c3.checked = false;
+      if (c4) c4.checked = true;
+      if (counterEl) counterEl.value = '33';
+      gradeStep5_2();
+    }
+
 
 
 
@@ -27712,7 +27771,392 @@
 
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (5-2 to 6-2)
+    // SUBSTEP 5-2: 2. 02번 (소수/합성수 명제 판정, p.24)
+    // -------------------------------------------------------------
+    function renderSubstep5_2() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[대단원 5. 스스로 마무리하기: 2. 02번 (소수/합성수 명제 판정)] (교과서 p.24)</b><br>
+        • 다음 보기 중에서 <b>옳은 것</b>을 모두 고르고, 옳지 않은 명제의 반례를 찾아봅시다.<br>
+        • 소수와 합성수의 엄밀한 수학적 정의 및 성질을 바탕으로 각 명제의 참·거짓을 판별하세요.<br>
+        • 좌측 카드를 직접 클릭하여 각 보기의 판정 근거와 <b>반례(Counterexample)</b>를 탐구하세요.
+      `;
+
+      const isPassed5_2 = state.completedSubSteps && state.completedSubSteps.includes('5-2');
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.24</span>
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b;">02번 문제</span>
+          </div>
+          <h4 style="font-size:0.98rem; font-weight:800; color:#1e293b; margin-bottom:14px; line-height:1.5;">
+            다음 보기 중에서 옳은 것을 모두 고르고 질문에 답하시오.
+          </h4>
+
+          <!-- 문항 1: 보기 다중 선택 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:10px;">
+              1. 옳은 것을 모두 선택하세요 (복수 선택):
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <label style="display:flex; align-items:center; gap:8px; font-size:0.86rem; cursor:pointer;">
+                <input type="checkbox" id="chk-5-2-1" style="width:17px; height:17px; cursor:pointer;">
+                <span style="font-weight:700; color:#334155;">ㄱ. 모든 소수는 약수가 2개이다.</span>
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; font-size:0.86rem; cursor:pointer;">
+                <input type="checkbox" id="chk-5-2-2" style="width:17px; height:17px; cursor:pointer;">
+                <span style="font-weight:700; color:#334155;">ㄴ. 2를 제외한 모든 짝수는 소수가 아니다.</span>
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; font-size:0.86rem; cursor:pointer;">
+                <input type="checkbox" id="chk-5-2-3" style="width:17px; height:17px; cursor:pointer;">
+                <span style="font-weight:700; color:#334155;">ㄷ. 일의 자리 숫자가 3인 수는 모두 소수이다.</span>
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; font-size:0.86rem; cursor:pointer;">
+                <input type="checkbox" id="chk-5-2-4" style="width:17px; height:17px; cursor:pointer;">
+                <span style="font-weight:700; color:#334155;">ㄹ. 약수의 개수가 3인 수는 합성수이다.</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 문항 2: ㄷ번 반례 입력 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:16px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              2. ㄷ번이 거짓임을 보여주는 반례(일의 자리가 3인 합성수) 하나를 쓰시오:
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="text" id="ans-5-2-counter" class="proof-input-text" placeholder="답 입력" style="width:130px;" autocomplete="off">
+              <span style="font-size:0.82rem; color:#64748b;">(예: 일의 자리가 3이지만 3의 배수인 수 등)</span>
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep5_2()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            명제 진위 판정 및 채점
+          </button>
+
+          <div id="feedback-step-5-2" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep5_2Canvas();
+    }
+
+    function drawStep5_2Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed5_2 = state.completedSubSteps && state.completedSubSteps.includes('5-2');
+      const curProp = (state.lab5_2 && state.lab5_2.selectedProp !== undefined) ? state.lab5_2.selectedProp : 0;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 33
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(11, Math.min(13, Math.floor(width * 0.019)));
+
+      const titleText = two.makeText('⚖️ [대단원 마무리 02번] 소수와 합성수 명제 진위 탐구 랩', width / 2, 16);
+      titleText.size = titleSize;
+      titleText.weight = 800;
+      titleText.fill = '#1e293b';
+
+      const subText = two.makeText('보기를 클릭하여 각 명제의 참·거짓 근거와 반례(Counterexample)를 탐구하세요.', width / 2, 33);
+      subText.size = subSize;
+      subText.fill = '#64748b';
+
+      // 2. Sub-bar - y: 56, h: 26 (occupies 43 ~ 69)
+      const fBarW = Math.min(width - 40, 640);
+      const fBar = two.makeRoundedRectangle(width / 2, 56, fBarW, 26, 6);
+      fBar.fill = '#f8fafc';
+      fBar.stroke = '#cbd5e1';
+      fBar.linewidth = 1;
+
+      let subLabel = '';
+      if (curProp === 0) subLabel = '🌐 보기 전체: ㄱ, ㄴ, ㄷ, ㄹ의 참·거짓을 판별하고 반례를 확인하세요';
+      else if (curProp === 1) subLabel = '📌 ㄱ 보기 탐구: 모든 소수는 약수가 2개이다 ➔ [참 (옳음)]';
+      else if (curProp === 2) subLabel = '📌 ㄴ 보기 탐구: 2를 제외한 모든 짝수는 소수가 아니다 ➔ [참 (옳음)]';
+      else if (curProp === 3) subLabel = '📌 ㄷ 보기 탐구: 일의 자리 숫자가 3인 수는 모두 소수이다 ➔ [거짓 (반례 존재)]';
+      else if (curProp === 4) subLabel = '📌 ㄹ 보기 탐구: 약수의 개수가 3인 수는 합성수이다 ➔ [참 (옳음)]';
+
+      const subLblTxt = two.makeText(subLabel, width / 2, 56);
+      subLblTxt.size = Math.max(10, Math.min(12, Math.floor(width * 0.018)));
+      subLblTxt.weight = 700;
+      subLblTxt.fill = (curProp === 3) ? '#e11d48' : '#4338ca';
+
+      // 3. 4 Proposition Cards (Row layout y = 108, 154, 200, 246)
+      const cardW = Math.min(width - 40, 620);
+      const propositions = [
+        { id: 1, label: 'ㄱ', text: '모든 소수는 약수가 2개이다.', truth: '참 (옳음)', isTrue: true, y: 108 },
+        { id: 2, label: 'ㄴ', text: '2를 제외한 모든 짝수는 소수가 아니다.', truth: '참 (옳음)', isTrue: true, y: 154 },
+        { id: 3, label: 'ㄷ', text: '일의 자리 숫자가 3인 수는 모두 소수이다.', truth: '거짓 (반례: 33, 63, 93 ...)', isTrue: false, y: 200 },
+        { id: 4, label: 'ㄹ', text: '약수의 개수가 3인 수는 합성수이다.', truth: '참 (옳음)', isTrue: true, y: 246 }
+      ];
+
+      propositions.forEach(p => {
+        const isSelected = (curProp === p.id);
+        const cardBox = two.makeRoundedRectangle(width / 2, p.y, cardW, 38, 8);
+
+        if (isSelected) {
+          cardBox.fill = p.isTrue ? '#eff6ff' : '#fff1f2';
+          cardBox.stroke = p.isTrue ? '#3b82f6' : '#f43f5e';
+          cardBox.linewidth = 2;
+        } else {
+          cardBox.fill = '#ffffff';
+          cardBox.stroke = '#e2e8f0';
+          cardBox.linewidth = 1;
+        }
+
+        // Badge tag
+        const badgeX = width / 2 - cardW / 2 + 30;
+        const bCircle = two.makeCircle(badgeX, p.y, 13);
+        bCircle.fill = p.isTrue ? '#dbeafe' : '#ffe4e6';
+        bCircle.stroke = p.isTrue ? '#93c5fd' : '#fecdd3';
+        bCircle.linewidth = 1;
+
+        const bText = two.makeText(p.label, badgeX, p.y);
+        bText.size = 11;
+        bText.weight = 800;
+        bText.fill = p.isTrue ? '#1d4ed8' : '#be123c';
+
+        // Proposition text
+        const pText = two.makeText(p.text, width / 2 - cardW / 2 + 54, p.y);
+        pText.alignment = 'left';
+        pText.size = Math.max(11, Math.min(12.5, Math.floor(width * 0.019)));
+        pText.weight = isSelected ? 800 : 600;
+        pText.fill = '#1e293b';
+
+        // Truth indicator (shown when clicked or passed)
+        if (isSelected || isPassed5_2) {
+          const tInd = two.makeText(p.truth, width / 2 + cardW / 2 - 20, p.y);
+          tInd.alignment = 'right';
+          tInd.size = 11;
+          tInd.weight = 800;
+          tInd.fill = p.isTrue ? '#059669' : '#e11d48';
+        }
+      });
+
+      // 4. Summary / Counterexample Banner - y: 345, h: 74 (occupies 308 ~ 382 <= 440, bottom margin 58px >= 56px)
+      const bW = Math.min(width - 40, 640);
+      const banner = two.makeRoundedRectangle(width / 2, 345, bW, 74, 10);
+
+      let bBg = '#f8fafc';
+      let bBorder = '#cbd5e1';
+      let bT1 = '';
+      let bT2 = '';
+      let bT3 = '';
+
+      if (curProp === 0) {
+        bBg = '#f8fafc';
+        bBorder = '#cbd5e1';
+        bT1 = '✨ [소수와 합성수 명제 판별 핵심 가이드]';
+        bT2 = '• 소수는 약수가 정확히 2개, 합성수는 약수가 3개 이상! (1은 소수도 합성수도 아님)';
+        bT3 = '• 명제가 거짓임을 보이려면 조건은 만족하지만 결론이 성립하지 않는 반례(Counterexample)를 제시합니다.';
+      } else if (curProp === 1) {
+        bBg = '#eff6ff';
+        bBorder = '#bfdbfe';
+        bT1 = '📌 [ㄱ번 탐구: 모든 소수는 약수가 2개이다] ➔ 참 (옳음)';
+        bT2 = '• 소수의 정의: 1보다 큰 자연수 중에서 1과 자기 자신만을 약수로 갖는 수';
+        bT3 = '• 소수는 정의상 약수가 1과 자기 자신뿐이므로, 모든 소수의 약수의 개수는 정확히 2개입니다.';
+      } else if (curProp === 2) {
+        bBg = '#eff6ff';
+        bBorder = '#bfdbfe';
+        bT1 = '📌 [ㄴ번 탐구: 2를 제외한 모든 짝수는 소수가 아니다] ➔ 참 (옳음)';
+        bT2 = '• 짝수는 2의 배수이므로 2를 제외한 짝수(4, 6, 8, 10, ...)는 모두 2를 약수로 갖습니다.';
+        bT3 = '• 따라서 1, 2, 자기 자신 등 약수가 최소 3개 이상이므로 모두 합성수입니다.';
+      } else if (curProp === 3) {
+        bBg = '#fff1f2';
+        bBorder = '#fecdd3';
+        bT1 = '📌 [ㄷ번 탐구: 일의 자리 숫자가 3인 수는 모두 소수이다] ➔ 거짓 (옳지 않음)';
+        bT2 = '• [반례 1]: 33 = 3 × 11 ➔ 일의 자리가 3이지만 3과 11을 약수로 가지므로 합성수!';
+        bT3 = '• [반례 2, 3]: 63 = 3² × 7 (합성수), 93 = 3 × 31 (합성수) 등 반례가 무수히 많습니다.';
+      } else if (curProp === 4) {
+        bBg = '#eff6ff';
+        bBorder = '#bfdbfe';
+        bT1 = '📌 [ㄹ번 탐구: 약수의 개수가 3인 수는 합성수이다] ➔ 참 (옳음)';
+        bT2 = '• 합성수의 정의: 1보다 큰 자연수 중에서 소수가 아닌 수, 즉 약수의 개수가 3개 이상인 수';
+        bT3 = '• 약수의 개수가 3개인 수(예: 2²=4, 3²=9, 5²=25)는 약수가 3개 이상이므로 합성수입니다.';
+      }
+
+      banner.fill = bBg;
+      banner.stroke = bBorder;
+      banner.linewidth = 1.5;
+
+      const txtT1 = two.makeText(bT1, width / 2, 323);
+      txtT1.size = 12;
+      txtT1.weight = 800;
+      txtT1.fill = (curProp === 3) ? '#be123c' : '#1e293b';
+
+      const txtT2 = two.makeText(bT2, width / 2, 344);
+      txtT2.size = 11;
+      txtT2.weight = 600;
+      txtT2.fill = '#334155';
+
+      const txtT3 = two.makeText(bT3, width / 2, 363);
+      txtT3.size = 10.5;
+      txtT3.weight = 500;
+      txtT3.fill = '#64748b';
+
+      two.update();
+
+      // 5. Pointer Event Isolation
+      const container = document.getElementById('two-container');
+      if (container) container.onpointerdown = null;
+
+      const canvasEl = container ? container.querySelector('canvas, svg') : null;
+      if (canvasEl) {
+        canvasEl.style.cursor = 'pointer';
+        canvasEl.onpointerdown = (e) => {
+          const rect = canvasEl.getBoundingClientRect();
+          const scaleX = width / rect.width;
+          const scaleY = height / rect.height;
+          const clickX = (e.clientX - rect.left) * scaleX;
+          const clickY = (e.clientY - rect.top) * scaleY;
+
+          // Hit test on 4 proposition rows
+          for (let i = 0; i < propositions.length; i++) {
+            const p = propositions[i];
+            if (Math.abs(clickX - width / 2) < cardW / 2 && Math.abs(clickY - p.y) < 19) {
+              setStep5_2Prop(p.id);
+              return;
+            }
+          }
+        };
+      }
+    }
+
+    async function gradeStep5_2() {
+      const c1 = document.getElementById('chk-5-2-1')?.checked || false;
+      const c2 = document.getElementById('chk-5-2-2')?.checked || false;
+      const c3 = document.getElementById('chk-5-2-3')?.checked || false;
+      const c4 = document.getElementById('chk-5-2-4')?.checked || false;
+
+      const rawCounter = cleanInput(document.getElementById('ans-5-2-counter')?.value || '');
+      const counterVal = parseInt(rawCounter, 10);
+
+      // Check selections: ㄱ, ㄴ, ㄹ are true, ㄷ is false
+      const isSelCorrect = (c1 === true && c2 === true && c3 === false && c4 === true);
+
+      // Check counterexample: ends in 3, > 0, composite (has divisor > 1 and < itself)
+      let isCounterValid = false;
+      if (!isNaN(counterVal) && counterVal > 0 && (counterVal % 10 === 3)) {
+        // Test if composite
+        let isPrimeNumber = true;
+        if (counterVal === 1) isPrimeNumber = false;
+        else {
+          for (let i = 2; i * i <= counterVal; i++) {
+            if (counterVal % i === 0) {
+              isPrimeNumber = false;
+              break;
+            }
+          }
+        }
+        if (!isPrimeNumber && counterVal > 1) {
+          isCounterValid = true;
+        }
+      }
+
+      const isCorrect = isSelCorrect && isCounterValid;
+
+      const fEl = document.getElementById('feedback-step-5-2');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('5-2')) {
+          state.completedSubSteps.push('5-2');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('5-2', {
+              selectedChoices: ['ㄱ', 'ㄴ', 'ㄹ'],
+              counterexample: counterVal,
+              activityTitle: '[중1-1 소인수분해] [5-2] 2. 02번 (소수/합성수 명제 판정)',
+              score: 100,
+              passed: true
+            }, 'u1');
+          } catch (err) {
+            console.warn('LMS save error:', err);
+          }
+        }
+
+        // Unlock next substep 5-3
+        if (!state.unlockedSubSteps.includes('5-3')) {
+          state.unlockedSubSteps.push('5-3');
+        }
+
+        updateSubStepPills(5);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.3rem;">🎉</span>
+            <h4 style="color:#065f46; font-size:1.02rem; font-weight:800; margin:0;">02번 명제 판정 100점 완벽 해결!</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            완벽하게 해결했습니다!<br>
+            • <b>옳은 것</b>: <b>ㄱ, ㄴ, ㄹ</b><br>
+            • <b>ㄱ (참)</b>: 소수의 정의에 의해 약수의 개수는 정확히 2개입니다.<br>
+            • <b>ㄴ (참)</b>: 2 이외의 짝수는 모두 2를 약수로 가지므로 약수가 3개 이상인 합성수입니다.<br>
+            • <b>ㄷ (거짓)</b>: 일의 자리가 3이지만 합성수인 수 <b>${counterVal}</b> (반례)이 존재하므로 거짓입니다.<br>
+            • <b>ㄹ (참)</b>: 합성수는 약수의 개수가 3개 이상인 수이므로, 약수가 3개인 수는 합성수입니다.
+            <div style="margin-top:12px; padding:10px 14px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 <b>[5-3] 03번 (거듭제곱 일의 자리 규칙성)</b>이 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="loadSubStep('5-3')" style="margin-top:12px; width:100%; padding:11px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            다음 문제 [5-3] 03번 (거듭제곱 규칙성) 도전 ➔
+          </button>
+        `;
+
+        renderToolbar5_2();
+        drawStep5_2Canvas();
+      } else {
+        let msg = '';
+        if (!isSelCorrect) {
+          if (c3) {
+            msg = 'ㄷ번은 옳지 않습니다! 33, 63, 93처럼 일의 자리 숫자가 3이지만 합성수인 반례가 있습니다.';
+          } else if (!c1) {
+            msg = 'ㄱ번은 참입니다! 소수는 1과 자기 자신만을 약수로 가지므로 약수가 항상 2개입니다.';
+          } else if (!c2) {
+            msg = 'ㄴ번은 참입니다! 2를 제외한 짝수(4, 6, 8, ...)는 2를 약수로 가지므로 소수가 아닙니다.';
+          } else if (!c4) {
+            msg = 'ㄹ번은 참입니다! 약수의 개수가 3개 이상이면 합성수이므로 약수가 3개인 수는 합성수입니다.';
+          } else {
+            msg = '보기 선택을 다시 확인해 보세요. 옳은 것은 ㄱ, ㄴ, ㄹ입니다.';
+          }
+        } else if (!isCounterValid) {
+          msg = '2번 반례는 일의 자리 숫자가 3이면서 소수가 아닌 합성수(예: 33, 63, 93, 123 등)를 입력해야 합니다.';
+        }
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            • ${msg}<br>
+            💡 좌측 캔버스의 [ㄷ 보기 (반례)]를 클릭하여 반례를 탐구해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (5-3 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -28043,6 +28487,11 @@
         state.lab5_1.selectedDates = [];
         renderToolbar5_1();
         drawStep5_1Canvas();
+      } else if (state.subStep === '5-2') {
+        if (!state.lab5_2) state.lab5_2 = { selectedProp: 0 };
+        state.lab5_2.selectedProp = 0;
+        renderToolbar5_2();
+        drawStep5_2Canvas();
       }
     }
 
@@ -28342,6 +28791,7 @@
       else if (state.subStep === '4-11') drawStep4_11Canvas();
       else if (state.subStep === '5-0') drawStep5_0Canvas();
       else if (state.subStep === '5-1') drawStep5_1Canvas();
+      else if (state.subStep === '5-2') drawStep5_2Canvas();
       }, 150);
     });
 
