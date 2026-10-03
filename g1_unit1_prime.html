@@ -1067,6 +1067,12 @@
         isDecomposed: false, // block assemble/disassemble toggle
         showPrimeOnly: false, // filter prime in mode 1
         step: 0 // step in mode 2 (0: 12, 1: 2x6, 2: 2x2x3)
+      },
+      // 2-2 Interactive Lab State (2. 소인수의 뜻과 문제 1)
+      lab2_2: {
+        problemIndex: 0, // 0: 10, 1: 21, 2: 28, 3: 36
+        showPrimeOnly: false, // filter prime toggle
+        selectedDivisor: null // clicked divisor for inspection
       }
     };
 
@@ -1245,6 +1251,9 @@
       } else if (code === '2-1') {
         renderToolbar2_1();
         renderSubstep2_1();
+      } else if (code === '2-2') {
+        renderToolbar2_2();
+        renderSubstep2_2();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -2185,6 +2194,46 @@
       state.lab2_1.step = Math.max(0, Math.min(2, state.lab2_1.step + delta));
       renderToolbar2_1();
       drawStep2_1Canvas();
+    }
+
+    function renderToolbar2_2() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+      const curProb = state.lab2_2.problemIndex;
+      const primeOnly = state.lab2_2.showPrimeOnly;
+
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569;">문제 선택:</span>
+        <button class="tool-btn ${curProb === 0 ? 'active' : ''}" onclick="setStep2_2Problem(0)">⑴ 10 소인수 랩</button>
+        <button class="tool-btn ${curProb === 1 ? 'active' : ''}" onclick="setStep2_2Problem(1)">⑵ 21 소인수 랩</button>
+        <button class="tool-btn ${curProb === 2 ? 'active' : ''}" onclick="setStep2_2Problem(2)">⑶ 28 소인수 랩</button>
+        <button class="tool-btn ${curProb === 3 ? 'active' : ''}" onclick="setStep2_2Problem(3)">⑷ 36 소인수 랩</button>
+        <span style="margin:0 4px; color:#cbd5e1;">|</span>
+        <button class="tool-btn ${primeOnly ? 'active' : ''}" style="background:${primeOnly ? '#dcfce7' : '#f1f5f9'}; color:${primeOnly ? '#15803d' : '#334155'}; font-weight:700;" onclick="toggleStep2_2PrimeOnly()">
+          ${primeOnly ? '🔄 전체 약수 보기' : '🔍 소인수(소수) 필터링'}
+        </button>
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setStep2_2Problem(idx) {
+      state.lab2_2.problemIndex = idx;
+      state.lab2_2.selectedDivisor = null;
+      renderToolbar2_2();
+      drawStep2_2Canvas();
+    }
+
+    function toggleStep2_2PrimeOnly() {
+      state.lab2_2.showPrimeOnly = !state.lab2_2.showPrimeOnly;
+      renderToolbar2_2();
+      drawStep2_2Canvas();
+    }
+
+    function selectStep2_2Divisor(d) {
+      state.lab2_2.selectedDivisor = (state.lab2_2.selectedDivisor === d) ? null : d;
+      drawStep2_2Canvas();
     }
 
 
@@ -9781,7 +9830,516 @@
     }
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (2-2 to 6-2)
+    // SUBSTEP 2-2: 2. 소인수의 뜻과 문제 1 (p.13)
+    // -------------------------------------------------------------
+    function renderSubstep2_2() {
+      const missionEl = document.getElementById('mission-text');
+      if (missionEl) {
+        missionEl.innerHTML = `<b>[2-2] 2. 소인수의 뜻과 문제 1 (교과서 13쪽)</b><br>어떤 자연수의 약수 중에서 소수인 것을 '소인수'라고 합니다. 주어진 수의 약수를 구하고 그중 소인수를 모두 찾아봅시다.`;
+      }
+
+      const formArea = document.getElementById('form-work-area');
+      if (!formArea) return;
+
+      formArea.innerHTML = `
+        <div class="card" style="padding:16px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">02 소인수분해</span>
+            <span style="font-size:0.8rem; color:#64748b; font-weight:600;">교과서 13쪽</span>
+          </div>
+          <h3 style="font-size:1.05rem; font-weight:800; color:#1e293b; margin-bottom:8px;">2. 소인수의 뜻과 문제 1</h3>
+          <p style="font-size:0.86rem; color:#475569; line-height:1.6; margin-bottom:14px; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
+            <b>[개념 정리]</b> 어떤 자연수의 약수(인수) 중에서 <b>소수</b>인 것을 그 자연수의 <b>소인수</b>라고 합니다.<br>
+            예) 12의 약수 1, 2, 3, 4, 6, 12 중에서 2, 3은 소수이므로 12의 소인수는 <b>2, 3</b>입니다.
+          </p>
+
+          <div style="display:flex; flex-direction:column; gap:14px;">
+            <div style="font-size:0.92rem; font-weight:800; color:#1e293b;">
+              [문제 1] 다음 수의 소인수를 모두 구하시오.
+              <span style="font-size:0.8rem; font-weight:600; color:#64748b; display:block; margin-top:2px;">(작은 수부터 차례로 쉼표 ','로 구분하여 입력)</span>
+            </div>
+
+            <!-- ⑴ 10 -->
+            <div style="background:#f8fafc; padding:12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.88rem; font-weight:800; color:#1e293b; display:block; margin-bottom:6px;">
+                ⑴ 10의 소인수
+              </label>
+              <input type="text" id="ans-2-2-1" class="proof-input-text" placeholder="답 입력" style="width:100%;" autocomplete="off">
+            </div>
+
+            <!-- ⑵ 21 -->
+            <div style="background:#f8fafc; padding:12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.88rem; font-weight:800; color:#1e293b; display:block; margin-bottom:6px;">
+                ⑵ 21의 소인수
+              </label>
+              <input type="text" id="ans-2-2-2" class="proof-input-text" placeholder="답 입력" style="width:100%;" autocomplete="off">
+            </div>
+
+            <!-- ⑶ 28 -->
+            <div style="background:#f8fafc; padding:12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.88rem; font-weight:800; color:#1e293b; display:block; margin-bottom:6px;">
+                ⑶ 28의 소인수
+              </label>
+              <input type="text" id="ans-2-2-3" class="proof-input-text" placeholder="답 입력" style="width:100%;" autocomplete="off">
+            </div>
+
+            <!-- ⑷ 36 -->
+            <div style="background:#f8fafc; padding:12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.88rem; font-weight:800; color:#1e293b; display:block; margin-bottom:6px;">
+                ⑷ 36의 소인수
+              </label>
+              <input type="text" id="ans-2-2-4" class="proof-input-text" placeholder="답 입력" style="width:100%;" autocomplete="off">
+            </div>
+
+            <button class="btn btn-primary" onclick="gradeStep2_2()" style="padding:10px; font-weight:800; font-size:0.92rem; width:100%; margin-top:4px;">
+              ✅ 정답 확인 및 채점하기
+            </button>
+          </div>
+
+          <div id="feedback-2-2" style="display:none; margin-top:12px; padding:12px; border-radius:8px;"></div>
+        </div>
+      `;
+
+      drawStep2_2Canvas();
+
+      if (window.renderMathInElement) {
+        renderMathInElement(formArea, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    const PROBLEMS_2_2 = [
+      { num: 10, divs: [1, 2, 5, 10], primes: [2, 5], label: '⑴ 10' },
+      { num: 21, divs: [1, 3, 7, 21], primes: [3, 7], label: '⑵ 21' },
+      { num: 28, divs: [1, 2, 4, 7, 14, 28], primes: [2, 7], label: '⑶ 28' },
+      { num: 36, divs: [1, 2, 3, 4, 6, 9, 12, 18, 36], primes: [2, 3], label: '⑷ 36' }
+    ];
+
+    function drawStep2_2Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const curProbIdx = state.lab2_2.problemIndex || 0;
+      const curP = PROBLEMS_2_2[curProbIdx];
+      const showPrimeOnly = state.lab2_2.showPrimeOnly;
+      const selDiv = state.lab2_2.selectedDivisor;
+      const isPassed2_2 = state.completedSubSteps && state.completedSubSteps.includes('2-2');
+
+      // 1. Header (Title & Subtitle)
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(10.5, Math.min(12, Math.floor(width * 0.018)));
+
+      const headerTitle = two.makeText('🔍 [문제 1] 수의 약수와 소인수 탐구 랩', width / 2, 16);
+      headerTitle.size = titleSize;
+      headerTitle.weight = 800;
+      headerTitle.fill = '#1e293b';
+
+      const headerSub = two.makeText('상단 탭으로 수를 선택하고, 약수 칩을 터치하여 그중 소수인 인수(소인수)를 찾아보세요.', width / 2, 33);
+      headerSub.size = subSize;
+      headerSub.weight = 600;
+      headerSub.fill = '#4f46e5';
+
+      // 2. Problem Selection Tabs in Canvas (y = 56, h = 24)
+      const tabW = Math.min(125, Math.floor((width - 48) / 4));
+      const startTabX = (width - (4 * tabW + 24)) / 2;
+
+      for (let i = 0; i < 4; i++) {
+        const tx = startTabX + i * (tabW + 8) + tabW / 2;
+        const isActive = (curProbIdx === i);
+
+        const tabBg = two.makeRoundedRectangle(tx, 56, tabW, 24, 12);
+        tabBg.fill = isActive ? '#4f46e5' : '#f1f5f9';
+        tabBg.stroke = isActive ? '#4338ca' : '#cbd5e1';
+        tabBg.linewidth = isActive ? 1.5 : 1;
+
+        const tabT = two.makeText(PROBLEMS_2_2[i].label, tx, 56);
+        tabT.size = (width < 600) ? 9.5 : 10.5;
+        tabT.weight = isActive ? 800 : 600;
+        tabT.fill = isActive ? '#ffffff' : '#475569';
+      }
+
+      // 3. Middle Arena: Divisor Chips
+      const subNote = two.makeText(`🎯 ${curP.num}의 모든 약수 (${curP.divs.length}개) - 칩을 터치하여 소수 여부를 탐구해 보세요`, width / 2, 84);
+      subNote.size = 11;
+      subNote.weight = 700;
+      subNote.fill = '#334155';
+
+      const chipPositions = [];
+
+      if (curP.num !== 36) {
+        // Single row of chips
+        const numChips = curP.divs.length;
+        const chipW = Math.min(74, Math.floor((width - 48) / numChips));
+        const chipH = 62;
+        const gap = (numChips <= 4) ? 14 : 8;
+        const startX = (width - (numChips * chipW + (numChips - 1) * gap)) / 2 + chipW / 2;
+        const cy = 130;
+
+        for (let i = 0; i < numChips; i++) {
+          const d = curP.divs[i];
+          const cx = startX + i * (chipW + gap);
+          chipPositions.push({ d, cx, cy, w: chipW, h: chipH });
+
+          const isPrime = curP.primes.includes(d);
+          const isSelected = (selDiv === d);
+
+          const chipBg = two.makeRoundedRectangle(cx, cy, chipW, chipH, 8);
+          if (showPrimeOnly) {
+            if (isPrime) {
+              chipBg.fill = '#dcfce7';
+              chipBg.stroke = '#16a34a';
+              chipBg.linewidth = 2.5;
+            } else {
+              chipBg.fill = '#f8fafc';
+              chipBg.stroke = '#e2e8f0';
+              chipBg.linewidth = 1;
+            }
+          } else {
+            chipBg.fill = isSelected ? '#fef3c7' : '#ffffff';
+            chipBg.stroke = isSelected ? '#d97706' : '#cbd5e1';
+            chipBg.linewidth = isSelected ? 2.2 : 1.5;
+          }
+
+          const tNum = two.makeText(String(d), cx, cy - 9);
+          tNum.size = 18;
+          tNum.weight = 800;
+          tNum.fill = (showPrimeOnly && isPrime) ? '#166534' : (showPrimeOnly ? '#94a3b8' : '#1e293b');
+
+          let badgeText = '';
+          let badgeColor = '#64748b';
+          if (showPrimeOnly) {
+            if (isPrime) {
+              badgeText = '소인수 🟢';
+              badgeColor = '#15803d';
+            } else if (d === 1) {
+              badgeText = '소수 아님';
+              badgeColor = '#94a3b8';
+            } else {
+              badgeText = '합성수';
+              badgeColor = '#94a3b8';
+            }
+          } else {
+            if (isPrime) {
+              badgeText = '약수 2개';
+              badgeColor = '#4f46e5';
+            } else if (d === 1) {
+              badgeText = '약수 1개';
+              badgeColor = '#64748b';
+            } else {
+              badgeText = '합성수';
+              badgeColor = '#64748b';
+            }
+          }
+
+          const tBadge = two.makeText(badgeText, cx, cy + 15);
+          tBadge.size = 9.5;
+          tBadge.weight = 700;
+          tBadge.fill = badgeColor;
+        }
+      } else {
+        // 36 has 9 divisors: 2 rows (5 + 4)
+        const row1 = [1, 2, 3, 4, 6];
+        const row2 = [9, 12, 18, 36];
+        const chipW = Math.min(68, Math.floor((width - 48) / 5));
+        const chipH = 46;
+        const gap = 8;
+
+        // Row 1
+        const startX1 = (width - (5 * chipW + 4 * gap)) / 2 + chipW / 2;
+        const cy1 = 112;
+        for (let i = 0; i < 5; i++) {
+          const d = row1[i];
+          const cx = startX1 + i * (chipW + gap);
+          chipPositions.push({ d, cx, cy: cy1, w: chipW, h: chipH });
+
+          const isPrime = curP.primes.includes(d);
+          const isSelected = (selDiv === d);
+
+          const chipBg = two.makeRoundedRectangle(cx, cy1, chipW, chipH, 6);
+          if (showPrimeOnly) {
+            chipBg.fill = isPrime ? '#dcfce7' : '#f8fafc';
+            chipBg.stroke = isPrime ? '#16a34a' : '#e2e8f0';
+            chipBg.linewidth = isPrime ? 2.5 : 1;
+          } else {
+            chipBg.fill = isSelected ? '#fef3c7' : '#ffffff';
+            chipBg.stroke = isSelected ? '#d97706' : '#cbd5e1';
+            chipBg.linewidth = isSelected ? 2.2 : 1.4;
+          }
+
+          const tNum = two.makeText(String(d), cx, cy1 - 7);
+          tNum.size = 15; tNum.weight = 800;
+          tNum.fill = (showPrimeOnly && isPrime) ? '#166534' : (showPrimeOnly ? '#94a3b8' : '#1e293b');
+
+          const tBadge = two.makeText(showPrimeOnly ? (isPrime ? '소인수' : (d === 1 ? '1' : '합성수')) : (isPrime ? '소수' : (d === 1 ? '약수1' : '합성수')), cx, cy1 + 11);
+          tBadge.size = 8.5; tBadge.weight = 700;
+          tBadge.fill = (showPrimeOnly && isPrime) ? '#15803d' : (isPrime ? '#4f46e5' : '#64748b');
+        }
+
+        // Row 2
+        const startX2 = (width - (4 * chipW + 3 * gap)) / 2 + chipW / 2;
+        const cy2 = 162;
+        for (let i = 0; i < 4; i++) {
+          const d = row2[i];
+          const cx = startX2 + i * (chipW + gap);
+          chipPositions.push({ d, cx, cy: cy2, w: chipW, h: chipH });
+
+          const isPrime = curP.primes.includes(d);
+          const isSelected = (selDiv === d);
+
+          const chipBg = two.makeRoundedRectangle(cx, cy2, chipW, chipH, 6);
+          if (showPrimeOnly) {
+            chipBg.fill = isPrime ? '#dcfce7' : '#f8fafc';
+            chipBg.stroke = isPrime ? '#16a34a' : '#e2e8f0';
+            chipBg.linewidth = isPrime ? 2.5 : 1;
+          } else {
+            chipBg.fill = isSelected ? '#fef3c7' : '#ffffff';
+            chipBg.stroke = isSelected ? '#d97706' : '#cbd5e1';
+            chipBg.linewidth = isSelected ? 2.2 : 1.4;
+          }
+
+          const tNum = two.makeText(String(d), cx, cy2 - 7);
+          tNum.size = 15; tNum.weight = 800;
+          tNum.fill = (showPrimeOnly && isPrime) ? '#166534' : (showPrimeOnly ? '#94a3b8' : '#1e293b');
+
+          const tBadge = two.makeText(showPrimeOnly ? '합성수' : '합성수', cx, cy2 + 11);
+          tBadge.size = 8.5; tBadge.weight = 700;
+          tBadge.fill = '#64748b';
+        }
+      }
+
+      // Filter Toggle Button
+      const toggleY = (curP.num === 36) ? 202 : 184;
+      const toggleW = Math.min(220, width - 60);
+      const toggleBg = two.makeRoundedRectangle(width / 2, toggleY, toggleW, 26, 13);
+      toggleBg.fill = showPrimeOnly ? '#dcfce7' : '#e0e7ff';
+      toggleBg.stroke = showPrimeOnly ? '#16a34a' : '#4338ca';
+      toggleBg.linewidth = 1.5;
+
+      const toggleT = two.makeText(showPrimeOnly ? '🔄 전체 약수 보기' : '🔍 소인수(소수)만 필터링', width / 2, toggleY);
+      toggleT.size = 11;
+      toggleT.weight = 800;
+      toggleT.fill = showPrimeOnly ? '#15803d' : '#4338ca';
+
+      // Divisor Inspector / Factorization Box
+      const boxY = (curP.num === 36) ? 266 : 258;
+      const boxH = (curP.num === 36) ? 76 : 80;
+      const boxBg = two.makeRoundedRectangle(width / 2, boxY, width - 36, boxH, 8);
+      boxBg.fill = '#ffffff';
+      boxBg.stroke = '#cbd5e1';
+      boxBg.linewidth = 1.5;
+
+      if (selDiv !== null) {
+        // Detailed analysis of selected divisor
+        const isSelPrime = curP.primes.includes(selDiv);
+        const bT1 = two.makeText(`📌 [선택된 수 ${selDiv} 분석]`, width / 2, boxY - 21);
+        bT1.size = 12; bT1.weight = 800; bT1.fill = '#1e293b';
+
+        let descText = '';
+        let descColor = '#334155';
+        if (selDiv === 1) {
+          descText = '1은 약수가 1개뿐이므로 소수도 합성수도 아닙니다. ➔ 소인수가 아님!';
+          descColor = '#64748b';
+        } else if (isSelPrime) {
+          descText = `약수가 1과 ${selDiv} 2개뿐인 '소수'입니다! ➔ ${curP.num}의 소인수 ✨`;
+          descColor = '#15803d';
+        } else {
+          descText = `약수가 3개 이상인 '합성수'입니다. ➔ ${curP.num}의 소인수가 아님!`;
+          descColor = '#4338ca';
+        }
+
+        const bT2 = two.makeText(descText, width / 2, boxY + 2);
+        bT2.size = 11; bT2.weight = 700; bT2.fill = descColor;
+
+        const bT3 = two.makeText(`(다른 약수 칩을 터치하거나 필터 버튼을 눌러보세요)`, width / 2, boxY + 22);
+        bT3.size = 9.5; bT3.weight = 600; bT3.fill = '#94a3b8';
+      } else {
+        const bT1 = two.makeText(`📖 [${curP.num}의 약수와 소인수 관계]`, width / 2, boxY - 21);
+        bT1.size = 12; bT1.weight = 800; bT1.fill = '#1e293b';
+
+        const bT2 = two.makeText(`• ${curP.num}의 약수: ${curP.divs.join(', ')} (총 ${curP.divs.length}개)`, width / 2, boxY + 1);
+        bT2.size = 10.5; bT2.weight = 600; bT2.fill = '#475569';
+
+        const bT3Str = isPassed2_2
+          ? `• ${curP.num}의 소인수: ${curP.primes.join(', ')} (소수인 약수)`
+          : `• 1을 제외하고 1과 자신만을 약수로 갖는 '소수'를 위 칩에서 찾아보세요.`;
+        const bT3 = two.makeText(bT3Str, width / 2, boxY + 22);
+        bT3.size = 11; bT3.weight = 800;
+        bT3.fill = isPassed2_2 ? '#15803d' : '#4338ca';
+      }
+
+      // 4. Bottom Rule / Conclusion Banner (Strict Zero-Spoiler)
+      const bannerCenterY = 380;
+      const bannerW = width - 32;
+      const bannerH = 68;
+      const bannerBg = two.makeRoundedRectangle(width / 2, bannerCenterY, bannerW, bannerH, 8);
+      bannerBg.fill = '#eef2ff';
+      bannerBg.stroke = '#c7d2fe';
+      bannerBg.linewidth = 1.5;
+
+      const rule1Text = isPassed2_2
+        ? '💡 [수학적 정의] 어떤 자연수의 약수(인수) 중에서 소수인 것을 그 자연수의 \'소인수\'라고 합니다.'
+        : '💡 [수학적 원리] 소인수(Prime Factor)는 \'소수인 인수(약수)\'의 줄임말로, 약수 중 소수만을 의미합니다.';
+      const rule1 = two.makeText(rule1Text, width / 2, bannerCenterY - 12);
+      rule1.size = (width < 600) ? 9.5 : 10.5;
+      rule1.weight = 700;
+      rule1.fill = '#334155';
+
+      const rule2Text = isPassed2_2
+        ? '📌 [교과서 결론] 10의 소인수: 2, 5 | 21의 소인수: 3, 7 | 28의 소인수: 2, 7 | 36의 소인수: 2, 3'
+        : '📌 [탐구 가이드] 상단 문제 탭(⑴~⑷)을 터치하고 필터 버튼을 눌러 각 수의 소인수를 확인해 보세요.';
+
+      const rule2 = two.makeText(rule2Text, width / 2, bannerCenterY + 12);
+      rule2.size = (width < 600) ? 9.5 : 10.5;
+      rule2.weight = 800;
+      rule2.fill = isPassed2_2 ? '#15803d' : '#4338ca';
+
+      two.update();
+
+      // Bind Pointer Events
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas') : null;
+      if (canvasEl) {
+        canvasEl.onpointerdown = (e) => {
+          const rect = canvasEl.getBoundingClientRect();
+          const px = (e.clientX - rect.left) * (width / rect.width);
+          const py = (e.clientY - rect.top) * (height / rect.height);
+
+          // 1. Check problem selection tabs (y: 44 ~ 68)
+          if (py >= 44 && py <= 68) {
+            for (let i = 0; i < 4; i++) {
+              const tx = startTabX + i * (tabW + 8);
+              if (px >= tx && px <= tx + tabW) {
+                setStep2_2Problem(i);
+                return;
+              }
+            }
+          }
+
+          // 2. Check Divisor Chips
+          for (let i = 0; i < chipPositions.length; i++) {
+            const cp = chipPositions[i];
+            if (px >= cp.cx - cp.w / 2 && px <= cp.cx + cp.w / 2 &&
+                py >= cp.cy - cp.h / 2 && py <= cp.cy + cp.h / 2) {
+              selectStep2_2Divisor(cp.d);
+              return;
+            }
+          }
+
+          // 3. Check Filter button
+          if (py >= toggleY - 15 && py <= toggleY + 15 &&
+              px >= width / 2 - toggleW / 2 && px <= width / 2 + toggleW / 2) {
+            toggleStep2_2PrimeOnly();
+            return;
+          }
+        };
+      }
+    }
+
+    async function gradeStep2_2() {
+      const ans1Raw = cleanInput(document.getElementById('ans-2-2-1')?.value);
+      const ans2Raw = cleanInput(document.getElementById('ans-2-2-2')?.value);
+      const ans3Raw = cleanInput(document.getElementById('ans-2-2-3')?.value);
+      const ans4Raw = cleanInput(document.getElementById('ans-2-2-4')?.value);
+
+      const fEl = document.getElementById('feedback-2-2');
+      if (!fEl) return;
+
+      // 1. ans1: 10의 소인수 -> 2, 5
+      const items1 = ans1Raw.split(/[, ]+/).map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n)).sort((a,b)=>a-b);
+      const ok1 = (items1.length === 2 && items1[0] === 2 && items1[1] === 5);
+
+      // 2. ans2: 21의 소인수 -> 3, 7
+      const items2 = ans2Raw.split(/[, ]+/).map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n)).sort((a,b)=>a-b);
+      const ok2 = (items2.length === 2 && items2[0] === 3 && items2[1] === 7);
+
+      // 3. ans3: 28의 소인수 -> 2, 7
+      const items3 = ans3Raw.split(/[, ]+/).map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n)).sort((a,b)=>a-b);
+      const ok3 = (items3.length === 2 && items3[0] === 2 && items3[1] === 7);
+
+      // 4. ans4: 36의 소인수 -> 2, 3
+      const items4 = ans4Raw.split(/[, ]+/).map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n)).sort((a,b)=>a-b);
+      const ok4 = (items4.length === 2 && items4[0] === 2 && items4[1] === 3);
+
+      if (ok1 && ok2 && ok3 && ok4) {
+        fEl.style.display = 'block';
+        fEl.className = 'verified-answer-card';
+        fEl.style.background = '#f0fdf4';
+        fEl.style.border = '1.5px solid #86efac';
+        fEl.innerHTML = `
+          <h4 style="color:#15803d; font-size:0.95rem; font-weight:800; margin-bottom:6px;">🎉 100점! 완벽합니다!</h4>
+          <div style="font-size:0.86rem; color:#166534; line-height:1.6;">
+            주어진 네 수의 약수 중에서 소수인 것(소인수)을 모두 올바르게 구했습니다.<br>
+            • <b>⑴ 10의 소인수:</b> <b>2, 5</b> (10의 약수: 1, 2, 5, 10)<br>
+            • <b>⑵ 21의 소인수:</b> <b>3, 7</b> (21의 약수: 1, 3, 7, 21)<br>
+            • <b>⑶ 28의 소인수:</b> <b>2, 7</b> (28의 약수: 1, 2, 4, 7, 14, 28 중 4, 14, 28은 합성수)<br>
+            • <b>⑷ 36의 소인수:</b> <b>2, 3</b> (36의 약수: 1, 2, 3, 4, 6, 9, 12, 18, 36 중 소수는 2, 3 뿐)<br>
+            <div style="margin-top:10px; padding:10px; background:#e0e7ff; border-radius:6px; color:#4338ca; font-weight:700;">
+              🚀 다음 세부 활동 <b>[2-3] 3. 소인수분해 개념 및 예제 1</b>이 해금되었습니다!
+            </div>
+          </div>
+        `;
+
+        if (!state.completedSubSteps.includes('2-2')) {
+          state.completedSubSteps.push('2-2');
+        }
+        if (!state.unlockedSubSteps.includes('2-3')) {
+          state.unlockedSubSteps.push('2-3');
+        }
+
+        renderMainTabs();
+        renderSubstepPills();
+        drawStep2_2Canvas();
+
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('2-2', {
+              activityTitle: '[중1-1 소인수분해] [2-2] 2. 소인수의 뜻과 문제 1',
+              answerText: `10의 소인수: ${ans1Raw} | 21의 소인수: ${ans2Raw} | 28의 소인수: ${ans3Raw} | 36의 소인수: ${ans4Raw}`,
+              answers: { ans1: ans1Raw, ans2: ans2Raw, ans3: ans3Raw, ans4: ans4Raw },
+              score: 100,
+              passed: true,
+              unitId: 'u1'
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+      } else {
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            ${!ok1 ? '• ⑴ 10의 약수 중 1과 자기 자신만을 약수로 갖는 소수를 찾아보세요. (1은 소수가 아닙니다)<br>' : ''}
+            ${!ok2 ? '• ⑵ 21의 약수 중에서 소수인 것만을 골라 써 보세요.<br>' : ''}
+            ${!ok3 ? '• ⑶ 28의 약수 중 4, 14, 28과 같은 합성수를 제외하고 소수만을 골라 써 보세요.<br>' : ''}
+            ${!ok4 ? '• ⑷ 36의 약수 중 합성수(4, 6, 9, 12, 18, 36)를 제외하고 오직 소수만을 찾아 써 보세요.<br>' : ''}
+            💡 좌측 캔버스의 문제 탭(⑴~⑷)과 \'🔍 소인수(소수) 필터링\' 버튼을 활용하여 시각적으로 확인해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (2-3 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -9923,6 +10481,12 @@
         state.lab2_1.step = 0;
         renderToolbar2_1();
         drawStep2_1Canvas();
+      } else if (state.subStep === '2-2') {
+        state.lab2_2.problemIndex = 0;
+        state.lab2_2.showPrimeOnly = false;
+        state.lab2_2.selectedDivisor = null;
+        renderToolbar2_2();
+        drawStep2_2Canvas();
       }
     }
 
@@ -10187,6 +10751,7 @@
         else if (state.subStep === '1-11') drawStep1_11Canvas();
         else if (state.subStep === '1-12') drawStep1_12Canvas();
         else if (state.subStep === '2-1') drawStep2_1Canvas();
+        else if (state.subStep === '2-2') drawStep2_2Canvas();
       }, 150);
     });
 
