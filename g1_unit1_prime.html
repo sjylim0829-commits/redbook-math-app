@@ -1289,6 +1289,10 @@
       // 5-9 Interactive Ratio & GCD/LCM Lab State (9. 09번 두 자연수의 비와 최소공배수, p.25)
       lab5_9: {
         gValue: 10
+      },
+      // 5-10 Interactive Fraction Cancellation Lab State (10. 10번 분수를 자연수로 만드는 기약분수, p.25)
+      lab5_10: {
+        tab: 0 // 0: 전체 약분 원리, 1: 분자 A (LCM), 2: 분모 B (GCD)
       }
     };
 
@@ -1596,6 +1600,9 @@
       } else if (code === '5-9') {
         renderToolbar5_9();
         renderSubstep5_9();
+      } else if (code === '5-10') {
+        renderToolbar5_10();
+        renderSubstep5_10();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -4829,6 +4836,54 @@
       if (a) a.value = '60';
       if (b) b.value = '140';
       gradeStep5_9();
+    }
+
+// -------------------------------------------------------------
+    // SUBSTEP 5-10: Toolbar & Handlers (10. 10번 분수를 자연수로 만드는 기약분수, p.25)
+    // -------------------------------------------------------------
+    function renderToolbar5_10() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const curTab = (state.lab5_10 && state.lab5_10.tab !== undefined) ? state.lab5_10.tab : 0;
+
+      tb.innerHTML = `
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <span style="font-size:0.8rem; font-weight:800; color:#475569;">[약분 탐구 뷰]:</span>
+          <button class="btn btn-sm ${curTab === 0 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_10Tab(0)">🔍 전체 약분 원리</button>
+          <button class="btn btn-sm ${curTab === 1 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_10Tab(1)" style="${curTab === 1 ? 'background:#059669;border-color:#059669;color:#fff;' : ''}">🔼 분자 A 탐구 (LCM)</button>
+          <button class="btn btn-sm ${curTab === 2 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_10Tab(2)" style="${curTab === 2 ? 'background:#2563eb;border-color:#2563eb;color:#fff;' : ''}">🔽 분모 B 탐구 (GCD)</button>
+          <button class="btn btn-sm btn-outline" onclick="resetLab5_10()" title="화면 초기화">🔄 초기화</button>
+          <button class="btn btn-sm btn-outline" onclick="teacherPassStep5_10()" style="border-color:#e2e8f0; color:#94a3b8;" title="교사 정답 패스">💡 패스</button>
+        </div>
+      `;
+    }
+
+    function setStep5_10Tab(t) {
+      if (!state.lab5_10) state.lab5_10 = { tab: 0 };
+      state.lab5_10.tab = t;
+      renderToolbar5_10();
+      drawStep5_10Canvas();
+    }
+
+    function resetLab5_10() {
+      if (!state.lab5_10) state.lab5_10 = { tab: 0 };
+      state.lab5_10.tab = 0;
+      renderToolbar5_10();
+      drawStep5_10Canvas();
+    }
+
+    function teacherPassStep5_10() {
+      const a = document.getElementById('ans-5-10-a');
+      const b = document.getElementById('ans-5-10-b');
+      const num = document.getElementById('ans-5-10-frac-num');
+      const den = document.getElementById('ans-5-10-frac-den');
+      if (a) a.value = '70';
+      if (b) b.value = '3';
+      if (num) num.value = '70';
+      if (den) den.value = '3';
+      gradeStep5_10();
     }
 
 
@@ -31497,8 +31552,398 @@
       }
     }
 
+// -------------------------------------------------------------
+    // SUBSTEP 5-10: 10. 10번 (분수를 자연수로 만드는 기약분수, p.25)
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (5-10 to 6-2)
+    function renderSubstep5_10() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[대단원 5. 스스로 마무리하기: 10. 10번 (분수를 자연수로 만드는 기약분수)] (교과서 p.25)</b><br>
+        • 세 수 $\\frac{9}{5}$, $\\frac{36}{7}$, $\\frac{15}{14}$ 중 어느 것을 택하여 곱해도 <b>자연수</b>가 되는 가장 작은 분수를 구하시오.<br>
+        • 구하는 분수를 기약분수 $\\frac{A}{B}$ 라고 할 때:<br>
+        &nbsp;&nbsp;1. 분자 $A$는 분모 $5, 7, 14$의 <b>최소공배수(LCM)</b> 이어야 합니다.<br>
+        &nbsp;&nbsp;2. 분모 $B$는 분자 $9, 36, 15$의 <b>최대공약수(GCD)</b> 이어야 합니다.
+      `;
+
+      const isPassed5_10 = state.completedSubSteps && state.completedSubSteps.includes('5-10');
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.25</span>
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b;">10번 문제</span>
+          </div>
+          <h4 style="font-size:0.98rem; font-weight:800; color:#1e293b; margin-bottom:14px; line-height:1.5;">
+            세 수 $\\frac{9}{5}$, $\\frac{36}{7}$, $\\frac{15}{14}$ 중 어느 것을 곱해도 자연수가 되는 가장 작은 분수 $\\frac{A}{B}$를 구하시오.
+          </h4>
+
+          <!-- 소문항 1: 분자 A의 값 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              1. 분자 $A$는 세 분모 $5, 7, 14$의 최소공배수입니다. $A$의 값을 쓰시오:
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-weight:700; color:#334155;">분자 A =</span>
+              <input type="text" id="ans-5-10-a" class="proof-input-text" placeholder="A 값" style="width:110px;" autocomplete="off">
+            </div>
+          </div>
+
+          <!-- 소문항 2: 분모 B의 값 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              2. 분모 $B$는 세 분자 $9, 36, 15$의 최대공약수입니다. $B$의 값을 쓰시오:
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-weight:700; color:#334155;">분모 B =</span>
+              <input type="text" id="ans-5-10-b" class="proof-input-text" placeholder="B 값" style="width:110px;" autocomplete="off">
+            </div>
+          </div>
+
+          <!-- 소문항 3: 가장 작은 기약분수 A/B -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:16px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              3. 구하는 가장 작은 기약분수 $\\frac{A}{B}$의 분자와 분모를 각각 쓰시오:
+            </div>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="display:flex; align-items:center; gap:4px;">
+                <span style="font-weight:700; color:#334155;">분자 =</span>
+                <input type="text" id="ans-5-10-frac-num" class="proof-input-text" placeholder="분자" style="width:90px;" autocomplete="off">
+              </div>
+              <span style="font-size:1.2rem; font-weight:800; color:#64748b;">/</span>
+              <div style="display:flex; align-items:center; gap:4px;">
+                <span style="font-weight:700; color:#334155;">분모 =</span>
+                <input type="text" id="ans-5-10-frac-den" class="proof-input-text" placeholder="분모" style="width:90px;" autocomplete="off">
+              </div>
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep5_10()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            정답 확인 및 채점
+          </button>
+
+          <div id="feedback-step-5-10" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep5_10Canvas();
+    }
+
+    function drawStep5_10Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed5_10 = state.completedSubSteps && state.completedSubSteps.includes('5-10');
+      const curTab = (state.lab5_10 && state.lab5_10.tab !== undefined) ? state.lab5_10.tab : 0;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 33
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(11, Math.min(13, Math.floor(width * 0.019)));
+
+      const titleText = two.makeText('➗ [대단원 마무리 10번] 분수를 자연수로 만드는 기약분수 랩', width / 2, 16);
+      titleText.size = titleSize;
+      titleText.weight = 800;
+      titleText.fill = '#1e293b';
+
+      const subText = two.makeText('세 분수의 분모와 분자를 동시에 약분하여 자연수를 만드는 기약분수 A/B의 조건을 탐구하세요.', width / 2, 33);
+      subText.size = subSize;
+      subText.fill = '#64748b';
+
+      // 2. Sub-bar - y: 56, h: 26
+      const fBarW = Math.min(width - 40, 640);
+      const fBar = two.makeRoundedRectangle(width / 2, 56, fBarW, 26, 6);
+      fBar.fill = '#f8fafc';
+      fBar.stroke = '#cbd5e1';
+      fBar.linewidth = 1;
+
+      let subLabel = '';
+      if (curTab === 0) {
+        subLabel = isPassed5_10
+          ? '모드: [ 전체 약분 원리 ] | 가장 작은 기약분수는 70/3 입니다. (각각 42, 120, 25)'
+          : '모드: [ 전체 약분 원리 ] | (분수) × (A/B) = 자연수가 되려면 A는 분모들의 LCM, B는 분자들의 GCD여야 합니다.';
+      } else if (curTab === 1) {
+        subLabel = isPassed5_10
+          ? '모드: [ 분자 A 탐구 ] | 5, 7, 14 의 최소공배수는 2 × 5 × 7 = 70 입니다. (A = 70)'
+          : '모드: [ 분자 A 탐구 ] | 분모 5, 7, 14 를 약분하여 없애기 위해 A = LCM(5, 7, 14)를 구합니다.';
+      } else {
+        subLabel = isPassed5_10
+          ? '모드: [ 분모 B 탐구 ] | 9, 36, 15 의 최대공약수는 3 입니다. (B = 3)'
+          : '모드: [ 분모 B 탐구 ] | 분모 B 가 분자 9, 36, 15 에 의해 나누어떨어지도록 B = GCD(9, 36, 15)를 구합니다.';
+      }
+
+      const subLblTxt = two.makeText(subLabel, width / 2, 56);
+      subLblTxt.size = Math.max(10, Math.min(12, Math.floor(width * 0.018)));
+      subLblTxt.weight = 700;
+      subLblTxt.fill = curTab === 0 ? '#4338ca' : (curTab === 1 ? '#059669' : '#2563eb');
+
+      // 3. Main Board - y: 85 ~ 290 (center 185, h: 160)
+      const cx = width / 2;
+      const mainCard = two.makeRoundedRectangle(cx, 185, Math.min(width - 40, 560), 160, 10);
+      mainCard.fill = '#ffffff';
+      mainCard.stroke = isPassed5_10 ? '#10b981' : '#cbd5e1';
+      mainCard.linewidth = isPassed5_10 ? 2 : 1.5;
+
+      if (curTab === 0) {
+        // --- Tab 0: Three Multiplication Rows ---
+        const pTitle = two.makeText('세 분수와 기약분수 A/B의 곱셈 약분 구조', cx, 115);
+        pTitle.size = 13;
+        pTitle.weight = 800;
+        pTitle.fill = '#1e293b';
+
+        const rowItems = [
+          { frac: '9/5', numP: '9', denP: '5', res: isPassed5_10 ? '42' : '자연수', y: 146 },
+          { frac: '36/7', numP: '36', denP: '7', res: isPassed5_10 ? '120' : '자연수', y: 172 },
+          { frac: '15/14', numP: '15', denP: '14', res: isPassed5_10 ? '25' : '자연수', y: 198 }
+        ];
+
+        rowItems.forEach(item => {
+          const l1 = two.makeText(`(${item.frac})  ×  (A / B)  ➔  약분 결과: ${item.res}`, cx, item.y);
+          l1.size = 11.5;
+          l1.weight = 700;
+          l1.fill = '#334155';
+        });
+
+        // Bottom Result Box at y = 236
+        const resBox = two.makeRoundedRectangle(cx, 236, Math.min(width - 80, 480), 38, 6);
+        resBox.fill = isPassed5_10 ? '#ecfdf5' : '#f8fafc';
+        resBox.stroke = isPassed5_10 ? '#10b981' : '#cbd5e1';
+        resBox.linewidth = 1.2;
+
+        const rTxt1 = isPassed5_10
+          ? '• 분자 A = LCM(5, 7, 14) = 70,  분모 B = GCD(9, 36, 15) = 3 ➔ 정답: 70/3'
+          : '• 분자 A = 분모(5, 7, 14)의 최소공배수,  분모 B = 분자(9, 36, 15)의 최대공약수';
+        const rt1 = two.makeText(rTxt1, cx, 236);
+        rt1.size = 11;
+        rt1.weight = 800;
+        rt1.fill = isPassed5_10 ? '#065f46' : '#1e293b';
+
+      } else if (curTab === 1) {
+        // --- Tab 1: Numerator A = LCM(5, 7, 14) ---
+        const pTitle = two.makeText('분자 A 탐구: 분모 5, 7, 14 의 최소공배수 (LCM)', cx, 115);
+        pTitle.size = 13;
+        pTitle.weight = 800;
+        pTitle.fill = '#1e293b';
+
+        const lines = [
+          '• 5 = 5',
+          '• 7 = 7',
+          '• 14 = 2 × 7'
+        ];
+        lines.forEach((l, idx) => {
+          const t = two.makeText(l, cx, 145 + idx * 22);
+          t.size = 12;
+          t.weight = 700;
+          t.fill = '#1d4ed8';
+        });
+
+        const resBox = two.makeRoundedRectangle(cx, 236, Math.min(width - 80, 480), 38, 6);
+        resBox.fill = isPassed5_10 ? '#ecfdf5' : '#eff6ff';
+        resBox.stroke = isPassed5_10 ? '#10b981' : '#3b82f6';
+        resBox.linewidth = 1.2;
+
+        const rTxt1 = isPassed5_10
+          ? '• 최소공배수: 2 × 5 × 7 = 70 ➔ 따라서 분자 A = 70'
+          : '• 세 분모를 모두 없애기 위한 가장 작은 분자: A = LCM(5, 7, 14)';
+        const rt1 = two.makeText(rTxt1, cx, 236);
+        rt1.size = 11.5;
+        rt1.weight = 800;
+        rt1.fill = isPassed5_10 ? '#065f46' : '#1e40af';
+
+      } else {
+        // --- Tab 2: Denominator B = GCD(9, 36, 15) ---
+        const pTitle = two.makeText('분모 B 탐구: 분자 9, 36, 15 의 최대공약수 (GCD)', cx, 115);
+        pTitle.size = 13;
+        pTitle.weight = 800;
+        pTitle.fill = '#1e293b';
+
+        const lines = [
+          '• 9 = 3²',
+          '• 36 = 2² × 3²',
+          '• 15 = 3 × 5'
+        ];
+        lines.forEach((l, idx) => {
+          const t = two.makeText(l, cx, 145 + idx * 22);
+          t.size = 12;
+          t.weight = 700;
+          t.fill = '#047857';
+        });
+
+        const resBox = two.makeRoundedRectangle(cx, 236, Math.min(width - 80, 480), 38, 6);
+        resBox.fill = isPassed5_10 ? '#ecfdf5' : '#f0fdf4';
+        resBox.stroke = isPassed5_10 ? '#10b981' : '#22c55e';
+        resBox.linewidth = 1.2;
+
+        const rTxt1 = isPassed5_10
+          ? '• 공통인 소인수는 3 (지수 1) ➔ 최대공약수 B = 3'
+          : '• 분모 B는 세 분자(9, 36, 15)를 모두 나눌 수 있는 가장 큰 수: B = GCD(9, 36, 15)';
+        const rt1 = two.makeText(rTxt1, cx, 236);
+        rt1.size = 11.5;
+        rt1.weight = 800;
+        rt1.fill = isPassed5_10 ? '#065f46' : '#166534';
+      }
+
+      // 4. Summary / Rule Banner - y: 345, h: 74 (occupies 308 ~ 382 <= 440, bottom margin 58px >= 56px)
+      const bannerW = Math.min(width - 40, 640);
+      const banner = two.makeRoundedRectangle(width / 2, 345, bannerW, 74, 10);
+      banner.fill = isPassed5_10 ? '#ecfdf5' : '#f8fafc';
+      banner.stroke = isPassed5_10 ? '#a7f3d0' : '#cbd5e1';
+      banner.linewidth = 1.5;
+
+      let bT1 = '';
+      let bT2 = '';
+      let bT3 = '';
+
+      if (isPassed5_10) {
+        bT1 = '🎉 [10번 분수를 자연수로 만드는 기약분수 완벽 해결!] (정답: 70/3)';
+        bT2 = '• 분자 A = LCM(5, 7, 14) = 70,  분모 B = GCD(9, 36, 15) = 3';
+        bT3 = '• 따라서 구하는 가장 작은 기약분수는 70/3 입니다. (각각 42, 120, 25)';
+      } else {
+        bT1 = '💡 [분수를 자연수로 만드는 가장 작은 기약분수의 두 가지 원리]';
+        bT2 = '• 분자 A: 분수들의 모든 분모를 약분하여 없애야 하므로 분모들의 최소공배수(LCM)를 택합니다.';
+        bT3 = '• 분모 B: 분수들의 모든 분자에 의해 1로 약분되어야 하므로 분자들의 최대공약수(GCD)를 택합니다.';
+      }
+
+      const txtT1 = two.makeText(bT1, width / 2, 323);
+      txtT1.size = 12;
+      txtT1.weight = 800;
+      txtT1.fill = isPassed5_10 ? '#065f46' : '#1e293b';
+
+      const txtT2 = two.makeText(bT2, width / 2, 344);
+      txtT2.size = 11;
+      txtT2.weight = 600;
+      txtT2.fill = isPassed5_10 ? '#047857' : '#334155';
+
+      const txtT3 = two.makeText(bT3, width / 2, 363);
+      txtT3.size = 10.5;
+      txtT3.weight = 500;
+      txtT3.fill = isPassed5_10 ? '#047857' : '#64748b';
+
+      two.update();
+
+      // 5. Pointer Event Isolation
+      const container = document.getElementById('two-container');
+      if (container) container.onpointerdown = null;
+
+      const canvasEl = container ? container.querySelector('canvas, svg') : null;
+      if (canvasEl) {
+        canvasEl.style.cursor = 'pointer';
+        canvasEl.onpointerdown = (e) => {
+          const nextTab = (curTab + 1) % 3;
+          setStep5_10Tab(nextTab);
+        };
+      }
+    }
+
+    async function gradeStep5_10() {
+      const rawA = cleanInput(document.getElementById('ans-5-10-a')?.value || '');
+      const rawB = cleanInput(document.getElementById('ans-5-10-b')?.value || '');
+      const rawNum = cleanInput(document.getElementById('ans-5-10-frac-num')?.value || '');
+      const rawDen = cleanInput(document.getElementById('ans-5-10-frac-den')?.value || '');
+
+      const a = parseInt(rawA, 10);
+      const b = parseInt(rawB, 10);
+      const num = parseInt(rawNum, 10);
+      const den = parseInt(rawDen, 10);
+
+      const isACorrect = (a === 70);
+      const isBCorrect = (b === 3);
+      const isFracCorrect = (num === 70 && den === 3);
+
+      const isCorrect = isACorrect && isBCorrect && isFracCorrect;
+
+      const fEl = document.getElementById('feedback-step-5-10');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('5-10')) {
+          state.completedSubSteps.push('5-10');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('5-10', {
+              a: 70,
+              b: 3,
+              frac: '70/3',
+              activityTitle: '[중1-1 소인수분해] [5-10] 10. 10번 (분수를 자연수로 만드는 기약분수)',
+              score: 100,
+              passed: true
+            }, 'u1');
+          } catch (err) {
+            console.warn('LMS save error:', err);
+          }
+        }
+
+        // Unlock next substep 5-11
+        if (!state.unlockedSubSteps.includes('5-11')) {
+          state.unlockedSubSteps.push('5-11');
+        }
+
+        updateSubStepPills(5);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.3rem;">🎉</span>
+            <h4 style="color:#065f46; font-size:1.02rem; font-weight:800; margin:0;">10번 가장 작은 기약분수 100점 완벽 해결!</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            완벽하게 해결했습니다!<br>
+            • <b>분자 A</b>: 세 분모 $5, 7, 14$의 최소공배수 $\\implies A = 2 \\times 5 \\times 7 = <b>70</b>$<br>
+            • <b>분모 B</b>: 세 분자 $9, 36, 15$의 최대공약수 $\\implies B = <b>3</b>$<br>
+            • <b>구하는 가장 작은 기약분수</b>: <b>$\\frac{70}{3}$</b><br>
+            • <b>약분 결과 검산</b>:<br>
+            &nbsp;&nbsp;$\\frac{9}{5} \\times \\frac{70}{3} = 42$, &nbsp;&nbsp;$\\frac{36}{7} \\times \\frac{70}{3} = 120$, &nbsp;&nbsp;$\\frac{15}{14} \\times \\frac{70}{3} = 25$ (모두 자연수 성립!)
+            <div style="margin-top:12px; padding:10px 14px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 <b>[5-11] 11번 서술형 (소인수 최대·최소의 합)</b>이 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="loadSubStep('5-11')" style="margin-top:12px; width:100%; padding:11px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            다음 문제 [5-11] 11번 서술형 도전 ➔
+          </button>
+        `;
+
+        drawStep5_10Canvas();
+      } else {
+        let msg = '';
+        if (!isACorrect) {
+          msg = '분자 A는 세 분모 5, 7, 14의 최소공배수입니다. 5, 7, 14의 최소공배수를 다시 계산해 보세요.';
+        } else if (!isBCorrect) {
+          msg = '분모 B는 세 분자 9, 36, 15의 최대공약수입니다. 9, 36, 15의 공통 소인수를 찾아 최대공약수를 구하세요.';
+        } else if (!isFracCorrect) {
+          msg = '구한 A와 B의 값을 기약분수 A/B 형태로 올바르게 기입해 주세요.';
+        }
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            • ${msg}<br>
+            💡 좌측 캔버스 상단의 [🔼 분자 A 탐구], [🔽 분모 B 탐구] 버튼을 눌러 각각의 소인수분해와 LCM/GCD를 확인해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (5-11 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -31869,6 +32314,11 @@
         state.lab5_9.gValue = 10;
         renderToolbar5_9();
         drawStep5_9Canvas();
+      } else if (state.subStep === '5-10') {
+        if (!state.lab5_10) state.lab5_10 = { tab: 0 };
+        state.lab5_10.tab = 0;
+        renderToolbar5_10();
+        drawStep5_10Canvas();
       }
     }
 
@@ -32176,6 +32626,7 @@
       else if (state.subStep === '5-7') drawStep5_7Canvas();
       else if (state.subStep === '5-8') drawStep5_8Canvas();
       else if (state.subStep === '5-9') drawStep5_9Canvas();
+      else if (state.subStep === '5-10') drawStep5_10Canvas();
       }, 150);
     });
 
