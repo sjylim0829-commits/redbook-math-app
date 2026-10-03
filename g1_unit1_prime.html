@@ -1231,6 +1231,11 @@
         mode: 0, // 0: 지수 분석 랩, 1: 후보 카드 대입 랩
         step: 0, // Mode 0: 0~3
         selectedVal: 1 // Mode 1: 1, 2, 3, 6, 9, 18
+      },
+      // 4-9 Interactive Lab State (9. [스스로 확인하기 6] 공배수 조건 세 자리 수, p.22)
+      lab4_9: {
+        mode: 0, // 0: 조건 분석 랩, 1: 수직선 점프 랩
+        step: 0  // 0~3 단계
       }
     };
 
@@ -1499,6 +1504,9 @@
       } else if (code === '4-8') {
         renderToolbar4_8();
         renderSubstep4_8();
+      } else if (code === '4-9') {
+        renderToolbar4_9();
+        renderSubstep4_9();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -4020,6 +4028,62 @@
       renderToolbar4_8();
       drawStep4_8Canvas();
     }
+
+    // -------------------------------------------------------------
+    // SUBSTEP 4-9 Handlers & Toolbar (9. [스스로 확인하기 6] 공배수 조건 세 자리 수, p.22)
+    // -------------------------------------------------------------
+    function renderToolbar4_9() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const isPassed4_9 = state.completedSubSteps && state.completedSubSteps.includes('4-9');
+      const curMode = state.lab4_9.mode || 0;
+      const curStep = state.lab4_9.step || 0;
+
+      let subControls = '';
+      if (curMode === 0) {
+        subControls = `
+          <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-left:6px; margin-right:4px;">탐구 단계:</span>
+          <button class="tool-btn ${curStep === 0 ? 'active' : ''}" onclick="setStep4_9Step(0)">➊ 조건 ㈎ 공배수</button>
+          <button class="tool-btn ${curStep === 1 ? 'active' : ''}" onclick="setStep4_9Step(1)">➋ 최소공배수 (90)</button>
+          <button class="tool-btn ${curStep === 2 ? 'active' : ''}" onclick="setStep4_9Step(2)">➌ 90의 배수 나열</button>
+          <button class="tool-btn ${curStep === 3 ? 'active' : ''}" onclick="setStep4_9Step(3)">${isPassed4_9 ? '➍ 세 자리 수 (180)' : '➍ 조건 ㈏ 세 자리 수'}</button>
+        `;
+      } else {
+        subControls = `
+          <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-left:6px; margin-right:4px;">수직선 점프:</span>
+          <button class="tool-btn ${curStep === 0 ? 'active' : ''}" onclick="setStep4_9Step(0)">출발 (0)</button>
+          <button class="tool-btn ${curStep === 1 ? 'active' : ''}" onclick="setStep4_9Step(1)">1회 점프 (+90)</button>
+          <button class="tool-btn ${curStep === 2 ? 'active' : ''}" onclick="setStep4_9Step(2)">${isPassed4_9 ? '2회 점프 (+180 정답!)' : '2회 점프 (100 돌파!)'}</button>
+          <button class="tool-btn ${curStep === 3 ? 'active' : ''}" onclick="setStep4_9Step(3)">3회 점프 (+270)</button>
+        `;
+      }
+
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-right:4px;">모드:</span>
+        <button class="tool-btn ${curMode === 0 ? 'active' : ''}" onclick="setStep4_9Mode(0)">🔍 [조건 분석 랩] 18, 45의 공배수와 자리수</button>
+        <button class="tool-btn ${curMode === 1 ? 'active' : ''}" onclick="setStep4_9Mode(1)">💡 [수직선 점프 랩] 90 단위 점프 탐구</button>
+        <span style="margin:0 4px; color:#cbd5e1;">|</span>
+        ${subControls}
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setStep4_9Mode(m) {
+      state.lab4_9.mode = m;
+      state.lab4_9.step = 0;
+      renderToolbar4_9();
+      drawStep4_9Canvas();
+    }
+
+    function setStep4_9Step(s) {
+      state.lab4_9.step = s;
+      renderToolbar4_9();
+      drawStep4_9Canvas();
+    }
+
 
 
 
@@ -25375,7 +25439,431 @@
 
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (4-9 to 6-2)
+    // SUBSTEP 4-9: 9. [스스로 확인하기 6] 공배수 조건 세 자리 수 (p.22)
+    // -------------------------------------------------------------
+    function renderSubstep4_9() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[스스로 확인하기 6 (공배수 조건 세 자리 수)] (교과서 p.22)</b><br>
+        • 조건 ㈎: 18과 45로 각각 나누어떨어지는 수는 18과 45의 <b>공배수</b>입니다.<br>
+        • 두 수의 공배수는 <b>최소공배수의 배수</b>입니다.<br>
+        • 조건 ㈏: 공배수 중에서 <b>세 자리 자연수</b>이면서 <b>가장 작은 자연수</b>를 구해 보세요.
+      `;
+
+      const isPassed4_9 = state.completedSubSteps && state.completedSubSteps.includes('4-9');
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.22</span>
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b;">스스로 확인하기 6번</span>
+          </div>
+          <h4 style="font-size:0.98rem; font-weight:800; color:#1e293b; margin-bottom:14px; line-height:1.5;">
+            다음을 모두 만족시키는 가장 작은 자연수를 구하시오.
+          </h4>
+
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:14px; line-height:1.7; font-size:0.88rem; color:#334155;">
+            ㈎ 18, 45로 각각 나누어떨어진다.<br>
+            ㈏ 세 자리 자연수이다.
+          </div>
+
+          <div style="margin-bottom:18px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              가장 작은 자연수 입력:
+            </div>
+            <input type="text" id="ans-4-9" class="proof-input-text" placeholder="답 입력" style="width:140px;" autocomplete="off">
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep4_9()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            정답 확인 및 채점
+          </button>
+
+          <div id="feedback-step-4-9" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep4_9Canvas();
+    }
+
+    function drawStep4_9Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed4_9 = state.completedSubSteps && state.completedSubSteps.includes('4-9');
+      const curMode = state.lab4_9.mode || 0;
+      const curStep = state.lab4_9.step || 0;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 33
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(11, Math.min(13, Math.floor(width * 0.019)));
+
+      let modeTitle = '';
+      let modeSub = '';
+      if (curMode === 0) {
+        modeTitle = '🔍 [조건 분석 랩] 18, 45의 공배수와 세 자리 수 조건';
+        modeSub = '18과 45의 최소공배수를 구하고 그 배수 중 가장 작은 세 자리 수를 찾습니다.';
+      } else {
+        modeTitle = '💡 [수직선 점프 랩] 90 단위 점프와 세 자리 경계선(100)';
+        modeSub = '수직선 위에서 90씩 점프하며 100을 최초로 돌파하는 수를 확인해 보세요.';
+      }
+
+      const titleText = two.makeText(modeTitle, width / 2, 16);
+      titleText.size = titleSize;
+      titleText.weight = 800;
+      titleText.fill = '#1e293b';
+
+      const subText = two.makeText(modeSub, width / 2, 33);
+      subText.size = subSize;
+      subText.fill = '#64748b';
+
+      // 2. Formula / Sub-bar - y: 56, h: 26 (top: 43, bottom: 69)
+      const fBarW = Math.min(width - 40, 640);
+      const fBar = two.makeRoundedRectangle(width / 2, 56, fBarW, 26, 6);
+      fBar.fill = '#f1f5f9';
+      fBar.stroke = '#cbd5e1';
+      fBar.linewidth = 1;
+
+      let fBarStr = '';
+      if (curMode === 0) {
+        if (curStep === 0) fBarStr = '➊ 18과 45로 나누어떨어진다 ➔ 18과 45의 공배수';
+        else if (curStep === 1) fBarStr = '➋ 18 = 2×3²,  45 = 3²×5  ➔  최소공배수 = 2×3²×5 = 90';
+        else if (curStep === 2) fBarStr = isPassed4_9 ? '➌ 90의 배수: 90, 180, 270, 360, ...' : '➌ 90의 배수 나열 탐구: 90 × 1, 90 × 2, 90 × 3, ...';
+        else fBarStr = isPassed4_9 ? '➍ 세 자리 수 중 가장 작은 수: 90 × 2 = 180 완성! ✨' : '➍ 90의 배수 중 세 자리(100 이상)에서 가장 작은 수를 구해보세요.';
+      } else {
+        if (curStep === 0) fBarStr = '수직선 0에서 출발 ➔ 90 단위 점프로 100 이상인 최초의 수를 탐색합니다.';
+        else if (curStep === 1) fBarStr = '1회 점프: 0 ➔ 90 (두 자리 수, 100 미만 ❌)';
+        else if (curStep === 2) fBarStr = isPassed4_9 ? '2회 점프: 90 ➔ 180 (세 자리 수 최초 도달! 가장 작은 세 자리 수! ✨)' : '2회 점프: 90 ➔ ? (100 돌파! 세 자리 수 영역 최초 도달 지점)';
+        else fBarStr = isPassed4_9 ? '3회 점프: 180 ➔ 270 (세 자리 수이지만 가장 작은 수는 아닙니다)' : '3회 점프: +90 ➔ 270 (세 자리 수이지만 가장 작은 수는 아닙니다)';
+      }
+
+      const fBarText = two.makeText(fBarStr, width / 2, 56);
+      fBarText.size = Math.max(11, Math.min(13, Math.floor(width * 0.018)));
+      fBarText.weight = 700;
+      fBarText.fill = '#334155';
+
+      // 3. Central Board - y: 174, h: 178 (top: 85, bottom: 263)
+      const boardW = Math.min(width - 40, 640);
+      const board = two.makeRoundedRectangle(width / 2, 174, boardW, 178, 12);
+      board.fill = '#ffffff';
+      board.stroke = '#e2e8f0';
+      board.linewidth = 1.5;
+
+      const cX = width / 2;
+
+      if (curMode === 0) {
+        // Mode 0: 소인수분해 및 배수 분석
+        const startX = cX - 160;
+        const colW = 80;
+        const rowH = 26;
+        const startY = 106;
+
+        // Highlights
+        if (curStep === 1) {
+          const hl = two.makeRoundedRectangle(cX, 134, 360, 78, 8);
+          hl.fill = '#eff6ff'; hl.stroke = '#93c5fd'; hl.linewidth = 1.5;
+        } else if (curStep >= 2) {
+          const hl = two.makeRoundedRectangle(cX, 196, 380, 40, 8);
+          hl.fill = '#f0fdf4'; hl.stroke = '#86efac'; hl.linewidth = 1.5;
+        }
+
+        // Row 1: 18 = 2 * 3^2
+        const t1_L = two.makeText('18 =', startX, startY);
+        t1_L.size = 13.5; t1_L.weight = 800; t1_L.fill = '#475569'; t1_L.alignment = 'right';
+        const t1_2 = two.makeText('2', startX + colW, startY);
+        t1_2.size = 14; t1_2.weight = 800; t1_2.fill = '#1e293b';
+        const t1_3 = two.makeText('3²', startX + colW * 2, startY);
+        t1_3.size = 14; t1_3.weight = 800; t1_3.fill = '#1e293b';
+
+        // Row 2: 45 = 3^2 * 5
+        const t2_L = two.makeText('45 =', startX, startY + rowH);
+        t2_L.size = 13.5; t2_L.weight = 800; t2_L.fill = '#475569'; t2_L.alignment = 'right';
+        const t2_3 = two.makeText('3²', startX + colW * 2, startY + rowH);
+        t2_3.size = 14; t2_3.weight = 800; t2_3.fill = '#1e293b';
+        const t2_5 = two.makeText('5', startX + colW * 3, startY + rowH);
+        t2_5.size = 14; t2_5.weight = 800; t2_5.fill = '#1e293b';
+
+        // Separator
+        const sep = two.makeLine(startX - 20, startY + rowH + 15, startX + colW * 3 + 25, startY + rowH + 15);
+        sep.stroke = '#94a3b8'; sep.linewidth = 1.5;
+
+        // LCM Row
+        const tL_L = two.makeText('최소공배수 =', startX, startY + rowH * 2 + 12);
+        tL_L.size = 13; tL_L.weight = 800; tL_L.fill = '#047857'; tL_L.alignment = 'right';
+        const tL_exp = two.makeText('2 × 3² × 5 = 90', startX + colW * 2, startY + rowH * 2 + 12);
+        tL_exp.size = 14; tL_exp.weight = 800; tL_exp.fill = '#047857';
+
+        // Multiples row
+        if (curStep >= 2) {
+          const tMStr = isPassed4_9
+            ? '90의 배수:  90 (두 자리),   180 (세 자리! 가장 작은 수),   270,   360 ...'
+            : '90의 배수:  90 (두 자리),   ? (세 자리 첫 번째 수),   270,   360 ...';
+          const tM = two.makeText(tMStr, cX, 196);
+          tM.size = 13; tM.weight = 800; tM.fill = '#15803d';
+        }
+
+        // Bottom text at y: 238
+        let expStr = '';
+        if (curStep < 2) {
+          expStr = '➔ 18과 45의 공배수는 최소공배수(90)의 배수입니다.';
+        } else if (curStep === 2) {
+          expStr = '➔ 90의 배수 중 세 자리 자연수(100 이상)에서 가장 작은 수를 찾아보세요.';
+        } else {
+          expStr = isPassed4_9
+            ? '➔ 세 자리 자연수 중 가장 작은 수는 90 × 2 = 180 입니다! (정답 완성!) ✨'
+            : '➔ 90 × 1 = 90(두 자리), 90 × 2 = ?(세 자리) ➔ 우측에 적어보세요.';
+        }
+
+        const tExp = two.makeText(expStr, cX, 238);
+        tExp.size = 12.5; tExp.weight = 800;
+        tExp.fill = (curStep === 3 && isPassed4_9) ? '#047857' : '#334155';
+
+      } else {
+        // Mode 1: 수직선 점프 시뮬레이션
+        const lineY = 168;
+        const lineLeft = cX - 220;
+        const lineRight = cX + 220;
+        const lineLen = lineRight - lineLeft;
+
+        // Base Line
+        const nLine = two.makeLine(lineLeft, lineY, lineRight, lineY);
+        nLine.stroke = '#94a3b8'; nLine.linewidth = 2;
+
+        // Boundary at 100 (x = lineLeft + (100 / 300) * lineLen)
+        const b100X = lineLeft + (100 / 300) * lineLen;
+        const bLine = two.makeLine(b100X, lineY - 45, b100X, lineY + 25);
+        bLine.stroke = '#ef4444'; bLine.linewidth = 2;
+
+        const b100Tag = two.makeText('세 자리 수 경계 (100)', b100X + 10, lineY - 48);
+        b100Tag.size = 11; b100Tag.weight = 800; b100Tag.fill = '#dc2626';
+
+        // Ticks: 0, 90, 180, 270
+        const pts = [0, 90, 180, 270];
+        pts.forEach(p => {
+          const px = lineLeft + (p / 300) * lineLen;
+          const tick = two.makeLine(px, lineY - 6, px, lineY + 6);
+          tick.stroke = '#475569'; tick.linewidth = 1.5;
+
+          const pLabelText = (p === 180 && !isPassed4_9) ? '?' : `${p}`;
+          const pLabel = two.makeText(pLabelText, px, lineY + 18);
+          pLabel.size = 12; pLabel.weight = 700;
+          pLabel.fill = (p === 180 && !isPassed4_9) ? '#2563eb' : '#475569';
+        });
+
+        // Jump Arcs
+        // Jump 1: 0 to 90
+        if (curStep >= 1) {
+          const x0 = lineLeft;
+          const x90 = lineLeft + (90 / 300) * lineLen;
+          const arc1 = two.makeCurve(x0, lineY, (x0 + x90) / 2, lineY - 32, x90, lineY, true);
+          arc1.noFill(); arc1.stroke = '#3b82f6'; arc1.linewidth = 2;
+          const arc1T = two.makeText('+90', (x0 + x90) / 2, lineY - 38);
+          arc1T.size = 11; arc1T.weight = 800; arc1T.fill = '#2563eb';
+        }
+
+        // Jump 2: 90 to 180
+        if (curStep >= 2) {
+          const x90 = lineLeft + (90 / 300) * lineLen;
+          const x180 = lineLeft + (180 / 300) * lineLen;
+          const arc2 = two.makeCurve(x90, lineY, (x90 + x180) / 2, lineY - 32, x180, lineY, true);
+          arc2.noFill(); arc2.stroke = '#10b981'; arc2.linewidth = 2.5;
+          const arc2Label = isPassed4_9 ? '+90 (180 도달! ✨)' : '+90 (100 돌파 지점)';
+          const arc2T = two.makeText(arc2Label, (x90 + x180) / 2, lineY - 38);
+          arc2T.size = 11; arc2T.weight = 800; arc2T.fill = '#059669';
+
+          // Target circle at 180
+          const cir = two.makeCircle(x180, lineY, 8);
+          cir.fill = '#10b981'; cir.stroke = '#047857'; cir.linewidth = 2;
+        }
+
+        // Jump 3: 180 to 270
+        if (curStep === 3) {
+          const x180 = lineLeft + (180 / 300) * lineLen;
+          const x270 = lineLeft + (270 / 300) * lineLen;
+          const arc3 = two.makeCurve(x180, lineY, (x180 + x270) / 2, lineY - 32, x270, lineY, true);
+          arc3.noFill(); arc3.stroke = '#94a3b8'; arc3.linewidth = 1.5;
+          const arc3T = two.makeText('+90 (270)', (x180 + x270) / 2, lineY - 38);
+          arc3T.size = 11; arc3T.weight = 700; arc3T.fill = '#64748b';
+        }
+
+        // Bottom text at y: 238
+        let expStr = '';
+        if (curStep === 0) {
+          expStr = '➔ 0에서 90씩 점프하여 100(세 자리 경계)을 넘는 첫 번째 지점을 찾습니다.';
+        } else if (curStep === 1) {
+          expStr = '➔ 1회 점프: 90 은 아직 두 자리 수(100 미만)입니다.';
+        } else if (curStep === 2) {
+          expStr = isPassed4_9
+            ? '➔ 2회 점프: 180 은 세 자리 수 영역에 최초로 도달하는 가장 작은 자연수입니다! ✨'
+            : '➔ 2회 점프: 90 + 90 = ? 은 세 자리 수 영역에 최초로 도달합니다. 우측에 적어보세요.';
+        } else {
+          expStr = isPassed4_9
+            ? '➔ 3회 점프: 270 도 세 자리 수이지만 가장 작은 수는 180 입니다.'
+            : '➔ 3회 점프: 270 도 세 자리 수이지만 가장 작은 세 자리 수를 찾아야 합니다.';
+        }
+
+        const tExp = two.makeText(expStr, cX, 238);
+        tExp.size = 12.5; tExp.weight = 800;
+        tExp.fill = (curStep === 2 && isPassed4_9) ? '#047857' : '#334155';
+      }
+
+      // 4. Status Bar - y: 288, h: 26 (top: 275, bottom: 301)
+      const sBarW = Math.min(width - 40, 640);
+      const sBar = two.makeRoundedRectangle(width / 2, 288, sBarW, 26, 6);
+      sBar.fill = isPassed4_9 ? '#ecfdf5' : '#f8fafc';
+      sBar.stroke = isPassed4_9 ? '#a7f3d0' : '#e2e8f0';
+      sBar.linewidth = 1;
+
+      let sBarMsg = '';
+      if (isPassed4_9) {
+        sBarMsg = '🎉 [학습 완료] 가장 작은 세 자리 자연수 180을 올바르게 구했습니다!';
+      } else {
+        sBarMsg = '💡 18과 45의 공배수는 최소공배수(90)의 배수입니다. 90의 배수 중 세 자리 수를 찾아보세요.';
+      }
+
+      const sBarText = two.makeText(sBarMsg, width / 2, 288);
+      sBarText.size = Math.max(11, Math.min(12.5, Math.floor(width * 0.018)));
+      sBarText.weight = 700;
+      sBarText.fill = isPassed4_9 ? '#047857' : '#475569';
+
+      // 5. Bottom Banner - y: 350, h: 68 (top: 316, bottom: 384)
+      const bBannerW = Math.min(width - 40, 640);
+      const bBanner = two.makeRoundedRectangle(width / 2, 350, bBannerW, 68, 10);
+      bBanner.fill = isPassed4_9 ? '#f0fdf4' : '#f8fafc';
+      bBanner.stroke = isPassed4_9 ? '#86efac' : '#cbd5e1';
+      bBanner.linewidth = 1.5;
+
+      const bbT1 = two.makeText(
+        isPassed4_9
+          ? '⭐ [핵심 원리] 공배수와 자리수 조건 활용하기'
+          : '💡 [개념 길잡이] 두 수로 나누어떨어지는 수',
+        width / 2,
+        336
+      );
+      bbT1.size = 12.5; bbT1.weight = 800; bbT1.fill = isPassed4_9 ? '#065f46' : '#1e293b';
+
+      const bbT2 = two.makeText(
+        isPassed4_9
+          ? '• 18과 45로 나누어떨어지는 수는 18과 45의 공배수입니다. 최소공배수 90의 배수 중 세 자리(100 이상)인 가장 작은 수는 180입니다.'
+          : '• 두 수로 나누어떨어지는 수는 두 수의 최소공배수의 배수입니다. 배수들을 차례로 나열하여 조건에 맞는 수를 찾으세요.',
+        width / 2,
+        358
+      );
+      bbT2.size = 11.5; bbT2.fill = isPassed4_9 ? '#047857' : '#64748b';
+
+      two.update();
+
+      // Pointer event isolation
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas, svg') : null;
+      if (container) container.onpointerdown = null;
+      if (!canvasEl) return;
+
+      canvasEl.onpointerdown = (e) => {
+        setStep4_9Step((curStep + 1) % 4);
+      };
+    }
+
+    async function gradeStep4_9() {
+      const raw = cleanInput(document.getElementById('ans-4-9')?.value || '');
+      const ans = parseInt(raw, 10);
+
+      const isCorrect = (ans === 180);
+
+      const fEl = document.getElementById('feedback-step-4-9');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('4-9')) {
+          state.completedSubSteps.push('4-9');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('4-9', {
+              activityTitle: '[중1-1 소인수분해] [4-9] 9. [스스로 확인하기 6] 공배수 조건 세 자리 수',
+              answerText: raw,
+              answers: { ans: raw, val: 180 },
+              score: 100,
+              passed: true,
+              unitId: 'u1'
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+
+        // Unlock next step 4-10 (생각 넓히기)
+        if (!state.unlockedSubSteps.includes('4-10')) {
+          state.unlockedSubSteps.push('4-10');
+        }
+        updateSubStepPills(state.currentMainTab);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.2rem;">🎉</span>
+            <h4 style="color:#065f46; font-size:1.02rem; font-weight:800; margin:0;">정답입니다! 100점 (All Clear)</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            완벽하게 해결했습니다!<br>
+            • ㈎ 18과 45로 각각 나누어떨어지는 수는 18과 45의 공배수입니다.<br>
+            &nbsp;&nbsp;$18 = 2 \\times 3^2,\\quad 45 = 3^2 \\times 5$<br>
+            &nbsp;&nbsp;➔ 최소공배수 $= 2 \\times 3^2 \\times 5 = \\mathbf{90}$<br>
+            • 18과 45의 공배수는 최소공배수 90의 배수($90, 180, 270, \\ldots$)입니다.<br>
+            • ㈏ 이 중 <b>세 자리 자연수</b>(100 이상)에서 가장 작은 수는 $90 \\times 2 = \\mathbf{180}$입니다!<br>
+            <div style="margin-top:10px; padding:8px 12px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 다음 세부 활동 <b>[4-10] 10. [생각 넓히기] 두 수의 곱과 GCD·LCM</b>이 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="loadSubStep('4-10')" style="margin-top:12px; width:100%; padding:10px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            다음 단계 [4-10] 생각 넓히기로 이동 ➔
+          </button>
+        `;
+
+        renderToolbar4_9();
+        drawStep4_9Canvas();
+      } else {
+        let msg = '';
+        if (ans === 90) {
+          msg = '90은 18과 45의 최소공배수이지만, <b>두 자리 자연수</b>입니다! 조건 ㈏의 <b>"세 자리 자연수"</b>(100 이상)를 만족해야 합니다.';
+        } else if (ans === 270 || ans === 360) {
+          msg = `${ans}은 세 자리 공배수이지만, 가장 작은 세 자리 자연수를 찾아야 합니다. ($90 \\times 1, 90 \\times 2, \\ldots$)`;
+        } else {
+          msg = '18과 45의 최소공배수(90)를 구한 후, 90의 배수 중 세 자리 자연수(100 이상)에서 가장 작은 수를 찾아보세요.';
+        }
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            • ${msg}<br>
+            💡 좌측 캔버스의 [수직선 점프 랩]에서 90씩 점프하며 100을 넘는 최초의 수를 확인해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (4-10 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -25680,6 +26168,11 @@
         state.lab4_8.selectedVal = 1;
         renderToolbar4_8();
         drawStep4_8Canvas();
+      } else if (state.subStep === '4-9') {
+        state.lab4_9.mode = 0;
+        state.lab4_9.step = 0;
+        renderToolbar4_9();
+        drawStep4_9Canvas();
       }
     }
 
@@ -25974,6 +26467,7 @@
       else if (state.subStep === '4-6') drawStep4_6Canvas();
       else if (state.subStep === '4-7') drawStep4_7Canvas();
       else if (state.subStep === '4-8') drawStep4_8Canvas();
+      else if (state.subStep === '4-9') drawStep4_9Canvas();
       }, 150);
     });
 
