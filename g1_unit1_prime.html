@@ -1059,6 +1059,14 @@
         mode: 0, // 0: 25번 역 탐구, 1: 승객 2명(소수) 역 탐구, 2: 전체 1~30번 역 탐색
         selectedStation: 25, // 1~30
         selectedPrimes: [] // array of selected prime numbers
+      },
+      // 2-1 Interactive Lab State (1. 생각열기: 블록 장난감과 12 분해)
+      lab2_1: {
+        mode: 0, // 0: 두 수의 곱 분해 랩, 1: 12의 약수/소수 필터, 2: 소수의 곱 분해 랩
+        selectedPair: 0, // 0: 1x12, 1: 2x6, 2: 3x4
+        isDecomposed: false, // block assemble/disassemble toggle
+        showPrimeOnly: false, // filter prime in mode 1
+        step: 0 // step in mode 2 (0: 12, 1: 2x6, 2: 2x2x3)
       }
     };
 
@@ -1234,6 +1242,9 @@
       } else if (code === '1-12') {
         renderToolbar1_12();
         renderSubstep1_12();
+      } else if (code === '2-1') {
+        renderToolbar2_1();
+        renderSubstep2_1();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -2109,6 +2120,71 @@
       if (ansInput) {
         ansInput.value = state.lab1_12.selectedPrimes.join(', ');
       }
+    }
+
+    function renderToolbar2_1() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+      const curMode = state.lab2_1.mode;
+      const isDecomp = state.lab2_1.isDecomposed;
+      const primeOnly = state.lab2_1.showPrimeOnly;
+
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569;">분해 랩 모드:</span>
+        <button class="tool-btn ${curMode === 0 ? 'active' : ''}" onclick="setStep2_1Mode(0)">⑴ 두 수의 곱 분해 랩</button>
+        <button class="tool-btn ${curMode === 1 ? 'active' : ''}" onclick="setStep2_1Mode(1)">⑵ 12의 약수·소수 필터</button>
+        <button class="tool-btn ${curMode === 2 ? 'active' : ''}" onclick="setStep2_1Mode(2)">⑶ 소수만의 곱 분해 랩</button>
+        ${curMode === 0 ? `
+          <span style="margin:0 4px; color:#cbd5e1;">|</span>
+          <button class="tool-btn ${isDecomp ? 'active' : ''}" style="background:${isDecomp ? '#e0e7ff' : '#f1f5f9'}; color:${isDecomp ? '#4338ca' : '#334155'}; font-weight:700;" onclick="toggleStep2_1Decompose()">
+            ${isDecomp ? '🔄 블록 결합' : '🧩 블록 분해'}
+          </button>
+        ` : ''}
+        ${curMode === 1 ? `
+          <span style="margin:0 4px; color:#cbd5e1;">|</span>
+          <button class="tool-btn ${primeOnly ? 'active' : ''}" style="background:${primeOnly ? '#dcfce7' : '#f1f5f9'}; color:${primeOnly ? '#15803d' : '#334155'}; font-weight:700;" onclick="toggleStep2_1PrimeOnly()">
+            ${primeOnly ? '🔄 전체 약수 보기' : '🔍 소수만 필터링'}
+          </button>
+        ` : ''}
+        ${curMode === 2 ? `
+          <span style="margin:0 4px; color:#cbd5e1;">|</span>
+          <button class="tool-btn" onclick="step2_1PrimeFactorize(-1)" style="padding:4px 8px;">◀ 이전</button>
+          <span style="font-size:0.78rem; font-weight:800; color:#4338ca; align-self:center;">단계 ${state.lab2_1.step + 1}/3</span>
+          <button class="tool-btn" onclick="step2_1PrimeFactorize(1)" style="padding:4px 8px;">다음 ▶</button>
+        ` : ''}
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setStep2_1Mode(mode) {
+      state.lab2_1.mode = mode;
+      renderToolbar2_1();
+      drawStep2_1Canvas();
+    }
+
+    function setStep2_1Pair(pairIdx) {
+      state.lab2_1.selectedPair = pairIdx;
+      drawStep2_1Canvas();
+    }
+
+    function toggleStep2_1Decompose() {
+      state.lab2_1.isDecomposed = !state.lab2_1.isDecomposed;
+      renderToolbar2_1();
+      drawStep2_1Canvas();
+    }
+
+    function toggleStep2_1PrimeOnly() {
+      state.lab2_1.showPrimeOnly = !state.lab2_1.showPrimeOnly;
+      renderToolbar2_1();
+      drawStep2_1Canvas();
+    }
+
+    function step2_1PrimeFactorize(delta) {
+      state.lab2_1.step = Math.max(0, Math.min(2, state.lab2_1.step + delta));
+      renderToolbar2_1();
+      drawStep2_1Canvas();
     }
 
 
@@ -8971,7 +9047,741 @@
     }
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (2-1 to 6-2)
+    // SUBSTEP 2-1: 1. 생각열기: 블록 장난감과 12 분해 (p.13)
+    // -------------------------------------------------------------
+    function renderSubstep2_1() {
+      const missionEl = document.getElementById('mission-text');
+      if (missionEl) {
+        missionEl.innerHTML = `<b>[2-1] 1. 생각열기: 블록 장난감과 12 분해 (교과서 13쪽)</b><br>12개의 블록 장난감을 두 묶음으로 똑같이 나누어 배열하고, 12의 약수와 소인수(소수인 인수)의 뜻을 탐구해 봅시다.`;
+      }
+
+      const formArea = document.getElementById('form-work-area');
+      if (!formArea) return;
+
+      formArea.innerHTML = `
+        <div class="card" style="padding:16px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">02 소인수분해</span>
+            <span style="font-size:0.8rem; color:#64748b; font-weight:600;">교과서 13쪽</span>
+          </div>
+          <h3 style="font-size:1.05rem; font-weight:800; color:#1e293b; margin-bottom:8px;">1. 생각열기: 블록 장난감과 12 분해</h3>
+          <p style="font-size:0.86rem; color:#475569; line-height:1.6; margin-bottom:14px; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
+            <b>[생각열기 상황]</b> 오른쪽 그림과 같이 블록 장난감 12개를 두 사람이 똑같이 나누어 가지려고 합니다. 12를 두 자연수의 곱으로 분해해 보고, 약수와 소수의 성질을 탐구해 봅시다.
+          </p>
+
+          <div style="display:flex; flex-direction:column; gap:14px;">
+            <!-- ⑴ 12의 약수 -->
+            <div style="background:#f8fafc; padding:12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.88rem; font-weight:800; color:#1e293b; display:block; margin-bottom:6px;">
+                ⑴ 12의 약수를 작은 수부터 차례로 모두 쓰시오.
+              </label>
+              <div style="font-size:0.8rem; color:#64748b; margin-bottom:6px;">(쉼표 ','로 구분하여 입력하세요)</div>
+              <input type="text" id="ans-2-1-1" class="proof-input-text" placeholder="답 입력" style="width:100%;" autocomplete="off">
+            </div>
+
+            <!-- ⑵ 12의 약수 중 소수 -->
+            <div style="background:#f8fafc; padding:12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.88rem; font-weight:800; color:#1e293b; display:block; margin-bottom:6px;">
+                ⑵ 12의 약수 중에서 소수를 작은 수부터 모두 쓰시오.
+              </label>
+              <div style="font-size:0.8rem; color:#64748b; margin-bottom:6px;">(쉼표 ','로 구분하여 입력하세요)</div>
+              <input type="text" id="ans-2-1-2" class="proof-input-text" placeholder="답 입력" style="width:100%;" autocomplete="off">
+            </div>
+
+            <!-- ⑶ 생각 톡: 소수만의 곱 -->
+            <div style="background:#f8fafc; padding:12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.88rem; font-weight:800; color:#1e293b; display:block; margin-bottom:6px;">
+                ⑶ [생각 톡] 12를 소수만의 곱으로 끝까지 나타낸 것으로 옳은 것은?
+              </label>
+              <div style="display:flex; flex-direction:column; gap:6px; font-size:0.86rem; color:#334155; margin-top:6px;">
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                  <input type="radio" name="ans-2-1-3" value="1"> ① $1 \\times 12$
+                </label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                  <input type="radio" name="ans-2-1-3" value="2"> ② $2 \\times 6$
+                </label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                  <input type="radio" name="ans-2-1-3" value="3"> ③ $3 \\times 4$
+                </label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                  <input type="radio" name="ans-2-1-3" value="4"> ④ $2 \\times 2 \\times 3$ ($2^2 \\times 3$)
+                </label>
+              </div>
+            </div>
+
+            <!-- ⑷ 소인수 용어 -->
+            <div style="background:#f8fafc; padding:12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.88rem; font-weight:800; color:#1e293b; display:block; margin-bottom:6px;">
+                ⑷ [새로운 용어] 12의 약수 중 2, 3처럼 소수인 인수를 무엇이라고 하는가?
+              </label>
+              <div style="display:flex; flex-direction:column; gap:6px; font-size:0.86rem; color:#334155; margin-top:6px;">
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                  <input type="radio" name="ans-2-1-4" value="1"> ① 합성수
+                </label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                  <input type="radio" name="ans-2-1-4" value="2"> ② 소인수
+                </label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                  <input type="radio" name="ans-2-1-4" value="3"> ③ 거듭제곱
+                </label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                  <input type="radio" name="ans-2-1-4" value="4"> ④ 공약수
+                </label>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" onclick="gradeStep2_1()" style="padding:10px; font-weight:800; font-size:0.92rem; width:100%; margin-top:4px;">
+              ✅ 정답 확인 및 채점하기
+            </button>
+          </div>
+
+          <div id="feedback-2-1" style="display:none; margin-top:12px; padding:12px; border-radius:8px;"></div>
+        </div>
+      `;
+
+      drawStep2_1Canvas();
+
+      if (window.renderMathInElement) {
+        renderMathInElement(formArea, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    function drawStep2_1Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const curMode = state.lab2_1.mode || 0;
+      const isPassed2_1 = state.completedSubSteps && state.completedSubSteps.includes('2-1');
+
+      // 1. Header (Title & Subtitle)
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(10.5, Math.min(12, Math.floor(width * 0.018)));
+
+      const headerTitle = two.makeText('🧩 [생각열기] 12의 곱셈 분해와 소인수 탐구 랩', width / 2, 16);
+      headerTitle.size = titleSize;
+      headerTitle.weight = 800;
+      headerTitle.fill = '#1e293b';
+
+      const subTexts = [
+        '12개의 블록을 두 수의 곱(1×12, 2×6, 3×4)으로 배열하고 분해해 보세요.',
+        '12의 6개 약수 중에서 약수가 1과 자신뿐인 소수를 필터링해 보세요.',
+        '12를 소수가 나올 때까지 나뭇가지 모양으로 계속 분해해 보세요.'
+      ];
+      const headerSub = two.makeText(subTexts[curMode], width / 2, 33);
+      headerSub.size = subSize;
+      headerSub.weight = 600;
+      headerSub.fill = '#4f46e5';
+
+      // 2. Mode Selector Tabs in Canvas
+      const tabNames = [
+        '⑴ 두 수의 곱 분해 랩',
+        '⑵ 12의 약수·소수 필터',
+        '⑶ 소수만의 곱 분해 랩'
+      ];
+      const tabW = Math.min(160, Math.floor((width - 48) / 3));
+      const startTabX = (width - (3 * tabW + 16)) / 2;
+
+      for (let i = 0; i < 3; i++) {
+        const tx = startTabX + i * (tabW + 8) + tabW / 2;
+        const isActive = (curMode === i);
+
+        const tabBg = two.makeRoundedRectangle(tx, 56, tabW, 24, 12);
+        tabBg.fill = isActive ? '#4f46e5' : '#f1f5f9';
+        tabBg.stroke = isActive ? '#4338ca' : '#cbd5e1';
+        tabBg.linewidth = isActive ? 1.5 : 1;
+
+        const tabT = two.makeText(tabNames[i], tx, 56);
+        tabT.size = (width < 600) ? 9.5 : 10.5;
+        tabT.weight = isActive ? 800 : 600;
+        tabT.fill = isActive ? '#ffffff' : '#475569';
+      }
+
+      // 3. Middle Arena by Mode
+      let pairStartX = 0, pairW = 0, decompBtnX = 0;
+      let startStepX = 0, stepW = 0;
+
+      if (curMode === 0) {
+        // Mode 0: 두 수의 곱 분해 랩
+        const pairs = [
+          { a: 1, b: 12, label: '1 × 12' },
+          { a: 2, b: 6, label: '2 × 6' },
+          { a: 3, b: 4, label: '3 × 4' }
+        ];
+        const selPairIdx = state.lab2_1.selectedPair || 0;
+        pairW = Math.min(95, Math.floor((width - 64) / 4));
+        pairStartX = (width - (3 * pairW + 16 + 105)) / 2;
+
+        for (let i = 0; i < 3; i++) {
+          const px = pairStartX + i * (pairW + 8) + pairW / 2;
+          const isPActive = (selPairIdx === i);
+
+          const pBg = two.makeRoundedRectangle(px, 86, pairW, 24, 6);
+          pBg.fill = isPActive ? '#e0e7ff' : '#f8fafc';
+          pBg.stroke = isPActive ? '#4338ca' : '#cbd5e1';
+          pBg.linewidth = isPActive ? 2 : 1;
+
+          const pT = two.makeText(pairs[i].label, px, 86);
+          pT.size = 11;
+          pT.weight = isPActive ? 800 : 600;
+          pT.fill = isPActive ? '#4338ca' : '#475569';
+        }
+
+        // Decompose toggle button pill
+        decompBtnX = pairStartX + 3 * (pairW + 8) + 52;
+        const isDecomp = state.lab2_1.isDecomposed;
+        const decompBg = two.makeRoundedRectangle(decompBtnX, 86, 105, 24, 6);
+        decompBg.fill = isDecomp ? '#fef3c7' : '#f1f5f9';
+        decompBg.stroke = isDecomp ? '#d97706' : '#cbd5e1';
+        decompBg.linewidth = isDecomp ? 1.8 : 1;
+
+        const decompT = two.makeText(isDecomp ? '🔄 블록 결합' : '🧩 블록 분해', decompBtnX, 86);
+        decompT.size = 10.5;
+        decompT.weight = 700;
+        decompT.fill = isDecomp ? '#b45309' : '#334155';
+
+        // Factor Tree Branch
+        const activePair = pairs[selPairIdx];
+        const cx = width / 2;
+
+        const rootCircle = two.makeCircle(cx, 125, 18);
+        rootCircle.fill = '#4f46e5';
+        rootCircle.stroke = '#3730a3';
+        rootCircle.linewidth = 2;
+        const rootT = two.makeText('12', cx, 125);
+        rootT.size = 13; rootT.weight = 800; rootT.fill = '#ffffff';
+
+        const leftLine = two.makeLine(cx - 8, 138, cx - 55, 168);
+        leftLine.stroke = '#94a3b8'; leftLine.linewidth = 2;
+
+        const leftCircle = two.makeCircle(cx - 55, 178, 16);
+        leftCircle.fill = '#e0e7ff';
+        leftCircle.stroke = '#4338ca';
+        leftCircle.linewidth = 1.8;
+        const leftT = two.makeText(String(activePair.a), cx - 55, 178);
+        leftT.size = 13; leftT.weight = 800; leftT.fill = '#4338ca';
+
+        const mulT = two.makeText('×', cx, 178);
+        mulT.size = 15; mulT.weight = 800; mulT.fill = '#64748b';
+
+        const rightLine = two.makeLine(cx + 8, 138, cx + 55, 168);
+        rightLine.stroke = '#94a3b8'; rightLine.linewidth = 2;
+
+        const rightCircle = two.makeCircle(cx + 55, 178, 16);
+        rightCircle.fill = '#e0e7ff';
+        rightCircle.stroke = '#4338ca';
+        rightCircle.linewidth = 1.8;
+        const rightT = two.makeText(String(activePair.b), cx + 55, 178);
+        rightT.size = 13; rightT.weight = 800; rightT.fill = '#4338ca';
+
+        // 12 Blocks Visualization Box
+        const blockCardBg = two.makeRoundedRectangle(cx, 258, width - 36, 84, 8);
+        blockCardBg.fill = '#ffffff';
+        blockCardBg.stroke = '#e2e8f0';
+        blockCardBg.linewidth = 1.5;
+
+        if (selPairIdx === 0) {
+          // 1 x 12
+          const bSize = Math.min(26, Math.floor((width - 80) / 12));
+          const startBX = (width - (12 * (bSize + 3))) / 2 + bSize / 2;
+          for (let c = 0; c < 12; c++) {
+            const bx = startBX + c * (bSize + 3);
+            const by = 246;
+            const bRect = two.makeRoundedRectangle(bx, by, bSize, bSize, 4);
+            const isFirst = (c === 0 && isDecomp);
+            bRect.fill = isFirst ? '#fef3c7' : '#e0e7ff';
+            bRect.stroke = isFirst ? '#d97706' : '#4338ca';
+            bRect.linewidth = 1.5;
+
+            const bNum = two.makeText(String(c + 1), bx, by);
+            bNum.size = 9; bNum.weight = 700;
+            bNum.fill = isFirst ? '#b45309' : '#3730a3';
+          }
+          const capT = two.makeText(isDecomp ? '🧩 1개(묶음 1) × 12개 = 총 12개' : '📦 1 × 12 = 12 (12개의 블록)', cx, 282);
+          capT.size = 11; capT.weight = 700; capT.fill = '#475569';
+        } else if (selPairIdx === 1) {
+          // 2 x 6
+          const bSize = Math.min(26, Math.floor((width - 80) / 6));
+          const startBX = (width - (6 * (bSize + 4))) / 2 + bSize / 2;
+          for (let r = 0; r < 2; r++) {
+            for (let c = 0; c < 6; c++) {
+              const num = r * 6 + c + 1;
+              const bx = startBX + c * (bSize + 4);
+              const by = 234 + r * (bSize + (isDecomp ? 8 : 4));
+              const bRect = two.makeRoundedRectangle(bx, by, bSize, bSize, 4);
+              const isGroup1 = (r === 0);
+              bRect.fill = isGroup1 ? '#dbeafe' : '#f3e8ff';
+              bRect.stroke = isGroup1 ? '#2563eb' : '#7c3aed';
+              bRect.linewidth = 1.5;
+
+              const bNum = two.makeText(String(num), bx, by);
+              bNum.size = 9.5; bNum.weight = 700;
+              bNum.fill = isGroup1 ? '#1d4ed8' : '#6b21a8';
+            }
+          }
+          const capT = two.makeText(isDecomp ? '🧩 2명에게 각각 6개씩 똑같이 배분 ➔ 2 × 6 = 12' : '📦 2 × 6 = 12 (2행 6열 배열)', cx, 288);
+          capT.size = 11; capT.weight = 700; capT.fill = '#475569';
+        } else {
+          // 3 x 4
+          const bSize = 22;
+          const startBX = (width - (4 * (bSize + 4))) / 2 + bSize / 2;
+          for (let r = 0; r < 3; r++) {
+            for (let c = 0; c < 4; c++) {
+              const num = r * 4 + c + 1;
+              const bx = startBX + c * (bSize + 4);
+              const by = 228 + r * (bSize + (isDecomp ? 6 : 3));
+              const bRect = two.makeRoundedRectangle(bx, by, bSize, bSize, 4);
+              const groupColors = ['#dcfce7', '#fef3c7', '#e0e7ff'];
+              const borderColors = ['#16a34a', '#d97706', '#4f46e5'];
+              const textColors = ['#15803d', '#b45309', '#3730a3'];
+              bRect.fill = groupColors[r];
+              bRect.stroke = borderColors[r];
+              bRect.linewidth = 1.5;
+
+              const bNum = two.makeText(String(num), bx, by);
+              bNum.size = 9; bNum.weight = 700;
+              bNum.fill = textColors[r];
+            }
+          }
+          const capT = two.makeText(isDecomp ? '🧩 3묶음에 4개씩 분해 배분 ➔ 3 × 4 = 12' : '📦 3 × 4 = 12 (3행 4열 배열)', cx, 292);
+          capT.size = 11; capT.weight = 700; capT.fill = '#475569';
+        }
+
+        const noteStr = isPassed2_1
+          ? '💡 12 = a × b 로 나타낼 수 있으므로 1, 2, 3, 4, 6, 12는 모두 12의 약수(인수)입니다.'
+          : '💡 12개의 블록을 직사각형(a × b)으로 배열하면 a와 b는 12의 약수(인수)가 됩니다.';
+        const noteT = two.makeText(noteStr, cx, 323);
+        noteT.size = 10.5; noteT.weight = 700; noteT.fill = '#475569';
+
+      } else if (curMode === 1) {
+        // Mode 1: 12의 약수·소수 필터
+        const divs12 = [1, 2, 3, 4, 6, 12];
+        const showPrimeOnly = state.lab2_1.showPrimeOnly;
+        const chipW = Math.min(84, Math.floor((width - 48) / 6));
+        const chipH = 68;
+        const gap = 8;
+        const startX = (width - (6 * chipW + 5 * gap)) / 2 + chipW / 2;
+
+        for (let i = 0; i < 6; i++) {
+          const d = divs12[i];
+          const cx = startX + i * (chipW + gap);
+          const cy = 125;
+
+          const isPrime = (d === 2 || d === 3);
+          const isOne = (d === 1);
+
+          const chipBg = two.makeRoundedRectangle(cx, cy, chipW, chipH, 8);
+          if (showPrimeOnly) {
+            if (isPrime) {
+              chipBg.fill = '#dcfce7';
+              chipBg.stroke = '#16a34a';
+              chipBg.linewidth = 2.5;
+            } else {
+              chipBg.fill = '#f8fafc';
+              chipBg.stroke = '#e2e8f0';
+              chipBg.linewidth = 1;
+            }
+          } else {
+            chipBg.fill = '#ffffff';
+            chipBg.stroke = '#cbd5e1';
+            chipBg.linewidth = 1.5;
+          }
+
+          const tNum = two.makeText(String(d), cx, cy - 10);
+          tNum.size = 20;
+          tNum.weight = 800;
+          tNum.fill = (showPrimeOnly && isPrime) ? '#166534' : (showPrimeOnly ? '#94a3b8' : '#1e293b');
+
+          let badgeText = '';
+          let badgeColor = '#64748b';
+          if (showPrimeOnly) {
+            if (isPrime) {
+              badgeText = '소수(소인수)';
+              badgeColor = '#15803d';
+            } else if (isOne) {
+              badgeText = '소수 아님';
+              badgeColor = '#94a3b8';
+            } else {
+              badgeText = '합성수';
+              badgeColor = '#94a3b8';
+            }
+          } else {
+            if (isPrime) {
+              badgeText = '약수 2개';
+              badgeColor = '#4f46e5';
+            } else if (isOne) {
+              badgeText = '약수 1개';
+              badgeColor = '#64748b';
+            } else {
+              badgeText = (d === 4 ? '약수 3개' : (d === 6 ? '약수 4개' : '약수 6개'));
+              badgeColor = '#64748b';
+            }
+          }
+
+          const tBadge = two.makeText(badgeText, cx, cy + 16);
+          tBadge.size = (width < 600) ? 9 : 10;
+          tBadge.weight = 700;
+          tBadge.fill = badgeColor;
+        }
+
+        // Toggle Button Card
+        const toggleBtnY = 188;
+        const toggleBtnW = Math.min(230, width - 60);
+        const toggleBg = two.makeRoundedRectangle(width / 2, toggleBtnY, toggleBtnW, 30, 15);
+        toggleBg.fill = showPrimeOnly ? '#dcfce7' : '#e0e7ff';
+        toggleBg.stroke = showPrimeOnly ? '#16a34a' : '#4338ca';
+        toggleBg.linewidth = 1.5;
+
+        const toggleT = two.makeText(showPrimeOnly ? '🔄 전체 약수 보기' : '🔍 소수만 필터링 (소인수 찾기)', width / 2, toggleBtnY);
+        toggleT.size = 11.5;
+        toggleT.weight = 800;
+        toggleT.fill = showPrimeOnly ? '#15803d' : '#4338ca';
+
+        // Detail Explanation Card
+        const cardH = 80;
+        const cardBg = two.makeRoundedRectangle(width / 2, 275, width - 36, cardH, 8);
+        cardBg.fill = '#ffffff';
+        cardBg.stroke = '#cbd5e1';
+        cardBg.linewidth = 1.5;
+
+        const t1Str = isPassed2_1
+          ? '📖 [12의 약수 분석] 12의 약수는 1, 2, 3, 4, 6, 12입니다.'
+          : '📖 [12의 약수와 소수 탐구] 아래 필터 버튼을 눌러 소수와 합성수를 분류해 보세요.';
+        const cT1 = two.makeText(t1Str, width / 2, 252);
+        cT1.size = 12; cT1.weight = 800; cT1.fill = '#1e293b';
+
+        const cT2 = two.makeText('• 1은 소수가 아니며, 4, 6, 12는 약수가 3개 이상인 합성수입니다.', width / 2, 274);
+        cT2.size = 10.5; cT2.weight = 600; cT2.fill = '#64748b';
+
+        const t3Str = isPassed2_1
+          ? '• 2, 3은 약수가 1과 자신뿐인 \'소수\'이며, 이를 12의 \'소인수\'라고 합니다!'
+          : '• 12의 약수 중에서 1과 자신만을 약수로 갖는 \'소수\'가 무엇인지 찾아보세요.';
+        const cT3 = two.makeText(t3Str, width / 2, 296);
+        cT3.size = 11; cT3.weight = 800; cT3.fill = '#15803d';
+
+      } else {
+        // Mode 2: 소수만의 곱 분해 랩
+        const stepVal = state.lab2_1.step || 0;
+        const stepLabels = ['1단계: 12', '2단계: 2 × 6', '3단계: 2 × 2 × 3 (소수만의 곱)'];
+        stepW = Math.min(170, Math.floor((width - 48) / 3));
+        startStepX = (width - (3 * stepW + 16)) / 2;
+
+        for (let i = 0; i < 3; i++) {
+          const sx = startStepX + i * (stepW + 8) + stepW / 2;
+          const isSActive = (stepVal === i);
+
+          const sBg = two.makeRoundedRectangle(sx, 86, stepW, 24, 6);
+          sBg.fill = isSActive ? '#e0e7ff' : '#f8fafc';
+          sBg.stroke = isSActive ? '#4338ca' : '#cbd5e1';
+          sBg.linewidth = isSActive ? 2 : 1;
+
+          const sT = two.makeText(stepLabels[i], sx, 86);
+          sT.size = (width < 600) ? 9.5 : 10.5;
+          sT.weight = isSActive ? 800 : 600;
+          sT.fill = isSActive ? '#4338ca' : '#475569';
+        }
+
+        const cx = width / 2;
+        // Root node 12
+        const rootCircle = two.makeCircle(cx, 122, 18);
+        rootCircle.fill = '#4f46e5';
+        rootCircle.stroke = '#3730a3';
+        rootCircle.linewidth = 2;
+        const rT = two.makeText('12', cx, 122);
+        rT.size = 13; rT.weight = 800; rT.fill = '#ffffff';
+
+        if (stepVal >= 1) {
+          // Left child 2
+          const lLine = two.makeLine(cx - 8, 136, cx - 60, 172);
+          lLine.stroke = '#16a34a'; lLine.linewidth = 2;
+
+          const lC = two.makeCircle(cx - 60, 182, 17);
+          lC.fill = '#dcfce7'; lC.stroke = '#16a34a'; lC.linewidth = 2.2;
+          const lT = two.makeText('2', cx - 60, 182);
+          lT.size = 13; lT.weight = 800; lT.fill = '#15803d';
+
+          const lBadge = two.makeText('소수 🟢', cx - 60, 206);
+          lBadge.size = 9; lBadge.weight = 800; lBadge.fill = '#15803d';
+
+          // Right child 6
+          const rLine = two.makeLine(cx + 8, 136, cx + 60, 172);
+          rLine.stroke = (stepVal >= 2) ? '#9333ea' : '#3b82f6';
+          rLine.linewidth = 2;
+
+          const rC = two.makeCircle(cx + 60, 182, 17);
+          rC.fill = (stepVal >= 2) ? '#f3e8ff' : '#dbeafe';
+          rC.stroke = (stepVal >= 2) ? '#9333ea' : '#2563eb';
+          rC.linewidth = 2.2;
+          const rT2 = two.makeText('6', cx + 60, 182);
+          rT2.size = 13; rT2.weight = 800; rT2.fill = (stepVal >= 2) ? '#7e22ce' : '#1d4ed8';
+
+          const rBadge = two.makeText(stepVal >= 2 ? '합성수 분해 완료' : '합성수 (터치하여 분해 👆)', cx + 60, 206);
+          rBadge.size = 9; rBadge.weight = 800; rBadge.fill = (stepVal >= 2) ? '#7e22ce' : '#1d4ed8';
+        }
+
+        if (stepVal >= 2) {
+          // From 6: child 2 and child 3
+          const subL = two.makeLine(cx + 50, 196, cx + 22, 236);
+          subL.stroke = '#16a34a'; subL.linewidth = 2;
+
+          const subC1 = two.makeCircle(cx + 22, 246, 15);
+          subC1.fill = '#dcfce7'; subC1.stroke = '#16a34a'; subC1.linewidth = 2;
+          const subT1 = two.makeText('2', cx + 22, 246);
+          subT1.size = 12; subT1.weight = 800; subT1.fill = '#15803d';
+
+          const subR = two.makeLine(cx + 70, 196, cx + 98, 236);
+          subR.stroke = '#16a34a'; subR.linewidth = 2;
+
+          const subC2 = two.makeCircle(cx + 98, 246, 15);
+          subC2.fill = '#dcfce7'; subC2.stroke = '#16a34a'; subC2.linewidth = 2;
+          const subT2 = two.makeText('3', cx + 98, 246);
+          subT2.size = 12; subT2.weight = 800; subT2.fill = '#15803d';
+
+          const endBadge = two.makeText('모든 끝이 소수(2, 2, 3)로 분해 완성!', cx + 60, 272);
+          endBadge.size = 9.5; endBadge.weight = 800; endBadge.fill = '#15803d';
+        }
+
+        // Formula Banner at y = 305
+        const fBg = two.makeRoundedRectangle(cx, 305, width - 36, 34, 6);
+        fBg.fill = '#ffffff'; fBg.stroke = '#cbd5e1'; fBg.linewidth = 1.2;
+
+        let formStr = '';
+        if (stepVal === 0) formStr = '12 (아직 분해되지 않음 ➔ \'다음\' 또는 12 노드를 눌러보세요)';
+        else if (stepVal === 1) formStr = '12 = 2 × 6 (6은 합성수이므로 6 노드를 눌러 더 분해해 보세요)';
+        else formStr = '✨ 12 = 2 × 2 × 3 = 2² × 3 (소수들만의 곱으로 소인수분해 완료!)';
+
+        const fT = two.makeText(formStr, cx, 305);
+        fT.size = 11; fT.weight = 800;
+        fT.fill = (stepVal === 2) ? '#15803d' : '#334155';
+      }
+
+      // 4. Bottom Rule / Conclusion Banner (Strict Zero-Spoiler)
+      const bannerCenterY = 380;
+      const bannerW = width - 32;
+      const bannerH = 68;
+      const bannerBg = two.makeRoundedRectangle(width / 2, bannerCenterY, bannerW, bannerH, 8);
+      bannerBg.fill = '#eef2ff';
+      bannerBg.stroke = '#c7d2fe';
+      bannerBg.linewidth = 1.5;
+
+      const rule1Text = isPassed2_1
+        ? '💡 [수학적 정의] 12의 약수(인수) 중에서 2, 3과 같이 소수인 것을 12의 \'소인수\'라고 합니다.'
+        : '💡 [수학적 원리] 12를 두 자연수의 곱 a × b 로 나타내면 a와 b는 12의 약수(인수)가 됩니다.';
+      const rule1 = two.makeText(rule1Text, width / 2, bannerCenterY - 12);
+      rule1.size = (width < 600) ? 9.5 : 10.5;
+      rule1.weight = 700;
+      rule1.fill = '#334155';
+
+      const rule2Text = isPassed2_1
+        ? '📌 [교과서 결론] 12의 약수: 1, 2, 3, 4, 6, 12 | 12의 소인수: 2, 3 | 소수만의 곱: 12 = 2 × 2 × 3 = 2² × 3'
+        : '📌 [탐구 가이드] 상단 랩 탭과 블록 버튼들을 터치하여 12의 약수, 소인수, 그리고 소수만의 곱을 확인해 보세요.';
+
+      const rule2 = two.makeText(rule2Text, width / 2, bannerCenterY + 12);
+      rule2.size = (width < 600) ? 9.5 : 10.5;
+      rule2.weight = 800;
+      rule2.fill = isPassed2_1 ? '#15803d' : '#4338ca';
+
+      two.update();
+
+      // Bind Pointer Event on Canvas
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas') : null;
+      if (canvasEl) {
+        canvasEl.onpointerdown = (e) => {
+          const rect = canvasEl.getBoundingClientRect();
+          const px = (e.clientX - rect.left) * (width / rect.width);
+          const py = (e.clientY - rect.top) * (height / rect.height);
+
+          // 1. Check Mode Tabs (y: 44 ~ 68)
+          if (py >= 44 && py <= 68) {
+            for (let i = 0; i < 3; i++) {
+              const tx = startTabX + i * (tabW + 8);
+              if (px >= tx && px <= tx + tabW) {
+                setStep2_1Mode(i);
+                return;
+              }
+            }
+          }
+
+          // 2. Mode 0 interactions
+          if (curMode === 0) {
+            // Pair pills (y: 74 ~ 98)
+            if (py >= 74 && py <= 98) {
+              for (let i = 0; i < 3; i++) {
+                const pxLeft = pairStartX + i * (pairW + 8);
+                if (px >= pxLeft && px <= pxLeft + pairW) {
+                  setStep2_1Pair(i);
+                  return;
+                }
+              }
+              // Decompose toggle button
+              if (px >= decompBtnX - 52 && px <= decompBtnX + 52) {
+                toggleStep2_1Decompose();
+                return;
+              }
+            }
+            // Blocks arena (y: 215 ~ 305) -> toggle decompose
+            if (py >= 215 && py <= 305 && px >= 20 && px <= width - 20) {
+              toggleStep2_1Decompose();
+              return;
+            }
+          }
+
+          // 3. Mode 1 interactions
+          if (curMode === 1) {
+            // Toggle Filter button (y: 173 ~ 203)
+            if (py >= 173 && py <= 203 && px >= width / 2 - 115 && px <= width / 2 + 115) {
+              toggleStep2_1PrimeOnly();
+              return;
+            }
+            // Divisor chips (y: 90 ~ 160)
+            if (py >= 90 && py <= 160) {
+              toggleStep2_1PrimeOnly();
+              return;
+            }
+          }
+
+          // 4. Mode 2 interactions
+          if (curMode === 2) {
+            // Step pills (y: 74 ~ 98)
+            if (py >= 74 && py <= 98) {
+              for (let i = 0; i < 3; i++) {
+                const sxLeft = startStepX + i * (stepW + 8);
+                if (px >= sxLeft && px <= sxLeft + stepW) {
+                  state.lab2_1.step = i;
+                  renderToolbar2_1();
+                  drawStep2_1Canvas();
+                  return;
+                }
+              }
+            }
+            // Node 6 area -> advance step
+            const dist6 = Math.hypot(px - (width / 2 + 60), py - 182);
+            if (dist6 <= 35) {
+              step2_1PrimeFactorize(1);
+              return;
+            }
+            // Root 12 area -> advance step
+            const dist12 = Math.hypot(px - (width / 2), py - 122);
+            if (dist12 <= 30) {
+              step2_1PrimeFactorize(1);
+              return;
+            }
+            // Formula box -> advance step
+            if (py >= 288 && py <= 322) {
+              step2_1PrimeFactorize(1);
+              return;
+            }
+          }
+        };
+      }
+    }
+
+    async function gradeStep2_1() {
+      const ans1Raw = cleanInput(document.getElementById('ans-2-1-1')?.value);
+      const ans2Raw = cleanInput(document.getElementById('ans-2-1-2')?.value);
+      const ans3 = document.querySelector('input[name="ans-2-1-3"]:checked')?.value;
+      const ans4 = document.querySelector('input[name="ans-2-1-4"]:checked')?.value;
+
+      const fEl = document.getElementById('feedback-2-1');
+      if (!fEl) return;
+
+      // 1. ans1: 12의 약수 (1, 2, 3, 4, 6, 12)
+      const items1 = ans1Raw.split(/[, ]+/).map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n)).sort((a,b)=>a-b);
+      const expected1 = [1, 2, 3, 4, 6, 12];
+      const ok1 = (items1.length === 6 && items1.every((v, i) => v === expected1[i]));
+
+      // 2. ans2: 12의 소수 약수 (2, 3)
+      const items2 = ans2Raw.split(/[, ]+/).map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n)).sort((a,b)=>a-b);
+      const expected2 = [2, 3];
+      const ok2 = (items2.length === 2 && items2.every((v, i) => v === expected2[i]));
+
+      // 3. ans3: radio option 4 (2 x 2 x 3)
+      const ok3 = (ans3 === '4');
+
+      // 4. ans4: radio option 2 (소인수)
+      const ok4 = (ans4 === '2');
+
+      if (ok1 && ok2 && ok3 && ok4) {
+        fEl.style.display = 'block';
+        fEl.className = 'verified-answer-card';
+        fEl.style.background = '#f0fdf4';
+        fEl.style.border = '1.5px solid #86efac';
+        fEl.innerHTML = `
+          <h4 style="color:#15803d; font-size:0.95rem; font-weight:800; margin-bottom:6px;">🎉 100점! 완벽합니다!</h4>
+          <div style="font-size:0.86rem; color:#166534; line-height:1.6;">
+            12의 약수와 소인수, 그리고 소수만의 곱셈 분해 개념을 완벽하게 이해했습니다.<br>
+            • <b>⑴ 12의 약수:</b> <b>1, 2, 3, 4, 6, 12</b><br>
+            • <b>⑵ 12의 소수 약수:</b> <b>2, 3</b><br>
+            • <b>⑶ [생각 톡] 소수만의 곱:</b> <b>$12 = 2 \\times 2 \\times 3 = 2^2 \\times 3$</b><br>
+            • <b>⑷ [새로운 용어]:</b> 어떤 자연수의 인수(약수) 중에서 소수인 것을 그 자연수의 <b>'소인수 (Prime Factor)'</b>라고 부릅니다.<br>
+            <div style="margin-top:10px; padding:10px; background:#e0e7ff; border-radius:6px; color:#4338ca; font-weight:700;">
+              🚀 다음 세부 활동 <b>[2-2] 2. 소인수의 뜻과 문제 1</b>이 해금되었습니다!
+            </div>
+          </div>
+        `;
+
+        if (!state.completedSubSteps.includes('2-1')) {
+          state.completedSubSteps.push('2-1');
+        }
+        if (!state.unlockedSubSteps.includes('2-2')) {
+          state.unlockedSubSteps.push('2-2');
+        }
+
+        renderMainTabs();
+        renderSubstepPills();
+        drawStep2_1Canvas();
+
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('2-1', {
+              activityTitle: '[중1-1 소인수분해] [2-1] 1. 생각열기: 블록 장난감과 12 분해',
+              answerText: `12의 약수: ${ans1Raw} | 12의 소수: ${ans2Raw} | 소수만의 곱: 2x2x3 | 용어: 소인수`,
+              answers: { ans1: ans1Raw, ans2: ans2Raw, ans3, ans4 },
+              score: 100,
+              passed: true,
+              unitId: 'u1'
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+      } else {
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            ${!ok1 ? '• ⑴ 12를 두 수의 곱(a × b)으로 나타낼 수 있는 수들을 작은 수부터 모두 찾아 써 보세요. (총 6개)<br>' : ''}
+            ${!ok2 ? '• ⑵ 12의 약수 중에서 1과 자기 자신만을 약수로 갖는 소수 2개를 찾아보세요. (1은 소수가 아닙니다)<br>' : ''}
+            ${!ok3 ? '• ⑶ 12를 더 이상 쪼갤 수 없는 소수들만의 곱으로 끝까지 나타낸 보기를 골라보세요.<br>' : ''}
+            ${!ok4 ? '• ⑷ 어떤 수의 약수(인수) 중에서 소수인 것을 가리키는 수학 용어를 확인해 보세요.<br>' : ''}
+            💡 좌측 캔버스의 모드 탭(⑴~⑶)과 블록/분해 조작 버튼을 활용하여 시각적으로 확인해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (2-2 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -9105,6 +9915,14 @@
         renderToolbar1_12();
         updatePrimeChipsUI();
         drawStep1_12Canvas();
+      } else if (state.subStep === '2-1') {
+        state.lab2_1.mode = 0;
+        state.lab2_1.selectedPair = 0;
+        state.lab2_1.isDecomposed = false;
+        state.lab2_1.showPrimeOnly = false;
+        state.lab2_1.step = 0;
+        renderToolbar2_1();
+        drawStep2_1Canvas();
       }
     }
 
@@ -9368,6 +10186,7 @@
         else if (state.subStep === '1-10') drawStep1_10Canvas();
         else if (state.subStep === '1-11') drawStep1_11Canvas();
         else if (state.subStep === '1-12') drawStep1_12Canvas();
+        else if (state.subStep === '2-1') drawStep2_1Canvas();
       }, 150);
     });
 
