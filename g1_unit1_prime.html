@@ -1073,6 +1073,12 @@
         problemIndex: 0, // 0: 10, 1: 21, 2: 28, 3: 36
         showPrimeOnly: false, // filter prime toggle
         selectedDivisor: null // clicked divisor for inspection
+      },
+      // 2-3 Interactive Lab State (3. 소인수분해 개념 및 예제 1)
+      lab2_3: {
+        method: 0, // 0: 나뭇가지 분해법 (Factor Tree), 1: 거꾸로 나눗셈법 (Ladder)
+        targetIndex: 0, // 0: 45, 1: 60, 2: 36 (개념 예시)
+        step: 0 // step index for current factorization
       }
     };
 
@@ -1254,6 +1260,9 @@
       } else if (code === '2-2') {
         renderToolbar2_2();
         renderSubstep2_2();
+      } else if (code === '2-3') {
+        renderToolbar2_3();
+        renderSubstep2_3();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -2234,6 +2243,52 @@
     function selectStep2_2Divisor(d) {
       state.lab2_2.selectedDivisor = (state.lab2_2.selectedDivisor === d) ? null : d;
       drawStep2_2Canvas();
+    }
+
+    function renderToolbar2_3() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+      const curMethod = state.lab2_3.method;
+      const curTarget = state.lab2_3.targetIndex;
+
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569;">분해 방법:</span>
+        <button class="tool-btn ${curMethod === 0 ? 'active' : ''}" onclick="setStep2_3Method(0)">🌳 1. 나뭇가지 분해법</button>
+        <button class="tool-btn ${curMethod === 1 ? 'active' : ''}" onclick="setStep2_3Method(1)">🪜 2. 거꾸로 나눗셈법</button>
+        <span style="margin:0 4px; color:#cbd5e1;">|</span>
+        <span style="font-size:0.8rem; font-weight:800; color:#475569;">대상 수:</span>
+        <button class="tool-btn ${curTarget === 0 ? 'active' : ''}" onclick="setStep2_3Target(0)">⑴ 45</button>
+        <button class="tool-btn ${curTarget === 1 ? 'active' : ''}" onclick="setStep2_3Target(1)">⑵ 60</button>
+        <button class="tool-btn ${curTarget === 2 ? 'active' : ''}" onclick="setStep2_3Target(2)">💡 개념 예시 36</button>
+        <span style="margin:0 4px; color:#cbd5e1;">|</span>
+        <button class="tool-btn" onclick="step2_3Progress(-1)" style="padding:4px 8px;">◀ 이전</button>
+        <button class="tool-btn" onclick="step2_3Progress(1)" style="padding:4px 8px;">다음 ▶</button>
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setStep2_3Method(m) {
+      state.lab2_3.method = m;
+      state.lab2_3.step = 0;
+      renderToolbar2_3();
+      drawStep2_3Canvas();
+    }
+
+    function setStep2_3Target(idx) {
+      state.lab2_3.targetIndex = idx;
+      state.lab2_3.step = 0;
+      renderToolbar2_3();
+      drawStep2_3Canvas();
+    }
+
+    function step2_3Progress(delta) {
+      const maxSteps = [3, 4, 3]; // for 45, 60, 36
+      const limit = maxSteps[state.lab2_3.targetIndex] || 3;
+      state.lab2_3.step = Math.max(0, Math.min(limit, state.lab2_3.step + delta));
+      renderToolbar2_3();
+      drawStep2_3Canvas();
     }
 
 
@@ -10339,7 +10394,675 @@
     }
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (2-3 to 6-2)
+    // SUBSTEP 2-3: 3. 소인수분해 개념 및 예제 1 (p.14)
+    // -------------------------------------------------------------
+    function renderSubstep2_3() {
+      const missionEl = document.getElementById('mission-text');
+      if (missionEl) {
+        missionEl.innerHTML = `<b>[2-3] 3. 소인수분해 개념 및 예제 1 (교과서 14쪽)</b><br>1보다 큰 자연수를 소수들만의 곱으로 나타내는 것을 '소인수분해'라고 합니다. 나뭇가지 분해와 거꾸로 나눗셈의 원리를 탐구하고 예제 1을 해결해 봅시다.`;
+      }
+
+      const formArea = document.getElementById('form-work-area');
+      if (!formArea) return;
+
+      formArea.innerHTML = `
+        <div class="card" style="padding:16px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">02 소인수분해</span>
+            <span style="font-size:0.8rem; color:#64748b; font-weight:600;">교과서 14쪽</span>
+          </div>
+          <h3 style="font-size:1.05rem; font-weight:800; color:#1e293b; margin-bottom:8px;">3. 소인수분해 개념 및 예제 1</h3>
+          <p style="font-size:0.86rem; color:#475569; line-height:1.6; margin-bottom:14px; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
+            <b>[핵심 개념]</b> 1보다 큰 자연수를 <b>소수들만의 곱</b>으로 나타내는 것을 그 수를 <b>소인수분해</b>한다고 합니다.<br>
+            • 소인수분해한 결과는 보통 크기가 작은 소인수부터 차례로 쓰고, 같은 소인수의 곱은 <b>거듭제곱</b>으로 나타냅니다.<br>
+            예) $36 = 2 \\times 2 \\times 3 \\times 3 = 2^2 \\times 3^2$
+          </p>
+
+          <div style="display:flex; flex-direction:column; gap:14px;">
+            <div style="font-size:0.92rem; font-weight:800; color:#1e293b;">
+              [예제 1] 다음 수를 소인수분해하시오.
+              <span style="font-size:0.8rem; font-weight:600; color:#64748b; display:block; margin-top:2px;">(작은 소인수부터 거듭제곱 기호 '^'와 곱셈 기호 '*' 또는 'x'를 사용하여 입력)</span>
+            </div>
+
+            <!-- ⑴ 45 -->
+            <div style="background:#f8fafc; padding:12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.88rem; font-weight:800; color:#1e293b; display:block; margin-bottom:6px;">
+                ⑴ 45를 소인수분해하시오.
+              </label>
+              <div style="font-size:0.8rem; color:#64748b; margin-bottom:6px;">(입력 형식 예: 2^2*3^2 또는 2^2x3^2)</div>
+              <input type="text" id="ans-2-3-1" class="proof-input-text" placeholder="답 입력" style="width:100%;" autocomplete="off">
+            </div>
+
+            <!-- ⑵ 60 -->
+            <div style="background:#f8fafc; padding:12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.88rem; font-weight:800; color:#1e293b; display:block; margin-bottom:6px;">
+                ⑵ 60을 소인수분해하시오.
+              </label>
+              <div style="font-size:0.8rem; color:#64748b; margin-bottom:6px;">(입력 형식 예: 2^3*5 또는 2^3x5)</div>
+              <input type="text" id="ans-2-3-2" class="proof-input-text" placeholder="답 입력" style="width:100%;" autocomplete="off">
+            </div>
+
+            <!-- ⑶ 개념 확인 객관식 -->
+            <div style="background:#f8fafc; padding:12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.88rem; font-weight:800; color:#1e293b; display:block; margin-bottom:6px;">
+                ⑶ [개념 확인] 다음 중 자연수 45를 바르게 소인수분해한 것은?
+              </label>
+              <div style="display:flex; flex-direction:column; gap:6px; font-size:0.86rem; color:#334155; margin-top:6px;">
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                  <input type="radio" name="ans-2-3-3" value="1"> ① $45 = 9 \\times 5$
+                </label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                  <input type="radio" name="ans-2-3-3" value="2"> ② $45 = 3^2 \\times 5$
+                </label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                  <input type="radio" name="ans-2-3-3" value="3"> ③ $45 = 1 \\times 45$
+                </label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                  <input type="radio" name="ans-2-3-3" value="4"> ④ $45 = 3 \\times 15$
+                </label>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" onclick="gradeStep2_3()" style="padding:10px; font-weight:800; font-size:0.92rem; width:100%; margin-top:4px;">
+              ✅ 정답 확인 및 채점하기
+            </button>
+          </div>
+
+          <div id="feedback-2-3" style="display:none; margin-top:12px; padding:12px; border-radius:8px;"></div>
+        </div>
+      `;
+
+      drawStep2_3Canvas();
+
+      if (window.renderMathInElement) {
+        renderMathInElement(formArea, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    const TARGETS_2_3 = [
+      { num: 45, maxStep: 3, label: '⑴ 45', primeFactors: [3, 3, 5], powerStr: '3² × 5' },
+      { num: 60, maxStep: 4, label: '⑵ 60', primeFactors: [2, 2, 3, 5], powerStr: '2² × 3 × 5' },
+      { num: 36, maxStep: 3, label: '💡 개념 예시 36', primeFactors: [2, 2, 3, 3], powerStr: '2² × 3²' }
+    ];
+
+    function drawStep2_3Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const curMethod = state.lab2_3.method || 0;
+      const curTargetIdx = state.lab2_3.targetIndex || 0;
+      const stepVal = state.lab2_3.step || 0;
+      const curT = TARGETS_2_3[curTargetIdx];
+      const isPassed2_3 = state.completedSubSteps && state.completedSubSteps.includes('2-3');
+
+      // 1. Header (Title & Subtitle)
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(10.5, Math.min(12, Math.floor(width * 0.018)));
+
+      const headerTitle = two.makeText('🌲 [소인수분해 2대 방법] 나뭇가지 분해 vs 거꾸로 나눗셈 랩', width / 2, 16);
+      headerTitle.size = titleSize;
+      headerTitle.weight = 800;
+      headerTitle.fill = '#1e293b';
+
+      const headerSub = two.makeText('합성수를 소수가 나올 때까지 분해하여 거듭제곱으로 나타내는 과정을 체험해 보세요.', width / 2, 33);
+      headerSub.size = subSize;
+      headerSub.weight = 600;
+      headerSub.fill = '#4f46e5';
+
+      // 2. Method Selector Tabs (y = 56, h = 24)
+      const tabNames = ['🌳 1. 나뭇가지 분해법', '🪜 2. 거꾸로 나눗셈법'];
+      const tabW = Math.min(180, Math.floor((width - 48) / 2));
+      const startTabX = (width - (2 * tabW + 12)) / 2;
+
+      for (let i = 0; i < 2; i++) {
+        const tx = startTabX + i * (tabW + 12) + tabW / 2;
+        const isActive = (curMethod === i);
+
+        const tabBg = two.makeRoundedRectangle(tx, 56, tabW, 24, 12);
+        tabBg.fill = isActive ? '#4f46e5' : '#f1f5f9';
+        tabBg.stroke = isActive ? '#4338ca' : '#cbd5e1';
+        tabBg.linewidth = isActive ? 1.5 : 1;
+
+        const tabT = two.makeText(tabNames[i], tx, 56);
+        tabT.size = (width < 600) ? 10 : 11;
+        tabT.weight = isActive ? 800 : 600;
+        tabT.fill = isActive ? '#ffffff' : '#475569';
+      }
+
+      // 3. Target Number Selection Pills (y = 84, h = 22)
+      const pillW = Math.min(130, Math.floor((width - 48) / 3));
+      const startPillX = (width - (3 * pillW + 16)) / 2;
+
+      for (let i = 0; i < 3; i++) {
+        const px = startPillX + i * (pillW + 8) + pillW / 2;
+        const isPActive = (curTargetIdx === i);
+
+        const pBg = two.makeRoundedRectangle(px, 84, pillW, 22, 6);
+        pBg.fill = isPActive ? '#e0e7ff' : '#f8fafc';
+        pBg.stroke = isPActive ? '#4338ca' : '#cbd5e1';
+        pBg.linewidth = isPActive ? 2 : 1;
+
+        const pT = two.makeText(TARGETS_2_3[i].label, px, 84);
+        pT.size = (width < 600) ? 9.5 : 10.5;
+        pT.weight = isPActive ? 800 : 600;
+        pT.fill = isPActive ? '#4338ca' : '#475569';
+      }
+
+      // Step indicator & guidance (y = 104)
+      const stepNote = two.makeText(`[단계 ${stepVal + 1} / ${curT.maxStep + 1}]  '다음 ▶' 버튼이나 노드를 눌러 단계별로 분해해 보세요.`, width / 2, 104);
+      stepNote.size = 10.5;
+      stepNote.weight = 700;
+      stepNote.fill = '#64748b';
+
+      const cx = width / 2;
+
+      // 4. Middle Arena: Tree or Ladder
+      if (curMethod === 0) {
+        // --- 🌳 Method 1: Factor Tree ---
+        if (curT.num === 45) {
+          // Root 45
+          const rC = two.makeCircle(cx, 130, 18);
+          rC.fill = '#4f46e5'; rC.stroke = '#3730a3'; rC.linewidth = 2;
+          const rT = two.makeText('45', cx, 130);
+          rT.size = 13; rT.weight = 800; rT.fill = '#ffffff';
+
+          if (stepVal >= 1) {
+            // Left: 3 (prime 🟢)
+            const l1 = two.makeLine(cx - 8, 144, cx - 55, 178);
+            l1.stroke = '#16a34a'; l1.linewidth = 2;
+            const c1 = two.makeCircle(cx - 55, 188, 16);
+            c1.fill = '#dcfce7'; c1.stroke = '#16a34a'; c1.linewidth = 2;
+            const t1 = two.makeText('3', cx - 55, 188);
+            t1.size = 12; t1.weight = 800; t1.fill = '#15803d';
+
+            // Right: 15 (composite 🟣)
+            const l2 = two.makeLine(cx + 8, 144, cx + 55, 178);
+            l2.stroke = (stepVal >= 2) ? '#9333ea' : '#3b82f6'; l2.linewidth = 2;
+            const c2 = two.makeCircle(cx + 55, 188, 16);
+            c2.fill = (stepVal >= 2) ? '#f3e8ff' : '#dbeafe';
+            c2.stroke = (stepVal >= 2) ? '#9333ea' : '#2563eb';
+            c2.linewidth = 2;
+            const t2 = two.makeText('15', cx + 55, 188);
+            t2.size = 12; t2.weight = 800; t2.fill = (stepVal >= 2) ? '#7e22ce' : '#1d4ed8';
+
+            const b1 = two.makeText('소수 🟢', cx - 55, 210);
+            b1.size = 9; b1.weight = 800; b1.fill = '#15803d';
+            const b2 = two.makeText(stepVal >= 2 ? '분해 완료' : '합성수 (터치 👆)', cx + 55, 210);
+            b2.size = 9; b2.weight = 800; b2.fill = (stepVal >= 2) ? '#7e22ce' : '#1d4ed8';
+          }
+
+          if (stepVal >= 2) {
+            // From 15: child 3 and child 5
+            const sl1 = two.makeLine(cx + 45, 202, cx + 22, 238);
+            sl1.stroke = '#16a34a'; sl1.linewidth = 2;
+            const sc1 = two.makeCircle(cx + 22, 248, 15);
+            sc1.fill = '#dcfce7'; sc1.stroke = '#16a34a'; sc1.linewidth = 2;
+            const st1 = two.makeText('3', cx + 22, 248);
+            st1.size = 12; st1.weight = 800; st1.fill = '#15803d';
+
+            const sl2 = two.makeLine(cx + 65, 202, cx + 88, 238);
+            sl2.stroke = '#16a34a'; sl2.linewidth = 2;
+            const sc2 = two.makeCircle(cx + 88, 248, 15);
+            sc2.fill = '#dcfce7'; sc2.stroke = '#16a34a'; sc2.linewidth = 2;
+            const st2 = two.makeText('5', cx + 88, 248);
+            st2.size = 12; st2.weight = 800; st2.fill = '#15803d';
+
+            const sb = two.makeText('소수들만 남음! (3, 3, 5)', cx + 55, 272);
+            sb.size = 9.5; sb.weight = 800; sb.fill = '#15803d';
+          }
+        } else if (curT.num === 60) {
+          // 60 Tree
+          const rC = two.makeCircle(cx, 124, 18);
+          rC.fill = '#4f46e5'; rC.stroke = '#3730a3'; rC.linewidth = 2;
+          const rT = two.makeText('60', cx, 124);
+          rT.size = 13; rT.weight = 800; rT.fill = '#ffffff';
+
+          if (stepVal >= 1) {
+            const l1 = two.makeLine(cx - 8, 138, cx - 65, 168);
+            l1.stroke = '#16a34a'; l1.linewidth = 2;
+            const c1 = two.makeCircle(cx - 65, 178, 15);
+            c1.fill = '#dcfce7'; c1.stroke = '#16a34a'; c1.linewidth = 2;
+            const t1 = two.makeText('2', cx - 65, 178);
+            t1.size = 12; t1.weight = 800; t1.fill = '#15803d';
+
+            const l2 = two.makeLine(cx + 8, 138, cx + 65, 168);
+            l2.stroke = (stepVal >= 2) ? '#9333ea' : '#3b82f6'; l2.linewidth = 2;
+            const c2 = two.makeCircle(cx + 65, 178, 15);
+            c2.fill = (stepVal >= 2) ? '#f3e8ff' : '#dbeafe';
+            c2.stroke = (stepVal >= 2) ? '#9333ea' : '#2563eb';
+            c2.linewidth = 2;
+            const t2 = two.makeText('30', cx + 65, 178);
+            t2.size = 11.5; t2.weight = 800; t2.fill = (stepVal >= 2) ? '#7e22ce' : '#1d4ed8';
+          }
+
+          if (stepVal >= 2) {
+            const sl1 = two.makeLine(cx + 55, 190, cx + 25, 218);
+            sl1.stroke = '#16a34a'; sl1.linewidth = 2;
+            const sc1 = two.makeCircle(cx + 25, 228, 14);
+            sc1.fill = '#dcfce7'; sc1.stroke = '#16a34a'; sc1.linewidth = 2;
+            const st1 = two.makeText('2', cx + 25, 228);
+            st1.size = 11.5; st1.weight = 800; st1.fill = '#15803d';
+
+            const sl2 = two.makeLine(cx + 75, 190, cx + 105, 218);
+            sl2.stroke = (stepVal >= 3) ? '#9333ea' : '#3b82f6'; sl2.linewidth = 2;
+            const sc2 = two.makeCircle(cx + 105, 228, 14);
+            sc2.fill = (stepVal >= 3) ? '#f3e8ff' : '#dbeafe';
+            sc2.stroke = (stepVal >= 3) ? '#9333ea' : '#2563eb';
+            sc2.linewidth = 2;
+            const st2 = two.makeText('15', cx + 105, 228);
+            st2.size = 11; st2.weight = 800; st2.fill = (stepVal >= 3) ? '#7e22ce' : '#1d4ed8';
+          }
+
+          if (stepVal >= 3) {
+            const ssl1 = two.makeLine(cx + 97, 240, cx + 80, 266);
+            ssl1.stroke = '#16a34a'; ssl1.linewidth = 2;
+            const ssc1 = two.makeCircle(cx + 80, 276, 14);
+            ssc1.fill = '#dcfce7'; ssc1.stroke = '#16a34a'; ssc1.linewidth = 2;
+            const sst1 = two.makeText('3', cx + 80, 276);
+            sst1.size = 11.5; sst1.weight = 800; sst1.fill = '#15803d';
+
+            const ssl2 = two.makeLine(cx + 113, 240, cx + 130, 266);
+            ssl2.stroke = '#16a34a'; ssl2.linewidth = 2;
+            const ssc2 = two.makeCircle(cx + 130, 276, 14);
+            ssc2.fill = '#dcfce7'; ssc2.stroke = '#16a34a'; ssc2.linewidth = 2;
+            const sst2 = two.makeText('5', cx + 130, 276);
+            sst2.size = 11.5; sst2.weight = 800; sst2.fill = '#15803d';
+          }
+        } else {
+          // 36 Tree
+          const rC = two.makeCircle(cx, 126, 18);
+          rC.fill = '#4f46e5'; rC.stroke = '#3730a3'; rC.linewidth = 2;
+          const rT = two.makeText('36', cx, 126);
+          rT.size = 13; rT.weight = 800; rT.fill = '#ffffff';
+
+          if (stepVal >= 1) {
+            const l1 = two.makeLine(cx - 8, 140, cx - 60, 172);
+            l1.stroke = '#16a34a'; l1.linewidth = 2;
+            const c1 = two.makeCircle(cx - 60, 182, 16);
+            c1.fill = '#dcfce7'; c1.stroke = '#16a34a'; c1.linewidth = 2;
+            const t1 = two.makeText('2', cx - 60, 182);
+            t1.size = 12; t1.weight = 800; t1.fill = '#15803d';
+
+            const l2 = two.makeLine(cx + 8, 140, cx + 60, 172);
+            l2.stroke = (stepVal >= 2) ? '#9333ea' : '#3b82f6'; l2.linewidth = 2;
+            const c2 = two.makeCircle(cx + 60, 182, 16);
+            c2.fill = (stepVal >= 2) ? '#f3e8ff' : '#dbeafe';
+            c2.stroke = (stepVal >= 2) ? '#9333ea' : '#2563eb';
+            c2.linewidth = 2;
+            const t2 = two.makeText('18', cx + 60, 182);
+            t2.size = 12; t2.weight = 800; t2.fill = (stepVal >= 2) ? '#7e22ce' : '#1d4ed8';
+          }
+
+          if (stepVal >= 2) {
+            const sl1 = two.makeLine(cx + 50, 196, cx + 25, 226);
+            sl1.stroke = '#16a34a'; sl1.linewidth = 2;
+            const sc1 = two.makeCircle(cx + 25, 236, 15);
+            sc1.fill = '#dcfce7'; sc1.stroke = '#16a34a'; sc1.linewidth = 2;
+            const st1 = two.makeText('2', cx + 25, 236);
+            st1.size = 12; st1.weight = 800; st1.fill = '#15803d';
+
+            const sl2 = two.makeLine(cx + 70, 196, cx + 95, 226);
+            sl2.stroke = (stepVal >= 3) ? '#9333ea' : '#3b82f6'; sl2.linewidth = 2;
+            const sc2 = two.makeCircle(cx + 95, 236, 15);
+            sc2.fill = (stepVal >= 3) ? '#f3e8ff' : '#dbeafe';
+            sc2.stroke = (stepVal >= 3) ? '#9333ea' : '#2563eb';
+            sc2.linewidth = 2;
+            const st2 = two.makeText('9', cx + 95, 236);
+            st2.size = 12; st2.weight = 800; st2.fill = (stepVal >= 3) ? '#7e22ce' : '#1d4ed8';
+          }
+
+          if (stepVal >= 3) {
+            const ssl1 = two.makeLine(cx + 87, 248, cx + 65, 276);
+            ssl1.stroke = '#16a34a'; ssl1.linewidth = 2;
+            const ssc1 = two.makeCircle(cx + 65, 286, 14);
+            ssc1.fill = '#dcfce7'; ssc1.stroke = '#16a34a'; ssc1.linewidth = 2;
+            const sst1 = two.makeText('3', cx + 65, 286);
+            sst1.size = 11.5; sst1.weight = 800; sst1.fill = '#15803d';
+
+            const ssl2 = two.makeLine(cx + 103, 248, cx + 125, 276);
+            ssl2.stroke = '#16a34a'; ssl2.linewidth = 2;
+            const ssc2 = two.makeCircle(cx + 125, 286, 14);
+            ssc2.fill = '#dcfce7'; ssc2.stroke = '#16a34a'; ssc2.linewidth = 2;
+            const sst2 = two.makeText('3', cx + 125, 286);
+            sst2.size = 11.5; sst2.weight = 800; sst2.fill = '#15803d';
+          }
+        }
+      } else {
+        // --- 🪜 Method 2: Ladder / Inverted Division ---
+        const ladderX = cx - 20;
+        const ladderStartY = 135;
+        const rowH = 34;
+
+        if (curT.num === 45) {
+          // Row 0: 45
+          const n0 = two.makeText('45', ladderX + 25, ladderStartY);
+          n0.size = 16; n0.weight = 800; n0.fill = '#1e293b';
+
+          if (stepVal >= 1) {
+            // Row 0 division bracket: 3 ) 45
+            const d1 = two.makeText('3', ladderX - 25, ladderStartY);
+            d1.size = 16; d1.weight = 800; d1.fill = '#15803d';
+
+            const lineH1 = two.makeLine(ladderX - 5, ladderStartY + 14, ladderX + 50, ladderStartY + 14);
+            lineH1.stroke = '#4338ca'; lineH1.linewidth = 2;
+            const lineV1 = two.makeLine(ladderX - 5, ladderStartY - 10, ladderX - 5, ladderStartY + 14);
+            lineV1.stroke = '#4338ca'; lineV1.linewidth = 2;
+
+            // Quotient 15
+            const q1 = two.makeText('15', ladderX + 25, ladderStartY + rowH);
+            q1.size = 16; q1.weight = 800; q1.fill = (stepVal >= 2) ? '#1e293b' : '#3b82f6';
+          }
+
+          if (stepVal >= 2) {
+            // Row 1 bracket: 3 ) 15
+            const d2 = two.makeText('3', ladderX - 25, ladderStartY + rowH);
+            d2.size = 16; d2.weight = 800; d2.fill = '#15803d';
+
+            const lineH2 = two.makeLine(ladderX - 5, ladderStartY + rowH + 14, ladderX + 50, ladderStartY + rowH + 14);
+            lineH2.stroke = '#4338ca'; lineH2.linewidth = 2;
+            const lineV2 = two.makeLine(ladderX - 5, ladderStartY + rowH - 10, ladderX - 5, ladderStartY + rowH + 14);
+            lineV2.stroke = '#4338ca'; lineV2.linewidth = 2;
+
+            // Quotient 5
+            const q2 = two.makeText('5', ladderX + 25, ladderStartY + 2 * rowH);
+            q2.size = 16; q2.weight = 800; q2.fill = '#15803d';
+          }
+
+          if (stepVal >= 3) {
+            // Final L-shape bracket around (3, 3) and (5)
+            const lPath = two.makeCurve(
+              ladderX - 42, ladderStartY - 10,
+              ladderX - 42, ladderStartY + 2 * rowH + 12,
+              ladderX + 45, ladderStartY + 2 * rowH + 12,
+              true
+            );
+            lPath.stroke = '#16a34a'; lPath.linewidth = 2.5; lPath.fill = 'transparent';
+
+            const lBadge = two.makeText('L자 모양 곱: 3 × 3 × 5 = 3² × 5', cx, ladderStartY + 2 * rowH + 34);
+            lBadge.size = 11; lBadge.weight = 800; lBadge.fill = '#15803d';
+          }
+        } else if (curT.num === 60) {
+          // 60 Ladder
+          const n0 = two.makeText('60', ladderX + 25, 125);
+          n0.size = 15; n0.weight = 800; n0.fill = '#1e293b';
+
+          if (stepVal >= 1) {
+            const d1 = two.makeText('2', ladderX - 25, 125);
+            d1.size = 15; d1.weight = 800; d1.fill = '#15803d';
+            two.makeLine(ladderX - 5, 137, ladderX + 50, 137).stroke = '#4338ca';
+            two.makeLine(ladderX - 5, 115, ladderX - 5, 137).stroke = '#4338ca';
+            two.makeText('30', ladderX + 25, 155).fill = '#1e293b';
+          }
+          if (stepVal >= 2) {
+            const d2 = two.makeText('2', ladderX - 25, 155);
+            d2.size = 15; d2.weight = 800; d2.fill = '#15803d';
+            two.makeLine(ladderX - 5, 167, ladderX + 50, 167).stroke = '#4338ca';
+            two.makeLine(ladderX - 5, 145, ladderX - 5, 167).stroke = '#4338ca';
+            two.makeText('15', ladderX + 25, 185).fill = '#1e293b';
+          }
+          if (stepVal >= 3) {
+            const d3 = two.makeText('3', ladderX - 25, 185);
+            d3.size = 15; d3.weight = 800; d3.fill = '#15803d';
+            two.makeLine(ladderX - 5, 197, ladderX + 50, 197).stroke = '#4338ca';
+            two.makeLine(ladderX - 5, 175, ladderX - 5, 197).stroke = '#4338ca';
+            const q3 = two.makeText('5', ladderX + 25, 215);
+            q3.size = 15; q3.weight = 800; q3.fill = '#15803d';
+          }
+          if (stepVal >= 4) {
+            const lBadge = two.makeText('L자 모양 곱: 2 × 2 × 3 × 5 = 2² × 3 × 5', cx, 245);
+            lBadge.size = 11; lBadge.weight = 800; lBadge.fill = '#15803d';
+          }
+        } else {
+          // 36 Ladder
+          const n0 = two.makeText('36', ladderX + 25, 130);
+          n0.size = 15; n0.weight = 800; n0.fill = '#1e293b';
+
+          if (stepVal >= 1) {
+            two.makeText('2', ladderX - 25, 130).fill = '#15803d';
+            two.makeLine(ladderX - 5, 142, ladderX + 50, 142).stroke = '#4338ca';
+            two.makeLine(ladderX - 5, 120, ladderX - 5, 142).stroke = '#4338ca';
+            two.makeText('18', ladderX + 25, 162).fill = '#1e293b';
+          }
+          if (stepVal >= 2) {
+            two.makeText('2', ladderX - 25, 162).fill = '#15803d';
+            two.makeLine(ladderX - 5, 174, ladderX + 50, 174).stroke = '#4338ca';
+            two.makeLine(ladderX - 5, 152, ladderX - 5, 174).stroke = '#4338ca';
+            two.makeText('9', ladderX + 25, 194).fill = '#1e293b';
+          }
+          if (stepVal >= 3) {
+            two.makeText('3', ladderX - 25, 194).fill = '#15803d';
+            two.makeLine(ladderX - 5, 206, ladderX + 50, 206).stroke = '#4338ca';
+            two.makeLine(ladderX - 5, 184, ladderX - 5, 206).stroke = '#4338ca';
+            const q3 = two.makeText('3', ladderX + 25, 226);
+            q3.size = 15; q3.weight = 800; q3.fill = '#15803d';
+
+            const lBadge = two.makeText('L자 모양 곱: 2 × 2 × 3 × 3 = 2² × 3²', cx, 256);
+            lBadge.size = 11; lBadge.weight = 800; lBadge.fill = '#15803d';
+          }
+        }
+      }
+
+      // Live Formula Box (y = 308, h = 34)
+      const fBg = two.makeRoundedRectangle(cx, 308, width - 36, 34, 6);
+      fBg.fill = '#ffffff'; fBg.stroke = '#cbd5e1'; fBg.linewidth = 1.2;
+
+      let liveStr = '';
+      if (stepVal === 0) {
+        liveStr = `${curT.num} (아직 분해되지 않음 ➔ '다음 ▶' 버튼이나 노드를 눌러보세요)`;
+      } else if (stepVal < curT.maxStep) {
+        liveStr = `${curT.num} 분해 진행 중... (소수가 나올 때까지 계속 나눕니다)`;
+      } else {
+        liveStr = `✨ ${curT.num} = ${curT.primeFactors.join(' × ')} = ${curT.powerStr} (소인수분해 완료!)`;
+      }
+
+      const fT = two.makeText(liveStr, cx, 308);
+      fT.size = (width < 600) ? 10 : 11;
+      fT.weight = 800;
+      fT.fill = (stepVal >= curT.maxStep) ? '#15803d' : '#334155';
+
+      // 5. Bottom Rule / Conclusion Banner (Strict Zero-Spoiler)
+      const bannerCenterY = 380;
+      const bannerW = width - 32;
+      const bannerH = 68;
+      const bannerBg = two.makeRoundedRectangle(width / 2, bannerCenterY, bannerW, bannerH, 8);
+      bannerBg.fill = '#eef2ff';
+      bannerBg.stroke = '#c7d2fe';
+      bannerBg.linewidth = 1.5;
+
+      const rule1Text = isPassed2_3
+        ? '💡 [소인수분해의 뜻] 1보다 큰 자연수를 오직 소수들만의 곱으로 나타낸 것이며, 결과는 거듭제곱으로 표기합니다.'
+        : '💡 [소인수분해 원리] 어떤 방법으로 분해하더라도 소인수들의 곱셈 결과는 순서만 다를 뿐 오직 한 가지로 유일합니다.';
+      const rule1 = two.makeText(rule1Text, width / 2, bannerCenterY - 12);
+      rule1.size = (width < 600) ? 9.5 : 10.5;
+      rule1.weight = 700;
+      rule1.fill = '#334155';
+
+      const rule2Text = isPassed2_3
+        ? '📌 [교과서 결론] 45 = 3² × 5 | 60 = 2² × 3 × 5 | 36 = 2² × 3²'
+        : '📌 [탐구 가이드] 분해 방법과 대상 수를 선택하고 \'다음 ▶\' 버튼이나 노드를 눌러 단계별 분해 과정을 탐구해 보세요.';
+
+      const rule2 = two.makeText(rule2Text, width / 2, bannerCenterY + 12);
+      rule2.size = (width < 600) ? 9.5 : 10.5;
+      rule2.weight = 800;
+      rule2.fill = isPassed2_3 ? '#15803d' : '#4338ca';
+
+      two.update();
+
+      // Bind Pointer Events
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas') : null;
+      if (canvasEl) {
+        canvasEl.onpointerdown = (e) => {
+          const rect = canvasEl.getBoundingClientRect();
+          const px = (e.clientX - rect.left) * (width / rect.width);
+          const py = (e.clientY - rect.top) * (height / rect.height);
+
+          // 1. Method tabs (y: 44 ~ 68)
+          if (py >= 44 && py <= 68) {
+            for (let i = 0; i < 2; i++) {
+              const tx = startTabX + i * (tabW + 12);
+              if (px >= tx && px <= tx + tabW) {
+                setStep2_3Method(i);
+                return;
+              }
+            }
+          }
+
+          // 2. Target pills (y: 72 ~ 96)
+          if (py >= 72 && py <= 96) {
+            for (let i = 0; i < 3; i++) {
+              const pxLeft = startPillX + i * (pillW + 8);
+              if (px >= pxLeft && px <= pxLeft + pillW) {
+                setStep2_3Target(i);
+                return;
+              }
+            }
+          }
+
+          // 3. Middle arena click advances step
+          if (py >= 115 && py <= 325) {
+            step2_3Progress(1);
+            return;
+          }
+        };
+      }
+    }
+
+    function parseFactorization2_3(inputStr) {
+      if (!inputStr) return null;
+      const clean = inputStr.replace(/\s+/g, '').replace(/[xX×·]/g, '*');
+      const terms = clean.split('*');
+      if (terms.length === 0 || terms.some(t => !t)) return null;
+
+      const counts = {};
+      for (const t of terms) {
+        if (t.includes('^')) {
+          const parts = t.split('^');
+          if (parts.length !== 2) return null;
+          const base = parseInt(parts[0], 10);
+          const exp = parseInt(parts[1], 10);
+          if (isNaN(base) || isNaN(exp) || exp <= 0) return null;
+          counts[base] = (counts[base] || 0) + exp;
+        } else {
+          const base = parseInt(t, 10);
+          if (isNaN(base)) return null;
+          counts[base] = (counts[base] || 0) + 1;
+        }
+      }
+      return counts;
+    }
+
+    function matchFactorCounts2_3(actual, expected) {
+      if (!actual) return false;
+      const actualKeys = Object.keys(actual).map(Number).sort((a,b)=>a-b);
+      const expectedKeys = Object.keys(expected).map(Number).sort((a,b)=>a-b);
+      if (actualKeys.length !== expectedKeys.length) return false;
+      for (let i = 0; i < actualKeys.length; i++) {
+        const k = actualKeys[i];
+        if (k !== expectedKeys[i]) return false;
+        if (actual[k] !== expected[k]) return false;
+      }
+      return true;
+    }
+
+    async function gradeStep2_3() {
+      const ans1Raw = cleanInput(document.getElementById('ans-2-3-1')?.value);
+      const ans2Raw = cleanInput(document.getElementById('ans-2-3-2')?.value);
+      const ans3 = document.querySelector('input[name="ans-2-3-3"]:checked')?.value;
+
+      const fEl = document.getElementById('feedback-2-3');
+      if (!fEl) return;
+
+      // 1. ans1: 45 = 3^2 * 5
+      const counts1 = parseFactorization2_3(ans1Raw);
+      const ok1 = matchFactorCounts2_3(counts1, { 3: 2, 5: 1 });
+
+      // 2. ans2: 60 = 2^2 * 3 * 5
+      const counts2 = parseFactorization2_3(ans2Raw);
+      const ok2 = matchFactorCounts2_3(counts2, { 2: 2, 3: 1, 5: 1 });
+
+      // 3. ans3: radio option 2 (45 = 3^2 x 5)
+      const ok3 = (ans3 === '2');
+
+      if (ok1 && ok2 && ok3) {
+        fEl.style.display = 'block';
+        fEl.className = 'verified-answer-card';
+        fEl.style.background = '#f0fdf4';
+        fEl.style.border = '1.5px solid #86efac';
+        fEl.innerHTML = `
+          <h4 style="color:#15803d; font-size:0.95rem; font-weight:800; margin-bottom:6px;">🎉 100점! 완벽합니다!</h4>
+          <div style="font-size:0.86rem; color:#166534; line-height:1.6;">
+            소인수분해의 개념과 두 가지 분해 방법(나뭇가지 분해법, 거꾸로 나눗셈법)을 완벽하게 마스터했습니다.<br>
+            • <b>⑴ 45의 소인수분해:</b> <b>$45 = 3^2 \\times 5$</b> (소인수: 3, 5)<br>
+            • <b>⑵ 60의 소인수분해:</b> <b>$60 = 2^2 \\times 3 \\times 5$</b> (소인수: 2, 3, 5)<br>
+            • <b>⑶ 소인수분해 판별:</b> $45 = 9 \\times 5$에서 9는 합성수이므로 소인수분해가 아닙니다. 오직 소수만의 곱인 <b>$45 = 3^2 \\times 5$</b>가 바른 표현입니다.<br>
+            <div style="margin-top:10px; padding:10px; background:#e0e7ff; border-radius:6px; color:#4338ca; font-weight:700;">
+              🚀 다음 세부 활동 <b>[2-4] 4. 문제 2 (소인수분해 실전)</b>가 해금되었습니다!
+            </div>
+          </div>
+        `;
+
+        if (!state.completedSubSteps.includes('2-3')) {
+          state.completedSubSteps.push('2-3');
+        }
+        if (!state.unlockedSubSteps.includes('2-4')) {
+          state.unlockedSubSteps.push('2-4');
+        }
+
+        renderMainTabs();
+        renderSubstepPills();
+        drawStep2_3Canvas();
+
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('2-3', {
+              activityTitle: '[중1-1 소인수분해] [2-3] 3. 소인수분해 개념 및 예제 1',
+              answerText: `45 소인수분해: ${ans1Raw} | 60 소인수분해: ${ans2Raw} | 개념확인: 2번`,
+              answers: { ans1: ans1Raw, ans2: ans2Raw, ans3 },
+              score: 100,
+              passed: true,
+              unitId: 'u1'
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+      } else {
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            ${!ok1 ? '• ⑴ 45를 소수가 나올 때까지 끝까지 분해하여 작은 소인수부터 거듭제곱으로 나타내 보세요.<br>' : ''}
+            ${!ok2 ? '• ⑵ 60을 소수(2, 3, 5 등)로 나누어 더 이상 나누어떨어지지 않을 때까지 소인수분해해 보세요.<br>' : ''}
+            ${!ok3 ? '• ⑶ 소인수분해는 오직 \'소수들만의 곱\'이어야 합니다. 곱하는 수 중 합성수가 섞여 있지 않은 보기를 찾아보세요.<br>' : ''}
+            💡 좌측 캔버스의 분해 방법(🌳 나뭇가지, 🪜 거꾸로 나눗셈)을 선택하고 단계별 과정을 확인해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (2-4 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -10487,6 +11210,12 @@
         state.lab2_2.selectedDivisor = null;
         renderToolbar2_2();
         drawStep2_2Canvas();
+      } else if (state.subStep === '2-3') {
+        state.lab2_3.method = 0;
+        state.lab2_3.targetIndex = 0;
+        state.lab2_3.step = 0;
+        renderToolbar2_3();
+        drawStep2_3Canvas();
       }
     }
 
@@ -10752,6 +11481,7 @@
         else if (state.subStep === '1-12') drawStep1_12Canvas();
         else if (state.subStep === '2-1') drawStep2_1Canvas();
         else if (state.subStep === '2-2') drawStep2_2Canvas();
+        else if (state.subStep === '2-3') drawStep2_3Canvas();
       }, 150);
     });
 
