@@ -1085,6 +1085,12 @@
         method: 0, // 0: 나뭇가지 분해법 (Factor Tree), 1: 거꾸로 나눗셈법 (Ladder)
         problemIndex: 0, // 0: 27, 1: 36, 2: 80, 3: 126
         step: 0 // step index for current factorization
+      },
+      // 2-5 Interactive Lab State (5. 소인수분해로 약수 구하기: 예제 2, 63)
+      lab2_5: {
+        step: 0, // 0: 소인수분해, 1: 거듭제곱 약수 추출, 2: 곱셈표 탐구
+        revealedCells: [false, false, false, false, false, false], // 6 cells in 3x2 grid
+        showCalculation: true // toggle calculation string vs simple value
       }
     };
 
@@ -1272,6 +1278,9 @@
       } else if (code === '2-4') {
         renderToolbar2_4();
         renderSubstep2_4();
+      } else if (code === '2-5') {
+        renderToolbar2_5();
+        renderSubstep2_5();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -2345,6 +2354,50 @@
       state.lab2_4.step = Math.max(0, Math.min(limit, state.lab2_4.step + delta));
       renderToolbar2_4();
       drawStep2_4Canvas();
+    }
+
+    function renderToolbar2_5() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+      const curStep = state.lab2_5.step;
+      const allRevealed = state.lab2_5.revealedCells.every(Boolean);
+
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569;">탐구 단계:</span>
+        <button class="tool-btn ${curStep === 0 ? 'active' : ''}" onclick="setStep2_5Step(0)">1. 63 소인수분해</button>
+        <button class="tool-btn ${curStep === 1 ? 'active' : ''}" onclick="setStep2_5Step(1)">2. 각 거듭제곱의 약수</button>
+        <button class="tool-btn ${curStep === 2 ? 'active' : ''}" onclick="setStep2_5Step(2)">3. 곱셈표 완성 (6칸)</button>
+        <span style="margin:0 4px; color:#cbd5e1;">|</span>
+        <button class="tool-btn" onclick="revealAllStep2_5Cells()" style="background:#e0f2fe; color:#0369a1; font-weight:700;">
+          ${allRevealed ? '🔄 표 다시 덮기' : '✨ 표 전체 열기'}
+        </button>
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setStep2_5Step(st) {
+      state.lab2_5.step = st;
+      renderToolbar2_5();
+      drawStep2_5Canvas();
+    }
+
+    function revealAllStep2_5Cells() {
+      const allRevealed = state.lab2_5.revealedCells.every(Boolean);
+      state.lab2_5.revealedCells = state.lab2_5.revealedCells.map(() => !allRevealed);
+      state.lab2_5.step = 2;
+      renderToolbar2_5();
+      drawStep2_5Canvas();
+    }
+
+    function toggleStep2_5Cell(cellIdx) {
+      if (cellIdx >= 0 && cellIdx < 6) {
+        state.lab2_5.revealedCells[cellIdx] = !state.lab2_5.revealedCells[cellIdx];
+        state.lab2_5.step = 2;
+        renderToolbar2_5();
+        drawStep2_5Canvas();
+      }
     }
 
 
@@ -11852,7 +11905,441 @@
     }
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (2-5 to 6-2)
+    // SUBSTEP 2-5: 5. 소인수분해를 이용한 약수 구하기 (예제 2) (p.15)
+    // -------------------------------------------------------------
+    function renderSubstep2_5() {
+      const missionEl = document.getElementById('mission-text');
+      if (missionEl) {
+        missionEl.innerHTML = `<b>[2-5] 5. 소인수분해를 이용한 약수 구하기 (예제 2) (교과서 15쪽)</b><br>소인수분해를 이용하여 63의 약수를 모두 구하시오. 각 거듭제곱의 약수를 각각 곱하는 2차원 표를 채워 모든 약수를 탐구해 봅시다.`;
+      }
+
+      const formArea = document.getElementById('form-work-area');
+      if (!formArea) return;
+
+      formArea.innerHTML = `
+        <div class="card" style="padding:16px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">02 소인수분해</span>
+            <span style="font-size:0.8rem; color:#64748b; font-weight:600;">교과서 15쪽</span>
+          </div>
+          <h3 style="font-size:1.05rem; font-weight:800; color:#1e293b; margin-bottom:8px;">5. 소인수분해로 약수 구하기 (예제 2)</h3>
+          <p style="font-size:0.86rem; color:#475569; line-height:1.6; margin-bottom:14px; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
+            소인수분해를 이용하여 63의 약수를 모두 구하시오.<br>
+            <span style="font-size:0.8rem; color:#64748b;">(소인수분해의 각 거듭제곱의 약수를 구하고, 이들을 곱하여 모든 약수를 구합니다.)</span>
+          </p>
+
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <!-- ⑴ 63 소인수분해 -->
+            <div style="background:#f8fafc; padding:12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.88rem; font-weight:800; color:#1e293b; display:block; margin-bottom:6px;">
+                ⑴ 63을 소인수분해하시오.
+              </label>
+              <div style="font-size:0.8rem; color:#64748b; margin-bottom:6px;">(입력 형식 예: 2^2*5 또는 2^2x5)</div>
+              <input type="text" id="ans-2-5-1" class="proof-input-text" placeholder="답 입력" style="width:100%;" autocomplete="off">
+            </div>
+
+            <!-- ⑵ 63의 모든 약수 -->
+            <div style="background:#f8fafc; padding:12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.88rem; font-weight:800; color:#1e293b; display:block; margin-bottom:6px;">
+                ⑵ 63의 모든 약수를 작은 수부터 차례대로 쓰시오.
+              </label>
+              <div style="font-size:0.8rem; color:#64748b; margin-bottom:6px;">(입력 형식 예: 1, 2, 4, 8과 같이 쉼표로 구분하여 입력)</div>
+              <input type="text" id="ans-2-5-2" class="proof-input-text" placeholder="답 입력" style="width:100%;" autocomplete="off">
+            </div>
+
+            <!-- ⑶ 63의 약수의 개수 -->
+            <div style="background:#f8fafc; padding:12px; border-radius:8px; border:1px solid #e2e8f0;">
+              <label style="font-size:0.88rem; font-weight:800; color:#1e293b; display:block; margin-bottom:6px;">
+                ⑶ 63의 약수는 모두 몇 개인지 구하시오.
+              </label>
+              <div style="font-size:0.8rem; color:#64748b; margin-bottom:6px;">(입력 형식 예: 4 또는 4개)</div>
+              <input type="text" id="ans-2-5-3" class="proof-input-text" placeholder="답 입력" style="width:100%;" autocomplete="off">
+            </div>
+
+            <button class="btn btn-primary" onclick="gradeStep2_5()" style="padding:10px; font-weight:800; font-size:0.92rem; width:100%; margin-top:4px;">
+              ✅ 정답 확인 및 채점하기
+            </button>
+          </div>
+
+          <div id="feedback-2-5" style="display:none; margin-top:12px; padding:12px; border-radius:8px;"></div>
+        </div>
+      `;
+
+      drawStep2_5Canvas();
+
+      if (window.renderMathInElement) {
+        renderMathInElement(formArea, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    const GRID_CONFIG_2_5 = {
+      target: 63,
+      primeFactorization: '3² × 7',
+      rowBase: '3²',
+      rowDivisors: [
+        { label: '1', val: 1 },
+        { label: '3', val: 3 },
+        { label: '3² (9)', val: 9 }
+      ],
+      colBase: '7',
+      colDivisors: [
+        { label: '1', val: 1 },
+        { label: '7', val: 7 }
+      ],
+      cells: [
+        { r: 0, c: 0, multStr: '1 × 1', val: 1 },
+        { r: 0, c: 1, multStr: '1 × 7', val: 7 },
+        { r: 1, c: 0, multStr: '3 × 1', val: 3 },
+        { r: 1, c: 1, multStr: '3 × 7', val: 21 },
+        { r: 2, c: 0, multStr: '3² × 1 = 9 × 1', val: 9 },
+        { r: 2, c: 1, multStr: '3² × 7 = 9 × 7', val: 63 }
+      ]
+    };
+
+    function drawStep2_5Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const curStep = state.lab2_5.step || 0;
+      const revealed = state.lab2_5.revealedCells || [false, false, false, false, false, false];
+      const isPassed2_5 = state.completedSubSteps && state.completedSubSteps.includes('2-5');
+
+      // 1. Header (Title & Subtitle)
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(10.5, Math.min(12, Math.floor(width * 0.018)));
+
+      const headerTitle = two.makeText('📊 [예제 2] 소인수분해를 이용한 약수 표 탐구 랩', width / 2, 16);
+      headerTitle.size = titleSize;
+      headerTitle.weight = 800;
+      headerTitle.fill = '#1e293b';
+
+      const headerSub = two.makeText('63을 소인수분해하고 2차원 곱셈 표를 통해 모든 약수를 빠짐없이 찾아보세요.', width / 2, 33);
+      headerSub.size = subSize;
+      headerSub.weight = 600;
+      headerSub.fill = '#4f46e5';
+
+      // 2. Step Selection Tabs (y = 56, h = 24)
+      const tabLabels = ['1. 63 소인수분해', '2. 각 거듭제곱의 약수', '3. 곱셈표 완성 (6칸)'];
+      const tabW = Math.min(145, Math.floor((width - 40) / 3));
+      const startTabX = (width - (3 * tabW + 2 * 8)) / 2;
+
+      for (let i = 0; i < 3; i++) {
+        const tx = startTabX + i * (tabW + 8) + tabW / 2;
+        const isActive = (curStep === i);
+        const rect = two.makeRoundedRectangle(tx, 56, tabW, 24, 6);
+        rect.fill = isActive ? '#4f46e5' : '#f1f5f9';
+        rect.stroke = isActive ? '#3730a3' : '#cbd5e1';
+        rect.linewidth = isActive ? 1.8 : 1;
+
+        const txt = two.makeText(tabLabels[i], tx, 56);
+        txt.size = (width < 600) ? 9.5 : 10.5;
+        txt.weight = 800;
+        txt.fill = isActive ? '#ffffff' : '#475569';
+      }
+
+      // 3. Step Guide Text (y = 80)
+      let guideStr = '';
+      if (curStep === 0) {
+        guideStr = isPassed2_5
+          ? '63을 소인수분해하면 63 = 3² × 7 이므로 소인수는 3과 7입니다.'
+          : '1단계: 63을 소인수분해하여 거듭제곱으로 나타내어 보세요. (우측 ⑴에 입력)';
+      } else if (curStep === 1) {
+        guideStr = isPassed2_5
+          ? '3²(=9)의 약수는 1, 3, 9(3개)이고, 7의 약수는 1, 7(2개)입니다.'
+          : '2단계: 소인수분해한 각 거듭제곱의 약수들을 각각 나열해 보세요.';
+      } else {
+        const openCount = revealed.filter(Boolean).length;
+        guideStr = `표의 칸을 터치하여 약수를 확인하세요. (현재 ${openCount}/6칸 발견)`;
+      }
+      const stepGuide = two.makeText(guideStr, width / 2, 80);
+      stepGuide.size = (width < 600) ? 10 : 11;
+      stepGuide.weight = 700;
+      stepGuide.fill = '#0284c7';
+
+      // 4. Interactive 2D Grid Table Arena (y: 98 ~ 290)
+      const col0W = (width < 600) ? 80 : 100;
+      const colW = (width < 600) ? 100 : 120;
+      const totalTableW = col0W + 2 * colW;
+      const startX = (width - totalTableW) / 2;
+
+      const headerH = 26;
+      const rowH = 34;
+      const startY = 100;
+
+      // Draw Header Row
+      // Corner Cell (Row Header label / Col Header label)
+      const cornerBg = two.makeRectangle(startX + col0W / 2, startY + headerH / 2, col0W, headerH);
+      cornerBg.fill = '#eef2ff'; cornerBg.stroke = '#cbd5e1'; cornerBg.linewidth = 1.2;
+      const cornerTxt = two.makeText('3²의 약수 \\ 7의 약수', startX + col0W / 2, startY + headerH / 2);
+      cornerTxt.size = (width < 600) ? 8.5 : 9.5; cornerTxt.weight = 700; cornerTxt.fill = '#4338ca';
+
+      // Column Headers: 1, 7
+      for (let c = 0; c < 2; c++) {
+        const chX = startX + col0W + c * colW + colW / 2;
+        const chBg = two.makeRectangle(chX, startY + headerH / 2, colW, headerH);
+        chBg.fill = '#f0fdf4'; chBg.stroke = '#cbd5e1'; chBg.linewidth = 1.2;
+        const chTxt = two.makeText(GRID_CONFIG_2_5.colDivisors[c].label, chX, startY + headerH / 2);
+        chTxt.size = 12; chTxt.weight = 800; chTxt.fill = '#15803d';
+      }
+
+      // Draw Rows 1, 3, 3²(9)
+      const cellBounds = [];
+
+      for (let r = 0; r < 3; r++) {
+        const ry = startY + headerH + r * rowH + rowH / 2;
+
+        // Row Header (1, 3, 3²(9))
+        const rhBg = two.makeRectangle(startX + col0W / 2, ry, col0W, rowH);
+        rhBg.fill = '#f0fdf4'; rhBg.stroke = '#cbd5e1'; rhBg.linewidth = 1.2;
+        const rhTxt = two.makeText(GRID_CONFIG_2_5.rowDivisors[r].label, startX + col0W / 2, ry);
+        rhTxt.size = 11.5; rhTxt.weight = 800; rhTxt.fill = '#15803d';
+
+        // Cells in this row
+        for (let c = 0; c < 2; c++) {
+          const cellIdx = r * 2 + c;
+          const cx = startX + col0W + c * colW + colW / 2;
+          const isRev = (curStep >= 2 && revealed[cellIdx]) || (isPassed2_5);
+
+          cellBounds.push({
+            idx: cellIdx,
+            left: cx - colW / 2,
+            right: cx + colW / 2,
+            top: ry - rowH / 2,
+            bottom: ry + rowH / 2
+          });
+
+          const cellBg = two.makeRectangle(cx, ry, colW, rowH);
+          cellBg.fill = isRev ? '#dcfce7' : (curStep === 2 ? '#ffffff' : '#f8fafc');
+          cellBg.stroke = isRev ? '#16a34a' : '#cbd5e1';
+          cellBg.linewidth = isRev ? 2 : 1.2;
+
+          if (isRev) {
+            const cellInfo = GRID_CONFIG_2_5.cells[cellIdx];
+            const tForm = two.makeText(cellInfo.multStr + ' =', cx - 14, ry);
+            tForm.size = (width < 600) ? 9 : 10; tForm.weight = 700; tForm.fill = '#334155';
+
+            const tVal = two.makeText(String(cellInfo.val), cx + (width < 600 ? 28 : 34), ry);
+            tVal.size = 12.5; tVal.weight = 800; tVal.fill = '#166534';
+          } else {
+            const tHint = two.makeText((curStep === 2) ? '👉 터치하여 열기' : '?', cx, ry);
+            tHint.size = (curStep === 2) ? 10 : 12;
+            tHint.weight = 700;
+            tHint.fill = (curStep === 2) ? '#0284c7' : '#94a3b8';
+          }
+        }
+      }
+
+      // Quick action toggle in canvas (y = 258)
+      const btnAllX = width / 2;
+      const btnAllY = 258;
+      const allRevealed = revealed.every(Boolean);
+      const btnAllW = Math.min(230, width - 60);
+      const btnAllBg = two.makeRoundedRectangle(btnAllX, btnAllY, btnAllW, 24, 12);
+      btnAllBg.fill = allRevealed ? '#fef3c7' : '#e0f2fe';
+      btnAllBg.stroke = allRevealed ? '#d97706' : '#0284c7';
+      btnAllBg.linewidth = 1.4;
+
+      const btnAllTxt = two.makeText(allRevealed ? '🔄 표 다시 덮기' : '✨ 6개 칸 모두 한 번에 열기', btnAllX, btnAllY);
+      btnAllTxt.size = 10.5; btnAllTxt.weight = 800;
+      btnAllTxt.fill = allRevealed ? '#92400e' : '#0369a1';
+
+      // 5. Live Divisors Collection Bar (y: 292 ~ 324, h = 32)
+      const formulaY = 308;
+      const fW = Math.min(width - 40, 480);
+      const fBg = two.makeRoundedRectangle(width / 2, formulaY, fW, 32, 16);
+      const isComplete = (revealed.filter(Boolean).length === 6) || isPassed2_5;
+      fBg.fill = isComplete ? '#f0fdf4' : '#ffffff';
+      fBg.stroke = isComplete ? '#16a34a' : '#cbd5e1';
+      fBg.linewidth = isComplete ? 2 : 1.2;
+
+      let formulaStr = '';
+      if (isComplete) {
+        formulaStr = '🎉 63의 모든 약수 완성: 1, 3, 7, 9, 21, 63 (총 6개)';
+      } else {
+        const found = GRID_CONFIG_2_5.cells
+          .filter((_, idx) => revealed[idx])
+          .map(c => c.val)
+          .sort((a,b)=>a-b);
+        formulaStr = found.length > 0
+          ? `수집된 약수 (${found.length}/6개): ${found.join(', ')}`
+          : '진행: 위 표의 칸을 터치하거나 버튼을 눌러 약수를 채워보세요.';
+      }
+
+      const fT = two.makeText(formulaStr, width / 2, formulaY);
+      fT.size = (width < 600) ? 9.5 : 10.5;
+      fT.weight = 800;
+      fT.fill = isComplete ? '#15803d' : '#334155';
+
+      // 6. Bottom Rule / Conclusion Banner (Strict Zero-Spoiler)
+      const bannerCenterY = 380;
+      const bannerW = width - 32;
+      const bannerH = 68;
+      const bannerBg = two.makeRoundedRectangle(width / 2, bannerCenterY, bannerW, bannerH, 8);
+      bannerBg.fill = '#eef2ff';
+      bannerBg.stroke = '#c7d2fe';
+      bannerBg.linewidth = 1.5;
+
+      const rule1Text = isPassed2_5
+        ? '💡 [약수 완벽 마스터!] 63의 약수는 3²의 약수(3개)와 7의 약수(2개)의 모든 곱으로 총 6개입니다.'
+        : '💡 [약수 구하기 원리] aᵐ × bⁿ으로 소인수분해될 때, aᵐ의 약수와 bⁿ의 약수를 각각 곱하여 구합니다.';
+      const rule1 = two.makeText(rule1Text, width / 2, bannerCenterY - 12);
+      rule1.size = (width < 600) ? 9.5 : 10.5;
+      rule1.weight = 700;
+      rule1.fill = '#334155';
+
+      const rule2Text = isPassed2_5
+        ? '📌 [교과서 정답 확인] 63의 약수: 1, 3, 7, 9, 21, 63 (총 6개)'
+        : '📌 [탐구 가이드] 표의 각 칸을 터치하여 곱셈 결과를 확인하고, 우측 입력창에 63의 약수를 작은 수부터 적어보세요.';
+
+      const rule2 = two.makeText(rule2Text, width / 2, bannerCenterY + 12);
+      rule2.size = (width < 600) ? 9.5 : 10.5;
+      rule2.weight = 800;
+      rule2.fill = isPassed2_5 ? '#15803d' : '#4338ca';
+
+      two.update();
+
+      // Bind Pointer Events
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas') : null;
+      if (canvasEl) {
+        canvasEl.onpointerdown = (e) => {
+          const rect = canvasEl.getBoundingClientRect();
+          const px = (e.clientX - rect.left) * (width / rect.width);
+          const py = (e.clientY - rect.top) * (height / rect.height);
+
+          // 1. Step tabs (y: 44 ~ 68)
+          if (py >= 44 && py <= 68) {
+            for (let i = 0; i < 3; i++) {
+              const tx = startTabX + i * (tabW + 8);
+              if (px >= tx && px <= tx + tabW) {
+                setStep2_5Step(i);
+                return;
+              }
+            }
+          }
+
+          // 2. Grid Cells
+          for (let i = 0; i < cellBounds.length; i++) {
+            const b = cellBounds[i];
+            if (px >= b.left && px <= b.right && py >= b.top && py <= b.bottom) {
+              toggleStep2_5Cell(b.idx);
+              return;
+            }
+          }
+
+          // 3. Quick reveal all button (y: 246 ~ 270)
+          if (py >= 246 && py <= 270 && px >= btnAllX - btnAllW / 2 && px <= btnAllX + btnAllW / 2) {
+            revealAllStep2_5Cells();
+            return;
+          }
+        };
+      }
+    }
+
+    async function gradeStep2_5() {
+      const ans1Raw = cleanInput(document.getElementById('ans-2-5-1')?.value);
+      const ans2Raw = cleanInput(document.getElementById('ans-2-5-2')?.value);
+      const ans3Raw = cleanInput(document.getElementById('ans-2-5-3')?.value);
+
+      const fEl = document.getElementById('feedback-2-5');
+      if (!fEl) return;
+
+      // 1. ans1: 63 = 3^2 * 7
+      const counts1 = parseFactorization2_3(ans1Raw);
+      const ok1 = matchFactorCounts2_3(counts1, { 3: 2, 7: 1 });
+
+      // 2. ans2: 1, 3, 7, 9, 21, 63
+      const items2 = ans2Raw.split(/[, ]+/).map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n)).sort((a,b)=>a-b);
+      const expectedDivs = [1, 3, 7, 9, 21, 63];
+      const ok2 = (items2.length === expectedDivs.length && items2.every((val, idx) => val === expectedDivs[idx]));
+
+      // 3. ans3: 6 (or 6개)
+      const cleanNum = parseInt(ans3Raw.replace(/[^0-9]/g, ''), 10);
+      const ok3 = (cleanNum === 6);
+
+      if (ok1 && ok2 && ok3) {
+        fEl.style.display = 'block';
+        fEl.className = 'verified-answer-card';
+        fEl.style.background = '#f0fdf4';
+        fEl.style.border = '1.5px solid #86efac';
+        fEl.innerHTML = `
+          <h4 style="color:#15803d; font-size:0.95rem; font-weight:800; margin-bottom:6px;">🎉 100점! 완벽합니다!</h4>
+          <div style="font-size:0.86rem; color:#166534; line-height:1.6;">
+            소인수분해와 곱셈 표를 이용하여 63의 모든 약수를 빠짐없이 구했습니다.<br>
+            • <b>⑴ 63의 소인수분해:</b> <b>$63 = 3^2 \\times 7$</b><br>
+            • <b>⑵ 63의 모든 약수:</b> <b>$1, 3, 7, 9, 21, 63$</b><br>
+            • <b>⑶ 약수의 총 개수:</b> $3^2$의 약수 3개와 $7$의 약수 2개의 곱인 <b>$(2 + 1) \\times (1 + 1) = 6$개</b>입니다.<br>
+            <div style="margin-top:10px; padding:10px; background:#e0e7ff; border-radius:6px; color:#4338ca; font-weight:700;">
+              🚀 다음 세부 활동 <b>[2-6] 6. 문제 3 & 4 (약수 판별과 전수 구하기)</b>가 해금되었습니다!
+            </div>
+          </div>
+        `;
+
+        if (!state.completedSubSteps.includes('2-5')) {
+          state.completedSubSteps.push('2-5');
+        }
+        if (!state.unlockedSubSteps.includes('2-6')) {
+          state.unlockedSubSteps.push('2-6');
+        }
+
+        // reveal all cells in canvas as well
+        state.lab2_5.revealedCells = [true, true, true, true, true, true];
+        state.lab2_5.step = 2;
+
+        renderMainTabs();
+        renderSubstepPills();
+        drawStep2_5Canvas();
+
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('2-5', {
+              activityTitle: '[중1-1 소인수분해] [2-5] 5. 소인수분해로 약수 구하기 (예제 2)',
+              answerText: `63 소인수분해: ${ans1Raw} | 63의 약수: ${ans2Raw} | 약수의 개수: ${ans3Raw}`,
+              answers: { ans1: ans1Raw, ans2: ans2Raw, ans3: ans3Raw },
+              score: 100,
+              passed: true,
+              unitId: 'u1'
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+      } else {
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            ${!ok1 ? '• ⑴ 63을 소인수분해해 보세요. 63을 3으로 나눈 후 몫 21을 다시 소수로 나누어 거듭제곱으로 나타냅니다.<br>' : ''}
+            ${!ok2 ? '• ⑵ 63의 약수가 빠졌거나 잘못되었습니다. 3²의 약수(1, 3, 9)와 7의 약수(1, 7)를 서로 곱하여 빠짐없이 찾아보세요.<br>' : ''}
+            ${!ok3 ? '• ⑶ 약수의 개수를 다시 확인해 보세요. 3²의 약수 3개와 7의 약수 2개를 곱하면 총 몇 개가 될까요?<br>' : ''}
+            💡 좌측 캔버스의 2차원 표 각 칸을 터치하여 6개 곱셈 결과를 직접 확인해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (2-6 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -12012,6 +12499,11 @@
         state.lab2_4.step = 0;
         renderToolbar2_4();
         drawStep2_4Canvas();
+      } else if (state.subStep === '2-5') {
+        state.lab2_5.step = 0;
+        state.lab2_5.revealedCells = [false, false, false, false, false, false];
+        renderToolbar2_5();
+        drawStep2_5Canvas();
       }
     }
 
@@ -12279,6 +12771,7 @@
         else if (state.subStep === '2-2') drawStep2_2Canvas();
         else if (state.subStep === '2-3') drawStep2_3Canvas();
         else if (state.subStep === '2-4') drawStep2_4Canvas();
+        else if (state.subStep === '2-5') drawStep2_5Canvas();
       }, 150);
     });
 
