@@ -1184,6 +1184,11 @@
       lab3_10: {
         mode: 0, // 0: 나머지 보정 랩, 1: 세 수 소인수분해 정렬 랩
         step: 0  // 0: 105 약수, 1: 150 약수, 2: 90 약수, 3: 최대공약수
+      },
+      // 3-11 Interactive Lab State (11. [생각 넓히기] 조건 만족 두 자리 자연수)
+      lab3_11: {
+        mode: 0, // 0: 조건 추론 랩, 1: 수 카드 인터랙션 랩
+        step: 0  // 0: 두 조건, 1: 7배수, 2: 3배수 제외, 3: 최종 확정
       }
     };
 
@@ -1425,6 +1430,9 @@
       } else if (code === '3-10') {
         renderToolbar3_10();
         renderSubstep3_10();
+      } else if (code === '3-11') {
+        renderToolbar3_11();
+        renderSubstep3_11();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -3463,6 +3471,58 @@
       renderToolbar3_10();
       drawStep3_10Canvas();
     }
+
+    // -------------------------------------------------------------
+    // SUBSTEP 3-11 Handlers & Toolbar (11. [생각 넓히기] 조건 만족 두 자리 자연수, p.19)
+    // -------------------------------------------------------------
+    function renderToolbar3_11() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const curMode = state.lab3_11.mode || 0;
+      const curStep = state.lab3_11.step || 0;
+
+      let subControls = '';
+      if (curMode === 0) {
+        subControls = `
+          <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-left:6px; margin-right:4px;">추론 단계:</span>
+          <button class="tool-btn ${curStep === 0 ? 'active' : ''}" onclick="setStep3_11Step(0)">➊ 두 조건 분석</button>
+          <button class="tool-btn ${curStep === 1 ? 'active' : ''}" onclick="setStep3_11Step(1)">➋ 7의 배수 나열</button>
+          <button class="tool-btn ${curStep === 2 ? 'active' : ''}" onclick="setStep3_11Step(2)">➌ 3의 배수 제외</button>
+          <button class="tool-btn ${curStep === 3 ? 'active' : ''}" onclick="setStep3_11Step(3)">➍ 최종 수 확정</button>
+        `;
+      } else {
+        subControls = `
+          <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-left:6px; margin-right:4px;">수 카드:</span>
+          <span style="font-size:0.8rem; color:#64748b;">7의 배수 카드(6개) 중 3의 배수를 제외하고 남는 수를 확인하세요.</span>
+        `;
+      }
+
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-right:4px;">탐구 모드:</span>
+        <button class="tool-btn ${curMode === 0 ? 'active' : ''}" onclick="setStep3_11Mode(0)">🔍 [조건 추론 랩] 4단계 분석</button>
+        <button class="tool-btn ${curMode === 1 ? 'active' : ''}" onclick="setStep3_11Mode(1)">💡 [수 카드 인터랙션 랩] 7의 배수 필터링</button>
+        <span style="margin:0 4px; color:#cbd5e1;">|</span>
+        ${subControls}
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setStep3_11Mode(m) {
+      state.lab3_11.mode = m;
+      state.lab3_11.step = 0;
+      renderToolbar3_11();
+      drawStep3_11Canvas();
+    }
+
+    function setStep3_11Step(s) {
+      state.lab3_11.step = s;
+      renderToolbar3_11();
+      drawStep3_11Canvas();
+    }
+
 
 
 
@@ -21095,7 +21155,387 @@
 
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (3-11 to 6-2)
+    // SUBSTEP 3-11: 11. [생각 넓히기] 조건 만족 두 자리 자연수 (p.19)
+    // -------------------------------------------------------------
+    function renderSubstep3_11() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[생각 넓히기 (조건을 만족시키는 수 추론)] (교과서 p.19)</b><br>
+        • 학생 1: "50보다 작은 두 자리 자연수야." ($10 \\le n < 50$)<br>
+        • 학생 2: "21과의 최대공약수는 7이야." (7의 배수이면서 3의 배수가 아님)<br>
+        • 두 학생의 설명을 동시에 만족시키는 수를 모두 구해 보세요.
+      `;
+
+      const isPassed3_11 = state.completedSubSteps && state.completedSubSteps.includes('3-11');
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.19</span>
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b;">생각 넓히기 (문제해결 · 추론)</span>
+          </div>
+          <h4 style="font-size:0.98rem; font-weight:800; color:#1e293b; margin-bottom:12px; line-height:1.5;">
+            다음 두 학생의 설명을 동시에 만족시키는 수를 모두 구해 보자.
+          </h4>
+
+          <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:14px;">
+            <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:8px 12px; font-size:0.88rem; color:#1e40af;">
+              👦 <b>학생 1:</b> "50보다 작은 두 자리 자연수야."
+            </div>
+            <div style="background:#fdf2f8; border:1px solid #fbcfe8; border-radius:8px; padding:8px 12px; font-size:0.88rem; color:#9d174d;">
+              👧 <b>학생 2:</b> "21과의 최대공약수는 7이야."
+            </div>
+          </div>
+
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:18px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              정답 입력 (조건을 만족하는 수 모두 입력)
+            </div>
+            <div style="font-size:0.82rem; color:#64748b; margin-bottom:10px;">
+              • 쉼표(,) 또는 띄어쓰기로 구분하여 모든 수를 적어보세요. (예: 14, 28, ...)
+            </div>
+            <input type="text" id="ans-3-11" class="proof-input-text" placeholder="답 입력" style="width:200px;" autocomplete="off">
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep3_11()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            정답 확인 및 채점
+          </button>
+
+          <div id="feedback-step-3-11" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep3_11Canvas();
+    }
+
+    function drawStep3_11Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed3_11 = state.completedSubSteps && state.completedSubSteps.includes('3-11');
+      const curMode = state.lab3_11.mode || 0;
+      const curStep = state.lab3_11.step || 0;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 33
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(11, Math.min(13, Math.floor(width * 0.019)));
+
+      let modeTitle = '';
+      let modeSub = '';
+      if (curMode === 0) {
+        modeTitle = '🔍 [조건 추론 랩] 50 미만 두 자리 자연수와 최대공약수 7';
+        modeSub = '7의 배수 중 3의 배수를 제외하여 조건을 만족하는 수를 도출합니다.';
+      } else {
+        modeTitle = '💡 [수 카드 인터랙션 랩] 7의 배수 필터링';
+        modeSub = '후보 수 카드(6개) 중 3의 배수인 수를 소거하고 남는 수를 확인합니다.';
+      }
+
+      const titleText = two.makeText(modeTitle, width / 2, 16);
+      titleText.size = titleSize;
+      titleText.weight = 800;
+      titleText.fill = '#1e293b';
+
+      const subText = two.makeText(modeSub, width / 2, 33);
+      subText.size = subSize;
+      subText.fill = '#64748b';
+
+      // 2. Formula / Sub-bar - y: 56, h: 26 (top: 43, bottom: 69)
+      const fBarW = Math.min(width - 40, 640);
+      const fBar = two.makeRoundedRectangle(width / 2, 56, fBarW, 26, 6);
+      fBar.fill = '#f1f5f9';
+      fBar.stroke = '#cbd5e1';
+      fBar.linewidth = 1;
+
+      let fBarStr = '';
+      if (curMode === 0) {
+        if (curStep === 0) fBarStr = '➊ 조건 1: 10 ≤ n < 50   |   조건 2: gcd(n, 21) = 7 (7의 배수이면서 3의 배수 아님)';
+        else if (curStep === 1) fBarStr = '➋ 50보다 작은 두 자리 7의 배수: 14, 21, 28, 35, 42, 49';
+        else if (curStep === 2) fBarStr = '➌ 3의 배수 제외: 21(=3×7)과 42(=3×14)는 최대공약수가 21이 되므로 제외';
+        else fBarStr = isPassed3_11 ? '➍ 최종 만족하는 수: 14, 28, 35, 49 (총 4개) 완성! ✨' : '➍ 조건을 모두 만족시키는 수를 모두 찾아 우측에 입력하세요.';
+      } else {
+        fBarStr = '7의 배수 6개 카드 중 3의 배수(21, 42)를 제외하고 남는 수들을 확인하세요.';
+      }
+
+      const fBarText = two.makeText(fBarStr, width / 2, 56);
+      fBarText.size = Math.max(11, Math.min(13, Math.floor(width * 0.018)));
+      fBarText.weight = 700;
+      fBarText.fill = '#334155';
+
+      // 3. Central Board - y: 174, h: 178 (top: 85, bottom: 263)
+      const boardW = Math.min(width - 40, 640);
+      const board = two.makeRoundedRectangle(width / 2, 174, boardW, 178, 12);
+      board.fill = '#ffffff';
+      board.stroke = '#e2e8f0';
+      board.linewidth = 1.5;
+
+      if (curMode === 0) {
+        // Speech Bubbles for Students
+        const bW = Math.min(230, (boardW - 60) / 2);
+        const bH = 56;
+        const b1X = width / 2 - bW / 2 - 12;
+        const b2X = width / 2 + bW / 2 + 12;
+        const bY = 126;
+
+        // Bubble 1
+        const bb1 = two.makeRoundedRectangle(b1X, bY, bW, bH, 8);
+        bb1.fill = (curStep === 0 || curStep === 1) ? '#eff6ff' : '#f8fafc';
+        bb1.stroke = (curStep === 0 || curStep === 1) ? '#93c5fd' : '#e2e8f0';
+        bb1.linewidth = 1.5;
+
+        const bb1_1 = two.makeText('👦 학생 1: "50보다 작은 두 자리 수"', b1X, bY - 10);
+        bb1_1.size = 11.5; bb1_1.weight = 800; bb1_1.fill = '#1e40af';
+
+        const bb1_2 = two.makeText('➔ 10 ≤ n < 50', b1X, bY + 12);
+        bb1_2.size = 12.5; bb1_2.weight = 700; bb1_2.fill = '#3b82f6';
+
+        // Bubble 2
+        const bb2 = two.makeRoundedRectangle(b2X, bY, bW, bH, 8);
+        bb2.fill = (curStep === 0 || curStep >= 2) ? '#fdf2f8' : '#f8fafc';
+        bb2.stroke = (curStep === 0 || curStep >= 2) ? '#fbcfe8' : '#e2e8f0';
+        bb2.linewidth = 1.5;
+
+        const bb2_1 = two.makeText('👧 학생 2: "21과의 최대공약수 7"', b2X, bY - 10);
+        bb2_1.size = 11.5; bb2_1.weight = 800; bb2_1.fill = '#9d174d';
+
+        const bb2_2 = two.makeText('➔ 7의 배수 (3의 배수 제외)', b2X, bY + 12);
+        bb2_2.size = 12.5; bb2_2.weight = 700; bb2_2.fill = '#ec4899';
+
+        // Bottom Result Box inside Board (y: 224, h: 48)
+        const resBox = two.makeRoundedRectangle(width / 2, 224, boardW - 40, 48, 8);
+        resBox.fill = curStep === 3 ? (isPassed3_11 ? '#f0fdf4' : '#f8fafc') : '#f8fafc';
+        resBox.stroke = curStep === 3 ? (isPassed3_11 ? '#86efac' : '#cbd5e1') : '#e2e8f0';
+        resBox.linewidth = 1.5;
+
+        let resTextStr = '';
+        if (curStep === 0) {
+          resTextStr = '💡 21 = 3 × 7 이므로 7의 배수 중 3의 배수가 아니어야 최대공약수가 7이 됩니다.';
+        } else if (curStep === 1) {
+          resTextStr = '⭐ 50보다 작은 두 자리 7의 배수: 14, 21, 28, 35, 42, 49 (총 6개)';
+        } else if (curStep === 2) {
+          resTextStr = '⭐ 3의 배수인 21(=3×7)과 42(=3×14)를 제외하면 4개의 수가 남습니다.';
+        } else {
+          resTextStr = isPassed3_11
+            ? '✨ 최종 만족하는 수: 14, 28, 35, 49 (모두 조건을 완벽히 만족합니다!)'
+            : '⭐ 구한 4개의 수를 모두 찾아 우측 입력창에 쉼표로 적어보세요.';
+        }
+
+        const resText = two.makeText(resTextStr, width / 2, 224);
+        resText.size = 12.5;
+        resText.weight = 800;
+        resText.fill = curStep === 3 ? (isPassed3_11 ? '#047857' : '#1e293b') : '#475569';
+
+      } else {
+        // Mode 1: 6개 수 카드 인터랙션 랩
+        const cW = Math.min(84, (boardW - 70) / 6);
+        const cH = 64;
+        const totalW = 6 * cW + 5 * 10;
+        const startX = width / 2 - totalW / 2 + cW / 2;
+        const cY = 136;
+
+        const cardData = [
+          { num: 14, mul: '7 × 2', ok: true },
+          { num: 21, mul: '7 × 3', ok: false },
+          { num: 28, mul: '7 × 4', ok: true },
+          { num: 35, mul: '7 × 5', ok: true },
+          { num: 42, mul: '7 × 6', ok: false },
+          { num: 49, mul: '7 × 7', ok: true }
+        ];
+
+        cardData.forEach((d, i) => {
+          const cx = startX + i * (cW + 10);
+          const card = two.makeRoundedRectangle(cx, cY, cW, cH, 8);
+
+          if (d.ok) {
+            card.fill = '#ecfdf5';
+            card.stroke = '#86efac';
+            card.linewidth = 1.5;
+          } else {
+            card.fill = '#fee2e2';
+            card.stroke = '#fca5a5';
+            card.linewidth = 1.5;
+          }
+
+          const tNum = two.makeText(String(d.num), cx, cY - 14);
+          tNum.size = 14; tNum.weight = 800;
+          tNum.fill = d.ok ? '#065f46' : '#991b1b';
+
+          const tMul = two.makeText(d.mul, cx, cY + 5);
+          tMul.size = 11; tMul.weight = 700;
+          tMul.fill = d.ok ? '#047857' : '#b91c1c';
+
+          const tTag = two.makeText(d.ok ? '✓ 적합' : '✗ 3의 배수', cx, cY + 22);
+          tTag.size = 10.5; tTag.weight = 800;
+          tTag.fill = d.ok ? '#059669' : '#dc2626';
+        });
+
+        // Bottom explanation at y: 236
+        const expStr = isPassed3_11
+          ? '➔ 3의 배수가 제외되고 남은 수: 14, 28, 35, 49 (정답 완료!) ✨'
+          : '➔ 3의 배수인 21과 42를 뺀 나머지 4개의 수를 적어보세요.';
+        const tExp = two.makeText(expStr, width / 2, 236);
+        tExp.size = 12.5;
+        tExp.weight = 800;
+        tExp.fill = isPassed3_11 ? '#047857' : '#334155';
+      }
+
+      // 4. Status Bar - y: 288, h: 26 (top: 275, bottom: 301)
+      const sBarW = Math.min(width - 40, 640);
+      const sBar = two.makeRoundedRectangle(width / 2, 288, sBarW, 26, 6);
+      sBar.fill = isPassed3_11 ? '#ecfdf5' : '#f8fafc';
+      sBar.stroke = isPassed3_11 ? '#a7f3d0' : '#e2e8f0';
+      sBar.linewidth = 1;
+
+      let sBarMsg = '';
+      if (isPassed3_11) {
+        sBarMsg = '🎉 [대단원 3단원 완료] 14, 28, 35, 49를 모두 정확히 구했습니다!';
+      } else {
+        sBarMsg = '💡 7의 배수 중 3의 배수를 제외한 50 미만의 두 자리 수를 모두 찾으세요.';
+      }
+
+      const sBarText = two.makeText(sBarMsg, width / 2, 288);
+      sBarText.size = Math.max(11, Math.min(12.5, Math.floor(width * 0.018)));
+      sBarText.weight = 700;
+      sBarText.fill = isPassed3_11 ? '#047857' : '#475569';
+
+      // 5. Bottom Banner - y: 350, h: 68 (top: 316, bottom: 384)
+      const bBannerW = Math.min(width - 40, 640);
+      const bBanner = two.makeRoundedRectangle(width / 2, 350, bBannerW, 68, 10);
+      bBanner.fill = isPassed3_11 ? '#f0fdf4' : '#f8fafc';
+      bBanner.stroke = isPassed3_11 ? '#86efac' : '#cbd5e1';
+      bBanner.linewidth = 1.5;
+
+      const bbT1 = two.makeText(
+        isPassed3_11
+          ? '⭐ [핵심 정리] 최대공약수 조건과 서로소 배수 성질'
+          : '💡 [개념 길잡이] 최대공약수 조건 추론 방법',
+        width / 2,
+        336
+      );
+      bbT1.size = 12.5; bbT1.weight = 800; bbT1.fill = isPassed3_11 ? '#065f46' : '#1e293b';
+
+      const bbT2 = two.makeText(
+        isPassed3_11
+          ? '• gcd(n, 21) = 7 이면 n = 7 × k 에서 k와 3은 서로소(즉, k는 3의 배수가 아님)이어야 합니다.'
+          : '• gcd(n, A) = g 일 때, n은 g의 배수이고 n/g 와 A/g 는 서로소이어야 합니다.',
+        width / 2,
+        358
+      );
+      bbT2.size = 11.5; bbT2.fill = isPassed3_11 ? '#047857' : '#64748b';
+
+      two.update();
+
+      // Pointer event isolation
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas, svg') : null;
+      if (container) container.onpointerdown = null;
+      if (!canvasEl) return;
+
+      canvasEl.onpointerdown = (e) => {
+        if (curMode === 0) {
+          setStep3_11Step((curStep + 1) % 4);
+        }
+      };
+    }
+
+    async function gradeStep3_11() {
+      const raw = cleanInput(document.getElementById('ans-3-11')?.value || '');
+      const nums = (raw.match(/\d+/g) || []).map(n => parseInt(n, 10));
+      const uniqueSorted = Array.from(new Set(nums)).sort((a, b) => a - b);
+      const target = [14, 28, 35, 49];
+
+      const isCorrect = (uniqueSorted.length === 4 && uniqueSorted.every((v, i) => v === target[i]));
+
+      const fEl = document.getElementById('feedback-step-3-11');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('3-11')) {
+          state.completedSubSteps.push('3-11');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('3-11', {
+              activityTitle: '[중1-1 소인수분해] [3-11] 11. [생각 넓히기] 조건 만족 두 자리 자연수',
+              answerText: uniqueSorted.join(', '),
+              answers: { input: raw, numbers: uniqueSorted, target: target },
+              score: 100,
+              passed: true,
+              unitId: 'u1'
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+
+        // Unlock next tab 4 (최소공배수) and step 4-1
+        if (!state.unlockedTabs.includes(4)) {
+          state.unlockedTabs.push(4);
+        }
+        if (!state.unlockedSubSteps.includes('4-1')) {
+          state.unlockedSubSteps.push('4-1');
+        }
+
+        const tabBtn4 = document.getElementById('tab-4');
+        if (tabBtn4) tabBtn4.classList.remove('locked');
+        updateSubStepPills(state.currentMainTab);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.2rem;">🎉</span>
+            <h4 style="color:#065f46; font-size:1.02rem; font-weight:800; margin:0;">정답입니다! 100점 (3단원 전체 완주)</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            완벽하게 해결했습니다!<br>
+            • 구하려는 수와 $21$의 최대공약수가 $7$이고 $21 = 3 \\times 7$이므로, 구하려는 수는 $7$의 배수이면서 $3$의 배수는 아니어야 합니다.<br>
+            • $50$보다 작은 두 자리 자연수 중 $7$의 배수는 $14, 21, 28, 35, 42, 49$ 입니다.<br>
+            • 이 중 $3$의 배수인 $21, 42$를 제외하면 구하는 수는 $\\mathbf{14, 28, 35, 49}$ 입니다.<br>
+            <div style="margin-top:10px; padding:8px 12px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 축하합니다! <b>3단원(최대공약수)</b>의 모든 세부 활동을 완주하여 <b>4단원 [4. 공배수와 최소공배수]</b>가 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="switchMainTab(4)" style="margin-top:12px; width:100%; padding:10px; font-weight:800; background:#4f46e5; border:none; border-radius:8px;">
+            다음 대단원 [4. 공배수와 최소공배수]로 이동 ➔
+          </button>
+        `;
+
+        drawStep3_11Canvas();
+      } else {
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            • $50$보다 작은 두 자리 자연수 중 $7$의 배수를 먼저 모두 적어보세요.<br>
+            • $21 = 3 \\times 7$ 이므로, $3$의 배수인 수는 최대공약수가 $21$이 되므로 제외해야 합니다.<br>
+            • $7$의 배수 중 $3$의 배수가 아닌 수 4개를 모두 찾아 쉼표로 구분하여 적었는지 확인하세요.<br>
+            💡 좌측 캔버스의 [조건 추론 랩] 또는 [수 카드 인터랙션 랩]을 확인해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (4-1 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -21353,6 +21793,11 @@
         state.lab3_10.step = 0;
         renderToolbar3_10();
         drawStep3_10Canvas();
+      } else if (state.subStep === '3-11') {
+        state.lab3_11.mode = 0;
+        state.lab3_11.step = 0;
+        renderToolbar3_11();
+        drawStep3_11Canvas();
       }
     }
 
@@ -21638,6 +22083,7 @@
         else if (state.subStep === '3-8') drawStep3_8Canvas();
         else if (state.subStep === '3-9') drawStep3_9Canvas();
         else if (state.subStep === '3-10') drawStep3_10Canvas();
+        else if (state.subStep === '3-11') drawStep3_11Canvas();
       }, 150);
     });
 
