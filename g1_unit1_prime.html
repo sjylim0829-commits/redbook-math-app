@@ -1220,6 +1220,11 @@
       lab4_6: {
         mode: 0, // 0: 원리 탐구 랩, 1: N 대입 시뮬레이션
         step: 0  // Mode 0: 0~3, Mode 1: 0~2
+      },
+      // 4-7 Interactive Lab State (7. [스스로 확인하기 4] 3A, 4A, 5A 최소공배수, p.22)
+      lab4_7: {
+        mode: 0, // 0: 나눗셈법 랩, 1: 대입 검산 랩
+        step: 0  // Mode 0: 0~3, Mode 1: 0~2
       }
     };
 
@@ -1482,6 +1487,9 @@
       } else if (code === '4-6') {
         renderToolbar4_6();
         renderSubstep4_6();
+      } else if (code === '4-7') {
+        renderToolbar4_7();
+        renderSubstep4_7();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -3885,6 +3893,61 @@
       renderToolbar4_6();
       drawStep4_6Canvas();
     }
+
+    // -------------------------------------------------------------
+    // SUBSTEP 4-7 Handlers & Toolbar (7. [스스로 확인하기 4] 3A, 4A, 5A 최소공배수, p.22)
+    // -------------------------------------------------------------
+    function renderToolbar4_7() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const isPassed4_7 = state.completedSubSteps && state.completedSubSteps.includes('4-7');
+      const curMode = state.lab4_7.mode || 0;
+      const curStep = state.lab4_7.step || 0;
+
+      let subControls = '';
+      if (curMode === 0) {
+        subControls = `
+          <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-left:6px; margin-right:4px;">탐구 단계:</span>
+          <button class="tool-btn ${curStep === 0 ? 'active' : ''}" onclick="setStep4_7Step(0)">➊ 나눗셈 정렬</button>
+          <button class="tool-btn ${curStep === 1 ? 'active' : ''}" onclick="setStep4_7Step(1)">➋ 공통 인수 A 나누기</button>
+          <button class="tool-btn ${curStep === 2 ? 'active' : ''}" onclick="setStep4_7Step(2)">➌ L자 곱 (60 × A)</button>
+          <button class="tool-btn ${curStep === 3 ? 'active' : ''}" onclick="setStep4_7Step(3)">${isPassed4_7 ? '➍ 방정식 풀이 (A = 6)' : '➍ 방정식 풀이 (A = ?)'}</button>
+        `;
+      } else {
+        subControls = `
+          <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-left:6px; margin-right:4px;">A 대입 검산:</span>
+          <button class="tool-btn ${curStep === 0 ? 'active' : ''}" onclick="setStep4_7Step(0)">A = 4 (LCM 240)</button>
+          <button class="tool-btn ${curStep === 1 ? 'active' : ''}" onclick="setStep4_7Step(1)">A = 5 (LCM 300)</button>
+          <button class="tool-btn ${curStep === 2 ? 'active' : ''}" onclick="setStep4_7Step(2)">${isPassed4_7 ? 'A = 6 (LCM 360 정답!)' : 'A = ? (LCM 360)'}</button>
+        `;
+      }
+
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-right:4px;">모드:</span>
+        <button class="tool-btn ${curMode === 0 ? 'active' : ''}" onclick="setStep4_7Mode(0)">🔍 [나눗셈법 랩] A 묶어내기와 L자 곱</button>
+        <button class="tool-btn ${curMode === 1 ? 'active' : ''}" onclick="setStep4_7Mode(1)">💡 [대입 검산 랩] A 후보 대입 비교</button>
+        <span style="margin:0 4px; color:#cbd5e1;">|</span>
+        ${subControls}
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setStep4_7Mode(m) {
+      state.lab4_7.mode = m;
+      state.lab4_7.step = 0;
+      renderToolbar4_7();
+      drawStep4_7Canvas();
+    }
+
+    function setStep4_7Step(s) {
+      state.lab4_7.step = s;
+      renderToolbar4_7();
+      drawStep4_7Canvas();
+    }
+
 
 
 
@@ -24429,7 +24492,397 @@
 
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (4-7 to 6-2)
+    // SUBSTEP 4-7: 7. [스스로 확인하기 4] 3A, 4A, 5A의 최소공배수 (p.22)
+    // -------------------------------------------------------------
+    function renderSubstep4_7() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[스스로 확인하기 4 (3A, 4A, 5A의 최소공배수)] (교과서 p.22)</b><br>
+        • 세 자연수 $3 \\times A$, $4 \\times A$, $5 \\times A$에서 공통인 수 $A$로 나누면 몫은 각각 $3, 4, 5$입니다.<br>
+        • $3, 4, 5$는 서로소(어느 두 수도 공약수가 1뿐)이므로 세 수의 최소공배수는 $A \\times 3 \\times 4 \\times 5 = 60 \\times A$입니다.<br>
+        • 최소공배수가 $360$일 때의 자연수 $A$의 값을 구해 보세요.
+      `;
+
+      const isPassed4_7 = state.completedSubSteps && state.completedSubSteps.includes('4-7');
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.22</span>
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b;">스스로 확인하기 4번</span>
+          </div>
+          <h4 style="font-size:0.98rem; font-weight:800; color:#1e293b; margin-bottom:14px; line-height:1.5;">
+            세 자연수 $3 \\times A,\\; 4 \\times A,\\; 5 \\times A$의 최소공배수가 $360$일 때, $A$의 값을 구하시오.
+          </h4>
+
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:18px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              자연수 $A$의 값 입력:
+            </div>
+            <div style="font-size:0.82rem; color:#64748b; margin-bottom:8px;">
+              • $A \\times 3 \\times 4 \\times 5 = 60 \\times A = 360$을 만족하는 $A$를 구하세요.
+            </div>
+            <input type="text" id="ans-4-7" class="proof-input-text" placeholder="답 입력" style="width:140px;" autocomplete="off">
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep4_7()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            정답 확인 및 채점
+          </button>
+
+          <div id="feedback-step-4-7" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep4_7Canvas();
+    }
+
+    function drawStep4_7Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed4_7 = state.completedSubSteps && state.completedSubSteps.includes('4-7');
+      const curMode = state.lab4_7.mode || 0;
+      const curStep = state.lab4_7.step || 0;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 33
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(11, Math.min(13, Math.floor(width * 0.019)));
+
+      let modeTitle = '';
+      let modeSub = '';
+      if (curMode === 0) {
+        modeTitle = '🔍 [나눗셈법 랩] 3A, 4A, 5A 의 나눗셈과 최소공배수';
+        modeSub = '공통 인수 A로 나눈 후 남은 몫 3, 4, 5와 A의 곱으로 최소공배수를 구합니다.';
+      } else {
+        modeTitle = '💡 [대입 검산 랩] A의 값 후보 대입 비교';
+        modeSub = 'A = 4, 5, 6을 각각 대입하여 세 수의 최소공배수가 360이 되는지 확인합니다.';
+      }
+
+      const titleText = two.makeText(modeTitle, width / 2, 16);
+      titleText.size = titleSize;
+      titleText.weight = 800;
+      titleText.fill = '#1e293b';
+
+      const subText = two.makeText(modeSub, width / 2, 33);
+      subText.size = subSize;
+      subText.fill = '#64748b';
+
+      // 2. Formula / Sub-bar - y: 56, h: 26 (top: 43, bottom: 69)
+      const fBarW = Math.min(width - 40, 640);
+      const fBar = two.makeRoundedRectangle(width / 2, 56, fBarW, 26, 6);
+      fBar.fill = '#f1f5f9';
+      fBar.stroke = '#cbd5e1';
+      fBar.linewidth = 1;
+
+      let fBarStr = '';
+      if (curMode === 0) {
+        if (curStep === 0) fBarStr = '➊ 3 × A,  4 × A,  5 × A 세 수의 나눗셈법 정렬';
+        else if (curStep === 1) fBarStr = '➋ 공통 인수 A 로 나누면 몫은 3, 4, 5 (서로소)';
+        else if (curStep === 2) fBarStr = '➌ 최소공배수 = A × 3 × 4 × 5 = 60 × A';
+        else fBarStr = isPassed4_7 ? '➍ 60 × A = 360 ➔ A = 360 ÷ 60 = 6 정답 완성! ✨' : '➍ 60 × A = 360 ➔ A의 값을 우측에 입력해 보세요.';
+      } else {
+        if (curStep === 0) fBarStr = 'A = 4 대입 ➔ 세 수: 12, 16, 20 ➔ 최소공배수 = 240 (360 ❌)';
+        else if (curStep === 1) fBarStr = 'A = 5 대입 ➔ 세 수: 15, 20, 25 ➔ 최소공배수 = 300 (360 ❌)';
+        else fBarStr = isPassed4_7 ? 'A = 6 대입 ➔ 세 수: 18, 24, 30 ➔ 최소공배수 = 360 (정답 일치! ✨)' : 'A = ? 대입 ➔ 최소공배수가 360이 되는 A를 찾아보세요.';
+      }
+
+      const fBarText = two.makeText(fBarStr, width / 2, 56);
+      fBarText.size = Math.max(11, Math.min(13, Math.floor(width * 0.018)));
+      fBarText.weight = 700;
+      fBarText.fill = '#334155';
+
+      // 3. Central Board - y: 174, h: 178 (top: 85, bottom: 263)
+      const boardW = Math.min(width - 40, 640);
+      const board = two.makeRoundedRectangle(width / 2, 174, boardW, 178, 12);
+      board.fill = '#ffffff';
+      board.stroke = '#e2e8f0';
+      board.linewidth = 1.5;
+
+      const cX = width / 2;
+
+      if (curMode === 0) {
+        // Mode 0: L자 나눗셈 시각화
+        const divX = cX - 120;
+        const n1X = cX - 50;
+        const n2X = cX + 20;
+        const n3X = cX + 90;
+
+        // Divisor A & Bracket
+        const tDiv = two.makeText('A', divX, 130);
+        tDiv.size = 18; tDiv.weight = 800; tDiv.fill = '#2563eb';
+
+        const tBrk = two.makeText(')', divX + 22, 130);
+        tBrk.size = 20; tBrk.weight = 700; tBrk.fill = '#64748b';
+
+        // Numbers: 3×A, 4×A, 5×A
+        const tN1 = two.makeText('3 × A', n1X, 130);
+        tN1.size = 15; tN1.weight = 800; tN1.fill = '#1e293b';
+
+        const tN2 = two.makeText('4 × A', n2X, 130);
+        tN2.size = 15; tN2.weight = 800; tN2.fill = '#1e293b';
+
+        const tN3 = two.makeText('5 × A', n3X, 130);
+        tN3.size = 15; tN3.weight = 800; tN3.fill = '#1e293b';
+
+        // Line
+        const divLine = two.makeLine(divX + 10, 148, n3X + 35, 148);
+        divLine.stroke = '#94a3b8'; divLine.linewidth = 1.5;
+
+        // Quotients: 3, 4, 5
+        const qColor = (curStep >= 1) ? '#047857' : '#cbd5e1';
+        const tQ1 = two.makeText('3', n1X, 168);
+        tQ1.size = 16; tQ1.weight = 800; tQ1.fill = qColor;
+
+        const tQ2 = two.makeText('4', n2X, 168);
+        tQ2.size = 16; tQ2.weight = 800; tQ2.fill = qColor;
+
+        const tQ3 = two.makeText('5', n3X, 168);
+        tQ3.size = 16; tQ3.weight = 800; tQ3.fill = qColor;
+
+        // L-frame indicator if step >= 2
+        if (curStep >= 2) {
+          const lHl = two.makeRoundedRectangle(cX - 10, 150, 260, 68, 8);
+          lHl.fill = '#f0fdf4'; lHl.stroke = '#86efac'; lHl.linewidth = 1.5;
+        }
+
+        // Bottom text at y: 238
+        let expStr = '';
+        if (curStep < 2) {
+          expStr = '➔ 세 수의 공약수 A로 나누면 몫은 3, 4, 5 입니다. (3, 4, 5는 서로소)';
+        } else if (curStep === 2) {
+          expStr = '➔ L자 형태 곱: 최소공배수 = A × 3 × 4 × 5 = 60 × A';
+        } else {
+          expStr = isPassed4_7
+            ? '➔ 60 × A = 360  ➔  A = 360 ÷ 60 = 6 (정답 완성!) ✨'
+            : '➔ 60 × A = 360  ➔  A의 값을 계산하여 우측에 적어보세요.';
+        }
+
+        const tExp = two.makeText(expStr, cX, 238);
+        tExp.size = 12.5; tExp.weight = 800;
+        tExp.fill = (curStep === 3 && isPassed4_7) ? '#047857' : '#334155';
+
+      } else {
+        // Mode 1: 대입 검산 랩
+        const boxW = Math.min(260, (width - 100) / 2);
+        const b1X = cX - boxW / 2 - 12;
+        const b2X = cX + boxW / 2 + 12;
+        const bY = 162;
+        const bH = 110;
+
+        const card1 = two.makeRoundedRectangle(b1X, bY, boxW, bH, 10);
+        const card2 = two.makeRoundedRectangle(b2X, bY, boxW, bH, 10);
+
+        let c1Bg = '#f8fafc', c1Border = '#cbd5e1', c1T1 = '', c1T2 = '';
+        let c2Bg = '#f8fafc', c2Border = '#cbd5e1', c2T1 = '', c2T2 = '';
+
+        if (curStep === 0) { // A = 4
+          c1Bg = '#eff6ff'; c1Border = '#93c5fd';
+          c1T1 = 'A = 4 일 때 세 수:';
+          c1T2 = '3×4 = 12,  4×4 = 16,  5×4 = 20';
+          c2Bg = '#fef2f2'; c2Border = '#fca5a5';
+          c2T1 = '최소공배수 계산:';
+          c2T2 = 'LCM = 4 × 3 × 4 × 5 = 240  (360 ❌)';
+        } else if (curStep === 1) { // A = 5
+          c1Bg = '#eff6ff'; c1Border = '#93c5fd';
+          c1T1 = 'A = 5 일 때 세 수:';
+          c1T2 = '3×5 = 15,  4×5 = 20,  5×5 = 25';
+          c2Bg = '#fef2f2'; c2Border = '#fca5a5';
+          c2T1 = '최소공배수 계산:';
+          c2T2 = 'LCM = 5 × 3 × 4 × 5 = 300  (360 ❌)';
+        } else { // A = 6
+          c1Bg = '#ecfdf5'; c1Border = '#86efac';
+          c1T1 = isPassed4_7 ? 'A = 6 일 때 세 수:' : 'A = ? 일 때 세 수:';
+          c1T2 = isPassed4_7 ? '3×6 = 18,  4×6 = 24,  5×6 = 30' : '3A, 4A, 5A';
+          c2Bg = '#ecfdf5'; c2Border = '#86efac';
+          c2T1 = '최소공배수 계산:';
+          c2T2 = isPassed4_7 ? 'LCM = 6 × 3 × 4 × 5 = 360  (정답 일치! ✅)' : 'LCM = 60 × A = 360 만족';
+        }
+
+        card1.fill = c1Bg; card1.stroke = c1Border; card1.linewidth = 1.5;
+        card2.fill = c2Bg; card2.stroke = c2Border; card2.linewidth = 1.5;
+
+        const txt1_1 = two.makeText(c1T1, b1X, bY - 24);
+        txt1_1.size = 13.5; txt1_1.weight = 800; txt1_1.fill = '#1e293b';
+        const txt1_2 = two.makeText(c1T2, b1X, bY + 12);
+        txt1_2.size = 12.5; txt1_2.weight = 700; txt1_2.fill = '#334155';
+
+        const txt2_1 = two.makeText(c2T1, b2X, bY - 24);
+        txt2_1.size = 13.5; txt2_1.weight = 800; txt2_1.fill = '#1e293b';
+        const txt2_2 = two.makeText(c2T2, b2X, bY + 12);
+        txt2_2.size = 12.5; txt2_2.weight = 800;
+        txt2_2.fill = c2T2.includes('✅') ? '#047857' : (c2T2.includes('❌') ? '#b91c1c' : '#334155');
+
+        // Bottom text
+        const expStr = (curStep === 2)
+          ? (isPassed4_7 ? '➔ 60 × A = 360 ➔ A = 6 일 때 최소공배수가 360이 됩니다! ✨' : '➔ 60 × A = 360 을 만족하는 자연수 A를 우측에 적어보세요.')
+          : '➔ A를 대입하여 최소공배수가 360이 되는지 확인해 보세요.';
+        const tExp = two.makeText(expStr, cX, 238);
+        tExp.size = 12.5; tExp.weight = 800;
+        tExp.fill = (curStep === 2 && isPassed4_7) ? '#047857' : '#334155';
+      }
+
+      // 4. Status Bar - y: 288, h: 26 (top: 275, bottom: 301)
+      const sBarW = Math.min(width - 40, 640);
+      const sBar = two.makeRoundedRectangle(width / 2, 288, sBarW, 26, 6);
+      sBar.fill = isPassed4_7 ? '#ecfdf5' : '#f8fafc';
+      sBar.stroke = isPassed4_7 ? '#a7f3d0' : '#e2e8f0';
+      sBar.linewidth = 1;
+
+      let sBarMsg = '';
+      if (isPassed4_7) {
+        sBarMsg = '🎉 [학습 완료] A = 6 을 올바르게 구했습니다!';
+      } else {
+        sBarMsg = '💡 3, 4, 5는 서로소이므로 세 수의 최소공배수는 A × 3 × 4 × 5 = 60 × A 입니다.';
+      }
+
+      const sBarText = two.makeText(sBarMsg, width / 2, 288);
+      sBarText.size = Math.max(11, Math.min(12.5, Math.floor(width * 0.018)));
+      sBarText.weight = 700;
+      sBarText.fill = isPassed4_7 ? '#047857' : '#475569';
+
+      // 5. Bottom Banner - y: 350, h: 68 (top: 316, bottom: 384)
+      const bBannerW = Math.min(width - 40, 640);
+      const bBanner = two.makeRoundedRectangle(width / 2, 350, bBannerW, 68, 10);
+      bBanner.fill = isPassed4_7 ? '#f0fdf4' : '#f8fafc';
+      bBanner.stroke = isPassed4_7 ? '#86efac' : '#cbd5e1';
+      bBanner.linewidth = 1.5;
+
+      const bbT1 = two.makeText(
+        isPassed4_7
+          ? '⭐ [핵심 원리] 미지수를 포함한 세 수의 최소공배수'
+          : '💡 [개념 길잡이] 세 수의 공약수 묶어내기',
+        width / 2,
+        336
+      );
+      bbT1.size = 12.5; bbT1.weight = 800; bbT1.fill = isPassed4_7 ? '#065f46' : '#1e293b';
+
+      const bbT2 = two.makeText(
+        isPassed4_7
+          ? '• 세 수의 공약수 A로 나누면 몫은 3, 4, 5(서로소)이므로 최소공배수는 60 × A입니다. 60 × A = 360에서 A = 6입니다.'
+          : '• 공통인 수 A로 나눈 후 남은 몫들이 서로소이면, 최소공배수는 A와 남은 몫들의 곱입니다.',
+        width / 2,
+        358
+      );
+      bbT2.size = 11.5; bbT2.fill = isPassed4_7 ? '#047857' : '#64748b';
+
+      two.update();
+
+      // Pointer event isolation
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas, svg') : null;
+      if (container) container.onpointerdown = null;
+      if (!canvasEl) return;
+
+      canvasEl.onpointerdown = (e) => {
+        if (curMode === 0) {
+          setStep4_7Step((curStep + 1) % 4);
+        } else {
+          setStep4_7Step((curStep + 1) % 3);
+        }
+      };
+    }
+
+    async function gradeStep4_7() {
+      const raw = cleanInput(document.getElementById('ans-4-7')?.value || '');
+      const ans = parseInt(raw, 10);
+
+      const isCorrect = (ans === 6);
+
+      const fEl = document.getElementById('feedback-step-4-7');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('4-7')) {
+          state.completedSubSteps.push('4-7');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('4-7', {
+              activityTitle: '[중1-1 소인수분해] [4-7] 7. [스스로 확인하기 4] 3A, 4A, 5A 최소공배수',
+              answerText: raw,
+              answers: { ans: raw, val: 6 },
+              score: 100,
+              passed: true,
+              unitId: 'u1'
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+
+        // Unlock next step 4-8 (최소공배수 빈칸 추론)
+        if (!state.unlockedSubSteps.includes('4-8')) {
+          state.unlockedSubSteps.push('4-8');
+        }
+        updateSubStepPills(state.currentMainTab);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.2rem;">🎉</span>
+            <h4 style="color:#065f46; font-size:1.02rem; font-weight:800; margin:0;">정답입니다! 100점 (All Clear)</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            완벽하게 해결했습니다!<br>
+            • 세 자연수 $3 \\times A,\\; 4 \\times A,\\; 5 \\times A$의 공통인 수는 $A$입니다.<br>
+            • $A$로 나누면 몫은 각각 $3, 4, 5$이며, 이 세 수는 서로소입니다.<br>
+            • 따라서 세 수의 최소공배수는 $A \\times 3 \\times 4 \\times 5 = 60 \\times A$입니다.<br>
+            &nbsp;&nbsp;$60 \\times A = 360 \\implies A = \\frac{360}{60} = \\mathbf{6}$<br>
+            <div style="margin-top:10px; padding:8px 12px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 다음 세부 활동 <b>[4-8] 8. [스스로 확인하기 5] 최소공배수 빈칸 추론</b>이 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="loadSubStep('4-8')" style="margin-top:12px; width:100%; padding:10px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            다음 단계 [4-8] 스스로 확인하기 5로 이동 ➔
+          </button>
+        `;
+
+        renderToolbar4_7();
+        drawStep4_7Canvas();
+      } else {
+        let msg = '';
+        if (ans === 60) {
+          msg = '60은 3, 4, 5의 곱입니다! 최소공배수 $60 \\times A = 360$에서 $A$의 값을 구해야 합니다.';
+        } else if (ans === 12) {
+          msg = '세 수의 곱 전체를 360으로 나누지 말고, $A \\times 3 \\times 4 \\times 5 = 60 \\times A = 360$ 방정식을 확인해 보세요.';
+        } else {
+          msg = '$3 \\times 4 \\times 5 = 60$이므로 최소공배수는 $60 \\times A$입니다. $60 \\times A = 360$을 풀어보세요.';
+        }
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            • ${msg}<br>
+            • 세 자연수 $3A, 4A, 5A$에서 $A$를 묶어낸 후 몫 $3, 4, 5$의 곱을 구해보세요.<br>
+            💡 좌측 캔버스의 [나눗셈법 랩]을 확인해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (4-8 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -24723,6 +25176,11 @@
         state.lab4_6.step = 0;
         renderToolbar4_6();
         drawStep4_6Canvas();
+      } else if (state.subStep === '4-7') {
+        state.lab4_7.mode = 0;
+        state.lab4_7.step = 0;
+        renderToolbar4_7();
+        drawStep4_7Canvas();
       }
     }
 
@@ -25015,6 +25473,7 @@
       else if (state.subStep === '4-4') drawStep4_4Canvas();
       else if (state.subStep === '4-5') drawStep4_5Canvas();
       else if (state.subStep === '4-6') drawStep4_6Canvas();
+      else if (state.subStep === '4-7') drawStep4_7Canvas();
       }, 150);
     });
 
