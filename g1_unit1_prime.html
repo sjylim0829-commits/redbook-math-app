@@ -1163,6 +1163,12 @@
       lab3_6: {
         mode: 0, // 0: 2-(1), 1: 2-(2)
         step: 0 // 0: 정렬, 1: 공통 소인수 선택, 2: 최대공약수 계산
+      },
+      // 3-7 Interactive Lab State (7. 스스로 확인하기 3 (20 이상 30 이하 15와 서로소인 수))
+      lab3_7: {
+        mode: 0, // 0: 20~30 수 카드 인터랙션, 1: 15 소인수 소거 랩
+        step: 0, // 0: 초기, 1: 3배수 소거, 2: 5배수 소거, 3: 서로소 확정
+        selectedNum: null
       }
     };
 
@@ -1392,6 +1398,9 @@
       } else if (code === '3-6') {
         renderToolbar3_6();
         renderSubstep3_6();
+      } else if (code === '3-7') {
+        renderToolbar3_7();
+        renderSubstep3_7();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -3221,6 +3230,63 @@
       renderToolbar3_6();
       drawStep3_6Canvas();
     }
+
+    // -------------------------------------------------------------
+    // SUBSTEP 3-7 Handlers & Toolbar (7. 스스로 확인하기 3 (20 이상 30 이하 15와 서로소인 수), p.19)
+    // -------------------------------------------------------------
+    function renderToolbar3_7() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const curMode = state.lab3_7.mode || 0;
+      const curStep = state.lab3_7.step || 0;
+
+      let subControls = '';
+      if (curMode === 1) {
+        subControls = `
+          <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-left:6px; margin-right:4px;">소거 단계:</span>
+          <button class="tool-btn ${curStep === 0 ? 'active' : ''}" onclick="setStep3_7Step(0)">➊ 15 소인수분해</button>
+          <button class="tool-btn ${curStep === 1 ? 'active' : ''}" onclick="setStep3_7Step(1)">➋ 3의 배수 제외</button>
+          <button class="tool-btn ${curStep === 2 ? 'active' : ''}" onclick="setStep3_7Step(2)">➌ 5의 배수 제외</button>
+          <button class="tool-btn ${curStep === 3 ? 'active' : ''}" onclick="setStep3_7Step(3)">➍ 서로소 수 확정</button>
+        `;
+      } else {
+        subControls = `
+          <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-left:6px; margin-right:4px;">안내:</span>
+          <span style="font-size:0.8rem; color:#64748b;">아래 11개 수 카드를 터치하여 15와의 관계를 탐색하세요.</span>
+        `;
+      }
+
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-right:4px;">탐구 모드:</span>
+        <button class="tool-btn ${curMode === 0 ? 'active' : ''}" onclick="setStep3_7Mode(0)">🔢 [20~30] 수 카드 탐색</button>
+        <button class="tool-btn ${curMode === 1 ? 'active' : ''}" onclick="setStep3_7Mode(1)">🔍 [소인수 소거] 3과 5의 배수 제외 랩</button>
+        <span style="margin:0 4px; color:#cbd5e1;">|</span>
+        ${subControls}
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setStep3_7Mode(m) {
+      state.lab3_7.mode = m;
+      state.lab3_7.step = 0;
+      renderToolbar3_7();
+      drawStep3_7Canvas();
+    }
+
+    function setStep3_7Step(s) {
+      state.lab3_7.step = s;
+      renderToolbar3_7();
+      drawStep3_7Canvas();
+    }
+
+    function setStep3_7Num(n) {
+      state.lab3_7.selectedNum = n;
+      drawStep3_7Canvas();
+    }
+
 
 
 
@@ -19266,7 +19332,420 @@
 
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (3-7 to 6-2)
+    // SUBSTEP 3-7: 7. 스스로 확인하기 3 (20 이상 30 이하 15와 서로소인 수, p.19)
+    // -------------------------------------------------------------
+    function renderSubstep3_7() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[스스로 확인하기 3 (20 이상 30 이하 15와 서로소인 수)] (교과서 p.19)</b><br>
+        • $15 = 3 \\times 5$ 이므로 15와 서로소인 수는 <b>3의 배수도 아니고 5의 배수도 아닌 수</b>입니다.<br>
+        • 20 이상 30 이하의 자연수 중에서 15와 서로소인 수를 모두 구해 보세요.
+      `;
+
+      const isPassed3_7 = state.completedSubSteps && state.completedSubSteps.includes('3-7');
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.19</span>
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b;">스스로 확인하기 3번</span>
+          </div>
+          <h4 style="font-size:0.98rem; font-weight:800; color:#1e293b; margin-bottom:14px; line-height:1.5;">
+            $20$ 이상 $30$ 이하의 자연수 중에서 $15$와 서로소인 자연수를 모두 구하시오.
+          </h4>
+
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:18px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              정답 입력 (자연수들을 쉼표 또는 띄어쓰기로 구분하여 모두 입력)
+            </div>
+            <div style="font-size:0.82rem; color:#64748b; margin-bottom:10px;">
+              • 15를 소인수분해하면 $15 = 3 \\times 5$ 입니다.<br>
+              • 따라서 15와 서로소인 수는 3의 배수도 아니고 5의 배수도 아닌 수입니다.
+            </div>
+            <input type="text" id="ans-3-7" class="proof-input-text" placeholder="답 입력" style="width:100%; max-width:280px;" autocomplete="off">
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep3_7()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            정답 확인 및 채점
+          </button>
+
+          <div id="feedback-step-3-7" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep3_7Canvas();
+    }
+
+    function drawStep3_7Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed3_7 = state.completedSubSteps && state.completedSubSteps.includes('3-7');
+      const curMode = state.lab3_7.mode || 0;
+      const curStep = state.lab3_7.step || 0;
+      const selNum = state.lab3_7.selectedNum;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 33
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(11, Math.min(13, Math.floor(width * 0.019)));
+
+      let modeTitle = '';
+      let modeSub = '';
+      if (curMode === 0) {
+        modeTitle = '🔢 [20~30] 수 카드 탐색: 15와의 최대공약수 판별';
+        modeSub = '각 수 카드를 클릭하면 15와의 공약수 및 서로소 여부를 확인할 수 있습니다.';
+      } else {
+        modeTitle = '🔍 [소인수 소거 랩] 15 = 3 × 5 배수 소거법';
+        modeSub = '15와 서로소인 수는 3의 배수도 아니고 5의 배수도 아닌 수입니다.';
+      }
+
+      const titleText = two.makeText(modeTitle, width / 2, 16);
+      titleText.size = titleSize;
+      titleText.weight = 800;
+      titleText.fill = '#1e293b';
+
+      const subText = two.makeText(modeSub, width / 2, 33);
+      subText.size = subSize;
+      subText.fill = '#64748b';
+
+      // 2. Formula / Sub-bar - y: 56, h: 26 (top: 43, bottom: 69)
+      const fBarW = Math.min(width - 40, 640);
+      const fBar = two.makeRoundedRectangle(width / 2, 56, fBarW, 26, 6);
+      fBar.fill = '#f1f5f9';
+      fBar.stroke = '#cbd5e1';
+      fBar.linewidth = 1;
+
+      let fBarStr = '';
+      if (curMode === 0) {
+        fBarStr = selNum
+          ? `선택한 수: [ ${selNum} ]  ➔  아래에서 15와의 공약수 및 서로소 분석을 확인하세요.`
+          : '카드를 터치하면 해당 수와 15의 관계가 실시간으로 분석됩니다.';
+      } else {
+        if (curStep === 0) fBarStr = '➊ 15 = 3 × 5 이므로, 3의 배수와 5의 배수는 15와 공약수를 갖습니다.';
+        else if (curStep === 1) fBarStr = '➋ 3의 배수 제외: 21, 24, 27, 30 제외 ❌';
+        else if (curStep === 2) fBarStr = '➌ 5의 배수 제외: 20, 25, 30 제외 ❌';
+        else fBarStr = isPassed3_7
+          ? '➍ 남은 수: 22, 23, 26, 28, 29 (15와 서로소인 수) ✨'
+          : '➍ 남은 수: ? (남은 수를 확인하여 우측에 답을 적어보세요)';
+      }
+
+      const fBarText = two.makeText(fBarStr, width / 2, 56);
+      fBarText.size = Math.max(11, Math.min(13, Math.floor(width * 0.018)));
+      fBarText.weight = 700;
+      fBarText.fill = '#334155';
+
+      // 3. Central Board - y: 174, h: 178 (top: 85, bottom: 263)
+      const boardW = Math.min(width - 40, 640);
+      const board = two.makeRoundedRectangle(width / 2, 174, boardW, 178, 12);
+      board.fill = '#ffffff';
+      board.stroke = '#e2e8f0';
+      board.linewidth = 1.5;
+
+      const nums = [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30];
+      const row1 = [20, 21, 22, 23, 24, 25];
+      const row2 = [26, 27, 28, 29, 30];
+
+      // Draw 11 Cards
+      const cardW = 54;
+      const cardH = 38;
+      const yRow1 = 126;
+      const yRow2 = 174;
+
+      function getCardStatus(n) {
+        const isMul3 = (n % 3 === 0);
+        const isMul5 = (n % 5 === 0);
+        const isCoprime = (!isMul3 && !isMul5);
+
+        if (curMode === 0) {
+          const isSelected = (selNum === n);
+          return { isSelected, isCoprime, isCrossed: false, colorBg: isSelected ? '#e0e7ff' : '#f8fafc', colorBorder: isSelected ? '#6366f1' : '#cbd5e1', colorText: '#1e293b' };
+        } else {
+          // Mode 1: Sieve steps
+          let isCrossed = false;
+          let crossColor = '';
+          if (curStep >= 1 && isMul3) { isCrossed = true; crossColor = '#ef4444'; }
+          if (curStep >= 2 && isMul5) { isCrossed = true; crossColor = crossColor || '#f97316'; }
+
+          let bg = '#f8fafc';
+          let border = '#cbd5e1';
+          let text = '#1e293b';
+
+          if (isCrossed) {
+            bg = '#fef2f2';
+            border = '#fca5a5';
+            text = '#94a3b8';
+          } else if (curStep === 3 && isCoprime) {
+            bg = '#f0fdf4';
+            border = '#86efac';
+            text = '#047857';
+          }
+
+          return { isSelected: false, isCoprime, isCrossed, crossColor, colorBg: bg, colorBorder: border, colorText: text };
+        }
+      }
+
+      // Render Row 1
+      const startX1 = width / 2 - (cardW * 6 + 10 * 5) / 2 + cardW / 2;
+      for (let i = 0; i < 6; i++) {
+        const n = row1[i];
+        const cx = startX1 + i * (cardW + 10);
+        const st = getCardStatus(n);
+
+        const cRect = two.makeRoundedRectangle(cx, yRow1, cardW, cardH, 8);
+        cRect.fill = st.colorBg;
+        cRect.stroke = st.colorBorder;
+        cRect.linewidth = st.isSelected ? 2.5 : 1.5;
+
+        const cText = two.makeText(String(n), cx, yRow1);
+        cText.size = 14;
+        cText.weight = 800;
+        cText.fill = st.colorText;
+
+        if (st.isCrossed) {
+          const line = two.makeLine(cx - cardW / 2 + 4, yRow1 + cardH / 2 - 4, cx + cardW / 2 - 4, yRow1 - cardH / 2 + 4);
+          line.stroke = st.crossColor;
+          line.linewidth = 2;
+        }
+      }
+
+      // Render Row 2
+      const startX2 = width / 2 - (cardW * 5 + 10 * 4) / 2 + cardW / 2;
+      for (let i = 0; i < 5; i++) {
+        const n = row2[i];
+        const cx = startX2 + i * (cardW + 10);
+        const st = getCardStatus(n);
+
+        const cRect = two.makeRoundedRectangle(cx, yRow2, cardW, cardH, 8);
+        cRect.fill = st.colorBg;
+        cRect.stroke = st.colorBorder;
+        cRect.linewidth = st.isSelected ? 2.5 : 1.5;
+
+        const cText = two.makeText(String(n), cx, yRow2);
+        cText.size = 14;
+        cText.weight = 800;
+        cText.fill = st.colorText;
+
+        if (st.isCrossed) {
+          const line = two.makeLine(cx - cardW / 2 + 4, yRow2 + cardH / 2 - 4, cx + cardW / 2 - 4, yRow2 - cardH / 2 + 4);
+          line.stroke = st.crossColor;
+          line.linewidth = 2;
+        }
+      }
+
+      // Detail analysis at bottom of board (y: 226)
+      let detailMsg = '';
+      let detailColor = '#475569';
+      if (curMode === 0) {
+        if (selNum) {
+          const isMul3 = (selNum % 3 === 0);
+          const isMul5 = (selNum % 5 === 0);
+          const isCoprime = (!isMul3 && !isMul5);
+          if (isCoprime) {
+            detailMsg = `• [ ${selNum} ]: 3의 배수도 아니고 5의 배수도 아닙니다 ➔ 최대공약수 = 1 (15와 서로소 ✨)`;
+            detailColor = '#047857';
+          } else if (isMul3 && isMul5) {
+            detailMsg = `• [ ${selNum} ]: 3과 5의 공배수입니다 ➔ 15의 배수이므로 최대공약수 = 15 (서로소 ❌)`;
+            detailColor = '#b91c1c';
+          } else if (isMul3) {
+            detailMsg = `• [ ${selNum} ]: 3의 배수입니다 ➔ 15와 공약수 3을 가지므로 서로소가 아닙니다 ❌`;
+            detailColor = '#b91c1c';
+          } else {
+            detailMsg = `• [ ${selNum} ]: 5의 배수입니다 ➔ 15와 공약수 5를 가지므로 서로소가 아닙니다 ❌`;
+            detailColor = '#b91c1c';
+          }
+        } else {
+          detailMsg = '💡 위 수 카드를 터치하면 15와의 소인수분해 및 서로소 관계가 나타납니다.';
+        }
+      } else {
+        if (curStep === 0) detailMsg = '• 15를 소인수분해하면 15 = 3 × 5 이므로 3의 배수와 5의 배수를 모두 지워야 합니다.';
+        else if (curStep === 1) detailMsg = '• 3의 배수 소거: 21(=3×7), 24(=3×8), 27(=3×9), 30(=3×10) 제거됨.';
+        else if (curStep === 2) detailMsg = '• 5의 배수 소거: 20(=5×4), 25(=5×5), 30(=5×6) 제거됨.';
+        else {
+          detailMsg = isPassed3_7
+            ? '• 남은 수: 22, 23, 26, 28, 29 (15와 서로소인 자연수 5개 확정!) ✨'
+            : '• 남은 수: ? (3과 5의 배수를 제외하고 남은 수들을 찾아 우측에 답을 적어보세요)';
+          detailColor = '#047857';
+        }
+      }
+
+      const tDetail = two.makeText(detailMsg, width / 2, 226);
+      tDetail.size = 12.5;
+      tDetail.weight = 800;
+      tDetail.fill = detailColor;
+
+      // 4. Status Bar - y: 288, h: 26 (top: 275, bottom: 301)
+      const sBarW = Math.min(width - 40, 640);
+      const sBar = two.makeRoundedRectangle(width / 2, 288, sBarW, 26, 6);
+      sBar.fill = isPassed3_7 ? '#ecfdf5' : '#f8fafc';
+      sBar.stroke = isPassed3_7 ? '#a7f3d0' : '#e2e8f0';
+      sBar.linewidth = 1;
+
+      let sBarMsg = '';
+      if (isPassed3_7) {
+        sBarMsg = '🎉 [학습 완료] 15와 서로소인 수: 22, 23, 26, 28, 29 정답을 완벽히 맞혔습니다!';
+      } else {
+        if (curMode === 0) sBarMsg = '💡 카드를 하나씩 눌러보며 3의 배수도 아니고 5의 배수도 아닌 수를 모두 찾아보세요.';
+        else sBarMsg = '💡 15=3×5 이므로 3의 배수와 5의 배수를 모두 지운 후 남은 수를 우측에 입력하세요.';
+      }
+
+      const sBarText = two.makeText(sBarMsg, width / 2, 288);
+      sBarText.size = Math.max(11, Math.min(12.5, Math.floor(width * 0.018)));
+      sBarText.weight = 700;
+      sBarText.fill = isPassed3_7 ? '#047857' : '#475569';
+
+      // 5. Bottom Banner - y: 350, h: 68 (top: 316, bottom: 384)
+      const bBannerW = Math.min(width - 40, 640);
+      const bBanner = two.makeRoundedRectangle(width / 2, 350, bBannerW, 68, 10);
+      bBanner.fill = isPassed3_7 ? '#f0fdf4' : '#f8fafc';
+      bBanner.stroke = isPassed3_7 ? '#86efac' : '#cbd5e1';
+      bBanner.linewidth = 1.5;
+
+      const bbT1 = two.makeText(
+        isPassed3_7
+          ? '⭐ [핵심 정리] 특정 자연수와 서로소인 수 찾는 원리'
+          : '💡 [개념 길잡이] 어떤 수와 서로소인 수 판별 요령',
+        width / 2,
+        336
+      );
+      bbT1.size = 12.5; bbT1.weight = 800; bbT1.fill = isPassed3_7 ? '#065f46' : '#1e293b';
+
+      const bbT2 = two.makeText(
+        isPassed3_7
+          ? '• 15 = 3 × 5 이므로 15와 서로소인 수는 3의 배수도 아니고 5의 배수도 아닌 수입니다. (22, 23, 26, 28, 29)'
+          : '• 주어진 수를 소인수분해한 후 그 소인수들의 배수를 모두 제외하면 서로소인 수를 쉽게 찾을 수 있습니다.',
+        width / 2,
+        358
+      );
+      bbT2.size = 11.5; bbT2.fill = isPassed3_7 ? '#047857' : '#64748b';
+
+      two.update();
+
+      // Pointer event isolation
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas, svg') : null;
+      if (container) container.onpointerdown = null;
+      if (!canvasEl) return;
+
+      canvasEl.onpointerdown = (e) => {
+        const rect = canvasEl.getBoundingClientRect();
+        const clientX = e.clientX - rect.left;
+        const clientY = e.clientY - rect.top;
+
+        if (curMode === 0) {
+          // Check if clicked card in Row 1 or Row 2
+          const startX1 = width / 2 - (cardW * 6 + 10 * 5) / 2 + cardW / 2;
+          for (let i = 0; i < 6; i++) {
+            const cx = startX1 + i * (cardW + 10);
+            if (Math.abs(clientX - cx) <= cardW / 2 && Math.abs(clientY - yRow1) <= cardH / 2) {
+              setStep3_7Num(row1[i]);
+              return;
+            }
+          }
+          const startX2 = width / 2 - (cardW * 5 + 10 * 4) / 2 + cardW / 2;
+          for (let i = 0; i < 5; i++) {
+            const cx = startX2 + i * (cardW + 10);
+            if (Math.abs(clientX - cx) <= cardW / 2 && Math.abs(clientY - yRow2) <= cardH / 2) {
+              setStep3_7Num(row2[i]);
+              return;
+            }
+          }
+        } else {
+          setStep3_7Step((curStep + 1) % 4);
+        }
+      };
+    }
+
+    async function gradeStep3_7() {
+      const raw = cleanInput(document.getElementById('ans-3-7')?.value);
+      const matches = raw.match(/\d+/g) || [];
+      const nums = matches.map(n => parseInt(n, 10)).sort((a, b) => a - b);
+      const target = [22, 23, 26, 28, 29];
+
+      const isCorrect = (nums.length === 5 && nums.every((val, idx) => val === target[idx]));
+
+      const fEl = document.getElementById('feedback-step-3-7');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('3-7')) {
+          state.completedSubSteps.push('3-7');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('3-7', {
+              activityTitle: '[중1-1 소인수분해] [3-7] 7. 스스로 확인하기 3 (20 이상 30 이하 15와 서로소인 수)',
+              answerText: `15와 서로소인 수: ${nums.join(', ')}`,
+              answers: { input: raw, parsed: nums },
+              score: 100,
+              passed: true,
+              unitId: 'u1'
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+
+        // Unlock next step 3-8 (스스로 확인하기 4)
+        if (!state.unlockedSubSteps.includes('3-8')) {
+          state.unlockedSubSteps.push('3-8');
+        }
+        updateSubStepPills(state.currentMainTab);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.2rem;">🎉</span>
+            <h4 style="color:#065f46; font-size:1.02rem; font-weight:800; margin:0;">정답입니다! 100점 (All Clear)</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            완벽하게 해결했습니다!<br>
+            • $15 = 3 \\times 5$ 이므로 15와 서로소인 수는 <b>3의 배수도 아니고 5의 배수도 아닌 수</b>입니다.<br>
+            • 20 이상 30 이하의 수 중 3의 배수(21, 24, 27, 30)와 5의 배수(20, 25, 30)를 제외하면 <b>22, 23, 26, 28, 29</b> 입니다.<br>
+            <div style="margin-top:10px; padding:8px 12px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 다음 세부 활동 <b>[3-8] 8. 스스로 확인하기 4 (최대공약수 지수 a+b 추론)</b>이 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="loadSubStep('3-8')" style="margin-top:12px; width:100%; padding:10px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            다음 단계 [3-8] 스스로 확인하기 4로 이동 ➔
+          </button>
+        `;
+
+        drawStep3_7Canvas();
+      } else {
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            • $15 = 3 \\times 5$ 이므로 <b>3의 배수도 아니고 5의 배수도 아닌 수</b>를 모두 골라야 합니다.<br>
+            • 20부터 30까지 11개의 수 중 빠뜨리거나 잘못 포함된 수가 있는지 확인해 보세요. (총 5개)<br>
+            💡 좌측 캔버스의 [3과 5의 배수 제외 랩]을 활용해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (3-8 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -19503,6 +19982,12 @@
         state.lab3_6.step = 0;
         renderToolbar3_6();
         drawStep3_6Canvas();
+      } else if (state.subStep === '3-7') {
+        state.lab3_7.mode = 0;
+        state.lab3_7.step = 0;
+        state.lab3_7.selectedNum = null;
+        renderToolbar3_7();
+        drawStep3_7Canvas();
       }
     }
 
@@ -19784,6 +20269,7 @@
         else if (state.subStep === '3-4') drawStep3_4Canvas();
         else if (state.subStep === '3-5') drawStep3_5Canvas();
         else if (state.subStep === '3-6') drawStep3_6Canvas();
+        else if (state.subStep === '3-7') drawStep3_7Canvas();
       }, 150);
     });
 
