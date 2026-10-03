@@ -1215,6 +1215,11 @@
       lab4_5: {
         mode: 0, // 0: ⑴ 랩 (세 수의 거듭제곱), 1: ⑵ 랩 (18, 24, 45)
         step: 0  // 0: 세로 정렬, 1: 밑 2 큰 지수, 2: 밑 3 큰 지수, 3: 밑 5 포함
+      },
+      // 4-6 Interactive Lab State (6. [스스로 확인하기 3] 역수의 공배수 곱하기, p.22)
+      lab4_6: {
+        mode: 0, // 0: 원리 탐구 랩, 1: N 대입 시뮬레이션
+        step: 0  // Mode 0: 0~3, Mode 1: 0~2
       }
     };
 
@@ -1474,6 +1479,9 @@
       } else if (code === '4-5') {
         renderToolbar4_5();
         renderSubstep4_5();
+      } else if (code === '4-6') {
+        renderToolbar4_6();
+        renderSubstep4_6();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -3823,6 +3831,61 @@
       renderToolbar4_5();
       drawStep4_5Canvas();
     }
+
+    // -------------------------------------------------------------
+    // SUBSTEP 4-6 Handlers & Toolbar (6. [스스로 확인하기 3] 역수의 공배수 곱하기, p.22)
+    // -------------------------------------------------------------
+    function renderToolbar4_6() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const curMode = state.lab4_6.mode || 0;
+      const curStep = state.lab4_6.step || 0;
+
+      const isPassed4_6 = state.completedSubSteps && state.completedSubSteps.includes('4-6');
+      let subControls = '';
+      if (curMode === 0) {
+        subControls = `
+          <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-left:6px; margin-right:4px;">탐구 단계:</span>
+          <button class="tool-btn ${curStep === 0 ? 'active' : ''}" onclick="setStep4_6Step(0)">➊ 공배수 조건</button>
+          <button class="tool-btn ${curStep === 1 ? 'active' : ''}" onclick="setStep4_6Step(1)">➋ 70 소인수분해</button>
+          <button class="tool-btn ${curStep === 2 ? 'active' : ''}" onclick="setStep4_6Step(2)">➌ 98 소인수분해</button>
+          <button class="tool-btn ${curStep === 3 ? 'active' : ''}" onclick="setStep4_6Step(3)">${isPassed4_6 ? '➍ 최소공배수 (490)' : '➍ 최소공배수 완성'}</button>
+        `;
+      } else {
+        subControls = `
+          <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-left:6px; margin-right:4px;">수 대입:</span>
+          <button class="tool-btn ${curStep === 0 ? 'active' : ''}" onclick="setStep4_6Step(0)">N = 70</button>
+          <button class="tool-btn ${curStep === 1 ? 'active' : ''}" onclick="setStep4_6Step(1)">N = 98</button>
+          <button class="tool-btn ${curStep === 2 ? 'active' : ''}" onclick="setStep4_6Step(2)">${isPassed4_6 ? 'N = 490 (정답!)' : 'N = ? (최소공배수)'}</button>
+        `;
+      }
+
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-right:4px;">모드:</span>
+        <button class="tool-btn ${curMode === 0 ? 'active' : ''}" onclick="setStep4_6Mode(0)">🔍 [원리 탐구 랩] 70과 98의 소인수분해</button>
+        <button class="tool-btn ${curMode === 1 ? 'active' : ''}" onclick="setStep4_6Mode(1)">💡 [수 곱하기 시뮬레이션] N 대입 비교</button>
+        <span style="margin:0 4px; color:#cbd5e1;">|</span>
+        ${subControls}
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setStep4_6Mode(m) {
+      state.lab4_6.mode = m;
+      state.lab4_6.step = 0;
+      renderToolbar4_6();
+      drawStep4_6Canvas();
+    }
+
+    function setStep4_6Step(s) {
+      state.lab4_6.step = s;
+      renderToolbar4_6();
+      drawStep4_6Canvas();
+    }
+
 
 
 
@@ -23962,7 +24025,411 @@
 
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (4-6 to 6-2)
+    // SUBSTEP 4-6: 6. [스스로 확인하기 3] 역수의 공배수 곱하기 (p.22)
+    // -------------------------------------------------------------
+    function renderSubstep4_6() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[스스로 확인하기 3 (역수의 공배수 곱하기)] (교과서 p.22)</b><br>
+        • 두 수 $\\frac{1}{70}$과 $\\frac{1}{98}$에 어떤 자연수 $N$을 곱하여 자연수가 되려면, $N$은 70의 배수이자 98의 배수여야 합니다.<br>
+        • 따라서 $N$은 70과 98의 <b>공배수</b>이어야 합니다.<br>
+        • 이 중 <b>가장 작은 자연수</b>는 70과 98의 <b>최소공배수</b>입니다.
+      `;
+
+      const isPassed4_6 = state.completedSubSteps && state.completedSubSteps.includes('4-6');
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.22</span>
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b;">스스로 확인하기 3번</span>
+          </div>
+          <h4 style="font-size:0.98rem; font-weight:800; color:#1e293b; margin-bottom:14px; line-height:1.5;">
+            두 수 $\\frac{1}{70}$, $\\frac{1}{98}$ 중에서 어느 것을 택하여 곱해도 자연수가 되는 가장 작은 자연수를 구하시오.
+          </h4>
+
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:18px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              가장 작은 자연수 $N$ 입력:
+            </div>
+            <div style="font-size:0.82rem; color:#64748b; margin-bottom:8px;">
+              • $70 = 2 \\times 5 \\times 7,\\quad 98 = 2 \\times 7^2$의 최소공배수를 구하세요.
+            </div>
+            <input type="text" id="ans-4-6" class="proof-input-text" placeholder="답 입력" style="width:140px;" autocomplete="off">
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep4_6()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            정답 확인 및 채점
+          </button>
+
+          <div id="feedback-step-4-6" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep4_6Canvas();
+    }
+
+    function drawStep4_6Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed4_6 = state.completedSubSteps && state.completedSubSteps.includes('4-6');
+      const curMode = state.lab4_6.mode || 0;
+      const curStep = state.lab4_6.step || 0;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 33
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(11, Math.min(13, Math.floor(width * 0.019)));
+
+      let modeTitle = '';
+      let modeSub = '';
+      if (curMode === 0) {
+        modeTitle = '🔍 [원리 탐구 랩] 1/70과 1/98에 곱하여 자연수가 되는 수';
+        modeSub = '두 분수를 자연수로 만드는 수는 70과 98의 공배수(최소공배수)입니다.';
+      } else {
+        modeTitle = '💡 [수 곱하기 시뮬레이션] 후보 수 N 대입 비교';
+        modeSub = isPassed4_6
+          ? 'N = 70, 98, 490을 각각 곱하여 실제로 자연수가 되는지 확인해 보세요.'
+          : '후보 수 N을 각각 곱하여 두 분수가 모두 자연수가 되는지 확인해 보세요.';
+      }
+
+      const titleText = two.makeText(modeTitle, width / 2, 16);
+      titleText.size = titleSize;
+      titleText.weight = 800;
+      titleText.fill = '#1e293b';
+
+      const subText = two.makeText(modeSub, width / 2, 33);
+      subText.size = subSize;
+      subText.fill = '#64748b';
+
+      // 2. Formula / Sub-bar - y: 56, h: 26 (top: 43, bottom: 69)
+      const fBarW = Math.min(width - 40, 640);
+      const fBar = two.makeRoundedRectangle(width / 2, 56, fBarW, 26, 6);
+      fBar.fill = '#f1f5f9';
+      fBar.stroke = '#cbd5e1';
+      fBar.linewidth = 1;
+
+      let fBarStr = '';
+      if (curMode === 0) {
+        if (curStep === 0) fBarStr = '➊ 1/70 × N, 1/98 × N 이 자연수 ➔ N은 70과 98의 공배수';
+        else if (curStep === 1) fBarStr = '➋ 70 소인수분해: 70 = 2 × 5 × 7';
+        else if (curStep === 2) fBarStr = '➌ 98 소인수분해: 98 = 2 × 7²';
+        else fBarStr = isPassed4_6 ? '➍ 최소공배수 = 2 × 5 × 7² = 490 (가장 작은 자연수 완성! ✨)' : '➍ 밑 2, 5, 7의 큰 지수를 곱하여 최소공배수를 구해보세요.';
+      } else {
+        if (curStep === 0) fBarStr = 'N = 70 ➔ 70/70 = 1 (자연수 O), 70/98 = 5/7 (자연수 ❌)';
+        else if (curStep === 1) fBarStr = 'N = 98 ➔ 98/70 = 7/5 (자연수 ❌), 98/98 = 1 (자연수 O)';
+        else fBarStr = isPassed4_6 ? 'N = 490 ➔ 490/70 = 7 (자연수 O), 490/98 = 5 (자연수 O) 둘 다 완성! ✨' : 'N = ? ➔ 70과 98의 최소공배수를 구해 우측 답안에 입력해 보세요.';
+      }
+
+      const fBarText = two.makeText(fBarStr, width / 2, 56);
+      fBarText.size = Math.max(11, Math.min(13, Math.floor(width * 0.018)));
+      fBarText.weight = 700;
+      fBarText.fill = '#334155';
+
+      // 3. Central Board - y: 174, h: 178 (top: 85, bottom: 263)
+      const boardW = Math.min(width - 40, 640);
+      const board = two.makeRoundedRectangle(width / 2, 174, boardW, 178, 12);
+      board.fill = '#ffffff';
+      board.stroke = '#e2e8f0';
+      board.linewidth = 1.5;
+
+      const startX = width / 2 - 180;
+      const colW = 90;
+      const rowH = 34;
+      const startY = 120;
+
+      if (curMode === 0) {
+        // Mode 0: 소인수분해 세로 정렬
+        if (curStep === 1) {
+          const hl = two.makeRoundedRectangle(startX + colW * 2, 120, colW * 3 + 10, 30, 6);
+          hl.fill = '#eff6ff'; hl.stroke = '#93c5fd'; hl.linewidth = 1.5;
+        } else if (curStep === 2) {
+          const hl = two.makeRoundedRectangle(startX + colW * 2, 154, colW * 3 + 10, 30, 6);
+          hl.fill = '#fdf4ff'; hl.stroke = '#f0abfc'; hl.linewidth = 1.5;
+        } else if (curStep === 3) {
+          const hlAll = two.makeRoundedRectangle(startX + colW * 2, 150, colW * 3 + 10, 86, 8);
+          hlAll.fill = '#f0fdf4'; hlAll.stroke = '#86efac'; hlAll.linewidth = 1.5;
+        }
+
+        // Row 1: 70 = 2 * 5 * 7
+        const t1_L = two.makeText('70 =', startX, startY);
+        t1_L.size = 14; t1_L.weight = 800; t1_L.fill = '#475569'; t1_L.alignment = 'right';
+        const t1_2 = two.makeText('2', startX + colW, startY);
+        t1_2.size = 15; t1_2.weight = 800; t1_2.fill = '#1e293b';
+        const t1_5 = two.makeText('5', startX + colW * 2, startY);
+        t1_5.size = 15; t1_5.weight = 800; t1_5.fill = '#1e293b';
+        const t1_7 = two.makeText('7', startX + colW * 3, startY);
+        t1_7.size = 15; t1_7.weight = 800; t1_7.fill = '#1e293b';
+
+        // Row 2: 98 = 2 * 7^2
+        const t2_L = two.makeText('98 =', startX, startY + rowH);
+        t2_L.size = 14; t2_L.weight = 800; t2_L.fill = '#475569'; t2_L.alignment = 'right';
+        const t2_2 = two.makeText('2', startX + colW, startY + rowH);
+        t2_2.size = 15; t2_2.weight = 800; t2_2.fill = '#1e293b';
+        const t2_7 = two.makeText('7²', startX + colW * 3, startY + rowH);
+        t2_7.size = 15; t2_7.weight = 800; t2_7.fill = '#1e293b';
+
+        // Separator
+        const sep = two.makeLine(startX - 20, startY + rowH + 16, startX + colW * 3 + 30, startY + rowH + 16);
+        sep.stroke = '#94a3b8'; sep.linewidth = 1.5;
+
+        // Row LCM
+        const tL_L = two.makeText('최소공배수 =', startX, startY + rowH * 2);
+        tL_L.size = 13.5; tL_L.weight = 800; tL_L.fill = '#047857'; tL_L.alignment = 'right';
+
+        const tL_2 = two.makeText('2', startX + colW, startY + rowH * 2);
+        tL_2.size = 15; tL_2.weight = 800; tL_2.fill = '#047857';
+
+        const tL_5 = two.makeText('5', startX + colW * 2, startY + rowH * 2);
+        tL_5.size = 15; tL_5.weight = 800; tL_5.fill = '#047857';
+
+        const tL_7 = two.makeText('7²', startX + colW * 3, startY + rowH * 2);
+        tL_7.size = 15; tL_7.weight = 800; tL_7.fill = '#047857';
+
+        // Bottom text at y: 242
+        const expStr = isPassed4_6
+          ? '➔ 2 × 5 × 7² = 10 × 49 = 490 (가장 작은 자연수 완성!) ✨'
+          : '➔ 큰 지수: 2, 5, 7² ➔ 곱한 값(최소공배수)을 우측에 적어보세요.';
+        const tExp = two.makeText(expStr, width / 2, 242);
+        tExp.size = 12.5; tExp.weight = 800;
+        tExp.fill = isPassed4_6 ? '#047857' : '#334155';
+
+      } else {
+        // Mode 1: 수 대입 시뮬레이션
+        const boxW = Math.min(260, (width - 100) / 2);
+        const b1X = width / 2 - boxW / 2 - 12;
+        const b2X = width / 2 + boxW / 2 + 12;
+        const bY = 162;
+        const bH = 110;
+
+        // Box 1: 1/70 * N
+        const card1 = two.makeRoundedRectangle(b1X, bY, boxW, bH, 10);
+        let card1Bg = '#f8fafc';
+        let card1Border = '#cbd5e1';
+        let card1Status = '';
+        let card1Calc = '';
+
+        // Box 2: 1/98 * N
+        const card2 = two.makeRoundedRectangle(b2X, bY, boxW, bH, 10);
+        let card2Bg = '#f8fafc';
+        let card2Border = '#cbd5e1';
+        let card2Status = '';
+        let card2Calc = '';
+
+        if (curStep === 0) { // N = 70
+          card1Bg = '#ecfdf5'; card1Border = '#86efac'; card1Status = '✅ 자연수 1 완성!';
+          card1Calc = '1/70 × 70 = 70/70 = 1';
+          card2Bg = '#fef2f2'; card2Border = '#fca5a5'; card2Status = '❌ 자연수 아님 (5/7)';
+          card2Calc = '1/98 × 70 = 70/98 = 5/7';
+        } else if (curStep === 1) { // N = 98
+          card1Bg = '#fef2f2'; card1Border = '#fca5a5'; card1Status = '❌ 자연수 아님 (7/5)';
+          card1Calc = '1/70 × 98 = 98/70 = 7/5';
+          card2Bg = '#ecfdf5'; card2Border = '#86efac'; card2Status = '✅ 자연수 1 완성!';
+          card2Calc = '1/98 × 98 = 98/98 = 1';
+        } else { // N = 490 (또는 N = ?)
+          if (isPassed4_6) {
+            card1Bg = '#ecfdf5'; card1Border = '#86efac'; card1Status = '✅ 자연수 7 완성!';
+            card1Calc = '1/70 × 490 = 490/70 = 7';
+            card2Bg = '#ecfdf5'; card2Border = '#86efac'; card2Status = '✅ 자연수 5 완성!';
+            card2Calc = '1/98 × 490 = 490/98 = 5';
+          } else {
+            card1Bg = '#f8fafc'; card1Border = '#cbd5e1'; card1Status = '❓ N은 70의 배수여야 함';
+            card1Calc = '1/70 × N = ? (자연수 O)';
+            card2Bg = '#f8fafc'; card2Border = '#cbd5e1'; card2Status = '❓ N은 98의 배수여야 함';
+            card2Calc = '1/98 × N = ? (자연수 O)';
+          }
+        }
+
+        card1.fill = card1Bg; card1.stroke = card1Border; card1.linewidth = 1.5;
+        card2.fill = card2Bg; card2.stroke = card2Border; card2.linewidth = 1.5;
+
+        // Card 1 Texts
+        const c1T1 = two.makeText('⑴  1/70 × N', b1X, bY - 32);
+        c1T1.size = 13.5; c1T1.weight = 800; c1T1.fill = '#1e293b';
+        const c1T2 = two.makeText(card1Calc, b1X, bY - 6);
+        c1T2.size = 13; c1T2.weight = 700; c1T2.fill = '#334155';
+        const c1T3 = two.makeText(card1Status, b1X, bY + 24);
+        c1T3.size = 13; c1T3.weight = 800; c1T3.fill = card1Status.includes('✅') ? '#047857' : (card1Status.includes('❓') ? '#475569' : '#b91c1c');
+
+        // Card 2 Texts
+        const c2T1 = two.makeText('⑵  1/98 × N', b2X, bY - 32);
+        c2T1.size = 13.5; c2T1.weight = 800; c2T1.fill = '#1e293b';
+        const c2T2 = two.makeText(card2Calc, b2X, bY - 6);
+        c2T2.size = 13; c2T2.weight = 700; c2T2.fill = '#334155';
+        const c2T3 = two.makeText(card2Status, b2X, bY + 24);
+        c2T3.size = 13; c2T3.weight = 800; c2T3.fill = card2Status.includes('✅') ? '#047857' : (card2Status.includes('❓') ? '#475569' : '#b91c1c');
+
+        // Bottom text
+        const expStr = (curStep === 2)
+          ? (isPassed4_6 ? '➔ N = 490 일 때 두 분수 모두 자연수가 되는 가장 작은 자연수입니다! ✨' : '➔ 두 분수가 동시에 자연수가 되려면 N은 70과 98의 최소공배수여야 합니다.')
+          : '➔ 두 분수가 동시에 자연수가 되려면 70과 98의 공배수여야 합니다.';
+        const tExp = two.makeText(expStr, width / 2, 242);
+        tExp.size = 12.5; tExp.weight = 800;
+        tExp.fill = (curStep === 2 && isPassed4_6) ? '#047857' : '#334155';
+      }
+
+      // 4. Status Bar - y: 288, h: 26 (top: 275, bottom: 301)
+      const sBarW = Math.min(width - 40, 640);
+      const sBar = two.makeRoundedRectangle(width / 2, 288, sBarW, 26, 6);
+      sBar.fill = isPassed4_6 ? '#ecfdf5' : '#f8fafc';
+      sBar.stroke = isPassed4_6 ? '#a7f3d0' : '#e2e8f0';
+      sBar.linewidth = 1;
+
+      let sBarMsg = '';
+      if (isPassed4_6) {
+        sBarMsg = '🎉 [학습 완료] 두 분수를 모두 자연수로 만드는 가장 작은 수 490을 구했습니다!';
+      } else {
+        sBarMsg = '💡 1/70과 1/98에 곱해 자연수가 되려면 70과 98의 최소공배수를 구해야 합니다.';
+      }
+
+      const sBarText = two.makeText(sBarMsg, width / 2, 288);
+      sBarText.size = Math.max(11, Math.min(12.5, Math.floor(width * 0.018)));
+      sBarText.weight = 700;
+      sBarText.fill = isPassed4_6 ? '#047857' : '#475569';
+
+      // 5. Bottom Banner - y: 350, h: 68 (top: 316, bottom: 384)
+      const bBannerW = Math.min(width - 40, 640);
+      const bBanner = two.makeRoundedRectangle(width / 2, 350, bBannerW, 68, 10);
+      bBanner.fill = isPassed4_6 ? '#f0fdf4' : '#f8fafc';
+      bBanner.stroke = isPassed4_6 ? '#86efac' : '#cbd5e1';
+      bBanner.linewidth = 1.5;
+
+      const bbT1 = two.makeText(
+        isPassed4_6
+          ? '⭐ [핵심 원리] 분수에 곱하여 자연수 만들기'
+          : '💡 [개념 길잡이] 역수의 공배수 곱하기 원리',
+        width / 2,
+        336
+      );
+      bbT1.size = 12.5; bbT1.weight = 800; bbT1.fill = isPassed4_6 ? '#065f46' : '#1e293b';
+
+      const bbT2 = two.makeText(
+        isPassed4_6
+          ? '• 1/70 × N 이 자연수 ➔ N은 70의 배수, 1/98 × N 이 자연수 ➔ N은 98의 배수이므로 N은 70과 98의 최소공배수 490입니다.'
+          : '• 분모의 배수를 곱해야 약분되어 자연수가 되므로, 두 분수를 모두 자연수로 만드는 가장 작은 수는 분모들의 최소공배수입니다.',
+        width / 2,
+        358
+      );
+      bbT2.size = 11.5; bbT2.fill = isPassed4_6 ? '#047857' : '#64748b';
+
+      two.update();
+
+      // Pointer event isolation
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas, svg') : null;
+      if (container) container.onpointerdown = null;
+      if (!canvasEl) return;
+
+      canvasEl.onpointerdown = (e) => {
+        if (curMode === 0) {
+          setStep4_6Step((curStep + 1) % 4);
+        } else {
+          setStep4_6Step((curStep + 1) % 3);
+        }
+      };
+    }
+
+    async function gradeStep4_6() {
+      const raw = cleanInput(document.getElementById('ans-4-6')?.value || '');
+      const ans = parseInt(raw, 10);
+
+      const isCorrect = (ans === 490);
+
+      const fEl = document.getElementById('feedback-step-4-6');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('4-6')) {
+          state.completedSubSteps.push('4-6');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('4-6', {
+              activityTitle: '[중1-1 소인수분해] [4-6] 6. [스스로 확인하기 3] 역수의 공배수 곱하기',
+              answerText: raw,
+              answers: { ans: raw, val: 490 },
+              score: 100,
+              passed: true,
+              unitId: 'u1'
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+
+        // Unlock next step 4-7 (3A, 4A, 5A의 최소공배수)
+        if (!state.unlockedSubSteps.includes('4-7')) {
+          state.unlockedSubSteps.push('4-7');
+        }
+        updateSubStepPills(state.currentMainTab);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.2rem;">🎉</span>
+            <h4 style="color:#065f46; font-size:1.02rem; font-weight:800; margin:0;">정답입니다! 100점 (All Clear)</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            완벽하게 해결했습니다!<br>
+            • $\\frac{1}{70} \\times N$이 자연수 $\\implies N$은 70의 배수<br>
+            • $\\frac{1}{98} \\times N$이 자연수 $\\implies N$은 98의 배수<br>
+            • 따라서 $N$은 70과 98의 공배수이며, 가장 작은 수는 최소공배수입니다.<br>
+            &nbsp;&nbsp;$70 = 2 \\times 5 \\times 7,\\quad 98 = 2 \\times 7^2$<br>
+            &nbsp;&nbsp;➔ 최소공배수: $2 \\times 5 \\times 7^2 = 10 \\times 49 = \\mathbf{490}$<br>
+            <div style="margin-top:10px; padding:8px 12px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 다음 세부 활동 <b>[4-7] 7. [스스로 확인하기 4] 3A, 4A, 5A 최소공배수</b>가 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="loadSubStep('4-7')" style="margin-top:12px; width:100%; padding:10px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            다음 단계 [4-7] 스스로 확인하기 4로 이동 ➔
+          </button>
+        `;
+
+        drawStep4_6Canvas();
+      } else {
+        let msg = '';
+        if (ans === 70 || ans === 98) {
+          msg = `입력하신 ${ans}은 둘 중 하나의 분수만 자연수로 만듭니다. 두 분수를 동시에 자연수로 만들어야 합니다.`;
+        } else if (ans === 14) {
+          msg = '14는 70과 98의 최대공약수입니다! 분수에 곱하여 분모를 약분하려면 분모의 배수(최소공배수)를 구해야 합니다.';
+        } else {
+          msg = '70과 98을 각각 소인수분해하여 최소공배수를 구해보세요. ($70=2 \\times 5 \\times 7,\\; 98=2 \\times 7^2$)';
+        }
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            • ${msg}<br>
+            • $\\frac{1}{70} \\times N$과 $\\frac{1}{98} \\times N$이 모두 자연수가 되려면 $N$은 70과 98의 공배수여야 합니다.<br>
+            💡 좌측 캔버스의 [원리 탐구 랩] 및 [수 곱하기 시뮬레이션] 탭을 확인해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (4-7 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -24251,6 +24718,11 @@
         state.lab4_5.step = 0;
         renderToolbar4_5();
         drawStep4_5Canvas();
+      } else if (state.subStep === '4-6') {
+        state.lab4_6.mode = 0;
+        state.lab4_6.step = 0;
+        renderToolbar4_6();
+        drawStep4_6Canvas();
       }
     }
 
@@ -24542,6 +25014,7 @@
         else if (state.subStep === '4-3') drawStep4_3Canvas();
       else if (state.subStep === '4-4') drawStep4_4Canvas();
       else if (state.subStep === '4-5') drawStep4_5Canvas();
+      else if (state.subStep === '4-6') drawStep4_6Canvas();
       }, 150);
     });
 
