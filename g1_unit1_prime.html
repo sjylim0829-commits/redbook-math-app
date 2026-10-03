@@ -1301,6 +1301,10 @@
       // 5-12 Interactive Factorial Exponent Counting Lab State (12. 12번 서술형, p.26)
       lab5_12: {
         primeFilter: 0 // 0: 전체, 2: 2, 3: 3, 5: 5
+      },
+      // 5-13 Interactive 3-Number GCD Deduction Lab State (13. 13번 서술형, p.26)
+      lab5_13: {
+        candidate: 0 // 0: 전체 대조, 12: A=12 검증, 18: A=18 검증
       }
     };
 
@@ -1617,6 +1621,9 @@
       } else if (code === '5-12') {
         renderToolbar5_12();
         renderSubstep5_12();
+      } else if (code === '5-13') {
+        renderToolbar5_13();
+        renderSubstep5_13();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -4994,6 +5001,55 @@
       if (z) z.value = '2';
       if (sum) sum.value = '17';
       gradeStep5_12();
+    }
+
+// -------------------------------------------------------------
+    // SUBSTEP 5-13: Toolbar & Handlers (13. 13번 서술형 세 수의 GCD 조건과 A, p.26)
+    // -------------------------------------------------------------
+    function renderToolbar5_13() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const curCand = (state.lab5_13 && state.lab5_13.candidate !== undefined) ? state.lab5_13.candidate : 0;
+      const isPassed5_13 = state.completedSubSteps && state.completedSubSteps.includes('5-13');
+
+      tb.innerHTML = `
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <span style="font-size:0.8rem; font-weight:800; color:#475569;">[후보 검증 뷰]:</span>
+          <button class="btn btn-sm ${curCand === 0 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_13Candidate(0)">🔍 전체 후보 대조</button>
+          <button class="btn btn-sm ${curCand === 12 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_13Candidate(12)">${isPassed5_13 ? '❌ ' : '⚡ '}A = 12 대입${isPassed5_13 ? ' (탈락)' : ''}</button>
+          <button class="btn btn-sm ${curCand === 18 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_13Candidate(18)">${isPassed5_13 ? '✅ ' : '⚡ '}A = 18 대입${isPassed5_13 ? ' (정답)' : ''}</button>
+          <button class="btn btn-sm btn-outline" onclick="resetLab5_13()" title="화면 초기화">🔄 초기화</button>
+          <button class="btn btn-sm btn-outline" onclick="teacherPassStep5_13()" style="border-color:#e2e8f0; color:#94a3b8;" title="교사 정답 패스">💡 패스</button>
+        </div>
+      `;
+    }
+
+    function setStep5_13Candidate(c) {
+      if (!state.lab5_13) state.lab5_13 = { candidate: 0 };
+      state.lab5_13.candidate = c;
+      renderToolbar5_13();
+      drawStep5_13Canvas();
+    }
+
+    function resetLab5_13() {
+      if (!state.lab5_13) state.lab5_13 = { candidate: 0 };
+      state.lab5_13.candidate = 0;
+      renderToolbar5_13();
+      drawStep5_13Canvas();
+    }
+
+    function teacherPassStep5_13() {
+      const c1 = document.getElementById('ans-5-13-c1');
+      const c2 = document.getElementById('ans-5-13-c2');
+      const g = document.getElementById('ans-5-13-gcd7260');
+      const a = document.getElementById('ans-5-13-a');
+      if (c1) c1.value = '12';
+      if (c2) c2.value = '18';
+      if (g) g.value = '12';
+      if (a) a.value = '18';
+      gradeStep5_13();
     }
 
 
@@ -32783,8 +32839,413 @@
       }
     }
 
+// -------------------------------------------------------------
+    // SUBSTEP 5-13: 13. 13번 서술형 (세 수의 GCD 조건과 A, p.26)
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (5-13 to 6-2)
+    function renderSubstep5_13() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[대단원 5. 스스로 마무리하기: 13. 13번 서술형 (세 수의 최대공약수 조건과 A)] (교과서 p.26)</b><br>
+        • 세 자연수 $72, 60, A$ 의 <b>최대공약수가 $6$</b> 일 때, $A$ 의 값을 구하시오. (단, $10 < A < 20$)<br>
+        • <b>1단계 (40%)</b>: 세 수의 최대공약수가 $6$ 이므로 $A$ 는 $6$ 의 배수임을 파악하고 후보 구하기<br>
+        • <b>2단계 (30%)</b>: $72, 60$ 의 최대공약수를 구하고 $A$ 의 소인수 제약 조건 분석하기<br>
+        • <b>3단계 (30%)</b>: 조건을 만족하는 자연수 $A$ 의 값 결정하기
+      `;
+
+      const isPassed5_13 = state.completedSubSteps && state.completedSubSteps.includes('5-13');
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.26 서술형</span>
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b;">13번 문제 (100점 만점)</span>
+          </div>
+          <h4 style="font-size:0.98rem; font-weight:800; color:#1e293b; margin-bottom:14px; line-height:1.5;">
+            세 자연수 $72, 60, A$ 의 최대공약수가 $6$ 일 때, $A$ 의 값을 구하시오. ($10 < A < 20$)
+          </h4>
+
+          <!-- 1단계: 10 < A < 20 인 6의 배수 두 후보 (40점) -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-weight:800; color:#1e293b; font-size:0.88rem;">1단계. $A$는 $6$의 배수입니다. $10 < A < 20$ 인 두 후보를 쓰시오:</span>
+              <span style="font-size:0.75rem; background:#eff6ff; color:#1d4ed8; padding:2px 6px; border-radius:4px; font-weight:700;">배점 40%</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="display:flex; align-items:center; gap:4px;">
+                <span style="font-weight:700; color:#334155;">후보 1 =</span>
+                <input type="text" id="ans-5-13-c1" class="proof-input-text" placeholder="수 입력" style="width:75px;" autocomplete="off">
+              </div>
+              <div style="display:flex; align-items:center; gap:4px;">
+                <span style="font-weight:700; color:#334155;">후보 2 =</span>
+                <input type="text" id="ans-5-13-c2" class="proof-input-text" placeholder="수 입력" style="width:75px;" autocomplete="off">
+              </div>
+            </div>
+          </div>
+
+          <!-- 2단계: GCD(72, 60) 구하기 (30점) -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-weight:800; color:#1e293b; font-size:0.88rem;">2단계. 두 수 $72, 60$ 의 최대공약수를 쓰시오:</span>
+              <span style="font-size:0.75rem; background:#ecfdf5; color:#047857; padding:2px 6px; border-radius:4px; font-weight:700;">배점 30%</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-weight:700; color:#334155;">GCD(72, 60) =</span>
+              <input type="text" id="ans-5-13-gcd7260" class="proof-input-text" placeholder="GCD 입력" style="width:110px;" autocomplete="off">
+            </div>
+          </div>
+
+          <!-- 3단계: 자연수 A의 최종 값 (30점) -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-weight:800; color:#1e293b; font-size:0.88rem;">3단계. 세 수의 최대공약수가 $6$이 되도록 하는 $A$의 값을 구하시오:</span>
+              <span style="font-size:0.75rem; background:#fef3c7; color:#b45309; padding:2px 6px; border-radius:4px; font-weight:700;">배점 30%</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-weight:700; color:#334155;">자연수 A =</span>
+              <input type="text" id="ans-5-13-a" class="proof-input-text" placeholder="A 값 입력" style="width:110px;" autocomplete="off">
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep5_13()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            서술형 풀이 채점 및 100점 확인
+          </button>
+
+          <div id="feedback-step-5-13" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep5_13Canvas();
+    }
+
+    function drawStep5_13Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed5_13 = state.completedSubSteps && state.completedSubSteps.includes('5-13');
+      const curCand = (state.lab5_13 && state.lab5_13.candidate !== undefined) ? state.lab5_13.candidate : 0;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 33
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(11, Math.min(13, Math.floor(width * 0.019)));
+
+      const titleText = two.makeText('🔍 [대단원 마무리 13번] 세 수의 최대공약수 조건과 A 검증 랩', width / 2, 16);
+      titleText.size = titleSize;
+      titleText.weight = 800;
+      titleText.fill = '#1e293b';
+
+      const subText = two.makeText('72, 60의 최대공약수와 세 수의 최대공약수(6) 조건을 비교하여 A의 값을 판별하세요.', width / 2, 33);
+      subText.size = subSize;
+      subText.fill = '#64748b';
+
+      // 2. Sub-bar - y: 56, h: 26
+      const fBarW = Math.min(width - 40, 640);
+      const fBar = two.makeRoundedRectangle(width / 2, 56, fBarW, 26, 6);
+      fBar.fill = '#f8fafc';
+      fBar.stroke = '#cbd5e1';
+      fBar.linewidth = 1;
+
+      let subLabel = '';
+      if (curCand === 0) {
+        subLabel = isPassed5_13
+          ? '뷰: [ 전체 후보 대조 ] | A는 6의 배수(12, 18) 중 12의 배수가 아니어야 하므로 A = 18 (100점 만점!)'
+          : '뷰: [ 전체 후보 대조 ] | 세 수의 GCD가 6이므로 A는 6의 배수입니다. 10 < A < 20 인 후보들을 대입해 보세요.';
+      } else if (curCand === 12) {
+        subLabel = isPassed5_13
+          ? '뷰: [ 후보 A = 12 대입 ] | GCD(72, 60, 12) = 12 ≠ 6 ➔ A = 12 는 조건 불만족 (탈락)'
+          : '뷰: [ 후보 A = 12 대입 ] | 72, 60, 12의 소인수 거듭제곱과 최대공약수를 비교해 보세요.';
+      } else {
+        subLabel = isPassed5_13
+          ? '뷰: [ 후보 A = 18 대입 ] | GCD(72, 60, 18) = 2 × 3 = 6 ➔ A = 18 완벽 성립! (정답)'
+          : '뷰: [ 후보 A = 18 대입 ] | 72, 60, 18의 소인수 거듭제곱과 최대공약수를 비교해 보세요.';
+      }
+
+      const subLblTxt = two.makeText(subLabel, width / 2, 56);
+      subLblTxt.size = Math.max(10, Math.min(12, Math.floor(width * 0.018)));
+      subLblTxt.weight = 700;
+      subLblTxt.fill = isPassed5_13
+        ? (curCand === 12 ? '#dc2626' : (curCand === 18 ? '#059669' : '#4338ca'))
+        : (curCand === 0 ? '#4338ca' : '#2563eb');
+
+      // 3. Main Board - y: 85 ~ 290 (center 185, h: 160)
+      const cx = width / 2;
+      const mainCard = two.makeRoundedRectangle(cx, 185, Math.min(width - 40, 560), 160, 10);
+      mainCard.fill = '#ffffff';
+      mainCard.stroke = isPassed5_13 ? '#10b981' : '#cbd5e1';
+      mainCard.linewidth = isPassed5_13 ? 2 : 1.5;
+
+      const pTitle = two.makeText('세 수(72, 60, A)의 소인수 거듭제곱 비교표', cx, 115);
+      pTitle.size = 13;
+      pTitle.weight = 800;
+      pTitle.fill = '#1e293b';
+
+      // Prime Badges
+      const primes = [
+        { p: '2', x: cx - 40 },
+        { p: '3', x: cx + 25 },
+        { p: '5', x: cx + 90 }
+      ];
+
+      primes.forEach(item => {
+        const b = two.makeRoundedRectangle(item.x, 134, 46, 18, 4);
+        b.fill = '#eff6ff';
+        b.stroke = '#bfdbfe';
+        b.linewidth = 1;
+        const bt = two.makeText(`소수 ${item.p}`, item.x, 134);
+        bt.size = 10;
+        bt.weight = 700;
+        bt.fill = '#1d4ed8';
+      });
+
+      // Row 72: 2^3 * 3^2
+      const l72 = two.makeText('72 = 2³ × 3² :', cx - 140, 154);
+      l72.size = 11.5;
+      l72.weight = 700;
+      l72.fill = '#334155';
+      const t72_2 = two.makeText('2³', cx - 40, 154); t72_2.size = 12; t72_2.weight = 700; t72_2.fill = '#1e293b';
+      const t72_3 = two.makeText('3²', cx + 25, 154); t72_3.size = 12; t72_3.weight = 700; t72_3.fill = '#1e293b';
+      const t72_5 = two.makeText('-', cx + 90, 154); t72_5.size = 12; t72_5.fill = '#94a3b8';
+
+      // Row 60: 2^2 * 3 * 5
+      const l60 = two.makeText('60 = 2² × 3 × 5 :', cx - 140, 174);
+      l60.size = 11.5;
+      l60.weight = 700;
+      l60.fill = '#334155';
+      const t60_2 = two.makeText('2²', cx - 40, 174); t60_2.size = 12; t60_2.weight = 700; t60_2.fill = '#1e293b';
+      const t60_3 = two.makeText('3¹', cx + 25, 174); t60_3.size = 12; t60_3.weight = 700; t60_3.fill = '#1e293b';
+      const t60_5 = two.makeText('5¹', cx + 90, 174); t60_5.size = 12; t60_5.weight = 700; t60_5.fill = '#1e293b';
+
+      // Divider line at y = 188
+      const divLine = two.makeLine(cx - 200, 188, cx + 200, 188);
+      divLine.stroke = '#e2e8f0';
+      divLine.linewidth = 1.2;
+
+      // Row Candidate A at y = 204
+      let candLabel = '';
+      let c2Val = '';
+      let c3Val = '';
+      let c5Val = '-';
+      let candColor = '#1e40af';
+
+      if (curCand === 0) {
+        candLabel = isPassed5_13 ? '후보 A = 18 (정답) :' : '후보 A (6의 배수) :';
+        c2Val = isPassed5_13 ? '2¹ (A=18)' : '2¹ or 2²';
+        c3Val = isPassed5_13 ? '3² (A=18)' : '3¹ or 3²';
+        candColor = isPassed5_13 ? '#047857' : '#475569';
+      } else if (curCand === 12) {
+        candLabel = '후보 A = 12 (2² × 3) :';
+        c2Val = '2²';
+        c3Val = '3¹';
+        candColor = isPassed5_13 ? '#dc2626' : '#2563eb';
+      } else {
+        candLabel = '후보 A = 18 (2 × 3²) :';
+        c2Val = '2¹';
+        c3Val = '3²';
+        candColor = isPassed5_13 ? '#059669' : '#2563eb';
+      }
+
+      const lCand = two.makeText(candLabel, cx - 140, 204);
+      lCand.size = 11.5;
+      lCand.weight = 800;
+      lCand.fill = candColor;
+
+      const tC2 = two.makeText(c2Val, cx - 40, 204); tC2.size = 11.5; tC2.weight = 700; tC2.fill = candColor;
+      const tC3 = two.makeText(c3Val, cx + 25, 204); tC3.size = 11.5; tC3.weight = 700; tC3.fill = candColor;
+      const tC5 = two.makeText(c5Val, cx + 90, 204); tC5.size = 11.5; tC5.fill = '#94a3b8';
+
+      // Bottom Row / Box at y = 236, h = 36
+      const resBox = two.makeRoundedRectangle(cx, 236, Math.min(width - 80, 480), 36, 6);
+      resBox.fill = isPassed5_13
+        ? '#ecfdf5'
+        : (curCand === 0 ? '#f8fafc' : '#f0f9ff');
+      resBox.stroke = isPassed5_13
+        ? '#10b981'
+        : (curCand === 0 ? '#cbd5e1' : '#93c5fd');
+      resBox.linewidth = 1.2;
+
+      let rLine = '';
+      if (curCand === 0) {
+        rLine = isPassed5_13
+          ? '• GCD(72, 60) = 12 이므로 12의 배수를 제외하면 A = 18 (정답: 18)'
+          : '• 세 수의 최대공약수가 6(= 2¹ × 3¹)이 되려면 2의 소인수 지수는 1이어야 합니다.';
+      } else if (curCand === 12) {
+        rLine = isPassed5_13
+          ? '• A = 12 이면 GCD = 2² × 3 = 12 ≠ 6 이므로 A = 12 탈락'
+          : '• A = 12 대입: 2의 최소 지수 min(3, 2, 2) = 2 ➔ GCD(72, 60, 12) = 12';
+      } else {
+        rLine = isPassed5_13
+          ? '• A = 18 이면 GCD = 2¹ × 3 = 6 완벽 만족 ➔ 정답: A = 18'
+          : '• A = 18 대입: 2의 최소 지수 min(3, 2, 1) = 1 ➔ GCD(72, 60, 18) = 6';
+      }
+
+      const rt = two.makeText(rLine, cx, 236);
+      rt.size = 11;
+      rt.weight = 800;
+      rt.fill = isPassed5_13
+        ? (curCand === 12 ? '#b91c1c' : '#065f46')
+        : (curCand === 0 ? '#1e293b' : '#1e40af');
+
+      // 4. Summary / Rule Banner - y: 345, h: 74 (occupies 308 ~ 382 <= 440, bottom margin 58px >= 56px)
+      const bannerW = Math.min(width - 40, 640);
+      const banner = two.makeRoundedRectangle(width / 2, 345, bannerW, 74, 10);
+      banner.fill = isPassed5_13 ? '#ecfdf5' : '#f8fafc';
+      banner.stroke = isPassed5_13 ? '#a7f3d0' : '#cbd5e1';
+      banner.linewidth = 1.5;
+
+      let bT1 = '';
+      let bT2 = '';
+      let bT3 = '';
+
+      if (isPassed5_13) {
+        bT1 = '🎉 [13번 서술형 완벽 풀이 및 채점 기준 정리] (정답: A = 18)';
+        bT2 = '• 1단계: 세 수의 최대공약수가 6이므로 A는 6의 배수 ➔ 10 < A < 20 에서 후보는 12, 18 (40%)';
+        bT3 = '• 2·3단계: GCD(72, 60) = 12 이므로 A가 12이면 GCD가 12가 됨 ➔ 따라서 A = 18 (60% ➔ 100점 만점!)';
+      } else {
+        bT1 = '💡 [서술형 13번 풀이 길잡이 (단계별 채점 기준 100점 만점)]';
+        bT2 = '• 1단계: 세 수의 GCD가 6이므로 A는 6의 배수입니다. 10 < A < 20인 두 후보를 찾습니다. (배점 40%)';
+        bT3 = '• 2·3단계: 72와 60의 최대공약수를 구하고, 세 수의 GCD가 6이 되기 위한 조건을 만족하는 A를 결정합니다. (배점 60%)';
+      }
+
+      const txtT1 = two.makeText(bT1, width / 2, 323);
+      txtT1.size = 12;
+      txtT1.weight = 800;
+      txtT1.fill = isPassed5_13 ? '#065f46' : '#1e293b';
+
+      const txtT2 = two.makeText(bT2, width / 2, 344);
+      txtT2.size = 11;
+      txtT2.weight = 600;
+      txtT2.fill = isPassed5_13 ? '#047857' : '#334155';
+
+      const txtT3 = two.makeText(bT3, width / 2, 363);
+      txtT3.size = 10.5;
+      txtT3.weight = 500;
+      txtT3.fill = isPassed5_13 ? '#047857' : '#64748b';
+
+      two.update();
+
+      // 5. Pointer Event Isolation
+      const container = document.getElementById('two-container');
+      if (container) container.onpointerdown = null;
+
+      const canvasEl = container ? container.querySelector('canvas, svg') : null;
+      if (canvasEl) {
+        canvasEl.style.cursor = 'pointer';
+        canvasEl.onpointerdown = (e) => {
+          const next = curCand === 0 ? 12 : (curCand === 12 ? 18 : 0);
+          setStep5_13Candidate(next);
+        };
+      }
+    }
+
+    async function gradeStep5_13() {
+      const rawC1 = cleanInput(document.getElementById('ans-5-13-c1')?.value || '');
+      const rawC2 = cleanInput(document.getElementById('ans-5-13-c2')?.value || '');
+      const rawG = cleanInput(document.getElementById('ans-5-13-gcd7260')?.value || '');
+      const rawA = cleanInput(document.getElementById('ans-5-13-a')?.value || '');
+
+      const c1 = parseInt(rawC1, 10);
+      const c2 = parseInt(rawC2, 10);
+      const g = parseInt(rawG, 10);
+      const a = parseInt(rawA, 10);
+
+      const isCandCorrect = ((c1 === 12 && c2 === 18) || (c1 === 18 && c2 === 12));
+      const isGcdCorrect = (g === 12);
+      const isACorrect = (a === 18);
+
+      const isCorrect = isCandCorrect && isGcdCorrect && isACorrect;
+
+      const fEl = document.getElementById('feedback-step-5-13');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('5-13')) {
+          state.completedSubSteps.push('5-13');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('5-13', {
+              c1: 12,
+              c2: 18,
+              gcd: 12,
+              a: 18,
+              activityTitle: '[중1-1 소인수분해] [5-13] 13. 13번 서술형 (세 수의 GCD 조건과 A)',
+              score: 100,
+              passed: true
+            }, 'u1');
+          } catch (err) {
+            console.warn('LMS save error:', err);
+          }
+        }
+
+        // Unlock next substep 5-14
+        if (!state.unlockedSubSteps.includes('5-14')) {
+          state.unlockedSubSteps.push('5-14');
+        }
+
+        updateSubStepPills(5);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.3rem;">🎉</span>
+            <h4 style="color:#065f46; font-size:1.02rem; font-weight:800; margin:0;">13번 서술형 100점 만점 완벽 해결!</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            완벽하게 해결했습니다!<br>
+            • <b>1단계 (40점)</b>: 세 자연수의 최대공약수가 $6$ 이므로 $A$ 는 $6$ 의 배수 $\\implies 10 < A < 20$ 에서 후보는 <b>$12, 18$</b><br>
+            • <b>2단계 (30점)</b>: $72 = 2^3 \\times 3^2, 60 = 2^2 \\times 3 \\times 5$ 이므로 $\\text{GCD}(72, 60) = 2^2 \\times 3 = <b>12$</b><br>
+            • <b>3단계 (30점)</b>: $A$ 가 $12$ 의 배수이면 세 수의 최대공약수가 $12$ 가 되어 모순이므로 $A$ 는 $12$ 가 아님 ➔ <b>$A = 18$</b><br>
+            <div style="margin-top:12px; padding:10px 14px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 <b>[5-14] 14번 서술형 (블록 연결 GCD·LCM 역산 피라미드 - 대단원 최종 문항)</b>이 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="loadSubStep('5-14')" style="margin-top:12px; width:100%; padding:11px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            대단원 최종 문제 [5-14] 14번 도전 ➔
+          </button>
+        `;
+
+        setStep5_13Candidate(18);
+      } else {
+        let msg = '';
+        if (!isCandCorrect) {
+          msg = '1단계: 10보다 크고 20보다 작은 6의 배수 두 개를 다시 확인해 보세요. (6 × 2, 6 × 3)';
+        } else if (!isGcdCorrect) {
+          msg = '2단계: 72 = 2³ × 3², 60 = 2² × 3 × 5 의 최대공약수를 다시 계산해 보세요.';
+        } else if (!isACorrect) {
+          msg = '3단계: A가 12이면 세 수의 최대공약수가 12가 됩니다. 문제 조건인 GCD=6을 만족하는 수를 선택하세요.';
+        }
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            • ${msg}<br>
+            💡 좌측 캔버스 상단의 [A = 12 대입], [A = 18 대입] 버튼을 눌러 각각의 GCD 결과를 확인해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (5-14 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -33170,6 +33631,11 @@
         state.lab5_12.primeFilter = 0;
         renderToolbar5_12();
         drawStep5_12Canvas();
+      } else if (state.subStep === '5-13') {
+        if (!state.lab5_13) state.lab5_13 = { candidate: 0 };
+        state.lab5_13.candidate = 0;
+        renderToolbar5_13();
+        drawStep5_13Canvas();
       }
     }
 
@@ -33480,6 +33946,7 @@
       else if (state.subStep === '5-10') drawStep5_10Canvas();
       else if (state.subStep === '5-11') drawStep5_11Canvas();
       else if (state.subStep === '5-12') drawStep5_12Canvas();
+      else if (state.subStep === '5-13') drawStep5_13Canvas();
       }, 150);
     });
 
