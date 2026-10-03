@@ -1269,6 +1269,10 @@
       lab5_4: {
         mode: 0, // 0: 소인수 트리, 1: 거듭 나눗셈, 2: 후보 검증
         selectedCandidate: 1
+      },
+      // 5-5 Interactive Square Number Division Lab State (5. 05번 제곱수 만들기, p.25)
+      lab5_5: {
+        step: 0 // 0: 소인수분해, 1: a로 나누기, 2: b^2 완성
       }
     };
 
@@ -1561,6 +1565,9 @@
       } else if (code === '5-4') {
         renderToolbar5_4();
         renderSubstep5_4();
+      } else if (code === '5-5') {
+        renderToolbar5_5();
+        renderSubstep5_5();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -4557,6 +4564,56 @@
       if (ch) ch.value = '4';
       gradeStep5_4();
     }
+    // -------------------------------------------------------------
+    // SUBSTEP 5-5: Toolbar & Handlers (5. 05번 84로 제곱수 만들기, p.25)
+    // -------------------------------------------------------------
+    function renderToolbar5_5() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const curStep = (state.lab5_5 && state.lab5_5.step !== undefined) ? state.lab5_5.step : 0;
+
+      tb.innerHTML = `
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <span style="font-size:0.8rem; font-weight:800; color:#475569;">[제곱수 탐구]:</span>
+          <button class="btn btn-sm ${curStep === 0 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_5Step(0)">1단계 84 소인수분해</button>
+          <button class="btn btn-sm ${curStep === 1 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_5Step(1)">2단계 a로 나누기</button>
+          <button class="btn btn-sm ${curStep === 2 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_5Step(2)" style="${curStep === 2 ? 'background:#059669;border-color:#059669;color:#fff;' : ''}">3단계 b² 완성</button>
+          <button class="btn btn-sm btn-outline" onclick="resetLab5_5()" title="화면 초기화">🔄 초기화</button>
+          <button class="btn btn-sm btn-outline" onclick="teacherPassStep5_5()" style="border-color:#e2e8f0; color:#94a3b8;" title="교사 정답 패스">💡 패스</button>
+        </div>
+      `;
+    }
+
+    function setStep5_5Step(s) {
+      if (!state.lab5_5) state.lab5_5 = { step: 0 };
+      state.lab5_5.step = s;
+      renderToolbar5_5();
+      drawStep5_5Canvas();
+    }
+
+    function resetLab5_5() {
+      if (!state.lab5_5) state.lab5_5 = { step: 0 };
+      state.lab5_5.step = 0;
+      renderToolbar5_5();
+      drawStep5_5Canvas();
+    }
+
+    function teacherPassStep5_5() {
+      const o1 = document.getElementById('ans-5-5-odd1');
+      const o2 = document.getElementById('ans-5-5-odd2');
+      const a = document.getElementById('ans-5-5-a');
+      const b = document.getElementById('ans-5-5-b');
+      const sum = document.getElementById('ans-5-5-sum');
+      if (o1) o1.value = '3';
+      if (o2) o2.value = '7';
+      if (a) a.value = '21';
+      if (b) b.value = '2';
+      if (sum) sum.value = '23';
+      gradeStep5_5();
+    }
+
 
 
 
@@ -29233,7 +29290,478 @@
 
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (5-5 to 6-2)
+    // SUBSTEP 5-5: 5. 05번 (84로 제곱수 만들기, p.25)
+    // -------------------------------------------------------------
+    function renderSubstep5_5() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[대단원 5. 스스로 마무리하기: 5. 05번 (84로 제곱수 만들기)] (교과서 p.25)</b><br>
+        • 84를 가장 작은 자연수 $a$로 나누어 어떤 자연수 $b$의 제곱($b^2$)이 되도록 할 때, $a + b$의 값을 구하시오.<br>
+        • 어떤 자연수의 제곱(제곱수)이 되려면 <b>모든 소인수의 지수가 짝수</b>이어야 합니다.<br>
+        • 좌측 캔버스에서 84의 소인수들의 지수를 확인하고, 지수를 짝수로 만들기 위해 나누어야 하는 $a$와 나눈 결과 $b^2$을 탐구하세요.
+      `;
+
+      const isPassed5_5 = state.completedSubSteps && state.completedSubSteps.includes('5-5');
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.25</span>
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b;">05번 문제</span>
+          </div>
+          <h4 style="font-size:0.98rem; font-weight:800; color:#1e293b; margin-bottom:14px; line-height:1.5;">
+            84를 가장 작은 자연수 $a$로 나누어 어떤 자연수 $b$의 제곱이 되도록 할 때, $a + b$의 값을 구하시오.
+          </h4>
+
+          <!-- 소문항 1: 지수가 홀수인 소인수 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:10px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              1. 84를 소인수분해($84 = 2^2 \\times 3 \\times 7$)했을 때, 지수가 홀수인 소인수 2개를 쓰시오:
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <input type="text" id="ans-5-5-odd1" class="proof-input-text" placeholder="입력" style="width:48px; text-align:center;" autocomplete="off">
+              <span style="font-weight:700; color:#64748b;">과</span>
+              <input type="text" id="ans-5-5-odd2" class="proof-input-text" placeholder="입력" style="width:48px; text-align:center;" autocomplete="off">
+            </div>
+          </div>
+
+          <!-- 소문항 2: 나누는 가장 작은 수 a -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:10px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              2. 지수를 모두 짝수로 만들기 위해 84를 나누어야 하는 가장 작은 자연수 $a$의 값을 구하시오:
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-weight:700; color:#334155;">$a =$</span>
+              <input type="text" id="ans-5-5-a" class="proof-input-text" placeholder="답 입력" style="width:100px;" autocomplete="off">
+            </div>
+          </div>
+
+          <!-- 소문항 3: 어떤 자연수 b -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:10px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              3. 84를 $a$로 나눈 결과 어떤 자연수 $b$의 제곱($b^2$)이 될 때, $b$의 값을 구하시오:
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-weight:700; color:#334155;">$b =$</span>
+              <input type="text" id="ans-5-5-b" class="proof-input-text" placeholder="답 입력" style="width:100px;" autocomplete="off">
+            </div>
+          </div>
+
+          <!-- 소문항 4: a + b -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:16px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              4. 따라서 $a + b$의 값을 구하시오:
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-weight:700; color:#334155;">$a + b =$</span>
+              <input type="text" id="ans-5-5-sum" class="proof-input-text" placeholder="답 입력" style="width:100px;" autocomplete="off">
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep5_5()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            제곱수 나눗셈 정답 확인 및 채점
+          </button>
+
+          <div id="feedback-step-5-5" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep5_5Canvas();
+    }
+
+    function drawStep5_5Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed5_5 = state.completedSubSteps && state.completedSubSteps.includes('5-5');
+      const curStep = (state.lab5_5 && state.lab5_5.step !== undefined) ? state.lab5_5.step : 0;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 33
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(11, Math.min(13, Math.floor(width * 0.019)));
+
+      const titleText = two.makeText('📐 [대단원 마무리 05번] 84로 어떤 자연수의 제곱수 만들기 랩', width / 2, 16);
+      titleText.size = titleSize;
+      titleText.weight = 800;
+      titleText.fill = '#1e293b';
+
+      const subText = two.makeText('소인수의 지수를 짝수로 만들어 제곱수(b²)를 완성하는 나눗셈을 탐구하세요.', width / 2, 33);
+      subText.size = subSize;
+      subText.fill = '#64748b';
+
+      // 2. Sub-bar - y: 56, h: 26 (occupies 43 ~ 69)
+      const fBarW = Math.min(width - 40, 640);
+      const fBar = two.makeRoundedRectangle(width / 2, 56, fBarW, 26, 6);
+      fBar.fill = '#f8fafc';
+      fBar.stroke = '#cbd5e1';
+      fBar.linewidth = 1;
+
+      let subLabel = '';
+      if (curStep === 0) {
+        subLabel = isPassed5_5
+          ? '1단계: 84 소인수분해 (84 = 2² × 3 × 7) ➔ 지수가 홀수인 소인수(3, 7) 확인'
+          : '1단계: 84 소인수분해 (84 = 2² × 3 × 7) ➔ 각 소인수의 지수(짝수/홀수) 판별';
+      } else if (curStep === 1) {
+        subLabel = isPassed5_5
+          ? '2단계: 가장 작은 자연수 a(21)로 나누기 ➔ 홀수 지수 소인수(3, 7)를 약분 소거'
+          : '2단계: 가장 작은 자연수 a로 나누기 ➔ 지수가 홀수인 소인수를 약분 소거';
+      } else if (curStep === 2) {
+        subLabel = isPassed5_5
+          ? '3단계: 84 ÷ 21 = 4 = 2² 완성 ➔ a = 21, b = 2, a + b = 23'
+          : '3단계: 나눈 결과 어떤 자연수 b의 제곱(b²) 완성 및 a + b 최종 계산';
+      }
+
+      const subLblTxt = two.makeText(subLabel, width / 2, 56);
+      subLblTxt.size = Math.max(10, Math.min(12, Math.floor(width * 0.018)));
+      subLblTxt.weight = 700;
+      subLblTxt.fill = '#4338ca';
+
+      // 3. Main Board - y: 85 ~ 290
+      if (curStep === 0) {
+        // Step 0: 84 factor blocks and exponent analysis
+        const cx = width / 2;
+        const mainCard = two.makeRoundedRectangle(cx, 185, Math.min(width - 40, 560), 160, 10);
+        mainCard.fill = '#ffffff';
+        mainCard.stroke = '#cbd5e1';
+        mainCard.linewidth = 1.5;
+
+        const fTitle = two.makeText('84의 소인수분해: 84 = 2² × 3¹ × 7¹', cx, 120);
+        fTitle.size = 14;
+        fTitle.weight = 800;
+        fTitle.fill = '#1e293b';
+
+        // 3 Factor blocks at y = 165
+        const bW = 100;
+        const bH = 50;
+
+        // Block 2^2
+        const b1 = two.makeRoundedRectangle(cx - 120, 165, bW, bH, 8);
+        b1.fill = '#eff6ff';
+        b1.stroke = '#3b82f6';
+        b1.linewidth = 2;
+        const tB1_1 = two.makeText('2²', cx - 120, 155);
+        tB1_1.size = 14;
+        tB1_1.weight = 800;
+        tB1_1.fill = '#1d4ed8';
+        const tB1_2 = two.makeText('지수 2 (짝수 O)', cx - 120, 175);
+        tB1_2.size = 10.5;
+        tB1_2.weight = 700;
+        tB1_2.fill = '#059669';
+
+        // Block 3^1
+        const b2 = two.makeRoundedRectangle(cx, 165, bW, bH, 8);
+        b2.fill = '#fff1f2';
+        b2.stroke = '#f43f5e';
+        b2.linewidth = 2;
+        const tB2_1 = two.makeText('3¹', cx, 155);
+        tB2_1.size = 14;
+        tB2_1.weight = 800;
+        tB2_1.fill = '#be123c';
+        const tB2_2 = two.makeText('지수 1 (홀수 ⚠️)', cx, 175);
+        tB2_2.size = 10.5;
+        tB2_2.weight = 700;
+        tB2_2.fill = '#e11d48';
+
+        // Block 7^1
+        const b3 = two.makeRoundedRectangle(cx + 120, 165, bW, bH, 8);
+        b3.fill = '#fff1f2';
+        b3.stroke = '#f43f5e';
+        b3.linewidth = 2;
+        const tB3_1 = two.makeText('7¹', cx + 120, 155);
+        tB3_1.size = 14;
+        tB3_1.weight = 800;
+        tB3_1.fill = '#be123c';
+        const tB3_2 = two.makeText('지수 1 (홀수 ⚠️)', cx + 120, 175);
+        tB3_2.size = 10.5;
+        tB3_2.weight = 700;
+        tB3_2.fill = '#e11d48';
+
+        // Rule Callout at y = 225
+        const rTxt = two.makeText(
+          isPassed5_5
+            ? '💡 제곱수가 되려면 모든 지수가 짝수여야 하므로, 홀수 지수인 3과 7을 나누어 없애야 합니다!'
+            : '💡 제곱수가 되려면 모든 지수가 짝수여야 하므로, 지수가 홀수인 소인수를 나누어 없애야 합니다.',
+          cx,
+          225
+        );
+        rTxt.size = 11.5;
+        rTxt.weight = 700;
+        rTxt.fill = '#b91c1c';
+
+      } else if (curStep === 1) {
+        // Step 1: Division simulation by a
+        const cx = width / 2;
+        const mainCard = two.makeRoundedRectangle(cx, 185, Math.min(width - 40, 560), 160, 10);
+        mainCard.fill = '#f8fafc';
+        mainCard.stroke = '#cbd5e1';
+        mainCard.linewidth = 1.5;
+
+        const fTitle = two.makeText('나눗셈 식: 84 ÷ a = (2² × 3 × 7) ÷ a', cx, 120);
+        fTitle.size = 13.5;
+        fTitle.weight = 800;
+        fTitle.fill = '#1e293b';
+
+        // Fraction box at y = 175
+        const fracBox = two.makeRoundedRectangle(cx, 175, 260, 54, 8);
+        fracBox.fill = '#ffffff';
+        fracBox.stroke = '#94a3b8';
+        fracBox.linewidth = 1;
+
+        if (isPassed5_5) {
+          const numTxt = two.makeText('2² × 3 × 7', cx, 162);
+          numTxt.size = 13;
+          numTxt.weight = 800;
+          numTxt.fill = '#1e293b';
+
+          const fLine = two.makeLine(cx - 70, 175, cx + 70, 175);
+          fLine.stroke = '#475569';
+          fLine.linewidth = 1.5;
+
+          const denTxt = two.makeText('a = 3 × 7 = 21', cx, 188);
+          denTxt.size = 13;
+          denTxt.weight = 800;
+          denTxt.fill = '#2563eb';
+
+          const resTxt = two.makeText('➔ 홀수 지수 소인수 3과 7을 동시에 소거하여 2² 만 남김!', cx, 225);
+          resTxt.size = 12;
+          resTxt.weight = 700;
+          resTxt.fill = '#059669';
+        } else {
+          const numTxt = two.makeText('2² × 3 × 7', cx, 162);
+          numTxt.size = 13;
+          numTxt.weight = 800;
+          numTxt.fill = '#1e293b';
+
+          const fLine = two.makeLine(cx - 70, 175, cx + 70, 175);
+          fLine.stroke = '#475569';
+          fLine.linewidth = 1.5;
+
+          const denTxt = two.makeText('a = ?', cx, 188);
+          denTxt.size = 13;
+          denTxt.weight = 800;
+          denTxt.fill = '#dc2626';
+
+          const resTxt = two.makeText('➔ 홀수 지수 소인수 3과 7을 없애려면 a는 어떤 수의 곱이어야 할까요?', cx, 225);
+          resTxt.size = 12;
+          resTxt.weight = 700;
+          resTxt.fill = '#475569';
+        }
+
+      } else {
+        // Step 2: b^2 completion & a + b
+        const cx = width / 2;
+        const mainCard = two.makeRoundedRectangle(cx, 185, Math.min(width - 40, 560), 160, 10);
+        mainCard.fill = isPassed5_5 ? '#ecfdf5' : '#f8fafc';
+        mainCard.stroke = isPassed5_5 ? '#a7f3d0' : '#cbd5e1';
+        mainCard.linewidth = 1.5;
+
+        if (isPassed5_5) {
+          const l1 = two.makeText('84 ÷ 21 = 4 = 2² ➔ 어떤 자연수 b = 2', cx, 130);
+          l1.size = 14;
+          l1.weight = 800;
+          l1.fill = '#065f46';
+
+          const l2 = two.makeText('나눈 가장 작은 자연수 a = 21,  어떤 자연수 b = 2', cx, 170);
+          l2.size = 13;
+          l2.weight = 700;
+          l2.fill = '#047857';
+
+          const sumBox = two.makeRoundedRectangle(cx, 215, 200, 38, 8);
+          sumBox.fill = '#10b981';
+          sumBox.stroke = '#047857';
+          sumBox.linewidth = 1.5;
+
+          const l3 = two.makeText('a + b = 21 + 2 = 23', cx, 215);
+          l3.size = 15;
+          l3.weight = 800;
+          l3.fill = '#ffffff';
+        } else {
+          const l1 = two.makeText('84 ÷ a = b² (제곱수)', cx, 130);
+          l1.size = 14;
+          l1.weight = 800;
+          l1.fill = '#1e293b';
+
+          const l2 = two.makeText('84를 a로 나눈 몫이 어떤 자연수 b의 제곱이 됩니다.', cx, 170);
+          l2.size = 12.5;
+          l2.weight = 600;
+          l2.fill = '#475569';
+
+          const l3 = two.makeText('우측 폼에 구한 a와 b를 입력하여 a + b의 값을 완성하세요.', cx, 215);
+          l3.size = 12;
+          l3.weight = 700;
+          l3.fill = '#4338ca';
+        }
+      }
+
+      // 4. Summary / Rule Banner - y: 345, h: 74 (occupies 308 ~ 382 <= 440, bottom margin 58px >= 56px)
+      const bW = Math.min(width - 40, 640);
+      const banner = two.makeRoundedRectangle(width / 2, 345, bW, 74, 10);
+      banner.fill = isPassed5_5 ? '#ecfdf5' : '#f8fafc';
+      banner.stroke = isPassed5_5 ? '#a7f3d0' : '#cbd5e1';
+      banner.linewidth = 1.5;
+
+      let bT1 = '';
+      let bT2 = '';
+      let bT3 = '';
+
+      if (isPassed5_5) {
+        bT1 = '🎉 [84로 제곱수 만들기 완벽 정리]';
+        bT2 = '• 84 = 2² × 3 × 7 이므로 지수가 홀수인 3과 7을 나누어야 함 ➔ a = 3 × 7 = 21';
+        bT3 = '• 84 ÷ 21 = 4 = 2² 이므로 b = 2 ➔ 최종값: a + b = 21 + 2 = 23';
+      } else {
+        bT1 = '💡 [제곱수를 만들기 위한 나눗셈 원리]';
+        bT2 = '• 어떤 자연수의 제곱이 되려면 소인수분해했을 때 모든 소인수의 지수가 짝수이어야 합니다.';
+        bT3 = '• 자연수로 나눌 때는 지수가 홀수인 소인수를 약분하여 없애야 지수가 모두 짝수가 됩니다.';
+      }
+
+      const txtT1 = two.makeText(bT1, width / 2, 323);
+      txtT1.size = 12;
+      txtT1.weight = 800;
+      txtT1.fill = isPassed5_5 ? '#065f46' : '#1e293b';
+
+      const txtT2 = two.makeText(bT2, width / 2, 344);
+      txtT2.size = 11;
+      txtT2.weight = 600;
+      txtT2.fill = isPassed5_5 ? '#047857' : '#334155';
+
+      const txtT3 = two.makeText(bT3, width / 2, 363);
+      txtT3.size = 10.5;
+      txtT3.weight = 500;
+      txtT3.fill = isPassed5_5 ? '#047857' : '#64748b';
+
+      two.update();
+
+      // 5. Pointer Event Isolation
+      const container = document.getElementById('two-container');
+      if (container) container.onpointerdown = null;
+
+      const canvasEl = container ? container.querySelector('canvas, svg') : null;
+      if (canvasEl) {
+        canvasEl.style.cursor = 'pointer';
+        canvasEl.onpointerdown = (e) => {
+          const nextStep = (curStep + 1) % 3;
+          setStep5_5Step(nextStep);
+        };
+      }
+    }
+
+    async function gradeStep5_5() {
+      const rawO1 = cleanInput(document.getElementById('ans-5-5-odd1')?.value || '');
+      const o1 = parseInt(rawO1, 10);
+      const rawO2 = cleanInput(document.getElementById('ans-5-5-odd2')?.value || '');
+      const o2 = parseInt(rawO2, 10);
+      const rawA = cleanInput(document.getElementById('ans-5-5-a')?.value || '');
+      const a = parseInt(rawA, 10);
+      const rawB = cleanInput(document.getElementById('ans-5-5-b')?.value || '');
+      const b = parseInt(rawB, 10);
+      const rawSum = cleanInput(document.getElementById('ans-5-5-sum')?.value || '');
+      const sum = parseInt(rawSum, 10);
+
+      const isOddCorrect = ((o1 === 3 && o2 === 7) || (o1 === 7 && o2 === 3));
+      const isACorrect = (a === 21);
+      const isBCorrect = (b === 2);
+      const isSumCorrect = (sum === 23);
+
+      const isCorrect = isOddCorrect && isACorrect && isBCorrect && isSumCorrect;
+
+      const fEl = document.getElementById('feedback-step-5-5');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('5-5')) {
+          state.completedSubSteps.push('5-5');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('5-5', {
+              oddFactors: [o1, o2],
+              a: 21,
+              b: 2,
+              sum: 23,
+              activityTitle: '[중1-1 소인수분해] [5-5] 5. 05번 (84로 제곱수 만들기)',
+              score: 100,
+              passed: true
+            }, 'u1');
+          } catch (err) {
+            console.warn('LMS save error:', err);
+          }
+        }
+
+        // Unlock next substep 5-6
+        if (!state.unlockedSubSteps.includes('5-6')) {
+          state.unlockedSubSteps.push('5-6');
+        }
+
+        updateSubStepPills(5);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.3rem;">🎉</span>
+            <h4 style="color:#065f46; font-size:1.02rem; font-weight:800; margin:0;">05번 제곱수 만들기 100점 완벽 해결!</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            완벽하게 해결했습니다!<br>
+            • <b>84의 소인수분해</b>: $84 = 2^2 \\times 3 \\times 7$<br>
+            • <b>지수가 홀수인 소인수</b>: $3, 7$<br>
+            • <b>나누는 가장 작은 자연수 $a$</b>: 지수를 짝수로 만들기 위해 $3 \\times 7 =$ <b>$21$</b>로 나누어야 합니다.<br>
+            • <b>어떤 자연수 $b$</b>: $84 \\div 21 = 4 = 2^2$ 이므로 $b =$ <b>$2$</b><br>
+            • <b>$a + b$의 값</b>: $21 + 2 =$ <b>$23$</b>
+            <div style="margin-top:12px; padding:10px 14px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 <b>[5-6] 06번 (서로소인 두 수 찾기)</b>가 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="loadSubStep('5-6')" style="margin-top:12px; width:100%; padding:11px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            다음 문제 [5-6] 06번 (서로소 판별) 도전 ➔
+          </button>
+        `;
+
+        setStep5_5Step(2);
+      } else {
+        let msg = '';
+        if (!isOddCorrect) {
+          msg = '84 = 2² × 3 × 7 에서 각 소인수의 지수(2, 1, 1)를 확인해 보세요. 지수가 홀수인 소인수를 찾습니다.';
+        } else if (!isACorrect) {
+          msg = '지수가 홀수인 소인수들을 곱하여 나누어야 지수가 모두 짝수가 됩니다. 앞서 구한 두 소인수를 곱해 보세요.';
+        } else if (!isBCorrect) {
+          msg = '84를 구한 a로 나눈 몫이 어떤 자연수의 제곱(b²)이 되는지 계산해 보세요.';
+        } else if (!isSumCorrect) {
+          msg = '앞서 구한 a의 값과 b의 값을 바르게 더해 보세요.';
+        }
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            • ${msg}<br>
+            💡 상단의 [1단계 84 소인수분해], [2단계 a로 나누기], [3단계 b² 완성] 버튼을 차례로 눌러 탐구해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (5-6 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -29579,6 +30107,11 @@
         state.lab5_4.mode = 0;
         renderToolbar5_4();
         drawStep5_4Canvas();
+      } else if (state.subStep === '5-5') {
+        if (!state.lab5_5) state.lab5_5 = { step: 0 };
+        state.lab5_5.step = 0;
+        renderToolbar5_5();
+        drawStep5_5Canvas();
       }
     }
 
@@ -29881,6 +30414,7 @@
       else if (state.subStep === '5-2') drawStep5_2Canvas();
       else if (state.subStep === '5-3') drawStep5_3Canvas();
       else if (state.subStep === '5-4') drawStep5_4Canvas();
+      else if (state.subStep === '5-5') drawStep5_5Canvas();
       }, 150);
     });
 
