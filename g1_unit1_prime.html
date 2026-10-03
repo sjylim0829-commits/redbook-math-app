@@ -1137,6 +1137,11 @@
         mode: 0, // 0: 타일링 랩(60x36), 1: 12와 16의 공약수 벤다이어그램
         tileSize: 6, // 타일 크기 (1, 2, 3, 4, 6, 12, 8 등)
         highlightGCD: false
+      },
+      // 3-2 Interactive Lab State (2. 소인수분해로 최대공약수 구하기 & 서로소)
+      lab3_2: {
+        mode: 0, // 0: 소인수분해 정렬 랩, 1: 서로소 판별 랩
+        step: 0 // 0: 정렬, 1: 지수 비교, 2: 곱셈 계산
       }
     };
 
@@ -1351,6 +1356,9 @@
       } else if (code === '3-1') {
         renderToolbar3_1();
         renderSubstep3_1();
+      } else if (code === '3-2') {
+        renderToolbar3_2();
+        renderSubstep3_2();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -2937,6 +2945,60 @@
       state.lab3_1.highlightGCD = !state.lab3_1.highlightGCD;
       renderToolbar3_1();
       drawStep3_1Canvas();
+    }
+
+    // -------------------------------------------------------------
+    // SUBSTEP 3-2 Handlers & Toolbar (2. 소인수분해로 최대공약수 구하기 & 서로소, p.18~19)
+    // -------------------------------------------------------------
+    function renderToolbar3_2() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const isPassed3_2 = state.completedSubSteps && state.completedSubSteps.includes('3-2');
+      const curMode = state.lab3_2.mode || 0;
+      const curStep = state.lab3_2.step || 0;
+
+      let subControls = '';
+      if (curMode === 0) {
+        subControls = `
+          <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-left:6px; margin-right:4px;">탐구 단계:</span>
+          <button class="tool-btn ${curStep === 0 ? 'active' : ''}" onclick="setStep3_2Step(0)">➊ 세로 정렬</button>
+          <button class="tool-btn ${curStep === 1 ? 'active' : ''}" onclick="setStep3_2Step(1)">➋ 작은 지수 선택</button>
+          <button class="tool-btn ${curStep === 2 ? 'active' : ''}" onclick="setStep3_2Step(2)">➌ 곱셈 계산</button>
+        `;
+      } else {
+        const coprimeLabel = isPassed3_2 ? '공약수는 1뿐 (서로소)' : '공약수는 1뿐 (용어 탐색)';
+        subControls = `
+          <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-left:6px; margin-right:4px;">8과 15 공약수 탐색:</span>
+          <button class="tool-btn active" style="background:#ecfdf5; color:#047857; font-weight:700;">${coprimeLabel}</button>
+        `;
+      }
+
+      const mode1Label = isPassed3_2 ? '🤝 [8 & 15] 서로소의 뜻' : '🤝 [8 & 15] 공약수가 1인 두 수';
+
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-right:4px;">탐구 모드:</span>
+        <button class="tool-btn ${curMode === 0 ? 'active' : ''}" onclick="setStep3_2Mode(0)">📐 [36 & 60] 최대공약수 3단계</button>
+        <button class="tool-btn ${curMode === 1 ? 'active' : ''}" onclick="setStep3_2Mode(1)">${mode1Label}</button>
+        <span style="margin:0 4px; color:#cbd5e1;">|</span>
+        ${subControls}
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setStep3_2Mode(m) {
+      state.lab3_2.mode = m;
+      state.lab3_2.step = 0;
+      renderToolbar3_2();
+      drawStep3_2Canvas();
+    }
+
+    function setStep3_2Step(s) {
+      state.lab3_2.step = s;
+      renderToolbar3_2();
+      drawStep3_2Canvas();
     }
 
     // SUBSTEP 0-2: 되짚어 보기 2: 공약수와 최대공약수 (초5~6 복습, p.8)
@@ -16973,7 +17035,377 @@
     }
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (3-2 to 6-2)
+    // SUBSTEP 3-2: 2. 소인수분해로 최대공약수 구하기 & 서로소 (p.18~19)
+    // -------------------------------------------------------------
+    function renderSubstep3_2() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[소인수분해로 최대공약수 구하기 & 서로소] (교과서 p.18~19)</b><br>
+        • <b>[최대공약수 구하기]</b> 두 수를 각각 소인수분해한 후, 밑이 같은 거듭제곱 중 <b>지수가 같거나 작은 것</b>을 택하여 모두 곱합니다.<br>
+        • <b>[공약수가 1인 두 수]</b> 두 자연수의 최대공약수가 <b>1</b>일 때, 두 자연수의 특별한 관계를 나타내는 수학 용어를 확인해 보세요.
+      `;
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.18~19</span>
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b;">개념 확인 문제</span>
+          </div>
+          <h4 style="font-size:0.98rem; font-weight:800; color:#1e293b; margin-bottom:14px; line-height:1.5;">
+            소인수분해를 이용한 최대공약수와 서로소의 개념을 확인해 보세요.
+          </h4>
+
+          <!-- 소문항 1 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.9rem; margin-bottom:6px;">
+              ⑴ $36 = 2^2 \\times 3^2$ 과 $60 = 2^2 \\times 3 \\times 5$ 의 <b>최대공약수</b>를 구하시오.
+            </div>
+            <div style="font-size:0.82rem; color:#64748b; margin-bottom:8px;">
+              • 밑이 같은 거듭제곱 중 지수가 같거나 작은 것을 택하여 곱합니다.
+            </div>
+            <input type="text" id="ans-3-2-1" class="proof-input-text" placeholder="답 입력" style="width:140px;" autocomplete="off">
+          </div>
+
+          <!-- 소문항 2 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:18px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.9rem; margin-bottom:6px;">
+              ⑵ 두 자연수 $8$과 $15$와 같이 <b>최대공약수가 $1$인 두 자연수의 관계</b>를 나타내는 용어를 쓰시오.
+            </div>
+            <input type="text" id="ans-3-2-2" class="proof-input-text" placeholder="용어 입력" style="width:180px;" autocomplete="off">
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep3_2()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            정답 확인 및 채점
+          </button>
+
+          <div id="feedback-step-3-2" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep3_2Canvas();
+    }
+
+    function drawStep3_2Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed3_2 = state.completedSubSteps && state.completedSubSteps.includes('3-2');
+      const curMode = state.lab3_2.mode || 0;
+      const curStep = state.lab3_2.step || 0;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 34
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(10.5, Math.min(12, Math.floor(width * 0.018)));
+
+      const headerTitle = two.makeText('📐 [개념 탐구] 소인수분해로 최대공약수 구하기 & 서로소', width / 2, 16);
+      headerTitle.size = titleSize;
+      headerTitle.weight = 800;
+      headerTitle.fill = '#1e293b';
+
+      const headerSub = two.makeText('거듭제곱의 밑을 맞추어 정렬하고 지수가 작거나 같은 것을 택하는 원리를 탐구해 보세요.', width / 2, 33);
+      headerSub.size = subSize;
+      headerSub.fill = '#64748b';
+
+      // 2. Mode Formula Display Bar (y: 56, h: 26) - [43, 69]
+      const formBar = two.makeRoundedRectangle(width / 2, 56, width - 40, 26, 6);
+      formBar.fill = '#f1f5f9';
+      formBar.stroke = '#cbd5e1';
+      formBar.linewidth = 1;
+
+      let formStr = '';
+      if (curMode === 0) {
+        formStr = '두 수의 최대공약수 구하기: ➊ 소인수분해 ➔ ➋ 밑이 같고 지수가 작거나 같은 것 선택 ➔ ➌ 모두 곱하기';
+      } else {
+        formStr = isPassed3_2
+          ? '서로소의 뜻: 두 자연수의 최대공약수가 1일 때, 이 두 자연수를 "서로소"라고 합니다.'
+          : '공약수 탐색: 두 자연수의 최대공약수가 1일 때, 두 수의 관계를 무엇이라고 할까요?';
+      }
+
+      const fTxt = two.makeText(formStr, width / 2, 56);
+      fTxt.size = (width < 600) ? 9.5 : 11;
+      fTxt.weight = 800;
+      fTxt.fill = '#334155';
+
+      // 3. Central Board (y: 84 ~ 265, h: 178)
+      const centralBg = two.makeRoundedRectangle(width / 2, 174, width - 36, 178, 12);
+      centralBg.fill = '#ffffff';
+      centralBg.stroke = '#e2e8f0';
+      centralBg.linewidth = 1.5;
+
+      if (curMode === 0) {
+        // Mode 0: 36 & 60 소인수분해 정렬 랩
+        const guideT = two.makeText('상단 툴바의 단계를 누르거나 세로로 정렬된 거듭제곱을 비교해 보세요.', width / 2, 98);
+        guideT.size = 11; guideT.weight = 700; guideT.fill = '#475569';
+
+        const startX = width / 2;
+        const boxW = Math.min(380, width - 80);
+        const boxH = 92;
+        const boxCY = 162;
+
+        const tableBg = two.makeRoundedRectangle(startX, boxCY, boxW, boxH, 8);
+        tableBg.fill = '#f8fafc';
+        tableBg.stroke = '#cbd5e1';
+        tableBg.linewidth = 1.5;
+
+        // Row 1: 36 = 2² × 3²
+        const r1T = two.makeText('36  =   2²   ×   3²', startX - 40, boxCY - 22);
+        r1T.size = 13.5; r1T.weight = 800; r1T.fill = '#1e293b';
+
+        // Row 2: 60 = 2² × 3  × 5
+        const r2T = two.makeText('60  =   2²   ×   3   ×   5', startX - 22, boxCY + 4);
+        r2T.size = 13.5; r2T.weight = 800; r2T.fill = '#1e293b';
+
+        // Divider Line
+        const divLine = two.makeLine(startX - boxW / 2 + 16, boxCY + 18, startX + boxW / 2 - 16, boxCY + 18);
+        divLine.stroke = '#94a3b8';
+        divLine.linewidth = 1.5;
+
+        // Row 3 (Result)
+        let r3Str = '최대공약수: ';
+        if (curStep === 0) {
+          r3Str += ' (➋ 단계에서 거듭제곱을 선택하세요)';
+        } else if (curStep === 1) {
+          r3Str += ' 2²   ×   3   (선택 완료)';
+        } else {
+          r3Str += isPassed3_2 ? ' 2²   ×   3   =   12' : ' 2²   ×   3   =   ? (직접 계산해 보세요)';
+        }
+
+        const r3T = two.makeText(r3Str, startX - 30, boxCY + 32);
+        r3T.size = 12.5; r3T.weight = 800;
+        r3T.fill = (curStep >= 1) ? '#047857' : '#64748b';
+
+        // Column highlights based on step
+        if (curStep >= 1) {
+          // Highlight col 2
+          const h2 = two.makeRoundedRectangle(startX - 28, boxCY - 8, 42, 54, 4);
+          h2.fill = 'rgba(16, 185, 129, 0.15)';
+          h2.stroke = '#10b981';
+          h2.linewidth = 1.5;
+
+          // Highlight col 3
+          const h3 = two.makeRoundedRectangle(startX + 22, boxCY - 8, 42, 54, 4);
+          h3.fill = 'rgba(16, 185, 129, 0.15)';
+          h3.stroke = '#10b981';
+          h3.linewidth = 1.5;
+        }
+
+        // Bottom Note
+        let noteMsg = '';
+        if (curStep === 0) {
+          noteMsg = '➊ 단계: 두 수를 각각 소인수분해하여 밑을 맞추어 세로로 정렬합니다.';
+        } else if (curStep === 1) {
+          noteMsg = '➋ 단계: 밑 2는 지수 같음(2²), 밑 3은 작은 지수(3)를 택하고, 공통이 아닌 5는 제외합니다.';
+        } else {
+          noteMsg = isPassed3_2
+            ? '➌ 단계: 택한 거듭제곱을 모두 곱합니다 ➔ 2² × 3 = 4 × 3 = 12 (최대공약수 완성!)'
+            : '➌ 단계: 택한 거듭제곱을 모두 곱합니다 ➔ 2² × 3 = 4 × 3 = ? (계산하여 답을 적어보세요!)';
+        }
+
+        const noteT = two.makeText(noteMsg, width / 2, 246);
+        noteT.size = 10.5; noteT.weight = 800;
+        noteT.fill = (curStep === 2) ? '#065f46' : '#1d4ed8';
+
+      } else {
+        // Mode 1: 8 & 15 서로소 판별 랩
+        const guideT = two.makeText('두 수 8과 15의 약수들을 각각 나열하고 공약수가 무엇인지 확인해 보세요.', width / 2, 98);
+        guideT.size = 11; guideT.weight = 700; guideT.fill = '#475569';
+
+        const startX = width / 2;
+        const row1Y = 138;
+        const row2Y = 184;
+
+        // Card for 8
+        const bg8 = two.makeRoundedRectangle(startX, row1Y, Math.min(400, width - 80), 36, 8);
+        bg8.fill = '#eff6ff'; bg8.stroke = '#93c5fd'; bg8.linewidth = 1.5;
+
+        const t8 = two.makeText('8의 약수:   1 ,   2 ,   4 ,   8', startX, row1Y);
+        t8.size = 12.5; t8.weight = 800; t8.fill = '#1e40af';
+
+        // Card for 15
+        const bg15 = two.makeRoundedRectangle(startX, row2Y, Math.min(400, width - 80), 36, 8);
+        bg15.fill = '#fdf2f8'; bg15.stroke = '#fbcfe8'; bg15.linewidth = 1.5;
+
+        const t15 = two.makeText('15의 약수:   1 ,   3 ,   5 ,   15', startX, row2Y);
+        t15.size = 12.5; t15.weight = 800; t15.fill = '#9d174d';
+
+        // Highlight common divisor '1'
+        const h1 = two.makeRoundedRectangle(startX - 65, 161, 38, 80, 6);
+        h1.fill = 'rgba(16, 185, 129, 0.18)';
+        h1.stroke = '#10b981';
+        h1.linewidth = 2;
+
+        const gcdTag = two.makeText('공약수 1', startX - 65, 212);
+        gcdTag.size = 9.5; gcdTag.weight = 800; gcdTag.fill = '#047857';
+
+        // Note
+        const noteMsg1 = isPassed3_2
+          ? '8과 15의 공약수는 오직 1뿐이므로, 두 수는 "서로소"입니다. ✨'
+          : '8과 15의 공약수는 오직 1뿐입니다. 이러한 두 수의 특별한 관계를 나타내는 용어는? 🤔';
+        const noteT = two.makeText(noteMsg1, width / 2, 246);
+        noteT.size = 11; noteT.weight = 800; noteT.fill = '#065f46';
+      }
+
+      // 4. Realtime Status Bar (y: 288, h: 26) - [275, 301]
+      const statY = 288;
+      const statBg = two.makeRoundedRectangle(width / 2, statY, width - 40, 26, 6);
+      statBg.fill = '#f8fafc';
+      statBg.stroke = '#e2e8f0';
+      statBg.linewidth = 1;
+
+      let statMsg = '';
+      if (isPassed3_2) {
+        statMsg = '탐구 완료: 36과 60의 최대공약수는 12이며, 8과 15는 서로소입니다.';
+      } else if (curMode === 0) {
+        statMsg = `최대공약수 탐구: ${curStep === 0 ? '세로 정렬 관찰' : (curStep === 1 ? '작은 지수 거듭제곱 선택' : '거듭제곱 곱 계산')}`;
+      } else {
+        statMsg = '공약수 탐색: 8과 15의 공약수가 1뿐일 때, 두 수의 관계를 나타내는 용어를 생각해보세요.';
+      }
+
+      const statTxt = two.makeText(statMsg, width / 2, statY);
+      statTxt.size = (width < 600) ? 9.5 : 10.5;
+      statTxt.weight = 700;
+      statTxt.fill = '#334155';
+
+      // 5. Bottom Guide / Concept Banner (y: 350, h: 68) - [316, 384]
+      const bannerY = 350;
+      const bannerH = 68;
+      const bannerBg = two.makeRoundedRectangle(width / 2, bannerY, width - 40, bannerH, 10);
+
+      if (isPassed3_2) {
+        bannerBg.fill = '#ecfdf5';
+        bannerBg.stroke = '#86efac';
+        bannerBg.linewidth = 1.5;
+
+        const bT1 = two.makeText('🎉 정답 확인 완료! 최대공약수 구하는 방법과 서로소를 완벽히 이해했습니다.', width / 2, bannerY - 18);
+        bT1.size = 12; bT1.weight = 800; bT1.fill = '#065f46';
+
+        const bT2 = two.makeText('• ⑴ 36 = 2² × 3², 60 = 2² × 3 × 5 ➔ 최대공약수 = 2² × 3 = 12', width / 2, bannerY);
+        bT2.size = 11; bT2.weight = 700; bT2.fill = '#047857';
+
+        const bT3 = two.makeText('• ⑵ 최대공약수가 1인 두 자연수를 "서로소"라고 합니다. (8과 15는 서로소)', width / 2, bannerY + 18);
+        bT3.size = 10; bT3.fill = '#059669';
+      } else {
+        bannerBg.fill = '#eff6ff';
+        bannerBg.stroke = '#bfdbfe';
+        bannerBg.linewidth = 1.5;
+
+        const bT1 = two.makeText('💡 개념 정리: 소인수분해로 최대공약수 구하기 & 서로소', width / 2, bannerY - 18);
+        bT1.size = 12; bT1.weight = 800; bT1.fill = '#1e40af';
+
+        const bT2 = two.makeText('• 밑이 같은 거듭제곱 중 "지수가 같거나 작은 것"을 택하여 모두 곱합니다. (공통이 아닌 소인수는 제외)', width / 2, bannerY);
+        bT2.size = 10.5; bT2.weight = 700; bT2.fill = '#1d4ed8';
+
+        const bT3 = two.makeText('• 최대공약수가 1뿐인 두 수의 관계를 나타내는 수학 용어를 떠올려 보세요.', width / 2, bannerY + 18);
+        bT3.size = 10; bT3.fill = '#2563eb';
+      }
+
+      two.update();
+
+      // Pointer event listener for canvas interaction
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas') : null;
+      if (container) container.onpointerdown = null; // 영속 컨테이너 잔여 핸들러 제거
+      if (!canvasEl) return;
+
+      canvasEl.onpointerdown = (e) => {
+        if (curMode === 0) {
+          setStep3_2Step((curStep + 1) % 3);
+        }
+      };
+    }
+
+    async function gradeStep3_2() {
+      const raw1 = cleanInput(document.getElementById('ans-3-2-1')?.value);
+      const raw2 = cleanInput(document.getElementById('ans-3-2-2')?.value).replace(/\s+/g, '');
+
+      const ans1 = parseInt(raw1, 10);
+      const isCorrect1 = (ans1 === 12);
+      const isCorrect2 = (raw2 === '서로소');
+
+      const isCorrect = (isCorrect1 && isCorrect2);
+
+      const fEl = document.getElementById('feedback-step-3-2');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('3-2')) {
+          state.completedSubSteps.push('3-2');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('3-2', {
+              activityTitle: '[중1-1 소인수분해] [3-2] 2. 소인수분해로 최대공약수 구하기 & 서로소',
+              answerText: `⑴ 최대공약수: ${raw1}, ⑵ 용어: ${raw2}`,
+              answers: { ans1: raw1, ans2: raw2 },
+              score: 100,
+              passed: true,
+              unitId: 'u1'
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+
+        // Unlock next step 3-3
+        if (!state.unlockedSubSteps.includes('3-3')) {
+          state.unlockedSubSteps.push('3-3');
+        }
+        updateSubStepPills(state.currentMainTab);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.2rem;">🎉</span>
+            <h4 style="color:#065f46; font-size:1.02rem; font-weight:800; margin:0;">정답입니다! 100점 (All Clear)</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            완벽하게 해결했습니다!<br>
+            • <b>⑴ 최대공약수:</b> $36 = 2^2 \\times 3^2$, $60 = 2^2 \\times 3 \\times 5$ 에서 공통 소인수의 작은 지수를 택하면 $2^2 \\times 3 = \\mathbf{12}$ 입니다.<br>
+            • <b>⑵ 서로소:</b> 최대공약수가 1인 두 자연수를 <b>서로소</b>라고 합니다. (8과 15는 공약수가 1뿐이므로 서로소입니다)<br>
+            <div style="margin-top:10px; padding:8px 12px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 다음 세부 활동 <b>[3-3] 3. 문제 1 & 2 (최대공약수와 서로소 실전)</b>이 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="loadSubStep('3-3')" style="margin-top:12px; width:100%; padding:10px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            다음 단계 [3-3] 문제 1 & 2로 이동 ➔
+          </button>
+        `;
+
+        drawStep3_2Canvas();
+      } else {
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            • <b>⑴번:</b> $36 = 2^2 \\times 3^2$, $60 = 2^2 \\times 3 \\times 5$ 에서 밑이 2인 것은 $2^2$, 밑이 3인 것은 작은 지수 $3$을 택해 곱하면 얼마인가요?<br>
+            • <b>⑵번:</b> 최대공약수가 1인 두 자연수의 관계를 나타내는 세 글자 수학 용어는 무엇인가요?<br>
+            💡 좌측 캔버스의 단계별 탐구와 서로소 랩을 활용해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (3-3 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -17184,6 +17616,11 @@
         state.lab3_1.highlightGCD = false;
         renderToolbar3_1();
         drawStep3_1Canvas();
+      } else if (state.subStep === '3-2') {
+        state.lab3_2.mode = 0;
+        state.lab3_2.step = 0;
+        renderToolbar3_2();
+        drawStep3_2Canvas();
       }
     }
 
@@ -17460,6 +17897,7 @@
         else if (state.subStep === '2-11') drawStep2_11Canvas();
         else if (state.subStep === '2-12') drawStep2_12Canvas();
         else if (state.subStep === '3-1') drawStep3_1Canvas();
+        else if (state.subStep === '3-2') drawStep3_2Canvas();
       }, 150);
     });
 
