@@ -1112,6 +1112,12 @@
         problemIndex: 0, // 0: 34, 1: 75, 2: 96, 3: 120
         method: 0, // 0: 나뭇가지 분해법, 1: 거꾸로 나눗셈법
         step: 0 // 분해 진행 단계
+      },
+      // 2-9 Interactive Lab State (9. [스스로 확인 3] 연속된 곱의 소인수 2의 지수 구하기)
+      lab2_9: {
+        cardsRevealed: [false, false, false, false, false], // 5 cards: 2, 3, 4, 5, 6
+        highlightPrime2: false, // 소인수 2 모으기 토글
+        step: 0 // 진행 단계
       }
     };
 
@@ -1311,6 +1317,9 @@
       } else if (code === '2-8') {
         renderToolbar2_8();
         renderSubstep2_8();
+      } else if (code === '2-9') {
+        renderToolbar2_9();
+        renderSubstep2_9();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -2660,6 +2669,49 @@
       state.lab2_8.step = 0;
       renderToolbar2_8();
       drawStep2_8Canvas();
+    }
+
+    // -------------------------------------------------------------
+    // SUBSTEP 2-9 Handlers & Toolbar (9. [스스로 확인 3] 연속된 곱의 소인수 2의 지수, p.16)
+    // -------------------------------------------------------------
+    function renderToolbar2_9() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const allRev = state.lab2_9.cardsRevealed.every(Boolean);
+      const isHigh2 = state.lab2_9.highlightPrime2;
+
+      tb.innerHTML = `
+        <button class="tool-btn ${allRev ? 'active' : ''}" onclick="step2_9ToggleAllCards()" style="background:${allRev ? '#4f46e5' : '#f1f5f9'}; color:${allRev ? '#ffffff' : '#334155'}; font-weight:700;">
+          ${allRev ? '📦 카드 모두 덮기' : '🔍 각 수 소인수분해 (전체 펼치기)'}
+        </button>
+        <span style="margin:0 4px; color:#cbd5e1;">|</span>
+        <button class="tool-btn ${isHigh2 ? 'active' : ''}" onclick="step2_9TogglePrime2()" style="background:${isHigh2 ? '#10b981' : '#ecfdf5'}; color:${isHigh2 ? '#ffffff' : '#047857'}; font-weight:700;">
+          ✨ 소인수 2 모으기
+        </button>
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function toggleStep2_9Card(idx) {
+      state.lab2_9.cardsRevealed[idx] = !state.lab2_9.cardsRevealed[idx];
+      renderToolbar2_9();
+      drawStep2_9Canvas();
+    }
+
+    function step2_9ToggleAllCards() {
+      const allRev = state.lab2_9.cardsRevealed.every(Boolean);
+      state.lab2_9.cardsRevealed = [!allRev, !allRev, !allRev, !allRev, !allRev];
+      renderToolbar2_9();
+      drawStep2_9Canvas();
+    }
+
+    function step2_9TogglePrime2() {
+      state.lab2_9.highlightPrime2 = !state.lab2_9.highlightPrime2;
+      renderToolbar2_9();
+      drawStep2_9Canvas();
     }
 
     // SUBSTEP 0-2: 되짚어 보기 2: 공약수와 최대공약수 (초5~6 복습, p.8)
@@ -14619,7 +14671,373 @@
     }
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (2-9 to 6-2)
+    // SUBSTEP 2-9: 9. [스스로 확인 3] 연속된 곱의 소인수 지수 구하기 (교과서 16쪽)
+    // -------------------------------------------------------------
+    const CARDS_CONFIG_2_9 = [
+      { num: 2, isPrime: true,  factorization: '2',          prime2Count: 1, desc: '소수 (2가 1개)' },
+      { num: 3, isPrime: true,  factorization: '3',          prime2Count: 0, desc: '소수 (2 없음)' },
+      { num: 4, isPrime: false, factorization: '2 × 2 = 2²', prime2Count: 2, desc: '합성수 (2가 2개)' },
+      { num: 5, isPrime: true,  factorization: '5',          prime2Count: 0, desc: '소수 (2 없음)' },
+      { num: 6, isPrime: false, factorization: '2 × 3',      prime2Count: 1, desc: '합성수 (2가 1개)' }
+    ];
+
+    function renderSubstep2_9() {
+      const missionEl = document.getElementById('mission-text');
+      if (missionEl) {
+        missionEl.innerHTML = `
+          <b>[2-9] 9. [스스로 확인 3] 연속된 곱의 소인수 2의 지수 구하기</b><br>
+          교과서 16쪽 [스스로 확인하기 3] 문제를 읽고, 2 × 3 × 4 × 5 × 6 을 소인수분해했을 때 소인수 2의 지수를 구하세요.
+        `;
+      }
+
+      const formArea = document.getElementById('form-work-area');
+      if (!formArea) return;
+
+      formArea.innerHTML = `
+        <div class="card" style="padding:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 16쪽</span>
+            <span style="font-size:0.8rem; color:#64748b; font-weight:700;">추론 및 문제해결</span>
+          </div>
+
+          <h4 style="font-size:1.02rem; font-weight:800; color:#1e293b; line-height:1.5; margin-bottom:14px;">
+            [스스로 확인하기 3]<br>
+            <span style="color:#4f46e5;">2 × 3 × 4 × 5 × 6</span> 을 소인수분해했을 때, 소인수 <b>2</b>의 지수를 구하시오.
+          </h4>
+
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:14px; margin-bottom:18px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-weight:800; color:#1e293b; font-size:0.92rem;">소인수 2의 지수 입력</span>
+              <span style="font-size:0.75rem; color:#64748b;">(숫자만 입력)</span>
+            </div>
+            <input type="text" id="ans-2-9" class="proof-input-text" placeholder="답 입력" style="width:100%; max-width:240px;" autocomplete="off">
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep2_9()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            정답 확인 및 채점
+          </button>
+
+          <div id="feedback-step-2-9" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep2_9Canvas();
+    }
+
+    function drawStep2_9Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed2_9 = state.completedSubSteps && state.completedSubSteps.includes('2-9');
+      const isHigh2 = state.lab2_9.highlightPrime2 || isPassed2_9;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 34
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(10.5, Math.min(12, Math.floor(width * 0.018)));
+
+      const headerTitle = two.makeText('🔢 [스스로 확인 3] 연속된 곱의 소인수 지수 탐구 랩', width / 2, 16);
+      headerTitle.size = titleSize;
+      headerTitle.weight = 800;
+      headerTitle.fill = '#1e293b';
+
+      const headerSub = two.makeText('식 2 × 3 × 4 × 5 × 6 의 각 수를 소인수분해하여 소인수 2의 총 지수를 추론해 보세요.', width / 2, 33);
+      headerSub.size = subSize;
+      headerSub.fill = '#64748b';
+
+      // 2. Formula Display Bar (y: 56, h: 26) - [43, 69]
+      const formulaBar = two.makeRoundedRectangle(width / 2, 56, width - 40, 26, 6);
+      formulaBar.fill = '#f1f5f9';
+      formulaBar.stroke = '#cbd5e1';
+      formulaBar.linewidth = 1;
+
+      const fTxt = two.makeText('주어진 식:  2  ×  3  ×  4  ×  5  ×  6', width / 2, 56);
+      fTxt.size = (width < 600) ? 12 : 13;
+      fTxt.weight = 800;
+      fTxt.fill = '#334155';
+
+      // 3. Central Board (y: 84 ~ 265, h: 181)
+      const centralBg = two.makeRoundedRectangle(width / 2, 174, width - 36, 178, 12);
+      centralBg.fill = '#ffffff';
+      centralBg.stroke = '#e2e8f0';
+      centralBg.linewidth = 1.5;
+
+      const guideT = two.makeText('아래 수 카드를 터치하여 각 수가 소수의 곱으로 어떻게 분해되는지 확인해 보세요.', width / 2, 100);
+      guideT.size = 11;
+      guideT.weight = 700;
+      guideT.fill = '#475569';
+
+      // 5 Interactive Cards (y: 150, h: 64)
+      const cardY = 150;
+      const cardH = 64;
+      const count = CARDS_CONFIG_2_9.length;
+      const cardW = Math.min(88, Math.floor((width - 60) / count) - 8);
+      const totalCardsW = count * cardW + (count - 1) * 8;
+      const startCardX = (width - totalCardsW) / 2 + cardW / 2;
+
+      const cardBounds = [];
+
+      for (let i = 0; i < count; i++) {
+        const cx = startCardX + i * (cardW + 8);
+        const c = CARDS_CONFIG_2_9[i];
+        const isRev = state.lab2_9.cardsRevealed[i] || isPassed2_9;
+
+        const cBg = two.makeRoundedRectangle(cx, cardY, cardW, cardH, 8);
+
+        if (!isRev) {
+          cBg.fill = '#f8fafc';
+          cBg.stroke = '#cbd5e1';
+          cBg.linewidth = 1.5;
+
+          const numT = two.makeText(String(c.num), cx, cardY - 4);
+          numT.size = 18;
+          numT.weight = 800;
+          numT.fill = '#1e293b';
+
+          const hintT = two.makeText('터치하여 분해', cx, cardY + 16);
+          hintT.size = 8.5;
+          hintT.weight = 700;
+          hintT.fill = '#94a3b8';
+        } else {
+          // Revealed card
+          const hasPrime2 = (c.prime2Count > 0);
+          if (isHigh2 && hasPrime2) {
+            cBg.fill = '#ecfdf5';
+            cBg.stroke = '#10b981';
+            cBg.linewidth = 2.5;
+          } else {
+            cBg.fill = '#f8fafc';
+            cBg.stroke = hasPrime2 ? '#6ee7b7' : '#e2e8f0';
+            cBg.linewidth = 1.5;
+          }
+
+          const factT = two.makeText(c.factorization, cx, cardY - 8);
+          factT.size = (width < 600) ? 10.5 : 12;
+          factT.weight = 800;
+          factT.fill = (isHigh2 && hasPrime2) ? '#047857' : '#1e293b';
+
+          let subTxt = '';
+          if (isHigh2) {
+            subTxt = hasPrime2 ? `🌱 2의 지수: +${c.prime2Count}` : '2 없음';
+          } else {
+            subTxt = c.desc;
+          }
+
+          const descT = two.makeText(subTxt, cx, cardY + 14);
+          descT.size = 8.5;
+          descT.weight = 700;
+          descT.fill = (hasPrime2 && isHigh2) ? '#059669' : '#64748b';
+        }
+
+        cardBounds.push({
+          idx: i,
+          left: cx - cardW / 2,
+          right: cx + cardW / 2,
+          top: cardY - cardH / 2,
+          bottom: cardY + cardH / 2
+        });
+      }
+
+      // 2 Extraction & Summation Visualizer Bar (y: 226, h: 28)
+      const sumY = 226;
+      const sumBg = two.makeRoundedRectangle(width / 2, sumY, width - 60, 28, 6);
+
+      let sumStr = '';
+      if (isHigh2) {
+        sumBg.fill = '#ecfdf5';
+        sumBg.stroke = '#86efac';
+        sumBg.linewidth = 1.5;
+        sumStr = '소인수 2 추출: 2¹ × 2² × 2¹ ➔ 2¹⁺²⁺¹ = 2⁴  (소인수 2의 지수는 4)';
+      } else {
+        sumBg.fill = '#f8fafc';
+        sumBg.stroke = '#e2e8f0';
+        sumBg.linewidth = 1;
+        sumStr = '💡 상단 툴바의 [✨ 소인수 2 모으기]를 누르면 소인수 2의 개수가 실시간으로 합산됩니다.';
+      }
+
+      const sumTxt = two.makeText(sumStr, width / 2, sumY);
+      sumTxt.size = (width < 600) ? 9.5 : 11;
+      sumTxt.weight = 700;
+      sumTxt.fill = isHigh2 ? '#065f46' : '#64748b';
+
+      // 4. Realtime Status Bar (y: 288, h: 26) - [275, 301]
+      const statY = 288;
+      const statBg = two.makeRoundedRectangle(width / 2, statY, width - 40, 26, 6);
+      statBg.fill = '#f8fafc';
+      statBg.stroke = '#e2e8f0';
+      statBg.linewidth = 1;
+
+      const revCount = state.lab2_9.cardsRevealed.filter(Boolean).length;
+      let statMsg = '';
+      if (isPassed2_9) {
+        statMsg = '탐구 완료: 2 × 3 × 4 × 5 × 6 = 2⁴ × 3² × 5  |  소인수 2의 지수 = 4';
+      } else if (isHigh2) {
+        statMsg = '소인수 2 모으기 완료: 2¹ (from 2) + 2² (from 4) + 2¹ (from 6) ➔ 지수 합: 1 + 2 + 1 = 4';
+      } else {
+        statMsg = `카드 분해 진행: (${revCount}/5개 펼침)  |  카드를 터치하여 모든 수의 소인수분해를 확인해 보세요.`;
+      }
+
+      const statTxt = two.makeText(statMsg, width / 2, statY);
+      statTxt.size = (width < 600) ? 9.5 : 10.5;
+      statTxt.weight = 700;
+      statTxt.fill = '#334155';
+
+      // 5. Bottom Guide / Concept Banner (y: 350, h: 68) - [316, 384]
+      const bannerY = 350;
+      const bannerH = 68;
+      const bannerBg = two.makeRoundedRectangle(width / 2, bannerY, width - 40, bannerH, 10);
+
+      if (isPassed2_9) {
+        bannerBg.fill = '#ecfdf5';
+        bannerBg.stroke = '#86efac';
+        bannerBg.linewidth = 1.5;
+
+        const bT1 = two.makeText('🎉 정답 확인 완료! 소인수 2의 지수는 4입니다.', width / 2, bannerY - 18);
+        bT1.size = 12;
+        bT1.weight = 800;
+        bT1.fill = '#065f46';
+
+        const bT2 = two.makeText('2 × 3 × 4 × 5 × 6 = 2 × 3 × 2² × 5 × (2 × 3) = 2⁴ × 3² × 5', width / 2, bannerY);
+        bT2.size = 11;
+        bT2.weight = 700;
+        bT2.fill = '#047857';
+
+        const bT3 = two.makeText('💡 밑이 같은 거듭제곱의 곱셈에서는 지수끼리 더하여 총 지수를 구합니다.', width / 2, bannerY + 18);
+        bT3.size = 10;
+        bT3.fill = '#059669';
+      } else {
+        bannerBg.fill = '#eff6ff';
+        bannerBg.stroke = '#bfdbfe';
+        bannerBg.linewidth = 1.5;
+
+        const bT1 = two.makeText('💡 문제 해결 팁: 곱으로 연결된 식의 소인수분해', width / 2, bannerY - 18);
+        bT1.size = 12;
+        bT1.weight = 800;
+        bT1.fill = '#1e40af';
+
+        const bT2 = two.makeText('• 식을 이루는 각각의 자연수를 소인수분해한 후, 밑이 2인 소인수들의 지수를 모두 더합니다.', width / 2, bannerY);
+        bT2.size = 11;
+        bT2.weight = 700;
+        bT2.fill = '#1d4ed8';
+
+        const bT3 = two.makeText('• 좌측 캔버스에서 각 카드를 터치하여 2가 몇 번 곱해져 있는지 확인하고 우측에 입력하세요.', width / 2, bannerY + 18);
+        bT3.size = 10;
+        bT3.fill = '#2563eb';
+      }
+
+      two.update();
+
+      // Pointer event listener for canvas interaction
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas') : null;
+      if (container) container.onpointerdown = null; // 영속 컨테이너 잔여 핸들러 제거
+      if (!canvasEl) return;
+
+      canvasEl.onpointerdown = (e) => {
+        const rect = canvasEl.getBoundingClientRect();
+        const px = (e.clientX - rect.left) * (width / rect.width);
+        const py = (e.clientY - rect.top) * (height / rect.height);
+
+        // Card click
+        for (const cb of cardBounds) {
+          if (px >= cb.left && px <= cb.right && py >= cb.top && py <= cb.bottom) {
+            toggleStep2_9Card(cb.idx);
+            return;
+          }
+        }
+      };
+    }
+
+    async function gradeStep2_9() {
+      const raw = cleanInput(document.getElementById('ans-2-9')?.value);
+      const ansNum = parseInt(raw, 10);
+      const isCorrect = (ansNum === 4);
+
+      const fEl = document.getElementById('feedback-step-2-9');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('2-9')) {
+          state.completedSubSteps.push('2-9');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('2-9', {
+              activityTitle: '[중1-1 소인수분해] [2-9] 9. [스스로 확인 3] 연속된 곱의 소인수 지수 구하기',
+              answerText: `소인수 2의 지수: ${raw}`,
+              answers: { ans: raw },
+              score: 100,
+              passed: true,
+              unitId: 'u1'
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+
+        // Unlock next step 2-10
+        if (!state.unlockedSubSteps.includes('2-10')) {
+          state.unlockedSubSteps.push('2-10');
+        }
+        updateSubStepPills(state.currentMainTab);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.2rem;">🎉</span>
+            <h4 style="color:#065f46; font-size:1.02rem; font-weight:800; margin:0;">정답입니다! 100점 (All Clear)</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            완벽하게 추론했습니다!<br>
+            • <b>2</b> = 2<br>
+            • <b>3</b> = 3<br>
+            • <b>4</b> = 2²<br>
+            • <b>5</b> = 5<br>
+            • <b>6</b> = 2 × 3<br>
+            따라서 2 × 3 × 4 × 5 × 6 = <b>2⁴</b> × 3² × 5 이므로 소인수 2의 지수는 <b>4</b>입니다.
+            <div style="margin-top:10px; padding:8px 12px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 다음 세부 활동 <b>[2-10] 10. [스스로 확인 4] 어떤 자연수의 제곱 만들기</b>가 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="loadSubStep('2-10')" style="margin-top:12px; width:100%; padding:10px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            다음 단계 [2-10] 제곱수 만들기로 이동 ➔
+          </button>
+        `;
+
+        drawStep2_9Canvas();
+      } else {
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            • 주어진 수들 중 2, 4, 6을 각각 소인수분해해 보세요.<br>
+            • 2는 2가 1개, 4는 2가 2개(2²), 6은 2가 1개(2×3) 곱해져 있습니다.<br>
+            • 이 수들을 모두 곱하면 2가 총 몇 번 곱해지는지 지수를 합산해 보세요.<br>
+            💡 좌측 캔버스의 카드를 터치하고 [✨ 소인수 2 모으기]를 눌러보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (2-10 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -14805,6 +15223,12 @@
         state.lab2_8.step = 0;
         renderToolbar2_8();
         drawStep2_8Canvas();
+      } else if (state.subStep === '2-9') {
+        state.lab2_9.cardsRevealed = [false, false, false, false, false];
+        state.lab2_9.highlightPrime2 = false;
+        state.lab2_9.step = 0;
+        renderToolbar2_9();
+        drawStep2_9Canvas();
       }
     }
 
@@ -15076,6 +15500,7 @@
         else if (state.subStep === '2-6') drawStep2_6Canvas();
         else if (state.subStep === '2-7') drawStep2_7Canvas();
         else if (state.subStep === '2-8') drawStep2_8Canvas();
+        else if (state.subStep === '2-9') drawStep2_9Canvas();
       }, 150);
     });
 
