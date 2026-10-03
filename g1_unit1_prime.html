@@ -1277,6 +1277,10 @@
       // 5-6 Interactive Coprime Lab State (6. 06번 서로소인 두 수 찾기, p.25)
       lab5_6: {
         selectedChoice: 1
+      },
+      // 5-7 Interactive Prime Power Comparison Lab State (7. 07번 최대공약수와 최소공배수, p.25)
+      lab5_7: {
+        mode: 0 // 0: 전체 비교, 1: GCD 모드, 2: LCM 모드
       }
     };
 
@@ -1575,6 +1579,9 @@
       } else if (code === '5-6') {
         renderToolbar5_6();
         renderSubstep5_6();
+      } else if (code === '5-7') {
+        renderToolbar5_7();
+        renderSubstep5_7();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -4665,6 +4672,52 @@
       if (ch) ch.value = '4';
       if (gcd) gcd.value = '1';
       gradeStep5_6();
+    }
+
+// -------------------------------------------------------------
+    // SUBSTEP 5-7: Toolbar & Handlers (7. 07번 최대공약수와 최소공배수, p.25)
+    // -------------------------------------------------------------
+    function renderToolbar5_7() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const curMode = (state.lab5_7 && state.lab5_7.mode !== undefined) ? state.lab5_7.mode : 0;
+
+      tb.innerHTML = `
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <span style="font-size:0.8rem; font-weight:800; color:#475569;">[지수 비교 모드]:</span>
+          <button class="btn btn-sm ${curMode === 0 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_7Mode(0)">🔍 전체 비교</button>
+          <button class="btn btn-sm ${curMode === 1 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_7Mode(1)" style="${curMode === 1 ? 'background:#059669;border-color:#059669;color:#fff;' : ''}">🟢 최대공약수 (작은 지수)</button>
+          <button class="btn btn-sm ${curMode === 2 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_7Mode(2)" style="${curMode === 2 ? 'background:#2563eb;border-color:#2563eb;color:#fff;' : ''}">🔵 최소공배수 (큰 지수)</button>
+          <button class="btn btn-sm btn-outline" onclick="resetLab5_7()" title="화면 초기화">🔄 초기화</button>
+          <button class="btn btn-sm btn-outline" onclick="teacherPassStep5_7()" style="border-color:#e2e8f0; color:#94a3b8;" title="교사 정답 패스">💡 패스</button>
+        </div>
+      `;
+    }
+
+    function setStep5_7Mode(m) {
+      if (!state.lab5_7) state.lab5_7 = { mode: 0 };
+      state.lab5_7.mode = m;
+      renderToolbar5_7();
+      drawStep5_7Canvas();
+    }
+
+    function resetLab5_7() {
+      if (!state.lab5_7) state.lab5_7 = { mode: 0 };
+      state.lab5_7.mode = 0;
+      renderToolbar5_7();
+      drawStep5_7Canvas();
+    }
+
+    function teacherPassStep5_7() {
+      const ch = document.getElementById('ans-5-7-choice');
+      const gcd = document.getElementById('ans-5-7-gcd');
+      const lcm = document.getElementById('ans-5-7-lcm');
+      if (ch) ch.value = '4';
+      if (gcd) gcd.value = '12';
+      if (lcm) lcm.value = '840';
+      gradeStep5_7();
     }
 
 
@@ -30151,8 +30204,388 @@
       }
     }
 
+// -------------------------------------------------------------
+    // SUBSTEP 5-7: 7. 07번 (최대공약수와 최소공배수, p.25)
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (5-7 to 6-2)
+    function renderSubstep5_7() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[대단원 5. 스스로 마무리하기: 7. 07번 (최대공약수와 최소공배수)] (교과서 p.25)</b><br>
+        • 두 수 $2^3 \\times 3 \\times 5$ 와 $2^2 \\times 3 \\times 7$ 의 <b>최대공약수</b>와 <b>최소공배수</b>를 차례대로 구하시오.<br>
+        • <b>최대공약수(GCD)</b>: 공통인 소인수의 거듭제곱 중 <b>지수가 작거나 같은 것</b>을 택하여 모두 곱합니다.<br>
+        • <b>최소공배수(LCM)</b>: 모든 소인수의 거듭제곱 중 <b>지수가 크거나 같은 것</b>을 택하여 모두 곱합니다.
+      `;
+
+      const isPassed5_7 = state.completedSubSteps && state.completedSubSteps.includes('5-7');
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.25</span>
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b;">07번 문제</span>
+          </div>
+          <h4 style="font-size:0.98rem; font-weight:800; color:#1e293b; margin-bottom:14px; line-height:1.5;">
+            두 수 $2^3 \\times 3 \\times 5$, $2^2 \\times 3 \\times 7$의 최대공약수와 최소공배수를 차례대로 구하시오.
+          </h4>
+
+          <!-- 소문항 1: 객관식 보기 선택 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:8px;">
+              1. 최대공약수와 최소공배수를 바르게 짝지은 보기를 고르시오:
+            </div>
+            <select id="ans-5-7-choice" class="proof-input-text" style="width:100%; font-size:0.86rem;">
+              <option value="">선택</option>
+              <option value="1">① 2² × 3,  2² × 3 × 5</option>
+              <option value="2">② 2² × 3,  2² × 3 × 7</option>
+              <option value="3">③ 2² × 3,  2² × 3 × 5 × 7</option>
+              <option value="4">④ 2² × 3,  2³ × 3 × 5 × 7</option>
+              <option value="5">⑤ 2³ × 3,  2³ × 3 × 5 × 7</option>
+            </select>
+          </div>
+
+          <!-- 소문항 2: 최대공약수(GCD) 계산값 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              2. 최대공약수($2^2 \\times 3$)를 계산한 값을 쓰시오:
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-weight:700; color:#334155;">최대공약수(GCD) =</span>
+              <input type="text" id="ans-5-7-gcd" class="proof-input-text" placeholder="답 입력" style="width:110px;" autocomplete="off">
+            </div>
+          </div>
+
+          <!-- 소문항 3: 최소공배수(LCM) 계산값 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:16px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              3. 최소공배수($2^3 \\times 3 \\times 5 \\times 7$)를 계산한 값을 쓰시오:
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-weight:700; color:#334155;">최소공배수(LCM) =</span>
+              <input type="text" id="ans-5-7-lcm" class="proof-input-text" placeholder="답 입력" style="width:110px;" autocomplete="off">
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep5_7()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            정답 확인 및 채점
+          </button>
+
+          <div id="feedback-step-5-7" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep5_7Canvas();
+    }
+
+    function drawStep5_7Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed5_7 = state.completedSubSteps && state.completedSubSteps.includes('5-7');
+      const curMode = (state.lab5_7 && state.lab5_7.mode !== undefined) ? state.lab5_7.mode : 0;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 33
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(11, Math.min(13, Math.floor(width * 0.019)));
+
+      const titleText = two.makeText('📊 [대단원 마무리 07번] 소인수 거듭제곱 지수 비교 랩', width / 2, 16);
+      titleText.size = titleSize;
+      titleText.weight = 800;
+      titleText.fill = '#1e293b';
+
+      const subText = two.makeText('소인수분해된 두 수의 거듭제곱 지수를 대조하여 최대공약수와 최소공배수를 구해보세요.', width / 2, 33);
+      subText.size = subSize;
+      subText.fill = '#64748b';
+
+      // 2. Sub-bar - y: 56, h: 26
+      const fBarW = Math.min(width - 40, 640);
+      const fBar = two.makeRoundedRectangle(width / 2, 56, fBarW, 26, 6);
+      fBar.fill = '#f8fafc';
+      fBar.stroke = '#cbd5e1';
+      fBar.linewidth = 1;
+
+      let subLabel = '';
+      if (curMode === 0) {
+        subLabel = isPassed5_7
+          ? '모드: [ 전체 비교 ] | 최대공약수 = 2² × 3 = 12, 최소공배수 = 2³ × 3 × 5 × 7 = 840 (정답: ④)'
+          : '모드: [ 전체 비교 ] | 소인수 2, 3, 5, 7의 열(Column)별 지수를 비교해 보세요.';
+      } else if (curMode === 1) {
+        subLabel = isPassed5_7
+          ? '모드: [ 최대공약수 GCD ] | 공통 소인수 2, 3에서 작은 지수 선택 ➔ 2² × 3 = 12'
+          : '모드: [ 최대공약수 GCD ] | 공통인 소인수만 선택하고, 지수는 작거나 같은 쪽을 택합니다.';
+      } else {
+        subLabel = isPassed5_7
+          ? '모드: [ 최소공배수 LCM ] | 모든 소인수 2, 3, 5, 7에서 큰 지수 선택 ➔ 2³ × 3 × 5 × 7 = 840'
+          : '모드: [ 최소공배수 LCM ] | 모든 소인수를 모으고, 지수는 크거나 같은 쪽을 택합니다.';
+      }
+
+      const subLblTxt = two.makeText(subLabel, width / 2, 56);
+      subLblTxt.size = Math.max(10, Math.min(12, Math.floor(width * 0.018)));
+      subLblTxt.weight = 700;
+      subLblTxt.fill = curMode === 1 ? '#059669' : (curMode === 2 ? '#2563eb' : '#4338ca');
+
+      // 3. Main Board - y: 85 ~ 290 (center 185, h: 160)
+      const cx = width / 2;
+      const mainCard = two.makeRoundedRectangle(cx, 185, Math.min(width - 40, 560), 160, 10);
+      mainCard.fill = '#ffffff';
+      mainCard.stroke = '#cbd5e1';
+      mainCard.linewidth = 1.5;
+
+      // Table Title at y = 118
+      const pTitle = two.makeText('두 수의 소인수별 거듭제곱 배치도', cx, 118);
+      pTitle.size = 13.5;
+      pTitle.weight = 800;
+      pTitle.fill = '#1e293b';
+
+      // Table columns setup: 4 columns for primes 2, 3, 5, 7
+      const cols = [
+        { prime: '2', valA: '2³', valB: '2²', gcd: '2²', lcm: '2³', xOffset: -120 },
+        { prime: '3', valA: '3',  valB: '3',  gcd: '3',  lcm: '3',  xOffset: -40 },
+        { prime: '5', valA: '5',  valB: '-',  gcd: '-',  lcm: '5',  xOffset: 40 },
+        { prime: '7', valA: '-',  valB: '7',  gcd: '-',  lcm: '7',  xOffset: 120 }
+      ];
+
+      // Row labels
+      const lblA = two.makeText('수 A :', cx - 180, 148);
+      lblA.size = 11.5;
+      lblA.weight = 700;
+      lblA.fill = '#475569';
+
+      const lblB = two.makeText('수 B :', cx - 180, 174);
+      lblB.size = 11.5;
+      lblB.weight = 700;
+      lblB.fill = '#475569';
+
+      // Render column values and highlight boxes
+      cols.forEach(c => {
+        const colX = cx + c.xOffset;
+
+        // Header prime badge
+        const pBadge = two.makeRoundedRectangle(colX, 134, 44, 18, 4);
+        pBadge.fill = '#f1f5f9';
+        pBadge.stroke = '#cbd5e1';
+        pBadge.linewidth = 1;
+        const pTxt = two.makeText(`소수 ${c.prime}`, colX, 134);
+        pTxt.size = 10;
+        pTxt.weight = 700;
+        pTxt.fill = '#334155';
+
+        // Value A at y = 150
+        const tA = two.makeText(c.valA, colX, 150);
+        tA.size = 12.5;
+        tA.weight = c.valA !== '-' ? 700 : 400;
+        tA.fill = (curMode === 1 && c.gcd === c.valA && c.valA !== '-') ? '#059669' :
+                  (curMode === 2 && c.lcm === c.valA && c.valA !== '-') ? '#2563eb' : '#1e293b';
+
+        // Value B at y = 174
+        const tB = two.makeText(c.valB, colX, 174);
+        tB.size = 12.5;
+        tB.weight = c.valB !== '-' ? 700 : 400;
+        tB.fill = (curMode === 1 && c.gcd === c.valB && c.valB !== '-') ? '#059669' :
+                  (curMode === 2 && c.lcm === c.valB && c.valB !== '-') ? '#2563eb' : '#1e293b';
+      });
+
+      // Divider line at y = 194
+      const divLine = two.makeLine(cx - 200, 194, cx + 200, 194);
+      divLine.stroke = '#e2e8f0';
+      divLine.linewidth = 1.5;
+
+      // Comparison Result Box at y = 230, h = 46
+      const resBox = two.makeRoundedRectangle(cx, 230, Math.min(width - 80, 480), 46, 6);
+      resBox.fill = curMode === 1 ? '#ecfdf5' : (curMode === 2 ? '#eff6ff' : '#f8fafc');
+      resBox.stroke = curMode === 1 ? '#10b981' : (curMode === 2 ? '#3b82f6' : '#cbd5e1');
+      resBox.linewidth = 1.5;
+
+      let rLine1 = '';
+      let rLine2 = '';
+
+      if (curMode === 0) {
+        if (isPassed5_7) {
+          rLine1 = '• 최대공약수(GCD): 2² × 3 = 12  |  최소공배수(LCM): 2³ × 3 × 5 × 7 = 840';
+          rLine2 = '• 차례대로 바르게 짝지은 보기는 ④번 입니다.';
+        } else {
+          rLine1 = '• 최대공약수(GCD): 공통 소인수(2, 3) 중 작은 지수들의 곱';
+          rLine2 = '• 최소공배수(LCM): 모든 소인수(2, 3, 5, 7) 중 큰 지수들의 곱';
+        }
+      } else if (curMode === 1) {
+        rLine1 = '• 공통인 소인수: 2와 3 선택 (5와 7은 한쪽에만 있으므로 제외)';
+        rLine2 = isPassed5_7
+          ? '• 지수가 작거나 같은 것 선택: 2² × 3 = 12'
+          : '• 지수가 작거나 같은 것 선택 ➔ 2² 과 3 의 곱';
+      } else {
+        rLine1 = '• 모든 소인수 모음: 2, 3, 5, 7 모두 포함';
+        rLine2 = isPassed5_7
+          ? '• 지수가 크거나 같은 것 선택: 2³ × 3 × 5 × 7 = 840'
+          : '• 지수가 크거나 같은 것 선택 ➔ 2³, 3, 5, 7 의 곱';
+      }
+
+      const resTxt1 = two.makeText(rLine1, cx, 221);
+      resTxt1.size = 11.5;
+      resTxt1.weight = 800;
+      resTxt1.fill = curMode === 1 ? '#065f46' : (curMode === 2 ? '#1e40af' : '#1e293b');
+
+      const resTxt2 = two.makeText(rLine2, cx, 240);
+      resTxt2.size = 11;
+      resTxt2.weight = 700;
+      resTxt2.fill = curMode === 1 ? '#047857' : (curMode === 2 ? '#2563eb' : '#475569');
+
+      // 4. Summary / Rule Banner - y: 345, h: 74 (occupies 308 ~ 382 <= 440, bottom margin 58px >= 56px)
+      const bW = Math.min(width - 40, 640);
+      const banner = two.makeRoundedRectangle(width / 2, 345, bW, 74, 10);
+      banner.fill = isPassed5_7 ? '#ecfdf5' : '#f8fafc';
+      banner.stroke = isPassed5_7 ? '#a7f3d0' : '#cbd5e1';
+      banner.linewidth = 1.5;
+
+      let bT1 = '';
+      let bT2 = '';
+      let bT3 = '';
+
+      if (isPassed5_7) {
+        bT1 = '🎉 [07번 최대공약수·최소공배수 완벽 정리] (정답: ④)';
+        bT2 = '• 최대공약수(GCD): 공통 소인수 중 작은 지수 ➔ 2² × 3 = 12';
+        bT3 = '• 최소공배수(LCM): 모든 소인수 중 큰 지수 ➔ 2³ × 3 × 5 × 7 = 840';
+      } else {
+        bT1 = '💡 [소인수분해를 이용한 GCD와 LCM 구하는 핵심 원리]';
+        bT2 = '• 최대공약수: 공통인 소인수의 거듭제곱에서 지수가 작거나 같은 것을 택하여 곱합니다.';
+        bT3 = '• 최소공배수: 공통인 소인수와 공통이 아닌 소인수를 모두 택하고, 지수는 크거나 같은 것을 택합니다.';
+      }
+
+      const txtT1 = two.makeText(bT1, width / 2, 323);
+      txtT1.size = 12;
+      txtT1.weight = 800;
+      txtT1.fill = isPassed5_7 ? '#065f46' : '#1e293b';
+
+      const txtT2 = two.makeText(bT2, width / 2, 344);
+      txtT2.size = 11;
+      txtT2.weight = 600;
+      txtT2.fill = isPassed5_7 ? '#047857' : '#334155';
+
+      const txtT3 = two.makeText(bT3, width / 2, 363);
+      txtT3.size = 10.5;
+      txtT3.weight = 500;
+      txtT3.fill = isPassed5_7 ? '#047857' : '#64748b';
+
+      two.update();
+
+      // 5. Pointer Event Isolation
+      const container = document.getElementById('two-container');
+      if (container) container.onpointerdown = null;
+
+      const canvasEl = container ? container.querySelector('canvas, svg') : null;
+      if (canvasEl) {
+        canvasEl.style.cursor = 'pointer';
+        canvasEl.onpointerdown = (e) => {
+          const nextMode = (curMode + 1) % 3;
+          setStep5_7Mode(nextMode);
+        };
+      }
+    }
+
+    async function gradeStep5_7() {
+      const choice = document.getElementById('ans-5-7-choice')?.value || '';
+      const rawGcd = cleanInput(document.getElementById('ans-5-7-gcd')?.value || '');
+      const rawLcm = cleanInput(document.getElementById('ans-5-7-lcm')?.value || '');
+
+      const gcd = parseInt(rawGcd, 10);
+      const lcm = parseInt(rawLcm, 10);
+
+      const isChoiceCorrect = (choice === '4');
+      const isGcdCorrect = (gcd === 12);
+      const isLcmCorrect = (lcm === 840);
+
+      const isCorrect = isChoiceCorrect && isGcdCorrect && isLcmCorrect;
+
+      const fEl = document.getElementById('feedback-step-5-7');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('5-7')) {
+          state.completedSubSteps.push('5-7');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('5-7', {
+              choice: '4',
+              gcd: 12,
+              lcm: 840,
+              activityTitle: '[중1-1 소인수분해] [5-7] 7. 07번 (최대공약수와 최소공배수)',
+              score: 100,
+              passed: true
+            }, 'u1');
+          } catch (err) {
+            console.warn('LMS save error:', err);
+          }
+        }
+
+        // Unlock next substep 5-8
+        if (!state.unlockedSubSteps.includes('5-8')) {
+          state.unlockedSubSteps.push('5-8');
+        }
+
+        updateSubStepPills(5);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.3rem;">🎉</span>
+            <h4 style="color:#065f46; font-size:1.02rem; font-weight:800; margin:0;">07번 최대공약수·최소공배수 100점 완벽 해결!</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            완벽하게 해결했습니다!<br>
+            • <b>정답 보기</b>: <b>④ $2^2 \\times 3, 2^3 \\times 3 \\times 5 \\times 7$</b><br>
+            • <b>최대공약수(GCD)</b>: 공통 소인수 중 작은 지수들의 곱 $\\implies 2^2 \\times 3 = <b>12</b>$<br>
+            • <b>최소공배수(LCM)</b>: 모든 소인수 중 큰 지수들의 곱 $\\implies 2^3 \\times 3 \\times 5 \\times 7 = <b>840</b>$<br>
+            <div style="margin-top:12px; padding:10px 14px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 <b>[5-8] 08번 (두 수의 비와 최소공배수)</b>가 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="loadSubStep('5-8')" style="margin-top:12px; width:100%; padding:11px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            다음 문제 [5-8] 08번 도전 ➔
+          </button>
+        `;
+
+        drawStep5_7Canvas();
+      } else {
+        let msg = '';
+        if (!isChoiceCorrect) {
+          msg = '소인수별 거듭제곱 지수를 비교하여 최대공약수와 최소공배수가 올바르게 짝지어진 보기를 선택하세요.';
+        } else if (!isGcdCorrect) {
+          msg = '최대공약수 2² × 3 의 계산값을 다시 확인해 보세요. (2² = 4)';
+        } else if (!isLcmCorrect) {
+          msg = '최소공배수 2³ × 3 × 5 × 7 의 계산값을 다시 확인해 보세요. (2³ = 8, 8 × 3 × 35)';
+        }
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            • ${msg}<br>
+            💡 좌측 캔버스 상단의 [🟢 최대공약수], [🔵 최소공배수] 버튼을 눌러 각 소인수의 지수 선택을 확인해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (5-8 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -30508,6 +30941,11 @@
         state.lab5_6.selectedChoice = 1;
         renderToolbar5_6();
         drawStep5_6Canvas();
+      } else if (state.subStep === '5-7') {
+        if (!state.lab5_7) state.lab5_7 = { mode: 0 };
+        state.lab5_7.mode = 0;
+        renderToolbar5_7();
+        drawStep5_7Canvas();
       }
     }
 
@@ -30812,6 +31250,7 @@
       else if (state.subStep === '5-4') drawStep5_4Canvas();
       else if (state.subStep === '5-5') drawStep5_5Canvas();
       else if (state.subStep === '5-6') drawStep5_6Canvas();
+      else if (state.subStep === '5-7') drawStep5_7Canvas();
       }, 150);
     });
 
