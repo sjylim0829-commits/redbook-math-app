@@ -1131,6 +1131,12 @@
       lab2_12: {
         mode: 0, // 0: 예시(18), 1: 문제⑴(160), 2: 문제⑵(2^□ × 3²)
         revealedCells: {} // 열린 셀 맵
+      },
+      // 3-1 Interactive Lab State (1. 생각열기: 직사각형 타일과 12, 16)
+      lab3_1: {
+        mode: 0, // 0: 타일링 랩(60x36), 1: 12와 16의 공약수 벤다이어그램
+        tileSize: 6, // 타일 크기 (1, 2, 3, 4, 6, 12, 8 등)
+        highlightGCD: false
       }
     };
 
@@ -1342,6 +1348,9 @@
       } else if (code === '2-12') {
         renderToolbar2_12();
         renderSubstep2_12();
+      } else if (code === '3-1') {
+        renderToolbar3_1();
+        renderSubstep3_1();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -2864,6 +2873,70 @@
         state.lab2_12.revealedCells[`m${mode}_${i}`] = !allRev;
       }
       drawStep2_12Canvas();
+    }
+
+    // -------------------------------------------------------------
+    // SUBSTEP 3-1 Handlers & Toolbar (1. 생각열기: 직사각형 타일과 12, 16, p.17~18)
+    // -------------------------------------------------------------
+    function renderToolbar3_1() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const isPassed3_1 = state.completedSubSteps && state.completedSubSteps.includes('3-1');
+      const curMode = state.lab3_1.mode || 0;
+      const curSize = state.lab3_1.tileSize || 6;
+      const isHighGCD = state.lab3_1.highlightGCD || false;
+
+      let subControls = '';
+      if (curMode === 0) {
+        const sizes = [1, 2, 3, 4, 6, 12, 8];
+        const sizeBtns = sizes.map(sz => `
+          <button class="tool-btn ${curSize === sz ? 'active' : ''}" onclick="setStep3_1TileSize(${sz})" style="font-weight:700;">
+            ${sz}cm${sz === 8 ? ' (불가)' : (sz === 12 && isPassed3_1 ? ' 👑' : '')}
+          </button>
+        `).join('');
+
+        subControls = `
+          <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-left:6px; margin-right:4px;">정사각형 크기:</span>
+          ${sizeBtns}
+        `;
+      } else {
+        const gcdBtnText = isPassed3_1 ? '👑 최대공약수 4 강조' : '⭐ 가장 큰 공약수 강조';
+        subControls = `
+          <button class="tool-btn ${isHighGCD ? 'active' : ''}" onclick="toggleStep3_1HighlightGCD()" style="background:${isHighGCD ? '#10b981' : '#ecfdf5'}; color:${isHighGCD ? '#ffffff' : '#047857'}; font-weight:700; margin-left:6px;">
+            ${gcdBtnText}
+          </button>
+        `;
+      }
+
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-right:4px;">탐구 모드:</span>
+        <button class="tool-btn ${curMode === 0 ? 'active' : ''}" onclick="setStep3_1Mode(0)">🧩 [도안] 타일 채우기 (60×36)</button>
+        <button class="tool-btn ${curMode === 1 ? 'active' : ''}" onclick="setStep3_1Mode(1)">⭕ 12와 16의 공약수 랩</button>
+        <span style="margin:0 4px; color:#cbd5e1;">|</span>
+        ${subControls}
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setStep3_1Mode(m) {
+      state.lab3_1.mode = m;
+      renderToolbar3_1();
+      drawStep3_1Canvas();
+    }
+
+    function setStep3_1TileSize(sz) {
+      state.lab3_1.tileSize = sz;
+      renderToolbar3_1();
+      drawStep3_1Canvas();
+    }
+
+    function toggleStep3_1HighlightGCD() {
+      state.lab3_1.highlightGCD = !state.lab3_1.highlightGCD;
+      renderToolbar3_1();
+      drawStep3_1Canvas();
     }
 
     // SUBSTEP 0-2: 되짚어 보기 2: 공약수와 최대공약수 (초5~6 복습, p.8)
@@ -16492,7 +16565,415 @@
     }
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (3-1 to 6-2)
+    // SUBSTEP 3-1: 1. 생각열기 (직사각형 타일과 12, 16, p.17~18)
+    // -------------------------------------------------------------
+    function renderSubstep3_1() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[생각열기] 직사각형 타일과 12, 16 (교과서 p.17~18)</b><br>
+        • <b>[타일 채우기]</b> 가로 60cm, 세로 36cm인 직사각형 도안을 남는 부분 없이 채울 수 있는 가장 큰 정사각형 타일의 크기를 찾아보세요.<br>
+        • <b>[공약수와 최대공약수]</b> 12와 16의 공약수를 구하고 그중 가장 큰 수인 최대공약수를 확인해 보세요.
+      `;
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.17~18</span>
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b;">3. 최대공약수 생각열기</span>
+          </div>
+          <h4 style="font-size:0.98rem; font-weight:800; color:#1e293b; margin-bottom:14px; line-height:1.5;">
+            다음 물음에 답하여 최대공약수의 의미를 탐구해 보세요.
+          </h4>
+
+          <!-- 소문항 1 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.9rem; margin-bottom:6px;">
+              ⑴ 가로 $60\\text{cm}$, 세로 $36\\text{cm}$인 직사각형 도안을 남는 부분 없이 채울 수 있는 <b>가장 큰 정사각형 타일의 한 변의 길이</b>를 구하시오.
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="text" id="ans-3-1-1" class="proof-input-text" placeholder="답 입력" style="width:140px;" autocomplete="off">
+              <span style="font-size:0.88rem; font-weight:700; color:#475569;">cm</span>
+            </div>
+          </div>
+
+          <!-- 소문항 2 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:18px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.9rem; margin-bottom:6px;">
+              ⑵ $12$의 약수와 $16$의 약수를 비교하여 두 수의 <b>최대공약수</b>를 구하시오.
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="text" id="ans-3-1-2" class="proof-input-text" placeholder="답 입력" style="width:140px;" autocomplete="off">
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep3_1()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            정답 확인 및 채점
+          </button>
+
+          <div id="feedback-step-3-1" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep3_1Canvas();
+    }
+
+    function drawStep3_1Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed3_1 = state.completedSubSteps && state.completedSubSteps.includes('3-1');
+      const curMode = state.lab3_1.mode || 0;
+      const curSize = state.lab3_1.tileSize || 6;
+      const isHighGCD = state.lab3_1.highlightGCD || isPassed3_1;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 34
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(10.5, Math.min(12, Math.floor(width * 0.018)));
+
+      const headerTitle = two.makeText('🧩 [생각열기] 직사각형 타일 채우기와 최대공약수 랩', width / 2, 16);
+      headerTitle.size = titleSize;
+      headerTitle.weight = 800;
+      headerTitle.fill = '#1e293b';
+
+      const headerSub = two.makeText('직사각형을 빈틈없이 채우는 가장 큰 정사각형 타일과 공약수의 관계를 탐구해 보세요.', width / 2, 33);
+      headerSub.size = subSize;
+      headerSub.fill = '#64748b';
+
+      // 2. Mode Formula Display Bar (y: 56, h: 26) - [43, 69]
+      const formBar = two.makeRoundedRectangle(width / 2, 56, width - 40, 26, 6);
+      formBar.fill = '#f1f5f9';
+      formBar.stroke = '#cbd5e1';
+      formBar.linewidth = 1;
+
+      let formStr = '';
+      if (curMode === 0) {
+        formStr = `직사각형 도안 (가로 60cm × 세로 36cm)  |  선택된 정사각형 타일 한 변: ${curSize}cm`;
+      } else {
+        formStr = '12의 약수 (1, 2, 3, 4, 6, 12)  vs  16의 약수 (1, 2, 4, 8, 16)  ➔  공약수와 최대공약수 탐색';
+      }
+
+      const fTxt = two.makeText(formStr, width / 2, 56);
+      fTxt.size = (width < 600) ? 9.5 : 11;
+      fTxt.weight = 800;
+      fTxt.fill = '#334155';
+
+      // 3. Central Board (y: 84 ~ 265, h: 178)
+      const centralBg = two.makeRoundedRectangle(width / 2, 174, width - 36, 178, 12);
+      centralBg.fill = '#ffffff';
+      centralBg.stroke = '#e2e8f0';
+      centralBg.linewidth = 1.5;
+
+      if (curMode === 0) {
+        // Mode 0: 직사각형 타일링 랩 (60cm x 36cm)
+        const guideT = two.makeText('상단 툴바의 타일 크기 버튼을 눌러 직사각형을 빈틈없이 채우는지 관찰해 보세요.', width / 2, 98);
+        guideT.size = 11; guideT.weight = 700; guideT.fill = '#475569';
+
+        const rectW = Math.min(220, Math.floor(width * 0.42));
+        const rectH = Math.floor(rectW * (36 / 60)); // 60:36 비율
+        const rectCX = width / 2;
+        const rectCY = 168;
+
+        const isDivisible = (60 % curSize === 0) && (36 % curSize === 0);
+        const isMaxGCD = (curSize === 12);
+
+        // Background Rect
+        const boardRect = two.makeRoundedRectangle(rectCX, rectCY, rectW, rectH, 6);
+        boardRect.fill = isDivisible ? (isMaxGCD ? '#ecfdf5' : '#f0fdf4') : '#fef2f2';
+        boardRect.stroke = isDivisible ? (isMaxGCD ? '#10b981' : '#86efac') : '#f87171';
+        boardRect.linewidth = isMaxGCD ? 2.5 : 1.5;
+
+        // Draw Tiles / Grid Lines
+        const cols = isDivisible ? (60 / curSize) : Math.floor(60 / curSize);
+        const rows = isDivisible ? (36 / curSize) : Math.floor(36 / curSize);
+        const tilePixelW = rectW / (60 / curSize);
+        const tilePixelH = rectH / (36 / curSize);
+
+        const leftEdge = rectCX - rectW / 2;
+        const topEdge = rectCY - rectH / 2;
+
+        // Vertical lines
+        for (let c = 1; c < cols; c++) {
+          const lx = leftEdge + c * tilePixelW;
+          const line = two.makeLine(lx, topEdge, lx, topEdge + rows * tilePixelH);
+          line.stroke = isDivisible ? (isMaxGCD ? '#059669' : '#86efac') : '#fca5a5';
+          line.linewidth = 1;
+        }
+
+        // Horizontal lines
+        for (let r = 1; r < rows; r++) {
+          const ly = topEdge + r * tilePixelH;
+          const line = two.makeLine(leftEdge, ly, leftEdge + cols * tilePixelW, ly);
+          line.stroke = isDivisible ? (isMaxGCD ? '#059669' : '#86efac') : '#fca5a5';
+          line.linewidth = 1;
+        }
+
+        // If not divisible, show leftover shading
+        if (!isDivisible) {
+          const coveredW = cols * tilePixelW;
+          const coveredH = rows * tilePixelH;
+
+          // Right leftover
+          if (coveredW < rectW) {
+            const remW = rectW - coveredW;
+            const remRect = two.makeRectangle(leftEdge + coveredW + remW / 2, rectCY, remW, rectH);
+            remRect.fill = 'rgba(239, 68, 68, 0.2)';
+            remRect.stroke = 'transparent';
+          }
+          // Bottom leftover
+          if (coveredH < rectH) {
+            const remH = rectH - coveredH;
+            const remRect = two.makeRectangle(leftEdge + coveredW / 2, topEdge + coveredH + remH / 2, coveredW, remH);
+            remRect.fill = 'rgba(239, 68, 68, 0.2)';
+            remRect.stroke = 'transparent';
+          }
+        }
+
+        // Dimension labels
+        const topLabel = two.makeText('가로 60cm', rectCX, topEdge - 9);
+        topLabel.size = 10.5; topLabel.weight = 800; topLabel.fill = '#1e293b';
+
+        const leftLabel = two.makeText('세로 36cm', leftEdge - 32, rectCY);
+        leftLabel.size = 10.5; leftLabel.weight = 800; leftLabel.fill = '#1e293b';
+
+        // Summary Note
+        let noteMsg = '';
+        if (isMaxGCD) {
+          noteMsg = isPassed3_1
+            ? '👑 한 변 12cm 타일: 가로 5칸 × 세로 3칸 = 총 15장 (빈틈없이 채우는 가장 큰 정사각형! ✨)'
+            : '한 변 12cm 타일: 가로 5칸 × 세로 3칸 = 총 15장 (빈틈없이 채움 🟢 - 더 큰 타일도 가능할까요?)';
+        } else if (isDivisible) {
+          noteMsg = `한 변 ${curSize}cm 타일: 가로 ${60/curSize}칸 × 세로 ${36/curSize}칸 = 총 ${(60/curSize)*(36/curSize)}장 (빈틈없이 채움 🟢)`;
+        } else {
+          noteMsg = `⚠️ 한 변 ${curSize}cm 타일: 60 또는 36의 약수가 아니어서 남는 부분이 생깁니다. (채우기 불가 🔴)`;
+        }
+
+        const noteT = two.makeText(noteMsg, width / 2, 248);
+        noteT.size = 10.5; noteT.weight = 800;
+        noteT.fill = isMaxGCD ? '#065f46' : (isDivisible ? '#047857' : '#b91c1c');
+
+      } else {
+        // Mode 1: 12와 16의 공약수 벤다이어그램
+        const guideT = two.makeText('12와 16의 약수를 비교하여 겹치는 부분의 공약수와 가장 큰 수(최대공약수)를 확인해 보세요.', width / 2, 98);
+        guideT.size = 11; guideT.weight = 700; guideT.fill = '#475569';
+
+        const r = 58;
+        const c1X = width / 2 - 55;
+        const c2X = width / 2 + 55;
+        const cY = 168;
+
+        const circle1 = two.makeCircle(c1X, cY, r);
+        circle1.fill = 'rgba(59, 130, 246, 0.12)';
+        circle1.stroke = '#3b82f6';
+        circle1.linewidth = 2;
+
+        const circle2 = two.makeCircle(c2X, cY, r);
+        circle2.fill = 'rgba(236, 72, 153, 0.12)';
+        circle2.stroke = '#ec4899';
+        circle2.linewidth = 2;
+
+        // Titles
+        const t1 = two.makeText('12의 약수', c1X - 24, cY - 44);
+        t1.size = 11; t1.weight = 800; t1.fill = '#1d4ed8';
+
+        const t2 = two.makeText('16의 약수', c2X + 24, cY - 44);
+        t2.size = 11; t2.weight = 800; t2.fill = '#be185d';
+
+        // 12만: 3, 6, 12
+        const n3 = two.makeText('3', c1X - 26, cY - 12);
+        n3.size = 12; n3.weight = 700; n3.fill = '#1e3a8a';
+        const n6 = two.makeText('6', c1X - 32, cY + 14);
+        n6.size = 12; n6.weight = 700; n6.fill = '#1e3a8a';
+        const n12 = two.makeText('12', c1X - 14, cY + 28);
+        n12.size = 12; n12.weight = 700; n12.fill = '#1e3a8a';
+
+        // 16만: 8, 16
+        const n8 = two.makeText('8', c2X + 26, cY - 8);
+        n8.size = 12; n8.weight = 700; n8.fill = '#831843';
+        const n16 = two.makeText('16', c2X + 28, cY + 20);
+        n16.size = 12; n16.weight = 700; n16.fill = '#831843';
+
+        // 공약수 (겹침): 1, 2, 4
+        const n1 = two.makeText('1', width / 2, cY - 24);
+        n1.size = 12; n1.weight = 700; n1.fill = '#065f46';
+
+        const n2 = two.makeText('2', width / 2, cY);
+        n2.size = 12; n2.weight = 700; n2.fill = '#065f46';
+
+        const n4Text = isPassed3_1 && isHighGCD
+          ? '👑 4 (최대공약수)'
+          : (isHighGCD ? '⭐ 4' : '4');
+        const n4 = two.makeText(n4Text, width / 2, cY + 26);
+        n4.size = isHighGCD ? 12.5 : 12; n4.weight = 800;
+        n4.fill = isHighGCD ? '#047857' : '#065f46';
+
+        const noteMsg1 = isPassed3_1
+          ? '공약수: 1, 2, 4  ➔  공약수 중 가장 큰 수인 최대공약수는 4 입니다.'
+          : '공약수: 1, 2, 4  ➔  두 수의 공약수 중 가장 큰 수(최대공약수)는 무엇일까요?';
+        const noteT = two.makeText(noteMsg1, width / 2, 248);
+        noteT.size = 11; noteT.weight = 800; noteT.fill = '#047857';
+      }
+
+      // 4. Realtime Status Bar (y: 288, h: 26) - [275, 301]
+      const statY = 288;
+      const statBg = two.makeRoundedRectangle(width / 2, statY, width - 40, 26, 6);
+      statBg.fill = '#f8fafc';
+      statBg.stroke = '#e2e8f0';
+      statBg.linewidth = 1;
+
+      let statMsg = '';
+      if (isPassed3_1) {
+        statMsg = '탐구 완료: 60과 36의 최대공약수는 12, 12와 16의 최대공약수는 4 입니다.';
+      } else if (curMode === 0) {
+        statMsg = `타일링 상태: ${curSize}cm 타일 관찰 중  |  가로(60)와 세로(36)의 공약수 중 가장 큰 수를 찾으세요.`;
+      } else {
+        statMsg = '벤다이어그램 상태: 두 원이 겹치는 부분의 공약수(1, 2, 4) 중 가장 큰 수를 확인하세요.';
+      }
+
+      const statTxt = two.makeText(statMsg, width / 2, statY);
+      statTxt.size = (width < 600) ? 9.5 : 10.5;
+      statTxt.weight = 700;
+      statTxt.fill = '#334155';
+
+      // 5. Bottom Guide / Concept Banner (y: 350, h: 68) - [316, 384]
+      const bannerY = 350;
+      const bannerH = 68;
+      const bannerBg = two.makeRoundedRectangle(width / 2, bannerY, width - 40, bannerH, 10);
+
+      if (isPassed3_1) {
+        bannerBg.fill = '#ecfdf5';
+        bannerBg.stroke = '#86efac';
+        bannerBg.linewidth = 1.5;
+
+        const bT1 = two.makeText('🎉 정답 확인 완료! 최대공약수의 개념을 바르게 이해했습니다.', width / 2, bannerY - 18);
+        bT1.size = 12; bT1.weight = 800; bT1.fill = '#065f46';
+
+        const bT2 = two.makeText('• ⑴ 60과 36을 남김없이 채우는 가장 큰 정사각형 한 변 = 60과 36의 최대공약수 = 12cm', width / 2, bannerY);
+        bT2.size = 11; bT2.weight = 700; bT2.fill = '#047857';
+
+        const bT3 = two.makeText('• ⑵ 12의 약수(1, 2, 3, 4, 6, 12)와 16의 약수(1, 2, 4, 8, 16)의 공약수는 1, 2, 4 ➔ 최대공약수 4', width / 2, bannerY + 18);
+        bT3.size = 10; bT3.fill = '#059669';
+      } else {
+        bannerBg.fill = '#eff6ff';
+        bannerBg.stroke = '#bfdbfe';
+        bannerBg.linewidth = 1.5;
+
+        const bT1 = two.makeText('💡 문제 해결 팁: 공약수와 최대공약수의 정의', width / 2, bannerY - 18);
+        bT1.size = 12; bT1.weight = 800; bT1.fill = '#1e40af';
+
+        const bT2 = two.makeText('• 직사각형을 남는 부분 없이 채우려면 타일 한 변의 길이가 가로와 세로의 "공약수"이어야 합니다.', width / 2, bannerY);
+        bT2.size = 10.5; bT2.weight = 700; bT2.fill = '#1d4ed8';
+
+        const bT3 = two.makeText('• 가장 큰 정사각형의 한 변의 길이는 공약수 중에서 가장 큰 수인 "최대공약수"입니다.', width / 2, bannerY + 18);
+        bT3.size = 10; bT3.fill = '#2563eb';
+      }
+
+      two.update();
+
+      // Pointer event listener for canvas interaction
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas') : null;
+      if (container) container.onpointerdown = null; // 영속 컨테이너 잔여 핸들러 제거
+      if (!canvasEl) return;
+
+      canvasEl.onpointerdown = (e) => {
+        // Optional interactive click on canvas
+        if (curMode === 1) {
+          toggleStep3_1HighlightGCD();
+        }
+      };
+    }
+
+    async function gradeStep3_1() {
+      const raw1 = cleanInput(document.getElementById('ans-3-1-1')?.value);
+      const raw2 = cleanInput(document.getElementById('ans-3-1-2')?.value);
+
+      const ans1 = parseInt(raw1, 10);
+      const ans2 = parseInt(raw2, 10);
+
+      const isCorrect = (ans1 === 12 && ans2 === 4);
+
+      const fEl = document.getElementById('feedback-step-3-1');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('3-1')) {
+          state.completedSubSteps.push('3-1');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('3-1', {
+              activityTitle: '[중1-1 소인수분해] [3-1] 1. 생각열기 (직사각형 타일과 12, 16)',
+              answerText: `⑴ 타일 크기: ${raw1}cm, ⑵ 최대공약수: ${raw2}`,
+              answers: { ans1: raw1, ans2: raw2 },
+              score: 100,
+              passed: true,
+              unitId: 'u1'
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+
+        // Unlock next step 3-2
+        if (!state.unlockedSubSteps.includes('3-2')) {
+          state.unlockedSubSteps.push('3-2');
+        }
+        updateSubStepPills(state.currentMainTab);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.2rem;">🎉</span>
+            <h4 style="color:#065f46; font-size:1.02rem; font-weight:800; margin:0;">정답입니다! 100점 (All Clear)</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            완벽하게 해결했습니다!<br>
+            • <b>⑴ 가장 큰 정사각형의 한 변:</b> $60$과 $36$을 남김없이 채우려면 두 수의 공약수이어야 하고, 가장 큰 정사각형이므로 최대공약수인 <b>12cm</b> 입니다. (가로 5장 × 세로 3장 = 총 15장)<br>
+            • <b>⑵ 12와 16의 최대공약수:</b> 12의 약수는 $1, 2, 3, 4, 6, 12$ 이고 16의 약수는 $1, 2, 4, 8, 16$ 이므로 공약수는 $1, 2, 4$ 이며, 최대공약수는 <b>4</b> 입니다.<br>
+            <div style="margin-top:10px; padding:8px 12px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 다음 세부 활동 <b>[3-2] 2. 소인수분해로 최대공약수 구하기 & 서로소</b>가 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="loadSubStep('3-2')" style="margin-top:12px; width:100%; padding:10px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            다음 단계 [3-2] 소인수분해로 최대공약수 구하기로 이동 ➔
+          </button>
+        `;
+
+        drawStep3_1Canvas();
+      } else {
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            • <b>⑴번:</b> 직사각형 가로(60cm)와 세로(36cm)를 빈틈없이 채우려면 가로와 세로의 공약수이어야 합니다. 60과 36의 공약수 중 가장 큰 수는 얼마인가요?<br>
+            • <b>⑵번:</b> 12의 약수($1, 2, 3, 4, 6, 12$)와 16의 약수($1, 2, 4, 8, 16$) 중 공통으로 들어있는 가장 큰 수를 찾아보세요.<br>
+            💡 좌측 캔버스의 타일 채우기 랩과 벤다이어그램을 활용해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (3-2 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -16697,6 +17178,12 @@
         state.lab2_12.revealedCells = {};
         renderToolbar2_12();
         drawStep2_12Canvas();
+      } else if (state.subStep === '3-1') {
+        state.lab3_1.mode = 0;
+        state.lab3_1.tileSize = 6;
+        state.lab3_1.highlightGCD = false;
+        renderToolbar3_1();
+        drawStep3_1Canvas();
       }
     }
 
@@ -16972,6 +17459,7 @@
         else if (state.subStep === '2-10') drawStep2_10Canvas();
         else if (state.subStep === '2-11') drawStep2_11Canvas();
         else if (state.subStep === '2-12') drawStep2_12Canvas();
+        else if (state.subStep === '3-1') drawStep3_1Canvas();
       }, 150);
     });
 
