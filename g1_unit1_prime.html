@@ -1169,6 +1169,11 @@
         mode: 0, // 0: 20~30 수 카드 인터랙션, 1: 15 소인수 소거 랩
         step: 0, // 0: 초기, 1: 3배수 소거, 2: 5배수 소거, 3: 서로소 확정
         selectedNum: null
+      },
+      // 3-8 Interactive Lab State (8. 스스로 확인하기 4 (최대공약수 지수 a+b 추론))
+      lab3_8: {
+        mode: 0, // 0: 지수 추론 랩, 1: 100 매칭 랩
+        step: 0  // 0: 100 소인수분해, 1: a값 추론, 2: b값 추론, 3: a+b 완성
       }
     };
 
@@ -1401,6 +1406,9 @@
       } else if (code === '3-7') {
         renderToolbar3_7();
         renderSubstep3_7();
+      } else if (code === '3-8') {
+        renderToolbar3_8();
+        renderSubstep3_8();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -3286,6 +3294,58 @@
       state.lab3_7.selectedNum = n;
       drawStep3_7Canvas();
     }
+
+    // -------------------------------------------------------------
+    // SUBSTEP 3-8 Handlers & Toolbar (8. 스스로 확인하기 4 (최대공약수 지수 a+b 추론), p.19)
+    // -------------------------------------------------------------
+    function renderToolbar3_8() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const curMode = state.lab3_8.mode || 0;
+      const curStep = state.lab3_8.step || 0;
+
+      let subControls = '';
+      if (curMode === 0) {
+        subControls = `
+          <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-left:6px; margin-right:4px;">추론 단계:</span>
+          <button class="tool-btn ${curStep === 0 ? 'active' : ''}" onclick="setStep3_8Step(0)">➊ 100 소인수분해</button>
+          <button class="tool-btn ${curStep === 1 ? 'active' : ''}" onclick="setStep3_8Step(1)">➋ a값 추론 (밑 2)</button>
+          <button class="tool-btn ${curStep === 2 ? 'active' : ''}" onclick="setStep3_8Step(2)">➌ b값 추론 (밑 5)</button>
+          <button class="tool-btn ${curStep === 3 ? 'active' : ''}" onclick="setStep3_8Step(3)">➍ a+b 완성</button>
+        `;
+      } else {
+        subControls = `
+          <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-left:6px; margin-right:4px;">매칭 탐구:</span>
+          <span style="font-size:0.8rem; color:#64748b;">100 = 2² × 5² 과 두 수의 소인수 구조를 비교해 보세요.</span>
+        `;
+      }
+
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-right:4px;">탐구 모드:</span>
+        <button class="tool-btn ${curMode === 0 ? 'active' : ''}" onclick="setStep3_8Mode(0)">🔍 [지수 추론 랩] a와 b 단계별 찾기</button>
+        <button class="tool-btn ${curMode === 1 ? 'active' : ''}" onclick="setStep3_8Mode(1)">💡 [100 매칭 랩] 소인수 거듭제곱 비교</button>
+        <span style="margin:0 4px; color:#cbd5e1;">|</span>
+        ${subControls}
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setStep3_8Mode(m) {
+      state.lab3_8.mode = m;
+      state.lab3_8.step = 0;
+      renderToolbar3_8();
+      drawStep3_8Canvas();
+    }
+
+    function setStep3_8Step(s) {
+      state.lab3_8.step = s;
+      renderToolbar3_8();
+      drawStep3_8Canvas();
+    }
+
 
 
 
@@ -19745,7 +19805,363 @@
 
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (3-8 to 6-2)
+    // SUBSTEP 3-8: 8. 스스로 확인하기 4 (최대공약수 지수 a+b 추론, p.19)
+    // -------------------------------------------------------------
+    function renderSubstep3_8() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[스스로 확인하기 4 (최대공약수 지수 a+b 추론)] (교과서 p.19)</b><br>
+        • 최대공약수 $100$을 소인수분해하여 $2^2 \\times 5^2$ 임을 파악합니다.<br>
+        • 밑이 같은 거듭제곱의 지수를 비교하여 미지수 $a$와 $b$를 구한 후 $a+b$의 값을 계산해 보세요.
+      `;
+
+      const isPassed3_8 = state.completedSubSteps && state.completedSubSteps.includes('3-8');
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.19</span>
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b;">스스로 확인하기 4번</span>
+          </div>
+          <h4 style="font-size:0.98rem; font-weight:800; color:#1e293b; margin-bottom:14px; line-height:1.5;">
+            두 수 $2^a \\times 5^3 \\times 7$ 과 $2^3 \\times 3 \\times 5^b$ 의 최대공약수가 $100$ 일 때, $a+b$ 의 값을 구하시오.
+          </h4>
+
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:18px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              정답 입력 ($a+b$ 의 최종 값)
+            </div>
+            <div style="font-size:0.82rem; color:#64748b; margin-bottom:10px;">
+              • $100 = 2^2 \\times 5^2$ 임을 이용하여 밑이 2인 지수와 밑이 5인 지수를 비교해 보세요.
+            </div>
+            <input type="text" id="ans-3-8" class="proof-input-text" placeholder="답 입력" style="width:140px;" autocomplete="off">
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep3_8()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            정답 확인 및 채점
+          </button>
+
+          <div id="feedback-step-3-8" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep3_8Canvas();
+    }
+
+    function drawStep3_8Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed3_8 = state.completedSubSteps && state.completedSubSteps.includes('3-8');
+      const curMode = state.lab3_8.mode || 0;
+      const curStep = state.lab3_8.step || 0;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 33
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(11, Math.min(13, Math.floor(width * 0.019)));
+
+      let modeTitle = '';
+      let modeSub = '';
+      if (curMode === 0) {
+        modeTitle = '🔍 [지수 추론 랩] 최대공약수 100을 통한 미지수 a, b 추론';
+        modeSub = '100 = 2² × 5² 과 두 수의 공통 거듭제곱 지수를 1:1 비교합니다.';
+      } else {
+        modeTitle = '💡 [100 매칭 랩] 소인수 거듭제곱 구조 분해';
+        modeSub = '최대공약수 100의 소인수 구조와 두 수의 지수 관계를 직관적으로 확인합니다.';
+      }
+
+      const titleText = two.makeText(modeTitle, width / 2, 16);
+      titleText.size = titleSize;
+      titleText.weight = 800;
+      titleText.fill = '#1e293b';
+
+      const subText = two.makeText(modeSub, width / 2, 33);
+      subText.size = subSize;
+      subText.fill = '#64748b';
+
+      // 2. Formula / Sub-bar - y: 56, h: 26 (top: 43, bottom: 69)
+      const fBarW = Math.min(width - 40, 640);
+      const fBar = two.makeRoundedRectangle(width / 2, 56, fBarW, 26, 6);
+      fBar.fill = '#f1f5f9';
+      fBar.stroke = '#cbd5e1';
+      fBar.linewidth = 1;
+
+      let fBarStr = '';
+      if (curMode === 0) {
+        if (curStep === 0) fBarStr = '➊ 최대공약수 100을 소인수분해하면 100 = 2² × 5² 입니다.';
+        else if (curStep === 1) fBarStr = '➋ 밑 2 비교: 2ᵃ 과 2³ 의 작은 지수가 2이므로 a = 2 입니다.';
+        else if (curStep === 2) fBarStr = '➌ 밑 5 비교: 5³ 과 5ᵇ 의 작은 지수가 2이므로 b = 2 입니다.';
+        else fBarStr = isPassed3_8 ? '➍ a = 2, b = 2 ➔ a + b = 4 완성! ✨' : '➍ a = ?, b = ? ➔ a + b 의 값을 계산해 보세요.';
+      } else {
+        fBarStr = '100 = 10 × 10 = (2 × 5) × (2 × 5) = 2² × 5² (소인수 2와 5가 각각 2개씩)';
+      }
+
+      const fBarText = two.makeText(fBarStr, width / 2, 56);
+      fBarText.size = Math.max(11, Math.min(13, Math.floor(width * 0.018)));
+      fBarText.weight = 700;
+      fBarText.fill = '#334155';
+
+      // 3. Central Board - y: 174, h: 178 (top: 85, bottom: 263)
+      const boardW = Math.min(width - 40, 640);
+      const board = two.makeRoundedRectangle(width / 2, 174, boardW, 178, 12);
+      board.fill = '#ffffff';
+      board.stroke = '#e2e8f0';
+      board.linewidth = 1.5;
+
+      if (curMode === 0) {
+        const startX = width / 2 - 210;
+        const colW = 90;
+        const rowH = 34;
+        const startY = 118;
+
+        // Column highlights
+        if (curStep === 1) {
+          // Highlight Col 2 (밑 2)
+          const hl = two.makeRoundedRectangle(startX + colW, 150, 70, 92, 8);
+          hl.fill = '#f0fdf4'; hl.stroke = '#86efac'; hl.linewidth = 1.5;
+        } else if (curStep === 2) {
+          // Highlight Col 5 (밑 5)
+          const hl = two.makeRoundedRectangle(startX + colW * 3, 150, 70, 92, 8);
+          hl.fill = '#f0fdf4'; hl.stroke = '#86efac'; hl.linewidth = 1.5;
+        } else if (curStep === 3) {
+          // Highlight both Col 2 and Col 5
+          const hl1 = two.makeRoundedRectangle(startX + colW, 150, 70, 92, 8);
+          hl1.fill = '#f0fdf4'; hl1.stroke = '#86efac'; hl1.linewidth = 1.5;
+          const hl2 = two.makeRoundedRectangle(startX + colW * 3, 150, 70, 92, 8);
+          hl2.fill = '#f0fdf4'; hl2.stroke = '#86efac'; hl2.linewidth = 1.5;
+        }
+
+        // Row 1: 수 1: 2^a, 빈칸, 5^3, 7
+        const tL1 = two.makeText('첫 번째 수:', startX, startY);
+        tL1.size = 13; tL1.weight = 700; tL1.fill = '#475569'; tL1.alignment = 'right';
+
+        const tR1_2 = two.makeText('2ᵃ', startX + colW, startY);
+        tR1_2.size = 15; tR1_2.weight = 800; tR1_2.fill = '#1e293b';
+
+        const tR1_5 = two.makeText('5³', startX + colW * 3, startY);
+        tR1_5.size = 15; tR1_5.weight = 800; tR1_5.fill = '#1e293b';
+
+        const tR1_7 = two.makeText('7', startX + colW * 4, startY);
+        tR1_7.size = 15; tR1_7.weight = 800; tR1_7.fill = '#1e293b';
+
+        // Row 2: 수 2: 2^3, 3, 5^b, 빈칸
+        const tL2 = two.makeText('두 번째 수:', startX, startY + rowH);
+        tL2.size = 13; tL2.weight = 700; tL2.fill = '#475569'; tL2.alignment = 'right';
+
+        const tR2_2 = two.makeText('2³', startX + colW, startY + rowH);
+        tR2_2.size = 15; tR2_2.weight = 800; tR2_2.fill = '#1e293b';
+
+        const tR2_3 = two.makeText('3', startX + colW * 2, startY + rowH);
+        tR2_3.size = 15; tR2_3.weight = 800; tR2_3.fill = '#1e293b';
+
+        const tR2_5 = two.makeText('5ᵇ', startX + colW * 3, startY + rowH);
+        tR2_5.size = 15; tR2_5.weight = 800; tR2_5.fill = '#1e293b';
+
+        // Separator line
+        const sep = two.makeLine(startX - 50, startY + rowH + 16, startX + colW * 4 + 30, startY + rowH + 16);
+        sep.stroke = '#94a3b8'; sep.linewidth = 1.5;
+
+        // Row GCD: 100 = 2^2 * 5^2
+        const tLG = two.makeText('최대공약수:', startX, startY + rowH * 2);
+        tLG.size = 13; tLG.weight = 800; tLG.fill = '#047857'; tLG.alignment = 'right';
+
+        const tG_2 = two.makeText('2²', startX + colW, startY + rowH * 2);
+        tG_2.size = 15; tG_2.weight = 800; tG_2.fill = '#047857';
+
+        const tG_5 = two.makeText('5²', startX + colW * 3, startY + rowH * 2);
+        tG_5.size = 15; tG_5.weight = 800; tG_5.fill = '#047857';
+
+        // Detail explanation at y: 242
+        let detailStr = '';
+        if (curStep === 0) detailStr = '• 100 = 2² × 5² 이므로 최대공약수의 밑 2의 지수는 2, 밑 5의 지수는 2입니다.';
+        else if (curStep === 1) detailStr = '• 2ᵃ 과 2³ 에서 작은 지수가 2이어야 하므로 ➔ a = 2 확정!';
+        else if (curStep === 2) detailStr = '• 5³ 과 5ᵇ 에서 작은 지수가 2이어야 하므로 ➔ b = 2 확정!';
+        else {
+          detailStr = isPassed3_8
+            ? '• a = 2, b = 2 ➔ a + b = 2 + 2 = 4 (정답 완료!) ✨'
+            : '• a = 2, b = 2 ➔ a + b 의 값을 계산하여 우측에 답을 적어보세요.';
+        }
+
+        const tDetail = two.makeText(detailStr, width / 2, 242);
+        tDetail.size = 13;
+        tDetail.weight = 800;
+        tDetail.fill = curStep >= 1 ? '#047857' : '#334155';
+
+      } else {
+        // Mode 1: 100 소인수분해 및 매칭 카드 시각화
+        const cardBox = two.makeRoundedRectangle(width / 2, 172, boardW - 40, 110, 10);
+        cardBox.fill = '#f8fafc';
+        cardBox.stroke = '#cbd5e1';
+        cardBox.linewidth = 1.5;
+
+        const tM1 = two.makeText('💡 100 소인수분해: 100 = 10 × 10 = (2 × 5) × (2 × 5) = 2² × 5²', width / 2, 142);
+        tM1.size = 13.5; tM1.weight = 800; tM1.fill = '#1e293b';
+
+        const tM2 = two.makeText('• 두 수의 공통 소인수는 2와 5입니다. (3과 7은 각각 한쪽에만 있음)', width / 2, 170);
+        tM2.size = 12.5; tM2.fill = '#475569';
+
+        const tM3 = two.makeText('• 밑 2의 작은 지수: min(a, 3) = 2 ➔ a = 2   |   밑 5의 작은 지수: min(3, b) = 2 ➔ b = 2', width / 2, 196);
+        tM3.size = 13; tM3.weight = 800; tM3.fill = '#047857';
+
+        const tM4 = two.makeText(
+          isPassed3_8 ? '➔ 따라서 a + b = 2 + 2 = 4 ✨' : '➔ a와 b를 더한 값을 우측 폼에 입력해 보세요!',
+          width / 2,
+          224
+        );
+        tM4.size = 13.5; tM4.weight = 800; tM4.fill = isPassed3_8 ? '#065f46' : '#6366f1';
+      }
+
+      // 4. Status Bar - y: 288, h: 26 (top: 275, bottom: 301)
+      const sBarW = Math.min(width - 40, 640);
+      const sBar = two.makeRoundedRectangle(width / 2, 288, sBarW, 26, 6);
+      sBar.fill = isPassed3_8 ? '#ecfdf5' : '#f8fafc';
+      sBar.stroke = isPassed3_8 ? '#a7f3d0' : '#e2e8f0';
+      sBar.linewidth = 1;
+
+      let sBarMsg = '';
+      if (isPassed3_8) {
+        sBarMsg = '🎉 [학습 완료] a = 2, b = 2 이므로 a + b = 4 정답을 맞혔습니다!';
+      } else {
+        sBarMsg = '💡 100=2²×5² 과 두 수의 지수를 비교하여 a와 b를 구한 후 합(a+b)을 우측에 입력하세요.';
+      }
+
+      const sBarText = two.makeText(sBarMsg, width / 2, 288);
+      sBarText.size = Math.max(11, Math.min(12.5, Math.floor(width * 0.018)));
+      sBarText.weight = 700;
+      sBarText.fill = isPassed3_8 ? '#047857' : '#475569';
+
+      // 5. Bottom Banner - y: 350, h: 68 (top: 316, bottom: 384)
+      const bBannerW = Math.min(width - 40, 640);
+      const bBanner = two.makeRoundedRectangle(width / 2, 350, bBannerW, 68, 10);
+      bBanner.fill = isPassed3_8 ? '#f0fdf4' : '#f8fafc';
+      bBanner.stroke = isPassed3_8 ? '#86efac' : '#cbd5e1';
+      bBanner.linewidth = 1.5;
+
+      const bbT1 = two.makeText(
+        isPassed3_8
+          ? '⭐ [핵심 정리] 최대공약수가 주어졌을 때 지수 추론 원리'
+          : '💡 [개념 길잡이] 지수 역추론 문제 해결 요령',
+        width / 2,
+        336
+      );
+      bbT1.size = 12.5; bbT1.weight = 800; bbT1.fill = isPassed3_8 ? '#065f46' : '#1e293b';
+
+      const bbT2 = two.makeText(
+        isPassed3_8
+          ? '• 최대공약수를 소인수분해한 후, 밑이 같은 거듭제곱의 지수 중 작거나 같은 것이 최대공약수의 지수와 같음을 이용합니다.'
+          : '• 최대공약수를 먼저 소인수분해하고, 각 밑의 지수 중 작은 것이 최대공약수의 지수가 됨을 이용하여 미지수를 구합니다.',
+        width / 2,
+        358
+      );
+      bbT2.size = 11.5; bbT2.fill = isPassed3_8 ? '#047857' : '#64748b';
+
+      two.update();
+
+      // Pointer event isolation
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas, svg') : null;
+      if (container) container.onpointerdown = null;
+      if (!canvasEl) return;
+
+      canvasEl.onpointerdown = (e) => {
+        if (curMode === 0) {
+          setStep3_8Step((curStep + 1) % 4);
+        }
+      };
+    }
+
+    async function gradeStep3_8() {
+      const raw = cleanInput(document.getElementById('ans-3-8')?.value);
+      const ans = parseInt(raw, 10);
+
+      const isCorrect = (ans === 4);
+
+      const fEl = document.getElementById('feedback-step-3-8');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('3-8')) {
+          state.completedSubSteps.push('3-8');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('3-8', {
+              activityTitle: '[중1-1 소인수분해] [3-8] 8. 스스로 확인하기 4 (최대공약수 지수 a+b 추론)',
+              answerText: `a+b = ${raw}`,
+              answers: { input: raw, a: 2, b: 2, sum: 4 },
+              score: 100,
+              passed: true,
+              unitId: 'u1'
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+
+        // Unlock next step 3-9 (스스로 확인하기 5)
+        if (!state.unlockedSubSteps.includes('3-9')) {
+          state.unlockedSubSteps.push('3-9');
+        }
+        updateSubStepPills(state.currentMainTab);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.2rem;">🎉</span>
+            <h4 style="color:#065f46; font-size:1.02rem; font-weight:800; margin:0;">정답입니다! 100점 (All Clear)</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            완벽하게 해결했습니다!<br>
+            • 최대공약수 $100 = 2^2 \\times 5^2$ 입니다.<br>
+            • 밑이 2인 거듭제곱: $2^a$ 와 $2^3$ 의 작은 지수가 $2$ 이어야 하므로 $a = 2$<br>
+            • 밑이 5인 거듭제곱: $5^3$ 과 $5^b$ 의 작은 지수가 $2$ 이어야 하므로 $b = 2$<br>
+            • 따라서 $a + b = 2 + 2 = \\mathbf{4}$ 입니다.<br>
+            <div style="margin-top:10px; padding:8px 12px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 다음 세부 활동 <b>[3-9] 9. 스스로 확인하기 5 (분수를 자연수로 만드는 수)</b>가 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="loadSubStep('3-9')" style="margin-top:12px; width:100%; padding:10px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            다음 단계 [3-9] 스스로 확인하기 5로 이동 ➔
+          </button>
+        `;
+
+        drawStep3_8Canvas();
+      } else {
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            • 최대공약수 $100$을 소인수분해하면 $100 = 2^2 \\times 5^2$ 입니다.<br>
+            • 밑이 2인 거듭제곱($2^a, 2^3$)과 밑이 5인 거듭제곱($5^3, 5^b$)의 지수 중 작은 것이 각각 2가 되어야 합니다.<br>
+            • $a$와 $b$의 값을 구한 후 $a+b$의 값을 바르게 적었는지 확인하세요.<br>
+            💡 좌측 캔버스의 [지수 추론 랩]을 단계별로 클릭해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (3-9 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -19988,6 +20404,11 @@
         state.lab3_7.selectedNum = null;
         renderToolbar3_7();
         drawStep3_7Canvas();
+      } else if (state.subStep === '3-8') {
+        state.lab3_8.mode = 0;
+        state.lab3_8.step = 0;
+        renderToolbar3_8();
+        drawStep3_8Canvas();
       }
     }
 
@@ -20270,6 +20691,7 @@
         else if (state.subStep === '3-5') drawStep3_5Canvas();
         else if (state.subStep === '3-6') drawStep3_6Canvas();
         else if (state.subStep === '3-7') drawStep3_7Canvas();
+        else if (state.subStep === '3-8') drawStep3_8Canvas();
       }, 150);
     });
 
