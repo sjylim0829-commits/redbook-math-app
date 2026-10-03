@@ -1264,6 +1264,11 @@
       lab5_3: {
         mode: 0, // 0: 3^n 주기, 1: 5^n 불변성, 2: 합산 연산
         exp3: 13
+      },
+      // 5-4 Interactive Prime Factors Lab State (4. 04번 330 소인수, p.25)
+      lab5_4: {
+        mode: 0, // 0: 소인수 트리, 1: 거듭 나눗셈, 2: 후보 검증
+        selectedCandidate: 1
       }
     };
 
@@ -1553,6 +1558,9 @@
       } else if (code === '5-3') {
         renderToolbar5_3();
         renderSubstep5_3();
+      } else if (code === '5-4') {
+        renderToolbar5_4();
+        renderSubstep5_4();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -4493,6 +4501,63 @@
       if (sum) sum.value = '8';
       gradeStep5_3();
     }
+    // -------------------------------------------------------------
+    // SUBSTEP 5-4: Toolbar & Handlers (4. 04번 330의 소인수가 아닌 것, p.25)
+    // -------------------------------------------------------------
+    function renderToolbar5_4() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const curMode = (state.lab5_4 && state.lab5_4.mode !== undefined) ? state.lab5_4.mode : 0;
+
+      tb.innerHTML = `
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <span style="font-size:0.8rem; font-weight:800; color:#475569;">[소인수 탐구]:</span>
+          <button class="btn btn-sm ${curMode === 0 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_4Mode(0)">🌳 소인수 트리</button>
+          <button class="btn btn-sm ${curMode === 1 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_4Mode(1)">🪜 거듭 나눗셈</button>
+          <button class="btn btn-sm ${curMode === 2 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_4Mode(2)">🔍 5개 후보 검증</button>
+          <button class="btn btn-sm btn-outline" onclick="resetLab5_4()" title="화면 초기화">🔄 초기화</button>
+          <button class="btn btn-sm btn-outline" onclick="teacherPassStep5_4()" style="border-color:#e2e8f0; color:#94a3b8;" title="교사 정답 패스">💡 패스</button>
+        </div>
+      `;
+    }
+
+    function setStep5_4Mode(m) {
+      if (!state.lab5_4) state.lab5_4 = { mode: 0, selectedCandidate: 1 };
+      state.lab5_4.mode = m;
+      renderToolbar5_4();
+      drawStep5_4Canvas();
+    }
+
+    function setStep5_4Candidate(c) {
+      if (!state.lab5_4) state.lab5_4 = { mode: 2, selectedCandidate: 1 };
+      state.lab5_4.selectedCandidate = c;
+      drawStep5_4Canvas();
+    }
+
+    function resetLab5_4() {
+      if (!state.lab5_4) state.lab5_4 = { mode: 0, selectedCandidate: 1 };
+      state.lab5_4.mode = 0;
+      state.lab5_4.selectedCandidate = 1;
+      renderToolbar5_4();
+      drawStep5_4Canvas();
+    }
+
+    function teacherPassStep5_4() {
+      const f1 = document.getElementById('ans-5-4-f1');
+      const f2 = document.getElementById('ans-5-4-f2');
+      const f3 = document.getElementById('ans-5-4-f3');
+      const f4 = document.getElementById('ans-5-4-f4');
+      const ch = document.getElementById('ans-5-4-choice');
+      if (f1) f1.value = '2';
+      if (f2) f2.value = '3';
+      if (f3) f3.value = '5';
+      if (f4) f4.value = '11';
+      if (ch) ch.value = '4';
+      gradeStep5_4();
+    }
+
 
 
 
@@ -28682,7 +28747,493 @@
 
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (5-4 to 6-2)
+    // SUBSTEP 5-4: 4. 04번 (330의 소인수가 아닌 것, p.25)
+    // -------------------------------------------------------------
+    function renderSubstep5_4() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[대단원 5. 스스로 마무리하기: 4. 04번 (330의 소인수가 아닌 것)] (교과서 p.25)</b><br>
+        • 다음 중에서 <b>330의 소인수가 아닌 것</b>을 고르시오.<br>
+        • 330을 소인수분해하여 어떤 소수들의 곱으로 이루어져 있는지 소인수를 모두 확인합니다.<br>
+        • 좌측 캔버스에서 가지치기 트리와 거듭 나눗셈을 통해 소인수 목록을 탐구하고 아닌 것을 판별하세요.
+      `;
+
+      const isPassed5_4 = state.completedSubSteps && state.completedSubSteps.includes('5-4');
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.25</span>
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b;">04번 문제</span>
+          </div>
+          <h4 style="font-size:0.98rem; font-weight:800; color:#1e293b; margin-bottom:14px; line-height:1.5;">
+            다음 중에서 330의 소인수가 아닌 것을 구하시오.
+          </h4>
+
+          <!-- 소문항 1: 330의 소인수분해 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:8px;">
+              1. 330을 소인수분해하여 작은 소인수부터 빈칸에 쓰시오:
+            </div>
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <span style="font-weight:800; color:#1e293b; font-size:0.95rem;">330 = </span>
+              <input type="text" id="ans-5-4-f1" class="proof-input-text" placeholder="입력" style="width:46px; text-align:center;" autocomplete="off">
+              <span style="font-weight:700; color:#64748b;">×</span>
+              <input type="text" id="ans-5-4-f2" class="proof-input-text" placeholder="입력" style="width:46px; text-align:center;" autocomplete="off">
+              <span style="font-weight:700; color:#64748b;">×</span>
+              <input type="text" id="ans-5-4-f3" class="proof-input-text" placeholder="입력" style="width:46px; text-align:center;" autocomplete="off">
+              <span style="font-weight:700; color:#64748b;">×</span>
+              <input type="text" id="ans-5-4-f4" class="proof-input-text" placeholder="입력" style="width:46px; text-align:center;" autocomplete="off">
+            </div>
+          </div>
+
+          <!-- 소문항 2: 330의 소인수가 아닌 것 선택 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:16px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:8px;">
+              2. 다음 중에서 330의 소인수가 아닌 것은?
+            </div>
+            <select id="ans-5-4-choice" class="proof-input-text" style="width:160px;">
+              <option value="">선택</option>
+              <option value="1">① 2</option>
+              <option value="2">② 3</option>
+              <option value="3">③ 5</option>
+              <option value="4">④ 7</option>
+              <option value="5">⑤ 11</option>
+            </select>
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep5_4()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            소인수분해 및 정답 확인
+          </button>
+
+          <div id="feedback-step-5-4" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep5_4Canvas();
+    }
+
+    function drawStep5_4Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed5_4 = state.completedSubSteps && state.completedSubSteps.includes('5-4');
+      const curMode = (state.lab5_4 && state.lab5_4.mode !== undefined) ? state.lab5_4.mode : 0;
+      const curCand = (state.lab5_4 && state.lab5_4.selectedCandidate !== undefined) ? state.lab5_4.selectedCandidate : 1;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 33
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(11, Math.min(13, Math.floor(width * 0.019)));
+
+      const titleText = two.makeText('🌳 [대단원 마무리 04번] 330의 소인수분해 및 소인수 탐구 랩', width / 2, 16);
+      titleText.size = titleSize;
+      titleText.weight = 800;
+      titleText.fill = '#1e293b';
+
+      const subText = two.makeText('330을 소인수분해하여 모든 소인수를 구하고 아닌 것을 판별하세요.', width / 2, 33);
+      subText.size = subSize;
+      subText.fill = '#64748b';
+
+      // 2. Sub-bar - y: 56, h: 26 (occupies 43 ~ 69)
+      const fBarW = Math.min(width - 40, 640);
+      const fBar = two.makeRoundedRectangle(width / 2, 56, fBarW, 26, 6);
+      fBar.fill = '#f8fafc';
+      fBar.stroke = '#cbd5e1';
+      fBar.linewidth = 1;
+
+      let subLabel = '';
+      if (curMode === 0) subLabel = '🌳 소인수분해 가지치기 트리: 330을 소수들의 곱으로 단계별 분해';
+      else if (curMode === 1) subLabel = '🪜 거듭 나눗셈 방식: 2, 3, 5 로 나누어 몫이 소수 11이 될 때까지 계산';
+      else if (curMode === 2) subLabel = '🔍 5개 후보(2, 3, 5, 7, 11) 나눗셈 및 소인수 여부 개별 검증';
+
+      const subLblTxt = two.makeText(subLabel, width / 2, 56);
+      subLblTxt.size = Math.max(10, Math.min(12, Math.floor(width * 0.018)));
+      subLblTxt.weight = 700;
+      subLblTxt.fill = '#4338ca';
+
+      // 3. Main Board - y: 85 ~ 290
+      if (curMode === 0) {
+        // Mode 0: Factor tree of 330
+        const cx = width / 2;
+        // Root: 330 at y = 96
+        const rootBox = two.makeRoundedRectangle(cx, 96, 76, 28, 6);
+        rootBox.fill = '#f1f5f9';
+        rootBox.stroke = '#94a3b8';
+        rootBox.linewidth = 1.5;
+        const rTxt = two.makeText('330', cx, 96);
+        rTxt.size = 13;
+        rTxt.weight = 800;
+        rTxt.fill = '#1e293b';
+
+        // Level 1: 2 (left) and 165 (right) at y = 142
+        const l1LineL = two.makeLine(cx - 15, 110, cx - 70, 130);
+        l1LineL.stroke = '#94a3b8';
+        const l1LineR = two.makeLine(cx + 15, 110, cx + 70, 130);
+        l1LineR.stroke = '#94a3b8';
+
+        // 2 (Prime circle)
+        const p2 = two.makeCircle(cx - 70, 142, 14);
+        p2.fill = '#dbeafe';
+        p2.stroke = '#3b82f6';
+        p2.linewidth = 2;
+        const t2 = two.makeText('2', cx - 70, 142);
+        t2.size = 12;
+        t2.weight = 800;
+        t2.fill = '#1d4ed8';
+
+        // 165 (composite box)
+        const c165 = two.makeRoundedRectangle(cx + 70, 142, 60, 24, 4);
+        c165.fill = '#f8fafc';
+        c165.stroke = '#cbd5e1';
+        const t165 = two.makeText('165', cx + 70, 142);
+        t165.size = 11;
+        t165.weight = 700;
+        t165.fill = '#475569';
+
+        // Level 2: 3 (left) and 55 (right) at y = 188
+        const l2LineL = two.makeLine(cx + 60, 154, cx + 20, 174);
+        l2LineL.stroke = '#94a3b8';
+        const l2LineR = two.makeLine(cx + 80, 154, cx + 120, 174);
+        l2LineR.stroke = '#94a3b8';
+
+        // 3 (Prime circle)
+        const p3 = two.makeCircle(cx + 20, 188, 14);
+        p3.fill = '#dbeafe';
+        p3.stroke = '#3b82f6';
+        p3.linewidth = 2;
+        const t3 = two.makeText('3', cx + 20, 188);
+        t3.size = 12;
+        t3.weight = 800;
+        t3.fill = '#1d4ed8';
+
+        // 55 (composite box)
+        const c55 = two.makeRoundedRectangle(cx + 120, 188, 54, 24, 4);
+        c55.fill = '#f8fafc';
+        c55.stroke = '#cbd5e1';
+        const t55 = two.makeText('55', cx + 120, 188);
+        t55.size = 11;
+        t55.weight = 700;
+        t55.fill = '#475569';
+
+        // Level 3: 5 (left) and 11 (right) at y = 234
+        const l3LineL = two.makeLine(cx + 110, 200, cx + 80, 220);
+        l3LineL.stroke = '#94a3b8';
+        const l3LineR = two.makeLine(cx + 130, 200, cx + 160, 220);
+        l3LineR.stroke = '#94a3b8';
+
+        // 5 (Prime circle)
+        const p5 = two.makeCircle(cx + 80, 234, 14);
+        p5.fill = '#dbeafe';
+        p5.stroke = '#3b82f6';
+        p5.linewidth = 2;
+        const t5 = two.makeText('5', cx + 80, 234);
+        t5.size = 12;
+        t5.weight = 800;
+        t5.fill = '#1d4ed8';
+
+        // 11 (Prime circle)
+        const p11 = two.makeCircle(cx + 160, 234, 14);
+        p11.fill = '#dbeafe';
+        p11.stroke = '#3b82f6';
+        p11.linewidth = 2;
+        const t11 = two.makeText('11', cx + 160, 234);
+        t11.size = 12;
+        t11.weight = 800;
+        t11.fill = '#1d4ed8';
+
+        // Factor summary bar at y = 274
+        const fSummary = two.makeText('추출된 소인수: 2, 3, 5, 11 (파란색 원)', width / 2, 274);
+        fSummary.size = 12;
+        fSummary.weight = 700;
+        fSummary.fill = '#1e40af';
+
+      } else if (curMode === 1) {
+        // Mode 1: Repeated division ladder of 330
+        const cx = width / 2;
+        const ladderBox = two.makeRoundedRectangle(cx, 185, Math.min(width - 40, 480), 160, 10);
+        ladderBox.fill = '#ffffff';
+        ladderBox.stroke = '#cbd5e1';
+        ladderBox.linewidth = 1.5;
+
+        const startY = 125;
+        const stepH = 34;
+
+        // Step 1: 2 ) 330
+        const d1 = two.makeText('2 )  330', cx - 40, startY);
+        d1.size = 14;
+        d1.weight = 800;
+        d1.fill = '#1d4ed8';
+        const line1 = two.makeLine(cx - 70, startY + 12, cx + 40, startY + 12);
+        line1.stroke = '#475569';
+        line1.linewidth = 1.5;
+
+        // Step 2: 3 ) 165
+        const d2 = two.makeText('3 )  165', cx - 40, startY + stepH);
+        d2.size = 14;
+        d2.weight = 800;
+        d2.fill = '#1d4ed8';
+        const line2 = two.makeLine(cx - 70, startY + stepH + 12, cx + 40, startY + stepH + 12);
+        line2.stroke = '#475569';
+        line2.linewidth = 1.5;
+
+        // Step 3: 5 ) 55
+        const d3 = two.makeText('5 )   55', cx - 40, startY + stepH * 2);
+        d3.size = 14;
+        d3.weight = 800;
+        d3.fill = '#1d4ed8';
+        const line3 = two.makeLine(cx - 70, startY + stepH * 2 + 12, cx + 40, startY + stepH * 2 + 12);
+        line3.stroke = '#475569';
+        line3.linewidth = 1.5;
+
+        // Step 4: 11 (Quotient prime)
+        const d4 = two.makeText('      11', cx - 40, startY + stepH * 3);
+        d4.size = 14;
+        d4.weight = 800;
+        d4.fill = '#059669';
+
+        // Side explanation
+        const sTxt1 = two.makeText('• 나눈 수(소수): 2, 3, 5', cx + 110, startY + 20);
+        sTxt1.size = 12;
+        sTxt1.weight = 700;
+        sTxt1.fill = '#1e40af';
+
+        const sTxt2 = two.makeText('• 마지막 몫(소수): 11', cx + 110, startY + 54);
+        sTxt2.size = 12;
+        sTxt2.weight = 700;
+        sTxt2.fill = '#047857';
+
+        const sTxt3 = two.makeText('➔ 330 = 2 × 3 × 5 × 11', cx + 110, startY + 88);
+        sTxt3.size = 12.5;
+        sTxt3.weight = 800;
+        sTxt3.fill = '#1e293b';
+
+      } else {
+        // Mode 2: 5 candidate divisibility cards
+        const candidates = [
+          { id: 1, val: 2, label: '① 2', divText: '330 ÷ 2 = 165', isFactor: true, remText: '나누어떨어짐 (나머지 0)' },
+          { id: 2, val: 3, label: '② 3', divText: '330 ÷ 3 = 110', isFactor: true, remText: '나누어떨어짐 (나머지 0)' },
+          { id: 3, val: 5, label: '③ 5', divText: '330 ÷ 5 = 66', isFactor: true, remText: '나누어떨어짐 (나머지 0)' },
+          { id: 4, val: 7, label: '④ 7', divText: '330 ÷ 7 = 47 ... 1', isFactor: false, remText: '나누어떨어지지 않음 (나머지 1)' },
+          { id: 5, val: 11, label: '⑤ 11', divText: '330 ÷ 11 = 30', isFactor: true, remText: '나누어떨어짐 (나머지 0)' }
+        ];
+
+        const cardW = Math.min(100, Math.floor((width - 80) / 5));
+        const startX = width / 2 - 2 * (cardW + 10);
+
+        candidates.forEach((cand, idx) => {
+          const cx = startX + idx * (cardW + 10);
+          const isSelected = (curCand === cand.id);
+
+          const box = two.makeRoundedRectangle(cx, 130, cardW, 56, 8);
+          box.fill = isSelected ? (cand.isFactor ? '#eff6ff' : '#fff1f2') : '#ffffff';
+          box.stroke = isSelected ? (cand.isFactor ? '#3b82f6' : '#f43f5e') : '#cbd5e1';
+          box.linewidth = isSelected ? 2 : 1;
+
+          const tNum = two.makeText(cand.label, cx, 118);
+          tNum.size = 12;
+          tNum.weight = 800;
+          tNum.fill = '#1e293b';
+
+          let statusTxt = cand.isFactor ? '소인수 O' : '소인수 X';
+          if (!isPassed5_4 && !isSelected) {
+            statusTxt = '검증 클릭';
+          }
+          const tStat = two.makeText(statusTxt, cx, 140);
+          tStat.size = 11;
+          tStat.weight = 700;
+          tStat.fill = cand.isFactor ? '#059669' : '#e11d48';
+        });
+
+        // Detail Inspection Card at y = 225
+        const activeCand = candidates.find(c => c.id === curCand) || candidates[0];
+        const detailCard = two.makeRoundedRectangle(width / 2, 225, Math.min(width - 40, 520), 62, 8);
+        detailCard.fill = activeCand.isFactor ? '#f0fdf4' : '#fff1f2';
+        detailCard.stroke = activeCand.isFactor ? '#86efac' : '#fecdd3';
+        detailCard.linewidth = 1.5;
+
+        const dLine1 = two.makeText(`[${activeCand.label} 나눗셈 검증]: ${activeCand.divText}`, width / 2, 212);
+        dLine1.size = 13;
+        dLine1.weight = 800;
+        dLine1.fill = activeCand.isFactor ? '#166534' : '#be123c';
+
+        const ansNotice = (isPassed5_4 && !activeCand.isFactor) ? ' (정답: ④ 7)' : '';
+        const dLine2 = two.makeText(`➔ ${activeCand.remText} ➔ 330의 ${activeCand.isFactor ? '소인수입니다.' : '소인수가 아닙니다.'}${ansNotice}`, width / 2, 236);
+        dLine2.size = 12;
+        dLine2.weight = 700;
+        dLine2.fill = activeCand.isFactor ? '#15803d' : '#e11d48';
+      }
+
+      // 4. Summary / Rule Banner - y: 345, h: 74 (occupies 308 ~ 382 <= 440, bottom margin 58px >= 56px)
+      const bW = Math.min(width - 40, 640);
+      const banner = two.makeRoundedRectangle(width / 2, 345, bW, 74, 10);
+      banner.fill = isPassed5_4 ? '#ecfdf5' : '#f8fafc';
+      banner.stroke = isPassed5_4 ? '#a7f3d0' : '#cbd5e1';
+      banner.linewidth = 1.5;
+
+      let bT1 = '';
+      let bT2 = '';
+      let bT3 = '';
+
+      if (isPassed5_4) {
+        bT1 = '🎉 [330의 소인수분해 및 소인수 완벽 정리]';
+        bT2 = '• 330을 소인수분해하면: 330 = 2 × 3 × 5 × 11';
+        bT3 = '• 따라서 330의 소인수는 2, 3, 5, 11 이며, 7은 소인수가 아닙니다 (정답: ④ 7).';
+      } else {
+        bT1 = '💡 [소인수분해를 이용한 소인수 탐구 원리]';
+        bT2 = '• 1보다 큰 자연수를 소인수분해했을 때 곱해진 소수들이 바로 그 수의 소인수입니다.';
+        bT3 = '• 보기의 각 수로 330을 나누어 나머지가 0인 것은 소인수, 나누어떨어지지 않는 것은 소인수가 아닙니다.';
+      }
+
+      const txtT1 = two.makeText(bT1, width / 2, 323);
+      txtT1.size = 12;
+      txtT1.weight = 800;
+      txtT1.fill = isPassed5_4 ? '#065f46' : '#1e293b';
+
+      const txtT2 = two.makeText(bT2, width / 2, 344);
+      txtT2.size = 11;
+      txtT2.weight = 600;
+      txtT2.fill = isPassed5_4 ? '#047857' : '#334155';
+
+      const txtT3 = two.makeText(bT3, width / 2, 363);
+      txtT3.size = 10.5;
+      txtT3.weight = 500;
+      txtT3.fill = isPassed5_4 ? '#047857' : '#64748b';
+
+      two.update();
+
+      // 5. Pointer Event Isolation
+      const container = document.getElementById('two-container');
+      if (container) container.onpointerdown = null;
+
+      const canvasEl = container ? container.querySelector('canvas, svg') : null;
+      if (canvasEl) {
+        canvasEl.style.cursor = 'pointer';
+        canvasEl.onpointerdown = (e) => {
+          if (curMode === 2) {
+            const rect = canvasEl.getBoundingClientRect();
+            const scaleX = width / rect.width;
+            const clickX = (e.clientX - rect.left) * scaleX;
+            const cardW = Math.min(100, Math.floor((width - 80) / 5));
+            const startX = width / 2 - 2 * (cardW + 10);
+
+            for (let i = 0; i < 5; i++) {
+              const cx = startX + i * (cardW + 10);
+              if (Math.abs(clickX - cx) < cardW / 2) {
+                setStep5_4Candidate(i + 1);
+                return;
+              }
+            }
+          } else {
+            const nextMode = (curMode + 1) % 3;
+            setStep5_4Mode(nextMode);
+          }
+        };
+      }
+    }
+
+    async function gradeStep5_4() {
+      const f1 = parseInt(cleanInput(document.getElementById('ans-5-4-f1')?.value || ''), 10);
+      const f2 = parseInt(cleanInput(document.getElementById('ans-5-4-f2')?.value || ''), 10);
+      const f3 = parseInt(cleanInput(document.getElementById('ans-5-4-f3')?.value || ''), 10);
+      const f4 = parseInt(cleanInput(document.getElementById('ans-5-4-f4')?.value || ''), 10);
+      const choice = document.getElementById('ans-5-4-choice')?.value || '';
+
+      const isFactorsCorrect = (f1 === 2 && f2 === 3 && f3 === 5 && f4 === 11);
+      const isChoiceCorrect = (choice === '4');
+
+      const isCorrect = isFactorsCorrect && isChoiceCorrect;
+
+      const fEl = document.getElementById('feedback-step-5-4');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('5-4')) {
+          state.completedSubSteps.push('5-4');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('5-4', {
+              factors: [2, 3, 5, 11],
+              choice: '4',
+              activityTitle: '[중1-1 소인수분해] [5-4] 4. 04번 (330의 소인수가 아닌 것)',
+              score: 100,
+              passed: true
+            }, 'u1');
+          } catch (err) {
+            console.warn('LMS save error:', err);
+          }
+        }
+
+        // Unlock next substep 5-5
+        if (!state.unlockedSubSteps.includes('5-5')) {
+          state.unlockedSubSteps.push('5-5');
+        }
+
+        updateSubStepPills(5);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.3rem;">🎉</span>
+            <h4 style="color:#065f46; font-size:1.02rem; font-weight:800; margin:0;">04번 소인수 판별 100점 완벽 해결!</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            완벽하게 해결했습니다!<br>
+            • <b>330의 소인수분해</b>: $330 = 2 \\times 3 \\times 5 \\times 11$<br>
+            • <b>330의 소인수</b>: $2, 3, 5, 11$<br>
+            • <b>소인수가 아닌 것</b>: <b>④ 7</b> ($330 = 7 \\times 47 + 1$로 나누어떨어지지 않음)
+            <div style="margin-top:12px; padding:10px 14px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 <b>[5-5] 05번 (84로 제곱수 만들기)</b>가 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="loadSubStep('5-5')" style="margin-top:12px; width:100%; padding:11px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            다음 문제 [5-5] 05번 (제곱수 만들기) 도전 ➔
+          </button>
+        `;
+
+        setStep5_4Mode(2);
+        setStep5_4Candidate(4);
+      } else {
+        let msg = '';
+        if (!isFactorsCorrect) {
+          msg = '330을 소수로 나누어가며 소인수분해해 보세요. 2로 나누면 165, 3으로 나누면 55, 5로 나누면 11이 됩니다.';
+        } else if (!isChoiceCorrect) {
+          msg = '소인수분해 결과 나온 소인수는 2, 3, 5, 11입니다. 이 목록에 없는 보기를 선택하세요.';
+        }
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            • ${msg}<br>
+            💡 상단의 [🌳 소인수 트리]와 [🪜 거듭 나눗셈] 도구를 통해 330의 소인수를 확인해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (5-5 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -29023,6 +29574,11 @@
         state.lab5_3.mode = 0;
         renderToolbar5_3();
         drawStep5_3Canvas();
+      } else if (state.subStep === '5-4') {
+        if (!state.lab5_4) state.lab5_4 = { mode: 0, selectedCandidate: 1 };
+        state.lab5_4.mode = 0;
+        renderToolbar5_4();
+        drawStep5_4Canvas();
       }
     }
 
@@ -29324,6 +29880,7 @@
       else if (state.subStep === '5-1') drawStep5_1Canvas();
       else if (state.subStep === '5-2') drawStep5_2Canvas();
       else if (state.subStep === '5-3') drawStep5_3Canvas();
+      else if (state.subStep === '5-4') drawStep5_4Canvas();
       }, 150);
     });
 
