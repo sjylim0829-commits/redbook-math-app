@@ -1297,6 +1297,10 @@
       // 5-11 Interactive Prime Factor Max/Min Lab State (11. 11번 서술형, p.26)
       lab5_11: {
         focus: 0 // 0: 전체 비교, 1: 126, 2: 45
+      },
+      // 5-12 Interactive Factorial Exponent Counting Lab State (12. 12번 서술형, p.26)
+      lab5_12: {
+        primeFilter: 0 // 0: 전체, 2: 2, 3: 3, 5: 5
       }
     };
 
@@ -1610,6 +1614,9 @@
       } else if (code === '5-11') {
         renderToolbar5_11();
         renderSubstep5_11();
+      } else if (code === '5-12') {
+        renderToolbar5_12();
+        renderSubstep5_12();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -4937,6 +4944,56 @@
       if (b) b.value = '3';
       if (sum) sum.value = '10';
       gradeStep5_11();
+    }
+
+// -------------------------------------------------------------
+    // SUBSTEP 5-12: Toolbar & Handlers (12. 12번 서술형 1~12 곱 소인수분해 지수, p.26)
+    // -------------------------------------------------------------
+    function renderToolbar5_12() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const curFilter = (state.lab5_12 && state.lab5_12.primeFilter !== undefined) ? state.lab5_12.primeFilter : 0;
+      const isPassed5_12 = state.completedSubSteps && state.completedSubSteps.includes('5-12');
+
+      tb.innerHTML = `
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <span style="font-size:0.8rem; font-weight:800; color:#475569;">[소수별 카운팅]:</span>
+          <button class="btn btn-sm ${curFilter === 0 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_12Filter(0)">🔍 전체 수 타일</button>
+          <button class="btn btn-sm ${curFilter === 2 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_12Filter(2)" style="${curFilter === 2 ? 'background:#dc2626;border-color:#dc2626;color:#fff;' : ''}">🔴 소수 2 카운트${isPassed5_12 ? ' (x=10)' : ''}</button>
+          <button class="btn btn-sm ${curFilter === 3 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_12Filter(3)" style="${curFilter === 3 ? 'background:#16a34a;border-color:#16a34a;color:#fff;' : ''}">🟢 소수 3 카운트${isPassed5_12 ? ' (y=5)' : ''}</button>
+          <button class="btn btn-sm ${curFilter === 5 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_12Filter(5)" style="${curFilter === 5 ? 'background:#2563eb;border-color:#2563eb;color:#fff;' : ''}">🔵 소수 5 카운트${isPassed5_12 ? ' (z=2)' : ''}</button>
+          <button class="btn btn-sm btn-outline" onclick="resetLab5_12()" title="화면 초기화">🔄 초기화</button>
+          <button class="btn btn-sm btn-outline" onclick="teacherPassStep5_12()" style="border-color:#e2e8f0; color:#94a3b8;" title="교사 정답 패스">💡 패스</button>
+        </div>
+      `;
+    }
+
+    function setStep5_12Filter(f) {
+      if (!state.lab5_12) state.lab5_12 = { primeFilter: 0 };
+      state.lab5_12.primeFilter = f;
+      renderToolbar5_12();
+      drawStep5_12Canvas();
+    }
+
+    function resetLab5_12() {
+      if (!state.lab5_12) state.lab5_12 = { primeFilter: 0 };
+      state.lab5_12.primeFilter = 0;
+      renderToolbar5_12();
+      drawStep5_12Canvas();
+    }
+
+    function teacherPassStep5_12() {
+      const x = document.getElementById('ans-5-12-x');
+      const y = document.getElementById('ans-5-12-y');
+      const z = document.getElementById('ans-5-12-z');
+      const sum = document.getElementById('ans-5-12-sum');
+      if (x) x.value = '10';
+      if (y) y.value = '5';
+      if (z) z.value = '2';
+      if (sum) sum.value = '17';
+      gradeStep5_12();
     }
 
 
@@ -32341,8 +32398,393 @@
       }
     }
 
+// -------------------------------------------------------------
+    // SUBSTEP 5-12: 12. 12번 서술형 (1~12 곱 소인수분해 지수 x+y+z, p.26)
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (5-12 to 6-2)
+    function renderSubstep5_12() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[대단원 5. 스스로 마무리하기: 12. 12번 서술형 (연속 곱의 소인수분해 지수 합)] (교과서 p.26)</b><br>
+        • $1 \\times 2 \\times 3 \\times \\cdots \\times 10 \\times 11 \\times 12$ 를 소인수분해하면 $2^x \\times 3^y \\times 5^z \\times 7 \\times 11$ 일 때, $x+y+z$ 의 값을 구하시오.<br>
+        • <b>1단계 (60%)</b>: $1$부터 $12$까지 각 수를 소인수분해하여 $2, 3, 5$의 지수 $x, y, z$ 구하기<br>
+        • <b>2단계 (40%)</b>: $x + y + z$ 의 최종 합 계산하기
+      `;
+
+      const isPassed5_12 = state.completedSubSteps && state.completedSubSteps.includes('5-12');
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.26 서술형</span>
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b;">12번 문제 (100점 만점)</span>
+          </div>
+          <h4 style="font-size:0.98rem; font-weight:800; color:#1e293b; margin-bottom:14px; line-height:1.5;">
+            $1 \\times 2 \\times \\cdots \\times 12 = 2^x \\times 3^y \\times 5^z \\times 7 \\times 11$ 일 때 $x+y+z$ 의 값을 구하시오.
+          </h4>
+
+          <!-- 1단계: x, y, z 구하기 (60점) -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-weight:800; color:#1e293b; font-size:0.88rem;">1단계. 각 수의 소인수분해로 지수 $x, y, z$ 구하기:</span>
+              <span style="font-size:0.75rem; background:#eff6ff; color:#1d4ed8; padding:2px 6px; border-radius:4px; font-weight:700;">배점 60%</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+              <div style="display:flex; align-items:center; gap:4px;">
+                <span style="font-weight:700; color:#334155;">x =</span>
+                <input type="text" id="ans-5-12-x" class="proof-input-text" placeholder="x 값" style="width:65px;" autocomplete="off">
+              </div>
+              <div style="display:flex; align-items:center; gap:4px;">
+                <span style="font-weight:700; color:#334155;">y =</span>
+                <input type="text" id="ans-5-12-y" class="proof-input-text" placeholder="y 값" style="width:65px;" autocomplete="off">
+              </div>
+              <div style="display:flex; align-items:center; gap:4px;">
+                <span style="font-weight:700; color:#334155;">z =</span>
+                <input type="text" id="ans-5-12-z" class="proof-input-text" placeholder="z 값" style="width:65px;" autocomplete="off">
+              </div>
+            </div>
+          </div>
+
+          <!-- 2단계: x + y + z 계산 (40점) -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-weight:800; color:#1e293b; font-size:0.88rem;">2단계. $x + y + z$ 의 최종 합 계산:</span>
+              <span style="font-size:0.75rem; background:#fef3c7; color:#b45309; padding:2px 6px; border-radius:4px; font-weight:700;">배점 40%</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-weight:700; color:#334155;">x + y + z =</span>
+              <input type="text" id="ans-5-12-sum" class="proof-input-text" placeholder="합 입력" style="width:110px;" autocomplete="off">
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep5_12()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            서술형 풀이 채점 및 100점 확인
+          </button>
+
+          <div id="feedback-step-5-12" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep5_12Canvas();
+    }
+
+    function drawStep5_12Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed5_12 = state.completedSubSteps && state.completedSubSteps.includes('5-12');
+      const curFilter = (state.lab5_12 && state.lab5_12.primeFilter !== undefined) ? state.lab5_12.primeFilter : 0;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 33
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(11, Math.min(13, Math.floor(width * 0.019)));
+
+      const titleText = two.makeText('🔢 [대단원 마무리 12번] 1부터 12까지 연속 곱의 소인수 카운팅 랩', width / 2, 16);
+      titleText.size = titleSize;
+      titleText.weight = 800;
+      titleText.fill = '#1e293b';
+
+      const subText = two.makeText('1부터 12까지 각 자연수를 소인수분해하여 소수 2, 3, 5의 지수를 모아보세요.', width / 2, 33);
+      subText.size = subSize;
+      subText.fill = '#64748b';
+
+      // 2. Sub-bar - y: 56, h: 26
+      const fBarW = Math.min(width - 40, 640);
+      const fBar = two.makeRoundedRectangle(width / 2, 56, fBarW, 26, 6);
+      fBar.fill = '#f8fafc';
+      fBar.stroke = '#cbd5e1';
+      fBar.linewidth = 1;
+
+      let subLabel = '';
+      if (curFilter === 0) {
+        subLabel = isPassed5_12
+          ? '뷰: [ 전체 수 타일 ] | x = 10, y = 5, z = 2 ➔ x + y + z = 17 (100점 만점!)'
+          : '뷰: [ 전체 수 타일 ] | 1부터 12까지 12개 자연수의 소인수분해를 확인하세요.';
+      } else if (curFilter === 2) {
+        subLabel = isPassed5_12
+          ? '뷰: [ 소수 2 카운트 ] | 2(1)+4(2)+6(1)+8(3)+10(1)+12(2) = 10 ➔ x = 10'
+          : '뷰: [ 소수 2 카운트 ] | 2의 배수들(2, 4, 6, 8, 10, 12)에 포함된 소수 2의 개수를 세어보세요.';
+      } else if (curFilter === 3) {
+        subLabel = isPassed5_12
+          ? '뷰: [ 소수 3 카운트 ] | 3(1)+6(1)+9(2)+12(1) = 5 ➔ y = 5'
+          : '뷰: [ 소수 3 카운트 ] | 3의 배수들(3, 6, 9, 12)에 포함된 소수 3의 개수를 세어보세요.';
+      } else {
+        subLabel = isPassed5_12
+          ? '뷰: [ 소수 5 카운트 ] | 5(1)+10(1) = 2 ➔ z = 2'
+          : '뷰: [ 소수 5 카운트 ] | 5의 배수들(5, 10)에 포함된 소수 5의 개수를 세어보세요.';
+      }
+
+      const subLblTxt = two.makeText(subLabel, width / 2, 56);
+      subLblTxt.size = Math.max(10, Math.min(12, Math.floor(width * 0.018)));
+      subLblTxt.weight = 700;
+      subLblTxt.fill = curFilter === 2 ? '#dc2626' : (curFilter === 3 ? '#16a34a' : (curFilter === 5 ? '#2563eb' : '#4338ca'));
+
+      // 3. Main Board - y: 85 ~ 290 (center 185, h: 160)
+      const cx = width / 2;
+      const mainCard = two.makeRoundedRectangle(cx, 185, Math.min(width - 40, 560), 160, 10);
+      mainCard.fill = '#ffffff';
+      mainCard.stroke = isPassed5_12 ? '#10b981' : '#cbd5e1';
+      mainCard.linewidth = isPassed5_12 ? 2 : 1.5;
+
+      const pTitle = two.makeText('1 ~ 12 자연수들의 소인수분해 분해표', cx, 115);
+      pTitle.size = 13;
+      pTitle.weight = 800;
+      pTitle.fill = '#1e293b';
+
+      const tileData = [
+        { n: 1, primeStr: '1', p2: 0, p3: 0, p5: 0 },
+        { n: 2, primeStr: '2', p2: 1, p3: 0, p5: 0 },
+        { n: 3, primeStr: '3', p2: 0, p3: 1, p5: 0 },
+        { n: 4, primeStr: '2²', p2: 2, p3: 0, p5: 0 },
+        { n: 5, primeStr: '5', p2: 0, p3: 0, p5: 1 },
+        { n: 6, primeStr: '2·3', p2: 1, p3: 1, p5: 0 },
+        { n: 7, primeStr: '7', p2: 0, p3: 0, p5: 0 },
+        { n: 8, primeStr: '2³', p2: 3, p3: 0, p5: 0 },
+        { n: 9, primeStr: '3²', p2: 0, p3: 2, p5: 0 },
+        { n: 10, primeStr: '2·5', p2: 1, p3: 0, p5: 1 },
+        { n: 11, primeStr: '11', p2: 0, p3: 0, p5: 0 },
+        { n: 12, primeStr: '2²·3', p2: 2, p3: 1, p5: 0 }
+      ];
+
+      const tW = 48;
+      const tH = 26;
+      const startX = cx - 150;
+      const colStep = 60;
+
+      tileData.forEach((item, idx) => {
+        const row = Math.floor(idx / 6);
+        const col = idx % 6;
+        const tx = startX + col * colStep;
+        const ty = 145 + row * 34;
+
+        let isTarget = false;
+        let hlFill = '#f8fafc';
+        let hlStroke = '#cbd5e1';
+        let hlTextFill = '#1e293b';
+
+        if (curFilter === 2 && item.p2 > 0) {
+          isTarget = true;
+          hlFill = '#fee2e2';
+          hlStroke = '#ef4444';
+          hlTextFill = '#b91c1c';
+        } else if (curFilter === 3 && item.p3 > 0) {
+          isTarget = true;
+          hlFill = '#dcfce7';
+          hlStroke = '#22c55e';
+          hlTextFill = '#15803d';
+        } else if (curFilter === 5 && item.p5 > 0) {
+          isTarget = true;
+          hlFill = '#dbeafe';
+          hlStroke = '#3b82f6';
+          hlTextFill = '#1d4ed8';
+        }
+
+        const rect = two.makeRoundedRectangle(tx, ty, tW, tH, 5);
+        rect.fill = hlFill;
+        rect.stroke = hlStroke;
+        rect.linewidth = isTarget ? 1.8 : 1;
+
+        const label = two.makeText(`${item.n} (${item.primeStr})`, tx, ty);
+        label.size = 10;
+        label.weight = isTarget ? 800 : 600;
+        label.fill = hlTextFill;
+      });
+
+      // Bottom Row / Box at y = 232, h = 38
+      const resBox = two.makeRoundedRectangle(cx, 232, Math.min(width - 80, 480), 38, 6);
+      resBox.fill = isPassed5_12 ? '#ecfdf5' : '#f8fafc';
+      resBox.stroke = isPassed5_12 ? '#10b981' : '#cbd5e1';
+      resBox.linewidth = 1.2;
+
+      let rLine = '';
+      if (curFilter === 0) {
+        rLine = isPassed5_12
+          ? '• x = 10,  y = 5,  z = 2  ➔  x + y + z = 10 + 5 + 2 = 17 (100점 만점!)'
+          : '• [채점 기준]: 1단계 x, y, z 구하기 (60점) + 2단계 x+y+z 계산하기 (40점)';
+      } else if (curFilter === 2) {
+        rLine = isPassed5_12
+          ? '• 소수 2의 지수: 1 + 2 + 1 + 3 + 1 + 2 = 10 ➔ x = 10 (완료)'
+          : '• 소수 2: 2(1개) + 4(2개) + 6(1개) + 8(3개) + 10(1개) + 12(2개) ➔ 합계 x를 구하세요.';
+      } else if (curFilter === 3) {
+        rLine = isPassed5_12
+          ? '• 소수 3의 지수: 1 + 1 + 2 + 1 = 5 ➔ y = 5 (완료)'
+          : '• 소수 3: 3(1개) + 6(1개) + 9(2개) + 12(1개) ➔ 합계 y를 구하세요.';
+      } else {
+        rLine = isPassed5_12
+          ? '• 소수 5의 지수: 1 + 1 = 2 ➔ z = 2 (완료)'
+          : '• 소수 5: 5(1개) + 10(1개) ➔ 합계 z를 구하세요.';
+      }
+
+      const rt = two.makeText(rLine, cx, 232);
+      rt.size = 11;
+      rt.weight = 800;
+      rt.fill = isPassed5_12 ? '#065f46' : '#1e293b';
+
+      // 4. Summary / Rule Banner - y: 345, h: 74 (occupies 308 ~ 382 <= 440, bottom margin 58px >= 56px)
+      const bannerW = Math.min(width - 40, 640);
+      const banner = two.makeRoundedRectangle(width / 2, 345, bannerW, 74, 10);
+      banner.fill = isPassed5_12 ? '#ecfdf5' : '#f8fafc';
+      banner.stroke = isPassed5_12 ? '#a7f3d0' : '#cbd5e1';
+      banner.linewidth = 1.5;
+
+      let bT1 = '';
+      let bT2 = '';
+      let bT3 = '';
+
+      if (isPassed5_12) {
+        bT1 = '🎉 [12번 서술형 완벽 풀이 및 채점 기준 정리] (정답: x+y+z = 17)';
+        bT2 = '• 1단계: 2의 지수 x = 10, 3의 지수 y = 5, 5의 지수 z = 2 (배점 60%)';
+        bT3 = '• 2단계: x + y + z = 10 + 5 + 2 = 17 (배점 40% ➔ 서술형 100점 만점!)';
+      } else {
+        bT1 = '💡 [서술형 12번 풀이 길잡이 (연속 곱의 소인수분해 100점 만점)]';
+        bT2 = '• 1단계: 1부터 12까지 각 수의 소인수 2, 3, 5의 거듭제곱 지수를 모두 더합니다. (배점 60%)';
+        bT3 = '• 2단계: 구한 지수 x, y, z의 합 x + y + z를 계산합니다. (배점 40%)';
+      }
+
+      const txtT1 = two.makeText(bT1, width / 2, 323);
+      txtT1.size = 12;
+      txtT1.weight = 800;
+      txtT1.fill = isPassed5_12 ? '#065f46' : '#1e293b';
+
+      const txtT2 = two.makeText(bT2, width / 2, 344);
+      txtT2.size = 11;
+      txtT2.weight = 600;
+      txtT2.fill = isPassed5_12 ? '#047857' : '#334155';
+
+      const txtT3 = two.makeText(bT3, width / 2, 363);
+      txtT3.size = 10.5;
+      txtT3.weight = 500;
+      txtT3.fill = isPassed5_12 ? '#047857' : '#64748b';
+
+      two.update();
+
+      // 5. Pointer Event Isolation
+      const container = document.getElementById('two-container');
+      if (container) container.onpointerdown = null;
+
+      const canvasEl = container ? container.querySelector('canvas, svg') : null;
+      if (canvasEl) {
+        canvasEl.style.cursor = 'pointer';
+        canvasEl.onpointerdown = (e) => {
+          const next = curFilter === 0 ? 2 : (curFilter === 2 ? 3 : (curFilter === 3 ? 5 : 0));
+          setStep5_12Filter(next);
+        };
+      }
+    }
+
+    async function gradeStep5_12() {
+      const rawX = cleanInput(document.getElementById('ans-5-12-x')?.value || '');
+      const rawY = cleanInput(document.getElementById('ans-5-12-y')?.value || '');
+      const rawZ = cleanInput(document.getElementById('ans-5-12-z')?.value || '');
+      const rawSum = cleanInput(document.getElementById('ans-5-12-sum')?.value || '');
+
+      const x = parseInt(rawX, 10);
+      const y = parseInt(rawY, 10);
+      const z = parseInt(rawZ, 10);
+      const sum = parseInt(rawSum, 10);
+
+      const isXCorrect = (x === 10);
+      const isYCorrect = (y === 5);
+      const isZCorrect = (z === 2);
+      const isSumCorrect = (sum === 17);
+
+      const isExpsCorrect = isXCorrect && isYCorrect && isZCorrect;
+      const isCorrect = isExpsCorrect && isSumCorrect;
+
+      const fEl = document.getElementById('feedback-step-5-12');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('5-12')) {
+          state.completedSubSteps.push('5-12');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('5-12', {
+              x: 10,
+              y: 5,
+              z: 2,
+              sum: 17,
+              activityTitle: '[중1-1 소인수분해] [5-12] 12. 12번 서술형 (1~12 곱 소인수분해 지수)',
+              score: 100,
+              passed: true
+            }, 'u1');
+          } catch (err) {
+            console.warn('LMS save error:', err);
+          }
+        }
+
+        // Unlock next substep 5-13
+        if (!state.unlockedSubSteps.includes('5-13')) {
+          state.unlockedSubSteps.push('5-13');
+        }
+
+        updateSubStepPills(5);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.3rem;">🎉</span>
+            <h4 style="color:#065f46; font-size:1.02rem; font-weight:800; margin:0;">12번 서술형 100점 만점 완벽 해결!</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            완벽하게 해결했습니다!<br>
+            • <b>1단계 (60점)</b>: $1 \\times 2 \\times \\cdots \\times 12 = 2^{10} \\times 3^5 \\times 5^2 \\times 7 \\times 11$<br>
+            &nbsp;&nbsp;➔ $x = <b>10</b>, y = <b>5</b>, z = <b>2</b>$<br>
+            • <b>2단계 (40점)</b>: $x + y + z = 10 + 5 + 2 = <b>17</b>$<br>
+            <div style="margin-top:12px; padding:10px 14px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 <b>[5-13] 13번 서술형 (세 자연수의 최대공약수 조건과 A 구하기)</b>가 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="loadSubStep('5-13')" style="margin-top:12px; width:100%; padding:11px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            다음 문제 [5-13] 13번 서술형 도전 ➔
+          </button>
+        `;
+
+        drawStep5_12Canvas();
+      } else {
+        let msg = '';
+        if (!isXCorrect) {
+          msg = '1단계: 소수 2의 거듭제곱 개수를 다시 세어 보세요. 2(1개)+4(2개)+6(1개)+8(3개)+10(1개)+12(2개)의 합입니다.';
+        } else if (!isYCorrect) {
+          msg = '1단계: 소수 3의 거듭제곱 개수를 다시 세어 보세요. 3(1개)+6(1개)+9(2개)+12(1개)의 합입니다.';
+        } else if (!isZCorrect) {
+          msg = '1단계: 소수 5의 거듭제곱 개수를 다시 세어 보세요. 5(1개)+10(1개)의 합입니다.';
+        } else if (!isSumCorrect) {
+          msg = '2단계: 구한 x, y, z의 합(x + y + z)을 다시 계산해 보세요.';
+        }
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            • ${msg}<br>
+            💡 좌측 캔버스 상단의 [🔴 소수 2], [🟢 소수 3], [🔵 소수 5] 버튼을 눌러 각각의 소인수 포함 개수를 확인해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (5-13 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -32723,6 +33165,11 @@
         state.lab5_11.focus = 0;
         renderToolbar5_11();
         drawStep5_11Canvas();
+      } else if (state.subStep === '5-12') {
+        if (!state.lab5_12) state.lab5_12 = { primeFilter: 0 };
+        state.lab5_12.primeFilter = 0;
+        renderToolbar5_12();
+        drawStep5_12Canvas();
       }
     }
 
@@ -33032,6 +33479,7 @@
       else if (state.subStep === '5-9') drawStep5_9Canvas();
       else if (state.subStep === '5-10') drawStep5_10Canvas();
       else if (state.subStep === '5-11') drawStep5_11Canvas();
+      else if (state.subStep === '5-12') drawStep5_12Canvas();
       }, 150);
     });
 
