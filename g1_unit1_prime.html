@@ -1241,6 +1241,12 @@
       lab4_10: {
         mode: 0, // 0: 조건 분석 랩, 1: 후보 검증 랩
         step: 0  // Mode 0: 0~3, Mode 1: 0~2
+      },
+      // 4-11 Interactive Lab State (11. 디지털 쏙 수학, p.23)
+      lab4_11: {
+        mode: 0, // 0: 블록 코딩 랩, 1: 실시간 실행 콘솔
+        step: 0, // Mode 0: 0~3
+        testN: 115 // Mode 1: 115, 269, 2027
       }
     };
 
@@ -1515,6 +1521,9 @@
       } else if (code === '4-10') {
         renderToolbar4_10();
         renderSubstep4_10();
+      } else if (code === '4-11') {
+        renderToolbar4_11();
+        renderSubstep4_11();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -4145,6 +4154,68 @@
       renderToolbar4_10();
       drawStep4_10Canvas();
     }
+
+    // -------------------------------------------------------------
+    // SUBSTEP 4-11 Handlers & Toolbar (11. 디지털 쏙 수학, p.23)
+    // -------------------------------------------------------------
+    function renderToolbar4_11() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const isPassed4_11 = state.completedSubSteps && state.completedSubSteps.includes('4-11');
+      const curMode = state.lab4_11.mode || 0;
+      const curStep = state.lab4_11.step || 0;
+
+      let subControls = '';
+      if (curMode === 0) {
+        subControls = `
+          <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-left:6px; margin-right:4px;">알고리즘:</span>
+          <button class="tool-btn ${curStep === 0 ? 'active' : ''}" onclick="setStep4_11Step(0)">➊ 블록 구조</button>
+          <button class="tool-btn ${curStep === 1 ? 'active' : ''}" onclick="setStep4_11Step(1)">➋ N 입력 & D=0</button>
+          <button class="tool-btn ${curStep === 2 ? 'active' : ''}" onclick="setStep4_11Step(2)">➌ 1~N 나머지 반복문</button>
+          <button class="tool-btn ${curStep === 3 ? 'active' : ''}" onclick="setStep4_11Step(3)">➍ D=2 소수 판정</button>
+        `;
+      } else {
+        const curN = state.lab4_11.testN || 115;
+        subControls = `
+          <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-left:6px; margin-right:4px;">시뮬레이션 수:</span>
+          <button class="tool-btn ${curN === 115 ? 'active' : ''}" onclick="selectStep4_11N(115)">N = 115</button>
+          <button class="tool-btn ${curN === 269 ? 'active' : ''}" onclick="selectStep4_11N(269)">N = 269</button>
+          <button class="tool-btn ${curN === 2027 ? 'active' : ''}" onclick="selectStep4_11N(2027)">N = 2027</button>
+        `;
+      }
+
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-right:4px;">모드:</span>
+        <button class="tool-btn ${curMode === 0 ? 'active' : ''}" onclick="setStep4_11Mode(0)">🔍 [블록 코딩 랩] 알지오매스 소수 판별 알고리즘</button>
+        <button class="tool-btn ${curMode === 1 ? 'active' : ''}" onclick="setStep4_11Mode(1)">💡 [실시간 실행 랩] 115, 269, 2027 시뮬레이터</button>
+        <span style="margin:0 4px; color:#cbd5e1;">|</span>
+        ${subControls}
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setStep4_11Mode(m) {
+      state.lab4_11.mode = m;
+      state.lab4_11.step = 0;
+      renderToolbar4_11();
+      drawStep4_11Canvas();
+    }
+
+    function setStep4_11Step(s) {
+      state.lab4_11.step = s;
+      renderToolbar4_11();
+      drawStep4_11Canvas();
+    }
+
+    function selectStep4_11N(n) {
+      state.lab4_11.testN = n;
+      renderToolbar4_11();
+      drawStep4_11Canvas();
+    }
+
 
 
 
@@ -26315,7 +26386,426 @@
 
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (4-11 to 6-2)
+    // SUBSTEP 4-11: 11. 디지털 쏙 수학 (소수 판별 코딩 랩, p.23)
+    // -------------------------------------------------------------
+    function renderSubstep4_11() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[디지털 쏙 수학 (소수를 판별하는 코딩)] (교과서 p.23)</b><br>
+        • 알지오매스(AlgeoMath) 블록 코딩을 이용하여 입력한 수가 소수인지 아닌지를 판별합니다.<br>
+        • 입력한 수 $N$에 대해 $1$부터 $N$까지 나누어 나머지가 $0$인 수의 개수(약수의 개수 $D$)를 셉니다.<br>
+        • 약수의 개수가 <b>2개</b>이면 소수, <b>3개 이상</b>이면 합성수(소수가 아님)로 판별합니다.
+      `;
+
+      const isPassed4_11 = state.completedSubSteps && state.completedSubSteps.includes('4-11');
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.23</span>
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b;">디지털 쏙 수학</span>
+          </div>
+          <h4 style="font-size:0.98rem; font-weight:800; color:#1e293b; margin-bottom:14px; line-height:1.5;">
+            알지오매스 블록 코딩을 기반으로 소수 여부와 판별 알고리즘을 완성하시오.
+          </h4>
+
+          <!-- 소문항 1: 세 수 소수 판별 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:8px;">
+              1. 다음 수 115, 269, 2027의 소수 여부를 각각 선택하세요:
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <div style="display:flex; align-items:center; justify-content:space-between; font-size:0.85rem;">
+                <span style="font-weight:700; color:#334155;">• $115$ :</span>
+                <select id="ans-4-11-1" class="proof-input-text" style="width:170px;">
+                  <option value="">선택</option>
+                  <option value="prime">소수이다</option>
+                  <option value="composite">소수가 아니다 (합성수)</option>
+                </select>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; font-size:0.85rem;">
+                <span style="font-weight:700; color:#334155;">• $269$ :</span>
+                <select id="ans-4-11-2" class="proof-input-text" style="width:170px;">
+                  <option value="">선택</option>
+                  <option value="prime">소수이다</option>
+                  <option value="composite">소수가 아니다 (합성수)</option>
+                </select>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; font-size:0.85rem;">
+                <span style="font-weight:700; color:#334155;">• $2027$ :</span>
+                <select id="ans-4-11-3" class="proof-input-text" style="width:170px;">
+                  <option value="">선택</option>
+                  <option value="prime">소수이다</option>
+                  <option value="composite">소수가 아니다 (합성수)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- 소문항 2: 약수의 개수 기준 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:18px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              2. 코딩에서 소수로 판별되는 약수의 개수($D$)는 몇 개입니까?
+            </div>
+            <div style="font-size:0.82rem; color:#64748b; margin-bottom:8px;">
+              • 1과 자기 자신만을 약수로 갖는 수의 약수 개수를 입력하세요.
+            </div>
+            <input type="text" id="ans-4-11-cnt" class="proof-input-text" placeholder="답 입력" style="width:120px;" autocomplete="off">
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep4_11()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            정답 확인 및 채점
+          </button>
+
+          <div id="feedback-step-4-11" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep4_11Canvas();
+    }
+
+    function drawStep4_11Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed4_11 = state.completedSubSteps && state.completedSubSteps.includes('4-11');
+      const curMode = state.lab4_11.mode || 0;
+      const curStep = state.lab4_11.step || 0;
+      const curN = state.lab4_11.testN || 115;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 33
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(11, Math.min(13, Math.floor(width * 0.019)));
+
+      let modeTitle = '';
+      let modeSub = '';
+      if (curMode === 0) {
+        modeTitle = '🔍 [알지오매스 코딩 랩] 소수를 판별하는 블록 코딩 알고리즘';
+        modeSub = '1부터 N까지의 수로 나누어 나머지가 0인 약수의 개수(D)를 세어 판별합니다.';
+      } else {
+        modeTitle = '💡 [실시간 실행 콘솔] 115, 269, 2027 실행 시뮬레이터';
+        modeSub = '수를 선택하면 알지오매스 알고리즘이 약수를 탐색하고 판별 결과를 출력합니다.';
+      }
+
+      const titleText = two.makeText(modeTitle, width / 2, 16);
+      titleText.size = titleSize;
+      titleText.weight = 800;
+      titleText.fill = '#1e293b';
+
+      const subText = two.makeText(modeSub, width / 2, 33);
+      subText.size = subSize;
+      subText.fill = '#64748b';
+
+      // 2. Formula / Sub-bar - y: 56, h: 26 (top: 43, bottom: 69)
+      const fBarW = Math.min(width - 40, 640);
+      const fBar = two.makeRoundedRectangle(width / 2, 56, fBarW, 26, 6);
+      fBar.fill = '#f1f5f9';
+      fBar.stroke = '#cbd5e1';
+      fBar.linewidth = 1;
+
+      let fBarStr = '';
+      if (curMode === 0) {
+        if (curStep === 0) fBarStr = '➊ 알지오매스 소수 판별 블록 알고리즘 구조';
+        else if (curStep === 1) fBarStr = '➋ [입력] 자연수 N 입력받기 및 약수 카운터 D = 0 초기화';
+        else if (curStep === 2) fBarStr = '➌ [반복] 1부터 N까지의 i에 대해 (N % i == 0)이면 D = D + 1';
+        else fBarStr = '➍ [판정] 약수 개수 D == 2 이면 "소수", 아니면 "소수가 아닙니다" 출력';
+      } else {
+        if (curN === 115) {
+          fBarStr = 'N = 115 실행 ➔ 약수: 1, 5, 23, 115 (약수 개수 D = 4) ➔ "소수가 아닙니다 (합성수)" ❌';
+        } else if (curN === 269) {
+          fBarStr = 'N = 269 실행 ➔ 약수: 1, 269 (약수 개수 D = 2) ➔ "269은(는) 소수입니다!" ✅';
+        } else {
+          fBarStr = 'N = 2027 실행 ➔ 약수: 1, 2027 (약수 개수 D = 2) ➔ "2027은(는) 소수입니다!" ✅';
+        }
+      }
+
+      const fBarText = two.makeText(fBarStr, width / 2, 56);
+      fBarText.size = Math.max(11, Math.min(13, Math.floor(width * 0.018)));
+      fBarText.weight = 700;
+      fBarText.fill = '#334155';
+
+      // 3. Central Board - y: 174, h: 178 (top: 85, bottom: 263)
+      const boardW = Math.min(width - 40, 640);
+      const board = two.makeRoundedRectangle(width / 2, 174, boardW, 178, 12);
+      board.fill = '#ffffff';
+      board.stroke = '#e2e8f0';
+      board.linewidth = 1.5;
+
+      const cX = width / 2;
+
+      if (curMode === 0) {
+        // Mode 0: 4개 블록 코딩 시각화
+        const bW1 = Math.min(240, boardW - 40);
+        const bW2 = Math.min(340, boardW - 40);
+        const bW3 = Math.min(420, boardW - 40);
+        const bW4 = Math.min(460, boardW - 40);
+
+        // Block 1 (Start)
+        const blk1 = two.makeRoundedRectangle(cX, 106, bW1, 24, 6);
+        blk1.fill = (curStep === 0) ? '#2563eb' : '#3b82f6';
+        blk1.stroke = '#1d4ed8'; blk1.linewidth = 1.5;
+        const blk1T = two.makeText('▶ [시작하기]', cX, 106);
+        blk1T.size = 12; blk1T.weight = 800; blk1T.fill = '#ffffff';
+
+        // Block 2 (Input & D=0)
+        const blk2 = two.makeRoundedRectangle(cX, 134, bW2, 24, 6);
+        blk2.fill = (curStep === 1) ? '#0284c7' : '#0ea5e9';
+        blk2.stroke = '#0369a1'; blk2.linewidth = 1.5;
+        const blk2T = two.makeText('[자연수 N 입력받기]  [약수 개수 D = 0 정하기]', cX, 134);
+        blk2T.size = 12; blk2T.weight = 800; blk2T.fill = '#ffffff';
+
+        // Block 3 (Loop & Condition)
+        const blk3 = two.makeRoundedRectangle(cX, 163, bW3, 26, 6);
+        blk3.fill = (curStep === 2) ? '#d97706' : '#f59e0b';
+        blk3.stroke = '#b45309'; blk3.linewidth = 1.5;
+        const blk3T = two.makeText('[1 부터 N 까지 반복: 만약 (N % i == 0) 이면 D = D + 1]', cX, 163);
+        blk3T.size = 12; blk3T.weight = 800; blk3T.fill = '#ffffff';
+
+        // Block 4 (Judge)
+        const blk4 = two.makeRoundedRectangle(cX, 194, bW4, 26, 6);
+        blk4.fill = (curStep === 3) ? '#059669' : '#10b981';
+        blk4.stroke = '#047857'; blk4.linewidth = 1.5;
+        const blk4T = two.makeText('[만약 D == 2 이면 "소수" 출력,  아니면 "소수 아님" 출력]', cX, 194);
+        blk4T.size = 12; blk4T.weight = 800; blk4T.fill = '#ffffff';
+
+        // Bottom text at y: 238
+        const tExp = two.makeText(
+          '➔ 컴퓨터는 1부터 N까지 차례로 나누어 약수의 개수(D)가 정확히 2개인지 검사합니다.',
+          cX,
+          238
+        );
+        tExp.size = 12.5; tExp.weight = 800; tExp.fill = '#334155';
+
+      } else {
+        // Mode 1: 알지오매스 실행 콘솔 창
+        const conW = Math.min(520, boardW - 40);
+        const conH = 114;
+        const conY = 162;
+
+        const conBox = two.makeRoundedRectangle(cX, conY, conW, conH, 8);
+        conBox.fill = '#0f172a'; conBox.stroke = '#334155'; conBox.linewidth = 1.5;
+
+        // Terminal Top Bar
+        const topBar = two.makeRoundedRectangle(cX, conY - conH / 2 + 12, conW, 24, 6);
+        topBar.fill = '#1e293b'; topBar.stroke = '#334155'; topBar.linewidth = 1;
+
+        const dot1 = two.makeCircle(cX - conW / 2 + 16, conY - conH / 2 + 12, 4);
+        dot1.fill = '#ef4444';
+        const dot2 = two.makeCircle(cX - conW / 2 + 28, conY - conH / 2 + 12, 4);
+        dot2.fill = '#eab308';
+        const dot3 = two.makeCircle(cX - conW / 2 + 40, conY - conH / 2 + 12, 4);
+        dot3.fill = '#22c55e';
+
+        const topTitle = two.makeText('알지오매스 블록 코딩 실행 결과 콘솔', cX, conY - conH / 2 + 12);
+        topTitle.size = 11; topTitle.weight = 700; topTitle.fill = '#94a3b8';
+
+        // Console Lines
+        const l1 = two.makeText(`> 자연수를 입력하세요:  ${curN}`, cX - conW / 2 + 20, conY - 14);
+        l1.size = 12.5; l1.weight = 700; l1.fill = '#38bdf8'; l1.alignment = 'left';
+
+        let divStr = '';
+        let resultStr = '';
+        if (curN === 115) {
+          divStr = '> 약수 탐색 결과:  1, 5, 23, 115  (약수의 개수 D = 4)';
+          resultStr = `> [판별 결과]  ${curN}은(는) 소수가 아닙니다. (합성수)`;
+        } else if (curN === 269) {
+          divStr = '> 약수 탐색 결과:  1, 269  (약수의 개수 D = 2)';
+          resultStr = `> [판별 결과]  ${curN}은(는) 소수입니다! ✨`;
+        } else {
+          divStr = '> 약수 탐색 결과:  1, 2027  (약수의 개수 D = 2)';
+          resultStr = `> [판별 결과]  ${curN}은(는) 소수입니다! ✨`;
+        }
+
+        const l2 = two.makeText(divStr, cX - conW / 2 + 20, conY + 10);
+        l2.size = 12; l2.weight = 600; l2.fill = '#cbd5e1'; l2.alignment = 'left';
+
+        const l3 = two.makeText(resultStr, cX - conW / 2 + 20, conY + 34);
+        l3.size = 12.5; l3.weight = 800;
+        l3.fill = resultStr.includes('소수입니다') ? '#4ade80' : '#f87171';
+        l3.alignment = 'left';
+
+        // Bottom text at y: 238
+        const tExp = two.makeText(
+          `➔ N = ${curN} 은(는) 약수의 개수 D = ${curN === 115 ? '4개(3개 이상이므로 합성수)' : '2개(1과 자기 자신이므로 소수)'} 입니다.`,
+          cX,
+          238
+        );
+        tExp.size = 12.5; tExp.weight = 800;
+        tExp.fill = (curN === 115) ? '#b91c1c' : '#047857';
+      }
+
+      // 4. Status Bar - y: 288, h: 26 (top: 275, bottom: 301)
+      const sBarW = Math.min(width - 40, 640);
+      const sBar = two.makeRoundedRectangle(width / 2, 288, sBarW, 26, 6);
+      sBar.fill = isPassed4_11 ? '#ecfdf5' : '#f8fafc';
+      sBar.stroke = isPassed4_11 ? '#a7f3d0' : '#e2e8f0';
+      sBar.linewidth = 1;
+
+      let sBarMsg = '';
+      if (isPassed4_11) {
+        sBarMsg = '🎉 [대단원 4단원 완주!] 소수 판별 알고리즘과 세 수의 판별을 모두 맞혔습니다!';
+      } else {
+        sBarMsg = '💡 약수의 개수가 2개이면 소수, 3개 이상이면 합성수(소수가 아님)입니다.';
+      }
+
+      const sBarText = two.makeText(sBarMsg, width / 2, 288);
+      sBarText.size = Math.max(11, Math.min(12.5, Math.floor(width * 0.018)));
+      sBarText.weight = 700;
+      sBarText.fill = isPassed4_11 ? '#047857' : '#475569';
+
+      // 5. Bottom Banner - y: 350, h: 68 (top: 316, bottom: 384)
+      const bBannerW = Math.min(width - 40, 640);
+      const bBanner = two.makeRoundedRectangle(width / 2, 350, bBannerW, 68, 10);
+      bBanner.fill = isPassed4_11 ? '#f0fdf4' : '#f8fafc';
+      bBanner.stroke = isPassed4_11 ? '#86efac' : '#cbd5e1';
+      bBanner.linewidth = 1.5;
+
+      const bbT1 = two.makeText(
+        isPassed4_11
+          ? '⭐ [단원 정리] 소인수분해와 공약수·공배수 전체 완료!'
+          : '💡 [개념 길잡이] 컴퓨터 알고리즘과 수학적 소수 판별',
+        width / 2,
+        336
+      );
+      bbT1.size = 12.5; bbT1.weight = 800; bbT1.fill = isPassed4_11 ? '#065f46' : '#1e293b';
+
+      const bbT2 = two.makeText(
+        isPassed4_11
+          ? '• 소수 판별 코딩까지 완료하여 4단원(최소공배수)을 모두 마쳤습니다! 5단원 [스스로 마무리하기]에 도전해 보세요.'
+          : '• 수 N을 1부터 N까지의 수로 나누어 나머지가 0인 횟수(약수 개수 D)를 세어 D = 2이면 소수로 판별합니다.',
+        width / 2,
+        358
+      );
+      bbT2.size = 11.5; bbT2.fill = isPassed4_11 ? '#047857' : '#64748b';
+
+      two.update();
+
+      // Pointer event isolation
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas, svg') : null;
+      if (container) container.onpointerdown = null;
+      if (!canvasEl) return;
+
+      canvasEl.onpointerdown = (e) => {
+        if (curMode === 0) {
+          setStep4_11Step((curStep + 1) % 4);
+        } else {
+          const testVals = [115, 269, 2027];
+          const curV = state.lab4_11.testN || 115;
+          const nextIdx = (testVals.indexOf(curV) + 1) % testVals.length;
+          selectStep4_11N(testVals[nextIdx]);
+        }
+      };
+    }
+
+    async function gradeStep4_11() {
+      const a1 = document.getElementById('ans-4-11-1')?.value || '';
+      const a2 = document.getElementById('ans-4-11-2')?.value || '';
+      const a3 = document.getElementById('ans-4-11-3')?.value || '';
+      const rawCnt = cleanInput(document.getElementById('ans-4-11-cnt')?.value || '');
+      const cnt = parseInt(rawCnt, 10);
+
+      const isC1 = (a1 === 'composite');
+      const isC2 = (a2 === 'prime');
+      const isC3 = (a3 === 'prime');
+      const isCCnt = (cnt === 2);
+
+      const isCorrect = isC1 && isC2 && isC3 && isCCnt;
+
+      const fEl = document.getElementById('feedback-step-4-11');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('4-11')) {
+          state.completedSubSteps.push('4-11');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('4-11', {
+              activityTitle: '[중1-1 소인수분해] [4-11] 11. 디지털 쏙 수학 (소수 판별 코딩 랩)',
+              answerText: `115:${a1}, 269:${a2}, 2027:${a3}, D=${rawCnt}`,
+              answers: { a1, a2, a3, cnt: rawCnt },
+              score: 100,
+              passed: true,
+              unitId: 'u1'
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+
+        // Unlock next tab: Tab 5 (스스로 마무리하기 5-0 및 5-1)
+        if (!state.unlockedSubSteps.includes('5-0')) {
+          state.unlockedSubSteps.push('5-0');
+        }
+        if (!state.unlockedSubSteps.includes('5-1')) {
+          state.unlockedSubSteps.push('5-1');
+        }
+        updateSubStepPills(state.currentMainTab);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.3rem;">🏆</span>
+            <h4 style="color:#065f46; font-size:1.05rem; font-weight:800; margin:0;">축하합니다! 4단원(최소공배수) 전체 완주! 100점 (All Clear)</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            완벽하게 해결했습니다!<br>
+            • $115 = 5 \\times 23 \\implies$ 약수가 1, 5, 23, 115 (4개)이므로 <b>소수가 아닙니다 (합성수)</b>.<br>
+            • $269 \\implies$ 약수가 1과 269뿐이므로 <b>소수입니다</b>.<br>
+            • $2027 \\implies$ 약수가 1과 2027뿐이므로 <b>소수입니다</b>.<br>
+            • 소수를 판별하는 약수의 개수 기준: <b>2개</b> ($D = 2$)<br>
+            <div style="margin-top:12px; padding:10px 14px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🎊 <b>대단원 5. [스스로 마무리하기]</b> 및 <b>[5-0] 단원 핵심 마인드맵 정리</b>가 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="switchMainTab(5); loadSubStep('5-0');" style="margin-top:12px; width:100%; padding:11px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            대단원 평가 [Tab 5. 스스로 마무리하기] 로 이동 ➔
+          </button>
+        `;
+
+        renderToolbar4_11();
+        drawStep4_11Canvas();
+      } else {
+        let msg = '';
+        if (!isC1) msg = '$115$는 $5$로 나누어떨어집니다 ($115 = 5 \\times 23$). 소수가 아닌 합성수입니다.';
+        else if (!isC2) msg = '$269$는 1과 269 이외에 나누어떨어지는 수가 없는 소수입니다.';
+        else if (!isC3) msg = '$2027$은 1과 2027 이외에 나누어떨어지는 수가 없는 소수입니다.';
+        else if (!isCCnt) msg = '소수는 1보다 큰 자연수 중에서 1과 자기 자신만을 약수로 갖는 수이므로 약수의 개수는 정확히 2개입니다.';
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            • ${msg}<br>
+            💡 좌측 캔버스의 [실시간 실행 콘솔]에서 115, 269, 2027을 각각 눌러 약수와 판별 결과를 확인해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (5-0 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -26630,6 +27120,12 @@
         state.lab4_10.step = 0;
         renderToolbar4_10();
         drawStep4_10Canvas();
+      } else if (state.subStep === '4-11') {
+        state.lab4_11.mode = 0;
+        state.lab4_11.step = 0;
+        state.lab4_11.testN = 115;
+        renderToolbar4_11();
+        drawStep4_11Canvas();
       }
     }
 
@@ -26926,6 +27422,7 @@
       else if (state.subStep === '4-8') drawStep4_8Canvas();
       else if (state.subStep === '4-9') drawStep4_9Canvas();
       else if (state.subStep === '4-10') drawStep4_10Canvas();
+      else if (state.subStep === '4-11') drawStep4_11Canvas();
       }, 150);
     });
 
