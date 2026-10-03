@@ -1174,6 +1174,11 @@
       lab3_8: {
         mode: 0, // 0: 지수 추론 랩, 1: 100 매칭 랩
         step: 0  // 0: 100 소인수분해, 1: a값 추론, 2: b값 추론, 3: a+b 완성
+      },
+      // 3-9 Interactive Lab State (9. 스스로 확인하기 5 (분수를 자연수로 만드는 가장 큰 수))
+      lab3_9: {
+        mode: 0, // 0: 약수 조건 랩, 1: 소인수분해 정렬 랩
+        step: 0  // 0: 105 약수, 1: 350 약수, 2: 공약수, 3: 최대공약수
       }
     };
 
@@ -1409,6 +1414,9 @@
       } else if (code === '3-8') {
         renderToolbar3_8();
         renderSubstep3_8();
+      } else if (code === '3-9') {
+        renderToolbar3_9();
+        renderSubstep3_9();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -3345,6 +3353,58 @@
       renderToolbar3_8();
       drawStep3_8Canvas();
     }
+
+    // -------------------------------------------------------------
+    // SUBSTEP 3-9 Handlers & Toolbar (9. 스스로 확인하기 5 (분수를 자연수로 만드는 가장 큰 수), p.19)
+    // -------------------------------------------------------------
+    function renderToolbar3_9() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const curMode = state.lab3_9.mode || 0;
+      const curStep = state.lab3_9.step || 0;
+
+      let subControls = '';
+      if (curMode === 0) {
+        subControls = `
+          <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-left:6px; margin-right:4px;">분석 단계:</span>
+          <button class="tool-btn ${curStep === 0 ? 'active' : ''}" onclick="setStep3_9Step(0)">➊ 105의 약수 조건</button>
+          <button class="tool-btn ${curStep === 1 ? 'active' : ''}" onclick="setStep3_9Step(1)">➋ 350의 약수 조건</button>
+          <button class="tool-btn ${curStep === 2 ? 'active' : ''}" onclick="setStep3_9Step(2)">➌ 공통 공약수</button>
+          <button class="tool-btn ${curStep === 3 ? 'active' : ''}" onclick="setStep3_9Step(3)">➍ 가장 큰 수(최대공약수)</button>
+        `;
+      } else {
+        subControls = `
+          <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-left:6px; margin-right:4px;">소인수 정렬:</span>
+          <span style="font-size:0.8rem; color:#64748b;">105와 350의 소인수 거듭제곱을 세로로 비교합니다.</span>
+        `;
+      }
+
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-right:4px;">탐구 모드:</span>
+        <button class="tool-btn ${curMode === 0 ? 'active' : ''}" onclick="setStep3_9Mode(0)">🔍 [약수 조건 랩] 분수가 자연수가 되는 조건</button>
+        <button class="tool-btn ${curMode === 1 ? 'active' : ''}" onclick="setStep3_9Mode(1)">💡 [소인수분해 정렬 랩] 최대공약수 도출</button>
+        <span style="margin:0 4px; color:#cbd5e1;">|</span>
+        ${subControls}
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setStep3_9Mode(m) {
+      state.lab3_9.mode = m;
+      state.lab3_9.step = 0;
+      renderToolbar3_9();
+      drawStep3_9Canvas();
+    }
+
+    function setStep3_9Step(s) {
+      state.lab3_9.step = s;
+      renderToolbar3_9();
+      drawStep3_9Canvas();
+    }
+
 
 
 
@@ -20161,7 +20221,402 @@
 
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (3-9 to 6-2)
+    // SUBSTEP 3-9: 9. 스스로 확인하기 5 (분수를 자연수로 만드는 가장 큰 수, p.19)
+    // -------------------------------------------------------------
+    function renderSubstep3_9() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[스스로 확인하기 5 (분수를 자연수로 만드는 가장 큰 수)] (교과서 p.19)</b><br>
+        • 두 분수 $\\dfrac{105}{\\square}$와 $\\dfrac{350}{\\square}$이 모두 자연수가 되기 위한 $\\square$의 조건을 분석합니다.<br>
+        • $\\square$는 $105$와 $350$의 공통인 약수(공약수)임을 파악하고, 그중 가장 큰 수인 최대공약수를 구해 보세요.
+      `;
+
+      const isPassed3_9 = state.completedSubSteps && state.completedSubSteps.includes('3-9');
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.19</span>
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b;">스스로 확인하기 5번</span>
+          </div>
+          <h4 style="font-size:0.98rem; font-weight:800; color:#1e293b; margin-bottom:14px; line-height:1.5;">
+            두 수 $\\dfrac{105}{\\square}$, $\\dfrac{350}{\\square}$이 모두 자연수가 되도록 할 때, $\\square$ 안에 공통으로 들어가는 자연수 중에서 가장 큰 수를 구하시오.
+          </h4>
+
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:18px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              정답 입력 ($\\square$ 안에 들어갈 가장 큰 자연수)
+            </div>
+            <div style="font-size:0.82rem; color:#64748b; margin-bottom:10px;">
+              • $\\dfrac{105}{\\square}$와 $\\dfrac{350}{\\square}$이 자연수가 되려면 $\\square$는 두 수 $105$와 $350$의 공약수이어야 합니다.
+            </div>
+            <input type="text" id="ans-3-9" class="proof-input-text" placeholder="답 입력" style="width:140px;" autocomplete="off">
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep3_9()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            정답 확인 및 채점
+          </button>
+
+          <div id="feedback-step-3-9" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep3_9Canvas();
+    }
+
+    function drawStep3_9Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed3_9 = state.completedSubSteps && state.completedSubSteps.includes('3-9');
+      const curMode = state.lab3_9.mode || 0;
+      const curStep = state.lab3_9.step || 0;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 33
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(11, Math.min(13, Math.floor(width * 0.019)));
+
+      let modeTitle = '';
+      let modeSub = '';
+      if (curMode === 0) {
+        modeTitle = '🔍 [약수 조건 랩] 분수를 자연수로 만드는 수의 조건 분석';
+        modeSub = '105/□ 와 350/□ 가 모두 자연수가 되기 위한 조건을 4단계로 탐구합니다.';
+      } else {
+        modeTitle = '💡 [소인수분해 정렬 랩] 105와 350의 소인수 거듭제곱 비교';
+        modeSub = '세로 정렬을 통해 두 수의 공통 소인수와 최대공약수를 도출합니다.';
+      }
+
+      const titleText = two.makeText(modeTitle, width / 2, 16);
+      titleText.size = titleSize;
+      titleText.weight = 800;
+      titleText.fill = '#1e293b';
+
+      const subText = two.makeText(modeSub, width / 2, 33);
+      subText.size = subSize;
+      subText.fill = '#64748b';
+
+      // 2. Formula / Sub-bar - y: 56, h: 26 (top: 43, bottom: 69)
+      const fBarW = Math.min(width - 40, 640);
+      const fBar = two.makeRoundedRectangle(width / 2, 56, fBarW, 26, 6);
+      fBar.fill = '#f1f5f9';
+      fBar.stroke = '#cbd5e1';
+      fBar.linewidth = 1;
+
+      let fBarStr = '';
+      if (curMode === 0) {
+        if (curStep === 0) fBarStr = '➊ 105 / □ 가 자연수 ➔ □ 는 105의 약수이어야 합니다.';
+        else if (curStep === 1) fBarStr = '➋ 350 / □ 가 자연수 ➔ □ 는 350의 약수이어야 합니다.';
+        else if (curStep === 2) fBarStr = '➌ 두 분수가 모두 자연수 ➔ □ 는 105와 350의 공약수입니다.';
+        else fBarStr = isPassed3_9 ? '➍ 가장 큰 공약수 ➔ 105와 350의 최대공약수 = 35 완성! ✨' : '➍ 가장 큰 공약수 ➔ 두 수의 최대공약수를 계산해 보세요.';
+      } else {
+        fBarStr = '105 = 3 × 5 × 7   |   350 = 2 × 5² × 7 (공통 소인수: 밑 5의 1승과 밑 7)';
+      }
+
+      const fBarText = two.makeText(fBarStr, width / 2, 56);
+      fBarText.size = Math.max(11, Math.min(13, Math.floor(width * 0.018)));
+      fBarText.weight = 700;
+      fBarText.fill = '#334155';
+
+      // 3. Central Board - y: 174, h: 178 (top: 85, bottom: 263)
+      const boardW = Math.min(width - 40, 640);
+      const board = two.makeRoundedRectangle(width / 2, 174, boardW, 178, 12);
+      board.fill = '#ffffff';
+      board.stroke = '#e2e8f0';
+      board.linewidth = 1.5;
+
+      if (curMode === 0) {
+        // Two Fraction Cards side-by-side
+        const cardW = Math.min(180, (boardW - 70) / 2);
+        const cardH = 68;
+        const c1X = width / 2 - cardW / 2 - 15;
+        const c2X = width / 2 + cardW / 2 + 15;
+        const cardY = 130;
+
+        // Card 1: 105 / □
+        const c1 = two.makeRoundedRectangle(c1X, cardY, cardW, cardH, 8);
+        c1.fill = (curStep === 0 || curStep >= 2) ? '#eff6ff' : '#f8fafc';
+        c1.stroke = (curStep === 0 || curStep >= 2) ? '#93c5fd' : '#e2e8f0';
+        c1.linewidth = 1.5;
+
+        const c1Num = two.makeText('105', c1X, cardY - 14);
+        c1Num.size = 14; c1Num.weight = 800; c1Num.fill = '#1e293b';
+
+        const c1Line = two.makeLine(c1X - 25, cardY - 2, c1X + 25, cardY - 2);
+        c1Line.stroke = '#1e293b'; c1Line.linewidth = 2;
+
+        const c1Den = two.makeText('□', c1X, cardY + 14);
+        c1Den.size = 14; c1Den.weight = 800; c1Den.fill = '#2563eb';
+
+        const c1Lbl = two.makeText('➔ □ 는 105의 약수', c1X, cardY + 44);
+        c1Lbl.size = 11.5; c1Lbl.weight = 700;
+        c1Lbl.fill = (curStep === 0 || curStep >= 2) ? '#1d4ed8' : '#94a3b8';
+
+        // Card 2: 350 / □
+        const c2 = two.makeRoundedRectangle(c2X, cardY, cardW, cardH, 8);
+        c2.fill = (curStep === 1 || curStep >= 2) ? '#eff6ff' : '#f8fafc';
+        c2.stroke = (curStep === 1 || curStep >= 2) ? '#93c5fd' : '#e2e8f0';
+        c2.linewidth = 1.5;
+
+        const c2Num = two.makeText('350', c2X, cardY - 14);
+        c2Num.size = 14; c2Num.weight = 800; c2Num.fill = '#1e293b';
+
+        const c2Line = two.makeLine(c2X - 25, cardY - 2, c2X + 25, cardY - 2);
+        c2Line.stroke = '#1e293b'; c2Line.linewidth = 2;
+
+        const c2Den = two.makeText('□', c2X, cardY + 14);
+        c2Den.size = 14; c2Den.weight = 800; c2Den.fill = '#2563eb';
+
+        const c2Lbl = two.makeText('➔ □ 는 350의 약수', c2X, cardY + 44);
+        c2Lbl.size = 11.5; c2Lbl.weight = 700;
+        c2Lbl.fill = (curStep === 1 || curStep >= 2) ? '#1d4ed8' : '#94a3b8';
+
+        // Bottom Result Box inside Board (y: 228, h: 42)
+        const resBox = two.makeRoundedRectangle(width / 2, 228, boardW - 40, 42, 8);
+        resBox.fill = curStep >= 2 ? (isPassed3_9 ? '#f0fdf4' : '#f8fafc') : '#f8fafc';
+        resBox.stroke = curStep >= 2 ? (isPassed3_9 ? '#86efac' : '#cbd5e1') : '#e2e8f0';
+        resBox.linewidth = 1.5;
+
+        let resTextStr = '';
+        if (curStep < 2) {
+          resTextStr = '💡 위의 두 분수가 모두 자연수가 되려면 □ 는 두 수의 공통 약수여야 합니다.';
+        } else if (curStep === 2) {
+          resTextStr = '⭐ 결론: □ 는 105와 350의 [공약수]이며, 가장 큰 수는 [최대공약수]입니다!';
+        } else {
+          resTextStr = isPassed3_9
+            ? '✨ 105 = 3 × 5 × 7,  350 = 2 × 5² × 7 ➔ 최대공약수 = 5 × 7 = 35 정답!'
+            : '⭐ 105와 350을 각각 소인수분해하여 두 수의 최대공약수를 구해 보세요.';
+        }
+
+        const resText = two.makeText(resTextStr, width / 2, 228);
+        resText.size = 12.5;
+        resText.weight = 800;
+        resText.fill = curStep >= 2 ? (isPassed3_9 ? '#047857' : '#1e293b') : '#64748b';
+
+      } else {
+        // Mode 1: 세로 정렬 소인수분해 및 최대공약수 도출
+        const startX = width / 2 - 210;
+        const colW = 90;
+        const rowH = 34;
+        const startY = 118;
+
+        // Columns: Col 0(라벨), Col 1(2), Col 2(3), Col 3(5), Col 4(7)
+        // Highlight Col 3 (밑 5) and Col 4 (밑 7)
+        const hl1 = two.makeRoundedRectangle(startX + colW * 3, 150, 70, 92, 8);
+        hl1.fill = '#f0fdf4'; hl1.stroke = '#86efac'; hl1.linewidth = 1.5;
+
+        const hl2 = two.makeRoundedRectangle(startX + colW * 4, 150, 70, 92, 8);
+        hl2.fill = '#f0fdf4'; hl2.stroke = '#86efac'; hl2.linewidth = 1.5;
+
+        // Row 1: 105 = 빈칸(2), 3, 5, 7
+        const tL1 = two.makeText('105 =', startX, startY);
+        tL1.size = 14; tL1.weight = 800; tL1.fill = '#475569'; tL1.alignment = 'right';
+
+        const tR1_3 = two.makeText('3', startX + colW * 2, startY);
+        tR1_3.size = 15; tR1_3.weight = 800; tR1_3.fill = '#1e293b';
+
+        const tR1_5 = two.makeText('5', startX + colW * 3, startY);
+        tR1_5.size = 15; tR1_5.weight = 800; tR1_5.fill = '#1e293b';
+
+        const tR1_7 = two.makeText('7', startX + colW * 4, startY);
+        tR1_7.size = 15; tR1_7.weight = 800; tR1_7.fill = '#1e293b';
+
+        // Row 2: 350 = 2, 빈칸(3), 5^2, 7
+        const tL2 = two.makeText('350 =', startX, startY + rowH);
+        tL2.size = 14; tL2.weight = 800; tL2.fill = '#475569'; tL2.alignment = 'right';
+
+        const tR2_2 = two.makeText('2', startX + colW, startY + rowH);
+        tR2_2.size = 15; tR2_2.weight = 800; tR2_2.fill = '#1e293b';
+
+        const tR2_5 = two.makeText('5²', startX + colW * 3, startY + rowH);
+        tR2_5.size = 15; tR2_5.weight = 800; tR2_5.fill = '#1e293b';
+
+        const tR2_7 = two.makeText('7', startX + colW * 4, startY + rowH);
+        tR2_7.size = 15; tR2_7.weight = 800; tR2_7.fill = '#1e293b';
+
+        // Separator line
+        const sep = two.makeLine(startX - 30, startY + rowH + 16, startX + colW * 4 + 30, startY + rowH + 16);
+        sep.stroke = '#94a3b8'; sep.linewidth = 1.5;
+
+        // Row GCD: 최대공약수
+        const tLG = two.makeText('최대공약수 =', startX, startY + rowH * 2);
+        tLG.size = 13.5; tLG.weight = 800; tLG.fill = '#047857'; tLG.alignment = 'right';
+
+        if (isPassed3_9) {
+          const tG_5 = two.makeText('5', startX + colW * 3, startY + rowH * 2);
+          tG_5.size = 15; tG_5.weight = 800; tG_5.fill = '#047857';
+
+          const tG_x = two.makeText('×', startX + colW * 3.5, startY + rowH * 2);
+          tG_x.size = 14; tG_x.weight = 700; tG_x.fill = '#047857';
+
+          const tG_7 = two.makeText('7', startX + colW * 4, startY + rowH * 2);
+          tG_7.size = 15; tG_7.weight = 800; tG_7.fill = '#047857';
+        } else {
+          const tG_q = two.makeText('? (공통 소인수 5와 7의 곱을 직접 계산하세요)', startX + colW * 3 + 20, startY + rowH * 2);
+          tG_q.size = 12.5; tG_q.weight = 700; tG_q.fill = '#6366f1';
+        }
+
+        // Explanation text at y: 242
+        const expStr = isPassed3_9
+          ? '➔ 공통인 밑 5와 7에서 작은 지수를 곱하면: 5 × 7 = 35 (정답 완성!) ✨'
+          : '➔ 공통 소인수의 작은 거듭제곱을 곱하여 최대공약수를 구해 우측에 입력하세요.';
+        const tExp = two.makeText(expStr, width / 2, 242);
+        tExp.size = 13;
+        tExp.weight = 800;
+        tExp.fill = isPassed3_9 ? '#047857' : '#334155';
+      }
+
+      // 4. Status Bar - y: 288, h: 26 (top: 275, bottom: 301)
+      const sBarW = Math.min(width - 40, 640);
+      const sBar = two.makeRoundedRectangle(width / 2, 288, sBarW, 26, 6);
+      sBar.fill = isPassed3_9 ? '#ecfdf5' : '#f8fafc';
+      sBar.stroke = isPassed3_9 ? '#a7f3d0' : '#e2e8f0';
+      sBar.linewidth = 1;
+
+      let sBarMsg = '';
+      if (isPassed3_9) {
+        sBarMsg = '🎉 [학습 완료] 105와 350의 최대공약수인 35를 바르게 구했습니다!';
+      } else {
+        sBarMsg = '💡 105/□ 와 350/□ 가 자연수 ➔ □ 는 105와 350의 공약수 ➔ 최대공약수를 구하세요.';
+      }
+
+      const sBarText = two.makeText(sBarMsg, width / 2, 288);
+      sBarText.size = Math.max(11, Math.min(12.5, Math.floor(width * 0.018)));
+      sBarText.weight = 700;
+      sBarText.fill = isPassed3_9 ? '#047857' : '#475569';
+
+      // 5. Bottom Banner - y: 350, h: 68 (top: 316, bottom: 384)
+      const bBannerW = Math.min(width - 40, 640);
+      const bBanner = two.makeRoundedRectangle(width / 2, 350, bBannerW, 68, 10);
+      bBanner.fill = isPassed3_9 ? '#f0fdf4' : '#f8fafc';
+      bBanner.stroke = isPassed3_9 ? '#86efac' : '#cbd5e1';
+      bBanner.linewidth = 1.5;
+
+      const bbT1 = two.makeText(
+        isPassed3_9
+          ? '⭐ [핵심 정리] 분수가 자연수가 되는 조건과 최대공약수'
+          : '💡 [개념 길잡이] 분수를 자연수로 만드는 수의 성질',
+        width / 2,
+        336
+      );
+      bbT1.size = 12.5; bbT1.weight = 800; bbT1.fill = isPassed3_9 ? '#065f46' : '#1e293b';
+
+      const bbT2 = two.makeText(
+        isPassed3_9
+          ? '• 두 분수 A/x, B/x가 모두 자연수가 되게 하는 가장 큰 자연수 x는 두 수 A와 B의 최대공약수입니다.'
+          : '• A/x 가 자연수가 되려면 x는 분자 A의 약수이어야 합니다. 두 분수가 모두 자연수이면 x는 두 분자의 공약수입니다.',
+        width / 2,
+        358
+      );
+      bbT2.size = 11.5; bbT2.fill = isPassed3_9 ? '#047857' : '#64748b';
+
+      two.update();
+
+      // Pointer event isolation
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas, svg') : null;
+      if (container) container.onpointerdown = null;
+      if (!canvasEl) return;
+
+      canvasEl.onpointerdown = (e) => {
+        if (curMode === 0) {
+          setStep3_9Step((curStep + 1) % 4);
+        }
+      };
+    }
+
+    async function gradeStep3_9() {
+      const raw = cleanInput(document.getElementById('ans-3-9')?.value);
+      const ans = parseInt(raw, 10);
+
+      const isCorrect = (ans === 35);
+
+      const fEl = document.getElementById('feedback-step-3-9');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('3-9')) {
+          state.completedSubSteps.push('3-9');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('3-9', {
+              activityTitle: '[중1-1 소인수분해] [3-9] 9. 스스로 확인하기 5 (분수를 자연수로 만드는 가장 큰 수)',
+              answerText: raw,
+              answers: { input: raw, gcd: 35 },
+              score: 100,
+              passed: true,
+              unitId: 'u1'
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+
+        // Unlock next step 3-10 (스스로 확인하기 6)
+        if (!state.unlockedSubSteps.includes('3-10')) {
+          state.unlockedSubSteps.push('3-10');
+        }
+        updateSubStepPills(state.currentMainTab);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.2rem;">🎉</span>
+            <h4 style="color:#065f46; font-size:1.02rem; font-weight:800; margin:0;">정답입니다! 100점 (All Clear)</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            완벽하게 해결했습니다!<br>
+            • $\\dfrac{105}{\\square}$ 가 자연수이므로 $\\square$는 $105$의 약수입니다.<br>
+            • $\\dfrac{350}{\\square}$ 가 자연수이므로 $\\square$는 $350$의 약수입니다.<br>
+            • 따라서 $\\square$는 $105$와 $350$의 공통인 약수(공약수)이며, 그중 가장 큰 수는 두 수의 최대공약수입니다.<br>
+            • $105 = 3 \\times 5 \\times 7,\\quad 350 = 2 \\times 5^2 \\times 7$<br>
+            • 최대공약수는 $5 \\times 7 = \\mathbf{35}$ 입니다.<br>
+            <div style="margin-top:10px; padding:8px 12px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 다음 세부 활동 <b>[3-10] 10. 스스로 확인하기 6 (나머지가 있는 나눗셈과 최대공약수)</b>가 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="loadSubStep('3-10')" style="margin-top:12px; width:100%; padding:10px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            다음 단계 [3-10] 스스로 확인하기 6으로 이동 ➔
+          </button>
+        `;
+
+        drawStep3_9Canvas();
+      } else {
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            • $\\dfrac{105}{\\square}$와 $\\dfrac{350}{\\square}$이 모두 자연수가 되려면 $\\square$는 $105$와 $350$의 <b>공약수</b>여야 합니다.<br>
+            • 공약수 중 가장 큰 수는 두 수의 <b>최대공약수</b>입니다.<br>
+            • $105 = 3 \\times 5 \\times 7$ 과 $350 = 2 \\times 5^2 \\times 7$ 의 공통 소인수의 거듭제곱을 곱해 보세요.<br>
+            💡 좌측 캔버스의 [약수 조건 랩] 또는 [소인수분해 정렬 랩]을 확인해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (3-10 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -20409,6 +20864,11 @@
         state.lab3_8.step = 0;
         renderToolbar3_8();
         drawStep3_8Canvas();
+      } else if (state.subStep === '3-9') {
+        state.lab3_9.mode = 0;
+        state.lab3_9.step = 0;
+        renderToolbar3_9();
+        drawStep3_9Canvas();
       }
     }
 
@@ -20692,6 +21152,7 @@
         else if (state.subStep === '3-6') drawStep3_6Canvas();
         else if (state.subStep === '3-7') drawStep3_7Canvas();
         else if (state.subStep === '3-8') drawStep3_8Canvas();
+        else if (state.subStep === '3-9') drawStep3_9Canvas();
       }, 150);
     });
 
