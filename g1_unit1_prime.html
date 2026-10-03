@@ -1259,6 +1259,11 @@
       // 5-2 Interactive Propositions Lab State (2. 02번 명제 판정, p.24)
       lab5_2: {
         selectedProp: 0 // 0: 전체, 1: ㄱ, 2: ㄴ, 3: ㄷ, 4: ㄹ
+      },
+      // 5-3 Interactive Powers Unit Digit Lab State (3. 03번 거듭제곱 규칙, p.25)
+      lab5_3: {
+        mode: 0, // 0: 3^n 주기, 1: 5^n 불변성, 2: 합산 연산
+        exp3: 13
       }
     };
 
@@ -1545,6 +1550,9 @@
       } else if (code === '5-2') {
         renderToolbar5_2();
         renderSubstep5_2();
+      } else if (code === '5-3') {
+        renderToolbar5_3();
+        renderSubstep5_3();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -4439,6 +4447,53 @@
       if (counterEl) counterEl.value = '33';
       gradeStep5_2();
     }
+    // -------------------------------------------------------------
+    // SUBSTEP 5-3: Toolbar & Handlers (3. 03번 거듭제곱 일의 자리 규칙성, p.25)
+    // -------------------------------------------------------------
+    function renderToolbar5_3() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const curMode = (state.lab5_3 && state.lab5_3.mode !== undefined) ? state.lab5_3.mode : 0;
+
+      tb.innerHTML = `
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <span style="font-size:0.8rem; font-weight:800; color:#475569;">[거듭제곱 탐구]:</span>
+          <button class="btn btn-sm ${curMode === 0 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_3Mode(0)">🔄 3ⁿ 주기 랩</button>
+          <button class="btn btn-sm ${curMode === 1 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_3Mode(1)">🔄 5ⁿ 고정 랩</button>
+          <button class="btn btn-sm ${curMode === 2 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_3Mode(2)" style="${curMode === 2 ? 'background:#059669;border-color:#059669;color:#fff;' : ''}">➕ 3¹³ + 5⁴ 합산</button>
+          <button class="btn btn-sm btn-outline" onclick="resetLab5_3()" title="화면 초기화">🔄 초기화</button>
+          <button class="btn btn-sm btn-outline" onclick="teacherPassStep5_3()" style="border-color:#e2e8f0; color:#94a3b8;" title="교사 정답 패스">💡 패스</button>
+        </div>
+      `;
+    }
+
+    function setStep5_3Mode(m) {
+      if (!state.lab5_3) state.lab5_3 = { mode: 0, exp3: 13 };
+      state.lab5_3.mode = m;
+      renderToolbar5_3();
+      drawStep5_3Canvas();
+    }
+
+    function resetLab5_3() {
+      if (!state.lab5_3) state.lab5_3 = { mode: 0, exp3: 13 };
+      state.lab5_3.mode = 0;
+      state.lab5_3.exp3 = 13;
+      renderToolbar5_3();
+      drawStep5_3Canvas();
+    }
+
+    function teacherPassStep5_3() {
+      const p3 = document.getElementById('ans-5-3-p3');
+      const p5 = document.getElementById('ans-5-3-p5');
+      const sum = document.getElementById('ans-5-3-sum');
+      if (p3) p3.value = '3';
+      if (p5) p5.value = '5';
+      if (sum) sum.value = '8';
+      gradeStep5_3();
+    }
+
 
 
 
@@ -28156,7 +28211,478 @@
 
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (5-3 to 6-2)
+    // SUBSTEP 5-3: 3. 03번 (거듭제곱 일의 자리 규칙성, p.25)
+    // -------------------------------------------------------------
+    function renderSubstep5_3() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[대단원 5. 스스로 마무리하기: 3. 03번 (거듭제곱 일의 자리 규칙성)] (교과서 p.25)</b><br>
+        • $3^{13} + 5^4$의 일의 자리 숫자를 구하시오.<br>
+        • 거듭제곱의 밑에 따라 일의 자리 숫자가 나타내는 <b>주기적인 규칙성(Cycle)</b>을 탐구합니다.<br>
+        • 좌측 캔버스에서 $3^n$의 4주기 순환과 $5^n$의 불변성을 확인하고 일의 자리 합을 계산해 보세요.
+      `;
+
+      const isPassed5_3 = state.completedSubSteps && state.completedSubSteps.includes('5-3');
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.25</span>
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b;">03번 문제</span>
+          </div>
+          <h4 style="font-size:0.98rem; font-weight:800; color:#1e293b; margin-bottom:14px; line-height:1.5;">
+            $3^{13} + 5^4$의 일의 자리 숫자를 구하시오.
+          </h4>
+
+          <!-- 소문항 1: 3^13 일의 자리 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:10px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              1. $3^{13}$의 일의 자리 숫자를 구하시오:
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="text" id="ans-5-3-p3" class="proof-input-text" placeholder="답 입력" style="width:110px;" autocomplete="off">
+              <span style="font-size:0.82rem; color:#64748b;">(힌트: 3, 9, 7, 1 의 4주기 반복 및 $13 = 4 \\times 3 + 1$)</span>
+            </div>
+          </div>
+
+          <!-- 소문항 2: 5^4 일의 자리 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:10px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              2. $5^4$의 일의 자리 숫자를 구하시오:
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="text" id="ans-5-3-p5" class="proof-input-text" placeholder="답 입력" style="width:110px;" autocomplete="off">
+              <span style="font-size:0.82rem; color:#64748b;">(힌트: 5의 거듭제곱의 일의 자리 불변성)</span>
+            </div>
+          </div>
+
+          <!-- 소문항 3: 합의 일의 자리 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:16px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              3. 따라서 $3^{13} + 5^4$의 일의 자리 숫자는 얼마입니까?
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="text" id="ans-5-3-sum" class="proof-input-text" placeholder="답 입력" style="width:110px;" autocomplete="off">
+              <span style="font-size:0.82rem; color:#64748b;">(두 수의 일의 자리 숫자의 합)</span>
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep5_3()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            일의 자리 정답 확인 및 채점
+          </button>
+
+          <div id="feedback-step-5-3" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep5_3Canvas();
+    }
+
+    function drawStep5_3Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed5_3 = state.completedSubSteps && state.completedSubSteps.includes('5-3');
+      const curMode = (state.lab5_3 && state.lab5_3.mode !== undefined) ? state.lab5_3.mode : 0;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 33
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(11, Math.min(13, Math.floor(width * 0.019)));
+
+      const titleText = two.makeText('🔄 [대단원 마무리 03번] 거듭제곱의 일의 자리 규칙성 탐구 랩', width / 2, 16);
+      titleText.size = titleSize;
+      titleText.weight = 800;
+      titleText.fill = '#1e293b';
+
+      const subText = two.makeText('거듭제곱 일의 자리 숫자의 반복 주기(Cycle)와 규칙성을 탐구하세요.', width / 2, 33);
+      subText.size = subSize;
+      subText.fill = '#64748b';
+
+      // 2. Sub-bar - y: 56, h: 26 (occupies 43 ~ 69)
+      const fBarW = Math.min(width - 40, 640);
+      const fBar = two.makeRoundedRectangle(width / 2, 56, fBarW, 26, 6);
+      fBar.fill = '#f8fafc';
+      fBar.stroke = '#cbd5e1';
+      fBar.linewidth = 1;
+
+      let subLabel = '';
+      if (curMode === 0) {
+        subLabel = isPassed5_3
+          ? '🔄 3ⁿ의 일의 자리 4주기 탐색: 13 = 4×3+1 ➔ 3¹³의 일의 자리는 3'
+          : '🔄 3ⁿ의 일의 자리 4주기 탐색: [ 3 ➔ 9 ➔ 7 ➔ 1 ] 반복 순환';
+      } else if (curMode === 1) {
+        subLabel = isPassed5_3
+          ? '🔄 5ⁿ의 일의 자리 불변성 탐색: 5¹=5, 5²=25, 5³=125, 5⁴=625 (일의 자리 5)'
+          : '🔄 5ⁿ의 일의 자리 불변성 탐색: 5¹=5, 5²=25, 5³=125 ... (항상 일정)';
+      } else if (curMode === 2) {
+        subLabel = isPassed5_3
+          ? '➕ 3¹³ + 5⁴ 일의 자리 최종 합산: 3 + 5 = 8'
+          : '➕ 3¹³ + 5⁴ 일의 자리 합산 랩: 앞서 탐구한 두 수의 일의 자리를 더하세요';
+      }
+
+      const subLblTxt = two.makeText(subLabel, width / 2, 56);
+      subLblTxt.size = Math.max(10, Math.min(12, Math.floor(width * 0.018)));
+      subLblTxt.weight = 700;
+      subLblTxt.fill = (curMode === 2) ? '#059669' : '#4338ca';
+
+      // 3. Main Board - y: 85 ~ 290
+      if (curMode === 0) {
+        // Mode 0: 3^n 4-cycle loop visualization
+        const cycle = [
+          { exp: 1, val: 3, last: 3, label: '3¹ = 3' },
+          { exp: 2, val: 9, last: 9, label: '3² = 9' },
+          { exp: 3, val: 27, last: 7, label: '3³ = 27' },
+          { exp: 4, val: 81, last: 1, label: '3⁴ = 81' }
+        ];
+
+        const boxW = Math.min(120, Math.floor((width - 80) / 4));
+        const startX = width / 2 - 1.5 * (boxW + 12);
+
+        // 4 cycle blocks at y = 130
+        cycle.forEach((item, idx) => {
+          const cx = startX + idx * (boxW + 12);
+          const isTarget1 = (item.exp === 1); // 13 = 4*3 + 1 (remainder 1)
+
+          const box = two.makeRoundedRectangle(cx, 130, boxW, 56, 8);
+          box.fill = isTarget1 ? '#eff6ff' : '#ffffff';
+          box.stroke = isTarget1 ? '#3b82f6' : '#cbd5e1';
+          box.linewidth = isTarget1 ? 2.5 : 1;
+
+          const tExp = two.makeText(item.label, cx, 118);
+          tExp.size = 12;
+          tExp.weight = 700;
+          tExp.fill = '#475569';
+
+          const tLast = two.makeText(`일의 자리: ${item.last}`, cx, 140);
+          tLast.size = 13;
+          tLast.weight = 800;
+          tLast.fill = isTarget1 ? '#1d4ed8' : '#1e293b';
+
+          // Connecting arrow
+          if (idx < 3) {
+            const arr = two.makeText('➔', cx + boxW / 2 + 6, 130);
+            arr.size = 14;
+            arr.fill = '#94a3b8';
+          }
+        });
+
+        // Loopback indicator at y = 175
+        const loopTxt = two.makeText('↺ 3⁵ = 243 (일의 자리 3)부터 다시 3, 9, 7, 1 의 주기가 반복됩니다.', width / 2, 175);
+        loopTxt.size = 11;
+        loopTxt.weight = 600;
+        loopTxt.fill = '#64748b';
+
+        // Division & Remainder Card at y = 230
+        const divCard = two.makeRoundedRectangle(width / 2, 230, Math.min(width - 40, 520), 54, 8);
+        divCard.fill = '#f0fdf4';
+        divCard.stroke = '#86efac';
+        divCard.linewidth = 1.5;
+
+        const dLine1 = two.makeText('지수 13을 주기의 길이 4로 나누면: 13 = 4 × 3 + 1 (나머지 1)', width / 2, 218);
+        dLine1.size = 12;
+        dLine1.weight = 700;
+        dLine1.fill = '#166534';
+
+        const dLine2 = two.makeText(
+          isPassed5_3
+            ? '➔ 주기의 1번째 숫자인 3이 3¹³의 일의 자리 숫자입니다!'
+            : '➔ 나머지가 1이므로 주기의 1번째 숫자가 3¹³의 일의 자리 숫자가 됩니다.',
+          width / 2,
+          240
+        );
+        dLine2.size = 13;
+        dLine2.weight = 800;
+        dLine2.fill = '#15803d';
+
+      } else if (curMode === 1) {
+        // Mode 1: 5^n Invariant visualization
+        const powers5 = [
+          { label: '5¹ = 5', last: 5 },
+          { label: '5² = 25', last: 5 },
+          { label: '5³ = 125', last: 5 },
+          { label: '5⁴ = 625', last: 5 }
+        ];
+
+        const boxW = Math.min(120, Math.floor((width - 80) / 4));
+        const startX = width / 2 - 1.5 * (boxW + 12);
+
+        powers5.forEach((item, idx) => {
+          const cx = startX + idx * (boxW + 12);
+          const box = two.makeRoundedRectangle(cx, 130, boxW, 56, 8);
+          box.fill = '#fefce8';
+          box.stroke = '#facc15';
+          box.linewidth = 1.5;
+
+          const tExp = two.makeText(item.label, cx, 118);
+          tExp.size = 12;
+          tExp.weight = 700;
+          tExp.fill = '#854d0e';
+
+          const tLast = two.makeText(`일의 자리: ${item.last}`, cx, 140);
+          tLast.size = 13;
+          tLast.weight = 800;
+          tLast.fill = '#ca8a04';
+
+          if (idx < 3) {
+            const arr = two.makeText('➔', cx + boxW / 2 + 6, 130);
+            arr.size = 14;
+            arr.fill = '#ca8a04';
+          }
+        });
+
+        // Invariant Banner at y = 225
+        const invCard = two.makeRoundedRectangle(width / 2, 225, Math.min(width - 40, 520), 54, 8);
+        invCard.fill = '#fffbeb';
+        invCard.stroke = '#fde68a';
+        invCard.linewidth = 1.5;
+
+        const iLine1 = two.makeText('5의 거듭제곱은 밑의 일의 자리가 5이므로 몇 번을 곱해도 일의 자리는 항상 같습니다!', width / 2, 213);
+        iLine1.size = 12;
+        iLine1.weight = 700;
+        iLine1.fill = '#92400e';
+
+        const iLine2 = two.makeText(
+          isPassed5_3
+            ? '➔ 따라서 5⁴의 일의 자리 숫자는 5입니다.'
+            : '➔ 5의 거듭제곱의 일의 자리가 항상 일정함을 이용하여 5⁴의 일의 자리를 구하세요.',
+          width / 2,
+          235
+        );
+        iLine2.size = 13;
+        iLine2.weight = 800;
+        iLine2.fill = '#b45309';
+
+      } else {
+        // Mode 2: Summation computation
+        const sumCardW = Math.min(width - 40, 540);
+        const cardBox = two.makeRoundedRectangle(width / 2, 175, sumCardW, 110, 10);
+        cardBox.fill = isPassed5_3 ? '#ecfdf5' : '#f8fafc';
+        cardBox.stroke = isPassed5_3 ? '#10b981' : '#cbd5e1';
+        cardBox.linewidth = 2;
+
+        const rowY1 = 145;
+        const b3 = two.makeRoundedRectangle(width / 2 - 120, rowY1, 90, 42, 6);
+        b3.fill = '#dbeafe';
+        b3.stroke = '#3b82f6';
+        b3.linewidth = 1.5;
+        const tB3 = two.makeText(isPassed5_3 ? '3¹³ ➔ 3' : '3¹³ 일의 자리', width / 2 - 120, rowY1);
+        tB3.size = 12.5;
+        tB3.weight = 800;
+        tB3.fill = '#1e40af';
+
+        const plusSign = two.makeText('+', width / 2 - 50, rowY1);
+        plusSign.size = 20;
+        plusSign.weight = 800;
+        plusSign.fill = '#059669';
+
+        const b5 = two.makeRoundedRectangle(width / 2 + 20, rowY1, 90, 42, 6);
+        b5.fill = '#fef9c3';
+        b5.stroke = '#eab308';
+        b5.linewidth = 1.5;
+        const tB5 = two.makeText(isPassed5_3 ? '5⁴ ➔ 5' : '5⁴ 일의 자리', width / 2 + 20, rowY1);
+        tB5.size = 12.5;
+        tB5.weight = 800;
+        tB5.fill = '#854d0e';
+
+        const eqSign = two.makeText('=', width / 2 + 90, rowY1);
+        eqSign.size = 20;
+        eqSign.weight = 800;
+        eqSign.fill = '#059669';
+
+        const bRes = two.makeRoundedRectangle(width / 2 + 150, rowY1, 70, 42, 6);
+        bRes.fill = isPassed5_3 ? '#10b981' : '#f1f5f9';
+        bRes.stroke = isPassed5_3 ? '#047857' : '#94a3b8';
+        bRes.linewidth = 2;
+        const tBRes = two.makeText(isPassed5_3 ? '8' : '?', width / 2 + 150, rowY1);
+        tBRes.size = 18;
+        tBRes.weight = 800;
+        tBRes.fill = isPassed5_3 ? '#ffffff' : '#64748b';
+
+        const rowY2 = 202;
+        const sumExpl = two.makeText(
+          isPassed5_3
+            ? '3¹³의 일의 자리 3과 5⁴의 일의 자리 5의 합: 3 + 5 = 8'
+            : '3¹³의 일의 자리와 5⁴의 일의 자리를 각각 구하여 더해보세요.',
+          width / 2,
+          rowY2
+        );
+        sumExpl.size = 12.5;
+        sumExpl.weight = 800;
+        sumExpl.fill = isPassed5_3 ? '#065f46' : '#475569';
+      }
+
+      // 4. Summary / Rule Banner - y: 345, h: 74 (occupies 308 ~ 382 <= 440, bottom margin 58px >= 56px)
+      const bW = Math.min(width - 40, 640);
+      const banner = two.makeRoundedRectangle(width / 2, 345, bW, 74, 10);
+      banner.fill = '#f8fafc';
+      banner.stroke = '#cbd5e1';
+      banner.linewidth = 1.5;
+
+      let bT1 = '';
+      let bT2 = '';
+      let bT3 = '';
+
+      if (curMode === 0) {
+        bT1 = '💡 [3의 거듭제곱 일의 자리 규칙성 공식]';
+        bT2 = '• 3ⁿ의 일의 자리는 [3, 9, 7, 1] 4개 숫자가 반복 순환합니다.';
+        bT3 = isPassed5_3
+          ? '• 13 = 4 × 3 + 1 이므로 3¹³의 일의 자리는 주기의 1번째 숫자인 3입니다.'
+          : '• 13 = 4 × 3 + 1 이므로 13번째 거듭제곱의 일의 자리는 주기의 1번째 숫자입니다.';
+      } else if (curMode === 1) {
+        bT1 = '💡 [5의 거듭제곱 일의 자리 불변성]';
+        bT2 = '• 5¹=5, 5²=25, 5³=125, 5⁴=625 ... 일의 자리 숫자는 항상 5입니다.';
+        bT3 = isPassed5_3
+          ? '• 따라서 5⁴의 일의 자리 숫자는 5입니다.'
+          : '• 거듭제곱을 몇 번 곱해도 일의 자리가 변하지 않는 규칙을 적용해 보세요.';
+      } else {
+        bT1 = '💡 [3¹³ + 5⁴ 의 일의 자리 최종 계산]';
+        bT2 = isPassed5_3
+          ? '• 3¹³의 일의 자리(3) + 5⁴의 일의 자리(5) = 8'
+          : '• 3¹³의 일의 자리와 5⁴의 일의 자리를 먼저 각각 구합니다.';
+        bT3 = isPassed5_3
+          ? '• 두 수의 합의 일의 자리는 각 수의 일의 자리의 합과 같습니다.'
+          : '• 두 수의 일의 자리 숫자를 더하여 전체 합의 일의 자리를 구합니다.';
+      }
+
+      const txtT1 = two.makeText(bT1, width / 2, 323);
+      txtT1.size = 12;
+      txtT1.weight = 800;
+      txtT1.fill = '#1e293b';
+
+      const txtT2 = two.makeText(bT2, width / 2, 344);
+      txtT2.size = 11;
+      txtT2.weight = 600;
+      txtT2.fill = '#334155';
+
+      const txtT3 = two.makeText(bT3, width / 2, 363);
+      txtT3.size = 10.5;
+      txtT3.weight = 500;
+      txtT3.fill = '#64748b';
+
+      two.update();
+
+      // 5. Pointer Event Isolation
+      const container = document.getElementById('two-container');
+      if (container) container.onpointerdown = null;
+
+      const canvasEl = container ? container.querySelector('canvas, svg') : null;
+      if (canvasEl) {
+        canvasEl.style.cursor = 'pointer';
+        canvasEl.onpointerdown = (e) => {
+          // Cycle through modes 0 -> 1 -> 2 -> 0 on canvas click
+          const nextMode = (curMode + 1) % 3;
+          setStep5_3Mode(nextMode);
+        };
+      }
+    }
+
+    async function gradeStep5_3() {
+      const rawP3 = cleanInput(document.getElementById('ans-5-3-p3')?.value || '');
+      const p3 = parseInt(rawP3, 10);
+      const rawP5 = cleanInput(document.getElementById('ans-5-3-p5')?.value || '');
+      const p5 = parseInt(rawP5, 10);
+      const rawSum = cleanInput(document.getElementById('ans-5-3-sum')?.value || '');
+      const sum = parseInt(rawSum, 10);
+
+      const isP3Correct = (p3 === 3);
+      const isP5Correct = (p5 === 5);
+      const isSumCorrect = (sum === 8);
+
+      const isCorrect = isP3Correct && isP5Correct && isSumCorrect;
+
+      const fEl = document.getElementById('feedback-step-5-3');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('5-3')) {
+          state.completedSubSteps.push('5-3');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('5-3', {
+              p3: 3,
+              p5: 5,
+              sum: 8,
+              activityTitle: '[중1-1 소인수분해] [5-3] 3. 03번 (거듭제곱 일의 자리 규칙성)',
+              score: 100,
+              passed: true
+            }, 'u1');
+          } catch (err) {
+            console.warn('LMS save error:', err);
+          }
+        }
+
+        // Unlock next substep 5-4
+        if (!state.unlockedSubSteps.includes('5-4')) {
+          state.unlockedSubSteps.push('5-4');
+        }
+
+        updateSubStepPills(5);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.3rem;">🎉</span>
+            <h4 style="color:#065f46; font-size:1.02rem; font-weight:800; margin:0;">03번 거듭제곱 일의 자리 규칙 100점 완벽 해결!</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            완벽하게 해결했습니다!<br>
+            • <b>$3^{13}$의 일의 자리</b>: $3^1=3, 3^2=9, 3^3=27, 3^4=81$로 <b>[3, 9, 7, 1]</b>이 반복되며, $13 = 4 \\times 3 + 1$이므로 <b>$3$</b>입니다.<br>
+            • <b>$5^4$의 일의 자리</b>: 5의 거듭제곱의 일의 자리는 항상 <b>$5$</b>입니다.<br>
+            • <b>$3^{13} + 5^4$의 일의 자리</b>: $3 + 5 =$ <b>$8$</b>입니다.
+            <div style="margin-top:12px; padding:10px 14px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 <b>[5-4] 04번 (330의 소인수가 아닌 것)</b>이 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="loadSubStep('5-4')" style="margin-top:12px; width:100%; padding:11px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            다음 문제 [5-4] 04번 (330 소인수분해) 도전 ➔
+          </button>
+        `;
+
+        setStep5_3Mode(2);
+      } else {
+        let msg = '';
+        if (!isP3Correct) {
+          msg = '3의 거듭제곱의 일의 자리는 3, 9, 7, 1 의 4개가 반복됩니다. 13을 4로 나눈 나머지를 확인해 보세요 ($13 = 4 \\times 3 + 1$).';
+        } else if (!isP5Correct) {
+          msg = '5의 거듭제곱은 5, 25, 125, 625 ... 로 일의 자리 숫자가 항상 5입니다.';
+        } else if (!isSumCorrect) {
+          msg = '앞서 구한 두 수의 일의 자리 숫자를 바르게 더해 보세요.';
+        }
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            • ${msg}<br>
+            💡 상단의 [🔄 3ⁿ 주기 랩]과 [🔄 5ⁿ 고정 랩] 도구를 통해 각 거듭제곱의 일의 자리 주기를 탐구해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (5-4 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -28492,6 +29018,11 @@
         state.lab5_2.selectedProp = 0;
         renderToolbar5_2();
         drawStep5_2Canvas();
+      } else if (state.subStep === '5-3') {
+        if (!state.lab5_3) state.lab5_3 = { mode: 0, exp3: 13 };
+        state.lab5_3.mode = 0;
+        renderToolbar5_3();
+        drawStep5_3Canvas();
       }
     }
 
@@ -28792,6 +29323,7 @@
       else if (state.subStep === '5-0') drawStep5_0Canvas();
       else if (state.subStep === '5-1') drawStep5_1Canvas();
       else if (state.subStep === '5-2') drawStep5_2Canvas();
+      else if (state.subStep === '5-3') drawStep5_3Canvas();
       }, 150);
     });
 
