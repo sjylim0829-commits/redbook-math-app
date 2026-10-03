@@ -1106,6 +1106,12 @@
         treeStep: 0, // 트리 분해 단계
         selectedDivisor: null, // 클릭된 약수 카드
         showPrimeOnly: false // 소인수만 하이라이트 토글
+      },
+      // 2-8 Interactive Lab State (8. [스스로 확인 2] 소인수분해)
+      lab2_8: {
+        problemIndex: 0, // 0: 34, 1: 75, 2: 96, 3: 120
+        method: 0, // 0: 나뭇가지 분해법, 1: 거꾸로 나눗셈법
+        step: 0 // 분해 진행 단계
       }
     };
 
@@ -1302,6 +1308,9 @@
       } else if (code === '2-7') {
         renderToolbar2_7();
         renderSubstep2_7();
+      } else if (code === '2-8') {
+        renderToolbar2_8();
+        renderSubstep2_8();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -2577,6 +2586,80 @@
       state.lab2_7.showPrimeOnly = !state.lab2_7.showPrimeOnly;
       renderToolbar2_7();
       drawStep2_7Canvas();
+    }
+
+    // -------------------------------------------------------------
+    // SUBSTEP 2-8 Handlers & Toolbar (8. [스스로 확인 2] 소인수분해, p.16)
+    // -------------------------------------------------------------
+    function renderToolbar2_8() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const curPIdx = state.lab2_8.problemIndex || 0;
+      const curMethod = state.lab2_8.method || 0;
+      const curStep = state.lab2_8.step || 0;
+      const curP = PROBLEMS_2_8[curPIdx];
+      const maxSteps = curP ? curP.maxStep : 4;
+
+      const probBtns = [
+        { idx: 0, label: '⑴ 34' },
+        { idx: 1, label: '⑵ 75' },
+        { idx: 2, label: '⑶ 96' },
+        { idx: 3, label: '⑷ 120' }
+      ].map(p => `
+        <button class="tool-btn ${curPIdx === p.idx ? 'active' : ''}" onclick="setStep2_8Problem(${p.idx})">${p.label}</button>
+      `).join('');
+
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-right:4px;">문항:</span>
+        ${probBtns}
+        <span style="margin:0 4px; color:#cbd5e1;">|</span>
+        <button class="tool-btn ${curMethod === 0 ? 'active' : ''}" onclick="setStep2_8Method(0)">🌳 나뭇가지 분해</button>
+        <button class="tool-btn ${curMethod === 1 ? 'active' : ''}" onclick="setStep2_8Method(1)">🪜 거꾸로 나눗셈</button>
+        <span style="margin:0 4px; color:#cbd5e1;">|</span>
+        <button class="tool-btn" onclick="step2_8Progress(-1)" ${curStep <= 0 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>◀ 이전</button>
+        <button class="tool-btn" onclick="step2_8Progress(1)" ${curStep >= maxSteps ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} style="background:#e0e7ff; color:#3730a3; font-weight:700;">다음 ▶</button>
+        <button class="tool-btn" onclick="step2_8Complete()" style="background:#ecfdf5; color:#065f46; font-weight:700;">✨ 완성</button>
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setStep2_8Problem(idx) {
+      state.lab2_8.problemIndex = idx;
+      state.lab2_8.step = 0;
+      renderToolbar2_8();
+      drawStep2_8Canvas();
+    }
+
+    function setStep2_8Method(m) {
+      state.lab2_8.method = m;
+      renderToolbar2_8();
+      drawStep2_8Canvas();
+    }
+
+    function step2_8Progress(delta) {
+      const curPIdx = state.lab2_8.problemIndex || 0;
+      const curP = PROBLEMS_2_8[curPIdx];
+      const maxSteps = curP ? curP.maxStep : 4;
+      state.lab2_8.step = Math.max(0, Math.min(maxSteps, (state.lab2_8.step || 0) + delta));
+      renderToolbar2_8();
+      drawStep2_8Canvas();
+    }
+
+    function step2_8Complete() {
+      const curPIdx = state.lab2_8.problemIndex || 0;
+      const curP = PROBLEMS_2_8[curPIdx];
+      state.lab2_8.step = curP ? curP.maxStep : 4;
+      renderToolbar2_8();
+      drawStep2_8Canvas();
+    }
+
+    function step2_8Reset() {
+      state.lab2_8.step = 0;
+      renderToolbar2_8();
+      drawStep2_8Canvas();
     }
 
     // SUBSTEP 0-2: 되짚어 보기 2: 공약수와 최대공약수 (초5~6 복습, p.8)
@@ -13857,7 +13940,686 @@
     }
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (2-8 to 6-2)
+    // SUBSTEP 2-8: 8. [스스로 확인 2] 소인수분해 (교과서 16쪽)
+    // -------------------------------------------------------------
+    const PROBLEMS_2_8 = [
+      {
+        num: 34,
+        title: '⑴ 34',
+        finalLatex: '2 \\times 17',
+        finalExpr: '2 × 17',
+        primeFactors: [2, 17],
+        factorsMap: { 2: 1, 17: 1 },
+        maxStep: 1,
+        stepDescs: [
+          '34를 선택하고 [다음 ▶] 버튼을 눌러 소인수분해를 진행해 보세요.',
+          '34는 짝수이므로 소수 2로 나눕니다. (34 = 2 × 17). 몫 17이 소수이므로 분해가 완료됩니다.'
+        ],
+        ladderSteps: [
+          { divisor: 2, quotient: 17 }
+        ],
+        treeNodes: [
+          { val: 34, xRel: 0.5, y: 125, isPrime: false, level: 0 },
+          { val: 2, xRel: 0.35, y: 195, isPrime: true, level: 1 },
+          { val: 17, xRel: 0.65, y: 195, isPrime: true, level: 1 }
+        ],
+        treeBranches: [
+          { fromXRel: 0.5, fromY: 135, toXRel: 0.35, toY: 180, level: 1 },
+          { fromXRel: 0.5, fromY: 135, toXRel: 0.65, toY: 180, level: 1 }
+        ]
+      },
+      {
+        num: 75,
+        title: '⑵ 75',
+        finalLatex: '3 \\times 5^2',
+        finalExpr: '3 × 5²',
+        primeFactors: [3, 5],
+        factorsMap: { 3: 1, 5: 2 },
+        maxStep: 2,
+        stepDescs: [
+          '75를 선택하고 [다음 ▶] 버튼을 눌러 소인수분해를 진행해 보세요.',
+          '75는 각 자릿수의 합이 12이므로 소수 3으로 나눕니다. (75 = 3 × 25)',
+          '25를 소수 5로 나눕니다. (25 = 5 × 5). 몫 5가 소수이므로 75 = 3 × 5²로 완성됩니다.'
+        ],
+        ladderSteps: [
+          { divisor: 3, quotient: 25 },
+          { divisor: 5, quotient: 5 }
+        ],
+        treeNodes: [
+          { val: 75, xRel: 0.5, y: 114, isPrime: false, level: 0 },
+          { val: 3, xRel: 0.3, y: 172, isPrime: true, level: 1 },
+          { val: 25, xRel: 0.7, y: 172, isPrime: false, level: 1 },
+          { val: 5, xRel: 0.56, y: 228, isPrime: true, level: 2 },
+          { val: 5, xRel: 0.84, y: 228, isPrime: true, level: 2 }
+        ],
+        treeBranches: [
+          { fromXRel: 0.5, fromY: 124, toXRel: 0.3, toY: 160, level: 1 },
+          { fromXRel: 0.5, fromY: 124, toXRel: 0.7, toY: 160, level: 1 },
+          { fromXRel: 0.7, fromY: 184, toXRel: 0.56, toY: 216, level: 2 },
+          { fromXRel: 0.7, fromY: 184, toXRel: 0.84, toY: 216, level: 2 }
+        ]
+      },
+      {
+        num: 96,
+        title: '⑶ 96',
+        finalLatex: '2^5 \\times 3',
+        finalExpr: '2⁵ × 3',
+        primeFactors: [2, 3],
+        factorsMap: { 2: 5, 3: 1 },
+        maxStep: 5,
+        stepDescs: [
+          '96을 선택하고 [다음 ▶] 버튼을 눌러 소인수분해를 진행해 보세요.',
+          '96을 소수 2로 나눕니다. (96 = 2 × 48)',
+          '48을 소수 2로 나눕니다. (48 = 2 × 24)',
+          '24를 소수 2로 나눕니다. (24 = 2 × 12)',
+          '12를 소수 2로 나눕니다. (12 = 2 × 6)',
+          '6을 소수 2로 나눕니다. (6 = 2 × 3). 몫 3이 소수이므로 96 = 2⁵ × 3으로 완성됩니다.'
+        ],
+        ladderSteps: [
+          { divisor: 2, quotient: 48 },
+          { divisor: 2, quotient: 24 },
+          { divisor: 2, quotient: 12 },
+          { divisor: 2, quotient: 6 },
+          { divisor: 2, quotient: 3 }
+        ],
+        treeNodes: [
+          { val: 96, xRel: 0.5, y: 108, isPrime: false, level: 0 },
+          { val: 2, xRel: 0.24, y: 134, isPrime: true, level: 1 },
+          { val: 48, xRel: 0.76, y: 134, isPrime: false, level: 1 },
+          { val: 2, xRel: 0.38, y: 160, isPrime: true, level: 2 },
+          { val: 24, xRel: 0.76, y: 160, isPrime: false, level: 2 },
+          { val: 2, xRel: 0.48, y: 186, isPrime: true, level: 3 },
+          { val: 12, xRel: 0.78, y: 186, isPrime: false, level: 3 },
+          { val: 2, xRel: 0.64, y: 212, isPrime: true, level: 4 },
+          { val: 6, xRel: 0.88, y: 212, isPrime: false, level: 4 },
+          { val: 2, xRel: 0.78, y: 238, isPrime: true, level: 5 },
+          { val: 3, xRel: 0.94, y: 238, isPrime: true, level: 5 }
+        ],
+        treeBranches: [
+          { fromXRel: 0.5, fromY: 118, toXRel: 0.24, toY: 126, level: 1 },
+          { fromXRel: 0.5, fromY: 118, toXRel: 0.76, toY: 126, level: 1 },
+          { fromXRel: 0.76, fromY: 144, toXRel: 0.38, toY: 152, level: 2 },
+          { fromXRel: 0.76, fromY: 144, toXRel: 0.76, toY: 152, level: 2 },
+          { fromXRel: 0.76, fromY: 170, toXRel: 0.48, toY: 178, level: 3 },
+          { fromXRel: 0.76, fromY: 170, toXRel: 0.78, toY: 178, level: 3 },
+          { fromXRel: 0.78, fromY: 196, toXRel: 0.64, toY: 204, level: 4 },
+          { fromXRel: 0.78, fromY: 196, toXRel: 0.88, toY: 204, level: 4 },
+          { fromXRel: 0.88, fromY: 222, toXRel: 0.78, toY: 230, level: 5 },
+          { fromXRel: 0.88, fromY: 222, toXRel: 0.94, toY: 230, level: 5 }
+        ]
+      },
+      {
+        num: 120,
+        title: '⑷ 120',
+        finalLatex: '2^3 \\times 3 \\times 5',
+        finalExpr: '2³ × 3 × 5',
+        primeFactors: [2, 3, 5],
+        factorsMap: { 2: 3, 3: 1, 5: 1 },
+        maxStep: 4,
+        stepDescs: [
+          '120을 선택하고 [다음 ▶] 버튼을 눌러 소인수분해를 진행해 보세요.',
+          '120을 소수 2로 나눕니다. (120 = 2 × 60)',
+          '60을 소수 2로 나눕니다. (60 = 2 × 30)',
+          '30을 소수 2로 나눕니다. (30 = 2 × 15)',
+          '15를 소수 3으로 나눕니다. (15 = 3 × 5). 몫 5가 소수이므로 120 = 2³ × 3 × 5로 완성됩니다.'
+        ],
+        ladderSteps: [
+          { divisor: 2, quotient: 60 },
+          { divisor: 2, quotient: 30 },
+          { divisor: 2, quotient: 15 },
+          { divisor: 3, quotient: 5 }
+        ],
+        treeNodes: [
+          { val: 120, xRel: 0.5, y: 108, isPrime: false, level: 0 },
+          { val: 2, xRel: 0.28, y: 138, isPrime: true, level: 1 },
+          { val: 60, xRel: 0.72, y: 138, isPrime: false, level: 1 },
+          { val: 2, xRel: 0.42, y: 168, isPrime: true, level: 2 },
+          { val: 30, xRel: 0.76, y: 168, isPrime: false, level: 2 },
+          { val: 2, xRel: 0.54, y: 198, isPrime: true, level: 3 },
+          { val: 15, xRel: 0.82, y: 198, isPrime: false, level: 3 },
+          { val: 3, xRel: 0.74, y: 228, isPrime: true, level: 4 },
+          { val: 5, xRel: 0.92, y: 228, isPrime: true, level: 4 }
+        ],
+        treeBranches: [
+          { fromXRel: 0.5, fromY: 118, toXRel: 0.28, toY: 128, level: 1 },
+          { fromXRel: 0.5, fromY: 118, toXRel: 0.72, toY: 128, level: 1 },
+          { fromXRel: 0.72, fromY: 148, toXRel: 0.42, toY: 158, level: 2 },
+          { fromXRel: 0.72, fromY: 148, toXRel: 0.76, toY: 158, level: 2 },
+          { fromXRel: 0.76, fromY: 178, toXRel: 0.54, toY: 188, level: 3 },
+          { fromXRel: 0.76, fromY: 178, toXRel: 0.82, toY: 188, level: 3 },
+          { fromXRel: 0.82, fromY: 208, toXRel: 0.74, toY: 218, level: 4 },
+          { fromXRel: 0.82, fromY: 208, toXRel: 0.92, toY: 218, level: 4 }
+        ]
+      }
+    ];
+
+    function renderSubstep2_8() {
+      const missionEl = document.getElementById('mission-text');
+      if (missionEl) {
+        missionEl.innerHTML = `
+          <b>[2-8] 8. [스스로 확인 2] 소인수분해</b><br>
+          교과서 16쪽 [스스로 확인하기 2] 문제를 읽고, 다음 네 수를 소인수분해하여 거듭제곱 꼴로 입력하세요.
+        `;
+      }
+
+      const formArea = document.getElementById('form-work-area');
+      if (!formArea) return;
+
+      formArea.innerHTML = `
+        <div class="card" style="padding:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 16쪽</span>
+            <span style="font-size:0.8rem; color:#64748b; font-weight:700;">소인수분해 실전</span>
+          </div>
+
+          <h4 style="font-size:1.02rem; font-weight:800; color:#1e293b; line-height:1.5; margin-bottom:14px;">
+            [스스로 확인하기 2] 다음 수를 소인수분해하시오.
+          </h4>
+
+          <div style="display:flex; flex-direction:column; gap:14px; margin-bottom:18px;">
+            <!-- ⑴ 34 -->
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <span style="font-weight:800; color:#1e293b; font-size:0.92rem;">⑴ 34</span>
+                <span style="font-size:0.75rem; color:#64748b;">(거듭제곱 꼴 입력, 예: 2 x 3^2)</span>
+              </div>
+              <input type="text" id="ans-2-8-1" class="proof-input-text" placeholder="답 입력" style="width:100%;" autocomplete="off">
+            </div>
+
+            <!-- ⑵ 75 -->
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <span style="font-weight:800; color:#1e293b; font-size:0.92rem;">⑵ 75</span>
+                <span style="font-size:0.75rem; color:#64748b;">(거듭제곱 꼴 입력)</span>
+              </div>
+              <input type="text" id="ans-2-8-2" class="proof-input-text" placeholder="답 입력" style="width:100%;" autocomplete="off">
+            </div>
+
+            <!-- ⑶ 96 -->
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <span style="font-weight:800; color:#1e293b; font-size:0.92rem;">⑶ 96</span>
+                <span style="font-size:0.75rem; color:#64748b;">(거듭제곱 꼴 입력)</span>
+              </div>
+              <input type="text" id="ans-2-8-3" class="proof-input-text" placeholder="답 입력" style="width:100%;" autocomplete="off">
+            </div>
+
+            <!-- ⑷ 120 -->
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <span style="font-weight:800; color:#1e293b; font-size:0.92rem;">⑷ 120</span>
+                <span style="font-size:0.75rem; color:#64748b;">(거듭제곱 꼴 입력)</span>
+              </div>
+              <input type="text" id="ans-2-8-4" class="proof-input-text" placeholder="답 입력" style="width:100%;" autocomplete="off">
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep2_8()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            정답 확인 및 채점
+          </button>
+
+          <div id="feedback-step-2-8" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep2_8Canvas();
+    }
+
+    function drawStep2_8Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const curPIdx = state.lab2_8.problemIndex || 0;
+      const curMethod = state.lab2_8.method || 0;
+      const stepVal = state.lab2_8.step || 0;
+      const curP = PROBLEMS_2_8[curPIdx];
+      const isPassed2_8 = state.completedSubSteps && state.completedSubSteps.includes('2-8');
+      const effectiveStep = isPassed2_8 ? curP.maxStep : stepVal;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 34
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(10.5, Math.min(12, Math.floor(width * 0.018)));
+
+      const headerTitle = two.makeText('🌲 [스스로 확인 2] 소인수분해 탐구 랩', width / 2, 16);
+      headerTitle.size = titleSize;
+      headerTitle.weight = 800;
+      headerTitle.fill = '#1e293b';
+
+      const headerSub = two.makeText('나뭇가지 분해 또는 거꾸로 나눗셈을 통해 네 수를 소인수분해해 보세요.', width / 2, 33);
+      headerSub.size = subSize;
+      headerSub.fill = '#64748b';
+
+      // 2. Question Tab Buttons - y: 44 ~ 66
+      const qTabY = 55;
+      const qTabH = 22;
+      const qTabCount = PROBLEMS_2_8.length;
+      const qTabW = Math.min(95, Math.floor((width - 40) / qTabCount) - 6);
+      const qTotalW = qTabCount * qTabW + (qTabCount - 1) * 8;
+      const qStartX = (width - qTotalW) / 2 + qTabW / 2;
+
+      const qBounds = [];
+      for (let i = 0; i < qTabCount; i++) {
+        const tx = qStartX + i * (qTabW + 8);
+        const isCur = (curPIdx === i);
+
+        const tabBg = two.makeRoundedRectangle(tx, qTabY, qTabW, qTabH, 6);
+        tabBg.fill = isCur ? '#4f46e5' : '#ffffff';
+        tabBg.stroke = isCur ? '#4338ca' : '#cbd5e1';
+        tabBg.linewidth = 1.5;
+
+        const tabTxt = two.makeText(PROBLEMS_2_8[i].title, tx, qTabY);
+        tabTxt.size = 11;
+        tabTxt.weight = 700;
+        tabTxt.fill = isCur ? '#ffffff' : '#475569';
+
+        qBounds.push({
+          idx: i,
+          left: tx - qTabW / 2,
+          right: tx + qTabW / 2,
+          top: qTabY - qTabH / 2,
+          bottom: qTabY + qTabH / 2
+        });
+      }
+
+      // 3. Method Toggle Tab Buttons - y: 70 ~ 90
+      const mTabY = 78;
+      const mTabH = 20;
+      const mTabW = Math.min(140, Math.floor(width * 0.3));
+      const mStartX = width / 2 - (mTabW + 8) / 2;
+
+      const mTreeBg = two.makeRoundedRectangle(mStartX, mTabY, mTabW, mTabH, 5);
+      mTreeBg.fill = (curMethod === 0) ? '#6366f1' : '#f1f5f9';
+      mTreeBg.stroke = (curMethod === 0) ? '#4f46e5' : '#cbd5e1';
+      mTreeBg.linewidth = 1.5;
+
+      const mTreeTxt = two.makeText('🌳 나뭇가지 분해법', mStartX, mTabY);
+      mTreeTxt.size = 10.5;
+      mTreeTxt.weight = 700;
+      mTreeTxt.fill = (curMethod === 0) ? '#ffffff' : '#475569';
+
+      const mDivX = mStartX + mTabW + 8;
+      const mDivBg = two.makeRoundedRectangle(mDivX, mTabY, mTabW, mTabH, 5);
+      mDivBg.fill = (curMethod === 1) ? '#0284c7' : '#f1f5f9';
+      mDivBg.stroke = (curMethod === 1) ? '#0369a1' : '#cbd5e1';
+      mDivBg.linewidth = 1.5;
+
+      const mDivTxt = two.makeText('🪜 거꾸로 나눗셈법', mDivX, mTabY);
+      mDivTxt.size = 10.5;
+      mDivTxt.weight = 700;
+      mDivTxt.fill = (curMethod === 1) ? '#ffffff' : '#475569';
+
+      const methodBounds = [
+        { method: 0, left: mStartX - mTabW / 2, right: mStartX + mTabW / 2, top: mTabY - mTabH / 2, bottom: mTabY + mTabH / 2 },
+        { method: 1, left: mDivX - mTabW / 2, right: mDivX + mTabW / 2, top: mTabY - mTabH / 2, bottom: mTabY + mTabH / 2 }
+      ];
+
+      // 4. Central Exploration Board (y: 94 ~ 264, h: 170)
+      const centralBg = two.makeRoundedRectangle(width / 2, 180, width - 36, 170, 12);
+      centralBg.fill = '#ffffff';
+      centralBg.stroke = '#e2e8f0';
+      centralBg.linewidth = 1.5;
+
+      if (curMethod === 0) {
+        // --- METHOD 0: FACTOR TREE ---
+        curP.treeBranches.forEach(branch => {
+          if (branch.level <= effectiveStep) {
+            const bx1 = branch.fromXRel * width;
+            const by1 = branch.fromY;
+            const bx2 = branch.toXRel * width;
+            const by2 = branch.toY;
+            const line = two.makeLine(bx1, by1, bx2, by2);
+            line.stroke = '#94a3b8';
+            line.linewidth = 2;
+          }
+        });
+
+        curP.treeNodes.forEach(node => {
+          if (node.level <= effectiveStep) {
+            const nx = node.xRel * width;
+            const ny = node.y;
+            const radius = (node.isPrime) ? 20 : 22;
+
+            const circle = two.makeCircle(nx, ny, radius);
+            if (node.isPrime) {
+              circle.fill = '#ecfdf5';
+              circle.stroke = '#10b981';
+              circle.linewidth = 2.5;
+            } else {
+              circle.fill = '#f8fafc';
+              circle.stroke = '#64748b';
+              circle.linewidth = 2;
+            }
+
+            const valT = two.makeText(String(node.val), nx, ny - 1);
+            valT.size = (node.isPrime) ? 13 : 14;
+            valT.weight = 800;
+            valT.fill = (node.isPrime) ? '#047857' : '#1e293b';
+
+            if (node.level > 0 && node.isPrime) {
+              const badge = two.makeText('🌱 소수', nx, ny + radius + 8);
+              badge.size = 8.5;
+              badge.weight = 700;
+              badge.fill = '#059669';
+            }
+          }
+        });
+      } else {
+        // --- METHOD 1: LADDER DIVISION ---
+        const startX = width / 2 - 40;
+        let curY = 114;
+        const rowH = 22;
+
+        let curDividend = curP.num;
+        const steps = curP.ladderSteps;
+
+        for (let s = 0; s < effectiveStep; s++) {
+          const st = steps[s];
+          if (!st) break;
+
+          // Divisor (Prime)
+          const divCircle = two.makeCircle(startX - 26, curY + 2, 12);
+          divCircle.fill = '#eff6ff';
+          divCircle.stroke = '#3b82f6';
+          divCircle.linewidth = 1.5;
+
+          const divTxt = two.makeText(String(st.divisor), startX - 26, curY + 2);
+          divTxt.size = 11;
+          divTxt.weight = 800;
+          divTxt.fill = '#1d4ed8';
+
+          // Dividend
+          const numTxt = two.makeText(String(curDividend), startX + 24, curY + 2);
+          numTxt.size = 13;
+          numTxt.weight = 700;
+          numTxt.fill = '#1e293b';
+
+          // L-shaped division lines
+          const l1 = two.makeLine(startX - 8, curY - 8, startX - 8, curY + 12);
+          l1.stroke = '#64748b'; l1.linewidth = 2;
+          const l2 = two.makeLine(startX - 8, curY + 12, startX + 65, curY + 12);
+          l2.stroke = '#64748b'; l2.linewidth = 2;
+
+          curDividend = st.quotient;
+          curY += rowH;
+        }
+
+        // Final Quotient
+        if (effectiveStep > 0) {
+          const isDone = (effectiveStep >= curP.maxStep);
+          const qBox = two.makeRoundedRectangle(startX + 24, curY + 2, 46, 20, 4);
+          qBox.fill = isDone ? '#ecfdf5' : '#f8fafc';
+          qBox.stroke = isDone ? '#10b981' : '#cbd5e1';
+          qBox.linewidth = isDone ? 2 : 1;
+
+          const lastTxt = two.makeText(String(curDividend), startX + 24, curY + 2);
+          lastTxt.size = 13;
+          lastTxt.weight = 800;
+          lastTxt.fill = isDone ? '#047857' : '#334155';
+
+          if (isDone) {
+            const bTxt = two.makeText('🌱 소수 몫', startX + 75, curY + 2);
+            bTxt.size = 9.5;
+            bTxt.weight = 700;
+            bTxt.fill = '#059669';
+          }
+        } else {
+          const initT = two.makeText(String(curP.num), startX + 24, curY + 2);
+          initT.size = 15;
+          initT.weight = 800;
+          initT.fill = '#1e293b';
+        }
+      }
+
+      // 5. Status / Formula Bar (y: 288, h: 26) - [275, 301]
+      const statY = 288;
+      const statBg = two.makeRoundedRectangle(width / 2, statY, width - 40, 26, 6);
+      statBg.fill = '#f8fafc';
+      statBg.stroke = '#e2e8f0';
+      statBg.linewidth = 1;
+
+      let formulaStr = '';
+      if (effectiveStep >= curP.maxStep || isPassed2_8) {
+        formulaStr = `분해 완성: ${curP.num} = ${curP.finalExpr}  (소인수: ${curP.primeFactors.join(', ')})`;
+      } else {
+        formulaStr = `단계 ${effectiveStep}/${curP.maxStep}: ${curP.stepDescs[effectiveStep] || curP.stepDescs[0]}`;
+      }
+
+      const statTxt = two.makeText(formulaStr, width / 2, statY);
+      statTxt.size = (width < 600) ? 9.5 : 10.5;
+      statTxt.weight = 700;
+      statTxt.fill = '#334155';
+
+      // 6. Bottom Rule / Concept Banner (y: 350, h: 68) - [316, 384]
+      const bannerY = 350;
+      const bannerH = 68;
+      const bannerBg = two.makeRoundedRectangle(width / 2, bannerY, width - 40, bannerH, 10);
+
+      if (isPassed2_8) {
+        bannerBg.fill = '#ecfdf5';
+        bannerBg.stroke = '#86efac';
+        bannerBg.linewidth = 1.5;
+
+        const bT1 = two.makeText('🎉 정답 확인 완료! 소인수분해 결과 요약', width / 2, bannerY - 18);
+        bT1.size = 12;
+        bT1.weight = 800;
+        bT1.fill = '#065f46';
+
+        const bT2 = two.makeText('⑴ 34 = 2 × 17   |   ⑵ 75 = 3 × 5²   |   ⑶ 96 = 2⁵ × 3   |   ⑷ 120 = 2³ × 3 × 5', width / 2, bannerY);
+        bT2.size = 11;
+        bT2.weight = 700;
+        bT2.fill = '#047857';
+
+        const bT3 = two.makeText('💡 모든 합성수는 소수들의 거듭제곱의 곱으로 유일하게 소인수분해됩니다.', width / 2, bannerY + 18);
+        bT3.size = 10;
+        bT3.fill = '#059669';
+      } else {
+        bannerBg.fill = '#eff6ff';
+        bannerBg.stroke = '#bfdbfe';
+        bannerBg.linewidth = 1.5;
+
+        const bT1 = two.makeText('💡 소인수분해(Prime Factorization)의 뜻과 표기법', width / 2, bannerY - 18);
+        bT1.size = 12;
+        bT1.weight = 800;
+        bT1.fill = '#1e40af';
+
+        const bT2 = two.makeText('• 1보다 큰 자연수를 그 수의 소인수들만의 곱으로 나타낸 것을 소인수분해라고 합니다.', width / 2, bannerY);
+        bT2.size = 11;
+        bT2.weight = 700;
+        bT2.fill = '#1d4ed8';
+
+        const bT3 = two.makeText('• 같은 소인수의 곱은 거듭제곱으로 나타내며, 보통 작은 소수부터 차례로 씁니다.', width / 2, bannerY + 18);
+        bT3.size = 10;
+        bT3.fill = '#2563eb';
+      }
+
+      two.update();
+
+      // Pointer event listener for canvas interaction
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas') : null;
+      if (container) container.onpointerdown = null; // 영속 컨테이너 잔여 핸들러 제거
+      if (!canvasEl) return;
+
+      canvasEl.onpointerdown = (e) => {
+        const rect = canvasEl.getBoundingClientRect();
+        const px = (e.clientX - rect.left) * (width / rect.width);
+        const py = (e.clientY - rect.top) * (height / rect.height);
+
+        // 1. Question Tab click
+        for (const qb of qBounds) {
+          if (px >= qb.left && px <= qb.right && py >= qb.top && py <= qb.bottom) {
+            setStep2_8Problem(qb.idx);
+            return;
+          }
+        }
+
+        // 2. Method Tab click
+        for (const mb of methodBounds) {
+          if (px >= mb.left && px <= mb.right && py >= mb.top && py <= mb.bottom) {
+            setStep2_8Method(mb.method);
+            return;
+          }
+        }
+      };
+    }
+
+    async function gradeStep2_8() {
+      // Helper function to parse prime factorization into base->exp map
+      function parsePrimeFact(str) {
+        if (!str) return null;
+        let s = str.replace(/⁰/g, '^0')
+                   .replace(/¹/g, '^1')
+                   .replace(/²/g, '^2')
+                   .replace(/³/g, '^3')
+                   .replace(/⁴/g, '^4')
+                   .replace(/⁵/g, '^5')
+                   .replace(/⁶/g, '^6')
+                   .replace(/⁷/g, '^7')
+                   .replace(/⁸/g, '^8')
+                   .replace(/⁹/g, '^9');
+        s = s.replace(/[×xX·]/g, '*').replace(/\s+/g, '');
+        const parts = s.split('*').filter(Boolean);
+        if (parts.length === 0) return null;
+
+        const factorMap = {};
+        for (const part of parts) {
+          let base, exp;
+          if (part.includes('^')) {
+            const sub = part.split('^');
+            base = parseInt(sub[0], 10);
+            exp = parseInt(sub[1], 10);
+          } else {
+            base = parseInt(part, 10);
+            exp = 1;
+          }
+          if (isNaN(base) || isNaN(exp) || base <= 1 || exp <= 0) return null;
+          factorMap[base] = (factorMap[base] || 0) + exp;
+        }
+        return factorMap;
+      }
+
+      function compareFactMaps(mapA, mapB) {
+        if (!mapA || !mapB) return false;
+        const keysA = Object.keys(mapA).sort();
+        const keysB = Object.keys(mapB).sort();
+        if (keysA.length !== keysB.length) return false;
+        for (let i = 0; i < keysA.length; i++) {
+          const k = keysA[i];
+          if (k !== keysB[i]) return false;
+          if (mapA[k] !== mapB[k]) return false;
+        }
+        return true;
+      }
+
+      // 1. ⑴ 34: 2 * 17
+      const raw1 = cleanInput(document.getElementById('ans-2-8-1')?.value);
+      const map1 = parsePrimeFact(raw1);
+      const exp1 = { 2: 1, 17: 1 };
+      const ok1 = compareFactMaps(map1, exp1);
+
+      // 2. ⑵ 75: 3 * 5^2
+      const raw2 = cleanInput(document.getElementById('ans-2-8-2')?.value);
+      const map2 = parsePrimeFact(raw2);
+      const exp2 = { 3: 1, 5: 2 };
+      const ok2 = compareFactMaps(map2, exp2);
+
+      // 3. ⑶ 96: 2^5 * 3
+      const raw3 = cleanInput(document.getElementById('ans-2-8-3')?.value);
+      const map3 = parsePrimeFact(raw3);
+      const exp3 = { 2: 5, 3: 1 };
+      const ok3 = compareFactMaps(map3, exp3);
+
+      // 4. ⑷ 120: 2^3 * 3 * 5
+      const raw4 = cleanInput(document.getElementById('ans-2-8-4')?.value);
+      const map4 = parsePrimeFact(raw4);
+      const exp4 = { 2: 3, 3: 1, 5: 1 };
+      const ok4 = compareFactMaps(map4, exp4);
+
+      const fEl = document.getElementById('feedback-step-2-8');
+      if (!fEl) return;
+
+      if (ok1 && ok2 && ok3 && ok4) {
+        if (!state.completedSubSteps.includes('2-8')) {
+          state.completedSubSteps.push('2-8');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('2-8', {
+              activityTitle: '[중1-1 소인수분해] [2-8] 8. [스스로 확인 2] 소인수분해',
+              answerText: `⑴ ${raw1} ⑵ ${raw2} ⑶ ${raw3} ⑷ ${raw4}`,
+              answers: { prob1: raw1, prob2: raw2, prob3: raw3, prob4: raw4 },
+              score: 100,
+              passed: true,
+              unitId: 'u1'
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+
+        // Unlock next step 2-9
+        if (!state.unlockedSubSteps.includes('2-9')) {
+          state.unlockedSubSteps.push('2-9');
+        }
+        updateSubStepPills(state.currentMainTab);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.2rem;">🎉</span>
+            <h4 style="color:#065f46; font-size:1.02rem; font-weight:800; margin:0;">정답입니다! 100점 (All Clear)</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            네 수의 소인수분해를 완벽하게 완성했습니다!<br>
+            • <b>⑴ 34</b> = 2 × 17<br>
+            • <b>⑵ 75</b> = 3 × 5²<br>
+            • <b>⑶ 96</b> = 2⁵ × 3<br>
+            • <b>⑷ 120</b> = 2³ × 3 × 5<br>
+            <div style="margin-top:10px; padding:8px 12px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 다음 세부 활동 <b>[2-9] 9. [스스로 확인 3] 연속된 곱의 소인수 지수 구하기</b>가 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="loadSubStep('2-9')" style="margin-top:12px; width:100%; padding:10px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            다음 단계 [2-9]로 이동 ➔
+          </button>
+        `;
+
+        drawStep2_8Canvas();
+      } else {
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            ${!ok1 ? '• [⑴ 34] 34를 소수 2로 나누었을 때 남는 몫을 확인해 보세요.<br>' : ''}
+            ${!ok2 ? '• [⑵ 75] 75를 3으로 나눈 후, 25를 소수의 거듭제곱으로 나타내 보세요.<br>' : ''}
+            ${!ok3 ? '• [⑶ 96] 96을 2로 계속 나누어 2가 몇 번 곱해지는지 지수를 세어 보세요.<br>' : ''}
+            ${!ok4 ? '• [⑷ 120] 120을 소인수분해하여 2, 3, 5의 지수를 각각 확인해 보세요.<br>' : ''}
+            💡 좌측 캔버스의 [🌳 나뭇가지 분해] 또는 [🪜 거꾸로 나눗셈]을 단계별로 실행해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (2-9 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -14037,6 +14799,12 @@
         state.lab2_7.showPrimeOnly = false;
         renderToolbar2_7();
         drawStep2_7Canvas();
+      } else if (state.subStep === '2-8') {
+        state.lab2_8.problemIndex = 0;
+        state.lab2_8.method = 0;
+        state.lab2_8.step = 0;
+        renderToolbar2_8();
+        drawStep2_8Canvas();
       }
     }
 
@@ -14307,6 +15075,7 @@
         else if (state.subStep === '2-5') drawStep2_5Canvas();
         else if (state.subStep === '2-6') drawStep2_6Canvas();
         else if (state.subStep === '2-7') drawStep2_7Canvas();
+        else if (state.subStep === '2-8') drawStep2_8Canvas();
       }, 150);
     });
 
