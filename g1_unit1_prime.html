@@ -1118,6 +1118,10 @@
         cardsRevealed: [false, false, false, false, false], // 5 cards: 2, 3, 4, 5, 6
         highlightPrime2: false, // 소인수 2 모으기 토글
         step: 0 // 진행 단계
+      },
+      // 2-10 Interactive Lab State (10. [스스로 확인 4] 어떤 자연수의 제곱 만들기)
+      lab2_10: {
+        selectedMul: null // 선택된 곱할 후보 수 (null, 2, 7, 14, 28)
       }
     };
 
@@ -1320,6 +1324,9 @@
       } else if (code === '2-9') {
         renderToolbar2_9();
         renderSubstep2_9();
+      } else if (code === '2-10') {
+        renderToolbar2_10();
+        renderSubstep2_10();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -2712,6 +2719,41 @@
       state.lab2_9.highlightPrime2 = !state.lab2_9.highlightPrime2;
       renderToolbar2_9();
       drawStep2_9Canvas();
+    }
+
+    // -------------------------------------------------------------
+    // SUBSTEP 2-10 Handlers & Toolbar (10. [스스로 확인 4] 어떤 자연수의 제곱 만들기, p.16)
+    // -------------------------------------------------------------
+    function renderToolbar2_10() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const curMul = state.lab2_10.selectedMul;
+      const candidates = [2, 7, 14, 28];
+
+      const mulBtns = candidates.map(val => `
+        <button class="tool-btn ${curMul === val ? 'active' : ''}" onclick="setStep2_10Mul(${val})" style="font-weight:700;">
+          × ${val}
+        </button>
+      `).join('');
+
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-right:4px;">곱할 후보 수:</span>
+        ${mulBtns}
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setStep2_10Mul(val) {
+      if (state.lab2_10.selectedMul === val) {
+        state.lab2_10.selectedMul = null;
+      } else {
+        state.lab2_10.selectedMul = val;
+      }
+      renderToolbar2_10();
+      drawStep2_10Canvas();
     }
 
     // SUBSTEP 0-2: 되짚어 보기 2: 공약수와 최대공약수 (초5~6 복습, p.8)
@@ -15037,7 +15079,405 @@
     }
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (2-10 to 6-2)
+    // SUBSTEP 2-10: 10. [스스로 확인 4] 어떤 자연수의 제곱 만들기 (p.16)
+    // -------------------------------------------------------------
+    function renderSubstep2_10() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[스스로 확인 4] 어떤 자연수의 제곱 만들기 (교과서 p.16)</b><br>
+        • 어떤 자연수의 제곱이 되려면 소인수분해했을 때 모든 소인수의 <b>지수가 짝수</b>가 되어야 합니다.<br>
+        • 56을 소인수분해하여 지수가 홀수인 소인수를 찾아 짝수로 만들어 주는 가장 작은 자연수를 구해 보세요.
+      `;
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.16</span>
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b;">스스로 확인하기 4번</span>
+          </div>
+          <h4 style="font-size:0.98rem; font-weight:800; color:#1e293b; margin-bottom:12px; line-height:1.5;">
+            4. $56$에 자연수를 곱하여 어떤 자연수의 제곱이 되도록 할 때, 곱할 수 있는 가장 작은 자연수를 구하시오.
+          </h4>
+
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:14px; margin-bottom:18px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-weight:800; color:#1e293b; font-size:0.92rem;">곱할 수 있는 가장 작은 자연수</span>
+              <span style="font-size:0.75rem; color:#64748b;">(자연수 입력)</span>
+            </div>
+            <input type="text" id="ans-2-10" class="proof-input-text" placeholder="답 입력" style="width:100%; max-width:240px;" autocomplete="off">
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep2_10()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            정답 확인 및 채점
+          </button>
+
+          <div id="feedback-step-2-10" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep2_10Canvas();
+    }
+
+    function drawStep2_10Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed2_10 = state.completedSubSteps && state.completedSubSteps.includes('2-10');
+      const curMul = state.lab2_10.selectedMul;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 34
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(10.5, Math.min(12, Math.floor(width * 0.018)));
+
+      const headerTitle = two.makeText('🔢 [스스로 확인 4] 어떤 자연수의 제곱 만들기 탐구 랩', width / 2, 16);
+      headerTitle.size = titleSize;
+      headerTitle.weight = 800;
+      headerTitle.fill = '#1e293b';
+
+      const headerSub = two.makeText('56에 자연수를 곱하여 모든 소인수의 지수가 짝수가 되는 조건을 탐구해 보세요.', width / 2, 33);
+      headerSub.size = subSize;
+      headerSub.fill = '#64748b';
+
+      // 2. Given Number Display Bar (y: 56, h: 26) - [43, 69]
+      const givenBar = two.makeRoundedRectangle(width / 2, 56, width - 40, 26, 6);
+      givenBar.fill = '#f1f5f9';
+      givenBar.stroke = '#cbd5e1';
+      givenBar.linewidth = 1;
+
+      const gTxt = two.makeText('주어진 수:  56 = 2³ × 7   ➔   소인수 2가 3개 (홀수), 소인수 7이 1개 (홀수)', width / 2, 56);
+      gTxt.size = (width < 600) ? 10.5 : 12;
+      gTxt.weight = 800;
+      gTxt.fill = '#334155';
+
+      // 3. Central Board (y: 84 ~ 265, h: 178)
+      const centralBg = two.makeRoundedRectangle(width / 2, 174, width - 36, 178, 12);
+      centralBg.fill = '#ffffff';
+      centralBg.stroke = '#e2e8f0';
+      centralBg.linewidth = 1.5;
+
+      const guideT = two.makeText('아래 곱셈 후보 카드를 터치하여 지수가 짝수로 묶이는지 확인해 보세요.', width / 2, 98);
+      guideT.size = 11;
+      guideT.weight = 700;
+      guideT.fill = '#475569';
+
+      // 4 Interactive Candidate Cards (y: 132, h: 36)
+      const candY = 132;
+      const candH = 36;
+      const candidates = [2, 7, 14, 28];
+      const count = candidates.length;
+      const cardW = Math.min(100, Math.floor((width - 60) / count) - 8);
+      const totalCardsW = count * cardW + (count - 1) * 8;
+      const startCardX = (width - totalCardsW) / 2 + cardW / 2;
+
+      const cardBounds = [];
+
+      for (let i = 0; i < count; i++) {
+        const val = candidates[i];
+        const cx = startCardX + i * (cardW + 8);
+        const isSelected = (curMul === val);
+        const isTarget = (val === 14);
+
+        const cBg = two.makeRoundedRectangle(cx, candY, cardW, candH, 8);
+
+        if (isSelected) {
+          if (isTarget) {
+            cBg.fill = '#ecfdf5';
+            cBg.stroke = '#10b981';
+            cBg.linewidth = 2.5;
+          } else {
+            cBg.fill = '#eff6ff';
+            cBg.stroke = '#3b82f6';
+            cBg.linewidth = 2;
+          }
+        } else {
+          cBg.fill = '#f8fafc';
+          cBg.stroke = '#cbd5e1';
+          cBg.linewidth = 1.5;
+        }
+
+        const cTxt = two.makeText(`× ${val}`, cx, candY - 4);
+        cTxt.size = 13;
+        cTxt.weight = 800;
+        if (isSelected) {
+          cTxt.fill = isTarget ? '#047857' : '#1d4ed8';
+        } else {
+          cTxt.fill = '#1e293b';
+        }
+
+        const subLbl = val === 14 ? '(2 × 7)' : (val === 28 ? '(2² × 7)' : (val === 2 ? '(소수 2)' : '(소수 7)'));
+        const subT = two.makeText(subLbl, cx, candY + 11);
+        subT.size = 8.5;
+        subT.weight = 700;
+        subT.fill = isSelected ? (isTarget ? '#059669' : '#2563eb') : '#64748b';
+
+        cardBounds.push({
+          val: val,
+          left: cx - cardW / 2,
+          right: cx + cardW / 2,
+          top: candY - candH / 2,
+          bottom: candY + candH / 2
+        });
+      }
+
+      // Dynamic Factor Pairing Box (y: 184, h: 44)
+      const pairY = 184;
+      const pairBg = two.makeRoundedRectangle(width / 2, pairY, width - 60, 44, 8);
+
+      let pairLine1 = '';
+      let pairLine2 = '';
+      let isSquare = false;
+
+      if (curMul === null) {
+        pairBg.fill = '#f8fafc';
+        pairBg.stroke = '#e2e8f0';
+        pairBg.linewidth = 1;
+        pairLine1 = '56의 소인수: [2 × 2] (한 쌍 묶임)  +  2 (1개 홀수 ⚠️)  +  7 (1개 홀수 ⚠️)';
+        pairLine2 = '👉 모든 소인수의 지수를 짝수로 만들려면 2와 7을 각각 최소 1개씩 곱해야 합니다.';
+      } else if (curMul === 2) {
+        pairBg.fill = '#fff7ed';
+        pairBg.stroke = '#fdba74';
+        pairBg.linewidth = 1.5;
+        pairLine1 = '56 × 2 = 112 = 2⁴ × 7 = [2 × 2] × [2 × 2] × 7';
+        pairLine2 = '⚠️ 2의 지수는 4(짝수)가 되었지만, 7의 지수가 여전히 1(홀수)이라 제곱수가 아닙니다.';
+      } else if (curMul === 7) {
+        pairBg.fill = '#fff7ed';
+        pairBg.stroke = '#fdba74';
+        pairBg.linewidth = 1.5;
+        pairLine1 = '56 × 7 = 392 = 2³ × 7² = [2 × 2] × 2 × [7 × 7]';
+        pairLine2 = '⚠️ 7의 지수는 2(짝수)가 되었지만, 2의 지수가 여전히 3(홀수)이라 제곱수가 아닙니다.';
+      } else if (curMul === 14) {
+        pairBg.fill = '#ecfdf5';
+        pairBg.stroke = '#10b981';
+        pairBg.linewidth = 2;
+        pairLine1 = '56 × 14 = 784 = 2⁴ × 7² = (2² × 7) × (2² × 7) = 28²';
+        pairLine2 = '✨ 2와 7의 지수가 모두 짝수(4, 2)가 되어 완벽한 자연수 28의 제곱 완성! (정답)';
+        isSquare = true;
+      } else if (curMul === 28) {
+        pairBg.fill = '#fff7ed';
+        pairBg.stroke = '#fdba74';
+        pairBg.linewidth = 1.5;
+        pairLine1 = '56 × 28 = 1568 = 2⁵ × 7² = [2 × 2] × [2 × 2] × 2 × [7 × 7]';
+        pairLine2 = '⚠️ 7의 지수는 2(짝수)이지만, 2의 지수가 5(홀수)라 제곱수가 아닙니다.';
+      }
+
+      const pT1 = two.makeText(pairLine1, width / 2, pairY - 9);
+      pT1.size = (width < 600) ? 9.5 : 11;
+      pT1.weight = 800;
+      pT1.fill = isSquare ? '#065f46' : '#1e293b';
+
+      const pT2 = two.makeText(pairLine2, width / 2, pairY + 10);
+      pT2.size = (width < 600) ? 9 : 10;
+      pT2.weight = 700;
+      pT2.fill = isSquare ? '#047857' : (curMul ? '#c2410c' : '#64748b');
+
+      // Realtime Calculation Visualizer Bar (y: 236, h: 26)
+      const calcY = 236;
+      const calcBg = two.makeRoundedRectangle(width / 2, calcY, width - 60, 26, 6);
+
+      let calcMsg = '';
+      if (curMul === 14) {
+        calcBg.fill = '#ecfdf5';
+        calcBg.stroke = '#86efac';
+        calcBg.linewidth = 1.5;
+        calcMsg = '🎉 56 × 14 = 784 = 28²  ➔  가장 작은 자연수 14를 곱해 제곱수 완성!';
+      } else if (curMul !== null) {
+        calcBg.fill = '#fef2f2';
+        calcBg.stroke = '#fecaca';
+        calcBg.linewidth = 1;
+        calcMsg = `56 × ${curMul} = ${56 * curMul}  ➔  지수가 홀수인 소인수가 남아 있어 제곱수가 아닙니다.`;
+      } else {
+        calcBg.fill = '#f8fafc';
+        calcBg.stroke = '#e2e8f0';
+        calcBg.linewidth = 1;
+        calcMsg = '💡 위의 곱셈 후보 카드를 눌러 소인수들의 지수가 짝수가 되는지 관찰해 보세요.';
+      }
+
+      const cMsgT = two.makeText(calcMsg, width / 2, calcY);
+      cMsgT.size = (width < 600) ? 9.5 : 10.5;
+      cMsgT.weight = 700;
+      cMsgT.fill = (curMul === 14) ? '#065f46' : (curMul !== null ? '#b91c1c' : '#64748b');
+
+      // 4. Realtime Status Bar (y: 288, h: 26) - [275, 301]
+      const statY = 288;
+      const statBg = two.makeRoundedRectangle(width / 2, statY, width - 40, 26, 6);
+      statBg.fill = '#f8fafc';
+      statBg.stroke = '#e2e8f0';
+      statBg.linewidth = 1;
+
+      let statMsg = '';
+      if (isPassed2_10) {
+        statMsg = '탐구 완료: 56에 14를 곱하면 784 = 28²이 되어 어떤 자연수의 제곱이 됩니다.';
+      } else if (curMul === 14) {
+        statMsg = '성공! 56 × 14 = 2⁴ × 7² = (2² × 7)² = 28²  |  우측 입력창에 14를 입력하세요.';
+      } else if (curMul !== null) {
+        statMsg = `후보 [× ${curMul}] 적용 중  |  소인수 지수 중 홀수가 남아있어 제곱수가 되지 않습니다.`;
+      } else {
+        statMsg = '탐구 진행 중: 상단 툴바나 카드를 눌러 모든 소인수의 지수를 짝수로 만들어 보세요.';
+      }
+
+      const statTxt = two.makeText(statMsg, width / 2, statY);
+      statTxt.size = (width < 600) ? 9.5 : 10.5;
+      statTxt.weight = 700;
+      statTxt.fill = '#334155';
+
+      // 5. Bottom Guide / Concept Banner (y: 350, h: 68) - [316, 384]
+      const bannerY = 350;
+      const bannerH = 68;
+      const bannerBg = two.makeRoundedRectangle(width / 2, bannerY, width - 40, bannerH, 10);
+
+      if (isPassed2_10) {
+        bannerBg.fill = '#ecfdf5';
+        bannerBg.stroke = '#86efac';
+        bannerBg.linewidth = 1.5;
+
+        const bT1 = two.makeText('🎉 정답 확인 완료! 곱할 수 있는 가장 작은 자연수는 14입니다.', width / 2, bannerY - 18);
+        bT1.size = 12;
+        bT1.weight = 800;
+        bT1.fill = '#065f46';
+
+        const bT2 = two.makeText('56 = 2³ × 7 에서 2와 7의 지수가 모두 홀수이므로 2와 7을 각각 1개씩 곱해야 합니다.', width / 2, bannerY);
+        bT2.size = 11;
+        bT2.weight = 700;
+        bT2.fill = '#047857';
+
+        const bT3 = two.makeText('💡 따라서 곱할 가장 작은 자연수는 2 × 7 = 14 이고, 그 결과는 56 × 14 = 784 = 28²이 됩니다.', width / 2, bannerY + 18);
+        bT3.size = 10;
+        bT3.fill = '#059669';
+      } else {
+        bannerBg.fill = '#eff6ff';
+        bannerBg.stroke = '#bfdbfe';
+        bannerBg.linewidth = 1.5;
+
+        const bT1 = two.makeText('💡 문제 해결 팁: 어떤 자연수의 제곱이 되는 조건', width / 2, bannerY - 18);
+        bT1.size = 12;
+        bT1.weight = 800;
+        bT1.fill = '#1e40af';
+
+        const bT2 = two.makeText('• 자연수를 소인수분해했을 때, 모든 소인수의 지수가 "짝수"이어야 제곱수가 됩니다.', width / 2, bannerY);
+        bT2.size = 11;
+        bT2.weight = 700;
+        bT2.fill = '#1d4ed8';
+
+        const bT3 = two.makeText('• 56 = 2³ × 7에서 지수가 홀수인 소인수를 찾아 짝수로 만들기 위해 필요한 수를 곱해 보세요.', width / 2, bannerY + 18);
+        bT3.size = 10;
+        bT3.fill = '#2563eb';
+      }
+
+      two.update();
+
+      // Pointer event listener for canvas interaction
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas') : null;
+      if (container) container.onpointerdown = null; // 영속 컨테이너 잔여 핸들러 제거
+      if (!canvasEl) return;
+
+      canvasEl.onpointerdown = (e) => {
+        const rect = canvasEl.getBoundingClientRect();
+        const px = (e.clientX - rect.left) * (width / rect.width);
+        const py = (e.clientY - rect.top) * (height / rect.height);
+
+        // Candidate card click
+        for (const cb of cardBounds) {
+          if (px >= cb.left && px <= cb.right && py >= cb.top && py <= cb.bottom) {
+            setStep2_10Mul(cb.val);
+            return;
+          }
+        }
+      };
+    }
+
+    async function gradeStep2_10() {
+      const raw = cleanInput(document.getElementById('ans-2-10')?.value);
+      const ansNum = parseInt(raw, 10);
+      const isCorrect = (ansNum === 14);
+
+      const fEl = document.getElementById('feedback-step-2-10');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('2-10')) {
+          state.completedSubSteps.push('2-10');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('2-10', {
+              activityTitle: '[중1-1 소인수분해] [2-10] 10. [스스로 확인 4] 어떤 자연수의 제곱 만들기',
+              answerText: `가장 작은 자연수: ${raw}`,
+              answers: { ans: raw },
+              score: 100,
+              passed: true,
+              unitId: 'u1'
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+
+        // Unlock next step 2-11
+        if (!state.unlockedSubSteps.includes('2-11')) {
+          state.unlockedSubSteps.push('2-11');
+        }
+        updateSubStepPills(state.currentMainTab);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.2rem;">🎉</span>
+            <h4 style="color:#065f46; font-size:1.02rem; font-weight:800; margin:0;">정답입니다! 100점 (All Clear)</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            완벽하게 해결했습니다!<br>
+            • $56 = 2^3 \\times 7$<br>
+            • 어떤 자연수의 제곱이 되려면 모든 소인수의 <b>지수가 짝수</b>이어야 합니다.<br>
+            • $2^3$에서 2의 지수가 3(홀수)이므로 <b>2가 1개 더 필요</b>하고, $7$에서 7의 지수가 1(홀수)이므로 <b>7이 1개 더 필요</b>합니다.<br>
+            • 따라서 곱할 수 있는 가장 작은 자연수는 $2 \\times 7 = \\mathbf{14}$ 입니다.<br>
+            • 실제로 곱하면: $56 \\times 14 = 784 = 2^4 \\times 7^2 = (2^2 \\times 7)^2 = 28^2$
+            <div style="margin-top:10px; padding:8px 12px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 다음 세부 활동 <b>[2-11] 11. [스스로 확인 5] 두 학생의 대화 조건 만족 자연수 추론</b>이 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="loadSubStep('2-11')" style="margin-top:12px; width:100%; padding:10px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            다음 단계 [2-11] 대화 추론 문제로 이동 ➔
+          </button>
+        `;
+
+        drawStep2_10Canvas();
+      } else {
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            • 56을 소인수분해하면 $56 = 2^3 \\times 7$ 입니다.<br>
+            • 어떤 자연수의 제곱이 되려면 모든 소인수의 지수가 '짝수'이어야 합니다.<br>
+            • 2의 지수 3을 짝수로 만들려면 2가 몇 개 더 필요한가요?<br>
+            • 7의 지수 1을 짝수로 만들려면 7이 몇 개 더 필요한가요?<br>
+            💡 좌측 캔버스에서 곱셈 후보 카드를 눌러 제곱수가 되는지 확인해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (2-11 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -15229,6 +15669,10 @@
         state.lab2_9.step = 0;
         renderToolbar2_9();
         drawStep2_9Canvas();
+      } else if (state.subStep === '2-10') {
+        state.lab2_10.selectedMul = null;
+        renderToolbar2_10();
+        drawStep2_10Canvas();
       }
     }
 
@@ -15501,6 +15945,7 @@
         else if (state.subStep === '2-7') drawStep2_7Canvas();
         else if (state.subStep === '2-8') drawStep2_8Canvas();
         else if (state.subStep === '2-9') drawStep2_9Canvas();
+        else if (state.subStep === '2-10') drawStep2_10Canvas();
       }, 150);
     });
 
