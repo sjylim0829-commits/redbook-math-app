@@ -1236,6 +1236,11 @@
       lab4_9: {
         mode: 0, // 0: 조건 분석 랩, 1: 수직선 점프 랩
         step: 0  // 0~3 단계
+      },
+      // 4-10 Interactive Lab State (10. [생각 넓히기] 두 수의 곱과 GCD·LCM, p.22)
+      lab4_10: {
+        mode: 0, // 0: 조건 분석 랩, 1: 후보 검증 랩
+        step: 0  // Mode 0: 0~3, Mode 1: 0~2
       }
     };
 
@@ -1507,6 +1512,9 @@
       } else if (code === '4-9') {
         renderToolbar4_9();
         renderSubstep4_9();
+      } else if (code === '4-10') {
+        renderToolbar4_10();
+        renderSubstep4_10();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -4083,6 +4091,61 @@
       renderToolbar4_9();
       drawStep4_9Canvas();
     }
+
+    // -------------------------------------------------------------
+    // SUBSTEP 4-10 Handlers & Toolbar (10. [생각 넓히기] 두 수의 곱과 GCD·LCM, p.22)
+    // -------------------------------------------------------------
+    function renderToolbar4_10() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const isPassed4_10 = state.completedSubSteps && state.completedSubSteps.includes('4-10');
+      const curMode = state.lab4_10.mode || 0;
+      const curStep = state.lab4_10.step || 0;
+
+      let subControls = '';
+      if (curMode === 0) {
+        subControls = `
+          <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-left:6px; margin-right:4px;">탐구 단계:</span>
+          <button class="tool-btn ${curStep === 0 ? 'active' : ''}" onclick="setStep4_10Step(0)">➊ 조건 분석</button>
+          <button class="tool-btn ${curStep === 1 ? 'active' : ''}" onclick="setStep4_10Step(1)">➋ ab=18 순서쌍</button>
+          <button class="tool-btn ${curStep === 2 ? 'active' : ''}" onclick="setStep4_10Step(2)">➌ 합 44 조건 검증</button>
+          <button class="tool-btn ${curStep === 3 ? 'active' : ''}" onclick="setStep4_10Step(3)">${isPassed4_10 ? '➍ 두 수(36, 8)와 A×B=G×L' : '➍ 공식 도출 및 완성'}</button>
+        `;
+      } else {
+        subControls = `
+          <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-left:6px; margin-right:4px;">후보 검증:</span>
+          <button class="tool-btn ${curStep === 0 ? 'active' : ''}" onclick="setStep4_10Step(0)">후보 1: (18, 1) ➔ 72, 4</button>
+          <button class="tool-btn ${curStep === 1 ? 'active' : ''}" onclick="setStep4_10Step(1)">${isPassed4_10 ? '후보 2: (9, 2) ➔ 36, 8 (정답!)' : '후보 2: (9, 2) ➔ A, B 탐색'}</button>
+          <button class="tool-btn ${curStep === 2 ? 'active' : ''}" onclick="setStep4_10Step(2)">A×B = G×L 검산 (288)</button>
+        `;
+      }
+
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-right:4px;">모드:</span>
+        <button class="tool-btn ${curMode === 0 ? 'active' : ''}" onclick="setStep4_10Mode(0)">🔍 [조건 분석 랩] 서로소 순서쌍과 합 44</button>
+        <button class="tool-btn ${curMode === 1 ? 'active' : ''}" onclick="setStep4_10Mode(1)">💡 [후보 검증 랩] 합과 곱의 관계 탐구</button>
+        <span style="margin:0 4px; color:#cbd5e1;">|</span>
+        ${subControls}
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setStep4_10Mode(m) {
+      state.lab4_10.mode = m;
+      state.lab4_10.step = 0;
+      renderToolbar4_10();
+      drawStep4_10Canvas();
+    }
+
+    function setStep4_10Step(s) {
+      state.lab4_10.step = s;
+      renderToolbar4_10();
+      drawStep4_10Canvas();
+    }
+
 
 
 
@@ -25863,7 +25926,396 @@
 
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (4-10 to 6-2)
+    // SUBSTEP 4-10: 10. [생각 넓히기] 두 수의 곱과 GCD·LCM (p.22)
+    // -------------------------------------------------------------
+    function renderSubstep4_10() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[생각 넓히기 (두 수의 곱과 GCD·LCM)] (교과서 p.22)</b><br>
+        • 학생 1: "두 자연수의 합은 44야."<br>
+        • 학생 2: "두 자연수의 최대공약수는 4이고, 최소공배수는 72야."<br>
+        • 두 자연수를 $A = 4a,\\; B = 4b$ ($a, b$는 서로소)라 두고, 두 학생의 설명을 동시에 만족시키는 두 자연수를 구해 보세요.
+      `;
+
+      const isPassed4_10 = state.completedSubSteps && state.completedSubSteps.includes('4-10');
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.22</span>
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b;">생각 넓히기</span>
+          </div>
+          <h4 style="font-size:0.98rem; font-weight:800; color:#1e293b; margin-bottom:14px; line-height:1.5;">
+            다음 두 학생의 설명을 동시에 만족시키는 두 자연수를 구해 보자.
+          </h4>
+
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:14px; line-height:1.7; font-size:0.88rem; color:#334155;">
+            • <b>학생 1:</b> "두 자연수의 합은 44야."<br>
+            • <b>학생 2:</b> "두 자연수의 최대공약수는 4이고, 최소공배수는 72야."
+          </div>
+
+          <div style="margin-bottom:18px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              두 자연수 입력 (쉼표 구분):
+            </div>
+            <input type="text" id="ans-4-10" class="proof-input-text" placeholder="답 입력" style="width:160px;" autocomplete="off">
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep4_10()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            정답 확인 및 채점
+          </button>
+
+          <div id="feedback-step-4-10" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep4_10Canvas();
+    }
+
+    function drawStep4_10Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed4_10 = state.completedSubSteps && state.completedSubSteps.includes('4-10');
+      const curMode = state.lab4_10.mode || 0;
+      const curStep = state.lab4_10.step || 0;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 33
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(11, Math.min(13, Math.floor(width * 0.019)));
+
+      let modeTitle = '';
+      let modeSub = '';
+      if (curMode === 0) {
+        modeTitle = '🔍 [조건 분석 랩] 서로소 순서쌍과 합 44 조건 추론';
+        modeSub = '최대공약수 4와 최소공배수 72로부터 서로소 순서쌍을 도출하고 합을 비교합니다.';
+      } else {
+        modeTitle = '💡 [후보 검증 랩] 순서쌍 대입 검산 및 A×B = G×L 탐구';
+        modeSub = isPassed4_10
+          ? '후보 (72, 4)와 (36, 8)의 합과 곱을 대조하여 두 수의 곱의 성질을 확인합니다.'
+          : '도출된 서로소 순서쌍 후보의 합과 곱을 대조하여 두 수의 성질을 탐구합니다.';
+      }
+
+      const titleText = two.makeText(modeTitle, width / 2, 16);
+      titleText.size = titleSize;
+      titleText.weight = 800;
+      titleText.fill = '#1e293b';
+
+      const subText = two.makeText(modeSub, width / 2, 33);
+      subText.size = subSize;
+      subText.fill = '#64748b';
+
+      // 2. Formula / Sub-bar - y: 56, h: 26 (top: 43, bottom: 69)
+      const fBarW = Math.min(width - 40, 640);
+      const fBar = two.makeRoundedRectangle(width / 2, 56, fBarW, 26, 6);
+      fBar.fill = '#f1f5f9';
+      fBar.stroke = '#cbd5e1';
+      fBar.linewidth = 1;
+
+      let fBarStr = '';
+      if (curMode === 0) {
+        if (curStep === 0) fBarStr = '➊ G = 4 ➔ A = 4a, B = 4b (단, a, b는 서로소, a > b)';
+        else if (curStep === 1) fBarStr = '➋ L = 4ab = 72 ➔ ab = 18 ➔ 서로소 순서쌍: (18, 1), (9, 2)';
+        else if (curStep === 2) fBarStr = isPassed4_10 ? '➌ 후보 검증: (18, 1) ➔ 72+4=76 ❌ / (9, 2) ➔ 36+8=44 ✅' : '➌ 후보 검증: (18, 1) ➔ 72+4=76 ❌ / (9, 2) ➔ A+B 계산 및 검증';
+        else fBarStr = isPassed4_10 ? '➍ 두 수는 36, 8 완성! ✨ ➔ A×B = 288 = G×L 완벽 일치!' : '➍ 합이 44인 두 자연수를 구하여 우측에 입력해 보세요.';
+      } else {
+        if (curStep === 0) fBarStr = '후보 1: a=18, b=1 ➔ A=72, B=4 ➔ 합 A+B = 76 (44 ❌)';
+        else if (curStep === 1) fBarStr = isPassed4_10 ? '후보 2: a=9, b=2 ➔ A=36, B=8 ➔ 합 A+B = 44 (정답 일치! ✅)' : '후보 2: a=9, b=2 ➔ A=4a, B=4b ➔ 합 A+B 조건 검증';
+        else fBarStr = isPassed4_10 ? 'A×B = 36×8 = 288,  G×L = 4×72 = 288  ➔  A×B = G×L 성립! ✨' : 'A×B = G×L (두 수의 곱은 최대공약수와 최소공배수의 곱)';
+      }
+
+      const fBarText = two.makeText(fBarStr, width / 2, 56);
+      fBarText.size = Math.max(11, Math.min(13, Math.floor(width * 0.018)));
+      fBarText.weight = 700;
+      fBarText.fill = '#334155';
+
+      // 3. Central Board - y: 174, h: 178 (top: 85, bottom: 263)
+      const boardW = Math.min(width - 40, 640);
+      const board = two.makeRoundedRectangle(width / 2, 174, boardW, 178, 12);
+      board.fill = '#ffffff';
+      board.stroke = '#e2e8f0';
+      board.linewidth = 1.5;
+
+      const cX = width / 2;
+
+      if (curMode === 0) {
+        // Mode 0: 학생 대화 말풍선 및 조건 분석 칠판
+        const bW = Math.min(220, (boardW - 80) / 2);
+        const b1X = cX - bW / 2 - 10;
+        const b2X = cX + bW / 2 + 10;
+
+        // Student 1 Bubble
+        const s1Box = two.makeRoundedRectangle(b1X, 120, bW, 44, 8);
+        s1Box.fill = '#f0fdf4'; s1Box.stroke = '#86efac'; s1Box.linewidth = 1.5;
+        const s1T = two.makeText('👦 "두 자연수의 합은 44야"', b1X, 120);
+        s1T.size = 12.5; s1T.weight = 800; s1T.fill = '#065f46';
+
+        // Student 2 Bubble
+        const s2Box = two.makeRoundedRectangle(b2X, 120, bW, 44, 8);
+        s2Box.fill = '#eff6ff'; s2Box.stroke = '#93c5fd'; s2Box.linewidth = 1.5;
+        const s2T = two.makeText('👧 "GCD는 4, LCM은 72야"', b2X, 120);
+        s2T.size = 12.5; s2T.weight = 800; s2T.fill = '#1e40af';
+
+        // Analysis Box in Lower Section
+        const anaBox = two.makeRoundedRectangle(cX, 185, Math.min(520, boardW - 40), 62, 8);
+        anaBox.fill = '#f8fafc'; anaBox.stroke = '#e2e8f0'; anaBox.linewidth = 1;
+
+        let aT1 = '', aT2 = '';
+        if (curStep === 0) {
+          aT1 = 'A = 4 × a,   B = 4 × b   (단, a, b는 서로소, a > b)';
+          aT2 = '최대공약수 G = 4 이므로 두 수는 모두 4의 배수입니다.';
+        } else if (curStep === 1) {
+          aT1 = '최소공배수 L = 4 × a × b = 72   ➔   a × b = 18';
+          aT2 = '곱해서 18이 되는 서로소 순서쌍 (a, b):  (18, 1),   (9, 2)';
+        } else if (curStep === 2) {
+          aT1 = '(18, 1) ➔ A=72, B=4  ➔  합 = 76  (44가 아님 ❌)';
+          aT2 = isPassed4_10
+            ? '(9, 2) ➔ A=36, B=8  ➔  합 = 44  (조건 만족! ✅)'
+            : '(9, 2) ➔ A=4×9=?, B=4×2=?  ➔  합이 44가 되는지 확인하세요.';
+        } else {
+          aT1 = isPassed4_10
+            ? '구하는 두 자연수: 36, 8 (합: 44, GCD: 4, LCM: 72) 완성! ✨'
+            : '두 순서쌍 중 합이 44가 되는 A, B를 우측에 적어보세요.';
+          aT2 = isPassed4_10
+            ? '두 수의 곱: 36 × 8 = 288   =   G × L: 4 × 72 = 288 (공식 확인!)'
+            : 'A = 4a, B = 4b 에서 구한 두 자연수를 입력하세요.';
+        }
+
+        const tAna1 = two.makeText(aT1, cX, 175);
+        tAna1.size = 13; tAna1.weight = 800; tAna1.fill = '#1e293b';
+        const tAna2 = two.makeText(aT2, cX, 198);
+        tAna2.size = 12; tAna2.weight = 700; tAna2.fill = aT2.includes('✅') ? '#047857' : (aT2.includes('❌') ? '#b91c1c' : '#475569');
+
+        // Bottom text at y: 238
+        const tExp = two.makeText(
+          isPassed4_10
+            ? '➔ 두 자연수는 36과 8 입니다. (36 + 8 = 44, GCD = 4, LCM = 72) ✨'
+            : '➔ a × b = 18인 서로소 순서쌍에서 합이 44가 되는 조합을 찾아보세요.',
+          cX,
+          238
+        );
+        tExp.size = 12.5; tExp.weight = 800;
+        tExp.fill = isPassed4_10 ? '#047857' : '#334155';
+
+      } else {
+        // Mode 1: 후보 검증 랩
+        const boxW = Math.min(260, (boardW - 60) / 2);
+        const b1X = cX - boxW / 2 - 12;
+        const b2X = cX + boxW / 2 + 12;
+        const bY = 162;
+        const bH = 110;
+
+        const card1 = two.makeRoundedRectangle(b1X, bY, boxW, bH, 10);
+        const card2 = two.makeRoundedRectangle(b2X, bY, boxW, bH, 10);
+
+        let c1Bg = '#fef2f2', c1Border = '#fca5a5';
+        let c2Bg = isPassed4_10 ? '#ecfdf5' : '#f8fafc';
+        let c2Border = isPassed4_10 ? '#86efac' : '#cbd5e1';
+
+        card1.fill = c1Bg; card1.stroke = c1Border; card1.linewidth = 1.5;
+        card2.fill = c2Bg; card2.stroke = c2Border; card2.linewidth = 1.5;
+
+        // Card 1
+        const c1T1 = two.makeText('후보 1: (a=18, b=1)', b1X, bY - 30);
+        c1T1.size = 13.5; c1T1.weight = 800; c1T1.fill = '#1e293b';
+        const c1T2 = two.makeText('A = 4×18 = 72,   B = 4×1 = 4', b1X, bY - 6);
+        c1T2.size = 12.5; c1T2.weight = 700; c1T2.fill = '#334155';
+        const c1T3 = two.makeText('A + B = 76  (44가 아님 ❌)', b1X, bY + 22);
+        c1T3.size = 13; c1T3.weight = 800; c1T3.fill = '#dc2626';
+
+        // Card 2
+        const c2T1 = two.makeText('후보 2: (a=9, b=2)', b2X, bY - 30);
+        c2T1.size = 13.5; c2T1.weight = 800; c2T1.fill = '#1e293b';
+        const c2T2 = two.makeText(
+          isPassed4_10 ? 'A = 4×9 = 36,   B = 4×2 = 8' : 'A = 4×9 = ?,   B = 4×2 = ?',
+          b2X,
+          bY - 6
+        );
+        c2T2.size = 12.5; c2T2.weight = 700; c2T2.fill = '#334155';
+        const c2T3 = two.makeText(
+          isPassed4_10 ? 'A + B = 44  (조건 만족! ✅)' : 'A + B = ?  (계산해 보세요)',
+          b2X,
+          bY + 22
+        );
+        c2T3.size = 13; c2T3.weight = 800;
+        c2T3.fill = isPassed4_10 ? '#047857' : '#475569';
+
+        // Bottom text at y: 238
+        const tExp = two.makeText(
+          isPassed4_10
+            ? '➔ A×B = 36×8 = 288   =   G×L = 4×72 = 288 (두 수의 곱 = G×L) ✨'
+            : '➔ 합이 44가 되는 후보의 두 자연수를 찾아 우측에 적어보세요.',
+          cX,
+          238
+        );
+        tExp.size = 12.5; tExp.weight = 800;
+        tExp.fill = isPassed4_10 ? '#047857' : '#334155';
+      }
+
+      // 4. Status Bar - y: 288, h: 26 (top: 275, bottom: 301)
+      const sBarW = Math.min(width - 40, 640);
+      const sBar = two.makeRoundedRectangle(width / 2, 288, sBarW, 26, 6);
+      sBar.fill = isPassed4_10 ? '#ecfdf5' : '#f8fafc';
+      sBar.stroke = isPassed4_10 ? '#a7f3d0' : '#e2e8f0';
+      sBar.linewidth = 1;
+
+      let sBarMsg = '';
+      if (isPassed4_10) {
+        sBarMsg = '🎉 [학습 완료] 두 자연수 36, 8을 올바르게 구했습니다!';
+      } else {
+        sBarMsg = '💡 A = 4a, B = 4b에서 ab = 18이 되는 서로소 순서쌍 중 합이 44인 수를 찾으세요.';
+      }
+
+      const sBarText = two.makeText(sBarMsg, width / 2, 288);
+      sBarText.size = Math.max(11, Math.min(12.5, Math.floor(width * 0.018)));
+      sBarText.weight = 700;
+      sBarText.fill = isPassed4_10 ? '#047857' : '#475569';
+
+      // 5. Bottom Banner - y: 350, h: 68 (top: 316, bottom: 384)
+      const bBannerW = Math.min(width - 40, 640);
+      const bBanner = two.makeRoundedRectangle(width / 2, 350, bBannerW, 68, 10);
+      bBanner.fill = isPassed4_10 ? '#f0fdf4' : '#f8fafc';
+      bBanner.stroke = isPassed4_10 ? '#86efac' : '#cbd5e1';
+      bBanner.linewidth = 1.5;
+
+      const bbT1 = two.makeText(
+        isPassed4_10
+          ? '⭐ [핵심 원리] 두 수의 곱과 최대공약수·최소공배수의 관계'
+          : '💡 [개념 길잡이] 최대공약수와 최소공배수의 성질',
+        width / 2,
+        336
+      );
+      bbT1.size = 12.5; bbT1.weight = 800; bbT1.fill = isPassed4_10 ? '#065f46' : '#1e293b';
+
+      const bbT2 = two.makeText(
+        isPassed4_10
+          ? '• 두 자연수 A, B의 최대공약수가 G, 최소공배수가 L이면 A × B = G × L 이 항상 성립합니다. (36 × 8 = 4 × 72 = 288)'
+          : '• A = Ga, B = Gb (a, b는 서로소)이면 L = Gab 이므로, A × B = (Ga) × (Gb) = G × (Gab) = G × L 입니다.',
+        width / 2,
+        358
+      );
+      bbT2.size = 11.5; bbT2.fill = isPassed4_10 ? '#047857' : '#64748b';
+
+      two.update();
+
+      // Pointer event isolation
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas, svg') : null;
+      if (container) container.onpointerdown = null;
+      if (!canvasEl) return;
+
+      canvasEl.onpointerdown = (e) => {
+        if (curMode === 0) {
+          setStep4_10Step((curStep + 1) % 4);
+        } else {
+          setStep4_10Step((curStep + 1) % 3);
+        }
+      };
+    }
+
+    async function gradeStep4_10() {
+      const raw = cleanInput(document.getElementById('ans-4-10')?.value || '');
+      const nums = raw.match(/\d+/g)?.map(Number).sort((a,b)=>a-b) || [];
+
+      const isCorrect = (nums.length === 2 && nums[0] === 8 && nums[1] === 36);
+
+      const fEl = document.getElementById('feedback-step-4-10');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('4-10')) {
+          state.completedSubSteps.push('4-10');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('4-10', {
+              activityTitle: '[중1-1 소인수분해] [4-10] 10. [생각 넓히기] 두 수의 곱과 GCD·LCM',
+              answerText: raw,
+              answers: { ans: raw, nums: nums, val1: 36, val2: 8 },
+              score: 100,
+              passed: true,
+              unitId: 'u1'
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+
+        // Unlock next step 4-11 (디지털 쏙 수학)
+        if (!state.unlockedSubSteps.includes('4-11')) {
+          state.unlockedSubSteps.push('4-11');
+        }
+        updateSubStepPills(state.currentMainTab);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.2rem;">🎉</span>
+            <h4 style="color:#065f46; font-size:1.02rem; font-weight:800; margin:0;">정답입니다! 100점 (All Clear)</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            완벽하게 해결했습니다!<br>
+            • 두 수의 최대공약수가 $4$이므로 두 수를 $A = 4a,\\; B = 4b$ ($a, b$는 서로소, $a > b$)라 하면,<br>
+            • 최소공배수 $= 4ab = 72 \\implies ab = 18 = 2 \\times 3^2$<br>
+            • 서로소인 순서쌍 $(a, b)$:<br>
+            &nbsp;&nbsp;⑴ $(18, 1) \\implies A = 72, B = 4 \\implies A + B = 76 \\neq 44$ (탈락)<br>
+            &nbsp;&nbsp;⑵ $(9, 2) \\implies A = 36, B = 8 \\implies A + B = \\mathbf{44}$ (조건 일치!)<br>
+            • 따라서 두 자연수는 <b>36, 8</b> 입니다.<br>
+            • <b>[개념 확장]</b> 두 수의 곱 $36 \\times 8 = 288$ 과 최대공약수·최소공배수의 곱 $4 \\times 72 = 288$ 은 서로 같습니다! ($A \\times B = G \\times L$)<br>
+            <div style="margin-top:10px; padding:8px 12px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 다음 세부 활동 <b>[4-11] 11. 디지털 쏙 수학 (소수 판별 코딩 랩)</b>이 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="loadSubStep('4-11')" style="margin-top:12px; width:100%; padding:10px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            다음 단계 [4-11] 디지털 쏙 수학으로 이동 ➔
+          </button>
+        `;
+
+        renderToolbar4_10();
+        drawStep4_10Canvas();
+      } else {
+        let msg = '';
+        if (nums.length === 2 && nums[0] === 4 && nums[1] === 72) {
+          msg = '4와 72는 최대공약수가 4이고 최소공배수가 72이지만, 합이 $72 + 4 = 76$이 되어 "두 수의 합은 44"라는 조건에 맞지 않습니다.';
+        } else if (nums.length === 2 && nums[0] + nums[1] === 44) {
+          msg = `합은 44이지만, 최대공약수가 4이고 최소공배수가 72여야 합니다. $A=4a, B=4b$에서 $ab=18$이 되는 서로소 순서쌍을 찾아보세요.`;
+        } else {
+          msg = '두 자연수를 $4a, 4b$ ($a, b$는 서로소)라 두면 $ab = 18$입니다. 서로소 순서쌍 중 합이 44가 되는 두 수를 찾아보세요.';
+        }
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            • ${msg}<br>
+            💡 좌측 캔버스의 [조건 분석 랩]과 [후보 검증 랩]을 확인해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (4-11 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -26173,6 +26625,11 @@
         state.lab4_9.step = 0;
         renderToolbar4_9();
         drawStep4_9Canvas();
+      } else if (state.subStep === '4-10') {
+        state.lab4_10.mode = 0;
+        state.lab4_10.step = 0;
+        renderToolbar4_10();
+        drawStep4_10Canvas();
       }
     }
 
@@ -26468,6 +26925,7 @@
       else if (state.subStep === '4-7') drawStep4_7Canvas();
       else if (state.subStep === '4-8') drawStep4_8Canvas();
       else if (state.subStep === '4-9') drawStep4_9Canvas();
+      else if (state.subStep === '4-10') drawStep4_10Canvas();
       }, 150);
     });
 
