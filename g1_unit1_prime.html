@@ -1309,6 +1309,11 @@
       // 5-14 Interactive Diamond Network Deduction Lab State (14. 14번 서술형, p.26)
       lab5_14: {
         stepMode: 1 // 1: 1단계 (A 역산), 2: 2단계 (B, C 계산), 3: 3단계 (전체 네트워크)
+      },
+      // 6-1 Interactive Mondrian Rectangle Partition Puzzle State (활동 1, p.27)
+      lab6_1: {
+        viewMode: 1, // 1: 소수 직사각형(1×p) 우선 탐구, 2: 합성수 직사각형(a×b) 탐구, 3: 몬드리안 작품 완성
+        selectedRectId: 0
       }
     };
 
@@ -1631,6 +1636,9 @@
       } else if (code === '5-14') {
         renderToolbar5_14();
         renderSubstep5_14();
+      } else if (code === '6-1') {
+        renderToolbar6_1();
+        renderSubstep6_1();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -5106,6 +5114,54 @@
       if (c) c.value = '108';
       if (sum) sum.value = '162';
       gradeStep5_14();
+    }
+
+// -------------------------------------------------------------
+    // SUBSTEP 6-1: Toolbar & Handlers (1. 활동 1 몬드리안 직사각형 분할 퍼즐, p.27)
+    // -------------------------------------------------------------
+    function renderToolbar6_1() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const curMode = (state.lab6_1 && state.lab6_1.viewMode !== undefined) ? state.lab6_1.viewMode : 1;
+      const isPassed6_1 = state.completedSubSteps && state.completedSubSteps.includes('6-1');
+
+      tb.innerHTML = `
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <span style="font-size:0.8rem; font-weight:800; color:#475569;">[몬드리안 탐구 뷰]:</span>
+          <button class="btn btn-sm ${curMode === 1 ? 'btn-primary' : 'btn-outline'}" onclick="setStep6_1Mode(1)">1단계: 소수 직사각형(1×p) 우선 탐구</button>
+          <button class="btn btn-sm ${curMode === 2 ? 'btn-primary' : 'btn-outline'}" onclick="setStep6_1Mode(2)">2단계: 합성수 직사각형(a×b) 탐구</button>
+          <button class="btn btn-sm ${curMode === 3 ? 'btn-primary' : 'btn-outline'}" onclick="setStep6_1Mode(3)">3단계: 몬드리안 작품 완성${isPassed6_1 ? ' (19개 직사각형)' : ''}</button>
+          <button class="btn btn-sm btn-outline" onclick="resetLab6_1()" title="화면 초기화">🔄 초기화</button>
+          <button class="btn btn-sm btn-outline" onclick="teacherPassStep6_1()" style="border-color:#e2e8f0; color:#94a3b8;" title="교사 정답 패스">💡 패스</button>
+        </div>
+      `;
+    }
+
+    function setStep6_1Mode(m) {
+      if (!state.lab6_1) state.lab6_1 = { viewMode: 1, selectedRectId: 0 };
+      state.lab6_1.viewMode = m;
+      renderToolbar6_1();
+      drawStep6_1Canvas();
+    }
+
+    function resetLab6_1() {
+      if (!state.lab6_1) state.lab6_1 = { viewMode: 1, selectedRectId: 0 };
+      state.lab6_1.viewMode = 1;
+      state.lab6_1.selectedRectId = 0;
+      renderToolbar6_1();
+      drawStep6_1Canvas();
+    }
+
+    function teacherPassStep6_1() {
+      const q1 = document.getElementById('ans-6-1-q1');
+      const q2 = document.getElementById('ans-6-1-q2');
+      const q3 = document.getElementById('ans-6-1-q3');
+      if (q1) q1.value = '7';
+      if (q2) q2.value = '6';
+      if (q3) q3.value = '19';
+      gradeStep6_1();
     }
 
 
@@ -33697,8 +33753,431 @@
       }
     }
 
+// -------------------------------------------------------------
+    // SUBSTEP 6-1: 1. 활동 1 (몬드리안 직사각형 분할 퍼즐, p.27)
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (6-1 to 6-2)
+    function renderSubstep6_1() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[창의·융합 프로젝트: 1. 활동 1 (몬드리안 직사각형 분할 퍼즐)] (교과서 p.27)</b><br>
+        • 네덜란드 화가 <b>몬드리안(Mondrian)</b>은 빨강, 파랑, 노랑 등의 원색과 흰색, 검은색 직사각형 면, 검은색 선으로 이루어진 작품을 많이 만들었습니다.<br>
+        • <b>분할 규칙</b>: ① 주어진 수가 넓이가 되는 직사각형을 그 수를 포함하도록 그린다. ② 직사각형들은 서로 겹치지 않아야 한다.<br>
+        • <b>탐구 미션</b>: $10 \\times 10$ 정사각형 전체를 소수와 합성수의 성질을 이용하여 작은 직사각형들로 분해하고 몬드리안 원색으로 완성해 봅시다.
+      `;
+
+      const isPassed6_1 = state.completedSubSteps && state.completedSubSteps.includes('6-1');
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.27 창의·융합</span>
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b;">활동 1 (몬드리안 미술 퍼즐, 100점 만점)</span>
+          </div>
+          <h4 style="font-size:0.96rem; font-weight:800; color:#1e293b; margin-bottom:14px; line-height:1.5;">
+            주어진 수가 넓이가 되는 직사각형들로 $10 \\times 10$ 정사각형을 분할하고 탐구 질문에 답하시오.
+          </h4>
+
+          <!-- 1단계: 넓이가 7인 소수 직사각형의 크기 (35점) -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-weight:800; color:#1e293b; font-size:0.88rem;">1단계. 넓이가 $7$인 직사각형은 소수이므로 크기가 $1 \\times \\square$로 유일합니다. 긴 변의 길이를 쓰시오:</span>
+              <span style="font-size:0.75rem; background:#eff6ff; color:#1d4ed8; padding:2px 6px; border-radius:4px; font-weight:700;">배점 35%</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-weight:700; color:#334155;">긴 변의 길이 =</span>
+              <input type="text" id="ans-6-1-q1" class="proof-input-text" placeholder="수 입력" style="width:110px;" autocomplete="off">
+            </div>
+          </div>
+
+          <!-- 2단계: 넓이가 12인 합성수 직사각형의 더 긴 변 (35점) -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-weight:800; color:#1e293b; font-size:0.88rem;">2단계. 퍼즐에서 넓이가 $12$인 직사각형의 두 변 중 더 긴 변의 길이를 쓰시오:</span>
+              <span style="font-size:0.75rem; background:#ecfdf5; color:#047857; padding:2px 6px; border-radius:4px; font-weight:700;">배점 35%</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-weight:700; color:#334155;">더 긴 변의 길이 =</span>
+              <input type="text" id="ans-6-1-q2" class="proof-input-text" placeholder="수 입력" style="width:110px;" autocomplete="off">
+            </div>
+          </div>
+
+          <!-- 3단계: 전체 분할된 직사각형의 총 개수 (30점) -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-weight:800; color:#1e293b; font-size:0.88rem;">3단계. $10 \\times 10$ 정사각형 전체에 채워진 서로 겹치지 않는 직사각형의 총 개수를 구하시오:</span>
+              <span style="font-size:0.75rem; background:#fef3c7; color:#b45309; padding:2px 6px; border-radius:4px; font-weight:700;">배점 30%</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-weight:700; color:#334155;">직사각형 총 개수 =</span>
+              <input type="text" id="ans-6-1-q3" class="proof-input-text" placeholder="개수 입력" style="width:110px;" autocomplete="off">
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep6_1()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            몬드리안 분할 퍼즐 확인 및 채점
+          </button>
+
+          <div id="feedback-step-6-1" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep6_1Canvas();
+    }
+
+    function drawStep6_1Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed6_1 = state.completedSubSteps && state.completedSubSteps.includes('6-1');
+      const curMode = (state.lab6_1 && state.lab6_1.viewMode !== undefined) ? state.lab6_1.viewMode : 1;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 33
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(11, Math.min(13, Math.floor(width * 0.019)));
+
+      const titleText = two.makeText('🎨 [창의·융합 프로젝트] 몬드리안 직사각형 분할 아트 랩', width / 2, 16);
+      titleText.size = titleSize;
+      titleText.weight = 800;
+      titleText.fill = '#1e293b';
+
+      const subText = two.makeText('소수(1×p 유일)와 합성수(다양한 직사각형)의 성질을 이용하여 10×10 격자를 완성하세요.', width / 2, 33);
+      subText.size = subSize;
+      subText.fill = '#64748b';
+
+      // 2. Sub-bar - y: 56, h: 26
+      const fBarW = Math.min(width - 40, 640);
+      const fBar = two.makeRoundedRectangle(width / 2, 56, fBarW, 26, 6);
+      fBar.fill = '#f8fafc';
+      fBar.stroke = '#cbd5e1';
+      fBar.linewidth = 1;
+
+      let subLabel = '';
+      if (curMode === 1) {
+        subLabel = isPassed6_1
+          ? '뷰: [ 1단계: 소수 직사각형 우선 탐구 ] | 소수 2, 3, 7은 가로/세로가 오직 1×p 형태로만 유일하게 결정됩니다.'
+          : '뷰: [ 1단계: 소수 직사각형 우선 탐구 ] | 소수(2, 3, 7)는 약수가 1과 자신뿐이므로 1×p 띠 모양으로 먼저 배치합니다.';
+      } else if (curMode === 2) {
+        subLabel = isPassed6_1
+          ? '뷰: [ 2단계: 합성수 직사각형 탐구 ] | 12(6×2), 9(3×3), 6(3×2, 6×1), 4(2×2, 1×4), 8(4×2, 2×4) 분할 완료'
+          : '뷰: [ 2단계: 합성수 직사각형 탐구 ] | 합성수(4, 6, 8, 9, 12)는 여러 모양이 가능하므로 주변 소수 칸에 맞춰 조립합니다.';
+      } else {
+        subLabel = isPassed6_1
+          ? '뷰: [ 3단계: 몬드리안 작품 완성 ] | 총 19개 직사각형(넓이 합 100) 몬드리안 원색(빨강, 파랑, 노랑, 흰색, 검정) 완벽 분할!'
+          : '뷰: [ 3단계: 몬드리안 작품 완성 ] | 10×10 격자(넓이 100)를 빈틈없이 채운 몬드리안 예술 작품 뷰입니다.';
+      }
+
+      const subLblTxt = two.makeText(subLabel, width / 2, 56);
+      subLblTxt.size = Math.max(10, Math.min(12, Math.floor(width * 0.018)));
+      subLblTxt.weight = 700;
+      subLblTxt.fill = isPassed6_1 ? '#059669' : '#4338ca';
+
+      // 3. Main Board - y: 85 ~ 290 (center 185, h: 168)
+      const cx = width / 2;
+      const mainCard = two.makeRoundedRectangle(cx, 185, Math.min(width - 40, 580), 168, 10);
+      mainCard.fill = '#ffffff';
+      mainCard.stroke = isPassed6_1 ? '#10b981' : '#cbd5e1';
+      mainCard.linewidth = isPassed6_1 ? 2 : 1.5;
+
+      // The 19 Rectangles Definition
+      const rects = [
+        { id: 1,  num: 9,  r1: 0, c1: 0, r2: 2, c2: 2, color: '#ffffff', isPrime: false, numPos: [2, 1] }, // 3x3=9
+        { id: 2,  num: 8,  r1: 0, c1: 3, r2: 1, c2: 6, color: '#facc15', isPrime: false, numPos: [0, 6] }, // 2x4=8
+        { id: 3,  num: 6,  r1: 0, c1: 7, r2: 5, c2: 7, color: '#1e293b', isPrime: false, numPos: [3, 7] }, // 6x1=6
+        { id: 4,  num: 2,  r1: 0, c1: 8, r2: 0, c2: 9, color: '#dc2626', isPrime: true,  numPos: [0, 9] }, // 1x2=2
+        { id: 5,  num: 6,  r1: 1, c1: 8, r2: 3, c2: 9, color: '#ffffff', isPrime: false, numPos: [1, 8] }, // 3x2=6
+        { id: 6,  num: 2,  r1: 2, c1: 5, r2: 2, c2: 6, color: '#2563eb', isPrime: true,  numPos: [2, 6] }, // 1x2=2
+        { id: 7,  num: 12, r1: 2, c1: 3, r2: 7, c2: 4, color: '#dc2626', isPrime: false, numPos: [7, 3] }, // 6x2=12
+        { id: 8,  num: 4,  r1: 3, c1: 0, r2: 4, c2: 1, color: '#2563eb', isPrime: false, numPos: [3, 1] }, // 2x2=4
+        { id: 9,  num: 2,  r1: 3, c1: 2, r2: 4, c2: 2, color: '#1e293b', isPrime: true,  numPos: [4, 2] }, // 2x1=2
+        { id: 10, num: 6,  r1: 3, c1: 5, r2: 5, c2: 6, color: '#ffffff', isPrime: false, numPos: [5, 6] }, // 3x2=6
+        { id: 11, num: 2,  r1: 4, c1: 8, r2: 5, c2: 8, color: '#facc15', isPrime: true,  numPos: [5, 8] }, // 2x1=2
+        { id: 12, num: 6,  r1: 4, c1: 9, r2: 9, c2: 9, color: '#2563eb', isPrime: false, numPos: [8, 9] }, // 6x1=6
+        { id: 13, num: 3,  r1: 5, c1: 0, r2: 5, c2: 2, color: '#facc15', isPrime: true,  numPos: [5, 0] }, // 1x3=3
+        { id: 14, num: 3,  r1: 6, c1: 0, r2: 8, c2: 0, color: '#1e293b', isPrime: true,  numPos: [7, 0] }, // 3x1=3
+        { id: 15, num: 6,  r1: 6, c1: 1, r2: 8, c2: 2, color: '#ffffff', isPrime: false, numPos: [8, 2] }, // 3x2=6
+        { id: 16, num: 4,  r1: 6, c1: 5, r2: 7, c2: 6, color: '#1e293b', isPrime: false, numPos: [6, 5] }, // 2x2=4
+        { id: 17, num: 4,  r1: 8, c1: 3, r2: 8, c2: 6, color: '#facc15', isPrime: false, numPos: [8, 4] }, // 1x4=4
+        { id: 18, num: 8,  r1: 6, c1: 7, r2: 9, c2: 8, color: '#ffffff', isPrime: false, numPos: [9, 8] }, // 4x2=8
+        { id: 19, num: 7,  r1: 9, c1: 0, r2: 9, c2: 6, color: '#dc2626', isPrime: true,  numPos: [9, 2] }  // 1x7=7
+      ];
+
+      const cs = 15; // cell size: 15px -> 10x15 = 150px total grid size
+      const gridW = 10 * cs;
+      const gridH = 10 * cs;
+      const startX = cx - gridW / 2;
+      const startY = 185 - gridH / 2;
+
+      // Draw 10x10 Rectangles
+      rects.forEach(rect => {
+        const rw = (rect.c2 - rect.c1 + 1) * cs;
+        const rh = (rect.r2 - rect.r1 + 1) * cs;
+        const rx = startX + rect.c1 * cs + rw / 2;
+        const ry = startY + rect.r1 * cs + rh / 2;
+
+        const rShape = two.makeRectangle(rx, ry, rw, rh);
+
+        let fColor = rect.color;
+        let sColor = '#0f172a';
+        let sWidth = 2.2;
+
+        if (curMode === 1 && !isPassed6_1) {
+          if (rect.isPrime) {
+            fColor = rect.color;
+            sColor = '#0f172a';
+            sWidth = 2.2;
+          } else {
+            fColor = '#f8fafc';
+            sColor = '#cbd5e1';
+            sWidth = 1;
+          }
+        } else if (curMode === 2 && !isPassed6_1) {
+          if (!rect.isPrime) {
+            fColor = rect.color;
+            sColor = '#0f172a';
+            sWidth = 2.2;
+          } else {
+            fColor = rect.color;
+            sColor = '#64748b';
+            sWidth = 1.2;
+          }
+        }
+
+        rShape.fill = fColor;
+        rShape.stroke = sColor;
+        rShape.linewidth = sWidth;
+
+        // Number Label at textbook numPos
+        const numRow = rect.numPos[0];
+        const numCol = rect.numPos[1];
+        const nx = startX + numCol * cs + cs / 2;
+        const ny = startY + numRow * cs + cs / 2;
+
+        const numTxt = two.makeText(String(rect.num), nx, ny);
+        numTxt.size = 10;
+        numTxt.weight = 800;
+
+        // Text fill color
+        if (curMode === 1 && !isPassed6_1 && !rect.isPrime) {
+          numTxt.fill = '#94a3b8';
+        } else if (fColor === '#ffffff' || fColor === '#facc15' || fColor === '#f8fafc') {
+          numTxt.fill = '#0f172a';
+        } else {
+          numTxt.fill = '#ffffff';
+        }
+      });
+
+      // Side Info Badges (if width permits)
+      if (width >= 560) {
+        // Left Badge: 소수 성질 (Prime)
+        const leftBadge = two.makeRoundedRectangle(cx - 165, 185, 125, 140, 8);
+        leftBadge.fill = (curMode === 1 || isPassed6_1) ? '#eff6ff' : '#f8fafc';
+        leftBadge.stroke = (curMode === 1 || isPassed6_1) ? '#60a5fa' : '#cbd5e1';
+        leftBadge.linewidth = 1.2;
+
+        const lT1 = two.makeText('📌 소수 넓이 (1×p)', cx - 165, 130);
+        lT1.size = 11; lT1.weight = 800; lT1.fill = '#1d4ed8';
+
+        const lT2 = two.makeText('• 약수가 1과 자신뿐', cx - 165, 150);
+        lT2.size = 10; lT2.weight = 700; lT2.fill = '#334155';
+
+        const lT3 = two.makeText('• 1×p 띠 모양 유일', cx - 165, 168);
+        lT3.size = 10; lT3.weight = 700; lT3.fill = '#334155';
+
+        const lT4 = two.makeText(isPassed6_1 ? '7: 1×7 (빨강)' : '7: 1×□ (빨강)', cx - 165, 192);
+        lT4.size = 10; lT4.weight = 700; lT4.fill = '#dc2626';
+
+        const lT5 = two.makeText(isPassed6_1 ? '3: 1×3 (노랑/검정)' : '3: 1×□ (노랑/검정)', cx - 165, 209);
+        lT5.size = 10; lT5.weight = 700; lT5.fill = '#b45309';
+
+        const lT6 = two.makeText(isPassed6_1 ? '2: 1×2 (빨/파/노/검)' : '2: 1×□ (빨/파/노/검)', cx - 165, 226);
+        lT6.size = 10; lT6.weight = 700; lT6.fill = '#2563eb';
+
+        // Right Badge: 합성수 성질 (Composite)
+        const rightBadge = two.makeRoundedRectangle(cx + 165, 185, 125, 140, 8);
+        rightBadge.fill = (curMode === 2 || isPassed6_1) ? '#fef3c7' : '#f8fafc';
+        rightBadge.stroke = (curMode === 2 || isPassed6_1) ? '#f59e0b' : '#cbd5e1';
+        rightBadge.linewidth = 1.2;
+
+        const rT1 = two.makeText('🧩 합성수 넓이 (a×b)', cx + 165, 130);
+        rT1.size = 11; rT1.weight = 800; rT1.fill = '#b45309';
+
+        const rT2 = two.makeText('• 다양한 직사각형 가능', cx + 165, 150);
+        rT2.size = 10; rT2.weight = 700; rT2.fill = '#334155';
+
+        const rT3 = two.makeText('• 주변 칸 고려해 조립', cx + 165, 168);
+        rT3.size = 10; rT3.weight = 700; rT3.fill = '#334155';
+
+        const rT4 = two.makeText(isPassed6_1 ? '12: 6×2 (빨강)' : '12: □×□ (빨강)', cx + 165, 192);
+        rT4.size = 10; rT4.weight = 700; rT4.fill = '#dc2626';
+
+        const rT5 = two.makeText(isPassed6_1 ? '9: 3×3 (흰색)' : '9: 3×3 등 (흰색)', cx + 165, 209);
+        rT5.size = 10; rT5.weight = 700; rT5.fill = '#0f172a';
+
+        const rT6 = two.makeText(isPassed6_1 ? '8, 6, 4: 2×4, 3×2 등' : '8, 6, 4: 다양한 분할', cx + 165, 226);
+        rT6.size = 10; rT6.weight = 700; rT6.fill = '#475569';
+      }
+
+      // 4. Summary / Rule Banner - y: 345, h: 74 (occupies 308 ~ 382 <= 440, bottom margin 58px >= 56px)
+      const bannerW = Math.min(width - 40, 640);
+      const banner = two.makeRoundedRectangle(width / 2, 345, bannerW, 74, 10);
+      banner.fill = isPassed6_1 ? '#ecfdf5' : '#f8fafc';
+      banner.stroke = isPassed6_1 ? '#a7f3d0' : '#cbd5e1';
+      banner.linewidth = 1.5;
+
+      let bT1 = '';
+      let bT2 = '';
+      let bT3 = '';
+
+      if (isPassed6_1) {
+        bT1 = '🎉 [활동 1 완료: 10×10 몬드리안 직사각형 분할 완성!]';
+        bT2 = '• 소수(2, 3, 7)의 1×p 성질과 합성수(4, 6, 8, 9, 12)의 약수 분해로 총 19개 직사각형(넓이 100)을 완벽 분할했습니다!';
+        bT3 = '• 다음 [6-2] 활동 2 (분할 규칙과 수학적 의미 탐구)에서 소수와 합성수의 성질을 수학적으로 정리해 봅시다.';
+      } else {
+        bT1 = '💡 [몬드리안 퍼즐 탐구 가이드 (교과서 p.27)]';
+        bT2 = '• 1단계: 소수(2, 3, 7)는 약수가 1과 자신뿐이므로 직사각형 모양이 1×p로 유일합니다. 이를 먼저 찾아 배치하세요.';
+        bT3 = '• 2단계: 큰 합성수(12, 9)는 주변 칸과의 관계를 고려하면 모양이 좁혀지며, 나머지 직사각형도 쉽게 맞출 수 있습니다.';
+      }
+
+      const txtT1 = two.makeText(bT1, width / 2, 323);
+      txtT1.size = 12;
+      txtT1.weight = 800;
+      txtT1.fill = isPassed6_1 ? '#065f46' : '#1e293b';
+
+      const txtT2 = two.makeText(bT2, width / 2, 344);
+      txtT2.size = 11;
+      txtT2.weight = 600;
+      txtT2.fill = isPassed6_1 ? '#047857' : '#334155';
+
+      const txtT3 = two.makeText(bT3, width / 2, 363);
+      txtT3.size = 10.5;
+      txtT3.weight = 500;
+      txtT3.fill = isPassed6_1 ? '#047857' : '#64748b';
+
+      two.update();
+
+      // 5. Pointer Event Isolation
+      const container = document.getElementById('two-container');
+      if (container) container.onpointerdown = null;
+
+      const canvasEl = container ? container.querySelector('canvas, svg') : null;
+      if (canvasEl) {
+        canvasEl.style.cursor = 'pointer';
+        canvasEl.onpointerdown = (e) => {
+          const next = curMode === 1 ? 2 : (curMode === 2 ? 3 : 1);
+          setStep6_1Mode(next);
+        };
+      }
+    }
+
+    async function gradeStep6_1() {
+      const rawQ1 = cleanInput(document.getElementById('ans-6-1-q1')?.value || '');
+      const rawQ2 = cleanInput(document.getElementById('ans-6-1-q2')?.value || '');
+      const rawQ3 = cleanInput(document.getElementById('ans-6-1-q3')?.value || '');
+
+      const q1 = parseInt(rawQ1, 10);
+      const q2 = parseInt(rawQ2, 10);
+      const q3 = parseInt(rawQ3, 10);
+
+      const isQ1Correct = (q1 === 7);
+      const isQ2Correct = (q2 === 6);
+      const isQ3Correct = (q3 === 19);
+
+      const isCorrect = isQ1Correct && isQ2Correct && isQ3Correct;
+
+      const fEl = document.getElementById('feedback-step-6-1');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('6-1')) {
+          state.completedSubSteps.push('6-1');
+        }
+
+        // Unlock next substep 6-2 (final substep of Unit 1)
+        if (!state.unlockedSubSteps.includes('6-2')) {
+          state.unlockedSubSteps.push('6-2');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('6-1', {
+              q1: 7,
+              q2: 6,
+              q3: 19,
+              activityTitle: '[중1-1 소인수분해] [6-1] 1. 활동 1 (몬드리안 직사각형 분할 퍼즐)',
+              score: 100,
+              passed: true
+            }, 'u1');
+          } catch (err) {
+            console.warn('LMS save error:', err);
+          }
+        }
+
+        updateSubStepPills(6);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.4rem;">🎨</span>
+            <h4 style="color:#065f46; font-size:1.05rem; font-weight:800; margin:0;">
+              몬드리안 분할 퍼즐 100점 만점 완벽 해결!
+            </h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            훌륭합니다! 소수와 합성수의 성질을 완벽히 활용했습니다.<br>
+            • <b>1단계 (35점)</b>: $7$ 은 소수이므로 가로와 세로의 크기가 $1 \\times 7$ 로 유일 $\\implies$ 긴 변의 길이 <b>$7$</b><br>
+            • <b>2단계 (35점)</b>: 넓이가 $12$ 인 직사각형은 주변 칸 배치상 $6 \\times 2$ 가 유일 $\\implies$ 더 긴 변의 길이 <b>$6$</b><br>
+            • <b>3단계 (30점)</b>: $10 \\times 10$ 정사각형 전체에 채워진 겹치지 않는 직사각형의 총 개수는 <b>$19$개</b> (넓이의 합: $100$)<br>
+            <div style="margin-top:12px; padding:12px 14px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 <b>[6-2] 2. 활동 2 (분할 규칙과 수학적 의미 탐구 - 1단원 최종 완결 문항)</b>이 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="loadSubStep('6-2')" style="margin-top:12px; width:100%; padding:11px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            1단원 최종 완결 [6-2] 활동 2 도전하러 가기 ➔
+          </button>
+        `;
+
+        setStep6_1Mode(3);
+      } else {
+        let msg = '';
+        if (!isQ1Correct) {
+          msg = '1단계: 7은 1과 자기 자신만을 약수로 가지는 소수입니다. 1 × □ 에서 긴 변의 길이를 다시 확인하세요.';
+        } else if (!isQ2Correct) {
+          msg = '2단계: 캔버스 격자에서 넓이가 12인 빨간색 직사각형의 세로와 가로 칸 수를 세어 더 긴 변의 길이를 확인해 보세요.';
+        } else if (!isQ3Correct) {
+          msg = '3단계: 격자 안에 배치된 직사각형의 총 개수(넓이의 합이 100이 되는 조각 수)를 다시 세어 보세요.';
+        }
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            • ${msg}<br>
+            💡 좌측 캔버스 상단의 [1단계: 소수 직사각형], [2단계: 합성수 직사각형], [3단계: 작품 완성] 버튼을 눌러 직사각형들을 관찰해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (6-2 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -34094,6 +34573,12 @@
         state.lab5_14.stepMode = 1;
         renderToolbar5_14();
         drawStep5_14Canvas();
+      } else if (state.subStep === '6-1') {
+        if (!state.lab6_1) state.lab6_1 = { viewMode: 1, selectedRectId: 0 };
+        state.lab6_1.viewMode = 1;
+        state.lab6_1.selectedRectId = 0;
+        renderToolbar6_1();
+        drawStep6_1Canvas();
       }
     }
 
@@ -34406,6 +34891,7 @@
       else if (state.subStep === '5-12') drawStep5_12Canvas();
       else if (state.subStep === '5-13') drawStep5_13Canvas();
       else if (state.subStep === '5-14') drawStep5_14Canvas();
+      else if (state.subStep === '6-1') drawStep6_1Canvas();
       }, 150);
     });
 
