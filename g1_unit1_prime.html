@@ -1273,6 +1273,10 @@
       // 5-5 Interactive Square Number Division Lab State (5. 05번 제곱수 만들기, p.25)
       lab5_5: {
         step: 0 // 0: 소인수분해, 1: a로 나누기, 2: b^2 완성
+      },
+      // 5-6 Interactive Coprime Lab State (6. 06번 서로소인 두 수 찾기, p.25)
+      lab5_6: {
+        selectedChoice: 1
       }
     };
 
@@ -1568,6 +1572,9 @@
       } else if (code === '5-5') {
         renderToolbar5_5();
         renderSubstep5_5();
+      } else if (code === '5-6') {
+        renderToolbar5_6();
+        renderSubstep5_6();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -4612,6 +4619,52 @@
       if (b) b.value = '2';
       if (sum) sum.value = '23';
       gradeStep5_5();
+    }
+
+// -------------------------------------------------------------
+    // SUBSTEP 5-6: Toolbar & Handlers (6. 06번 서로소인 두 수 찾기, p.25)
+    // -------------------------------------------------------------
+    function renderToolbar5_6() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const curChoice = (state.lab5_6 && state.lab5_6.selectedChoice !== undefined) ? state.lab5_6.selectedChoice : 1;
+
+      tb.innerHTML = `
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <span style="font-size:0.8rem; font-weight:800; color:#475569;">[보기 탐구]:</span>
+          <button class="btn btn-sm ${curChoice === 1 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_6Choice(1)">보기 ①</button>
+          <button class="btn btn-sm ${curChoice === 2 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_6Choice(2)">보기 ②</button>
+          <button class="btn btn-sm ${curChoice === 3 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_6Choice(3)">보기 ③</button>
+          <button class="btn btn-sm ${curChoice === 4 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_6Choice(4)" style="${curChoice === 4 ? 'background:#059669;border-color:#059669;color:#fff;' : ''}">보기 ④</button>
+          <button class="btn btn-sm ${curChoice === 5 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_6Choice(5)">보기 ⑤</button>
+          <button class="btn btn-sm btn-outline" onclick="resetLab5_6()" title="화면 초기화">🔄 초기화</button>
+          <button class="btn btn-sm btn-outline" onclick="teacherPassStep5_6()" style="border-color:#e2e8f0; color:#94a3b8;" title="교사 정답 패스">💡 패스</button>
+        </div>
+      `;
+    }
+
+    function setStep5_6Choice(c) {
+      if (!state.lab5_6) state.lab5_6 = { selectedChoice: 1 };
+      state.lab5_6.selectedChoice = c;
+      renderToolbar5_6();
+      drawStep5_6Canvas();
+    }
+
+    function resetLab5_6() {
+      if (!state.lab5_6) state.lab5_6 = { selectedChoice: 1 };
+      state.lab5_6.selectedChoice = 1;
+      renderToolbar5_6();
+      drawStep5_6Canvas();
+    }
+
+    function teacherPassStep5_6() {
+      const ch = document.getElementById('ans-5-6-choice');
+      const gcd = document.getElementById('ans-5-6-gcd');
+      if (ch) ch.value = '4';
+      if (gcd) gcd.value = '1';
+      gradeStep5_6();
     }
 
 
@@ -29760,8 +29813,346 @@
     }
 
 
+// -------------------------------------------------------------
+    // SUBSTEP 5-6: 6. 06번 (서로소인 두 수 찾기, p.25)
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (5-6 to 6-2)
+    function renderSubstep5_6() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[대단원 5. 스스로 마무리하기: 6. 06번 (서로소인 두 수 찾기)] (교과서 p.25)</b><br>
+        • 다음 중에서 <b>두 수가 서로소인 것</b>을 고르시오.<br>
+        • 최대공약수가 $1$인 두 자연수를 <b>서로소(Coprime)</b>라고 합니다.<br>
+        • 좌측 캔버스에서 각 보기의 두 수를 소인수분해하여 공통인 소인수(교집합)가 없는 쌍을 찾아보세요.
+      `;
+
+      const isPassed5_6 = state.completedSubSteps && state.completedSubSteps.includes('5-6');
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.25</span>
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b;">06번 문제</span>
+          </div>
+          <h4 style="font-size:0.98rem; font-weight:800; color:#1e293b; margin-bottom:14px; line-height:1.5;">
+            다음 중에서 두 수가 서로소인 것을 고르시오.
+          </h4>
+
+          <!-- 소문항 1: 서로소 보기 선택 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:8px;">
+              1. 두 수가 서로소인 보기를 선택하세요:
+            </div>
+            <select id="ans-5-6-choice" class="proof-input-text" style="width:230px;">
+              <option value="">선택</option>
+              <option value="1">① 13, 52</option>
+              <option value="2">② 15, 27</option>
+              <option value="3">③ 36, 45</option>
+              <option value="4">④ 35, 2 × 3²</option>
+              <option value="5">⑤ 2² × 3 × 5, 2 × 3² × 5²</option>
+            </select>
+          </div>
+
+          <!-- 소문항 2: 보기 ④의 최대공약수 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:16px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              2. 보기 ④의 두 수 35와 $2 \\times 3^2$의 최대공약수(GCD)를 쓰시오:
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-weight:700; color:#334155;">최대공약수 =</span>
+              <input type="text" id="ans-5-6-gcd" class="proof-input-text" placeholder="답 입력" style="width:110px;" autocomplete="off">
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep5_6()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            서로소 판별 및 정답 확인
+          </button>
+
+          <div id="feedback-step-5-6" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep5_6Canvas();
+    }
+
+    function drawStep5_6Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed5_6 = state.completedSubSteps && state.completedSubSteps.includes('5-6');
+      const curChoice = (state.lab5_6 && state.lab5_6.selectedChoice !== undefined) ? state.lab5_6.selectedChoice : 1;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 33
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(11, Math.min(13, Math.floor(width * 0.019)));
+
+      const titleText = two.makeText('🤝 [대단원 마무리 06번] 서로소인 두 수 판별 랩', width / 2, 16);
+      titleText.size = titleSize;
+      titleText.weight = 800;
+      titleText.fill = '#1e293b';
+
+      const subText = two.makeText('각 보기의 두 수를 소인수분해하여 공통 소인수와 최대공약수(GCD)를 탐구하세요.', width / 2, 33);
+      subText.size = subSize;
+      subText.fill = '#64748b';
+
+      // 2. Sub-bar - y: 56, h: 26 (occupies 43 ~ 69)
+      const fBarW = Math.min(width - 40, 640);
+      const fBar = two.makeRoundedRectangle(width / 2, 56, fBarW, 26, 6);
+      fBar.fill = '#f8fafc';
+      fBar.stroke = '#cbd5e1';
+      fBar.linewidth = 1;
+
+      const choiceMeta = [
+        { id: 1, label: '① 13, 52', nameA: '13', primeA: '13', nameB: '52', primeB: '2² × 13', common: '13', gcd: 13, isCoprime: false },
+        { id: 2, label: '② 15, 27', nameA: '15', primeA: '3 × 5', nameB: '27', primeB: '3³', common: '3', gcd: 3, isCoprime: false },
+        { id: 3, label: '③ 36, 45', nameA: '36', primeA: '2² × 3²', nameB: '45', primeB: '3² × 5', common: '3² = 9', gcd: 9, isCoprime: false },
+        { id: 4, label: '④ 35, 2 × 3²', nameA: '35', primeA: '5 × 7', nameB: '2 × 3²', primeB: '2 × 3²', common: '없음', gcd: 1, isCoprime: true },
+        { id: 5, label: '⑤ 2² × 3 × 5, 2 × 3² × 5²', nameA: '2² × 3 × 5', primeA: '2² × 3 × 5', nameB: '2 × 3² × 5²', primeB: '2 × 3² × 5²', common: '2 × 3 × 5 = 30', gcd: 30, isCoprime: false }
+      ];
+
+      const curData = choiceMeta.find(c => c.id === curChoice) || choiceMeta[0];
+
+      let subLabel = '';
+      if (curData.isCoprime) {
+        subLabel = isPassed5_6
+          ? `선택된 보기: [ ${curData.label} ] | 최대공약수 = 1 ➔ 서로소 O (정답: ④)`
+          : `선택된 보기: [ ${curData.label} ] | 두 수의 소인수분해를 비교하여 공통 소인수 유무를 탐구하세요`;
+      } else {
+        subLabel = `선택된 보기: [ ${curData.label} ] | 최대공약수 = ${curData.gcd} ➔ 서로소 X (서로소가 아닙니다)`;
+      }
+
+      const subLblTxt = two.makeText(subLabel, width / 2, 56);
+      subLblTxt.size = Math.max(10, Math.min(12, Math.floor(width * 0.018)));
+      subLblTxt.weight = 700;
+      subLblTxt.fill = (curData.isCoprime && isPassed5_6) ? '#059669' : '#4338ca';
+
+      // 3. Main Board - y: 85 ~ 290
+      const cx = width / 2;
+      const mainCard = two.makeRoundedRectangle(cx, 185, Math.min(width - 40, 560), 160, 10);
+      mainCard.fill = curData.isCoprime ? '#ecfdf5' : '#ffffff';
+      mainCard.stroke = curData.isCoprime ? '#10b981' : '#cbd5e1';
+      mainCard.linewidth = curData.isCoprime ? 2 : 1.5;
+
+      // Title of current pair at y = 118
+      const pTitle = two.makeText(`[${curData.label}] 소인수분해 비교`, cx, 118);
+      pTitle.size = 13.5;
+      pTitle.weight = 800;
+      pTitle.fill = '#1e293b';
+
+      // Factorization display cards at y = 160
+      const boxW = Math.min(220, Math.floor((width - 100) / 2));
+      const bLeft = two.makeRoundedRectangle(cx - boxW / 2 - 10, 160, boxW, 46, 6);
+      bLeft.fill = '#eff6ff';
+      bLeft.stroke = '#3b82f6';
+      bLeft.linewidth = 1.5;
+
+      const tL1 = two.makeText(`A = ${curData.nameA}`, cx - boxW / 2 - 10, 150);
+      tL1.size = 12;
+      tL1.weight = 700;
+      tL1.fill = '#1e40af';
+      const tL2 = two.makeText(`소인수분해: ${curData.primeA}`, cx - boxW / 2 - 10, 170);
+      tL2.size = 11;
+      tL2.weight = 800;
+      tL2.fill = '#1d4ed8';
+
+      const bRight = two.makeRoundedRectangle(cx + boxW / 2 + 10, 160, boxW, 46, 6);
+      bRight.fill = '#fefce8';
+      bRight.stroke = '#eab308';
+      bRight.linewidth = 1.5;
+
+      const tR1 = two.makeText(`B = ${curData.nameB}`, cx + boxW / 2 + 10, 150);
+      tR1.size = 12;
+      tR1.weight = 700;
+      tR1.fill = '#854d0e';
+      const tR2 = two.makeText(`소인수분해: ${curData.primeB}`, cx + boxW / 2 + 10, 170);
+      tR2.size = 11;
+      tR2.weight = 800;
+      tR2.fill = '#a16207';
+
+      // Comparison Result Banner at y = 222
+      const resBox = two.makeRoundedRectangle(cx, 222, Math.min(width - 80, 480), 46, 6);
+      resBox.fill = (curData.isCoprime && !isPassed5_6) ? '#f8fafc' : (curData.isCoprime ? '#d1fae5' : '#fff1f2');
+      resBox.stroke = (curData.isCoprime && !isPassed5_6) ? '#cbd5e1' : (curData.isCoprime ? '#34d399' : '#fecdd3');
+      resBox.linewidth = 1.5;
+
+      let cLine1Text = '';
+      let verdictText = '';
+      if (curData.isCoprime) {
+        if (isPassed5_6) {
+          cLine1Text = `• 공통인 소인수: 없음  ➔  최대공약수: 1`;
+          verdictText = '공통인 소인수가 없으므로 최대공약수가 1입니다 ➔ 서로소 O (정답: ④)';
+        } else {
+          cLine1Text = `• 공통인 소인수: 없음 (소인수 5, 7과 소인수 2, 3이 전혀 겹치지 않음)`;
+          verdictText = '두 수의 공통인 소인수가 없으므로 최대공약수와 서로소 여부를 판정해 보세요.';
+        }
+      } else {
+        cLine1Text = `• 공통인 소인수: ${curData.common}  ➔  최대공약수: ${curData.gcd}`;
+        verdictText = '공통인 소인수가 존재하므로 최대공약수가 1이 아닙니다 ➔ 서로소 X';
+      }
+
+      const cLine1 = two.makeText(cLine1Text, cx, 213);
+      cLine1.size = 12;
+      cLine1.weight = 800;
+      cLine1.fill = (curData.isCoprime && isPassed5_6) ? '#065f46' : (curData.isCoprime ? '#1e293b' : '#9f1239');
+
+      const cLine2 = two.makeText(`• 판정: ${verdictText}`, cx, 232);
+      cLine2.size = 11.5;
+      cLine2.weight = 700;
+      cLine2.fill = (curData.isCoprime && isPassed5_6) ? '#047857' : (curData.isCoprime ? '#475569' : '#be123c');
+
+      // 4. Summary / Rule Banner - y: 345, h: 74 (occupies 308 ~ 382 <= 440, bottom margin 58px >= 56px)
+      const bW = Math.min(width - 40, 640);
+      const banner = two.makeRoundedRectangle(width / 2, 345, bW, 74, 10);
+      banner.fill = isPassed5_6 ? '#ecfdf5' : '#f8fafc';
+      banner.stroke = isPassed5_6 ? '#a7f3d0' : '#cbd5e1';
+      banner.linewidth = 1.5;
+
+      let bT1 = '';
+      let bT2 = '';
+      let bT3 = '';
+
+      if (isPassed5_6) {
+        bT1 = '🎉 [서로소 판별 완벽 정리] (정답: ④)';
+        bT2 = '• 35 = 5 × 7 이고, 2 × 3² = 18 이므로 두 수는 공통인 소인수가 없습니다.';
+        bT3 = '• 따라서 두 수의 최대공약수가 1이므로 두 수는 서로소입니다.';
+      } else {
+        bT1 = '💡 [서로소(Coprime)의 수학적 정의 및 판별법]';
+        bT2 = '• 최대공약수가 1인 두 자연수를 서로소라고 합니다.';
+        bT3 = '• 두 수를 소인수분해했을 때 공통인 소인수가 하나도 없으면 두 수는 서로소입니다.';
+      }
+
+      const txtT1 = two.makeText(bT1, width / 2, 323);
+      txtT1.size = 12;
+      txtT1.weight = 800;
+      txtT1.fill = isPassed5_6 ? '#065f46' : '#1e293b';
+
+      const txtT2 = two.makeText(bT2, width / 2, 344);
+      txtT2.size = 11;
+      txtT2.weight = 600;
+      txtT2.fill = isPassed5_6 ? '#047857' : '#334155';
+
+      const txtT3 = two.makeText(bT3, width / 2, 363);
+      txtT3.size = 10.5;
+      txtT3.weight = 500;
+      txtT3.fill = isPassed5_6 ? '#047857' : '#64748b';
+
+      two.update();
+
+      // 5. Pointer Event Isolation
+      const container = document.getElementById('two-container');
+      if (container) container.onpointerdown = null;
+
+      const canvasEl = container ? container.querySelector('canvas, svg') : null;
+      if (canvasEl) {
+        canvasEl.style.cursor = 'pointer';
+        canvasEl.onpointerdown = (e) => {
+          const nextChoice = (curChoice % 5) + 1;
+          setStep5_6Choice(nextChoice);
+        };
+      }
+    }
+
+    async function gradeStep5_6() {
+      const choice = document.getElementById('ans-5-6-choice')?.value || '';
+      const rawGcd = cleanInput(document.getElementById('ans-5-6-gcd')?.value || '');
+      const gcd = parseInt(rawGcd, 10);
+
+      const isChoiceCorrect = (choice === '4');
+      const isGcdCorrect = (gcd === 1);
+
+      const isCorrect = isChoiceCorrect && isGcdCorrect;
+
+      const fEl = document.getElementById('feedback-step-5-6');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('5-6')) {
+          state.completedSubSteps.push('5-6');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('5-6', {
+              choice: '4',
+              gcd: 1,
+              activityTitle: '[중1-1 소인수분해] [5-6] 6. 06번 (서로소인 두 수 찾기)',
+              score: 100,
+              passed: true
+            }, 'u1');
+          } catch (err) {
+            console.warn('LMS save error:', err);
+          }
+        }
+
+        // Unlock next substep 5-7
+        if (!state.unlockedSubSteps.includes('5-7')) {
+          state.unlockedSubSteps.push('5-7');
+        }
+
+        updateSubStepPills(5);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.3rem;">🎉</span>
+            <h4 style="color:#065f46; font-size:1.02rem; font-weight:800; margin:0;">06번 서로소 판별 100점 완벽 해결!</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            완벽하게 해결했습니다!<br>
+            • <b>서로소인 것</b>: <b>④ $35, 2 \\times 3^2$</b><br>
+            • <b>이유</b>: $35 = 5 \\times 7$ 이고 $2 \\times 3^2 = 18$ 로 공통인 소인수가 없으므로, 두 수의 <b>최대공약수는 $1$</b>입니다.<br>
+            • ① 최대공약수 = 13 (서로소 X)<br>
+            • ② 최대공약수 = 3 (서로소 X)<br>
+            • ③ 최대공약수 = 9 (서로소 X)<br>
+            • ⑤ 최대공약수 = 30 (서로소 X)
+            <div style="margin-top:12px; padding:10px 14px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 <b>[5-7] 07번 (최대공약수와 최소공배수)</b>가 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="loadSubStep('5-7')" style="margin-top:12px; width:100%; padding:11px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            다음 문제 [5-7] 07번 (GCD·LCM 구하기) 도전 ➔
+          </button>
+        `;
+
+        setStep5_6Choice(4);
+      } else {
+        let msg = '';
+        if (!isChoiceCorrect) {
+          msg = '각 보기의 두 수를 소인수분해하여 공통인 소인수가 전혀 없는 보기를 선택하세요.';
+        } else if (!isGcdCorrect) {
+          msg = '서로소의 정의에 따라 공약수가 1뿐인 두 수의 최대공약수를 구해 보세요.';
+        }
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            • ${msg}<br>
+            💡 상단의 [보기 ①] ~ [보기 ⑤] 버튼을 눌러 각 보기의 소인수분해와 공통 소인수를 비교해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (5-7 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -30112,6 +30503,11 @@
         state.lab5_5.step = 0;
         renderToolbar5_5();
         drawStep5_5Canvas();
+      } else if (state.subStep === '5-6') {
+        if (!state.lab5_6) state.lab5_6 = { selectedChoice: 1 };
+        state.lab5_6.selectedChoice = 1;
+        renderToolbar5_6();
+        drawStep5_6Canvas();
       }
     }
 
@@ -30415,6 +30811,7 @@
       else if (state.subStep === '5-3') drawStep5_3Canvas();
       else if (state.subStep === '5-4') drawStep5_4Canvas();
       else if (state.subStep === '5-5') drawStep5_5Canvas();
+      else if (state.subStep === '5-6') drawStep5_6Canvas();
       }, 150);
     });
 
