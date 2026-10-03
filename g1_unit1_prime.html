@@ -1281,6 +1281,10 @@
       // 5-7 Interactive Prime Power Comparison Lab State (7. 07번 최대공약수와 최소공배수, p.25)
       lab5_7: {
         mode: 0 // 0: 전체 비교, 1: GCD 모드, 2: LCM 모드
+      },
+      // 5-8 Interactive Unknown A Deduction Lab State (8. 08번 두 자연수 A, 36의 관계, p.25)
+      lab5_8: {
+        method: 0 // 0: 소인수분해 추론, 1: 공식 저울
       }
     };
 
@@ -1582,6 +1586,9 @@
       } else if (code === '5-7') {
         renderToolbar5_7();
         renderSubstep5_7();
+      } else if (code === '5-8') {
+        renderToolbar5_8();
+        renderSubstep5_8();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -4718,6 +4725,53 @@
       if (gcd) gcd.value = '12';
       if (lcm) lcm.value = '840';
       gradeStep5_7();
+    }
+
+// -------------------------------------------------------------
+    // SUBSTEP 5-8: Toolbar & Handlers (8. 08번 두 자연수 A, 36의 관계, p.25)
+    // -------------------------------------------------------------
+    function renderToolbar5_8() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const curMethod = (state.lab5_8 && state.lab5_8.method !== undefined) ? state.lab5_8.method : 0;
+
+      tb.innerHTML = `
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <span style="font-size:0.8rem; font-weight:800; color:#475569;">[풀이 탐구 방법]:</span>
+          <button class="btn btn-sm ${curMethod === 0 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_8Method(0)">🔬 소인수 거듭제곱 추론</button>
+          <button class="btn btn-sm ${curMethod === 1 ? 'btn-primary' : 'btn-outline'}" onclick="setStep5_8Method(1)" style="${curMethod === 1 ? 'background:#059669;border-color:#059669;color:#fff;' : ''}">⚖️ 두 수의 곱 공식 (A × B = G × L)</button>
+          <button class="btn btn-sm btn-outline" onclick="resetLab5_8()" title="화면 초기화">🔄 초기화</button>
+          <button class="btn btn-sm btn-outline" onclick="teacherPassStep5_8()" style="border-color:#e2e8f0; color:#94a3b8;" title="교사 정답 패스">💡 패스</button>
+        </div>
+      `;
+    }
+
+    function setStep5_8Method(m) {
+      if (!state.lab5_8) state.lab5_8 = { method: 0 };
+      state.lab5_8.method = m;
+      renderToolbar5_8();
+      drawStep5_8Canvas();
+    }
+
+    function resetLab5_8() {
+      if (!state.lab5_8) state.lab5_8 = { method: 0 };
+      state.lab5_8.method = 0;
+      renderToolbar5_8();
+      drawStep5_8Canvas();
+    }
+
+    function teacherPassStep5_8() {
+      const e2 = document.getElementById('ans-5-8-exp2');
+      const e3 = document.getElementById('ans-5-8-exp3');
+      const e5 = document.getElementById('ans-5-8-exp5');
+      const a = document.getElementById('ans-5-8-a');
+      if (e2) e2.value = '2';
+      if (e3) e3.value = '1';
+      if (e5) e5.value = '1';
+      if (a) a.value = '60';
+      gradeStep5_8();
     }
 
 
@@ -30584,8 +30638,443 @@
       }
     }
 
+// -------------------------------------------------------------
+    // SUBSTEP 5-8: 8. 08번 (두 자연수 A, 36의 관계, p.25)
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (5-8 to 6-2)
+    function renderSubstep5_8() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[대단원 5. 스스로 마무리하기: 8. 08번 (두 자연수 A, 36의 관계)] (교과서 p.25)</b><br>
+        • 두 자연수 $A$, $36$의 <b>최대공약수가 $12$</b>, <b>최소공배수가 $180$</b>일 때, $A$의 값을 구하시오.<br>
+        • <b>방법 1 (소인수분해)</b>: $36, 12, 180$을 소인수분해하여 $A$의 소인수별 거듭제곱 지수를 결정합니다.<br>
+        • <b>방법 2 (두 수의 곱 관계)</b>: 두 자연수 $A, B$에 대하여 $A \\times B = \\text{GCD} \\times \\text{LCM}$ 공식을 이용합니다.
+      `;
+
+      const isPassed5_8 = state.completedSubSteps && state.completedSubSteps.includes('5-8');
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.25</span>
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b;">08번 문제</span>
+          </div>
+          <h4 style="font-size:0.98rem; font-weight:800; color:#1e293b; margin-bottom:14px; line-height:1.5;">
+            두 자연수 $A$, $36$의 최대공약수가 $12$, 최소공배수가 $180$일 때, $A$의 값을 구하시오.
+          </h4>
+
+          <!-- 소문항 1: A의 소인수분해 지수 완성 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:8px;">
+              1. $A$의 소인수분해 형태 $A = 2^{\\square} \\times 3^{\\square} \\times 5^{\\square}$ 의 각 지수를 쓰시오:
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <div style="display:flex; align-items:center; gap:4px;">
+                <span style="font-weight:700; color:#334155;">2의 지수:</span>
+                <input type="text" id="ans-5-8-exp2" class="proof-input-text" placeholder="지수" style="width:60px;" autocomplete="off">
+              </div>
+              <div style="display:flex; align-items:center; gap:4px;">
+                <span style="font-weight:700; color:#334155;">3의 지수:</span>
+                <input type="text" id="ans-5-8-exp3" class="proof-input-text" placeholder="지수" style="width:60px;" autocomplete="off">
+              </div>
+              <div style="display:flex; align-items:center; gap:4px;">
+                <span style="font-weight:700; color:#334155;">5의 지수:</span>
+                <input type="text" id="ans-5-8-exp5" class="proof-input-text" placeholder="지수" style="width:60px;" autocomplete="off">
+              </div>
+            </div>
+          </div>
+
+          <!-- 소문항 2: A의 최종 값 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:16px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              2. 자연수 $A$의 최종 값을 구하시오:
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-weight:700; color:#334155;">자연수 A =</span>
+              <input type="text" id="ans-5-8-a" class="proof-input-text" placeholder="답 입력" style="width:110px;" autocomplete="off">
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep5_8()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            정답 확인 및 채점
+          </button>
+
+          <div id="feedback-step-5-8" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep5_8Canvas();
+    }
+
+    function drawStep5_8Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed5_8 = state.completedSubSteps && state.completedSubSteps.includes('5-8');
+      const curMethod = (state.lab5_8 && state.lab5_8.method !== undefined) ? state.lab5_8.method : 0;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 33
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(11, Math.min(13, Math.floor(width * 0.019)));
+
+      const titleText = two.makeText('🔍 [대단원 마무리 08번] 자연수 A의 값 추론 랩', width / 2, 16);
+      titleText.size = titleSize;
+      titleText.weight = 800;
+      titleText.fill = '#1e293b';
+
+      const subText = two.makeText('최대공약수(12)와 최소공배수(180)의 성질을 이용하여 미지의 자연수 A를 탐구하세요.', width / 2, 33);
+      subText.size = subSize;
+      subText.fill = '#64748b';
+
+      // 2. Sub-bar - y: 56, h: 26
+      const fBarW = Math.min(width - 40, 640);
+      const fBar = two.makeRoundedRectangle(width / 2, 56, fBarW, 26, 6);
+      fBar.fill = '#f8fafc';
+      fBar.stroke = '#cbd5e1';
+      fBar.linewidth = 1;
+
+      let subLabel = '';
+      if (curMethod === 0) {
+        subLabel = isPassed5_8
+          ? '탐구: [ 소인수 거듭제곱 추론 ] | A = 2² × 3¹ × 5¹ = 60 (정답: A = 60)'
+          : '탐구: [ 소인수 거듭제곱 추론 ] | 36 = 2² × 3², GCD = 2² × 3, LCM = 2² × 3² × 5 로부터 A를 추론합니다.';
+      } else {
+        subLabel = isPassed5_8
+          ? '탐구: [ 두 수의 곱 공식 ] | A × 36 = 12 × 180 ➔ A = 2160 ÷ 36 = 60'
+          : '탐구: [ 두 수의 곱 공식 ] | 두 자연수의 곱은 최대공약수와 최소공배수의 곱과 같습니다 (A × B = G × L).';
+      }
+
+      const subLblTxt = two.makeText(subLabel, width / 2, 56);
+      subLblTxt.size = Math.max(10, Math.min(12, Math.floor(width * 0.018)));
+      subLblTxt.weight = 700;
+      subLblTxt.fill = curMethod === 0 ? '#4338ca' : '#059669';
+
+      // 3. Main Board - y: 85 ~ 290 (center 185, h: 160)
+      const cx = width / 2;
+      const mainCard = two.makeRoundedRectangle(cx, 185, Math.min(width - 40, 560), 160, 10);
+      mainCard.fill = '#ffffff';
+      mainCard.stroke = '#cbd5e1';
+      mainCard.linewidth = 1.5;
+
+      if (curMethod === 0) {
+        // --- Method 0: Prime Factorization Matrix ---
+        const pTitle = two.makeText('두 수와 GCD·LCM의 소인수별 거듭제곱 지수 비교', cx, 115);
+        pTitle.size = 13;
+        pTitle.weight = 800;
+        pTitle.fill = '#1e293b';
+
+        // Column Prime Badges at y = 134
+        const primeCols = [
+          { p: '2', aExp: isPassed5_8 ? '2²' : '2^{\\square}', bVal: '2²', gcdVal: '2²', lcmVal: '2²', x: cx - 60 },
+          { p: '3', aExp: isPassed5_8 ? '3¹' : '3^{\\square}', bVal: '3²', gcdVal: '3¹', lcmVal: '3²', x: cx + 15 },
+          { p: '5', aExp: isPassed5_8 ? '5¹' : '5^{\\square}', bVal: '-',  gcdVal: '-',  lcmVal: '5¹', x: cx + 90 }
+        ];
+
+        primeCols.forEach(c => {
+          const badge = two.makeRoundedRectangle(c.x, 134, 46, 18, 4);
+          badge.fill = '#eff6ff';
+          badge.stroke = '#bfdbfe';
+          badge.linewidth = 1;
+          const bTxt = two.makeText(`소수 ${c.p}`, c.x, 134);
+          bTxt.size = 10;
+          bTxt.weight = 700;
+          bTxt.fill = '#1d4ed8';
+        });
+
+        // Rows
+        const l1 = two.makeText('주어진 수 36 :', cx - 170, 154);
+        l1.size = 11;
+        l1.weight = 700;
+        l1.fill = '#475569';
+        primeCols.forEach(c => {
+          const t = two.makeText(c.bVal, c.x, 154);
+          t.size = 11.5;
+          t.weight = 700;
+          t.fill = '#1e293b';
+        });
+
+        const l2 = two.makeText('최대공약수(12) :', cx - 170, 172);
+        l2.size = 11;
+        l2.weight = 700;
+        l2.fill = '#059669';
+        primeCols.forEach(c => {
+          const t = two.makeText(c.gcdVal, c.x, 172);
+          t.size = 11.5;
+          t.weight = 700;
+          t.fill = '#059669';
+        });
+
+        const l3 = two.makeText('최소공배수(180) :', cx - 170, 190);
+        l3.size = 11;
+        l3.weight = 700;
+        l3.fill = '#2563eb';
+        primeCols.forEach(c => {
+          const t = two.makeText(c.lcmVal, c.x, 190);
+          t.size = 11.5;
+          t.weight = 700;
+          t.fill = '#2563eb';
+        });
+
+        // Divider line at y = 205
+        const divLine = two.makeLine(cx - 200, 205, cx + 200, 205);
+        divLine.stroke = '#e2e8f0';
+        divLine.linewidth = 1.5;
+
+        // Result row for A at y = 232
+        const resBox = two.makeRoundedRectangle(cx, 232, Math.min(width - 80, 480), 42, 6);
+        resBox.fill = isPassed5_8 ? '#ecfdf5' : '#f8fafc';
+        resBox.stroke = isPassed5_8 ? '#10b981' : '#cbd5e1';
+        resBox.linewidth = 1.5;
+
+        let rText1 = '';
+        let rText2 = '';
+        if (isPassed5_8) {
+          rText1 = '• A의 소인수: 2의 지수 = 2,  3의 지수 = 1,  5의 지수 = 1';
+          rText2 = '• 따라서 A = 2² × 3 × 5 = 60 (정답: A = 60)';
+        } else {
+          rText1 = '• GCD(12)와 LCM(180)의 지수 조건을 만족하는 A의 지수를 추론하세요.';
+          rText2 = '• 소인수 2, 3, 5의 GCD(작은 지수)와 LCM(큰 지수)를 비교하여 A의 지수를 결정하세요.';
+        }
+
+        const rt1 = two.makeText(rText1, cx, 224);
+        rt1.size = 11.5;
+        rt1.weight = 800;
+        rt1.fill = isPassed5_8 ? '#065f46' : '#1e293b';
+
+        const rt2 = two.makeText(rText2, cx, 241);
+        rt2.size = 11;
+        rt2.weight = 700;
+        rt2.fill = isPassed5_8 ? '#047857' : '#4338ca';
+
+      } else {
+        // --- Method 1: Balance Scale (A × B = G × L) ---
+        const pTitle = two.makeText('두 수의 곱 공식 균형 저울: A × B = 최대공약수 × 최소공배수', cx, 115);
+        pTitle.size = 12.5;
+        pTitle.weight = 800;
+        pTitle.fill = '#1e293b';
+
+        // Balance Beam at y = 160
+        const beam = two.makeLine(cx - 150, 160, cx + 150, 160);
+        beam.stroke = '#64748b';
+        beam.linewidth = 3;
+
+        // Fulcrum triangle at cx, y = 160 ~ 176
+        const fulcrum = two.makePolygon(cx, 168, 12, 3);
+        fulcrum.fill = '#475569';
+
+        // Left Pan (A × 36) at cx - 120, y = 175
+        const panL = two.makeRoundedRectangle(cx - 120, 175, 110, 32, 6);
+        panL.fill = '#eff6ff';
+        panL.stroke = '#3b82f6';
+        panL.linewidth = 1.5;
+        const txtL = two.makeText(isPassed5_8 ? 'A × 36 (= 2160)' : 'A × 36', cx - 120, 175);
+        txtL.size = 11.5;
+        txtL.weight = 800;
+        txtL.fill = '#1e40af';
+
+        // Equal sign
+        const eqTxt = two.makeText('=', cx, 148);
+        eqTxt.size = 16;
+        eqTxt.weight = 800;
+        eqTxt.fill = '#059669';
+
+        // Right Pan (12 × 180) at cx + 120, y = 175
+        const panR = two.makeRoundedRectangle(cx + 120, 175, 110, 32, 6);
+        panR.fill = '#ecfdf5';
+        panR.stroke = '#10b981';
+        panR.linewidth = 1.5;
+        const txtR = two.makeText('12 × 180 = 2160', cx + 120, 175);
+        txtR.size = 11;
+        txtR.weight = 800;
+        txtR.fill = '#065f46';
+
+        // Result calculation box at y = 232
+        const resBox = two.makeRoundedRectangle(cx, 232, Math.min(width - 80, 480), 42, 6);
+        resBox.fill = isPassed5_8 ? '#ecfdf5' : '#f8fafc';
+        resBox.stroke = isPassed5_8 ? '#10b981' : '#cbd5e1';
+        resBox.linewidth = 1.5;
+
+        let rText1 = isPassed5_8
+          ? '• 공식 적용: A × 36 = 12 × 180 = 2160'
+          : '• 양변이 평형을 이루므로 A × 36 = 12 × 180 입니다.';
+        let rText2 = isPassed5_8
+          ? '• A = 2160 ÷ 36 = 60 (정답: A = 60)'
+          : '• A = (12 × 180) ÷ 36 의 값을 계산해 보세요.';
+
+        const rt1 = two.makeText(rText1, cx, 224);
+        rt1.size = 11.5;
+        rt1.weight = 800;
+        rt1.fill = isPassed5_8 ? '#065f46' : '#1e293b';
+
+        const rt2 = two.makeText(rText2, cx, 241);
+        rt2.size = 11;
+        rt2.weight = 700;
+        rt2.fill = isPassed5_8 ? '#047857' : '#059669';
+      }
+
+      // 4. Summary / Rule Banner - y: 345, h: 74 (occupies 308 ~ 382 <= 440, bottom margin 58px >= 56px)
+      const bW = Math.min(width - 40, 640);
+      const banner = two.makeRoundedRectangle(width / 2, 345, bW, 74, 10);
+      banner.fill = isPassed5_8 ? '#ecfdf5' : '#f8fafc';
+      banner.stroke = isPassed5_8 ? '#a7f3d0' : '#cbd5e1';
+      banner.linewidth = 1.5;
+
+      let bT1 = '';
+      let bT2 = '';
+      let bT3 = '';
+
+      if (isPassed5_8) {
+        bT1 = '🎉 [08번 미지의 자연수 A 완벽 해결!] (정답: A = 60)';
+        bT2 = '• 방법 1: GCD=2²×3, LCM=2²×3²×5 이므로 A = 2² × 3 × 5 = 60';
+        bT3 = '• 방법 2: A × 36 = 12 × 180 ➔ A = 2160 ÷ 36 = 60';
+      } else {
+        bT1 = '💡 [두 수의 관계를 이용한 미지수 구하기의 두 가지 해법]';
+        bT2 = '• 소인수분해: 공통 소인수의 최소 지수(GCD)와 전체 소인수의 최대 지수(LCM)를 만족하는 거듭제곱을 찾습니다.';
+        bT3 = '• 곱의 성질: 두 자연수의 곱은 두 수의 최대공약수와 최소공배수의 곱과 같습니다 (A × B = G × L).';
+      }
+
+      const txtT1 = two.makeText(bT1, width / 2, 323);
+      txtT1.size = 12;
+      txtT1.weight = 800;
+      txtT1.fill = isPassed5_8 ? '#065f46' : '#1e293b';
+
+      const txtT2 = two.makeText(bT2, width / 2, 344);
+      txtT2.size = 11;
+      txtT2.weight = 600;
+      txtT2.fill = isPassed5_8 ? '#047857' : '#334155';
+
+      const txtT3 = two.makeText(bT3, width / 2, 363);
+      txtT3.size = 10.5;
+      txtT3.weight = 500;
+      txtT3.fill = isPassed5_8 ? '#047857' : '#64748b';
+
+      two.update();
+
+      // 5. Pointer Event Isolation
+      const container = document.getElementById('two-container');
+      if (container) container.onpointerdown = null;
+
+      const canvasEl = container ? container.querySelector('canvas, svg') : null;
+      if (canvasEl) {
+        canvasEl.style.cursor = 'pointer';
+        canvasEl.onpointerdown = (e) => {
+          const nextMethod = 1 - curMethod;
+          setStep5_8Method(nextMethod);
+        };
+      }
+    }
+
+    async function gradeStep5_8() {
+      const rawE2 = cleanInput(document.getElementById('ans-5-8-exp2')?.value || '');
+      const rawE3 = cleanInput(document.getElementById('ans-5-8-exp3')?.value || '');
+      const rawE5 = cleanInput(document.getElementById('ans-5-8-exp5')?.value || '');
+      const rawA = cleanInput(document.getElementById('ans-5-8-a')?.value || '');
+
+      const e2 = parseInt(rawE2, 10);
+      const e3 = parseInt(rawE3, 10);
+      const e5 = parseInt(rawE5, 10);
+      const a = parseInt(rawA, 10);
+
+      const isExp2Correct = (e2 === 2);
+      const isExp3Correct = (e3 === 1);
+      const isExp5Correct = (e5 === 1);
+      const isACorrect = (a === 60);
+
+      const isExpsCorrect = isExp2Correct && isExp3Correct && isExp5Correct;
+      const isCorrect = isExpsCorrect && isACorrect;
+
+      const fEl = document.getElementById('feedback-step-5-8');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('5-8')) {
+          state.completedSubSteps.push('5-8');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('5-8', {
+              exp2: 2,
+              exp3: 1,
+              exp5: 1,
+              a: 60,
+              activityTitle: '[중1-1 소인수분해] [5-8] 8. 08번 (두 자연수 A, 36의 관계)',
+              score: 100,
+              passed: true
+            }, 'u1');
+          } catch (err) {
+            console.warn('LMS save error:', err);
+          }
+        }
+
+        // Unlock next substep 5-9
+        if (!state.unlockedSubSteps.includes('5-9')) {
+          state.unlockedSubSteps.push('5-9');
+        }
+
+        updateSubStepPills(5);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.3rem;">🎉</span>
+            <h4 style="color:#065f46; font-size:1.02rem; font-weight:800; margin:0;">08번 미지의 수 A 100점 완벽 해결!</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            완벽하게 해결했습니다!<br>
+            • <b>A의 소인수분해</b>: $A = 2^2 \\times 3 \\times 5$<br>
+            • <b>자연수 A의 값</b>: <b>$A = 60$</b><br>
+            • <b>방법 1 풀이</b>: $36 = 2^2 \\times 3^2$, $\\text{GCD} = 2^2 \\times 3$, $\\text{LCM} = 2^2 \\times 3^2 \\times 5$ 이므로,<br>
+            &nbsp;&nbsp;A는 2의 지수가 2, 3의 지수가 1, 5의 지수가 1이어야 하므로 $A = 60$ 입니다.<br>
+            • <b>방법 2 풀이</b>: $A \\times 36 = 12 \\times 180 = 2160 \\implies A = 2160 \\div 36 = 60$<br>
+            <div style="margin-top:12px; padding:10px 14px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 <b>[5-9] 09번 (비가 3:7인 두 수의 GCD)</b>가 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="loadSubStep('5-9')" style="margin-top:12px; width:100%; padding:11px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            다음 문제 [5-9] 09번 (비와 LCM) 도전 ➔
+          </button>
+        `;
+
+        drawStep5_8Canvas();
+      } else {
+        let msg = '';
+        if (!isExpsCorrect) {
+          msg = 'A의 소인수별 지수를 다시 점검해 보세요. (GCD=2²×3 에서 3의 지수, LCM=2²×3²×5 에서 5의 지수를 관찰하세요)';
+        } else if (!isACorrect) {
+          msg = '소인수 거듭제곱 2² × 3 × 5 를 계산한 최종 값을 다시 확인해 보세요. (4 × 3 × 5)';
+        }
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            • ${msg}<br>
+            💡 좌측 캔버스 상단의 [🔬 소인수 거듭제곱 추론], [⚖️ 두 수의 곱 공식 저울] 버튼을 눌러 비교해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (5-9 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -30946,6 +31435,11 @@
         state.lab5_7.mode = 0;
         renderToolbar5_7();
         drawStep5_7Canvas();
+      } else if (state.subStep === '5-8') {
+        if (!state.lab5_8) state.lab5_8 = { method: 0 };
+        state.lab5_8.method = 0;
+        renderToolbar5_8();
+        drawStep5_8Canvas();
       }
     }
 
@@ -31251,6 +31745,7 @@
       else if (state.subStep === '5-5') drawStep5_5Canvas();
       else if (state.subStep === '5-6') drawStep5_6Canvas();
       else if (state.subStep === '5-7') drawStep5_7Canvas();
+      else if (state.subStep === '5-8') drawStep5_8Canvas();
       }, 150);
     });
 
