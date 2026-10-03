@@ -1195,6 +1195,11 @@
         mode: 0, // 0: 수직선 점프 랩, 1: 배수 나열 랩
         step: 0, // 0: 8배수, 1: 12배수, 2: 공배수, 3: 최소공배수
         selectedNum: null
+      },
+      // 4-2 Interactive Lab State (2. 소인수분해로 최소공배수 구하기 & 문제 1)
+      lab4_2: {
+        mode: 0, // 0: 54, 90 원리 랩, 1: 문제 1-(1), 2: 문제 1-(2)
+        step: 0  // 0: 정렬, 1: 큰 지수, 2: 나머지 소인수, 3: 완성
       }
     };
 
@@ -1442,6 +1447,9 @@
       } else if (code === '4-1') {
         renderToolbar4_1();
         renderSubstep4_1();
+      } else if (code === '4-2') {
+        renderToolbar4_2();
+        renderSubstep4_2();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -3582,6 +3590,59 @@
       renderToolbar4_1();
       drawStep4_1Canvas();
     }
+
+    // -------------------------------------------------------------
+    // SUBSTEP 4-2 Handlers & Toolbar (2. 소인수분해로 최소공배수 구하기 & 문제 1, p.21)
+    // -------------------------------------------------------------
+    function renderToolbar4_2() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const curMode = state.lab4_2.mode || 0;
+      const curStep = state.lab4_2.step || 0;
+
+      let subControls = '';
+      if (curMode === 0) {
+        subControls = `
+          <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-left:6px; margin-right:4px;">원리 단계:</span>
+          <button class="tool-btn ${curStep === 0 ? 'active' : ''}" onclick="setStep4_2Step(0)">➊ 소인수분해 정렬</button>
+          <button class="tool-btn ${curStep === 1 ? 'active' : ''}" onclick="setStep4_2Step(1)">➋ 공통 소인수 큰 지수</button>
+          <button class="tool-btn ${curStep === 2 ? 'active' : ''}" onclick="setStep4_2Step(2)">➌ 나머지 소인수</button>
+          <button class="tool-btn ${curStep === 3 ? 'active' : ''}" onclick="setStep4_2Step(3)">➍ 최소공배수 완성</button>
+        `;
+      } else {
+        subControls = `
+          <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-left:6px; margin-right:4px;">풀이 탐구:</span>
+          <span style="font-size:0.8rem; color:#64748b;">세로 정렬을 통해 거듭제곱을 비교해 보세요.</span>
+        `;
+      }
+
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-right:4px;">탐구 모드:</span>
+        <button class="tool-btn ${curMode === 0 ? 'active' : ''}" onclick="setStep4_2Mode(0)">🔍 [원리 탐구 랩] 54와 90</button>
+        <button class="tool-btn ${curMode === 1 ? 'active' : ''}" onclick="setStep4_2Mode(1)">💡 [문제 1-(1)] 2²×5 와 2×3×5</button>
+        <button class="tool-btn ${curMode === 2 ? 'active' : ''}" onclick="setStep4_2Mode(2)">💡 [문제 1-(2)] 45 와 63</button>
+        <span style="margin:0 4px; color:#cbd5e1;">|</span>
+        ${subControls}
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setStep4_2Mode(m) {
+      state.lab4_2.mode = m;
+      state.lab4_2.step = 0;
+      renderToolbar4_2();
+      drawStep4_2Canvas();
+    }
+
+    function setStep4_2Step(s) {
+      state.lab4_2.step = s;
+      renderToolbar4_2();
+      drawStep4_2Canvas();
+    }
+
 
 
 
@@ -22018,7 +22079,452 @@
 
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (4-2 to 6-2)
+    // SUBSTEP 4-2: 2. 소인수분해로 최소공배수 구하기 & 문제 1 (p.21)
+    // -------------------------------------------------------------
+    function renderSubstep4_2() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[소인수분해로 최소공배수 구하기 & 문제 1] (교과서 p.21)</b><br>
+        • 각 수를 소인수분해한 후, 밑이 같은 거듭제곱 중 <b>지수가 같거나 큰 것</b>을 택합니다.<br>
+        • 밑이 다른 나머지 거듭제곱도 <b>모두 택하여</b> 곱하여 최소공배수를 구합니다.<br>
+        • 문제 1의 두 소문항의 최소공배수를 계산해 보세요.
+      `;
+
+      const isPassed4_2 = state.completedSubSteps && state.completedSubSteps.includes('4-2');
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.21</span>
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b;">문제 1</span>
+          </div>
+          <h4 style="font-size:0.98rem; font-weight:800; color:#1e293b; margin-bottom:14px; line-height:1.5;">
+            다음 두 수의 최소공배수를 구하시오.
+          </h4>
+
+          <!-- 소문항 1 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              ⑴ $2^2 \\times 5,\\quad 2 \\times 3 \\times 5$
+            </div>
+            <div style="font-size:0.82rem; color:#64748b; margin-bottom:8px;">
+              • 밑이 2, 3, 5인 거듭제곱을 모두 고려하여 큰 지수를 곱하세요.
+            </div>
+            <input type="text" id="ans-4-2-1" class="proof-input-text" placeholder="답 입력" style="width:140px;" autocomplete="off">
+          </div>
+
+          <!-- 소문항 2 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:18px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px;">
+              ⑵ $45,\\quad 63$
+            </div>
+            <div style="font-size:0.82rem; color:#64748b; margin-bottom:8px;">
+              • $45 = 3^2 \\times 5,\\quad 63 = 3^2 \\times 7$ 소인수분해를 이용하세요.
+            </div>
+            <input type="text" id="ans-4-2-2" class="proof-input-text" placeholder="답 입력" style="width:140px;" autocomplete="off">
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep4_2()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            정답 확인 및 채점
+          </button>
+
+          <div id="feedback-step-4-2" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep4_2Canvas();
+    }
+
+    function drawStep4_2Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed4_2 = state.completedSubSteps && state.completedSubSteps.includes('4-2');
+      const curMode = state.lab4_2.mode || 0;
+      const curStep = state.lab4_2.step || 0;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 33
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(11, Math.min(13, Math.floor(width * 0.019)));
+
+      let modeTitle = '';
+      let modeSub = '';
+      if (curMode === 0) {
+        modeTitle = '🔍 [원리 탐구 랩] 54와 90의 소인수분해와 최소공배수';
+        modeSub = '밑이 같은 거듭제곱 중 큰 지수와 나머지 거듭제곱을 모두 택해 곱합니다.';
+      } else if (curMode === 1) {
+        modeTitle = '💡 [문제 1-(1)] 2²×5 와 2×3×5 의 최소공배수';
+        modeSub = '세로 정렬을 통해 밑 2, 3, 5의 지수를 비교하고 최소공배수를 도출합니다.';
+      } else {
+        modeTitle = '💡 [문제 1-(2)] 45 와 63 의 최소공배수';
+        modeSub = '45 = 3²×5, 63 = 3²×7 을 세로로 정렬하여 최소공배수를 도출합니다.';
+      }
+
+      const titleText = two.makeText(modeTitle, width / 2, 16);
+      titleText.size = titleSize;
+      titleText.weight = 800;
+      titleText.fill = '#1e293b';
+
+      const subText = two.makeText(modeSub, width / 2, 33);
+      subText.size = subSize;
+      subText.fill = '#64748b';
+
+      // 2. Formula / Sub-bar - y: 56, h: 26 (top: 43, bottom: 69)
+      const fBarW = Math.min(width - 40, 640);
+      const fBar = two.makeRoundedRectangle(width / 2, 56, fBarW, 26, 6);
+      fBar.fill = '#f1f5f9';
+      fBar.stroke = '#cbd5e1';
+      fBar.linewidth = 1;
+
+      let fBarStr = '';
+      if (curMode === 0) {
+        if (curStep === 0) fBarStr = '➊ 54 = 2 × 3³,  90 = 2 × 3² × 5 소인수분해 세로 정렬';
+        else if (curStep === 1) fBarStr = '➋ 밑이 같은 거듭제곱 중 큰 지수 선택: 밑 2 ➔ 2, 밑 3 ➔ 3³';
+        else if (curStep === 2) fBarStr = '➌ 밑이 다른 거듭제곱도 모두 선택: 밑 5 ➔ 5';
+        else fBarStr = '➍ 최소공배수 = 2 × 3³ × 5 = 270 완성! ✨';
+      } else if (curMode === 1) {
+        fBarStr = isPassed4_2
+          ? '⑴ 2² × 5 와 2 × 3 × 5 ➔ 최소공배수 = 2² × 3 × 5 = 60 정답! ✨'
+          : '⑴ 2² 과 2 중 2², 3 중 3, 5 중 5 를 택하여 곱하세요.';
+      } else {
+        fBarStr = isPassed4_2
+          ? '⑵ 45 = 3² × 5 와 63 = 3² × 7 ➔ 최소공배수 = 3² × 5 × 7 = 315 정답! ✨'
+          : '⑵ 3² 중 3², 5 중 5, 7 중 7 을 택하여 곱하세요.';
+      }
+
+      const fBarText = two.makeText(fBarStr, width / 2, 56);
+      fBarText.size = Math.max(11, Math.min(13, Math.floor(width * 0.018)));
+      fBarText.weight = 700;
+      fBarText.fill = '#334155';
+
+      // 3. Central Board - y: 174, h: 178 (top: 85, bottom: 263)
+      const boardW = Math.min(width - 40, 640);
+      const board = two.makeRoundedRectangle(width / 2, 174, boardW, 178, 12);
+      board.fill = '#ffffff';
+      board.stroke = '#e2e8f0';
+      board.linewidth = 1.5;
+
+      const startX = width / 2 - 200;
+      const colW = 90;
+      const rowH = 34;
+      const startY = 120;
+
+      if (curMode === 0) {
+        // Mode 0: 54 and 90
+        // Highlights
+        if (curStep === 1) {
+          const hl1 = two.makeRoundedRectangle(startX + colW, 148, 64, 86, 8);
+          hl1.fill = '#eff6ff'; hl1.stroke = '#93c5fd'; hl1.linewidth = 1.5;
+          const hl2 = two.makeRoundedRectangle(startX + colW * 2, 148, 64, 86, 8);
+          hl2.fill = '#eff6ff'; hl2.stroke = '#93c5fd'; hl2.linewidth = 1.5;
+        } else if (curStep === 2) {
+          const hl3 = two.makeRoundedRectangle(startX + colW * 3, 148, 64, 86, 8);
+          hl3.fill = '#fdf4ff'; hl3.stroke = '#f0abfc'; hl3.linewidth = 1.5;
+        } else if (curStep === 3) {
+          const hlAll = two.makeRoundedRectangle(startX + colW * 2, 148, colW * 3 + 10, 86, 8);
+          hlAll.fill = '#f0fdf4'; hlAll.stroke = '#86efac'; hlAll.linewidth = 1.5;
+        }
+
+        // Row 1: 54 = 2 * 3^3
+        const t1_L = two.makeText('54 =', startX, startY);
+        t1_L.size = 14; t1_L.weight = 800; t1_L.fill = '#475569'; t1_L.alignment = 'right';
+        const t1_2 = two.makeText('2', startX + colW, startY);
+        t1_2.size = 15; t1_2.weight = 800; t1_2.fill = '#1e293b';
+        const t1_3 = two.makeText('3³', startX + colW * 2, startY);
+        t1_3.size = 15; t1_3.weight = 800; t1_3.fill = '#1e293b';
+
+        // Row 2: 90 = 2 * 3^2 * 5
+        const t2_L = two.makeText('90 =', startX, startY + rowH);
+        t2_L.size = 14; t2_L.weight = 800; t2_L.fill = '#475569'; t2_L.alignment = 'right';
+        const t2_2 = two.makeText('2', startX + colW, startY + rowH);
+        t2_2.size = 15; t2_2.weight = 800; t2_2.fill = '#1e293b';
+        const t2_3 = two.makeText('3²', startX + colW * 2, startY + rowH);
+        t2_3.size = 15; t2_3.weight = 800; t2_3.fill = '#1e293b';
+        const t2_5 = two.makeText('5', startX + colW * 3, startY + rowH);
+        t2_5.size = 15; t2_5.weight = 800; t2_5.fill = '#1e293b';
+
+        // Separator
+        const sep = two.makeLine(startX - 30, startY + rowH + 16, startX + colW * 3 + 30, startY + rowH + 16);
+        sep.stroke = '#94a3b8'; sep.linewidth = 1.5;
+
+        // Row LCM: 2 * 3^3 * 5 = 270
+        const tL_L = two.makeText('최소공배수 =', startX, startY + rowH * 2);
+        tL_L.size = 13.5; tL_L.weight = 800; tL_L.fill = '#047857'; tL_L.alignment = 'right';
+
+        const tL_2 = two.makeText('2', startX + colW, startY + rowH * 2);
+        tL_2.size = 15; tL_2.weight = 800; tL_2.fill = '#047857';
+
+        const tL_3 = two.makeText('3³', startX + colW * 2, startY + rowH * 2);
+        tL_3.size = 15; tL_3.weight = 800; tL_3.fill = '#047857';
+
+        const tL_5 = two.makeText('5', startX + colW * 3, startY + rowH * 2);
+        tL_5.size = 15; tL_5.weight = 800; tL_5.fill = '#047857';
+
+        // Bottom text at y: 242
+        const expStr = curStep < 3
+          ? '💡 밑이 같은 것은 지수가 크거나 같은 것을 택하고, 밑이 다른 것도 모두 택해 곱합니다.'
+          : '➔ 2 × 3³ × 5 = 2 × 27 × 5 = 270 (소인수분해로 최소공배수 완성!) ✨';
+        const tExp = two.makeText(expStr, width / 2, 242);
+        tExp.size = 12.5; tExp.weight = 800;
+        tExp.fill = curStep === 3 ? '#047857' : '#475569';
+
+      } else if (curMode === 1) {
+        // Mode 1: 문제 1-(1) (2^2 * 5, 2 * 3 * 5)
+        // Highlight columns
+        const hlAll = two.makeRoundedRectangle(startX + colW * 2, 148, colW * 3 + 10, 86, 8);
+        hlAll.fill = '#f0fdf4'; hlAll.stroke = '#86efac'; hlAll.linewidth = 1.5;
+
+        // Row 1: 2^2 * 5
+        const t1_L = two.makeText('첫 번째 수 =', startX, startY);
+        t1_L.size = 13.5; t1_L.weight = 800; t1_L.fill = '#475569'; t1_L.alignment = 'right';
+        const t1_2 = two.makeText('2²', startX + colW, startY);
+        t1_2.size = 15; t1_2.weight = 800; t1_2.fill = '#1e293b';
+        const t1_5 = two.makeText('5', startX + colW * 3, startY);
+        t1_5.size = 15; t1_5.weight = 800; t1_5.fill = '#1e293b';
+
+        // Row 2: 2 * 3 * 5
+        const t2_L = two.makeText('두 번째 수 =', startX, startY + rowH);
+        t2_L.size = 13.5; t2_L.weight = 800; t2_L.fill = '#475569'; t2_L.alignment = 'right';
+        const t2_2 = two.makeText('2', startX + colW, startY + rowH);
+        t2_2.size = 15; t2_2.weight = 800; t2_2.fill = '#1e293b';
+        const t2_3 = two.makeText('3', startX + colW * 2, startY + rowH);
+        t2_3.size = 15; t2_3.weight = 800; t2_3.fill = '#1e293b';
+        const t2_5 = two.makeText('5', startX + colW * 3, startY + rowH);
+        t2_5.size = 15; t2_5.weight = 800; t2_5.fill = '#1e293b';
+
+        // Separator
+        const sep = two.makeLine(startX - 30, startY + rowH + 16, startX + colW * 3 + 30, startY + rowH + 16);
+        sep.stroke = '#94a3b8'; sep.linewidth = 1.5;
+
+        // Row LCM
+        const tL_L = two.makeText('최소공배수 =', startX, startY + rowH * 2);
+        tL_L.size = 13.5; tL_L.weight = 800; tL_L.fill = '#047857'; tL_L.alignment = 'right';
+
+        const tL_2 = two.makeText('2²', startX + colW, startY + rowH * 2);
+        tL_2.size = 15; tL_2.weight = 800; tL_2.fill = '#047857';
+
+        const tL_3 = two.makeText('3', startX + colW * 2, startY + rowH * 2);
+        tL_3.size = 15; tL_3.weight = 800; tL_3.fill = '#047857';
+
+        const tL_5 = two.makeText('5', startX + colW * 3, startY + rowH * 2);
+        tL_5.size = 15; tL_5.weight = 800; tL_5.fill = '#047857';
+
+        // Bottom text at y: 242
+        const expStr = isPassed4_2
+          ? '➔ 2² × 3 × 5 = 4 × 15 = 60 (정답 완성!) ✨'
+          : '➔ 큰 지수: 2², 나머지 소인수: 3, 5 ➔ 곱한 값(최소공배수)을 우측에 적어보세요.';
+        const tExp = two.makeText(expStr, width / 2, 242);
+        tExp.size = 12.5; tExp.weight = 800;
+        tExp.fill = isPassed4_2 ? '#047857' : '#334155';
+
+      } else {
+        // Mode 2: 문제 1-(2) (45, 63)
+        // Highlight columns
+        const hlAll = two.makeRoundedRectangle(startX + colW * 2, 148, colW * 3 + 10, 86, 8);
+        hlAll.fill = '#f0fdf4'; hlAll.stroke = '#86efac'; hlAll.linewidth = 1.5;
+
+        // Row 1: 45 = 3^2 * 5
+        const t1_L = two.makeText('45 =', startX, startY);
+        t1_L.size = 13.5; t1_L.weight = 800; t1_L.fill = '#475569'; t1_L.alignment = 'right';
+        const t1_3 = two.makeText('3²', startX + colW, startY);
+        t1_3.size = 15; t1_3.weight = 800; t1_3.fill = '#1e293b';
+        const t1_5 = two.makeText('5', startX + colW * 2, startY);
+        t1_5.size = 15; t1_5.weight = 800; t1_5.fill = '#1e293b';
+
+        // Row 2: 63 = 3^2 * 7
+        const t2_L = two.makeText('63 =', startX, startY + rowH);
+        t2_L.size = 13.5; t2_L.weight = 800; t2_L.fill = '#475569'; t2_L.alignment = 'right';
+        const t2_3 = two.makeText('3²', startX + colW, startY + rowH);
+        t2_3.size = 15; t2_3.weight = 800; t2_3.fill = '#1e293b';
+        const t2_7 = two.makeText('7', startX + colW * 3, startY + rowH);
+        t2_7.size = 15; t2_7.weight = 800; t2_7.fill = '#1e293b';
+
+        // Separator
+        const sep = two.makeLine(startX - 30, startY + rowH + 16, startX + colW * 3 + 30, startY + rowH + 16);
+        sep.stroke = '#94a3b8'; sep.linewidth = 1.5;
+
+        // Row LCM
+        const tL_L = two.makeText('최소공배수 =', startX, startY + rowH * 2);
+        tL_L.size = 13.5; tL_L.weight = 800; tL_L.fill = '#047857'; tL_L.alignment = 'right';
+
+        const tL_3 = two.makeText('3²', startX + colW, startY + rowH * 2);
+        tL_3.size = 15; tL_3.weight = 800; tL_3.fill = '#047857';
+
+        const tL_5 = two.makeText('5', startX + colW * 2, startY + rowH * 2);
+        tL_5.size = 15; tL_5.weight = 800; tL_5.fill = '#047857';
+
+        const tL_7 = two.makeText('7', startX + colW * 3, startY + rowH * 2);
+        tL_7.size = 15; tL_7.weight = 800; tL_7.fill = '#047857';
+
+        // Bottom text at y: 242
+        const expStr = isPassed4_2
+          ? '➔ 3² × 5 × 7 = 9 × 35 = 315 (정답 완성!) ✨'
+          : '➔ 큰 지수: 3², 나머지 소인수: 5, 7 ➔ 곱한 값(최소공배수)을 우측에 적어보세요.';
+        const tExp = two.makeText(expStr, width / 2, 242);
+        tExp.size = 12.5; tExp.weight = 800;
+        tExp.fill = isPassed4_2 ? '#047857' : '#334155';
+      }
+
+      // 4. Status Bar - y: 288, h: 26 (top: 275, bottom: 301)
+      const sBarW = Math.min(width - 40, 640);
+      const sBar = two.makeRoundedRectangle(width / 2, 288, sBarW, 26, 6);
+      sBar.fill = isPassed4_2 ? '#ecfdf5' : '#f8fafc';
+      sBar.stroke = isPassed4_2 ? '#a7f3d0' : '#e2e8f0';
+      sBar.linewidth = 1;
+
+      let sBarMsg = '';
+      if (isPassed4_2) {
+        sBarMsg = '🎉 [학습 완료] 문제 1의 두 문항(60, 315)을 모두 정확히 풀었습니다!';
+      } else {
+        sBarMsg = '💡 밑이 같은 거듭제곱은 지수가 큰 것을, 밑이 다른 거듭제곱도 모두 택해 곱하세요.';
+      }
+
+      const sBarText = two.makeText(sBarMsg, width / 2, 288);
+      sBarText.size = Math.max(11, Math.min(12.5, Math.floor(width * 0.018)));
+      sBarText.weight = 700;
+      sBarText.fill = isPassed4_2 ? '#047857' : '#475569';
+
+      // 5. Bottom Banner - y: 350, h: 68 (top: 316, bottom: 384)
+      const bBannerW = Math.min(width - 40, 640);
+      const bBanner = two.makeRoundedRectangle(width / 2, 350, bBannerW, 68, 10);
+      bBanner.fill = isPassed4_2 ? '#f0fdf4' : '#f8fafc';
+      bBanner.stroke = isPassed4_2 ? '#86efac' : '#cbd5e1';
+      bBanner.linewidth = 1.5;
+
+      const bbT1 = two.makeText(
+        isPassed4_2
+          ? '⭐ [핵심 정리] 소인수분해를 이용한 최소공배수 구하기'
+          : '💡 [개념 길잡이] 소인수분해로 최소공배수 구하는 원리',
+        width / 2,
+        336
+      );
+      bbT1.size = 12.5; bbT1.weight = 800; bbT1.fill = isPassed4_2 ? '#065f46' : '#1e293b';
+
+      const bbT2 = two.makeText(
+        isPassed4_2
+          ? '• 밑이 같은 거듭제곱 중 지수가 같거나 큰 것을 택하고, 밑이 다른 나머지 거듭제곱도 모두 택하여 곱합니다.'
+          : '• 공배수는 두 수의 배수이어야 하므로, 각 수가 가진 모든 소인수의 거듭제곱을 포함해야 합니다.',
+        width / 2,
+        358
+      );
+      bbT2.size = 11.5; bbT2.fill = isPassed4_2 ? '#047857' : '#64748b';
+
+      two.update();
+
+      // Pointer event isolation
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas, svg') : null;
+      if (container) container.onpointerdown = null;
+      if (!canvasEl) return;
+
+      canvasEl.onpointerdown = (e) => {
+        if (curMode === 0) {
+          setStep4_2Step((curStep + 1) % 4);
+        }
+      };
+    }
+
+    async function gradeStep4_2() {
+      const raw1 = cleanInput(document.getElementById('ans-4-2-1')?.value || '');
+      const raw2 = cleanInput(document.getElementById('ans-4-2-2')?.value || '');
+
+      const ans1 = parseInt(raw1, 10);
+      const ans2 = parseInt(raw2, 10);
+
+      const isCorrect1 = (ans1 === 60);
+      const isCorrect2 = (ans2 === 315);
+      const isCorrect = isCorrect1 && isCorrect2;
+
+      const fEl = document.getElementById('feedback-step-4-2');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('4-2')) {
+          state.completedSubSteps.push('4-2');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('4-2', {
+              activityTitle: '[중1-1 소인수분해] [4-2] 2. 소인수분해로 최소공배수 구하기 & 문제 1',
+              answerText: `⑴ ${raw1}, ⑵ ${raw2}`,
+              answers: { ans1: raw1, ans2: raw2, val1: 60, val2: 315 },
+              score: 100,
+              passed: true,
+              unitId: 'u1'
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+
+        // Unlock next step 4-3 (세 수의 최소공배수)
+        if (!state.unlockedSubSteps.includes('4-3')) {
+          state.unlockedSubSteps.push('4-3');
+        }
+        updateSubStepPills(state.currentMainTab);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.2rem;">🎉</span>
+            <h4 style="color:#065f46; font-size:1.02rem; font-weight:800; margin:0;">정답입니다! 100점 (All Clear)</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            완벽하게 해결했습니다!<br>
+            • ⑴ $2^2 \\times 5,\\quad 2 \\times 3 \\times 5$<br>
+            &nbsp;&nbsp;➔ 큰 지수와 나머지 거듭제곱: $2^2 \\times 3 \\times 5 = \\mathbf{60}$<br>
+            • ⑵ $45 = 3^2 \\times 5,\\quad 63 = 3^2 \\times 7$<br>
+            &nbsp;&nbsp;➔ 큰 지수와 나머지 거듭제곱: $3^2 \\times 5 \\times 7 = \\mathbf{315}$<br>
+            <div style="margin-top:10px; padding:8px 12px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 다음 세부 활동 <b>[4-3] 3. 세 수의 최소공배수 (예제 1 & 문제 2)</b>가 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="loadSubStep('4-3')" style="margin-top:12px; width:100%; padding:10px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            다음 단계 [4-3] 세 수의 최소공배수로 이동 ➔
+          </button>
+        `;
+
+        drawStep4_2Canvas();
+      } else {
+        let msg = '';
+        if (!isCorrect1 && !isCorrect2) msg = '⑴번과 ⑵번을 모두 다시 계산해 보세요.';
+        else if (!isCorrect1) msg = '⑴번을 다시 계산해 보세요. ($2^2 \\times 3 \\times 5$)';
+        else msg = '⑵번을 다시 계산해 보세요. ($45 = 3^2 \\times 5, 63 = 3^2 \\times 7$)';
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            • ${msg}<br>
+            • 밑이 같은 거듭제곱 중 지수가 크거나 같은 것을 택하고, 밑이 다른 나머지 거듭제곱도 모두 택하여 곱해야 합니다.<br>
+            💡 좌측 캔버스의 [원리 탐구 랩] 및 [문제 1-(1), 1-(2)] 탭을 확인해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (4-3 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -22287,6 +22793,11 @@
         state.lab4_1.selectedNum = null;
         renderToolbar4_1();
         drawStep4_1Canvas();
+      } else if (state.subStep === '4-2') {
+        state.lab4_2.mode = 0;
+        state.lab4_2.step = 0;
+        renderToolbar4_2();
+        drawStep4_2Canvas();
       }
     }
 
@@ -22574,6 +23085,7 @@
         else if (state.subStep === '3-10') drawStep3_10Canvas();
         else if (state.subStep === '3-11') drawStep3_11Canvas();
         else if (state.subStep === '4-1') drawStep4_1Canvas();
+        else if (state.subStep === '4-2') drawStep4_2Canvas();
       }, 150);
     });
 
