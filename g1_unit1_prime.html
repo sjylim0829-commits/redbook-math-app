@@ -1153,6 +1153,11 @@
       lab3_4: {
         mode: 0, // 0: 예제 1 (60, 72, 150), 1: 문제 3-(1), 2: 문제 3-(2)
         step: 0 // 0: 정렬, 1: 공통 소인수 선택, 2: 최대공약수 계산
+      },
+      // 3-5 Interactive Lab State (5. 스스로 확인하기 1 (두 수의 최대공약수))
+      lab3_5: {
+        mode: 0, // 0: 1-(1), 1: 1-(2)
+        step: 0 // 0: 정렬, 1: 공통 소인수 선택, 2: 최대공약수 계산
       }
     };
 
@@ -1376,6 +1381,9 @@
       } else if (code === '3-4') {
         renderToolbar3_4();
         renderSubstep3_4();
+      } else if (code === '3-5') {
+        renderToolbar3_5();
+        renderSubstep3_5();
       } else {
         const toolbar = document.getElementById('plane-toolbar');
         if (toolbar) toolbar.style.display = 'none';
@@ -3121,6 +3129,49 @@
       renderToolbar3_4();
       drawStep3_4Canvas();
     }
+
+    // -------------------------------------------------------------
+    // SUBSTEP 3-5 Handlers & Toolbar (5. 스스로 확인하기 1 (두 수의 최대공약수), p.19)
+    // -------------------------------------------------------------
+    function renderToolbar3_5() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.style.display = 'flex';
+
+      const curMode = state.lab3_5.mode || 0;
+      const curStep = state.lab3_5.step || 0;
+
+      const subControls = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-left:6px; margin-right:4px;">풀이 단계:</span>
+        <button class="tool-btn ${curStep === 0 ? 'active' : ''}" onclick="setStep3_5Step(0)">➊ ${curMode === 0 ? '세로 정렬' : '소인수분해 정렬'}</button>
+        <button class="tool-btn ${curStep === 1 ? 'active' : ''}" onclick="setStep3_5Step(1)">➋ 공통 소인수 선택</button>
+        <button class="tool-btn ${curStep === 2 ? 'active' : ''}" onclick="setStep3_5Step(2)">➌ 최대공약수 계산</button>
+      `;
+
+      tb.innerHTML = `
+        <span style="font-size:0.8rem; font-weight:800; color:#475569; margin-right:4px;">탐구 문항:</span>
+        <button class="tool-btn ${curMode === 0 ? 'active' : ''}" onclick="setStep3_5Mode(0)">📐 [1-(1)] 거듭제곱 분석</button>
+        <button class="tool-btn ${curMode === 1 ? 'active' : ''}" onclick="setStep3_5Mode(1)">🔢 [1-(2)] 84 & 150 소인수분해</button>
+        <span style="margin:0 4px; color:#cbd5e1;">|</span>
+        ${subControls}
+        <button id="tool-reset" class="tool-btn" onclick="resetCanvasView()" style="margin-left:auto;">🔄 화면 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openTeacherPassModal()" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스 (Pass)</button>
+      `;
+    }
+
+    function setStep3_5Mode(m) {
+      state.lab3_5.mode = m;
+      state.lab3_5.step = 0;
+      renderToolbar3_5();
+      drawStep3_5Canvas();
+    }
+
+    function setStep3_5Step(s) {
+      state.lab3_5.step = s;
+      renderToolbar3_5();
+      drawStep3_5Canvas();
+    }
+
 
 
 
@@ -18415,7 +18466,384 @@
 
 
     // -------------------------------------------------------------
-    // Scaffold Substep Renderer (3-5 to 6-2)
+    // SUBSTEP 3-5: 5. 스스로 확인하기 1 (두 수의 최대공약수, p.19)
+    // -------------------------------------------------------------
+    function renderSubstep3_5() {
+      const missionEl = document.getElementById('mission-text');
+      missionEl.innerHTML = `
+        <b>[스스로 확인하기 1 (두 수의 최대공약수)] (교과서 p.19)</b><br>
+        • 두 수를 각각 소인수분해하여 거듭제곱으로 나타낸 후 세로로 정렬합니다.<br>
+        • 밑이 같은 거듭제곱 중 <b>지수가 작거나 같은 것</b>을 택하여 최대공약수를 구해 보세요.
+      `;
+
+      const isPassed3_5 = state.completedSubSteps && state.completedSubSteps.includes('3-5');
+
+      const formArea = document.getElementById('form-work-area');
+      formArea.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px 18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.19</span>
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b;">스스로 확인하기 1번</span>
+          </div>
+          <h4 style="font-size:0.98rem; font-weight:800; color:#1e293b; margin-bottom:14px; line-height:1.5;">
+            두 수의 최대공약수를 소인수분해를 이용하여 구하시오.
+          </h4>
+
+          <!-- 소문항 1 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.9rem; margin-bottom:6px;">
+              ⑴ $2 \\times 7^2,\\quad 2^2 \\times 3^2 \\times 7$
+            </div>
+            <div style="font-size:0.82rem; color:#64748b; margin-bottom:8px;">
+              • 두 수에 공통인 소인수(2와 7) 중 지수가 작거나 같은 거듭제곱을 곱합니다.
+            </div>
+            <input type="text" id="ans-3-5-1" class="proof-input-text" placeholder="답 입력" style="width:140px;" autocomplete="off">
+          </div>
+
+          <!-- 소문항 2 -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:18px;">
+            <div style="font-weight:800; color:#1e293b; font-size:0.9rem; margin-bottom:6px;">
+              ⑵ $84,\\quad 150$
+            </div>
+            <div style="font-size:0.82rem; color:#64748b; margin-bottom:8px;">
+              • 두 수를 각각 소인수분해한 후 세로로 정렬하여 공통인 소인수의 곱을 구합니다.
+            </div>
+            <input type="text" id="ans-3-5-2" class="proof-input-text" placeholder="답 입력" style="width:140px;" autocomplete="off">
+          </div>
+
+          <button class="btn btn-primary" onclick="gradeStep3_5()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px;">
+            정답 확인 및 채점
+          </button>
+
+          <div id="feedback-step-3-5" style="display:none; margin-top:14px;"></div>
+        </div>
+      `;
+
+      drawStep3_5Canvas();
+    }
+
+    function drawStep3_5Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      two.clear();
+
+      const isPassed3_5 = state.completedSubSteps && state.completedSubSteps.includes('3-5');
+      const curMode = state.lab3_5.mode || 0;
+      const curStep = state.lab3_5.step || 0;
+
+      // 1. Header (Title & Subtitle) - y: 16 ~ 33
+      const titleSize = Math.max(13, Math.min(16, Math.floor(width * 0.024)));
+      const subSize = Math.max(11, Math.min(13, Math.floor(width * 0.019)));
+
+      let modeTitle = '';
+      let modeSub = '';
+      if (curMode === 0) {
+        modeTitle = '📐 스스로 확인하기 1-(1): 거듭제곱의 최대공약수 구하기';
+        modeSub = '밑이 같은 소인수(2와 7) 중 지수가 작거나 같은 것을 택하여 곱합니다.';
+      } else {
+        modeTitle = '🔢 스스로 확인하기 1-(2): 84와 150의 최대공약수 구하기';
+        modeSub = '84와 150을 각각 소인수분해하고 세로로 정렬하여 공통인 소인수를 선택합니다.';
+      }
+
+      const titleText = two.makeText(modeTitle, width / 2, 16);
+      titleText.size = titleSize;
+      titleText.weight = 800;
+      titleText.fill = '#1e293b';
+
+      const subText = two.makeText(modeSub, width / 2, 33);
+      subText.size = subSize;
+      subText.fill = '#64748b';
+
+      // 2. Formula / Sub-bar - y: 56, h: 26 (top: 43, bottom: 69)
+      const fBarW = Math.min(width - 40, 640);
+      const fBar = two.makeRoundedRectangle(width / 2, 56, fBarW, 26, 6);
+      fBar.fill = '#f1f5f9';
+      fBar.stroke = '#cbd5e1';
+      fBar.linewidth = 1;
+
+      let fBarStr = '';
+      if (curMode === 0) {
+        if (curStep === 0) fBarStr = '➊ 소인수(2, 3, 7)의 자리를 맞추어 세로로 나란히 씁니다.';
+        else if (curStep === 1) fBarStr = '➋ 공통 소인수는 2와 7입니다. (3은 한쪽에만 있으므로 제외)';
+        else fBarStr = '➌ 택한 거듭제곱의 곱: 2 × 7 = 14 (최대공약수)';
+      } else {
+        if (curStep === 0) fBarStr = '➊ 84 = 2² × 3 × 7,  150 = 2 × 3 × 5² 세로 정렬';
+        else if (curStep === 1) fBarStr = '➋ 공통 소인수는 2와 3입니다. (5와 7은 한쪽에만 있으므로 제외)';
+        else fBarStr = '➌ 택한 거듭제곱의 곱: 2 × 3 = 6 (최대공약수)';
+      }
+
+      const fBarText = two.makeText(fBarStr, width / 2, 56);
+      fBarText.size = Math.max(11, Math.min(13, Math.floor(width * 0.018)));
+      fBarText.weight = 700;
+      fBarText.fill = '#334155';
+
+      // 3. Central Board - y: 174, h: 178 (top: 85, bottom: 263)
+      const boardW = Math.min(width - 40, 640);
+      const board = two.makeRoundedRectangle(width / 2, 174, boardW, 178, 12);
+      board.fill = '#ffffff';
+      board.stroke = '#e2e8f0';
+      board.linewidth = 1.5;
+
+      const startX = width / 2 - 200;
+      const colW = 95;
+      const rowH = 34;
+      const startY = 118;
+
+      let label1 = '', valCol1_1 = '', valCol2_1 = '', valCol3_1 = '';
+      let label2 = '', valCol1_2 = '', valCol2_2 = '', valCol3_2 = '';
+      let gcdVal1 = '', gcdVal2 = '', gcdVal3 = '';
+      let calcStr = '';
+
+      if (curMode === 0) {
+        // 2 * 7^2  vs  2^2 * 3^2 * 7
+        // Columns: 2, 3, 7
+        label1 = '첫 번째 수:';
+        valCol1_1 = '2';  valCol2_1 = '';    valCol3_1 = '7²';
+        label2 = '두 번째 수:';
+        valCol1_2 = '2²'; valCol2_2 = '3²';  valCol3_2 = '7';
+        gcdVal1 = '2';    gcdVal2 = '';      gcdVal3 = '7';
+        calcStr = isPassed3_5 ? '최대공약수: 2 × 7 = 14' : '최대공약수: 2 × 7 = ? (계산해 보세요)';
+      } else {
+        // 84 vs 150
+        // Columns: 2, 3, (5, 7)
+        label1 = '84 =';
+        valCol1_1 = '2²'; valCol2_1 = '3';   valCol3_1 = '7';
+        label2 = '150 =';
+        valCol1_2 = '2';  valCol2_2 = '3';   valCol3_2 = '5²';
+        gcdVal1 = '2';    gcdVal2 = '3';     gcdVal3 = '';
+        calcStr = isPassed3_5 ? '최대공약수: 2 × 3 = 6' : '최대공약수: 2 × 3 = ? (계산해 보세요)';
+      }
+
+      // Column highlights in Step 1 or 2
+      if (curStep >= 1) {
+        if (curMode === 0) {
+          // Col 1 (밑 2) & Col 3 (밑 7)
+          const hl1 = two.makeRoundedRectangle(startX + colW, 150, 70, 92, 8);
+          hl1.fill = '#f0fdf4'; hl1.stroke = '#86efac'; hl1.linewidth = 1.5;
+          const hl3 = two.makeRoundedRectangle(startX + colW * 3, 150, 70, 92, 8);
+          hl3.fill = '#f0fdf4'; hl3.stroke = '#86efac'; hl3.linewidth = 1.5;
+        } else {
+          // Col 1 (밑 2) & Col 2 (밑 3)
+          const hl1 = two.makeRoundedRectangle(startX + colW, 150, 70, 92, 8);
+          hl1.fill = '#f0fdf4'; hl1.stroke = '#86efac'; hl1.linewidth = 1.5;
+          const hl2 = two.makeRoundedRectangle(startX + colW * 2, 150, 70, 92, 8);
+          hl2.fill = '#f0fdf4'; hl2.stroke = '#86efac'; hl2.linewidth = 1.5;
+        }
+      }
+
+      // Row 1
+      const tL1 = two.makeText(label1, startX, startY);
+      tL1.size = 13; tL1.weight = 700; tL1.fill = '#475569'; tL1.alignment = 'right';
+
+      const tR1_1 = two.makeText(valCol1_1, startX + colW, startY);
+      tR1_1.size = 14; tR1_1.weight = 800; tR1_1.fill = '#1e293b';
+
+      const tR1_2 = two.makeText(valCol2_1, startX + colW * 2, startY);
+      tR1_2.size = 14; tR1_2.weight = 800; tR1_2.fill = '#1e293b';
+
+      const tR1_3 = two.makeText(valCol3_1, startX + colW * 3, startY);
+      tR1_3.size = 14; tR1_3.weight = 800; tR1_3.fill = '#1e293b';
+
+      // Row 2
+      const tL2 = two.makeText(label2, startX, startY + rowH);
+      tL2.size = 13; tL2.weight = 700; tL2.fill = '#475569'; tL2.alignment = 'right';
+
+      const tR2_1 = two.makeText(valCol1_2, startX + colW, startY + rowH);
+      tR2_1.size = 14; tR2_1.weight = 800; tR2_1.fill = '#1e293b';
+
+      const tR2_2 = two.makeText(valCol2_2, startX + colW * 2, startY + rowH);
+      tR2_2.size = 14; tR2_2.weight = 800; tR2_2.fill = '#1e293b';
+
+      const tR2_3 = two.makeText(valCol3_2, startX + colW * 3, startY + rowH);
+      tR2_3.size = 14; tR2_3.weight = 800; tR2_3.fill = '#1e293b';
+
+      // Separator line
+      const sep = two.makeLine(startX - 50, startY + rowH + 16, startX + colW * 3 + 40, startY + rowH + 16);
+      sep.stroke = '#94a3b8'; sep.linewidth = 1.5;
+
+      // Row GCD
+      const tLG = two.makeText('최대공약수:', startX, startY + rowH * 2);
+      tLG.size = 13; tLG.weight = 800; tLG.fill = '#047857'; tLG.alignment = 'right';
+
+      if (curStep >= 1) {
+        if (gcdVal1) {
+          const tG_1 = two.makeText(gcdVal1, startX + colW, startY + rowH * 2);
+          tG_1.size = 15; tG_1.weight = 800; tG_1.fill = '#047857';
+        }
+        if (gcdVal2) {
+          const tG_2 = two.makeText(gcdVal2, startX + colW * 2, startY + rowH * 2);
+          tG_2.size = 15; tG_2.weight = 800; tG_2.fill = '#047857';
+        }
+        if (gcdVal3) {
+          const tG_3 = two.makeText(gcdVal3, startX + colW * 3, startY + rowH * 2);
+          tG_3.size = 15; tG_3.weight = 800; tG_3.fill = '#047857';
+        }
+      } else {
+        const tWait = two.makeText('(➋단계에서 공통 소인수를 확인해 보세요)', startX + colW * 2, startY + rowH * 2);
+        tWait.size = 12; tWait.fill = '#94a3b8';
+      }
+
+      // Calculation note at y: 242
+      const tCalc = two.makeText(
+        curStep === 2 ? calcStr : '💡 상단 풀이 단계 [➋ 공통 소인수 선택], [➌ 최대공약수 계산]을 차례로 눌러보세요.',
+        width / 2,
+        242
+      );
+      tCalc.size = 12.5;
+      tCalc.weight = curStep === 2 ? 800 : 600;
+      tCalc.fill = curStep === 2 ? '#047857' : '#64748b';
+
+      // 4. Status Bar - y: 288, h: 26 (top: 275, bottom: 301)
+      const sBarW = Math.min(width - 40, 640);
+      const sBar = two.makeRoundedRectangle(width / 2, 288, sBarW, 26, 6);
+      sBar.fill = isPassed3_5 ? '#ecfdf5' : '#f8fafc';
+      sBar.stroke = isPassed3_5 ? '#a7f3d0' : '#e2e8f0';
+      sBar.linewidth = 1;
+
+      let sBarMsg = '';
+      if (isPassed3_5) {
+        sBarMsg = '🎉 [학습 완료] ⑴번: 14, ⑵번: 6 정답을 모두 맞혔습니다!';
+      } else {
+        if (curMode === 0) sBarMsg = '💡 밑이 같은 2와 7에서 작은 지수를 택해 2 × 7 을 직접 계산하여 우측에 입력하세요.';
+        else sBarMsg = '💡 84=2²×3×7, 150=2×3×5² 에서 공통 소인수 2와 3의 곱을 직접 계산하여 우측에 입력하세요.';
+      }
+
+      const sBarText = two.makeText(sBarMsg, width / 2, 288);
+      sBarText.size = Math.max(11, Math.min(12.5, Math.floor(width * 0.018)));
+      sBarText.weight = 700;
+      sBarText.fill = isPassed3_5 ? '#047857' : '#475569';
+
+      // 5. Bottom Banner - y: 350, h: 68 (top: 316, bottom: 384)
+      const bBannerW = Math.min(width - 40, 640);
+      const bBanner = two.makeRoundedRectangle(width / 2, 350, bBannerW, 68, 10);
+      bBanner.fill = isPassed3_5 ? '#f0fdf4' : '#f8fafc';
+      bBanner.stroke = isPassed3_5 ? '#86efac' : '#cbd5e1';
+      bBanner.linewidth = 1.5;
+
+      const bbT1 = two.makeText(
+        isPassed3_5
+          ? '⭐ [핵심 정리] 소인수분해를 이용한 두 수의 최대공약수'
+          : '💡 [개념 길잡이] 지수 비교와 최대공약수 계산 요령',
+        width / 2,
+        336
+      );
+      bbT1.size = 12.5; bbT1.weight = 800; bbT1.fill = isPassed3_5 ? '#065f46' : '#1e293b';
+
+      const bbT2 = two.makeText(
+        isPassed3_5
+          ? '• 두 수의 공통인 소인수 중 지수가 작거나 같은 거듭제곱을 모두 곱합니다. (한쪽에만 있는 소인수는 제외)'
+          : '• 두 수의 공통인 소인수를 찾아 지수가 작거나 같은 것을 택해 곱합니다. (한쪽에만 있는 소인수는 제외)',
+        width / 2,
+        358
+      );
+      bbT2.size = 11.5; bbT2.fill = isPassed3_5 ? '#047857' : '#64748b';
+
+      two.update();
+
+      // Pointer event isolation
+      const container = document.getElementById('two-container');
+      const canvasEl = container ? container.querySelector('canvas, svg') : null;
+      if (container) container.onpointerdown = null;
+      if (!canvasEl) return;
+
+      canvasEl.onpointerdown = (e) => {
+        setStep3_5Step((curStep + 1) % 3);
+      };
+    }
+
+    async function gradeStep3_5() {
+      const raw1 = cleanInput(document.getElementById('ans-3-5-1')?.value);
+      const raw2 = cleanInput(document.getElementById('ans-3-5-2')?.value);
+
+      const ans1 = parseInt(raw1, 10);
+      const ans2 = parseInt(raw2, 10);
+
+      const isCorrect1 = (ans1 === 14);
+      const isCorrect2 = (ans2 === 6);
+
+      const isCorrect = (isCorrect1 && isCorrect2);
+
+      const fEl = document.getElementById('feedback-step-3-5');
+      if (!fEl) return;
+
+      if (isCorrect) {
+        if (!state.completedSubSteps.includes('3-5')) {
+          state.completedSubSteps.push('3-5');
+        }
+
+        // Save progress to Supabase LMS DB
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          try {
+            await LMSIntegration.saveStudentProgress('3-5', {
+              activityTitle: '[중1-1 소인수분해] [3-5] 5. 스스로 확인하기 1 (두 수의 최대공약수)',
+              answerText: `⑴ 최대공약수: ${raw1}, ⑵ 최대공약수: ${raw2}`,
+              answers: { ans1: raw1, ans2: raw2 },
+              score: 100,
+              passed: true,
+              unitId: 'u1'
+            }, 'u1');
+          } catch (e) {
+            console.warn('LMS save note:', e);
+          }
+        }
+
+        // Unlock next step 3-6 (스스로 확인하기 2)
+        if (!state.unlockedSubSteps.includes('3-6')) {
+          state.unlockedSubSteps.push('3-6');
+        }
+        updateSubStepPills(state.currentMainTab);
+
+        fEl.style.display = 'block';
+        fEl.style.background = '#ecfdf5';
+        fEl.style.border = '1.5px solid #a7f3d0';
+        fEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.2rem;">🎉</span>
+            <h4 style="color:#065f46; font-size:1.02rem; font-weight:800; margin:0;">정답입니다! 100점 (All Clear)</h4>
+          </div>
+          <div style="font-size:0.88rem; color:#047857; line-height:1.65;">
+            완벽하게 해결했습니다!<br>
+            • <b>⑴번:</b> $2 \\times 7^2$ 과 $2^2 \\times 3^2 \\times 7$ 에서 공통 소인수의 작은 지수를 택하면 $2 \\times 7 = \\mathbf{14}$ 입니다.<br>
+            • <b>⑵번:</b> $84 = 2^2 \\times 3 \\times 7$, $150 = 2 \\times 3 \\times 5^2$ 에서 공통 소인수의 작은 지수를 택하면 $2 \\times 3 = \\mathbf{6}$ 입니다.<br>
+            <div style="margin-top:10px; padding:8px 12px; background:#d1fae5; border-radius:8px; font-weight:700; color:#065f46;">
+              🚀 다음 세부 활동 <b>[3-6] 6. 스스로 확인하기 2 (세 수의 최대공약수)</b>가 해금되었습니다!
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="loadSubStep('3-6')" style="margin-top:12px; width:100%; padding:10px; font-weight:800; background:#059669; border:none; border-radius:8px;">
+            다음 단계 [3-6] 스스로 확인하기 2로 이동 ➔
+          </button>
+        `;
+
+        drawStep3_5Canvas();
+      } else {
+        fEl.style.display = 'block';
+        fEl.style.background = '#fef2f2';
+        fEl.style.border = '1.5px solid #fca5a5';
+        fEl.innerHTML = `
+          <h4 style="color:#b91c1c; font-size:0.95rem; font-weight:800; margin-bottom:6px;">⚠️ 다시 확인해 보세요</h4>
+          <div style="font-size:0.86rem; color:#991b1b; line-height:1.6;">
+            ${!isCorrect1 ? '• <b>⑴번:</b> 두 수 $2 \\times 7^2$ 과 $2^2 \\times 3^2 \\times 7$ 의 공통인 소인수는 2와 7입니다. $2 \\times 7$의 값을 바르게 적었는지 확인하세요.<br>' : ''}
+            ${!isCorrect2 ? '• <b>⑵번:</b> $84 = 2^2 \\times 3 \\times 7$, $150 = 2 \\times 3 \\times 5^2$ 에서 공통 소인수는 2와 3입니다. $2 \\times 3$의 값을 바르게 적었는지 확인하세요.<br>' : ''}
+            💡 좌측 캔버스의 모드 전환과 풀이 단계를 활용해 보세요!
+          </div>
+        `;
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fEl, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+
+    // -------------------------------------------------------------
+    // Scaffold Substep Renderer (3-6 to 6-2)
     // -------------------------------------------------------------
     function renderScaffoldSubstep(code) {
       const pills = G1_U1_PILLS_CONFIG[state.currentMainTab] || [];
@@ -18642,6 +19070,11 @@
         state.lab3_4.step = 0;
         renderToolbar3_4();
         drawStep3_4Canvas();
+      } else if (state.subStep === '3-5') {
+        state.lab3_5.mode = 0;
+        state.lab3_5.step = 0;
+        renderToolbar3_5();
+        drawStep3_5Canvas();
       }
     }
 
@@ -18921,6 +19354,7 @@
         else if (state.subStep === '3-2') drawStep3_2Canvas();
         else if (state.subStep === '3-3') drawStep3_3Canvas();
         else if (state.subStep === '3-4') drawStep3_4Canvas();
+        else if (state.subStep === '3-5') drawStep3_5Canvas();
       }, 150);
     });
 
