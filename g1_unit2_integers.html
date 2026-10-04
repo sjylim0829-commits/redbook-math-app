@@ -997,7 +997,13 @@
         missionText: '<b>[3-8] 스스로 확인하기 3번: 세 수의 효율적인 덧셈</b><br>음수끼리 먼저 묶거나 분모가 같은 유리수끼리 먼저 묶어 <b>덧셈의 교환법칙과 결합법칙</b>을 활용하면 계산이 훨씬 빠르고 정확해집니다. <b>교과서 p.45 3번의 ⑴, ⑵</b>를 효율적으로 계산해 보세요.',
         drawer: 'drawStep3_8Canvas'
       },
-      '3-9': { code: '3-9', tab: 3, substepLabel: '9. [스스로 확인 4] 수직선 식 매핑', missionText: '[3-9] 스스로 확인하기 4번 (p.45)', drawer: 'drawGenericScaffoldCanvas' },
+      '3-9': {
+        code: '3-9',
+        tab: 3,
+        substepLabel: '9. [스스로 확인 4] 수직선 식 매핑',
+        missionText: '<b>[3-9] 스스로 확인하기 4번: 수직선 점프 궤적을 덧셈 식으로 나타내기</b><br>수직선 위에서 원점($0$)으로부터의 1차 이동량과 2차 이동량의 방향과 크기를 분석하여, <b>교과서 p.45 4번</b>의 수직선이 나타내는 덧셈 식 $(a) + (b) = c$를 각각 완성해 보세요.',
+        drawer: 'drawStep3_9Canvas'
+      },
       '3-10': { code: '3-10', tab: 3, substepLabel: '10. [스스로 확인 5] 실생활 증감 합', missionText: '[3-10] 스스로 확인하기 5번 (p.45)', drawer: 'drawGenericScaffoldCanvas' },
       '3-11': { code: '3-11', tab: 3, substepLabel: '11. [생각 넓히기] 3x3 덧셈 마방진', missionText: '[3-11] 생각 넓히기 마방진 (p.45)', drawer: 'drawGenericScaffoldCanvas' },
 
@@ -1491,6 +1497,13 @@
         isPassed: false,
         q1Passed: false,
         q2Passed: false
+      },
+      lab3_9: {
+        activeTab: 'q1',
+        animStep: 0, // 0: 전체, 1: 1차 점프, 2: 2차 점프, 3: 수식 완성
+        isPassed: false,
+        q1Passed: false,
+        q2Passed: false
       }
     };
 
@@ -1669,6 +1682,9 @@
       } else if (code === '3-8') {
         renderToolbar3_8();
         renderSubstep3_8();
+      } else if (code === '3-9') {
+        renderToolbar3_9();
+        renderSubstep3_9();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
@@ -16341,6 +16357,613 @@
 
       two.update();
     }
+
+    // ==========================================
+    // Substep [3-9] 수직선 점프 궤적 수식 디코더 랩 (교과서 p.45 4번)
+    // ==========================================
+    function renderToolbar3_9() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+
+      const curTab = state.lab3_9.activeTab;
+      const q1Label = state.lab3_9.q1Passed ? '⑴ 수직선: (+3) + (-7) = -4' : '⑴ 1번 수직선 식 복원';
+      const q2Label = state.lab3_9.q2Passed ? '⑵ 수직선: (-2) + (+6) = +4' : '⑵ 2번 수직선 식 복원';
+
+      tb.innerHTML = `
+        <span style="font-size:0.78rem; font-weight:800; color:#475569;">📐 문항 선택:</span>
+        <button class="tool-btn ${curTab === 'q1' ? 'active' : ''}" onclick="selectLab3_9Tab('q1')">${q1Label}</button>
+        <button class="tool-btn ${curTab === 'q2' ? 'active' : ''}" onclick="selectLab3_9Tab('q2')">${q2Label}</button>
+        <div style="height:18px; width:1px; background:#cbd5e1; margin:0 4px;"></div>
+        <button class="tool-btn" onclick="resetLab3_9()" style="margin-left:auto;">🔄 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openSecurePasswordModal('teacher_pass')" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스</button>
+      `;
+    }
+
+    function selectLab3_9Tab(tab) {
+      state.lab3_9.activeTab = tab;
+      renderToolbar3_9();
+      drawStep3_9Canvas();
+    }
+
+    function setLab3_9AnimStep(step) {
+      state.lab3_9.animStep = Math.max(0, Math.min(3, step));
+      drawStep3_9Canvas();
+    }
+
+    function resetLab3_9() {
+      state.lab3_9.animStep = 0;
+      renderToolbar3_9();
+      drawStep3_9Canvas();
+
+      const inQ1A = document.getElementById('ans-3-9-q1-a');
+      const inQ1B = document.getElementById('ans-3-9-q1-b');
+      const inQ1C = document.getElementById('ans-3-9-q1-c');
+      const inQ2A = document.getElementById('ans-3-9-q2-a');
+      const inQ2B = document.getElementById('ans-3-9-q2-b');
+      const inQ2C = document.getElementById('ans-3-9-q2-c');
+
+      if (inQ1A) inQ1A.value = '';
+      if (inQ1B) inQ1B.value = '';
+      if (inQ1C) inQ1C.value = '';
+      if (inQ2A) inQ2A.value = '';
+      if (inQ2B) inQ2B.value = '';
+      if (inQ2C) inQ2C.value = '';
+
+      const fb = document.getElementById('feedback-3-9');
+      if (fb) fb.style.display = 'none';
+    }
+
+    function renderSubstep3_9() {
+      const data = SUBSTEPS_DATA['3-9'];
+      const missionEl = document.getElementById('mission-text');
+      if (missionEl) {
+        missionEl.innerHTML = data.missionText;
+        if (window.renderMathInElement) renderMathInElement(missionEl);
+      }
+
+      const formArea = document.getElementById('form-work-area');
+      if (formArea) {
+        formArea.innerHTML = `
+          <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px; background: #ffffff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+              <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.45 스스로 확인하기 4번</span>
+              <h4 style="font-size:0.95rem; font-weight:800; color:#1e293b; margin:0;">수직선 점프 궤적 덧셈 식 복원</h4>
+            </div>
+
+            <p style="font-size:0.86rem; color:#475569; margin:0 0 14px 0; line-height:1.5;">
+              <b>[4번]</b> 다음 수직선 위의 점프 화살표(궤적)가 나타내는 덧셈 식 $(a) + (b) = c$를 각각 쓰시오.
+            </p>
+
+            <!-- Problem 1 Card -->
+            <div style="margin-bottom:14px; padding:12px; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;">
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                <span style="font-size:0.88rem; font-weight:800; color:#1e293b;">⑴ 1번 수직선 궤적</span>
+                <span style="font-size:0.75rem; color:#0284c7; background:#e0f2fe; padding:2px 6px; border-radius:4px; font-weight:700;">오른쪽 +3 ➔ 왼쪽 -7</span>
+              </div>
+              <div style="font-size:0.82rem; color:#64748b; margin-bottom:10px; line-height:1.5;">
+                • $0$에서 오른쪽으로 $3$칸 이동: <b>첫째 수</b><br>
+                • 이어서 왼쪽으로 $7$칸 이동: <b>둘째 수</b><br>
+                • 최종 멈춘 눈금: <b>덧셈의 결과</b>
+              </div>
+              <div style="display:flex; align-items:center; gap:6px; background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; padding:8px 10px;">
+                <span style="font-weight:900; font-size:1.1rem; color:#475569;">(</span>
+                <input type="text" id="ans-3-9-q1-a" class="form-control" placeholder="수 입력" style="width:68px; font-weight:900; font-size:0.95rem; text-align:center;" autocomplete="off">
+                <span style="font-weight:900; font-size:1.1rem; color:#475569;">) + (</span>
+                <input type="text" id="ans-3-9-q1-b" class="form-control" placeholder="수 입력" style="width:68px; font-weight:900; font-size:0.95rem; text-align:center;" autocomplete="off">
+                <span style="font-weight:900; font-size:1.1rem; color:#475569;">) =</span>
+                <input type="text" id="ans-3-9-q1-c" class="form-control" placeholder="답 입력" style="flex:1; font-weight:900; font-size:0.95rem; text-align:center;" autocomplete="off">
+              </div>
+            </div>
+
+            <!-- Problem 2 Card -->
+            <div style="margin-bottom:14px; padding:12px; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;">
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                <span style="font-size:0.88rem; font-weight:800; color:#1e293b;">⑵ 2번 수직선 궤적</span>
+                <span style="font-size:0.75rem; color:#ea580c; background:#fff7ed; padding:2px 6px; border-radius:4px; font-weight:700;">왼쪽 -2 ➔ 오른쪽 +6</span>
+              </div>
+              <div style="font-size:0.82rem; color:#64748b; margin-bottom:10px; line-height:1.5;">
+                • $0$에서 왼쪽으로 $2$칸 이동: <b>첫째 수</b><br>
+                • 이어서 오른쪽으로 $6$칸 이동: <b>둘째 수</b><br>
+                • 최종 멈춘 눈금: <b>덧셈의 결과</b>
+              </div>
+              <div style="display:flex; align-items:center; gap:6px; background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; padding:8px 10px;">
+                <span style="font-weight:900; font-size:1.1rem; color:#475569;">(</span>
+                <input type="text" id="ans-3-9-q2-a" class="form-control" placeholder="수 입력" style="width:68px; font-weight:900; font-size:0.95rem; text-align:center;" autocomplete="off">
+                <span style="font-weight:900; font-size:1.1rem; color:#475569;">) + (</span>
+                <input type="text" id="ans-3-9-q2-b" class="form-control" placeholder="수 입력" style="width:68px; font-weight:900; font-size:0.95rem; text-align:center;" autocomplete="off">
+                <span style="font-weight:900; font-size:1.1rem; color:#475569;">) =</span>
+                <input type="text" id="ans-3-9-q2-c" class="form-control" placeholder="답 입력" style="flex:1; font-weight:900; font-size:0.95rem; text-align:center;" autocomplete="off">
+              </div>
+            </div>
+
+            <!-- Submit Action -->
+            <button class="btn btn-primary" onclick="gradeStep3_9()" style="width:100%; padding:10px; font-weight:800; font-size:0.95rem; border-radius:8px; background:var(--primary-color); border:none; color:#ffffff; cursor:pointer; box-shadow:0 2px 4px rgba(79,70,229,0.25);">
+              정답 확인 및 채점하기
+            </button>
+
+            <!-- Feedback Box -->
+            <div id="feedback-3-9" style="margin-top:14px; display:none;"></div>
+          </div>
+        `;
+        if (window.renderMathInElement) renderMathInElement(formArea);
+      }
+
+      renderToolbar3_9();
+      drawStep3_9Canvas();
+    }
+
+    function parseStep3_9Num(str) {
+      if (!str) return null;
+      let s = str.trim().replace(/\s+/g, '').replace(/[()]/g, '');
+      let sign = 1;
+      if (s.startsWith('+')) {
+        s = s.substring(1);
+      } else if (s.startsWith('-')) {
+        sign = -1;
+        s = s.substring(1);
+      }
+      const v = parseFloat(s);
+      return isNaN(v) ? null : sign * v;
+    }
+
+    async function gradeStep3_9() {
+      const q1ARaw = (document.getElementById('ans-3-9-q1-a') || {}).value || '';
+      const q1BRaw = (document.getElementById('ans-3-9-q1-b') || {}).value || '';
+      const q1CRaw = (document.getElementById('ans-3-9-q1-c') || {}).value || '';
+
+      const q2ARaw = (document.getElementById('ans-3-9-q2-a') || {}).value || '';
+      const q2BRaw = (document.getElementById('ans-3-9-q2-b') || {}).value || '';
+      const q2CRaw = (document.getElementById('ans-3-9-q2-c') || {}).value || '';
+
+      const fb = document.getElementById('feedback-3-9');
+
+      if (!q1ARaw.trim() || !q1BRaw.trim() || !q1CRaw.trim() || !q2ARaw.trim() || !q2BRaw.trim() || !q2CRaw.trim()) {
+        if (fb) {
+          fb.style.display = 'block';
+          fb.innerHTML = `
+            <div style="padding:12px; background:#fff1f2; border:1px solid #fecdd3; border-radius:8px; color:#e11d48; font-size:0.86rem; font-weight:700;">
+              모든 빈칸에 답을 입력해 주세요. (⑴, ⑵의 첫째 수, 둘째 수, 결과값 모두 입력)
+            </div>
+          `;
+          if (window.renderMathInElement) renderMathInElement(fb);
+        }
+        return;
+      }
+
+      const q1A = parseStep3_9Num(q1ARaw);
+      const q1B = parseStep3_9Num(q1BRaw);
+      const q1C = parseStep3_9Num(q1CRaw);
+
+      const q2A = parseStep3_9Num(q2ARaw);
+      const q2B = parseStep3_9Num(q2BRaw);
+      const q2C = parseStep3_9Num(q2CRaw);
+
+      const isQ1AOk = (q1A === 3);
+      const isQ1BOk = (q1B === -7);
+      const isQ1COk = (q1C === -4);
+
+      const isQ2AOk = (q2A === -2);
+      const isQ2BOk = (q2B === 6);
+      const isQ2COk = (q2C === 4);
+
+      const allCorrect = isQ1AOk && isQ1BOk && isQ1COk && isQ2AOk && isQ2BOk && isQ2COk;
+
+      if (fb) {
+        fb.style.display = 'block';
+        if (allCorrect) {
+          state.lab3_9.isPassed = true;
+          state.lab3_9.q1Passed = true;
+          state.lab3_9.q2Passed = true;
+
+          // Unlock Tab 3 Step 10 [3-10]
+          if (!state.unlockedSubSteps.includes('3-10')) {
+            state.unlockedSubSteps.push('3-10');
+          }
+          if (window.LMSIntegration) {
+            await LMSIntegration.saveStudentProgress('3-9', { score: 100, completed: true }, 'unit2');
+          }
+          if (typeof playSuccessSfx === 'function') playSuccessSfx();
+
+          fb.innerHTML = `
+            <div style="padding:16px; background:#f0fdf4; border:1.5px solid #bbf7d0; border-radius:10px; color:#166534;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                <span style="font-size:1.3rem;">🎉</span>
+                <h4 style="font-size:0.95rem; font-weight:800; margin:0;">정답입니다! 100점 만점 통과!</h4>
+              </div>
+              <p style="font-size:0.84rem; margin:0 0 10px 0; line-height:1.6;">
+                수직선 점프 궤적을 덧셈 식으로 완벽히 디코딩하셨습니다!<br>
+                <b>[문제 4 상세 풀이]</b><br>
+                • <b>⑴ (+3) + (-7) = -4</b><br>
+                &nbsp;&nbsp;- $0$에서 오른쪽으로 $3$칸 $\\to (+3)$<br>
+                &nbsp;&nbsp;- $+3$에서 왼쪽으로 $7$칸 $\\to (-7)$<br>
+                &nbsp;&nbsp;- 최종 도착 눈금 $\\to -4$<br>
+                • <b>⑵ (-2) + (+6) = +4 (또는 4)</b><br>
+                &nbsp;&nbsp;- $0$에서 왼쪽으로 $2$칸 $\\to (-2)$<br>
+                &nbsp;&nbsp;- $-2$에서 오른쪽으로 $6$칸 $\\to (+6)$<br>
+                &nbsp;&nbsp;- 최종 도착 눈금 $\\to +4$ (또는 $4$)
+              </p>
+              <div style="display:flex; gap:8px; margin-top:10px;">
+                <button class="btn btn-sm btn-outline-success" onclick="goToNextSubstep()" style="font-weight:800; font-size:0.84rem; padding:6px 14px; border-radius:6px; background:#ffffff; border:1.5px solid #16a34a; color:#16a34a; cursor:pointer;">
+                  다음 단계 [3-10] 실생활 증감 합 도전 ➔
+                </button>
+              </div>
+            </div>
+          `;
+          if (window.renderMathInElement) renderMathInElement(fb);
+          renderToolbar3_9();
+          drawStep3_9Canvas();
+        } else {
+          let errs = [];
+          if (!isQ1AOk) errs.push('⑴ 첫째 수: $0$에서 오른쪽으로 $3$칸 이동했으므로 <b>+3 (또는 3)</b>입니다.');
+          if (!isQ1BOk) errs.push('⑴ 둘째 수: $+3$에서 왼쪽으로 $7$칸 이동했으므로 <b>-7</b>입니다.');
+          if (!isQ1COk) errs.push('⑴ 계산 결과: 화살표가 최종 멈춘 눈금은 <b>-4</b>입니다.');
+          if (!isQ2AOk) errs.push('⑵ 첫째 수: $0$에서 왼쪽으로 $2$칸 이동했으므로 <b>-2</b>입니다.');
+          if (!isQ2BOk) errs.push('⑵ 둘째 수: $-2$에서 오른쪽으로 $6$칸 이동했으므로 <b>+6 (또는 6)</b>입니다.');
+          if (!isQ2COk) errs.push('⑵ 계산 결과: 화살표가 최종 멈춘 눈금은 <b>+4 (또는 4)</b>입니다.');
+
+          fb.innerHTML = `
+            <div style="padding:14px; background:#fff1f2; border:1.5px solid #fecdd3; border-radius:10px; color:#9f1239;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                <span style="font-size:1.1rem;">💡</span>
+                <h4 style="font-size:0.92rem; font-weight:800; margin:0;">답안을 다시 점검해 보세요</h4>
+              </div>
+              <ul style="font-size:0.82rem; margin:0 0 8px 18px; padding:0; line-height:1.5;">
+                ${errs.map(e => `<li>${e}</li>`).join('')}
+              </ul>
+              <p style="font-size:0.78rem; margin:0; color:#881337;">
+                좌측 캔버스에서 수직선 화살표의 출발점과 도착점을 주의 깊게 관찰해 보세요!
+              </p>
+            </div>
+          `;
+          if (window.renderMathInElement) renderMathInElement(fb);
+        }
+      }
+    }
+
+    function drawStep3_9Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      const container = document.getElementById('two-container');
+      if (container) container.onpointerdown = null;
+      const canvasEl = container ? container.querySelector('canvas') : null;
+
+      drawJumpTrajectoryDecoderLab(two, width, height, canvasEl || container);
+    }
+
+    function drawJumpTrajectoryDecoderLab(two, width, height, canvasEl) {
+      two.clear();
+
+      const curTab = state.lab3_9.activeTab;
+      const isPassed = state.lab3_9.isPassed;
+      const animStep = state.lab3_9.animStep;
+
+      // 1. Top Title (y=20)
+      const title = two.makeText('📐 수직선 점프 궤적 수식 디코더 랩 (교과서 4번)', width / 2, 20);
+      title.size = 15;
+      title.weight = 800;
+      title.fill = '#1e293b';
+
+      // 2. Subtitle (y=40)
+      let subMsg = '';
+      if (curTab === 'q1') {
+        subMsg = isPassed
+          ? '⑴ 0에서 +3 이동 후, -7 이동하여 최종 -4에 도달! ➔ (+3) + (-7) = -4'
+          : '⑴ 1번 수직선: 0에서 오른쪽으로 3칸, 이어서 왼쪽으로 7칸 이동한 궤적을 수식으로 바꾸어 보세요.';
+      } else {
+        subMsg = isPassed
+          ? '⑵ 0에서 -2 이동 후, +6 이동하여 최종 +4에 도달! ➔ (-2) + (+6) = +4'
+          : '⑵ 2번 수직선: 0에서 왼쪽으로 2칸, 이어서 오른쪽으로 6칸 이동한 궤적을 수식으로 바꾸어 보세요.';
+      }
+      const sub = two.makeText(subMsg, width / 2, 40);
+      sub.size = 11;
+      sub.weight = 700;
+      sub.fill = '#475569';
+
+      // 3. Tab Buttons in Canvas (y=66, h=28)
+      const tab1_w = 175, tab2_w = 175;
+      const tab1_x = width / 2 - 95, tab2_x = width / 2 + 95;
+      const tabY = 66;
+
+      const t1Box = two.makeRoundedRectangle(tab1_x, tabY, tab1_w, 26, 6);
+      t1Box.fill = (curTab === 'q1') ? '#4f46e5' : '#f1f5f9';
+      t1Box.stroke = (curTab === 'q1') ? '#4338ca' : '#cbd5e1';
+      t1Box.linewidth = 1.2;
+      const t1Label = state.lab3_9.q1Passed ? '⑴ 수직선: (+3)+(-7)=-4' : '⑴ 1번 수직선 식 복원';
+      const t1Txt = two.makeText(t1Label, tab1_x, tabY);
+      t1Txt.size = 9.5;
+      t1Txt.weight = 800;
+      t1Txt.fill = (curTab === 'q1') ? '#ffffff' : '#475569';
+
+      const t2Box = two.makeRoundedRectangle(tab2_x, tabY, tab2_w, 26, 6);
+      t2Box.fill = (curTab === 'q2') ? '#ea580c' : '#f1f5f9';
+      t2Box.stroke = (curTab === 'q2') ? '#c2410c' : '#cbd5e1';
+      t2Box.linewidth = 1.2;
+      const t2Label = state.lab3_9.q2Passed ? '⑵ 수직선: (-2)+(+6)=+4' : '⑵ 2번 수직선 식 복원';
+      const t2Txt = two.makeText(t2Label, tab2_x, tabY);
+      t2Txt.size = 9.5;
+      t2Txt.weight = 800;
+      t2Txt.fill = (curTab === 'q2') ? '#ffffff' : '#475569';
+
+      const hitBoxes = [
+        { type: 'tab', val: 'q1', x1: tab1_x - tab1_w / 2, x2: tab1_x + tab1_w / 2, y1: tabY - 13, y2: tabY + 13 },
+        { type: 'tab', val: 'q2', x1: tab2_x - tab2_w / 2, x2: tab2_x + tab2_w / 2, y1: tabY - 13, y2: tabY + 13 }
+      ];
+
+      // 4. Main Number Line Box (y=90 ~ 245, h=155)
+      const stageBox = two.makeRoundedRectangle(width / 2, 168, width - 40, 150, 12);
+      stageBox.fill = '#ffffff';
+      stageBox.stroke = (curTab === 'q1') ? '#c7d2fe' : '#fed7aa';
+      stageBox.linewidth = 1.5;
+
+      // Axis Coordinate Mapping: -8 to +8 (16 ticks)
+      const minVal = -8, maxVal = 8;
+      const axisY = 195;
+      const xLeft = 50, xRight = width - 50;
+      const totalWidth = xRight - xLeft;
+      const tickStep = totalWidth / (maxVal - minVal);
+
+      function valToX(v) {
+        return xLeft + (v - minVal) * tickStep;
+      }
+
+      // Draw Main Axis Line
+      const axisLine = two.makeLine(xLeft - 10, axisY, xRight + 10, axisY);
+      axisLine.stroke = '#334155';
+      axisLine.linewidth = 2.5;
+
+      // Arrows at axis ends
+      const arrL = two.makeLine(xLeft - 10, axisY, xLeft - 4, axisY - 4);
+      arrL.stroke = '#334155'; arrL.linewidth = 2;
+      const arrL2 = two.makeLine(xLeft - 10, axisY, xLeft - 4, axisY + 4);
+      arrL2.stroke = '#334155'; arrL2.linewidth = 2;
+
+      const arrR = two.makeLine(xRight + 10, axisY, xRight + 4, axisY - 4);
+      arrR.stroke = '#334155'; arrR.linewidth = 2;
+      const arrR2 = two.makeLine(xRight + 10, axisY, xRight + 4, axisY + 4);
+      arrR2.stroke = '#334155'; arrR2.linewidth = 2;
+
+      // Draw Ticks & Labels
+      for (let v = minVal; v <= maxVal; v++) {
+        const tx = valToX(v);
+        const isOrigin = (v === 0);
+        const tLen = isOrigin ? 8 : 5;
+
+        const tick = two.makeLine(tx, axisY - tLen, tx, axisY + tLen);
+        tick.stroke = isOrigin ? '#1e293b' : '#94a3b8';
+        tick.linewidth = isOrigin ? 2.5 : 1.2;
+
+        if (isOrigin) {
+          const oCircle = two.makeCircle(tx, axisY, 4.5);
+          oCircle.fill = '#1e293b';
+          oCircle.stroke = '#ffffff';
+          oCircle.linewidth = 1.5;
+        }
+
+        const tLabel = two.makeText(v.toString(), tx, axisY + 16);
+        tLabel.size = isOrigin ? 11 : 9;
+        tLabel.weight = isOrigin ? 900 : 600;
+        tLabel.fill = isOrigin ? '#1e293b' : '#64748b';
+      }
+
+      // Vector Parameters based on Question
+      let v1_start = 0, v1_end = 3, v1_step = 3;
+      let v2_start = 3, v2_end = -4, v2_step = -7;
+      let destVal = -4;
+
+      if (curTab === 'q2') {
+        v1_start = 0; v1_end = -2; v1_step = -2;
+        v2_start = -2; v2_end = 4; v2_step = 6;
+        destVal = 4;
+      }
+
+      const x0 = valToX(0);
+      const xMid = valToX(v1_end);
+      const xDest = valToX(destVal);
+
+      // Arc Function Helper
+      function drawArch(startX, endX, peakY, color, labelText, showArrow = true) {
+        const midX = (startX + endX) / 2;
+        // Curve using two.makeCurve with points
+        const p1 = new Two.Anchor(startX, axisY - 2);
+        const p2 = new Two.Anchor(midX, peakY);
+        const p3 = new Two.Anchor(endX, axisY - 2);
+        const curve = two.makeCurve([p1, p2, p3], false);
+        curve.fill = 'transparent';
+        curve.stroke = color;
+        curve.linewidth = 2.5;
+
+        // Label above arch
+        const lbl = two.makeText(labelText, midX, peakY - 8);
+        lbl.size = 10;
+        lbl.weight = 800;
+        lbl.fill = color;
+
+        if (showArrow) {
+          // Arrow head at endX pointing down towards axis
+          const dir = (endX > startX) ? 1 : -1;
+          const aHead = two.makeLine(endX, axisY - 2, endX - dir * 6, axisY - 10);
+          aHead.stroke = color; aHead.linewidth = 2.5;
+          const aHead2 = two.makeLine(endX, axisY - 2, endX, axisY - 10);
+          aHead2.stroke = color; aHead2.linewidth = 2.5;
+        }
+      }
+
+      // Render Jump 1 (0 -> mid)
+      if (animStep === 0 || animStep === 1 || animStep === 3) {
+        const color1 = (v1_step > 0) ? '#0284c7' : '#ea580c';
+        const signStr1 = (v1_step > 0) ? `+${v1_step}` : `${v1_step}`;
+        const dirStr1 = (v1_step > 0) ? '오른쪽' : '왼쪽';
+        drawArch(x0, xMid, 135, color1, `1차 이동: ${signStr1} (${dirStr1})`);
+      }
+
+      // Render Jump 2 (mid -> dest)
+      if (animStep === 0 || animStep === 2 || animStep === 3) {
+        const color2 = (v2_step > 0) ? '#0284c7' : '#ea580c';
+        const signStr2 = (v2_step > 0) ? `+${v2_step}` : `${v2_step}`;
+        const dirStr2 = (v2_step > 0) ? '오른쪽' : '왼쪽';
+        drawArch(xMid, xDest, 100, color2, `2차 이동: ${signStr2} (${dirStr2})`);
+      }
+
+      // Destination Pin / Badge
+      const destPin = two.makeCircle(xDest, axisY, 6);
+      destPin.fill = isPassed ? '#10b981' : '#f59e0b';
+      destPin.stroke = '#ffffff';
+      destPin.linewidth = 2;
+
+      const flagY = axisY - 22;
+      const flagBox = two.makeRoundedRectangle(xDest, flagY, 44, 20, 5);
+      flagBox.fill = isPassed ? '#10b981' : '#fef3c7';
+      flagBox.stroke = isPassed ? '#059669' : '#d97706';
+      flagBox.linewidth = 1.5;
+
+      const destTxtStr = isPassed ? (destVal > 0 ? `+${destVal}` : `${destVal}`) : '?';
+      const flagTxt = two.makeText(destTxtStr, xDest, flagY);
+      flagTxt.size = 11;
+      flagTxt.weight = 900;
+      flagTxt.fill = isPassed ? '#ffffff' : '#b45309';
+
+      // 5. Equation Decoder Preview Box (y=255 ~ 308, h=53)
+      const eqBox = two.makeRoundedRectangle(width / 2, 281, width - 40, 48, 10);
+      eqBox.fill = (curTab === 'q1') ? '#f0f9ff' : '#fff7ed';
+      eqBox.stroke = (curTab === 'q1') ? '#bae6fd' : '#fed7aa';
+      eqBox.linewidth = 1.2;
+
+      const eqY = 281;
+      const s1Str = (v1_step > 0) ? `+${v1_step}` : `${v1_step}`;
+      const s2Str = (v2_step > 0) ? `+${v2_step}` : `${v2_step}`;
+      const resStr = isPassed ? (destVal > 0 ? `+${destVal}` : `${destVal}`) : '?';
+
+      // Formula visual slots
+      // Block A (s1)
+      const bA = two.makeRoundedRectangle(width / 2 - 130, eqY, 60, 30, 6);
+      bA.fill = '#ffffff'; bA.stroke = (v1_step > 0) ? '#0284c7' : '#ea580c'; bA.linewidth = 1.5;
+      const tA = two.makeText(s1Str, width / 2 - 130, eqY);
+      tA.size = 13; tA.weight = 900; tA.fill = (v1_step > 0) ? '#0369a1' : '#c2410c';
+
+      const pPlus = two.makeText('+', width / 2 - 85, eqY);
+      pPlus.size = 18; pPlus.weight = 900; pPlus.fill = '#64748b';
+
+      // Block B (s2)
+      const bB = two.makeRoundedRectangle(width / 2 - 40, eqY, 60, 30, 6);
+      bB.fill = '#ffffff'; bB.stroke = (v2_step > 0) ? '#0284c7' : '#ea580c'; bB.linewidth = 1.5;
+      const tB = two.makeText(s2Str, width / 2 - 40, eqY);
+      tB.size = 13; tB.weight = 900; tB.fill = (v2_step > 0) ? '#0369a1' : '#c2410c';
+
+      const pEq = two.makeText('=', width / 2 + 5, eqY);
+      pEq.size = 18; pEq.weight = 900; pEq.fill = '#64748b';
+
+      // Block C (Result)
+      const bC = two.makeRoundedRectangle(width / 2 + 50, eqY, 60, 30, 6);
+      bC.fill = isPassed ? '#10b981' : '#f1f5f9';
+      bC.stroke = isPassed ? '#059669' : '#cbd5e1';
+      bC.linewidth = 1.5;
+      const tC = two.makeText(resStr, width / 2 + 50, eqY);
+      tC.size = 13; tC.weight = 900; tC.fill = isPassed ? '#ffffff' : '#64748b';
+
+      const hintTag = two.makeText('💡 [출발점 0 기준 1차 이동] + [이어서 2차 이동] = [최종 도착점]', width / 2 + 155, eqY);
+      hintTag.size = 8.5; hintTag.weight = 700; hintTag.fill = '#475569';
+
+      // 6. Step Selector Deck (y=322 ~ 364, h=42)
+      const deckBox = two.makeRoundedRectangle(width / 2, 343, width - 40, 40, 8);
+      deckBox.fill = '#f8fafc';
+      deckBox.stroke = '#e2e8f0';
+      deckBox.linewidth = 1.2;
+
+      const stepW = 110, stepH = 28;
+      const stepY = 343;
+      const s0_x = width / 2 - 175;
+      const s1_x = width / 2 - 58;
+      const s2_x = width / 2 + 58;
+      const s3_x = width / 2 + 175;
+
+      const sData = [
+        { step: 0, x: s0_x, label: '0. 전체 궤적 조망' },
+        { step: 1, x: s1_x, label: '1. 1차 이동량' },
+        { step: 2, x: s2_x, label: '2. 2차 이동량' },
+        { step: 3, x: s3_x, label: '3. 수식 완성' }
+      ];
+
+      for (const item of sData) {
+        const isAct = (animStep === item.step);
+        const b = two.makeRoundedRectangle(item.x, stepY, stepW, stepH, 6);
+        b.fill = isAct ? (curTab === 'q1' ? '#4f46e5' : '#ea580c') : '#ffffff';
+        b.stroke = isAct ? (curTab === 'q1' ? '#4338ca' : '#c2410c') : '#cbd5e1';
+        b.linewidth = isAct ? 2 : 1;
+
+        const t = two.makeText(item.label, item.x, stepY);
+        t.size = 8.5;
+        t.weight = 800;
+        t.fill = isAct ? '#ffffff' : '#475569';
+
+        hitBoxes.push({
+          type: 'step',
+          val: item.step,
+          x1: item.x - stepW / 2,
+          x2: item.x + stepW / 2,
+          y1: stepY - stepH / 2,
+          y2: stepY + stepH / 2
+        });
+      }
+
+      // 7. Bottom Status Banner (y=380 ~ 414, h=34)
+      const bBanner = two.makeRoundedRectangle(width / 2, 396, width - 40, 32, 8);
+      bBanner.fill = isPassed ? '#f0fdf4' : '#f1f5f9';
+      bBanner.stroke = isPassed ? '#86efac' : '#cbd5e1';
+      bBanner.linewidth = 1.2;
+
+      let bannerMsg = '';
+      if (isPassed) {
+        bannerMsg = '🎉 교과서 4번 수직선 점프 식 복원 통과! ⑴ (+3)+(-7)=-4, ⑵ (-2)+(+6)=+4 완벽 해결!';
+      } else {
+        if (curTab === 'q1') {
+          if (animStep === 0) bannerMsg = '🎯 ⑴ 1번 수직선 | 0에서 시작하는 두 번의 연속 이동 화살표를 확인하세요.';
+          else if (animStep === 1) bannerMsg = '🎯 ⑴ 1차 이동 | 0에서 오른쪽으로 3칸 이동 ➔ 첫째 수는 +3 입니다.';
+          else if (animStep === 2) bannerMsg = '🎯 ⑴ 2차 이동 | +3에서 왼쪽으로 7칸 이동 ➔ 둘째 수는 -7 입니다.';
+          else bannerMsg = '🎯 ⑴ 최종 결과 | 화살표가 최종 멈춘 눈금(?)을 확인하여 우측 수식을 완성하세요.';
+        } else {
+          if (animStep === 0) bannerMsg = '🎯 ⑵ 2번 수직선 | 0에서 시작하는 두 번의 연속 이동 화살표를 확인하세요.';
+          else if (animStep === 1) bannerMsg = '🎯 ⑵ 1차 이동 | 0에서 왼쪽으로 2칸 이동 ➔ 첫째 수는 -2 입니다.';
+          else if (animStep === 2) bannerMsg = '🎯 ⑵ 2차 이동 | -2에서 오른쪽으로 6칸 이동 ➔ 둘째 수는 +6 입니다.';
+          else bannerMsg = '🎯 ⑵ 최종 결과 | 화살표가 최종 멈춘 눈금(?)을 확인하여 우측 수식을 완성하세요.';
+        }
+      }
+
+      const bTxt = two.makeText(bannerMsg, width / 2, 396);
+      bTxt.size = 9.5;
+      bTxt.weight = 800;
+      bTxt.fill = isPassed ? '#166534' : '#334155';
+
+      // 8. Pointer Event Listeners
+      const containerEl = document.getElementById('two-container');
+      if (containerEl) {
+        containerEl.onpointerdown = (e) => {
+          const rect = containerEl.getBoundingClientRect();
+          const px = (e.clientX - rect.left) * (width / rect.width);
+          const py = (e.clientY - rect.top) * (height / rect.height);
+
+          for (const box of hitBoxes) {
+            if (px >= box.x1 && px <= box.x2 && py >= box.y1 && py <= box.y2) {
+              if (box.type === 'tab') {
+                selectLab3_9Tab(box.val);
+              } else if (box.type === 'step') {
+                setLab3_9AnimStep(box.val);
+              }
+              return;
+            }
+          }
+
+          // Clicking in the main stage area advances to the next step
+          if (px >= 20 && px <= width - 20 && py >= 90 && py <= 245) {
+            const nextStep = (animStep + 1) % 4;
+            setLab3_9AnimStep(nextStep);
+          }
+        };
+      }
+
+      two.update();
+    }
+
 
 
 
