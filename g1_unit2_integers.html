@@ -1024,7 +1024,7 @@
       '4-2': { code: '4-2', tab: 4, substepLabel: '2. 뺄셈의 원리 (부호 반전 덧셈 변환)', missionText: '[4-2] 뺄셈의 원리: 빼는 수의 부호를 바꾸어 덧셈으로 변환 (pp.46~47)', drawer: 'drawStep4_2Canvas' },
       '4-3': { code: '4-3', tab: 4, substepLabel: '3. 정수와 유리수의 뺄셈 연습', missionText: '[4-3] 정수와 유리수의 뺄셈 계산 연습 (p.47)', drawer: 'drawStep4_3Canvas' },
       '4-4': { code: '4-4', tab: 4, substepLabel: '4. 덧셈과 뺄셈의 혼합 계산', missionText: '[4-4] 덧셈과 뺄셈의 혼합 계산: 뺄셈을 덧셈으로 변환 후 계산 (p.48)', drawer: 'drawStep4_4Canvas' },
-      '4-5': { code: '4-5', tab: 4, substepLabel: '5. 부호가 생략된 수의 계산', missionText: '[4-5] 부호 생략 식 (p.48)', drawer: 'drawGenericScaffoldCanvas' },
+      '4-5': { code: '4-5', tab: 4, substepLabel: '5. 부호가 생략된 수의 계산', missionText: '[4-5] 부호가 생략된 수의 계산: 괄호와 부호 되살리기 및 수 덩어리 계산 (p.48)', drawer: 'drawStep4_5Canvas' },
       '4-6': { code: '4-6', tab: 4, substepLabel: '6. [스스로 확인 1] 뺄셈 마스터 4문항', missionText: '[4-6] 스스로 확인하기 1번 (p.49)', drawer: 'drawGenericScaffoldCanvas' },
       '4-7': { code: '4-7', tab: 4, substepLabel: '7. [스스로 확인 2] 혼합 계산 단계', missionText: '[4-7] 스스로 확인하기 2번 (p.49)', drawer: 'drawGenericScaffoldCanvas' },
       '4-8': { code: '4-8', tab: 4, substepLabel: '8. [스스로 확인 3] 잘못 계산한 어떤 수', missionText: '[4-8] 스스로 확인하기 3번 (p.49)', drawer: 'drawGenericScaffoldCanvas' },
@@ -1551,6 +1551,12 @@
         activePreset: 1, // 1: 문제 3 ⑴, 2: ⑵, 3: ⑶, 4: ⑷, 0: 예제 2
         activeStep: 0, // 0: 원식, 1: 덧셈변환, 2: 양음수 모으기, 3: 최종 계산
         isPassed: false
+      },
+      lab4_5: {
+        activeMode: 0, // 0: 돋보기 투시 모드, 1: 수 덩어리 분할 & 수직선
+        activePreset: 1, // 1~4 (교과서 문제 4번 ⑴~⑷)
+        showHidden: false, // 괄호와 + 부호 투시 여부
+        isPassed: false
       }
     };
 
@@ -1750,6 +1756,9 @@
       } else if (code === '4-4') {
         renderToolbar4_4();
         renderSubstep4_4();
+      } else if (code === '4-5') {
+        renderToolbar4_5();
+        renderSubstep4_5();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
@@ -20609,6 +20618,554 @@
                 setLab4_4Step(box.step);
               } else if (box.type === 'preset') {
                 setLab4_4Preset(box.id);
+              }
+              return;
+            }
+          }
+        };
+      }
+
+      two.update();
+    }
+
+    // ==========================================
+    // 8. Substep [4-5] Implementation (2.4 부호가 생략된 수의 계산)
+    // ==========================================
+    const OMITTED_PRESETS_4_5 = [
+      {
+        id: 1,
+        title: '⑴ 6 - 11',
+        omittedExpr: '6 - 11',
+        revivedExpr: '(+6) + (-11)',
+        chunkExpr: '[ +6 ] + [ -11 ]',
+        res: -5,
+        resStr: '-5',
+        chunks: [
+          { val: 6, sign: '+', isPos: true },
+          { val: -11, sign: '-', isPos: false }
+        ],
+        desc: '양의 부호 +와 괄호를 살려 (+6) + (-11)로 계산'
+      },
+      {
+        id: 2,
+        title: '⑵ -9 + 14',
+        omittedExpr: '-9 + 14',
+        revivedExpr: '(-9) + (+14)',
+        chunkExpr: '[ -9 ] + [ +14 ]',
+        res: 5,
+        resStr: '+5',
+        chunks: [
+          { val: -9, sign: '-', isPos: false },
+          { val: 14, sign: '+', isPos: true }
+        ],
+        desc: '부호가 다른 두 수의 덧셈 (-9) + (+14)'
+      },
+      {
+        id: 3,
+        title: '⑶ -3 - 7 + 8',
+        omittedExpr: '-3 - 7 + 8',
+        revivedExpr: '(-3) + (-7) + (+8)',
+        chunkExpr: '{[ -3 ] + [ -7 ]} + [ +8 ]',
+        res: -2,
+        resStr: '-2',
+        chunks: [
+          { val: -3, sign: '-', isPos: false },
+          { val: -7, sign: '-', isPos: false },
+          { val: 8, sign: '+', isPos: true }
+        ],
+        desc: '음수끼리 먼저 모아 (-10) + (+8)로 계산'
+      },
+      {
+        id: 4,
+        title: '⑷ 12 - 5 - 8',
+        omittedExpr: '12 - 5 - 8',
+        revivedExpr: '(+12) + (-5) + (-8)',
+        chunkExpr: '[ +12 ] + {[ -5 ] + [ -8 ]}',
+        res: -1,
+        resStr: '-1',
+        chunks: [
+          { val: 12, sign: '+', isPos: true },
+          { val: -5, sign: '-', isPos: false },
+          { val: -8, sign: '-', isPos: false }
+        ],
+        desc: '양수 (+12)와 음수의 합 (-13)의 결합'
+      }
+    ];
+
+    function renderToolbar4_5() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      const curMode = state.lab4_5.activeMode;
+      const isShow = state.lab4_5.showHidden;
+
+      tb.innerHTML = `
+        <span style="font-size:0.78rem; font-weight:800; color:#475569;">🔍 돋보기 모드:</span>
+        <button class="tool-btn ${curMode === 0 ? 'active' : ''}" onclick="setLab4_5Mode(0)">🔍 1. 부호·괄호 투시 돋보기</button>
+        <button class="tool-btn ${curMode === 1 ? 'active' : ''}" onclick="setLab4_5Mode(1)">🧱 2. 수 덩어리 수직선 랩</button>
+        <div style="height:18px; width:1px; background:#cbd5e1; margin:0 4px;"></div>
+        <button class="tool-btn" onclick="toggleLab4_5Hidden()" style="background:${isShow ? '#eff6ff' : '#f8fafc'}; color:${isShow ? '#1d4ed8' : '#334155'}; border:1px solid ${isShow ? '#93c5fd' : '#cbd5e1'}; font-weight:800;">
+          💡 ${isShow ? '괄호·부호 숨기기' : '생략된 괄호·부호 투시!'}
+        </button>
+        <button class="tool-btn" onclick="resetLab4_5()" style="margin-left:auto;">🔄 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openSecurePasswordModal('teacher_pass')" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스</button>
+      `;
+    }
+
+    function setLab4_5Mode(mode) {
+      state.lab4_5.activeMode = mode;
+      renderToolbar4_5();
+      drawStep4_5Canvas();
+    }
+
+    function setLab4_5Preset(presetId) {
+      state.lab4_5.activePreset = presetId;
+      renderToolbar4_5();
+      drawStep4_5Canvas();
+    }
+
+    function toggleLab4_5Hidden() {
+      state.lab4_5.showHidden = !state.lab4_5.showHidden;
+      renderToolbar4_5();
+      drawStep4_5Canvas();
+    }
+
+    function resetLab4_5() {
+      state.lab4_5.activeMode = 0;
+      state.lab4_5.activePreset = 1;
+      state.lab4_5.showHidden = false;
+      renderToolbar4_5();
+      drawStep4_5Canvas();
+    }
+
+    function renderSubstep4_5() {
+      const data = SUBSTEPS_DATA['4-5'];
+      const missionEl = document.getElementById('mission-text');
+      if (missionEl) {
+        missionEl.innerText = data.missionText;
+      }
+
+      const formBox = document.getElementById('form-box');
+      if (!formBox) return;
+
+      const isPassed = state.lab4_5.isPassed;
+
+      formBox.innerHTML = `
+        <div style="font-size:0.86rem; font-weight:800; color:#1e293b; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+          <span>🔍</span>
+          <span>[개념 & 문제 4] 부호가 생략된 수의 계산 (교과서 p.48)</span>
+        </div>
+
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:14px;">
+          <div style="font-size:0.82rem; font-weight:800; color:#1e293b; margin-bottom:6px;">
+            💡 부호가 생략된 식을 푸는 2가지 비법
+          </div>
+          <div style="font-size:0.80rem; color:#475569; line-height:1.6;">
+            방법 1: <b>생략된 양의 부호 $+$와 괄호를 되살려서 계산한다.</b><br>
+            방법 2: <b>각 수를 '부호를 가진 하나의 수'로 묶어</b> 양수는 양수끼리, 음수는 음수끼리 모아서 계산한다.
+          </div>
+        </div>
+
+        <!-- 문항 1 -->
+        <div style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+          <div style="font-size:0.82rem; font-weight:800; color:#0f172a; margin-bottom:6px;">
+            ⑴ $6 - 11$
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; font-size:0.84rem; font-weight:700; color:#334155;">
+            <span>$= (+6) + (-11) =$</span>
+            <input type="text" id="ans-4-5-1" class="form-control" placeholder="수 입력" style="width:100px; text-align:center; font-weight:800; font-size:0.88rem;" autocomplete="off" value="${isPassed ? '-5' : ''}">
+          </div>
+        </div>
+
+        <!-- 문항 2 -->
+        <div style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+          <div style="font-size:0.82rem; font-weight:800; color:#0f172a; margin-bottom:6px;">
+            ⑵ $-9 + 14$
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; font-size:0.84rem; font-weight:700; color:#334155;">
+            <span>$= (-9) + (+14) =$</span>
+            <input type="text" id="ans-4-5-2" class="form-control" placeholder="수 입력" style="width:100px; text-align:center; font-weight:800; font-size:0.88rem;" autocomplete="off" value="${isPassed ? '+5' : ''}">
+          </div>
+        </div>
+
+        <!-- 문항 3 -->
+        <div style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+          <div style="font-size:0.82rem; font-weight:800; color:#0f172a; margin-bottom:6px;">
+            ⑶ $-3 - 7 + 8$
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; font-size:0.84rem; font-weight:700; color:#334155;">
+            <span>$= \\{(-3) + (-7)\\} + (+8) =$</span>
+            <input type="text" id="ans-4-5-3" class="form-control" placeholder="수 입력" style="width:100px; text-align:center; font-weight:800; font-size:0.88rem;" autocomplete="off" value="${isPassed ? '-2' : ''}">
+          </div>
+        </div>
+
+        <!-- 문항 4 -->
+        <div style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+          <div style="font-size:0.82rem; font-weight:800; color:#0f172a; margin-bottom:6px;">
+            ⑷ $12 - 5 - 8$
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; font-size:0.84rem; font-weight:700; color:#334155;">
+            <span>$= (+12) + \\{(-5) + (-8)\\} =$</span>
+            <input type="text" id="ans-4-5-4" class="form-control" placeholder="수 입력" style="width:100px; text-align:center; font-weight:800; font-size:0.88rem;" autocomplete="off" value="${isPassed ? '-1' : ''}">
+          </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="gradeStep4_5()" style="width:100%; font-weight:800; font-size:0.9rem; padding:10px; border-radius:8px;">
+          정답 확인 및 채점 ➔
+        </button>
+
+        <div id="feedback-4-5" style="margin-top:14px; display:${isPassed ? 'block' : 'none'};">
+          ${isPassed ? getStep4_5SuccessHtml() : ''}
+        </div>
+      `;
+
+      if (window.renderMathInElement) renderMathInElement(formBox);
+    }
+
+    function getStep4_5SuccessHtml() {
+      return `
+        <div style="padding:16px; background:#f0fdf4; border:1.5px solid #bbf7d0; border-radius:10px; color:#166534;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.3rem;">🎉</span>
+            <h4 style="font-size:0.95rem; font-weight:800; margin:0;">정답입니다! 100점 만점 통과!</h4>
+          </div>
+          <p style="font-size:0.84rem; margin:0 0 10px 0; line-height:1.6;">
+            부호가 생략된 식 4문항을 완벽히 정복하셨습니다!<br>
+            <b>[부호 생략 계산 상세 풀이]</b><br>
+            ⑴ $6 - 11 = (+6) + (-11) = \\mathbf{-5}$<br>
+            ⑵ $-9 + 14 = (-9) + (+14) = \\mathbf{+5}$ (또는 $5$)<br>
+            ⑶ $-3 - 7 + 8 = \\{(-3) + (-7)\\} + (+8) = (-10) + (+8) = \\mathbf{-2}$<br>
+            ⑷ $12 - 5 - 8 = (+12) + \\{(-5) + (-8)\\} = (+12) + (-13) = \\mathbf{-1}$<br>
+            💡 <b>생략된 양의 부호와 괄호를 머릿속으로 떠올리며 부호별로 묶어 계산하면 실수를 완벽히 예방할 수 있습니다!</b>
+          </p>
+          <div style="display:flex; gap:8px; margin-top:10px;">
+            <button class="btn btn-sm btn-outline-success" onclick="loadSubStep('4-6')" style="font-weight:800; font-size:0.84rem; padding:6px 14px; border-radius:6px; background:#16a34a; border:none; color:#ffffff; cursor:pointer;">
+              다음 활동 [4-6] [스스로 확인 1] 뺄셈 마스터 도전 ➔
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function parseStep4_5SignedNum(raw) {
+      if (!raw) return NaN;
+      let s = raw.trim().replace(/\s+/g, '').replace(/[()]/g, '');
+      let sign = 1;
+      if (s.startsWith('+')) {
+        s = s.substring(1);
+      } else if (s.startsWith('-')) {
+        sign = -1;
+        s = s.substring(1);
+      }
+      const n = parseInt(s, 10);
+      return isNaN(n) ? NaN : sign * n;
+    }
+
+    async function gradeStep4_5() {
+      const fb = document.getElementById('feedback-4-5');
+      const v1 = parseStep4_5SignedNum(document.getElementById('ans-4-5-1')?.value || '');
+      const v2 = parseStep4_5SignedNum(document.getElementById('ans-4-5-2')?.value || '');
+      const v3 = parseStep4_5SignedNum(document.getElementById('ans-4-5-3')?.value || '');
+      const v4 = parseStep4_5SignedNum(document.getElementById('ans-4-5-4')?.value || '');
+
+      const ok1 = (v1 === -5);
+      const ok2 = (v2 === 5);
+      const ok3 = (v3 === -2);
+      const ok4 = (v4 === -1);
+
+      const allCorrect = ok1 && ok2 && ok3 && ok4;
+
+      if (fb) {
+        fb.style.display = 'block';
+        if (allCorrect) {
+          state.lab4_5.isPassed = true;
+
+          // Unlock Substep 4-6
+          if (!state.unlockedSubSteps.includes('4-6')) {
+            state.unlockedSubSteps.push('4-6');
+          }
+          if (window.LMSIntegration) {
+            await LMSIntegration.saveStudentProgress('4-5', { score: 100, completed: true }, 'unit2');
+          }
+          if (typeof playSuccessSfx === 'function') playSuccessSfx();
+
+          fb.innerHTML = getStep4_5SuccessHtml();
+          if (window.renderMathInElement) renderMathInElement(fb);
+          renderToolbar4_5();
+          drawStep4_5Canvas();
+        } else {
+          let errs = [];
+          if (!ok1) errs.push('⑴: $6 - 11 = (+6) + (-11) = \\mathbf{-5}$입니다.');
+          if (!ok2) errs.push('⑵: $-9 + 14 = (-9) + (+14) = \\mathbf{+5}$ (또는 $5$)입니다.');
+          if (!ok3) errs.push('⑶: $-3 - 7 + 8 = (-10) + (+8) = \\mathbf{-2}$입니다.');
+          if (!ok4) errs.push('⑷: $12 - 5 - 8 = (+12) + (-13) = \\mathbf{-1}$입니다.');
+
+          fb.innerHTML = `
+            <div style="padding:14px; background:#fff1f2; border:1.5px solid #fecdd3; border-radius:10px; color:#9f1239;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                <span style="font-size:1.1rem;">💡</span>
+                <h4 style="font-size:0.92rem; font-weight:800; margin:0;">답안을 다시 점검해 보세요</h4>
+              </div>
+              <ul style="font-size:0.82rem; margin:0 0 8px 18px; padding:0; line-height:1.5;">
+                ${errs.map(e => `<li>${e}</li>`).join('')}
+              </ul>
+              <p style="font-size:0.78rem; margin:0; color:#881337;">
+                좌측 캔버스에서 [생략된 괄호·부호 투시] 버튼을 눌러 숨겨진 부호를 확인해 보세요!
+              </p>
+            </div>
+          `;
+          if (window.renderMathInElement) renderMathInElement(fb);
+        }
+      }
+    }
+
+    function drawStep4_5Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      const container = document.getElementById('two-container');
+      if (container) container.onpointerdown = null;
+      const canvasEl = container ? container.querySelector('canvas') : null;
+
+      drawOmittedSignLab(two, width, height, canvasEl || container);
+    }
+
+    function drawOmittedSignLab(two, width, height, canvasEl) {
+      two.clear();
+
+      const curMode = state.lab4_5.activeMode;
+      const isPassed = state.lab4_5.isPassed;
+      const presetId = state.lab4_5.activePreset;
+      const showHidden = state.lab4_5.showHidden;
+      const p = OMITTED_PRESETS_4_5.find(item => item.id === presetId) || OMITTED_PRESETS_4_5[0];
+
+      const hitBoxes = [];
+
+      // 1. Top Title (y=20)
+      const title = two.makeText('🔍 부호가 생략된 식 투시 & 수 덩어리 랩 (교과서 p.48)', width / 2, 20);
+      title.size = 15;
+      title.weight = 800;
+      title.fill = '#1e293b';
+
+      // 2. Subtitle (y=40)
+      let subMsg = '';
+      if (isPassed) {
+        subMsg = '🎉 부호가 생략된 식도 괄호와 부호를 되살려 정확히 계산할 수 있습니다!';
+      } else {
+        if (curMode === 0) {
+          subMsg = showHidden 
+            ? '투시 ON: 생략되었던 양의 부호(+)와 괄호가 네온 컬러로 되살아났습니다!'
+            : '돋보기 버튼을 클릭하여 생략된 괄호와 (+) 부호를 투시해 보세요.';
+        } else {
+          subMsg = '식의 각 항을 독립된 수 덩어리로 보고 수직선 상에서 이동해 보세요.';
+        }
+      }
+      const sub = two.makeText(subMsg, width / 2, 40);
+      sub.size = 10.5;
+      sub.weight = 600;
+      sub.fill = isPassed ? '#166534' : '#64748b';
+
+      if (curMode === 0) {
+        // ==========================================
+        // Mode 0: Sign & Parentheses Magnifier Lab
+        // ==========================================
+        // Toggle Switch Button on canvas (y=78)
+        const togBtnW = 230, togBtnH = 28;
+        const togBg = two.makeRoundedRectangle(width / 2, 78, togBtnW, togBtnH, 6);
+        togBg.fill = showHidden ? '#eff6ff' : '#f8fafc';
+        togBg.stroke = showHidden ? '#3b82f6' : '#cbd5e1';
+        togBg.linewidth = 1.5;
+
+        const togTxt = two.makeText(showHidden ? '💡 괄호·부호 투시 작동 중 (클릭 시 끄기)' : '🔍 생략된 괄호·부호 투시 켜기', width / 2, 78);
+        togTxt.size = 9.5; togTxt.weight = 800;
+        togTxt.fill = showHidden ? '#1d4ed8' : '#475569';
+
+        hitBoxes.push({
+          type: 'toggle',
+          x1: width / 2 - togBtnW / 2,
+          x2: width / 2 + togBtnW / 2,
+          y1: 78 - togBtnH / 2,
+          y2: 78 + togBtnH / 2
+        });
+
+        // Main Stage Formula Card (y=175, h=140)
+        const cardBox = two.makeRoundedRectangle(width / 2, 180, width - 60, 150, 10);
+        cardBox.fill = '#ffffff';
+        cardBox.stroke = '#e2e8f0';
+        cardBox.linewidth = 1.5;
+
+        // Big Formula Text Display
+        const dispExpr = showHidden ? p.revivedExpr : p.omittedExpr;
+        const exprTxt = two.makeText(dispExpr, width / 2 - 40, 150);
+        exprTxt.size = 24; exprTxt.weight = 900;
+        exprTxt.fill = showHidden ? '#16a34a' : '#1e293b';
+
+        // Equal Sign
+        const eqTxt = two.makeText('＝', width / 2 + 130, 150);
+        eqTxt.size = 22; eqTxt.weight = 900; eqTxt.fill = '#64748b';
+
+        // Result Card (Zero-Spoiler)
+        const resBox = two.makeRoundedRectangle(width / 2 + 195, 150, 76, 50, 8);
+        resBox.fill = isPassed ? '#f0fdf4' : '#f8fafc';
+        resBox.stroke = isPassed ? '#22c55e' : '#cbd5e1';
+        resBox.linewidth = 2;
+
+        let resValStr = isPassed ? p.resStr : '?';
+        const resTxt = two.makeText(resValStr, width / 2 + 195, 150);
+        resTxt.size = 20; resTxt.weight = 900;
+        resTxt.fill = isPassed ? '#166534' : '#94a3b8';
+
+        // Chunking Analysis Badges under the expression (y=210)
+        let chunkBadgeStr = '';
+        if (showHidden) {
+          chunkBadgeStr = `수 덩어리 분해: ${p.chunkExpr} ➔ 양수와 음수의 덧셈으로 즉시 변환`;
+        } else {
+          chunkBadgeStr = `현재 상태: 부호와 괄호가 생략된 표기 (${p.desc})`;
+        }
+
+        const cBadge = two.makeText(chunkBadgeStr, width / 2, 210);
+        cBadge.size = 10.5; cBadge.weight = 800;
+        cBadge.fill = showHidden ? '#2563eb' : '#64748b';
+
+        // Bottom Tip
+        const tipTxt = two.makeText('💡 뺄셈 부호 뒤의 수는 음수 덩어리로, 맨 앞의 부호 없는 양수는 (+수)로 간주합니다.', width / 2, 235);
+        tipTxt.size = 8.5; tipTxt.weight = 600; tipTxt.fill = '#94a3b8';
+
+      } else {
+        // ==========================================
+        // Mode 1: Number Chunk & Numberline Lab
+        // ==========================================
+        const lineY = 185;
+        const minVal = -15, maxVal = 15;
+        const totalSpan = maxVal - minVal;
+        const marginX = 50;
+        const lineW = width - marginX * 2;
+        const valToX = (v) => marginX + ((v - minVal) / totalSpan) * lineW;
+
+        // Axis
+        const axis = two.makeLine(marginX - 15, lineY, width - marginX + 15, lineY);
+        axis.stroke = '#475569'; axis.linewidth = 2.5;
+
+        // Ticks (-15 to +15 every 3 or 5)
+        for (let v = minVal; v <= maxVal; v += 3) {
+          const tx = valToX(v);
+          const isZero = (v === 0);
+          const tick = two.makeLine(tx, lineY - 6, tx, lineY + 6);
+          tick.stroke = isZero ? '#0f172a' : '#94a3b8';
+          tick.linewidth = isZero ? 2 : 1;
+
+          const vStr = (v > 0) ? `+${v}` : `${v}`;
+          const tTxt = two.makeText(vStr, tx, lineY + 18);
+          tTxt.size = 8.5; tTxt.weight = isZero ? 900 : 700;
+          tTxt.fill = isZero ? '#0f172a' : '#64748b';
+        }
+
+        // Sequential Jumps of Chunks
+        let curVal = 0;
+        p.chunks.forEach((chk, idx) => {
+          const nextVal = curVal + chk.val;
+          const xStart = valToX(curVal);
+          const xEnd = valToX(nextVal);
+          const arcY = 135 - idx * 30;
+
+          const jLine = two.makeLine(xStart, arcY, xEnd, arcY);
+          jLine.stroke = chk.isPos ? '#2563eb' : '#ea580c';
+          jLine.linewidth = 2.5;
+
+          const dir = (xEnd > xStart) ? 1 : -1;
+          const head = two.makeLine(xEnd, arcY, xEnd - dir * 6, arcY - 4);
+          head.stroke = chk.isPos ? '#2563eb' : '#ea580c'; head.linewidth = 2;
+          const head2 = two.makeLine(xEnd, arcY, xEnd - dir * 6, arcY + 4);
+          head2.stroke = chk.isPos ? '#2563eb' : '#ea580c'; head2.linewidth = 2;
+
+          const chunkLbl = two.makeText(`${chk.val > 0 ? '+'+chk.val : chk.val}`, (xStart + xEnd) / 2, arcY - 10);
+          chunkLbl.size = 8.5; chunkLbl.weight = 800;
+          chunkLbl.fill = chk.isPos ? '#1d4ed8' : '#c2410c';
+
+          curVal = nextVal;
+        });
+
+        // Final Destination Dot
+        const finalX = valToX(p.res);
+        const fDot = two.makeCircle(finalX, lineY, 6);
+        fDot.fill = isPassed ? '#16a34a' : '#ea580c';
+        fDot.stroke = '#ffffff'; fDot.linewidth = 2;
+
+        // Bottom Chunk Summary Deck (y=275)
+        const dBox = two.makeRoundedRectangle(width / 2, 275, width - 60, 50, 8);
+        dBox.fill = '#f8fafc'; dBox.stroke = '#e2e8f0'; dBox.linewidth = 1.2;
+
+        const dLine1 = two.makeText(`수 덩어리 이동 경로: ${p.chunks.map(c => `[${c.val > 0 ? '+'+c.val : c.val}]`).join(' ➔ ')}`, width / 2, 264);
+        dLine1.size = 10.5; dLine1.weight = 800; dLine1.fill = '#1e293b';
+
+        let dLine2Str = isPassed 
+          ? `최종 도착 위치: ${p.resStr} (성공 통과!)`
+          : `수직선 상에서 순차 점프하여 도착하는 위치를 구하세요! (우측 폼에 입력)`;
+        const dLine2 = two.makeText(dLine2Str, width / 2, 286);
+        dLine2.size = 9.5; dLine2.weight = 700; dLine2.fill = isPassed ? '#166534' : '#475569';
+      }
+
+      // 5. Preset Deck Buttons (y=345, h=32)
+      const deckBox = two.makeRoundedRectangle(width / 2, 345, width - 40, 36, 8);
+      deckBox.fill = '#f8fafc';
+      deckBox.stroke = '#e2e8f0';
+      deckBox.linewidth = 1.2;
+
+      const pBtnW = 142, pBtnH = 26;
+      OMITTED_PRESETS_4_5.forEach((item, idx) => {
+        const bx = width / 2 - 225 + idx * 150;
+        const isAct = (presetId === item.id);
+
+        const b = two.makeRoundedRectangle(bx, 345, pBtnW, pBtnH, 6);
+        b.fill = isAct ? '#4f46e5' : '#ffffff';
+        b.stroke = isAct ? '#4338ca' : '#cbd5e1';
+        b.linewidth = 1.5;
+
+        const t = two.makeText(item.title, bx, 345);
+        t.size = 8.5; t.weight = 800;
+        t.fill = isAct ? '#ffffff' : '#334155';
+
+        hitBoxes.push({
+          type: 'preset',
+          id: item.id,
+          x1: bx - pBtnW / 2,
+          x2: bx + pBtnW / 2,
+          y1: 345 - pBtnH / 2,
+          y2: 345 + pBtnH / 2
+        });
+      });
+
+      // 6. Bottom Status Banner (y=396, h=32, margin bottom: 440 - 412 = 28px >= 25px)
+      const bBanner = two.makeRoundedRectangle(width / 2, 396, width - 40, 32, 8);
+      bBanner.fill = isPassed ? '#f0fdf4' : '#f1f5f9';
+      bBanner.stroke = isPassed ? '#86efac' : '#cbd5e1';
+      bBanner.linewidth = 1.2;
+
+      let bannerMsg = '';
+      if (isPassed) {
+        bannerMsg = '🎉 부호가 생략된 수의 계산 통과! 괄호와 부호를 되살려 정확히 계산하셨습니다!';
+      } else {
+        bannerMsg = '🎯 돋보기 버튼으로 생략된 부호와 괄호를 투시해보고, 우측 폼 4문항의 답을 계산하세요.';
+      }
+
+      const bTxt = two.makeText(bannerMsg, width / 2, 396);
+      bTxt.size = 9.5;
+      bTxt.weight = 800;
+      bTxt.fill = isPassed ? '#166534' : '#334155';
+
+      // 7. Pointer Event Listeners
+      const containerEl = document.getElementById('two-container');
+      if (containerEl) {
+        containerEl.onpointerdown = (e) => {
+          const rect = containerEl.getBoundingClientRect();
+          const px = (e.clientX - rect.left) * (width / rect.width);
+          const py = (e.clientY - rect.top) * (height / rect.height);
+
+          for (const box of hitBoxes) {
+            if (px >= box.x1 && px <= box.x2 && py >= box.y1 && py <= box.y2) {
+              if (box.type === 'toggle') {
+                toggleLab4_5Hidden();
+              } else if (box.type === 'preset') {
+                setLab4_5Preset(box.id);
               }
               return;
             }
