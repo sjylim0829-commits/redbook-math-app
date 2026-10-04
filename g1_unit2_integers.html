@@ -1011,7 +1011,13 @@
         missionText: '<b>[3-10] 스스로 확인하기 5번: 실생활 기온 증감 데이터의 총합 계산</b><br>월요일부터 금요일까지 전날 대비 기온의 증감 데이터를 분석하고, 덧셈의 연산법칙을 활용해 5일간의 총 증감량과 금요일의 최고 기온을 <b>교과서 p.45 5번</b>에 맞추어 계산해 보세요.',
         drawer: 'drawStep3_10Canvas'
       },
-      '3-11': { code: '3-11', tab: 3, substepLabel: '11. [생각 넓히기] 3x3 덧셈 마방진', missionText: '[3-11] 생각 넓히기 마방진 (p.45)', drawer: 'drawGenericScaffoldCanvas' },
+      '3-11': {
+        code: '3-11',
+        tab: 3,
+        substepLabel: '11. [생각 넓히기] 3x3 덧셈 마방진',
+        missionText: '<b>[3-11] 생각 넓히기: 가로, 세로, 대각선의 합이 같은 3x3 덧셈 마방진</b><br>완전한 대각선의 세 수를 더하여 마방진의 기준 합을 먼저 구하고, 가로, 세로, 대각선 세 수의 합이 모두 같아지도록 <b>교과서 p.45 생각 넓히기</b>의 빈칸 ㈎, ㈏, ㈐, ㈑를 완성해 보세요.',
+        drawer: 'drawStep3_11Canvas'
+      },
 
       // Tab 4
       '4-1': { code: '4-1', tab: 4, substepLabel: '1. 생각열기: 세계 시차와 뺄셈', missionText: '[4-1] 2.4 뺄셈 (pp.46~47)', drawer: 'drawGenericScaffoldCanvas' },
@@ -1515,6 +1521,12 @@
         activeMode: 0, // 0: 전체 차트, 1: 양수 모으기, 2: 음수 모으기, 3: 최종 기온
         selectedDay: null,
         isPassed: false
+      },
+      lab3_11: {
+        activeStep: 0,
+        selectedSlot: 'a',
+        slots: { a: null, b: null, c: null, d: null },
+        isPassed: false
       }
     };
 
@@ -1699,6 +1711,9 @@
       } else if (code === '3-10') {
         renderToolbar3_10();
         renderSubstep3_10();
+      } else if (code === '3-11') {
+        renderToolbar3_11();
+        renderSubstep3_11();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
@@ -17539,6 +17554,564 @@
 
       two.update();
     }
+
+    // ==========================================
+    // Substep [3-11] 3x3 정수 덧셈 마방진 랩 (교과서 p.45 생각 넓히기)
+    // ==========================================
+    function renderToolbar3_11() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+
+      const curStep = state.lab3_11.activeStep;
+      const isPassed = state.lab3_11.isPassed;
+
+      tb.innerHTML = `
+        <span style="font-size:0.78rem; font-weight:800; color:#475569;">🔮 마방진 추론:</span>
+        <button class="tool-btn ${curStep === 0 ? 'active' : ''}" onclick="setLab3_11Step(0)">0. 전체 조망</button>
+        <button class="tool-btn ${curStep === 1 ? 'active' : ''}" onclick="setLab3_11Step(1)">1. 1행 ㈎</button>
+        <button class="tool-btn ${curStep === 2 ? 'active' : ''}" onclick="setLab3_11Step(2)">2. 2행 ㈏, ㈑</button>
+        <button class="tool-btn ${curStep === 3 ? 'active' : ''}" onclick="setLab3_11Step(3)">3. 3행 ㈐</button>
+        <div style="height:18px; width:1px; background:#cbd5e1; margin:0 4px;"></div>
+        <button class="tool-btn" onclick="resetLab3_11()" style="margin-left:auto;">🔄 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openSecurePasswordModal('teacher_pass')" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스</button>
+      `;
+    }
+
+    function setLab3_11Step(step) {
+      state.lab3_11.activeStep = Math.max(0, Math.min(3, step));
+      if (step === 1) state.lab3_11.selectedSlot = 'a';
+      else if (step === 2) state.lab3_11.selectedSlot = 'b';
+      else if (step === 3) state.lab3_11.selectedSlot = 'c';
+      renderToolbar3_11();
+      drawStep3_11Canvas();
+    }
+
+    function selectLab3_11Slot(slotKey) {
+      state.lab3_11.selectedSlot = slotKey;
+      drawStep3_11Canvas();
+    }
+
+    function setLab3_11CardToSlot(num) {
+      const slot = state.lab3_11.selectedSlot;
+      if (!slot) return;
+      state.lab3_11.slots[slot] = num;
+
+      const inp = document.getElementById('ans-3-11-' + slot);
+      if (inp) inp.value = (num > 0) ? `+${num}` : `${num}`;
+
+      drawStep3_11Canvas();
+    }
+
+    function resetLab3_11() {
+      state.lab3_11.activeStep = 0;
+      state.lab3_11.selectedSlot = 'a';
+      state.lab3_11.slots = { a: null, b: null, c: null, d: null };
+
+      const inSum = document.getElementById('ans-3-11-sum');
+      const inA = document.getElementById('ans-3-11-a');
+      const inB = document.getElementById('ans-3-11-b');
+      const inC = document.getElementById('ans-3-11-c');
+      const inD = document.getElementById('ans-3-11-d');
+
+      if (inSum) inSum.value = '';
+      if (inA) inA.value = '';
+      if (inB) inB.value = '';
+      if (inC) inC.value = '';
+      if (inD) inD.value = '';
+
+      const fb = document.getElementById('feedback-3-11');
+      if (fb) fb.style.display = 'none';
+
+      renderToolbar3_11();
+      drawStep3_11Canvas();
+    }
+
+    function renderSubstep3_11() {
+      const data = SUBSTEPS_DATA['3-11'];
+      const missionEl = document.getElementById('mission-text');
+      if (missionEl) {
+        missionEl.innerHTML = data.missionText;
+        if (window.renderMathInElement) renderMathInElement(missionEl);
+      }
+
+      const formArea = document.getElementById('form-work-area');
+      if (formArea) {
+        formArea.innerHTML = `
+          <div class="card" style="border-left: 4px solid var(--primary-color); padding: 16px; background: #ffffff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+              <span style="background:#e0e7ff; color:#4338ca; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.45 생각 넓히기</span>
+              <h4 style="font-size:0.95rem; font-weight:800; color:#1e293b; margin:0;">3x3 정수 덧셈 마방진 퍼즐</h4>
+            </div>
+
+            <p style="font-size:0.86rem; color:#475569; margin:0 0 12px 0; line-height:1.5;">
+              <b>[생각 넓히기]</b> 가로, 세로, 대각선에 있는 세 수의 합이 모두 같아지도록 빈칸 ㈎, ㈏, ㈐, ㈑에 알맞은 수를 써넣어 마방진을 완성해 보자.
+            </p>
+
+            <!-- Guide Step 1: Base Sum -->
+            <div style="margin-bottom:12px; padding:10px 12px; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;">
+              <span style="font-size:0.78rem; font-weight:800; color:#0284c7; display:block; margin-bottom:4px;">1단계: 마방진의 기준 합 구하기</span>
+              <div style="font-size:0.82rem; color:#64748b; margin-bottom:6px;">
+                대각선의 세 수의 합: $(+2) + (-1) + (-4) =$
+              </div>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span style="font-size:0.82rem; font-weight:700; color:#475569;">기준 합:</span>
+                <input type="text" id="ans-3-11-sum" class="form-control" placeholder="수 입력" style="width:90px; font-weight:900; font-size:0.95rem; text-align:center;" autocomplete="off">
+              </div>
+            </div>
+
+            <!-- Guide Step 2: 4 Slots -->
+            <div style="margin-bottom:14px; padding:12px; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;">
+              <span style="font-size:0.78rem; font-weight:800; color:#ea580c; display:block; margin-bottom:8px;">2단계: 빈칸 ㈎, ㈏, ㈐, ㈑ 구하기</span>
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                <div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; padding:6px 10px;">
+                  <span style="font-size:0.76rem; font-weight:700; color:#475569; display:block; margin-bottom:3px;">㈎ (1행 2열):</span>
+                  <input type="text" id="ans-3-11-a" class="form-control" placeholder="수 입력" style="font-weight:900; font-size:0.95rem; text-align:center;" autocomplete="off">
+                </div>
+                <div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; padding:6px 10px;">
+                  <span style="font-size:0.76rem; font-weight:700; color:#475569; display:block; margin-bottom:3px;">㈏ (2행 1열):</span>
+                  <input type="text" id="ans-3-11-b" class="form-control" placeholder="수 입력" style="font-weight:900; font-size:0.95rem; text-align:center;" autocomplete="off">
+                </div>
+                <div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; padding:6px 10px;">
+                  <span style="font-size:0.76rem; font-weight:700; color:#475569; display:block; margin-bottom:3px;">㈐ (3행 2열):</span>
+                  <input type="text" id="ans-3-11-c" class="form-control" placeholder="수 입력" style="font-weight:900; font-size:0.95rem; text-align:center;" autocomplete="off">
+                </div>
+                <div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; padding:6px 10px;">
+                  <span style="font-size:0.76rem; font-weight:700; color:#475569; display:block; margin-bottom:3px;">㈑ (2행 3열):</span>
+                  <input type="text" id="ans-3-11-d" class="form-control" placeholder="수 입력" style="font-weight:900; font-size:0.95rem; text-align:center;" autocomplete="off">
+                </div>
+              </div>
+            </div>
+
+            <!-- Submit Action -->
+            <button class="btn btn-primary" onclick="gradeStep3_11()" style="width:100%; padding:10px; font-weight:800; font-size:0.95rem; border-radius:8px; background:var(--primary-color); border:none; color:#ffffff; cursor:pointer; box-shadow:0 2px 4px rgba(79,70,229,0.25);">
+              마방진 완성 및 채점하기
+            </button>
+
+            <!-- Feedback Box -->
+            <div id="feedback-3-11" style="margin-top:14px; display:none;"></div>
+          </div>
+        `;
+        if (window.renderMathInElement) renderMathInElement(formArea);
+      }
+
+      renderToolbar3_11();
+      drawStep3_11Canvas();
+    }
+
+    function parseStep3_11Num(str) {
+      if (!str) return null;
+      let s = str.trim().replace(/\s+/g, '').replace(/[()]/g, '');
+      let sign = 1;
+      if (s.startsWith('+')) {
+        s = s.substring(1);
+      } else if (s.startsWith('-')) {
+        sign = -1;
+        s = s.substring(1);
+      }
+      const v = parseFloat(s);
+      return isNaN(v) ? null : sign * v;
+    }
+
+    async function gradeStep3_11() {
+      const sumRaw = (document.getElementById('ans-3-11-sum') || {}).value || '';
+      const aRaw = (document.getElementById('ans-3-11-a') || {}).value || '';
+      const bRaw = (document.getElementById('ans-3-11-b') || {}).value || '';
+      const cRaw = (document.getElementById('ans-3-11-c') || {}).value || '';
+      const dRaw = (document.getElementById('ans-3-11-d') || {}).value || '';
+
+      const fb = document.getElementById('feedback-3-11');
+
+      if (!sumRaw.trim() || !aRaw.trim() || !bRaw.trim() || !cRaw.trim() || !dRaw.trim()) {
+        if (fb) {
+          fb.style.display = 'block';
+          fb.innerHTML = `
+            <div style="padding:12px; background:#fff1f2; border:1px solid #fecdd3; border-radius:8px; color:#e11d48; font-size:0.86rem; font-weight:700;">
+              모든 빈칸에 답을 입력해 주세요. (기준 합과 ㈎, ㈏, ㈐, ㈑ 모두 입력)
+            </div>
+          `;
+          if (window.renderMathInElement) renderMathInElement(fb);
+        }
+        return;
+      }
+
+      const valSum = parseStep3_11Num(sumRaw);
+      const valA = parseStep3_11Num(aRaw);
+      const valB = parseStep3_11Num(bRaw);
+      const valC = parseStep3_11Num(cRaw);
+      const valD = parseStep3_11Num(dRaw);
+
+      const isSumOk = (valSum === -3);
+      const isAOk = (valA === 3);
+      const isBOk = (valB === -3);
+      const isCOk = (valC === -5);
+      const isDOk = (valD === 1);
+
+      const allCorrect = isSumOk && isAOk && isBOk && isCOk && isDOk;
+
+      if (fb) {
+        fb.style.display = 'block';
+        if (allCorrect) {
+          state.lab3_11.isPassed = true;
+
+          // Unlock Tab 4 (2.4 뺄셈) & Substep 4-1
+          if (!state.unlockedTabs.includes(4)) {
+            state.unlockedTabs.push(4);
+          }
+          if (!state.unlockedSubSteps.includes('4-1')) {
+            state.unlockedSubSteps.push('4-1');
+          }
+          if (window.LMSIntegration) {
+            await LMSIntegration.saveStudentProgress('3-11', { score: 100, completed: true }, 'unit2');
+          }
+          if (typeof playSuccessSfx === 'function') playSuccessSfx();
+
+          fb.innerHTML = `
+            <div style="padding:16px; background:#f0fdf4; border:1.5px solid #bbf7d0; border-radius:10px; color:#166534;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                <span style="font-size:1.3rem;">🎉</span>
+                <h4 style="font-size:0.95rem; font-weight:800; margin:0;">정답입니다! 100점 만점 통과!</h4>
+              </div>
+              <p style="font-size:0.84rem; margin:0 0 10px 0; line-height:1.6;">
+                축하합니다! 3단원(2.3 덧셈)의 모든 세부활동을 완벽히 정복하셨습니다!<br>
+                <b>[마방진 상세 풀이]</b><br>
+                1. <b>기준 합</b>: 대각선 $(+2) + (-1) + (-4) = \\mathbf{-3}$<br>
+                2. <b>㈎ (1행 2열)</b>: $(-2) + \\text{㈎} + (-4) = -3 \\implies -6 + \\text{㈎} = -3 \\implies \\mathbf{㈎ = +3}$ (또는 $3$)<br>
+                3. <b>㈏ (2행 1열)</b>: $(-2) + \\text{㈏} + (+2) = -3 \\implies 0 + \\text{㈏} = -3 \\implies \\mathbf{㈏ = -3}$<br>
+                4. <b>㈐ (3행 2열)</b>: $(+2) + \\text{㈐} + 0 = -3 \\implies +2 + \\text{㈐} = -3 \\implies \\mathbf{㈐ = -5}$<br>
+                5. <b>㈑ (2행 3열)</b>: $(-4) + \\text{㈑} + 0 = -3 \\implies -4 + \\text{㈑} = -3 \\implies \\mathbf{㈑ = +1}$ (또는 $1$)<br>
+                💡 <b>Tab 4 (2.4 뺄셈)이 성공적으로 해금되었습니다!</b>
+              </p>
+              <div style="display:flex; gap:8px; margin-top:10px;">
+                <button class="btn btn-sm btn-outline-success" onclick="switchMainTab(4); loadSubStep('4-1');" style="font-weight:800; font-size:0.84rem; padding:6px 14px; border-radius:6px; background:#16a34a; border:none; color:#ffffff; cursor:pointer;">
+                  다음 대단원 [Tab 4] 2.4 뺄셈 도전 ➔
+                </button>
+              </div>
+            </div>
+          `;
+          if (window.renderMathInElement) renderMathInElement(fb);
+          renderToolbar3_11();
+          drawStep3_11Canvas();
+        } else {
+          let errs = [];
+          if (!isSumOk) errs.push('기준 합: 대각선의 합 $(+2) + (-1) + (-4) = <b>-3</b>입니다.');
+          if (!isAOk) errs.push('㈎: 1행의 합 $(-2) + ㈎ + (-4) = -3$ 에서 <b>㈎ = +3 (또는 3)</b>입니다.');
+          if (!isBOk) errs.push('㈏: 1열의 합 $(-2) + ㈏ + (+2) = -3$ 에서 <b>㈏ = -3</b>입니다.');
+          if (!isCOk) errs.push('㈐: 3행의 합 $(+2) + ㈐ + 0 = -3$ 에서 <b>㈐ = -5</b>입니다.');
+          if (!isDOk) errs.push('㈑: 3열의 합 $(-4) + ㈑ + 0 = -3$ 에서 <b>㈑ = +1 (또는 1)</b>입니다.');
+
+          fb.innerHTML = `
+            <div style="padding:14px; background:#fff1f2; border:1.5px solid #fecdd3; border-radius:10px; color:#9f1239;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                <span style="font-size:1.1rem;">💡</span>
+                <h4 style="font-size:0.92rem; font-weight:800; margin:0;">답안을 다시 점검해 보세요</h4>
+              </div>
+              <ul style="font-size:0.82rem; margin:0 0 8px 18px; padding:0; line-height:1.5;">
+                ${errs.map(e => `<li>${e}</li>`).join('')}
+              </ul>
+              <p style="font-size:0.78rem; margin:0; color:#881337;">
+                좌측 캔버스에서 각 행, 열의 실시간 합계 뱃지를 확인해 보세요!
+              </p>
+            </div>
+          `;
+          if (window.renderMathInElement) renderMathInElement(fb);
+        }
+      }
+    }
+
+    function drawStep3_11Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      const container = document.getElementById('two-container');
+      if (container) container.onpointerdown = null;
+      const canvasEl = container ? container.querySelector('canvas') : null;
+
+      drawMagicSquareLab(two, width, height, canvasEl || container);
+    }
+
+    function drawMagicSquareLab(two, width, height, canvasEl) {
+      two.clear();
+
+      const curStep = state.lab3_11.activeStep;
+      const isPassed = state.lab3_11.isPassed;
+      const selSlot = state.lab3_11.selectedSlot;
+      const slots = state.lab3_11.slots;
+
+      // 1. Top Title (y=20)
+      const title = two.makeText('🔮 3x3 정수 덧셈 마방진 랩 (교과서 p.45)', width / 2, 20);
+      title.size = 15;
+      title.weight = 800;
+      title.fill = '#1e293b';
+
+      // 2. Subtitle (y=40)
+      let subMsg = '';
+      if (isPassed) {
+        subMsg = '🎉 마방진 8개 라인(가로 3, 세로 3, 대각선 2)의 합이 모두 -3으로 일치합니다!';
+      } else {
+        if (curStep === 0) subMsg = '대각선 (+2)+(-1)+(-4)를 통해 기준 합을 먼저 구하고 빈칸 ㈎~㈑를 채워보세요.';
+        else if (curStep === 1) subMsg = '1행: (-2) + ㈎ + (-4) = 기준합 ➔ ㈎에 들어갈 수를 추론하세요.';
+        else if (curStep === 2) subMsg = '2행 & 1열/3열: ㈏, ㈑에 들어갈 수를 각각 추론하세요.';
+        else subMsg = '3행: (+2) + ㈐ + 0 = 기준합 ➔ ㈐에 들어갈 수를 추론하세요.';
+      }
+      const sub = two.makeText(subMsg, width / 2, 40);
+      sub.size = 11;
+      sub.weight = 700;
+      sub.fill = '#475569';
+
+      // 3. Top Guide Bar (y=66, h=28)
+      const gBox = two.makeRoundedRectangle(width / 2, 66, width - 40, 26, 6);
+      gBox.fill = isPassed ? '#f0fdf4' : '#f8fafc';
+      gBox.stroke = isPassed ? '#86efac' : '#cbd5e1';
+      gBox.linewidth = 1.2;
+
+      const guideStr = isPassed
+        ? '대각선 기준 합: (+2) + (-1) + (-4) = -3 ➔ 8개 라인 완벽 일치 통과!'
+        : '대각선 기준 합: (+2) + (-1) + (-4) = [ ? ] (우측 폼 1단계에 입력)';
+      const gTxt = two.makeText(guideStr, width / 2, 66);
+      gTxt.size = 9.5;
+      gTxt.weight = 800;
+      gTxt.fill = isPassed ? '#166534' : '#475569';
+
+      // 4. Main Stage Area (y=92 ~ 324, h=232)
+      const stageBox = two.makeRoundedRectangle(width / 2, 208, width - 40, 230, 12);
+      stageBox.fill = '#ffffff';
+      stageBox.stroke = '#e2e8f0';
+      stageBox.linewidth = 1.5;
+
+      // 3x3 Grid Board Layout
+      const gridCenterX = width / 2 - 50;
+      const gridCenterY = 208;
+      const cellSize = 56;
+      const halfGrid = (3 * cellSize) / 2;
+
+      const aVal = isPassed ? 3 : (slots.a !== null ? slots.a : null);
+      const bVal = isPassed ? -3 : (slots.b !== null ? slots.b : null);
+      const cVal = isPassed ? -5 : (slots.c !== null ? slots.c : null);
+      const dVal = isPassed ? 1 : (slots.d !== null ? slots.d : null);
+
+      const gridData = [
+        [{ isFixed: true, val: -2, label: '-2' }, { isFixed: false, key: 'a', val: aVal, label: '㈎' }, { isFixed: true, val: -4, label: '-4' }],
+        [{ isFixed: false, key: 'b', val: bVal, label: '㈏' }, { isFixed: true, val: -1, label: '-1' }, { isFixed: false, key: 'd', val: dVal, label: '㈑' }],
+        [{ isFixed: true, val: 2, label: '+2' }, { isFixed: false, key: 'c', val: cVal, label: '㈐' }, { isFixed: true, val: 0, label: '0' }]
+      ];
+
+      const hitBoxes = [];
+
+      // Render 9 cells
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+          const cx = gridCenterX - halfGrid + c * cellSize + cellSize / 2;
+          const cy = gridCenterY - halfGrid + r * cellSize + cellSize / 2;
+          const cell = gridData[r][c];
+
+          const isCurSel = (!cell.isFixed && selSlot === cell.key);
+
+          const cellBox = two.makeRoundedRectangle(cx, cy, cellSize - 4, cellSize - 4, 8);
+          if (cell.isFixed) {
+            cellBox.fill = (cell.val === -1) ? '#fef3c7' : '#f1f5f9';
+            cellBox.stroke = (cell.val === -1) ? '#d97706' : '#cbd5e1';
+          } else {
+            cellBox.fill = isPassed ? '#ecfdf5' : (isCurSel ? '#eff6ff' : '#ffffff');
+            cellBox.stroke = isPassed ? '#10b981' : (isCurSel ? '#0284c7' : '#ea580c');
+          }
+          cellBox.linewidth = isCurSel ? 2.5 : 1.5;
+
+          let displayTxt = '';
+          if (cell.isFixed) {
+            displayTxt = cell.label;
+          } else {
+            if (isPassed) {
+              displayTxt = (cell.val > 0) ? `+${cell.val}` : `${cell.val}`;
+            } else if (cell.val !== null) {
+              displayTxt = (cell.val > 0) ? `+${cell.val}` : `${cell.val}`;
+            } else {
+              displayTxt = cell.label;
+            }
+          }
+
+          const txt = two.makeText(displayTxt, cx, cy);
+          txt.size = cell.isFixed ? 14 : 15;
+          txt.weight = 900;
+          if (cell.isFixed) {
+            txt.fill = (cell.val === -1) ? '#b45309' : '#334155';
+          } else {
+            txt.fill = isPassed ? '#047857' : (cell.val !== null ? '#0369a1' : '#c2410c');
+          }
+
+          if (!cell.isFixed) {
+            hitBoxes.push({
+              type: 'slot',
+              val: cell.key,
+              x1: cx - cellSize / 2,
+              x2: cx + cellSize / 2,
+              y1: cy - cellSize / 2,
+              y2: cy + cellSize / 2
+            });
+          }
+        }
+      }
+
+      // Line Sum Indicators (Rows on Right, Cols on Bottom)
+      for (let r = 0; r < 3; r++) {
+        const ry = gridCenterY - halfGrid + r * cellSize + cellSize / 2;
+        const rx = gridCenterX + halfGrid + 24;
+
+        const rowVals = [gridData[r][0].val, gridData[r][1].val, gridData[r][2].val];
+        const isComplete = !rowVals.includes(null);
+        const rSum = isComplete ? (rowVals[0] + rowVals[1] + rowVals[2]) : null;
+
+        const sumBadge = two.makeRoundedRectangle(rx, ry, 36, 24, 6);
+        const isMatch = (rSum === -3);
+        sumBadge.fill = isMatch ? '#10b981' : '#f1f5f9';
+        sumBadge.stroke = isMatch ? '#059669' : '#cbd5e1';
+        sumBadge.linewidth = 1.2;
+
+        const sTxt = two.makeText(isComplete ? `${rSum}` : '?', rx, ry);
+        sTxt.size = 9; sTxt.weight = 800; sTxt.fill = isMatch ? '#ffffff' : '#64748b';
+      }
+
+      for (let c = 0; c < 3; c++) {
+        const cx = gridCenterX - halfGrid + c * cellSize + cellSize / 2;
+        const cy = gridCenterY + halfGrid + 22;
+
+        const colVals = [gridData[0][c].val, gridData[1][c].val, gridData[2][c].val];
+        const isComplete = !colVals.includes(null);
+        const cSum = isComplete ? (colVals[0] + colVals[1] + colVals[2]) : null;
+
+        const sumBadge = two.makeRoundedRectangle(cx, cy, 34, 22, 6);
+        const isMatch = (cSum === -3);
+        sumBadge.fill = isMatch ? '#10b981' : '#f1f5f9';
+        sumBadge.stroke = isMatch ? '#059669' : '#cbd5e1';
+        sumBadge.linewidth = 1.2;
+
+        const sTxt = two.makeText(isComplete ? `${cSum}` : '?', cx, cy);
+        sTxt.size = 9; sTxt.weight = 800; sTxt.fill = isMatch ? '#ffffff' : '#64748b';
+      }
+
+      // 4-B. Right Deck: Number Card Selector (x = width/2 + 130 ~ width/2 + 225)
+      const deckStartX = width / 2 + 155;
+      const deckY = 208;
+
+      const deckPanel = two.makeRoundedRectangle(deckStartX, deckY, 130, 200, 10);
+      deckPanel.fill = '#f8fafc';
+      deckPanel.stroke = '#e2e8f0';
+      deckPanel.linewidth = 1.2;
+
+      const dTitle = two.makeText('숫자 카드 덱', deckStartX, deckY - 78);
+      dTitle.size = 11; dTitle.weight = 800; dTitle.fill = '#1e293b';
+
+      const dSub = two.makeText(`선택 슬롯: [${selSlot ? selSlot.toUpperCase() : '선택'}]`, deckStartX, deckY - 58);
+      dSub.size = 9.5; dSub.weight = 800; dSub.fill = '#0284c7';
+
+      // 4 Cards: -5, -3, +1, +3
+      const cardValues = [-5, -3, 1, 3];
+      cardValues.forEach((cv, idx) => {
+        const cy = deckY - 26 + idx * 36;
+        const cBox = two.makeRoundedRectangle(deckStartX, cy, 104, 30, 6);
+        cBox.fill = '#ffffff';
+        cBox.stroke = (cv > 0) ? '#0284c7' : '#ea580c';
+        cBox.linewidth = 1.5;
+
+        const cTxtStr = (cv > 0) ? `+${cv}` : `${cv}`;
+        const cTxt = two.makeText(cTxtStr, deckStartX, cy);
+        cTxt.size = 13;
+        cTxt.weight = 900;
+        cTxt.fill = (cv > 0) ? '#0369a1' : '#c2410c';
+
+        hitBoxes.push({
+          type: 'card',
+          val: cv,
+          x1: deckStartX - 52,
+          x2: deckStartX + 52,
+          y1: cy - 15,
+          y2: cy + 15
+        });
+      });
+
+      // 5. Bottom Step Deck (y=325 ~ 365, h=40)
+      const deckBox = two.makeRoundedRectangle(width / 2, 345, width - 40, 40, 8);
+      deckBox.fill = '#f8fafc';
+      deckBox.stroke = '#e2e8f0';
+      deckBox.linewidth = 1.2;
+
+      const stepW = 110, stepH = 28;
+      const stepY = 345;
+      const sData = [
+        { step: 0, x: width / 2 - 175, label: '0. 전체 조망' },
+        { step: 1, x: width / 2 - 58, label: '1. 1행 ㈎' },
+        { step: 2, x: width / 2 + 58, label: '2. 2행 ㈏, ㈑' },
+        { step: 3, x: width / 2 + 175, label: '3. 3행 ㈐' }
+      ];
+
+      for (const item of sData) {
+        const isAct = (curStep === item.step);
+        const b = two.makeRoundedRectangle(item.x, stepY, stepW, stepH, 6);
+        b.fill = isAct ? '#4f46e5' : '#ffffff';
+        b.stroke = isAct ? '#4338ca' : '#cbd5e1';
+        b.linewidth = 2;
+
+        const t = two.makeText(item.label, item.x, stepY);
+        t.size = 8.5;
+        t.weight = 800;
+        t.fill = isAct ? '#ffffff' : '#475569';
+
+        hitBoxes.push({
+          type: 'step',
+          val: item.step,
+          x1: item.x - stepW / 2,
+          x2: item.x + stepW / 2,
+          y1: stepY - stepH / 2,
+          y2: stepY + stepH / 2
+        });
+      }
+
+      // 6. Bottom Status Banner (y=380 ~ 414, h=34)
+      const bBanner = two.makeRoundedRectangle(width / 2, 396, width - 40, 32, 8);
+      bBanner.fill = isPassed ? '#f0fdf4' : '#f1f5f9';
+      bBanner.stroke = isPassed ? '#86efac' : '#cbd5e1';
+      bBanner.linewidth = 1.2;
+
+      let bannerMsg = '';
+      if (isPassed) {
+        bannerMsg = '🎉 3단원 피날레 3x3 마방진 완성! ㈎(+3), ㈏(-3), ㈐(-5), ㈑(+1) 전원 통과 완료!';
+      } else {
+        if (curStep === 0) bannerMsg = '🎯 대각선 세 수를 더해 기준 합을 구하고, 3x3 빈칸 ㈎~㈑를 클릭해 수를 채우세요.';
+        else if (curStep === 1) bannerMsg = '🎯 1행: (-2) + ㈎ + (-4) = 기준합 ➔ ㈎에 들어갈 수를 우측 폼에 입력하세요.';
+        else if (curStep === 2) bannerMsg = '🎯 2행 & 1열/3열: ㈏와 ㈑에 들어갈 수를 차례로 구하세요.';
+        else bannerMsg = '🎯 3행: (+2) + ㈐ + 0 = 기준합 ➔ ㈐에 들어갈 수를 구하고 마방진을 완성하세요.';
+      }
+
+      const bTxt = two.makeText(bannerMsg, width / 2, 396);
+      bTxt.size = 9.5;
+      bTxt.weight = 800;
+      bTxt.fill = isPassed ? '#166534' : '#334155';
+
+      // 7. Pointer Event Listeners
+      const containerEl = document.getElementById('two-container');
+      if (containerEl) {
+        containerEl.onpointerdown = (e) => {
+          const rect = containerEl.getBoundingClientRect();
+          const px = (e.clientX - rect.left) * (width / rect.width);
+          const py = (e.clientY - rect.top) * (height / rect.height);
+
+          for (const box of hitBoxes) {
+            if (px >= box.x1 && px <= box.x2 && py >= box.y1 && py <= box.y2) {
+              if (box.type === 'step') {
+                setLab3_11Step(box.val);
+              } else if (box.type === 'slot') {
+                selectLab3_11Slot(box.val);
+              } else if (box.type === 'card') {
+                setLab3_11CardToSlot(box.val);
+              }
+              return;
+            }
+          }
+        };
+      }
+
+      two.update();
+    }
+
 
 
 
