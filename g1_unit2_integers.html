@@ -1023,7 +1023,7 @@
       '4-1': { code: '4-1', tab: 4, substepLabel: '1. 생각열기: 세계 시차와 뺄셈', missionText: '[4-1] 생각열기: 세계 주요 도시의 시차와 뺄셈 (p.46)', drawer: 'drawStep4_1Canvas' },
       '4-2': { code: '4-2', tab: 4, substepLabel: '2. 뺄셈의 원리 (부호 반전 덧셈 변환)', missionText: '[4-2] 뺄셈의 원리: 빼는 수의 부호를 바꾸어 덧셈으로 변환 (pp.46~47)', drawer: 'drawStep4_2Canvas' },
       '4-3': { code: '4-3', tab: 4, substepLabel: '3. 정수와 유리수의 뺄셈 연습', missionText: '[4-3] 정수와 유리수의 뺄셈 계산 연습 (p.47)', drawer: 'drawStep4_3Canvas' },
-      '4-4': { code: '4-4', tab: 4, substepLabel: '4. 덧셈과 뺄셈의 혼합 계산', missionText: '[4-4] 혼합 계산 (p.48)', drawer: 'drawGenericScaffoldCanvas' },
+      '4-4': { code: '4-4', tab: 4, substepLabel: '4. 덧셈과 뺄셈의 혼합 계산', missionText: '[4-4] 덧셈과 뺄셈의 혼합 계산: 뺄셈을 덧셈으로 변환 후 계산 (p.48)', drawer: 'drawStep4_4Canvas' },
       '4-5': { code: '4-5', tab: 4, substepLabel: '5. 부호가 생략된 수의 계산', missionText: '[4-5] 부호 생략 식 (p.48)', drawer: 'drawGenericScaffoldCanvas' },
       '4-6': { code: '4-6', tab: 4, substepLabel: '6. [스스로 확인 1] 뺄셈 마스터 4문항', missionText: '[4-6] 스스로 확인하기 1번 (p.49)', drawer: 'drawGenericScaffoldCanvas' },
       '4-7': { code: '4-7', tab: 4, substepLabel: '7. [스스로 확인 2] 혼합 계산 단계', missionText: '[4-7] 스스로 확인하기 2번 (p.49)', drawer: 'drawGenericScaffoldCanvas' },
@@ -1545,6 +1545,12 @@
         activeMode: 0, // 0: 최고/최저 기온차 온도계 랩, 1: 분수/소수 수직선 랩
         activePreset: 1, // 1: 정수 1, 2: 정수 2, 3: 분수, 4: 소수
         isPassed: false
+      },
+      lab4_4: {
+        activeMode: 0, // 0: 단계별 파이프라인, 1: 양수/음수 블록 소팅
+        activePreset: 1, // 1: 문제 3 ⑴, 2: ⑵, 3: ⑶, 4: ⑷, 0: 예제 2
+        activeStep: 0, // 0: 원식, 1: 덧셈변환, 2: 양음수 모으기, 3: 최종 계산
+        isPassed: false
       }
     };
 
@@ -1741,6 +1747,9 @@
       } else if (code === '4-3') {
         renderToolbar4_3();
         renderSubstep4_3();
+      } else if (code === '4-4') {
+        renderToolbar4_4();
+        renderSubstep4_4();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
@@ -20031,6 +20040,575 @@
             if (px >= box.x1 && px <= box.x2 && py >= box.y1 && py <= box.y2) {
               if (box.type === 'preset') {
                 setLab4_3Preset(box.id);
+              }
+              return;
+            }
+          }
+        };
+      }
+
+      two.update();
+    }
+
+    // ==========================================
+    // 7. Substep [4-4] Implementation (2.4 덧셈과 뺄셈의 혼합 계산)
+    // ==========================================
+    const MIXED_PRESETS_4_4 = [
+      {
+        id: 1,
+        title: '⑴ (+5) - (-2) + (-3)',
+        rawExpr: '(+5) - (-2) + (-3)',
+        step1: '(+5) + (+2) + (-3)',
+        step2: '{(+5) + (+2)} + (-3) = (+7) + (-3)',
+        step3: '+4',
+        res: 4,
+        posSum: 7,
+        negSum: -3,
+        desc: '뺄셈 (-2)를 덧셈 (+2)로 고쳐 계산'
+      },
+      {
+        id: 2,
+        title: '⑵ (-8) + (+5) - (+7)',
+        rawExpr: '(-8) + (+5) - (+7)',
+        step1: '(-8) + (+5) + (-7)',
+        step2: '(+5) + {(-8) + (-7)} = (+5) + (-15)',
+        step3: '-10',
+        res: -10,
+        posSum: 5,
+        negSum: -15,
+        desc: '뺄셈 (+7)을 덧셈 (-7)로 고쳐 음수끼리 묶기'
+      },
+      {
+        id: 3,
+        title: '⑶ (+6) - (+9) - (-4) + (-1)',
+        rawExpr: '(+6) - (+9) - (-4) + (-1)',
+        step1: '(+6) + (-9) + (+4) + (-1)',
+        step2: '{(+6) + (+4)} + {(-9) + (-1)} = (+10) + (-10)',
+        step3: '0',
+        res: 0,
+        posSum: 10,
+        negSum: -10,
+        desc: '뺄셈 2개를 덧셈으로 고치고 양수/음수 분리 결합'
+      },
+      {
+        id: 4,
+        title: '⑷ (+2/3) - (-1/2) + (-5/6)',
+        rawExpr: '(+2/3) - (-1/2) + (-5/6)',
+        step1: '(+4/6) + (+3/6) + (-5/6)',
+        step2: '{(+4/6) + (+3/6)} + (-5/6) = (+7/6) + (-5/6)',
+        step3: '+1/3',
+        res: 1/3,
+        posSum: 7/6,
+        negSum: -5/6,
+        desc: '통분과 뺄셈 변환을 거쳐 양수 먼저 합산 후 약분'
+      }
+    ];
+
+    function renderToolbar4_4() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      const curMode = state.lab4_4.activeMode;
+      const curStep = state.lab4_4.activeStep;
+
+      tb.innerHTML = `
+        <span style="font-size:0.78rem; font-weight:800; color:#475569;">🔄 파이프라인:</span>
+        <button class="tool-btn ${curMode === 0 ? 'active' : ''}" onclick="setLab4_4Mode(0)">🔄 1. 3단계 혼합 계산 파이프라인</button>
+        <button class="tool-btn ${curMode === 1 ? 'active' : ''}" onclick="setLab4_4Mode(1)">🧺 2. 양수/음수 바구니 소팅</button>
+        <div style="height:18px; width:1px; background:#cbd5e1; margin:0 4px;"></div>
+        <button class="tool-btn" onclick="setLab4_4Step((state.lab4_4.activeStep + 1) % 4)" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe; font-weight:800;">
+          ▶ 단계 진행 (${curStep}/3)
+        </button>
+        <button class="tool-btn" onclick="resetLab4_4()" style="margin-left:auto;">🔄 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openSecurePasswordModal('teacher_pass')" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스</button>
+      `;
+    }
+
+    function setLab4_4Mode(mode) {
+      state.lab4_4.activeMode = mode;
+      renderToolbar4_4();
+      drawStep4_4Canvas();
+    }
+
+    function setLab4_4Preset(presetId) {
+      state.lab4_4.activePreset = presetId;
+      state.lab4_4.activeStep = 0;
+      renderToolbar4_4();
+      drawStep4_4Canvas();
+    }
+
+    function setLab4_4Step(step) {
+      state.lab4_4.activeStep = step;
+      renderToolbar4_4();
+      drawStep4_4Canvas();
+    }
+
+    function resetLab4_4() {
+      state.lab4_4.activeMode = 0;
+      state.lab4_4.activePreset = 1;
+      state.lab4_4.activeStep = 0;
+      renderToolbar4_4();
+      drawStep4_4Canvas();
+    }
+
+    function renderSubstep4_4() {
+      const data = SUBSTEPS_DATA['4-4'];
+      const missionEl = document.getElementById('mission-text');
+      if (missionEl) {
+        missionEl.innerText = data.missionText;
+      }
+
+      const formBox = document.getElementById('form-box');
+      if (!formBox) return;
+
+      const isPassed = state.lab4_4.isPassed;
+
+      formBox.innerHTML = `
+        <div style="font-size:0.86rem; font-weight:800; color:#1e293b; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+          <span>🔄</span>
+          <span>[개념 & 문제 3] 덧셈과 뺄셈의 혼합 계산 (교과서 p.48)</span>
+        </div>
+
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:14px;">
+          <div style="font-size:0.82rem; font-weight:800; color:#1e293b; margin-bottom:6px;">
+            💡 혼합 계산의 2대 황금 법칙
+          </div>
+          <div style="font-size:0.80rem; color:#475569; line-height:1.6;">
+            1. <b>뺄셈을 덧셈으로 고친다.</b> (빼는 수의 부호 반전)<br>
+            2. 덧셈의 교환법칙과 결합법칙을 이용하여 <b>양수는 양수끼리, 음수는 음수끼리</b> 모아서 계산한다.
+          </div>
+        </div>
+
+        <!-- 문항 1 -->
+        <div style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+          <div style="font-size:0.82rem; font-weight:800; color:#0f172a; margin-bottom:6px;">
+            ⑴ $(+5) - (-2) + (-3)$
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; font-size:0.84rem; font-weight:700; color:#334155;">
+            <span>$= (+5) + (+2) + (-3) =$</span>
+            <input type="text" id="ans-4-4-1" class="form-control" placeholder="수 입력" style="width:100px; text-align:center; font-weight:800; font-size:0.88rem;" autocomplete="off" value="${isPassed ? '+4' : ''}">
+          </div>
+        </div>
+
+        <!-- 문항 2 -->
+        <div style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+          <div style="font-size:0.82rem; font-weight:800; color:#0f172a; margin-bottom:6px;">
+            ⑵ $(-8) + (+5) - (+7)$
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; font-size:0.84rem; font-weight:700; color:#334155;">
+            <span>$= (+5) + \\{(-8) + (-7)\\} =$</span>
+            <input type="text" id="ans-4-4-2" class="form-control" placeholder="수 입력" style="width:100px; text-align:center; font-weight:800; font-size:0.88rem;" autocomplete="off" value="${isPassed ? '-10' : ''}">
+          </div>
+        </div>
+
+        <!-- 문항 3 -->
+        <div style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+          <div style="font-size:0.82rem; font-weight:800; color:#0f172a; margin-bottom:6px;">
+            ⑶ $(+6) - (+9) - (-4) + (-1)$
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; font-size:0.84rem; font-weight:700; color:#334155;">
+            <span>$= \\{(+6) + (+4)\\} + \\{(-9) + (-1)\\} =$</span>
+            <input type="text" id="ans-4-4-3" class="form-control" placeholder="수 입력" style="width:100px; text-align:center; font-weight:800; font-size:0.88rem;" autocomplete="off" value="${isPassed ? '0' : ''}">
+          </div>
+        </div>
+
+        <!-- 문항 4 -->
+        <div style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+          <div style="font-size:0.82rem; font-weight:800; color:#0f172a; margin-bottom:6px;">
+            ⑷ $\\left(+\\frac{2}{3}\\right) - \\left(-\\frac{1}{2}\\right) + \\left(-\\frac{5}{6}\\right)$
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; font-size:0.84rem; font-weight:700; color:#334155;">
+            <span>$= \\left(+\\frac{7}{6}\\right) + \\left(-\\frac{5}{6}\\right) =$</span>
+            <input type="text" id="ans-4-4-4" class="form-control" placeholder="수 입력" style="width:100px; text-align:center; font-weight:800; font-size:0.88rem;" autocomplete="off" value="${isPassed ? '+1/3' : ''}">
+          </div>
+          <div style="font-size:0.75rem; color:#64748b; margin-top:4px;">(기약분수로 입력, 예: 1/3)</div>
+        </div>
+
+        <button class="btn btn-primary" onclick="gradeStep4_4()" style="width:100%; font-weight:800; font-size:0.9rem; padding:10px; border-radius:8px;">
+          정답 확인 및 채점 ➔
+        </button>
+
+        <div id="feedback-4-4" style="margin-top:14px; display:${isPassed ? 'block' : 'none'};">
+          ${isPassed ? getStep4_4SuccessHtml() : ''}
+        </div>
+      `;
+
+      if (window.renderMathInElement) renderMathInElement(formBox);
+    }
+
+    function getStep4_4SuccessHtml() {
+      return `
+        <div style="padding:16px; background:#f0fdf4; border:1.5px solid #bbf7d0; border-radius:10px; color:#166534;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.3rem;">🎉</span>
+            <h4 style="font-size:0.95rem; font-weight:800; margin:0;">정답입니다! 100점 만점 통과!</h4>
+          </div>
+          <p style="font-size:0.84rem; margin:0 0 10px 0; line-height:1.6;">
+            덧셈과 뺄셈의 혼합 계산 4문항을 완벽히 마스터하셨습니다!<br>
+            <b>[혼합 계산 정답 및 단계별 풀이]</b><br>
+            ⑴ $(+5) - (-2) + (-3) = (+5) + (+2) + (-3) = (+7) + (-3) = \\mathbf{+4}$ (또는 $4$)<br>
+            ⑵ $(-8) + (+5) - (+7) = (-8) + (+5) + (-7) = (+5) + \\{(-8) + (-7)\\} = (+5) + (-15) = \\mathbf{-10}$<br>
+            ⑶ $(+6) - (+9) - (-4) + (-1) = \\{(+6) + (+4)\\} + \\{(-9) + (-1)\\} = (+10) + (-10) = \\mathbf{0}$<br>
+            ⑷ $\\left(+\\frac{2}{3}\\right) - \\left(-\\frac{1}{2}\\right) + \\left(-\\frac{5}{6}\\right) = \\left(+\\frac{4}{6}\\right) + \\left(+\\frac{3}{6}\\right) + \\left(-\\frac{5}{6}\\right) = \\left(+\\frac{7}{6}\\right) + \\left(-\\frac{5}{6}\\right) = +\\frac{2}{6} = \\mathbf{+\\frac{1}{3}}$ (또는 $\\frac{1}{3}$)<br>
+            💡 <b>뺄셈을 덧셈으로 모두 바꾼 뒤 양수는 양수끼리, 음수는 음수끼리 묶으면 계산이 훨씬 빠르고 정확해집니다!</b>
+          </p>
+          <div style="display:flex; gap:8px; margin-top:10px;">
+            <button class="btn btn-sm btn-outline-success" onclick="loadSubStep('4-5')" style="font-weight:800; font-size:0.84rem; padding:6px 14px; border-radius:6px; background:#16a34a; border:none; color:#ffffff; cursor:pointer;">
+              다음 활동 [4-5] 부호가 생략된 수의 계산 도전 ➔
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function parseStep4_4Rational(raw) {
+      if (!raw) return NaN;
+      let s = raw.trim().replace(/\s+/g, '').replace(/[()]/g, '');
+      let sign = 1;
+      if (s.startsWith('+')) {
+        s = s.substring(1);
+      } else if (s.startsWith('-')) {
+        sign = -1;
+        s = s.substring(1);
+      }
+      if (s.includes('/')) {
+        const parts = s.split('/');
+        if (parts.length === 2) {
+          const num = parseFloat(parts[0]);
+          const den = parseFloat(parts[1]);
+          if (!isNaN(num) && !isNaN(den) && den !== 0) {
+            return sign * (num / den);
+          }
+        }
+      }
+      const val = parseFloat(s);
+      return isNaN(val) ? NaN : sign * val;
+    }
+
+    async function gradeStep4_4() {
+      const fb = document.getElementById('feedback-4-4');
+      const v1 = parseStep4_4Rational(document.getElementById('ans-4-4-1')?.value || '');
+      const v2 = parseStep4_4Rational(document.getElementById('ans-4-4-2')?.value || '');
+      const v3 = parseStep4_4Rational(document.getElementById('ans-4-4-3')?.value || '');
+      const v4 = parseStep4_4Rational(document.getElementById('ans-4-4-4')?.value || '');
+
+      const eps = 1e-4;
+      const ok1 = (Math.abs(v1 - 4) < eps);
+      const ok2 = (Math.abs(v2 - (-10)) < eps);
+      const ok3 = (Math.abs(v3 - 0) < eps);
+      const ok4 = (Math.abs(v4 - (1/3)) < eps);
+
+      const allCorrect = ok1 && ok2 && ok3 && ok4;
+
+      if (fb) {
+        fb.style.display = 'block';
+        if (allCorrect) {
+          state.lab4_4.isPassed = true;
+
+          // Unlock Substep 4-5
+          if (!state.unlockedSubSteps.includes('4-5')) {
+            state.unlockedSubSteps.push('4-5');
+          }
+          if (window.LMSIntegration) {
+            await LMSIntegration.saveStudentProgress('4-4', { score: 100, completed: true }, 'unit2');
+          }
+          if (typeof playSuccessSfx === 'function') playSuccessSfx();
+
+          fb.innerHTML = getStep4_4SuccessHtml();
+          if (window.renderMathInElement) renderMathInElement(fb);
+          renderToolbar4_4();
+          drawStep4_4Canvas();
+        } else {
+          let errs = [];
+          if (!ok1) errs.push('⑴: $(+5) - (-2) + (-3) = (+7) + (-3) = \\mathbf{+4}$ (또는 $4$)입니다.');
+          if (!ok2) errs.push('⑵: $(-8) + (+5) - (+7) = (+5) + (-15) = \\mathbf{-10}$입니다.');
+          if (!ok3) errs.push('⑶: $(+6) - (+9) - (-4) + (-1) = (+10) + (-10) = \\mathbf{0}$입니다.');
+          if (!ok4) errs.push('⑷: $\\left(+\\frac{7}{6}\\right) + \\left(-\\frac{5}{6}\\right) = +\\frac{2}{6} = \\mathbf{+\\frac{1}{3}}$ (또는 $\\frac{1}{3}$)입니다.');
+
+          fb.innerHTML = `
+            <div style="padding:14px; background:#fff1f2; border:1.5px solid #fecdd3; border-radius:10px; color:#9f1239;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                <span style="font-size:1.1rem;">💡</span>
+                <h4 style="font-size:0.92rem; font-weight:800; margin:0;">답안을 다시 점검해 보세요</h4>
+              </div>
+              <ul style="font-size:0.82rem; margin:0 0 8px 18px; padding:0; line-height:1.5;">
+                ${errs.map(e => `<li>${e}</li>`).join('')}
+              </ul>
+              <p style="font-size:0.78rem; margin:0; color:#881337;">
+                좌측 캔버스에서 3단계 파이프라인 진행 버튼을 눌러 계산 과정을 단계별로 확인해 보세요!
+              </p>
+            </div>
+          `;
+          if (window.renderMathInElement) renderMathInElement(fb);
+        }
+      }
+    }
+
+    function drawStep4_4Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      const container = document.getElementById('two-container');
+      if (container) container.onpointerdown = null;
+      const canvasEl = container ? container.querySelector('canvas') : null;
+
+      drawMixedOperationLab(two, width, height, canvasEl || container);
+    }
+
+    function drawMixedOperationLab(two, width, height, canvasEl) {
+      two.clear();
+
+      const curMode = state.lab4_4.activeMode;
+      const isPassed = state.lab4_4.isPassed;
+      const presetId = state.lab4_4.activePreset;
+      const curStep = state.lab4_4.activeStep;
+      const p = MIXED_PRESETS_4_4.find(item => item.id === presetId) || MIXED_PRESETS_4_4[0];
+
+      const hitBoxes = [];
+
+      // 1. Top Title (y=20)
+      const title = two.makeText('🔄 덧셈과 뺄셈의 혼합 계산 파이프라인 (교과서 p.48)', width / 2, 20);
+      title.size = 15;
+      title.weight = 800;
+      title.fill = '#1e293b';
+
+      // 2. Subtitle (y=40)
+      let subMsg = '';
+      if (isPassed) {
+        subMsg = '🎉 뺄셈을 덧셈으로 변환 후 양수는 양수끼리, 음수는 음수끼리 모으는 원리를 마스터하셨습니다!';
+      } else {
+        if (curMode === 0) {
+          subMsg = '단계 진행 버튼을 클릭하여 혼합 계산 3단계(변환 ➔ 그룹핑 ➔ 계산)를 추적하세요.';
+        } else {
+          subMsg = '양수 바구니와 음수 바구니에 수들이 분류되어 합산되는 과정을 관찰하세요.';
+        }
+      }
+      const sub = two.makeText(subMsg, width / 2, 40);
+      sub.size = 10.5;
+      sub.weight = 600;
+      sub.fill = isPassed ? '#166534' : '#64748b';
+
+      if (curMode === 0) {
+        // ==========================================
+        // Mode 0: Step-by-Step Pipeline
+        // ==========================================
+        // Step selector buttons (y=72)
+        const stepTabs = [
+          { step: 0, label: '0. 원래 식' },
+          { step: 1, label: '1. 덧셈 변환' },
+          { step: 2, label: '2. 양·음수 묶기' },
+          { step: 3, label: '3. 최종 계산' }
+        ];
+
+        const sTabW = 120, sTabH = 26;
+        stepTabs.forEach((st, idx) => {
+          const bx = width / 2 - 195 + idx * 130;
+          const isAct = (curStep === st.step);
+
+          const b = two.makeRoundedRectangle(bx, 72, sTabW, sTabH, 6);
+          b.fill = isAct ? '#4f46e5' : '#f8fafc';
+          b.stroke = isAct ? '#4338ca' : '#cbd5e1';
+          b.linewidth = isAct ? 2 : 1;
+
+          const t = two.makeText(st.label, bx, 72);
+          t.size = 8.5; t.weight = 800;
+          t.fill = isAct ? '#ffffff' : '#64748b';
+
+          hitBoxes.push({
+            type: 'step',
+            step: st.step,
+            x1: bx - sTabW / 2,
+            x2: bx + sTabW / 2,
+            y1: 72 - sTabH / 2,
+            y2: 72 + sTabH / 2
+          });
+        });
+
+        // Main Stage Panel (y=180, h=170)
+        const stageBox = two.makeRoundedRectangle(width / 2, 185, width - 60, 160, 10);
+        stageBox.fill = '#ffffff';
+        stageBox.stroke = '#e2e8f0';
+        stageBox.linewidth = 1.5;
+
+        // Stage Title
+        let stageHeaderStr = '';
+        if (curStep === 0) stageHeaderStr = '📋 [Step 0] 덧셈과 뺄셈이 혼합된 식';
+        else if (curStep === 1) stageHeaderStr = '⚙️ [Step 1] 모든 뺄셈(-)을 부호 반전 덧셈(+)으로 변환';
+        else if (curStep === 2) stageHeaderStr = '🧺 [Step 2] 교환·결합법칙으로 양수끼리, 음수끼리 묶기';
+        else stageHeaderStr = '🎯 [Step 3] 부호가 다른 두 수의 최종 합산';
+
+        const sHead = two.makeText(stageHeaderStr, width / 2, 130);
+        sHead.size = 11.5; sHead.weight = 800; sHead.fill = '#1e293b';
+
+        // Stage Formula Display
+        let formulaStr = '';
+        let formulaColor = '#334155';
+        if (curStep === 0) {
+          formulaStr = p.rawExpr;
+          formulaColor = '#7e22ce';
+        } else if (curStep === 1) {
+          formulaStr = p.step1;
+          formulaColor = '#16a34a';
+        } else if (curStep === 2) {
+          formulaStr = p.step2;
+          formulaColor = '#2563eb';
+        } else {
+          formulaStr = isPassed ? `${p.step2} = ${p.step3}` : `${p.step2} = ?`;
+          formulaColor = isPassed ? '#166534' : '#ea580c';
+        }
+
+        const fTxt = two.makeText(formulaStr, width / 2, 175);
+        fTxt.size = 15; fTxt.weight = 900; fTxt.fill = formulaColor;
+
+        // Stage Visual Highlight Deck (y=225)
+        let noteStr = '';
+        if (curStep === 0) {
+          noteStr = '식 안의 뺄셈 기호 뒤에 오는 수의 부호를 뒤집을 준비를 합니다.';
+        } else if (curStep === 1) {
+          noteStr = '모든 연산이 덧셈(+)으로 통일되어 교환법칙과 결합법칙을 자유롭게 적용할 수 있습니다.';
+        } else if (curStep === 2) {
+          noteStr = `양수의 합: (+${p.posSum})  |  음수의 합: (${p.negSum}) 로 깔끔하게 정리되었습니다.`;
+        } else {
+          noteStr = isPassed 
+            ? `정답 완료! 최종 합산 결과는 ${p.step3} 입니다.`
+            : `양수의 합과 음수의 합을 더해 최종 결과를 구하세요! (우측 폼에 입력)`;
+        }
+
+        const nTxt = two.makeText(noteStr, width / 2, 230);
+        nTxt.size = 10; nTxt.weight = 700;
+        nTxt.fill = (curStep === 3 && isPassed) ? '#166534' : '#64748b';
+
+        // Next Step Action Pill (y=255)
+        const nextStepBtn = two.makeRoundedRectangle(width / 2, 255, 160, 24, 6);
+        nextStepBtn.fill = '#eef2ff'; nextStepBtn.stroke = '#c7d2fe'; nextStepBtn.linewidth = 1.2;
+        const nextStepTxt = two.makeText(curStep < 3 ? '다음 단계 보기 ▶' : '처음 단계로 ↺', width / 2, 255);
+        nextStepTxt.size = 9; nextStepTxt.weight = 800; nextStepTxt.fill = '#4338ca';
+
+        hitBoxes.push({
+          type: 'step',
+          step: (curStep + 1) % 4,
+          x1: width / 2 - 80,
+          x2: width / 2 + 80,
+          y1: 255 - 12,
+          y2: 255 + 12
+        });
+
+      } else {
+        // ==========================================
+        // Mode 1: Positive/Negative Basket Sorting Lab
+        // ==========================================
+        const basketY = 175;
+        const basketW = 220, basketH = 150;
+        const b1X = width / 2 - 130;
+        const b2X = width / 2 + 130;
+
+        // Positive Basket (Blue)
+        const b1 = two.makeRoundedRectangle(b1X, basketY, basketW, basketH, 10);
+        b1.fill = '#eff6ff'; b1.stroke = '#3b82f6'; b1.linewidth = 2;
+
+        const b1Title = two.makeText('🔵 양수 모음 바구니', b1X, basketY - 54);
+        b1Title.size = 11; b1Title.weight = 800; b1Title.fill = '#1d4ed8';
+
+        const b1Items = two.makeText(`양수 항: ${p.id === 4 ? '(+4/6), (+3/6)' : (p.id === 3 ? '(+6), (+4)' : (p.id === 2 ? '(+5)' : '(+5), (+2)'))}`, b1X, basketY - 15);
+        b1Items.size = 10; b1Items.weight = 700; b1Items.fill = '#2563eb';
+
+        const b1SumBadge = two.makeRoundedRectangle(b1X, basketY + 36, 140, 28, 6);
+        b1SumBadge.fill = '#3b82f6'; b1SumBadge.noStroke();
+        const b1SumTxt = two.makeText(`양수 합: +${p.posSum > 1 && p.id === 4 ? '7/6' : p.posSum}`, b1X, basketY + 36);
+        b1SumTxt.size = 10; b1SumTxt.weight = 900; b1SumTxt.fill = '#ffffff';
+
+        // Negative Basket (Orange)
+        const b2 = two.makeRoundedRectangle(b2X, basketY, basketW, basketH, 10);
+        b2.fill = '#fff7ed'; b2.stroke = '#ea580c'; b2.linewidth = 2;
+
+        const b2Title = two.makeText('🟠 음수 모음 바구니', b2X, basketY - 54);
+        b2Title.size = 11; b2Title.weight = 800; b2Title.fill = '#c2410c';
+
+        const b2Items = two.makeText(`음수 항: ${p.id === 4 ? '(-5/6)' : (p.id === 3 ? '(-9), (-1)' : (p.id === 2 ? '(-8), (-7)' : '(-3)'))}`, b2X, basketY - 15);
+        b2Items.size = 10; b2Items.weight = 700; b2Items.fill = '#c2410c';
+
+        const b2SumBadge = two.makeRoundedRectangle(b2X, basketY + 36, 140, 28, 6);
+        b2SumBadge.fill = '#ea580c'; b2SumBadge.noStroke();
+        const b2SumTxt = two.makeText(`음수 합: ${p.id === 4 ? '-5/6' : p.negSum}`, b2X, basketY + 36);
+        b2SumTxt.size = 10; b2SumTxt.weight = 900; b2SumTxt.fill = '#ffffff';
+
+        // Bottom Combine Deck (y=280)
+        const cBox = two.makeRoundedRectangle(width / 2, 280, width - 60, 40, 8);
+        cBox.fill = '#f8fafc'; cBox.stroke = '#e2e8f0'; cBox.linewidth = 1.2;
+
+        let finalCombineStr = '';
+        if (isPassed) {
+          finalCombineStr = `두 바구니 합산: (+${p.id === 4 ? '7/6' : p.posSum}) ＋ (${p.id === 4 ? '-5/6' : p.negSum}) ＝ ${p.step3}`;
+        } else {
+          finalCombineStr = `두 바구니 합산: (+${p.id === 4 ? '7/6' : p.posSum}) ＋ (${p.id === 4 ? '-5/6' : p.negSum}) ＝ ? (우측 폼에 입력)`;
+        }
+
+        const cTxt = two.makeText(finalCombineStr, width / 2, 280);
+        cTxt.size = 11; cTxt.weight = 800;
+        cTxt.fill = isPassed ? '#166534' : '#334155';
+      }
+
+      // 5. Preset Deck Buttons (y=345, h=32)
+      const deckBox = two.makeRoundedRectangle(width / 2, 345, width - 40, 36, 8);
+      deckBox.fill = '#f8fafc';
+      deckBox.stroke = '#e2e8f0';
+      deckBox.linewidth = 1.2;
+
+      const pBtnW = 142, pBtnH = 26;
+      MIXED_PRESETS_4_4.forEach((item, idx) => {
+        const bx = width / 2 - 225 + idx * 150;
+        const isAct = (presetId === item.id);
+
+        const b = two.makeRoundedRectangle(bx, 345, pBtnW, pBtnH, 6);
+        b.fill = isAct ? '#4f46e5' : '#ffffff';
+        b.stroke = isAct ? '#4338ca' : '#cbd5e1';
+        b.linewidth = 1.5;
+
+        const t = two.makeText(item.title.split(')')[0] + ') ' + item.title.split(')')[1].substring(0, 10), bx, 345);
+        t.size = 8.5; t.weight = 800;
+        t.fill = isAct ? '#ffffff' : '#334155';
+
+        hitBoxes.push({
+          type: 'preset',
+          id: item.id,
+          x1: bx - pBtnW / 2,
+          x2: bx + pBtnW / 2,
+          y1: 345 - pBtnH / 2,
+          y2: 345 + pBtnH / 2
+        });
+      });
+
+      // 6. Bottom Status Banner (y=396, h=32, margin bottom: 440 - 412 = 28px >= 25px)
+      const bBanner = two.makeRoundedRectangle(width / 2, 396, width - 40, 32, 8);
+      bBanner.fill = isPassed ? '#f0fdf4' : '#f1f5f9';
+      bBanner.stroke = isPassed ? '#86efac' : '#cbd5e1';
+      bBanner.linewidth = 1.2;
+
+      let bannerMsg = '';
+      if (isPassed) {
+        bannerMsg = '🎉 덧셈과 뺄셈의 혼합 계산 통과! 뺄셈 변환과 양수·음수 모으기 전략을 완벽히 마스터하셨습니다!';
+      } else {
+        bannerMsg = '🎯 뺄셈을 덧셈으로 변환 후 양수는 양수끼리, 음수는 음수끼리 모아서 우측 폼에 답을 입력하세요.';
+      }
+
+      const bTxt = two.makeText(bannerMsg, width / 2, 396);
+      bTxt.size = 9.5;
+      bTxt.weight = 800;
+      bTxt.fill = isPassed ? '#166534' : '#334155';
+
+      // 7. Pointer Event Listeners
+      const containerEl = document.getElementById('two-container');
+      if (containerEl) {
+        containerEl.onpointerdown = (e) => {
+          const rect = containerEl.getBoundingClientRect();
+          const px = (e.clientX - rect.left) * (width / rect.width);
+          const py = (e.clientY - rect.top) * (height / rect.height);
+
+          for (const box of hitBoxes) {
+            if (px >= box.x1 && px <= box.x2 && py >= box.y1 && py <= box.y2) {
+              if (box.type === 'step') {
+                setLab4_4Step(box.step);
+              } else if (box.type === 'preset') {
+                setLab4_4Preset(box.id);
               }
               return;
             }
