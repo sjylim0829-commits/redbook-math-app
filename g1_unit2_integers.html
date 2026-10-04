@@ -794,7 +794,12 @@
         missionText: '<b>[되짚어 보기 2] 소수와 분수의 대소 비교 (교과서 p.30)</b><br>• 소수와 분수의 크기를 비교할 때는 분수를 소수로 고치거나, 소수를 분수로 고쳐서 비교합니다.<br>• <b>수직선</b> 위에서는 <b>오른쪽에 있는 수가 왼쪽에 있는 수보다 큽니다.</b><br>좌측 캔버스에서 수직선과 눈금 막대를 터치·드래그하며 두 수의 위치를 비교하고 알맞은 부등호를 넣어 보세요.',
         drawer: 'drawStep0_3Canvas'
       },
-      '0-4': { code: '0-4', tab: 0, substepLabel: '4. 되짚어 보기 3: 분수의 사칙계산 복습', missionText: '[0-4] 되짚어 보기 3: 분수의 사칙계산 복습 (p.30)', drawer: 'drawGenericScaffoldCanvas' },
+      '0-4': {
+        code: '0-4', tab: 0,
+        substepLabel: '4. 되짚어 보기 3: 분수의 사칙계산 복습',
+        missionText: '<b>[되짚어 보기 3] 초등 분수의 사칙계산 복습 (교과서 p.30)</b><br>• <b>덧셈과 뺄셈</b>: 분모가 서로 다르면 분모의 최소공배수로 <b>통분</b>한 후 분자끼리 더하거나 뺍니다.<br>• <b>곱셈과 나눗셈</b>: 곱셈은 분모는 분모끼리, 분자는 분자끼리 곱하며, 나눗셈은 <b>나누는 수의 역수</b>를 곱합니다.<br>좌측 캔버스에서 슬라이더를 드래그하여 분수 막대 모델의 통분 과정을 관찰하고 계산해 보세요.',
+        drawer: 'drawStep0_4Canvas'
+      },
 
       // Tab 1
       '1-1': { code: '1-1', tab: 1, substepLabel: '1. 생각열기: 기온과 양수·음수의 뜻', missionText: '[1-1] 2.1 정수와 유리수의 뜻 (p.31)', drawer: 'drawGenericScaffoldCanvas' },
@@ -933,6 +938,13 @@
         probeVal: 0.5,
         isDraggingProbe: false,
         isPassed: false
+      },
+      lab0_4: {
+        activeOp: 1, // 1: 덧셈(1/2+1/3), 2: 뺄셈(3/4-2/5), 3: 곱셈(2/3×5/4), 4: 나눗셈(4/7÷2/5)
+        showProcess: false,
+        sliderStep: 0.0, // 0 (원식) ~ 1 (통분/연산 결과)
+        isDraggingSlider: false,
+        isPassed: false
       }
     };
 
@@ -1021,6 +1033,9 @@
       } else if (code === '0-3') {
         renderToolbar0_3();
         renderSubstep0_3();
+      } else if (code === '0-4') {
+        renderToolbar0_4();
+        renderSubstep0_4();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
@@ -2633,6 +2648,501 @@
             state.lab0_3.isDraggingProbe = false;
             try { canvasEl.releasePointerCapture(e.pointerId); } catch (_) {}
             drawComparisonNumberLineLab(two, width, height, canvasEl);
+          }
+        };
+      }
+    }
+
+    // ==========================================
+    // 3-4. Substep [0-4] Implementation
+    // ==========================================
+    function renderToolbar0_4() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      const op = state.lab0_4.activeOp;
+      const proc = state.lab0_4.showProcess;
+      tb.innerHTML = `
+        <span style="font-size:0.78rem; font-weight:800; color:#475569;">🧮 연산 선택:</span>
+        <button class="tool-btn ${op === 1 ? 'active' : ''}" onclick="setOpLab0_4(1)">➕ (1) 덧셈</button>
+        <button class="tool-btn ${op === 2 ? 'active' : ''}" onclick="setOpLab0_4(2)">➖ (2) 뺄셈</button>
+        <button class="tool-btn ${op === 3 ? 'active' : ''}" onclick="setOpLab0_4(3)">✖️ (3) 곱셈</button>
+        <button class="tool-btn ${op === 4 ? 'active' : ''}" onclick="setOpLab0_4(4)">➗ (4) 나눗셈</button>
+        <button class="tool-btn ${proc ? 'active' : ''}" onclick="toggleProcessLab0_4()">${proc ? '💡 과정 닫기' : '💡 과정 단계 보기'}</button>
+        <button class="tool-btn" style="margin-left:auto; padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openSecurePasswordModal('teacher_pass')" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스</button>
+      `;
+    }
+
+    function setOpLab0_4(opNum) {
+      state.lab0_4.activeOp = opNum;
+      state.lab0_4.sliderStep = 0.0;
+      renderToolbar0_4();
+      drawStep0_4Canvas();
+    }
+
+    function toggleProcessLab0_4() {
+      state.lab0_4.showProcess = !state.lab0_4.showProcess;
+      if (state.lab0_4.showProcess) {
+        state.lab0_4.sliderStep = 1.0;
+      }
+      renderToolbar0_4();
+      drawStep0_4Canvas();
+    }
+
+    function renderSubstep0_4() {
+      const data = SUBSTEPS_DATA['0-4'];
+      const missionEl = document.getElementById('mission-text');
+      if (missionEl) {
+        missionEl.innerHTML = data.missionText;
+        if (window.renderMathInElement) renderMathInElement(missionEl);
+      }
+
+      const formArea = document.getElementById('form-work-area');
+      if (formArea) {
+        formArea.innerHTML = `
+          <div class="card" style="border-left: 4px solid var(--secondary-color); padding: 18px; background: #ffffff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+              <span style="background:#e0f2fe; color:#0284c7; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.30 연계</span>
+              <h4 style="font-size:0.95rem; font-weight:800; color:#1e293b; margin:0;">되짚어 보기 3: 초등 분수의 사칙계산 복습</h4>
+            </div>
+
+            <div style="margin-bottom:18px; padding:14px; background:#f8fafc; border-radius:10px; border:1px solid #f1f5f9;">
+              <label style="font-size:0.88rem; font-weight:700; color:#334155; display:block; margin-bottom:12px; line-height:1.5;">
+                <b>[문제 3]</b> 다음 식을 계산하시오. (기약분수로 입력)
+              </label>
+
+              <!-- Problem (1) -->
+              <div style="padding:10px 14px; background:#ffffff; border:1.5px solid #e2e8f0; border-radius:10px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                <span style="font-size:0.95rem; font-weight:800; color:#1e293b;">(1) $\\frac{1}{2} + \\frac{1}{3} =$</span>
+                <input type="text" id="ans-0-4-1" class="form-control" placeholder="답 입력" style="width:110px; text-align:center; font-weight:800; font-size:0.95rem;" autocomplete="off">
+              </div>
+
+              <!-- Problem (2) -->
+              <div style="padding:10px 14px; background:#ffffff; border:1.5px solid #e2e8f0; border-radius:10px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                <span style="font-size:0.95rem; font-weight:800; color:#1e293b;">(2) $\\frac{3}{4} - \\frac{2}{5} =$</span>
+                <input type="text" id="ans-0-4-2" class="form-control" placeholder="답 입력" style="width:110px; text-align:center; font-weight:800; font-size:0.95rem;" autocomplete="off">
+              </div>
+
+              <!-- Problem (3) -->
+              <div style="padding:10px 14px; background:#ffffff; border:1.5px solid #e2e8f0; border-radius:10px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                <span style="font-size:0.95rem; font-weight:800; color:#1e293b;">(3) $\\frac{2}{3} \\times \\frac{5}{4} =$</span>
+                <input type="text" id="ans-0-4-3" class="form-control" placeholder="답 입력" style="width:110px; text-align:center; font-weight:800; font-size:0.95rem;" autocomplete="off">
+              </div>
+
+              <!-- Problem (4) -->
+              <div style="padding:10px 14px; background:#ffffff; border:1.5px solid #e2e8f0; border-radius:10px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                <span style="font-size:0.95rem; font-weight:800; color:#1e293b;">(4) $\\frac{4}{7} \\div \\frac{2}{5} =$</span>
+                <input type="text" id="ans-0-4-4" class="form-control" placeholder="답 입력" style="width:110px; text-align:center; font-weight:800; font-size:0.95rem;" autocomplete="off">
+              </div>
+
+              <p style="font-size:0.75rem; color:#64748b; margin:0;">(답은 기약분수 형태로 입력하세요. 가분수 또는 대분수 모두 인정됩니다. 예: 3/4, 5/6, 10/7 또는 1 3/7)</p>
+            </div>
+
+            <button class="btn btn-primary" onclick="gradeStep0_4()" style="width:100%; padding:11px; font-weight:800; font-size:0.92rem;">
+              ✅ 4문항 모두 정답 확인 및 채점하기
+            </button>
+
+            <div id="feedback-0-4" style="display:none; margin-top:14px;"></div>
+          </div>
+        `;
+        if (window.renderMathInElement) renderMathInElement(formArea);
+      }
+
+      drawStep0_4Canvas();
+    }
+
+    function normalizeFractionInput(str) {
+      if (!str) return '';
+      let s = str.trim().replace(/\s+/g, ' ');
+      // Handle mixed fraction: "1 3/7" -> 10/7
+      const mixedMatch = s.match(/^(\d+)[ _](\d+)\/(\d+)$/);
+      if (mixedMatch) {
+        const whole = parseInt(mixedMatch[1], 10);
+        const num = parseInt(mixedMatch[2], 10);
+        const den = parseInt(mixedMatch[3], 10);
+        return (whole * den + num) + '/' + den;
+      }
+      return s;
+    }
+
+    async function gradeStep0_4() {
+      const a1 = normalizeFractionInput(document.getElementById('ans-0-4-1')?.value || '');
+      const a2 = normalizeFractionInput(document.getElementById('ans-0-4-2')?.value || '');
+      const a3 = normalizeFractionInput(document.getElementById('ans-0-4-3')?.value || '');
+      const a4 = normalizeFractionInput(document.getElementById('ans-0-4-4')?.value || '');
+
+      const is1Correct = (a1 === '5/6');
+      const is2Correct = (a2 === '7/20');
+      const is3Correct = (a3 === '5/6');
+      const is4Correct = (a4 === '10/7' || a4 === '1 3/7' || a4 === '1_3/7');
+
+      const fb = document.getElementById('feedback-0-4');
+      if (!fb) return;
+
+      if (is1Correct && is2Correct && is3Correct && is4Correct) {
+        state.lab0_4.isPassed = true;
+        state.lab0_4.showProcess = true;
+        state.lab0_4.sliderStep = 1.0;
+
+        fb.style.display = 'block';
+        fb.innerHTML = `
+          <div style="padding:14px; background:#ecfdf5; border:1.5px solid #6ee7b7; border-radius:10px; color:#065f46;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+              <span style="font-size:1.2rem;">🎉</span>
+              <h4 style="font-size:0.95rem; font-weight:800; margin:0;">100점 완벽합니다! 준비 학습 완료!</h4>
+            </div>
+            <p style="font-size:0.84rem; line-height:1.6; margin:0;">
+              • (1) $\\frac{1}{2} + \\frac{1}{3} = \\frac{3}{6} + \\frac{2}{6} = <b>\\frac{5}{6}</b><br>
+              • (2) $\\frac{3}{4} - \\frac{2}{5} = \\frac{15}{20} - \\frac{8}{20} = <b>\\frac{7}{20}</b><br>
+              • (3) $\\frac{2}{3} \\times \\frac{5}{4} = \\frac{1 \\times 5}{3 \\times 2} = <b>\\frac{5}{6}</b> (약분)<br>
+              • (4) $\\frac{4}{7} \\div \\frac{2}{5} = \\frac{4}{7} \\times \\frac{5}{2} = <b>\\frac{10}{7}</b> (역수 곱셈)<br>
+              초등학교에서 배운 분수 사칙계산의 모든 과정을 완벽하게 복습하였습니다! 이제 <b>[1. 정수와 유리수]</b> 본 단원으로 힘차게 출발합시다!
+            </p>
+          </div>
+        `;
+        if (window.renderMathInElement) renderMathInElement(fb);
+
+        if (!state.completedSubSteps.includes('0-4')) {
+          state.completedSubSteps.push('0-4');
+        }
+        if (!state.unlockedSubSteps.includes('1-1')) {
+          state.unlockedSubSteps.push('1-1');
+        }
+        if (!state.unlockedTabs.includes(1)) {
+          state.unlockedTabs.push(1);
+          const tab1Btn = document.getElementById('tab-1');
+          if (tab1Btn) tab1Btn.classList.remove('locked');
+        }
+
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          LMSIntegration.saveStudentProgress('0-4', { score: 100, passed: true }, 'unit2');
+        }
+
+        renderToolbar0_4();
+        drawStep0_4Canvas();
+      } else {
+        fb.style.display = 'block';
+        const wrongList = [];
+        if (!is1Correct) wrongList.push('(1)번 덧셈: 통분');
+        if (!is2Correct) wrongList.push('(2)번 뺄셈: 통분');
+        if (!is3Correct) wrongList.push('(3)번 곱셈: 약분');
+        if (!is4Correct) wrongList.push('(4)번 나눗셈: 역수');
+
+        fb.innerHTML = `
+          <div style="padding:14px; background:#fef2f2; border:1.5px solid #fca5a5; border-radius:10px; color:#991b1b;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+              <span style="font-size:1.1rem;">💡</span>
+              <h4 style="font-size:0.92rem; font-weight:800; margin:0;">다시 한 번 살펴볼까요?</h4>
+            </div>
+            <p style="font-size:0.84rem; line-height:1.6; margin:0;">
+              • 다시 확인할 문항: <b>${wrongList.join(', ')}</b><br>
+              좌측 캔버스에서 해당 연산 탭을 누르고 슬라이더를 오른쪽으로 당겨 통분과 약분 과정을 모델로 확인해 보세요!
+            </p>
+          </div>
+        `;
+        if (window.renderMathInElement) renderMathInElement(fb);
+      }
+    }
+
+    function drawStep0_4Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      const container = document.getElementById('two-container');
+      container.onpointerdown = null;
+      const canvasEl = container ? container.querySelector('canvas') : null;
+
+      drawFractionArithmeticLab(two, width, height, canvasEl);
+    }
+
+    function drawFractionArithmeticLab(two, width, height, canvasEl) {
+      two.clear();
+
+      const op = state.lab0_4.activeOp;
+      const showProc = state.lab0_4.showProcess;
+      const sliderStep = state.lab0_4.sliderStep;
+      const isPassed = state.lab0_4.isPassed;
+
+      // Vertical Budgeting:
+      // y=20: Title
+      // y=42: Subtitle
+      // y=68 ~ 360: Arithmetic Model Box (h=292px)
+      // y=395: Bottom Banner (h=40px)
+      const opTitles = {
+        1: '🧮 분수 덧셈 모델: 1/2 + 1/3 (최소공배수 통분)',
+        2: '🧮 분수 뺄셈 모델: 3/4 - 2/5 (통분 후 차이 계산)',
+        3: '🧮 분수 곱셈 모델: 2/3 × 5/4 (약분과 분자·분모 곱셈)',
+        4: '🧮 분수 나눗셈 모델: 4/7 ÷ 2/5 (역수의 곱셈 변환)'
+      };
+
+      const title = two.makeText(opTitles[op], width / 2, 20);
+      title.size = 15;
+      title.weight = 800;
+      title.fill = '#1e293b';
+
+      const sub = two.makeText(
+        '슬라이더 핸들을 드래그하여 분수 막대의 통분과 계산 과정을 시각적으로 확인해 보세요!',
+        width / 2, 42
+      );
+      sub.size = 11.5;
+      sub.fill = '#475569';
+
+      // Outer Card Box (y=68 ~ 360)
+      const boxH = 292;
+      const boxY = 68 + boxH / 2;
+      const box = two.makeRoundedRectangle(width / 2, boxY, width - 40, boxH, 12);
+      box.fill = '#ffffff';
+      box.stroke = '#e2e8f0';
+      box.linewidth = 1.5;
+
+      const innerLeft = 50;
+      const innerRight = width - 50;
+      const innerW = innerRight - innerLeft;
+
+      // Render model based on activeOp
+      if (op === 1) {
+        // (1) 덧셈: 1/2 + 1/3 -> 3/6 + 2/6 = 5/6
+        const isSplit = (sliderStep > 0.4 || showProc || isPassed);
+
+        // Bar 1: 1/2
+        const b1Y = 105;
+        const l1 = two.makeText('첫 번째 분수: 1/2' + (isSplit ? ' → 3/6 (3칸)' : ''), innerLeft, b1Y - 14);
+        l1.alignment = 'left'; l1.size = 11; l1.weight = 800; l1.fill = '#0284c7';
+
+        const bg1 = two.makeRoundedRectangle(innerLeft + innerW / 2, b1Y, innerW, 20, 5);
+        bg1.fill = '#f8fafc'; bg1.stroke = '#cbd5e1'; bg1.linewidth = 1;
+
+        const fill1W = isSplit ? (innerW * (3 / 6)) : (innerW * (1 / 2));
+        const fill1 = two.makeRoundedRectangle(innerLeft + fill1W / 2, b1Y, fill1W, 20, 5);
+        fill1.fill = '#bae6fd'; fill1.stroke = '#0284c7'; fill1.linewidth = 1.5;
+
+        // Grid lines
+        const divs1 = isSplit ? 6 : 2;
+        for (let i = 1; i < divs1; i++) {
+          const gx = innerLeft + (innerW / divs1) * i;
+          const gLine = two.makeLine(gx, b1Y - 10, gx, b1Y + 10);
+          gLine.stroke = isSplit ? '#0284c7' : '#64748b';
+          gLine.linewidth = 1;
+          gLine.dashes = isSplit ? [2, 2] : [];
+        }
+
+        // Bar 2: 1/3
+        const b2Y = 158;
+        const l2 = two.makeText('두 번째 분수: 1/3' + (isSplit ? ' → 2/6 (2칸)' : ''), innerLeft, b2Y - 14);
+        l2.alignment = 'left'; l2.size = 11; l2.weight = 800; l2.fill = '#7c3aed';
+
+        const bg2 = two.makeRoundedRectangle(innerLeft + innerW / 2, b2Y, innerW, 20, 5);
+        bg2.fill = '#f8fafc'; bg2.stroke = '#cbd5e1'; bg2.linewidth = 1;
+
+        const fill2W = isSplit ? (innerW * (2 / 6)) : (innerW * (1 / 3));
+        const fill2 = two.makeRoundedRectangle(innerLeft + fill2W / 2, b2Y, fill2W, 20, 5);
+        fill2.fill = '#ddd6fe'; fill2.stroke = '#7c3aed'; fill2.linewidth = 1.5;
+
+        const divs2 = isSplit ? 6 : 3;
+        for (let i = 1; i < divs2; i++) {
+          const gx = innerLeft + (innerW / divs2) * i;
+          const gLine = two.makeLine(gx, b2Y - 10, gx, b2Y + 10);
+          gLine.stroke = isSplit ? '#7c3aed' : '#64748b';
+          gLine.linewidth = 1;
+          gLine.dashes = isSplit ? [2, 2] : [];
+        }
+
+        // Bar 3: Sum Result (5/6)
+        const b3Y = 215;
+        const resLabelText = isSplit ? '합산 결과: 3/6 + 2/6 = 5/6 (총 5칸)' : '합산 결과 막대 (공통 분모 6으로 통분하여 합치기)';
+        const l3 = two.makeText(resLabelText, innerLeft, b3Y - 14);
+        l3.alignment = 'left'; l3.size = 11; l3.weight = 800; l3.fill = '#059669';
+
+        const bg3 = two.makeRoundedRectangle(innerLeft + innerW / 2, b3Y, innerW, 24, 6);
+        bg3.fill = '#f8fafc'; bg3.stroke = '#cbd5e1'; bg3.linewidth = 1;
+
+        const sumFrac = isSplit ? (5 / 6) : (1/2 + 1/3) * sliderStep;
+        const fill3W = Math.max(4, innerW * sumFrac);
+        const fill3 = two.makeRoundedRectangle(innerLeft + fill3W / 2, b3Y, fill3W, 24, 6);
+        fill3.fill = '#a7f3d0'; fill3.stroke = '#059669'; fill3.linewidth = 2;
+
+        if (isSplit) {
+          for (let i = 1; i < 6; i++) {
+            const gx = innerLeft + (innerW / 6) * i;
+            const gLine = two.makeLine(gx, b3Y - 12, gx, b3Y + 12);
+            gLine.stroke = '#059669'; gLine.linewidth = 1.2;
+          }
+        }
+
+      } else if (op === 2) {
+        // (2) 뺄셈: 3/4 - 2/5 -> 15/20 - 8/20 = 7/20
+        const isSplit = (sliderStep > 0.4 || showProc || isPassed);
+
+        const b1Y = 105;
+        const l1 = two.makeText('첫 번째 분수: 3/4' + (isSplit ? ' → 15/20 (15칸)' : ''), innerLeft, b1Y - 14);
+        l1.alignment = 'left'; l1.size = 11; l1.weight = 800; l1.fill = '#0284c7';
+
+        const bg1 = two.makeRoundedRectangle(innerLeft + innerW / 2, b1Y, innerW, 20, 5);
+        bg1.fill = '#f8fafc'; bg1.stroke = '#cbd5e1'; bg1.linewidth = 1;
+
+        const fill1W = isSplit ? (innerW * (15 / 20)) : (innerW * (3 / 4));
+        const fill1 = two.makeRoundedRectangle(innerLeft + fill1W / 2, b1Y, fill1W, 20, 5);
+        fill1.fill = '#bae6fd'; fill1.stroke = '#0284c7'; fill1.linewidth = 1.5;
+
+        const b2Y = 158;
+        const l2 = two.makeText('빼는 분수: 2/5' + (isSplit ? ' → 8/20 (8칸)' : ''), innerLeft, b2Y - 14);
+        l2.alignment = 'left'; l2.size = 11; l2.weight = 800; l2.fill = '#dc2626';
+
+        const bg2 = two.makeRoundedRectangle(innerLeft + innerW / 2, b2Y, innerW, 20, 5);
+        bg2.fill = '#f8fafc'; bg2.stroke = '#cbd5e1'; bg2.linewidth = 1;
+
+        const fill2W = isSplit ? (innerW * (8 / 20)) : (innerW * (2 / 5));
+        const fill2 = two.makeRoundedRectangle(innerLeft + fill2W / 2, b2Y, fill2W, 20, 5);
+        fill2.fill = '#fecaca'; fill2.stroke = '#dc2626'; fill2.linewidth = 1.5;
+
+        const b3Y = 215;
+        const l3Text = isSplit ? '뺄셈 결과 차이: 15/20 - 8/20 = 7/20 (남은 7칸)' : '뺄셈 차이 막대 (최소공배수 20으로 통분하여 차이 구하기)';
+        const l3 = two.makeText(l3Text, innerLeft, b3Y - 14);
+        l3.alignment = 'left'; l3.size = 11; l3.weight = 800; l3.fill = '#059669';
+
+        const bg3 = two.makeRoundedRectangle(innerLeft + innerW / 2, b3Y, innerW, 24, 6);
+        bg3.fill = '#f8fafc'; bg3.stroke = '#cbd5e1'; bg3.linewidth = 1;
+
+        const fill3W = isSplit ? (innerW * (7 / 20)) : (innerW * (3/4 - 2/5) * sliderStep);
+        const fill3 = two.makeRoundedRectangle(innerLeft + fill3W / 2, b3Y, fill3W, 24, 6);
+        fill3.fill = '#a7f3d0'; fill3.stroke = '#059669'; fill3.linewidth = 2;
+
+      } else if (op === 3) {
+        // (3) 곱셈: 2/3 × 5/4 -> 약분 (2와 4) -> 5/6
+        const isReduced = (sliderStep > 0.4 || showProc || isPassed);
+
+        const cardY = 145;
+        const cardBox = two.makeRoundedRectangle(width / 2, cardY, innerW, 105, 8);
+        cardBox.fill = '#f8fafc'; cardBox.stroke = '#cbd5e1'; cardBox.linewidth = 1;
+
+        const step1 = two.makeText('원식:  2/3  ×  5/4', width / 2, cardY - 26);
+        step1.size = 13.5; step1.weight = 800; step1.fill = '#1e293b';
+
+        if (isReduced) {
+          const step2 = two.makeText('약분: 분자 2와 분모 4를 공약수 2로 약분', width / 2, cardY + 2);
+          step2.size = 12; step2.weight = 800; step2.fill = '#0284c7';
+
+          const step3 = two.makeText('계산: (1 × 5) / (3 × 2) = 5/6', width / 2, cardY + 28);
+          step3.size = 13.5; step3.weight = 800; step3.fill = '#059669';
+        } else {
+          const guide = two.makeText('분모는 분모끼리, 분자는 분자끼리 곱하고 약분해 보세요.', width / 2, cardY + 12);
+          guide.size = 12; guide.weight = 700; guide.fill = '#64748b';
+        }
+
+      } else if (op === 4) {
+        // (4) 나눗셈: 4/7 ÷ 2/5 -> 4/7 × 5/2 -> 약분 -> 10/7 (1과 3/7)
+        const isInverted = (sliderStep > 0.4 || showProc || isPassed);
+
+        const cardY = 145;
+        const cardBox = two.makeRoundedRectangle(width / 2, cardY, innerW, 105, 8);
+        cardBox.fill = '#f8fafc'; cardBox.stroke = '#cbd5e1'; cardBox.linewidth = 1;
+
+        const step1 = two.makeText('원식:  4/7  ÷  2/5', width / 2, cardY - 26);
+        step1.size = 13.5; step1.weight = 800; step1.fill = '#1e293b';
+
+        if (isInverted) {
+          const step2 = two.makeText('역수 변환:  4/7  ×  5/2  (2/5의 역수는 5/2)', width / 2, cardY + 2);
+          step2.size = 12; step2.weight = 800; step2.fill = '#7c3aed';
+
+          const step3 = two.makeText('약분 및 계산: (2 × 5) / (7 × 1) = 10/7  (대분수 1과 3/7)', width / 2, cardY + 28);
+          step3.size = 13.5; step3.weight = 800; step3.fill = '#059669';
+        } else {
+          const guide = two.makeText('나눗셈은 나누는 수의 역수를 곱하여 계산합니다.', width / 2, cardY + 12);
+          guide.size = 12; guide.weight = 700; guide.fill = '#64748b';
+        }
+      }
+
+      // Interactive Slider (y = 282, trackW = innerW * 0.7)
+      const sY = 280;
+      const sW = innerW * 0.65;
+      const sLeft = width / 2 - sW / 2;
+      const sRight = width / 2 + sW / 2;
+
+      const sLabel = two.makeText('단계 조절 슬라이더', width / 2, sY - 16);
+      sLabel.size = 10.5; sLabel.weight = 800; sLabel.fill = '#475569';
+
+      const sTrack = two.makeRoundedRectangle(width / 2, sY, sW, 8, 4);
+      sTrack.fill = '#e2e8f0'; sTrack.stroke = '#cbd5e1'; sTrack.linewidth = 1;
+
+      const handleX = sLeft + sW * sliderStep;
+      const sFill = two.makeRoundedRectangle(sLeft + (handleX - sLeft) / 2, sY, handleX - sLeft, 8, 4);
+      sFill.fill = '#f97316'; sFill.stroke = 'none';
+
+      const sHandle = two.makeCircle(handleX, sY, 10);
+      sHandle.fill = '#ffedd5'; sHandle.stroke = '#ea580c'; sHandle.linewidth = 2.5;
+
+      const sLText = two.makeText('문제 형태', sLeft, sY + 15);
+      sLText.size = 9.5; sLText.weight = 700; sLText.fill = '#64748b';
+
+      const sRText = two.makeText('통분/계산 완성', sRight, sY + 15);
+      sRText.size = 9.5; sRText.weight = 700; sRText.fill = '#64748b';
+
+      // Analysis / Instruction Summary Box (y = 330, h = 42)
+      const sumBoxY = 332;
+      const sumBox = two.makeRoundedRectangle(width / 2, sumBoxY, innerW, 38, 8);
+      sumBox.fill = (showProc || isPassed) ? '#f0fdf4' : '#f8fafc';
+      sumBox.stroke = (showProc || isPassed) ? '#86efac' : '#e2e8f0';
+      sumBox.linewidth = 1.2;
+
+      let guideMsg = '';
+      if (showProc || isPassed) {
+        if (op === 1) guideMsg = '💡 1/2과 1/3의 공통분모는 6이므로 3/6 + 2/6 = 5/6입니다.';
+        else if (op === 2) guideMsg = '💡 3/4과 2/5의 공통분모는 20이므로 15/20 - 8/20 = 7/20입니다.';
+        else if (op === 3) guideMsg = '💡 2와 4를 2로 약분하여 (1×5)/(3×2) = 5/6입니다.';
+        else guideMsg = '💡 2/5의 역수는 5/2이므로 4/7 × 5/2 = 10/7 (1과 3/7)입니다.';
+      } else {
+        guideMsg = '📌 슬라이더를 오른쪽으로 당기거나 상단 [💡 과정 단계 보기]를 눌러 통분 모델을 관찰해 보세요.';
+      }
+
+      const sumText = two.makeText(guideMsg, width / 2, sumBoxY);
+      sumText.size = 11.5;
+      sumText.weight = 700;
+      sumText.fill = (showProc || isPassed) ? '#166534' : '#334155';
+
+      // Bottom Banner (y=395, h=40)
+      const bannerBg = two.makeRoundedRectangle(width / 2, 395, Math.min(width - 40, 680), 40, 10);
+      bannerBg.fill = '#f8fafc';
+      bannerBg.stroke = '#e2e8f0';
+      bannerBg.linewidth = 1;
+
+      const bMsg = isPassed
+        ? '🎉 [준비 학습 완료] 분수 사칙계산의 모든 과정을 완벽히 복습하였습니다! 이제 본 단원으로 이동합니다.'
+        : '💡 분수의 덧셈과 뺄셈은 통분, 곱셈은 약분, 나눗셈은 역수의 곱셈 원리를 적용해 보세요.';
+      const bannerText = two.makeText(bMsg, width / 2, 395);
+      bannerText.size = 11.5;
+      bannerText.weight = 700;
+      bannerText.fill = isPassed ? '#059669' : '#334155';
+
+      two.update();
+
+      // Pointer event binding for interactive slider
+      if (canvasEl) {
+        canvasEl.onpointerdown = (e) => {
+          const rect = canvasEl.getBoundingClientRect();
+          const cx = e.clientX - rect.left;
+          const cy = e.clientY - rect.top;
+
+          // Check slider click
+          if (cy >= sY - 18 && cy <= sY + 18 && cx >= sLeft - 15 && cx <= sRight + 15) {
+            state.lab0_4.isDraggingSlider = true;
+            state.lab0_4.sliderStep = Math.max(0, Math.min(1, (cx - sLeft) / sW));
+            canvasEl.setPointerCapture(e.pointerId);
+            drawFractionArithmeticLab(two, width, height, canvasEl);
+          }
+        };
+
+        canvasEl.onpointermove = (e) => {
+          if (!state.lab0_4.isDraggingSlider) return;
+          const rect = canvasEl.getBoundingClientRect();
+          const cx = e.clientX - rect.left;
+          state.lab0_4.sliderStep = Math.max(0, Math.min(1, (cx - sLeft) / sW));
+          drawFractionArithmeticLab(two, width, height, canvasEl);
+        };
+
+        canvasEl.onpointerup = (e) => {
+          if (state.lab0_4.isDraggingSlider) {
+            state.lab0_4.isDraggingSlider = false;
+            try { canvasEl.releasePointerCapture(e.pointerId); } catch (_) {}
+            drawFractionArithmeticLab(two, width, height, canvasEl);
           }
         };
       }
