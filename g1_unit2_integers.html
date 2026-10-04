@@ -1021,7 +1021,7 @@
 
       // Tab 4
       '4-1': { code: '4-1', tab: 4, substepLabel: '1. 생각열기: 세계 시차와 뺄셈', missionText: '[4-1] 생각열기: 세계 주요 도시의 시차와 뺄셈 (p.46)', drawer: 'drawStep4_1Canvas' },
-      '4-2': { code: '4-2', tab: 4, substepLabel: '2. 뺄셈의 원리 (부호 반전 덧셈 변환)', missionText: '[4-2] 뺄셈의 원리 (p.46)', drawer: 'drawGenericScaffoldCanvas' },
+      '4-2': { code: '4-2', tab: 4, substepLabel: '2. 뺄셈의 원리 (부호 반전 덧셈 변환)', missionText: '[4-2] 뺄셈의 원리: 빼는 수의 부호를 바꾸어 덧셈으로 변환 (pp.46~47)', drawer: 'drawStep4_2Canvas' },
       '4-3': { code: '4-3', tab: 4, substepLabel: '3. 정수와 유리수의 뺄셈 연습', missionText: '[4-3] 뺄셈 연습 (p.47)', drawer: 'drawGenericScaffoldCanvas' },
       '4-4': { code: '4-4', tab: 4, substepLabel: '4. 덧셈과 뺄셈의 혼합 계산', missionText: '[4-4] 혼합 계산 (p.48)', drawer: 'drawGenericScaffoldCanvas' },
       '4-5': { code: '4-5', tab: 4, substepLabel: '5. 부호가 생략된 수의 계산', missionText: '[4-5] 부호 생략 식 (p.48)', drawer: 'drawGenericScaffoldCanvas' },
@@ -1534,6 +1534,12 @@
         selectedCityB: 'seoul', // 비교 도시 (서울: +9)
         dubaiHour: 14, // 두바이 오후 2시 (14:00)
         isPassed: false
+      },
+      lab4_2: {
+        activeMode: 0, // 0: 부호 반전 인버터 머신, 1: 수직선 유턴 벡터 랩
+        activePreset: 1, // 1: (+) - (+), 2: (+) - (-), 3: (-) - (+), 4: (-) - (-)
+        isInverted: false, // 뺄셈 기호 인버터 작동 여부
+        isPassed: false
       }
     };
 
@@ -1724,6 +1730,9 @@
       } else if (code === '4-1') {
         renderToolbar4_1();
         renderSubstep4_1();
+      } else if (code === '4-2') {
+        renderToolbar4_2();
+        renderSubstep4_2();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
@@ -18818,6 +18827,608 @@
                 selectLab4_1City(box.key);
               } else if (box.type === 'preset') {
                 setLab4_1DubaiHour(box.hour);
+              }
+              return;
+            }
+          }
+        };
+      }
+
+      two.update();
+    }
+
+    // ==========================================
+    // 5. Substep [4-2] Implementation (2.4 뺄셈의 원리: 부호 반전 덧셈 변환)
+    // ==========================================
+    const INVERTER_PRESETS_4_2 = [
+      { id: 1, title: '⑴ (+) - (+)', a: 5, b: 2, expr: '(+5) - (+2)', conv: '(+5) + (-2)', res: 3, desc: '(+5)에서 (+2)를 빼는 경우' },
+      { id: 2, title: '⑵ (+) - (-)', a: 3, b: -4, expr: '(+3) - (-4)', conv: '(+3) + (+4)', res: 7, desc: '(+3)에서 (-4)를 빼는 경우' },
+      { id: 3, title: '⑶ (-) - (+)', a: -6, b: 3, expr: '(-6) - (+3)', conv: '(-6) + (-3)', res: -9, desc: '(-6)에서 (+3)을 빼는 경우' },
+      { id: 4, title: '⑷ (-) - (-)', a: -2, b: -7, expr: '(-2) - (-7)', conv: '(-2) + (+7)', res: 5, desc: '(-2)에서 (-7)을 빼는 경우' }
+    ];
+
+    function renderToolbar4_2() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      const curMode = state.lab4_2.activeMode;
+
+      tb.innerHTML = `
+        <span style="font-size:0.78rem; font-weight:800; color:#475569;">⚙️ 원리 모드:</span>
+        <button class="tool-btn ${curMode === 0 ? 'active' : ''}" onclick="setLab4_2Mode(0)">⚙️ 1. 부호 반전 인버터 머신</button>
+        <button class="tool-btn ${curMode === 1 ? 'active' : ''}" onclick="setLab4_2Mode(1)">📏 2. 수직선 유턴 벡터 탐구</button>
+        <div style="height:18px; width:1px; background:#cbd5e1; margin:0 4px;"></div>
+        <button class="tool-btn" onclick="toggleLab4_2Inverter()" style="background:#f0fdf4; color:#166534; border:1px solid #86efac; font-weight:800;">
+          🔄 ${state.lab4_2.isInverted ? '뺄셈 식 복원' : '부호 반전 덧셈 변환'}
+        </button>
+        <button class="tool-btn" onclick="resetLab4_2()" style="margin-left:auto;">🔄 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openSecurePasswordModal('teacher_pass')" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스</button>
+      `;
+    }
+
+    function setLab4_2Mode(mode) {
+      state.lab4_2.activeMode = mode;
+      renderToolbar4_2();
+      drawStep4_2Canvas();
+    }
+
+    function setLab4_2Preset(presetId) {
+      state.lab4_2.activePreset = presetId;
+      state.lab4_2.isInverted = false;
+      renderToolbar4_2();
+      drawStep4_2Canvas();
+    }
+
+    function toggleLab4_2Inverter() {
+      state.lab4_2.isInverted = !state.lab4_2.isInverted;
+      renderToolbar4_2();
+      drawStep4_2Canvas();
+    }
+
+    function resetLab4_2() {
+      state.lab4_2.activeMode = 0;
+      state.lab4_2.activePreset = 1;
+      state.lab4_2.isInverted = false;
+      renderToolbar4_2();
+      drawStep4_2Canvas();
+    }
+
+    function renderSubstep4_2() {
+      const data = SUBSTEPS_DATA['4-2'];
+      const missionEl = document.getElementById('mission-text');
+      if (missionEl) {
+        missionEl.innerText = data.missionText;
+      }
+
+      const formBox = document.getElementById('form-box');
+      if (!formBox) return;
+
+      const isPassed = state.lab4_2.isPassed;
+
+      formBox.innerHTML = `
+        <div style="font-size:0.86rem; font-weight:800; color:#1e293b; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+          <span>⚙️</span>
+          <span>[개념 탐구] 뺄셈의 원리: 부호를 바꾸어 덧셈으로 변환 (pp.46~47)</span>
+        </div>
+
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:14px;">
+          <div style="font-size:0.82rem; font-weight:800; color:#1e293b; margin-bottom:6px;">
+            💡 뺄셈의 핵심 계산 원칙
+          </div>
+          <div style="font-size:0.80rem; color:#475569; line-height:1.6;">
+            <b>"두 수의 뺄셈은 빼는 수의 부호를 바꾸어 덧셈으로 고쳐서 계산한다."</b><br>
+            • $a - (+b) = a + (\\mathbf{-b})$<br>
+            • $a - (-b) = a + (\\mathbf{+b})$
+          </div>
+        </div>
+
+        <!-- 4개 핵심 문항 카드 -->
+        <!-- 문항 1 -->
+        <div style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+          <div style="font-size:0.82rem; font-weight:800; color:#0f172a; margin-bottom:6px;">
+            ⑴ $(+5) - (+2)$ : 양수 빼기 양수
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:0.84rem; font-weight:700; color:#334155;">
+            <span>$(+5) + ($</span>
+            <input type="text" id="ans-4-2-1-conv" class="form-control" placeholder="수 입력" style="width:75px; text-align:center; font-weight:800; font-size:0.86rem;" autocomplete="off" value="${isPassed ? '-2' : ''}">
+            <span>$) =$</span>
+            <input type="text" id="ans-4-2-1-res" class="form-control" placeholder="수 입력" style="width:75px; text-align:center; font-weight:800; font-size:0.86rem;" autocomplete="off" value="${isPassed ? '+3' : ''}">
+          </div>
+        </div>
+
+        <!-- 문항 2 -->
+        <div style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+          <div style="font-size:0.82rem; font-weight:800; color:#0f172a; margin-bottom:6px;">
+            ⑵ $(+3) - (-4)$ : 양수 빼기 음수
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:0.84rem; font-weight:700; color:#334155;">
+            <span>$(+3) + ($</span>
+            <input type="text" id="ans-4-2-2-conv" class="form-control" placeholder="수 입력" style="width:75px; text-align:center; font-weight:800; font-size:0.86rem;" autocomplete="off" value="${isPassed ? '+4' : ''}">
+            <span>$) =$</span>
+            <input type="text" id="ans-4-2-2-res" class="form-control" placeholder="수 입력" style="width:75px; text-align:center; font-weight:800; font-size:0.86rem;" autocomplete="off" value="${isPassed ? '+7' : ''}">
+          </div>
+        </div>
+
+        <!-- 문항 3 -->
+        <div style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+          <div style="font-size:0.82rem; font-weight:800; color:#0f172a; margin-bottom:6px;">
+            ⑶ $(-6) - (+3)$ : 음수 빼기 양수
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:0.84rem; font-weight:700; color:#334155;">
+            <span>$(-6) + ($</span>
+            <input type="text" id="ans-4-2-3-conv" class="form-control" placeholder="수 입력" style="width:75px; text-align:center; font-weight:800; font-size:0.86rem;" autocomplete="off" value="${isPassed ? '-3' : ''}">
+            <span>$) =$</span>
+            <input type="text" id="ans-4-2-3-res" class="form-control" placeholder="수 입력" style="width:75px; text-align:center; font-weight:800; font-size:0.86rem;" autocomplete="off" value="${isPassed ? '-9' : ''}">
+          </div>
+        </div>
+
+        <!-- 문항 4 -->
+        <div style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+          <div style="font-size:0.82rem; font-weight:800; color:#0f172a; margin-bottom:6px;">
+            ⑷ $(-2) - (-7)$ : 음수 빼기 음수
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:0.84rem; font-weight:700; color:#334155;">
+            <span>$(-2) + ($</span>
+            <input type="text" id="ans-4-2-4-conv" class="form-control" placeholder="수 입력" style="width:75px; text-align:center; font-weight:800; font-size:0.86rem;" autocomplete="off" value="${isPassed ? '+7' : ''}">
+            <span>$) =$</span>
+            <input type="text" id="ans-4-2-4-res" class="form-control" placeholder="수 입력" style="width:75px; text-align:center; font-weight:800; font-size:0.86rem;" autocomplete="off" value="${isPassed ? '+5' : ''}">
+          </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="gradeStep4_2()" style="width:100%; font-weight:800; font-size:0.9rem; padding:10px; border-radius:8px;">
+          정답 확인 및 채점 ➔
+        </button>
+
+        <div id="feedback-4-2" style="margin-top:14px; display:${isPassed ? 'block' : 'none'};">
+          ${isPassed ? getStep4_2SuccessHtml() : ''}
+        </div>
+      `;
+
+      if (window.renderMathInElement) renderMathInElement(formBox);
+    }
+
+    function getStep4_2SuccessHtml() {
+      return `
+        <div style="padding:16px; background:#f0fdf4; border:1.5px solid #bbf7d0; border-radius:10px; color:#166534;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.3rem;">🎉</span>
+            <h4 style="font-size:0.95rem; font-weight:800; margin:0;">정답입니다! 100점 만점 통과!</h4>
+          </div>
+          <p style="font-size:0.84rem; margin:0 0 10px 0; line-height:1.6;">
+            뺄셈의 핵심 원리를 완벽하게 정복하셨습니다!<br>
+            <b>[교과서 핵심 공식 정리]</b><br>
+            ⑴ $(+5) - (+2) = (+5) + (\\mathbf{-2}) = \\mathbf{+3}$ (또는 $3$)<br>
+            ⑵ $(+3) - (-4) = (+3) + (\\mathbf{+4}) = \\mathbf{+7}$ (또는 $7$)<br>
+            ⑶ $(-6) - (+3) = (-6) + (\\mathbf{-3}) = \\mathbf{-9}$<br>
+            ⑷ $(-2) - (-7) = (-2) + (\\mathbf{+7}) = \\mathbf{+5}$ (또는 $5$)<br>
+            💡 <b>빼는 수의 부호를 반대로 바꾸어 덧셈으로 고치면 모든 뺄셈을 덧셈 규칙으로 해결할 수 있습니다!</b>
+          </p>
+          <div style="display:flex; gap:8px; margin-top:10px;">
+            <button class="btn btn-sm btn-outline-success" onclick="loadSubStep('4-3')" style="font-weight:800; font-size:0.84rem; padding:6px 14px; border-radius:6px; background:#16a34a; border:none; color:#ffffff; cursor:pointer;">
+              다음 활동 [4-3] 정수와 유리수의 뺄셈 연습 도전 ➔
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function parseStep4_2SignedNum(raw) {
+      if (!raw) return NaN;
+      let s = raw.trim().replace(/\s+/g, '').replace(/[()]/g, '');
+      let sign = 1;
+      if (s.startsWith('+')) {
+        s = s.substring(1);
+      } else if (s.startsWith('-')) {
+        sign = -1;
+        s = s.substring(1);
+      }
+      const n = parseInt(s, 10);
+      return isNaN(n) ? NaN : sign * n;
+    }
+
+    async function gradeStep4_2() {
+      const fb = document.getElementById('feedback-4-2');
+      const v1c = parseStep4_2SignedNum(document.getElementById('ans-4-2-1-conv')?.value || '');
+      const v1r = parseStep4_2SignedNum(document.getElementById('ans-4-2-1-res')?.value || '');
+
+      const v2c = parseStep4_2SignedNum(document.getElementById('ans-4-2-2-conv')?.value || '');
+      const v2r = parseStep4_2SignedNum(document.getElementById('ans-4-2-2-res')?.value || '');
+
+      const v3c = parseStep4_2SignedNum(document.getElementById('ans-4-2-3-conv')?.value || '');
+      const v3r = parseStep4_2SignedNum(document.getElementById('ans-4-2-3-res')?.value || '');
+
+      const v4c = parseStep4_2SignedNum(document.getElementById('ans-4-2-4-conv')?.value || '');
+      const v4r = parseStep4_2SignedNum(document.getElementById('ans-4-2-4-res')?.value || '');
+
+      const ok1 = (v1c === -2 && v1r === 3);
+      const ok2 = (v2c === 4 && v2r === 7);
+      const ok3 = (v3c === -3 && v3r === -9);
+      const ok4 = (v4c === 7 && v4r === 5);
+
+      const allCorrect = ok1 && ok2 && ok3 && ok4;
+
+      if (fb) {
+        fb.style.display = 'block';
+        if (allCorrect) {
+          state.lab4_2.isPassed = true;
+
+          // Unlock Substep 4-3
+          if (!state.unlockedSubSteps.includes('4-3')) {
+            state.unlockedSubSteps.push('4-3');
+          }
+          if (window.LMSIntegration) {
+            await LMSIntegration.saveStudentProgress('4-2', { score: 100, completed: true }, 'unit2');
+          }
+          if (typeof playSuccessSfx === 'function') playSuccessSfx();
+
+          fb.innerHTML = getStep4_2SuccessHtml();
+          if (window.renderMathInElement) renderMathInElement(fb);
+          renderToolbar4_2();
+          drawStep4_2Canvas();
+        } else {
+          let errs = [];
+          if (!ok1) errs.push('⑴ $(+5) - (+2)$: 빼는 수 $+2$의 부호를 바꾸면 $\\mathbf{-2}$이고, 계산 결과는 $\\mathbf{+3}$ (또는 $3$)입니다.');
+          if (!ok2) errs.push('⑵ $(+3) - (-4)$: 빼는 수 $-4$의 부호를 바꾸면 $\\mathbf{+4}$ (또는 $4$)이고, 계산 결과는 $\\mathbf{+7}$ (또는 $7$)입니다.');
+          if (!ok3) errs.push('⑶ $(-6) - (+3)$: 빼는 수 $+3$의 부호를 바꾸면 $\\mathbf{-3}$이고, 계산 결과는 $\\mathbf{-9}$입니다.');
+          if (!ok4) errs.push('⑷ $(-2) - (-7)$: 빼는 수 $-7$의 부호를 바꾸면 $\\mathbf{+7}$ (또는 $7$)이고, 계산 결과는 $\\mathbf{+5}$ (또는 $5$)입니다.');
+
+          fb.innerHTML = `
+            <div style="padding:14px; background:#fff1f2; border:1.5px solid #fecdd3; border-radius:10px; color:#9f1239;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                <span style="font-size:1.1rem;">💡</span>
+                <h4 style="font-size:0.92rem; font-weight:800; margin:0;">답안을 다시 점검해 보세요</h4>
+              </div>
+              <ul style="font-size:0.82rem; margin:0 0 8px 18px; padding:0; line-height:1.5;">
+                ${errs.map(e => `<li>${e}</li>`).join('')}
+              </ul>
+              <p style="font-size:0.78rem; margin:0; color:#881337;">
+                좌측 부호 반전 인버터 머신에서 [부호 반전 덧셈 변환] 버튼을 눌러 확인해 보세요!
+              </p>
+            </div>
+          `;
+          if (window.renderMathInElement) renderMathInElement(fb);
+        }
+      }
+    }
+
+    function drawStep4_2Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      const container = document.getElementById('two-container');
+      if (container) container.onpointerdown = null;
+      const canvasEl = container ? container.querySelector('canvas') : null;
+
+      drawSignInverterLab(two, width, height, canvasEl || container);
+    }
+
+    function drawSignInverterLab(two, width, height, canvasEl) {
+      two.clear();
+
+      const curMode = state.lab4_2.activeMode;
+      const isPassed = state.lab4_2.isPassed;
+      const presetId = state.lab4_2.activePreset;
+      const isInverted = state.lab4_2.isInverted;
+      const p = INVERTER_PRESETS_4_2.find(item => item.id === presetId) || INVERTER_PRESETS_4_2[0];
+
+      const hitBoxes = [];
+
+      // 1. Top Title (y=20)
+      const title = two.makeText('⚙️ 뺄셈의 원리: 부호 반전 인버터 머신 (교과서 pp.46~47)', width / 2, 20);
+      title.size = 15;
+      title.weight = 800;
+      title.fill = '#1e293b';
+
+      // 2. Subtitle (y=40)
+      let subMsg = '';
+      if (isPassed) {
+        subMsg = '🎉 두 수의 뺄셈은 빼는 수의 부호를 바꾸어 덧셈으로 고쳐서 계산합니다!';
+      } else {
+        if (curMode === 0) {
+          subMsg = isInverted 
+            ? '기어 인버터 작동 중: 빼는 수의 부호가 반전되어 덧셈 식으로 변환되었습니다!'
+            : '중앙의 ⚙️ 인버터 기어를 클릭하여 뺄셈(-)을 부호 반전 덧셈(+)으로 변환해 보세요!';
+        } else {
+          subMsg = '수직선 상에서 빼는 것은 이동 방향을 반대로 뒤집는(U-Turn) 것과 같습니다.';
+        }
+      }
+      const sub = two.makeText(subMsg, width / 2, 40);
+      sub.size = 10.5;
+      sub.weight = 600;
+      sub.fill = isPassed ? '#166534' : '#64748b';
+
+      if (curMode === 0) {
+        // ==========================================
+        // Mode 0: Sign Inverter Gear Machine
+        // ==========================================
+        const centerY = 165;
+        const cardW = 90, cardH = 80;
+        const cardAx = width / 2 - 195;
+        const gearX = width / 2 - 70;
+        const cardBx = width / 2 + 55;
+        const eqX = width / 2 + 130;
+        const cardResX = width / 2 + 195;
+
+        // Card A (Number A)
+        const cAbg = two.makeRoundedRectangle(cardAx, centerY, cardW, cardH, 10);
+        cAbg.fill = (p.a > 0) ? '#eff6ff' : '#fff7ed';
+        cAbg.stroke = (p.a > 0) ? '#3b82f6' : '#ea580c';
+        cAbg.linewidth = 2;
+
+        const aTitle = two.makeText('수 A', cardAx, centerY - 24);
+        aTitle.size = 9; aTitle.weight = 800; aTitle.fill = '#64748b';
+
+        const aValStr = (p.a > 0) ? `+${p.a}` : `${p.a}`;
+        const aValTxt = two.makeText(aValStr, cardAx, centerY + 8);
+        aValTxt.size = 24; aValTxt.weight = 900;
+        aValTxt.fill = (p.a > 0) ? '#1d4ed8' : '#c2410c';
+
+        // Gear Inverter (Operator)
+        const gearR = 34;
+        const gearBg = two.makeCircle(gearX, centerY, gearR);
+        gearBg.fill = isInverted ? '#f0fdf4' : '#faf5ff';
+        gearBg.stroke = isInverted ? '#16a34a' : '#9333ea';
+        gearBg.linewidth = 3;
+
+        // Gear Teeth decorations
+        for (let i = 0; i < 8; i++) {
+          const rad = (i * 45 + (isInverted ? 22.5 : 0)) * Math.PI / 180;
+          const gx = gearX + (gearR + 3) * Math.cos(rad);
+          const gy = centerY + (gearR + 3) * Math.sin(rad);
+          const tooth = two.makeCircle(gx, gy, 3.5);
+          tooth.fill = isInverted ? '#16a34a' : '#9333ea';
+          tooth.noStroke();
+        }
+
+        const opStr = isInverted ? '＋' : '－';
+        const opTxt = two.makeText(opStr, gearX, centerY + 1);
+        opTxt.size = 28; opTxt.weight = 900;
+        opTxt.fill = isInverted ? '#15803d' : '#7e22ce';
+
+        const gearLbl = two.makeText(isInverted ? '덧셈 변환됨' : '클릭: 변환!', gearX, centerY + gearR + 15);
+        gearLbl.size = 8.5; gearLbl.weight = 800;
+        gearLbl.fill = isInverted ? '#16a34a' : '#7e22ce';
+
+        hitBoxes.push({
+          type: 'inverter',
+          x1: gearX - gearR - 10,
+          x2: gearX + gearR + 10,
+          y1: centerY - gearR - 10,
+          y2: centerY + gearR + 25
+        });
+
+        // Card B (Subtrahend / Inverted Sign)
+        const curBVal = isInverted ? -p.b : p.b;
+        const cBbg = two.makeRoundedRectangle(cardBx, centerY, cardW, cardH, 10);
+        cBbg.fill = (curBVal > 0) ? '#eff6ff' : '#fff7ed';
+        cBbg.stroke = (curBVal > 0) ? '#3b82f6' : '#ea580c';
+        cBbg.linewidth = isInverted ? 2.5 : 2;
+
+        const bTitle = two.makeText(isInverted ? '부호 반전된 수' : '빼는 수 B', cardBx, centerY - 24);
+        bTitle.size = 9; bTitle.weight = 800;
+        bTitle.fill = isInverted ? '#16a34a' : '#64748b';
+
+        const bValStr = (curBVal > 0) ? `+${curBVal}` : `${curBVal}`;
+        const bValTxt = two.makeText(bValStr, cardBx, centerY + 8);
+        bValTxt.size = 24; bValTxt.weight = 900;
+        bValTxt.fill = (curBVal > 0) ? '#1d4ed8' : '#c2410c';
+
+        // Flip Tag Badge when inverted
+        if (isInverted) {
+          const flipTag = two.makeRoundedRectangle(cardBx, centerY - cardH / 2 - 2, 68, 16, 4);
+          flipTag.fill = '#16a34a'; flipTag.noStroke();
+          const flipTxt = two.makeText('부호 뒤집힘! 🔄', cardBx, centerY - cardH / 2 - 2);
+          flipTxt.size = 7.5; flipTxt.weight = 800; flipTxt.fill = '#ffffff';
+        }
+
+        // Equal Sign
+        const eqTxt = two.makeText('＝', eqX, centerY);
+        eqTxt.size = 22; eqTxt.weight = 900; eqTxt.fill = '#475569';
+
+        // Result Card (Zero-Spoiler enforced)
+        const cResBg = two.makeRoundedRectangle(cardResX, centerY, cardW, cardH, 10);
+        cResBg.fill = isPassed ? '#f0fdf4' : '#f8fafc';
+        cResBg.stroke = isPassed ? '#22c55e' : '#cbd5e1';
+        cResBg.linewidth = 2;
+
+        const resTitle = two.makeText('계산 결과', cardResX, centerY - 24);
+        resTitle.size = 9; resTitle.weight = 800; resTitle.fill = '#64748b';
+
+        let resValStr = '';
+        if (isPassed) {
+          resValStr = (p.res > 0) ? `+${p.res}` : `${p.res}`;
+        } else {
+          resValStr = '?';
+        }
+        const resValTxt = two.makeText(resValStr, cardResX, centerY + 8);
+        resValTxt.size = isPassed ? 24 : 26; resValTxt.weight = 900;
+        resValTxt.fill = isPassed ? '#166534' : '#94a3b8';
+
+        // Middle Explanation Deck (y=265 ~ 310)
+        const expBox = two.makeRoundedRectangle(width / 2, 275, width - 60, 54, 8);
+        expBox.fill = '#f8fafc';
+        expBox.stroke = '#e2e8f0';
+        expBox.linewidth = 1.2;
+
+        let expLine1 = '';
+        let expLine2 = '';
+        if (isInverted) {
+          const origBStr = (p.b > 0) ? `(+${p.b})` : `(${p.b})`;
+          const invBStr = (-p.b > 0) ? `(+${-p.b})` : `(${-p.b})`;
+          const aStr = (p.a > 0) ? `(+${p.a})` : `(${p.a})`;
+          expLine1 = `변환 결과: ${aStr} - ${origBStr} ➔ ${aStr} + ${invBStr}`;
+          expLine2 = isPassed 
+            ? `부호가 다른/같은 두 수의 덧셈 법칙 ➔ 최종 결과 = ${p.res > 0 ? '+'+p.res : p.res}`
+            : `빼는 수의 부호를 바꾸어 덧셈으로 고쳐 계산하세요! (우측 폼에 입력)`;
+        } else {
+          const origBStr = (p.b > 0) ? `(+${p.b})` : `(${p.b})`;
+          const aStr = (p.a > 0) ? `(+${p.a})` : `(${p.a})`;
+          expLine1 = `현재 식: ${aStr} - ${origBStr} (${p.desc})`;
+          expLine2 = '중앙의 ⚙️ 기어 또는 상단 툴바 버튼을 누르면 부호를 바꾸어 덧셈으로 변환됩니다!';
+        }
+
+        const e1 = two.makeText(expLine1, width / 2, 264);
+        e1.size = 11; e1.weight = 800; e1.fill = '#1e293b';
+
+        const e2 = two.makeText(expLine2, width / 2, 286);
+        e2.size = 9.5; e2.weight = 700; e2.fill = isInverted ? '#16a34a' : '#64748b';
+
+      } else {
+        // ==========================================
+        // Mode 1: Numberline U-Turn Vector Lab
+        // ==========================================
+        const lineY = 185;
+        const minVal = -10, maxVal = 10;
+        const totalSpan = maxVal - minVal;
+        const marginX = 50;
+        const lineW = width - marginX * 2;
+        const valToX = (v) => marginX + ((v - minVal) / totalSpan) * lineW;
+
+        // Axis Line
+        const axis = two.makeLine(marginX - 15, lineY, width - marginX + 15, lineY);
+        axis.stroke = '#475569'; axis.linewidth = 2.5;
+
+        // Ticks
+        for (let v = minVal; v <= maxVal; v++) {
+          const tx = valToX(v);
+          const isZero = (v === 0);
+          const tickH = isZero ? 14 : 7;
+          const tick = two.makeLine(tx, lineY - tickH / 2, tx, lineY + tickH / 2);
+          tick.stroke = isZero ? '#0f172a' : '#94a3b8';
+          tick.linewidth = isZero ? 2 : 1.2;
+
+          if (v % 2 === 0 || isZero) {
+            const vStr = (v > 0) ? `+${v}` : `${v}`;
+            const tTxt = two.makeText(vStr, tx, lineY + 18);
+            tTxt.size = isZero ? 10 : 8.5;
+            tTxt.weight = isZero ? 900 : 700;
+            tTxt.fill = isZero ? '#0f172a' : '#64748b';
+          }
+        }
+
+        // Vector 1: 0 to A (y=135)
+        const x0 = valToX(0);
+        const xA = valToX(p.a);
+        const v1Line = two.makeLine(x0, 135, xA, 135);
+        v1Line.stroke = '#2563eb'; v1Line.linewidth = 3;
+
+        const v1Head = two.makeLine(xA, 135, xA - ((p.a > 0) ? 6 : -6), 130);
+        v1Head.stroke = '#2563eb'; v1Head.linewidth = 2.5;
+        const v1Head2 = two.makeLine(xA, 135, xA - ((p.a > 0) ? 6 : -6), 140);
+        v1Head2.stroke = '#2563eb'; v1Head2.linewidth = 2.5;
+
+        const aLbl = two.makeText(`출발: ${p.a > 0 ? '+'+p.a : p.a}`, (x0 + xA) / 2, 120);
+        aLbl.size = 9.5; aLbl.weight = 800; aLbl.fill = '#1d4ed8';
+
+        // Vector 2: From A with U-Turn subtraction (y=95)
+        // Subtraction: a - b = a + (-b)
+        const finalVal = p.a - p.b;
+        const xFinal = valToX(finalVal);
+
+        const v2Line = two.makeLine(xA, 95, xFinal, 95);
+        v2Line.stroke = '#ea580c'; v2Line.linewidth = 3;
+
+        const dirFinal = (finalVal > p.a) ? 1 : -1;
+        const v2Head = two.makeLine(xFinal, 95, xFinal - dirFinal * 6, 90);
+        v2Head.stroke = '#ea580c'; v2Head.linewidth = 2.5;
+        const v2Head2 = two.makeLine(xFinal, 95, xFinal - dirFinal * 6, 100);
+        v2Head2.stroke = '#ea580c'; v2Head2.linewidth = 2.5;
+
+        const bOrigStr = (p.b > 0) ? `+${p.b}` : `${p.b}`;
+        const bInvStr = (-p.b > 0) ? `+${-p.b}` : `${-p.b}`;
+        const v2Lbl = two.makeText(`빼기 ${bOrigStr} = [뒤돌아 U-Turn] 더하기 ${bInvStr}`, (xA + xFinal) / 2, 80);
+        v2Lbl.size = 9.5; v2Lbl.weight = 800; v2Lbl.fill = '#c2410c';
+
+        // Stems to axis
+        const sA = two.makeLine(xA, 135, xA, lineY);
+        sA.stroke = '#2563eb'; sA.linewidth = 1; sA.dashes = [3, 2];
+
+        const sFin = two.makeLine(xFinal, 95, xFinal, lineY);
+        sFin.stroke = '#ea580c'; sFin.linewidth = 1.5; sFin.dashes = [3, 2];
+
+        // Target Final Dot
+        const fDot = two.makeCircle(xFinal, lineY, 6);
+        fDot.fill = isPassed ? '#16a34a' : '#ea580c';
+        fDot.stroke = '#ffffff'; fDot.linewidth = 2;
+
+        // Bottom Concept Card (y=265 ~ 310)
+        const vBox = two.makeRoundedRectangle(width / 2, 275, width - 60, 54, 8);
+        vBox.fill = '#f8fafc'; vBox.stroke = '#e2e8f0'; vBox.linewidth = 1.2;
+
+        const vt1 = two.makeText(`수직선 이동 원리: (${p.a > 0 ? '+'+p.a : p.a}) - (${p.b > 0 ? '+'+p.b : p.b})`, width / 2, 264);
+        vt1.size = 11; vt1.weight = 800; vt1.fill = '#1e293b';
+
+        let vt2Str = '';
+        if (isPassed) {
+          vt2Str = `도착 지점: ${finalVal > 0 ? '+'+finalVal : finalVal} ➔ 빼는 것은 반대 방향으로 턴하여 더하는 것과 100% 동일합니다.`;
+        } else {
+          vt2Str = `어떤 수에서 양수/음수를 빼는 것은 반대 부호를 더하는 것과 같습니다. (결과: ?칸 이동)`;
+        }
+        const vt2 = two.makeText(vt2Str, width / 2, 286);
+        vt2.size = 9.5; vt2.weight = 700; vt2.fill = '#475569';
+      }
+
+      // 5. Preset Deck Buttons (y=345, h=32)
+      const deckBox = two.makeRoundedRectangle(width / 2, 345, width - 40, 36, 8);
+      deckBox.fill = '#f8fafc';
+      deckBox.stroke = '#e2e8f0';
+      deckBox.linewidth = 1.2;
+
+      const pBtnW = 140, pBtnH = 26;
+      INVERTER_PRESETS_4_2.forEach((item, idx) => {
+        const bx = width / 2 - 225 + idx * 150;
+        const isAct = (presetId === item.id);
+
+        const b = two.makeRoundedRectangle(bx, 345, pBtnW, pBtnH, 6);
+        b.fill = isAct ? '#4f46e5' : '#ffffff';
+        b.stroke = isAct ? '#4338ca' : '#cbd5e1';
+        b.linewidth = 1.5;
+
+        const t = two.makeText(item.title, bx, 345);
+        t.size = 8.5; t.weight = 800;
+        t.fill = isAct ? '#ffffff' : '#334155';
+
+        hitBoxes.push({
+          type: 'preset',
+          id: item.id,
+          x1: bx - pBtnW / 2,
+          x2: bx + pBtnW / 2,
+          y1: 345 - pBtnH / 2,
+          y2: 345 + pBtnH / 2
+        });
+      });
+
+      // 6. Bottom Status Banner (y=396, h=32, margin bottom: 440 - 412 = 28px >= 25px)
+      const bBanner = two.makeRoundedRectangle(width / 2, 396, width - 40, 32, 8);
+      bBanner.fill = isPassed ? '#f0fdf4' : '#f1f5f9';
+      bBanner.stroke = isPassed ? '#86efac' : '#cbd5e1';
+      bBanner.linewidth = 1.2;
+
+      let bannerMsg = '';
+      if (isPassed) {
+        bannerMsg = '🎉 뺄셈의 원리 통과! 두 수의 뺄셈은 빼는 수의 부호를 바꾸어 덧셈으로 고쳐서 계산합니다!';
+      } else {
+        bannerMsg = '🎯 4가지 뺄셈 프리셋을 확인하고, 우측 폼에서 부호 반전 빈칸과 계산 결과를 완성하세요.';
+      }
+
+      const bTxt = two.makeText(bannerMsg, width / 2, 396);
+      bTxt.size = 9.5;
+      bTxt.weight = 800;
+      bTxt.fill = isPassed ? '#166534' : '#334155';
+
+      // 7. Pointer Event Listeners
+      const containerEl = document.getElementById('two-container');
+      if (containerEl) {
+        containerEl.onpointerdown = (e) => {
+          const rect = containerEl.getBoundingClientRect();
+          const px = (e.clientX - rect.left) * (width / rect.width);
+          const py = (e.clientY - rect.top) * (height / rect.height);
+
+          for (const box of hitBoxes) {
+            if (px >= box.x1 && px <= box.x2 && py >= box.y1 && py <= box.y2) {
+              if (box.type === 'inverter') {
+                toggleLab4_2Inverter();
+              } else if (box.type === 'preset') {
+                setLab4_2Preset(box.id);
               }
               return;
             }
