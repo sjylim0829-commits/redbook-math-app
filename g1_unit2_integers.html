@@ -802,7 +802,12 @@
       },
 
       // Tab 1
-      '1-1': { code: '1-1', tab: 1, substepLabel: '1. 생각열기: 기온과 양수·음수의 뜻', missionText: '[1-1] 2.1 정수와 유리수의 뜻 (p.31)', drawer: 'drawGenericScaffoldCanvas' },
+      '1-1': {
+        code: '1-1', tab: 1,
+        substepLabel: '1. 생각열기: 기온과 양수·음수의 뜻',
+        missionText: '<b>[생각열기] 기온과 양수·음수의 뜻 (교과서 p.31)</b><br>• 기온을 나타낼 때 $0^\\circ\\text{C}$를 기준으로 영상(높은 기온)에는 양의 부호 <b>$+$</b>를, 영하(낮은 기온)에는 음의 부호 <b>$-$</b>를 붙여 나타냅니다.<br>• $0$보다 큰 수를 <b>양수</b>, $0$보다 작은 수를 <b>음수</b>라고 부릅니다.<br>좌측 캔버스의 온도계 수은주를 드래그하거나 도시 프리셋을 눌러 영상과 영하의 기온을 관찰하고 부호로 표현해 보세요.',
+        drawer: 'drawStep1_1Canvas'
+      },
       '1-2': { code: '1-2', tab: 1, substepLabel: '2. 양의 부호(+)와 음의 부호(-)', missionText: '[1-2] 양의 부호와 음의 부호 (p.32)', drawer: 'drawGenericScaffoldCanvas' },
       '1-3': { code: '1-3', tab: 1, substepLabel: '3. 정수의 뜻과 분류 (문제 2)', missionText: '[1-3] 정수의 뜻과 분류 (p.32)', drawer: 'drawGenericScaffoldCanvas' },
       '1-4': { code: '1-4', tab: 1, substepLabel: '4. 유리수의 뜻과 체계 (문제 3)', missionText: '[1-4] 유리수의 뜻과 체계 (p.33)', drawer: 'drawGenericScaffoldCanvas' },
@@ -942,8 +947,14 @@
       lab0_4: {
         activeOp: 1, // 1: 덧셈(1/2+1/3), 2: 뺄셈(3/4-2/5), 3: 곱셈(2/3×5/4), 4: 나눗셈(4/7÷2/5)
         showProcess: false,
-        sliderStep: 0.0, // 0 (원식) ~ 1 (통분/연산 결과)
+        sliderStep: 0.5, // 0 (원식) ~ 1 (통분/연산 결과)
         isDraggingSlider: false,
+        isPassed: false
+      },
+      lab1_1: {
+        tempVal: 0, // 현재 온도 (-20 ~ +30)
+        isDragging: false,
+        activeCity: null,
         isPassed: false
       }
     };
@@ -1036,6 +1047,9 @@
       } else if (code === '0-4') {
         renderToolbar0_4();
         renderSubstep0_4();
+      } else if (code === '1-1') {
+        renderToolbar1_1();
+        renderSubstep1_1();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
@@ -3143,6 +3157,408 @@
             state.lab0_4.isDraggingSlider = false;
             try { canvasEl.releasePointerCapture(e.pointerId); } catch (_) {}
             drawFractionArithmeticLab(two, width, height, canvasEl);
+          }
+        };
+      }
+    }
+
+    // ==========================================
+    // 3-5. Substep [1-1] Implementation
+    // ==========================================
+    function renderToolbar1_1() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      tb.innerHTML = `
+        <span style="font-size:0.78rem; font-weight:800; color:#475569;">📍 주요 도시 기온:</span>
+        <button class="tool-btn" onclick="setCityLab1_1('daejeon_low', -5)">대전 최저 (영하 5℃)</button>
+        <button class="tool-btn" onclick="setCityLab1_1('daejeon_high', 8)">대전 최고 (영상 8℃)</button>
+        <button class="tool-btn" onclick="setCityLab1_1('seoul_low', -8)">서울 최저 (영하 8℃)</button>
+        <button class="tool-btn" onclick="setCityLab1_1('jeju', 14)">제주 (영상 14℃)</button>
+        <button class="tool-btn" onclick="setCityLab1_1('zero', 0)">🔄 0℃ 기준 리셋</button>
+        <button class="tool-btn" style="margin-left:auto; padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openSecurePasswordModal('teacher_pass')" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스</button>
+      `;
+    }
+
+    function setCityLab1_1(cityKey, temp) {
+      state.lab1_1.activeCity = cityKey;
+      state.lab1_1.tempVal = temp;
+      drawStep1_1Canvas();
+    }
+
+    function renderSubstep1_1() {
+      const data = SUBSTEPS_DATA['1-1'];
+      const missionEl = document.getElementById('mission-text');
+      if (missionEl) {
+        missionEl.innerHTML = data.missionText;
+        if (window.renderMathInElement) renderMathInElement(missionEl);
+      }
+
+      const formArea = document.getElementById('form-work-area');
+      if (formArea) {
+        formArea.innerHTML = `
+          <div class="card" style="border-left: 4px solid var(--secondary-color); padding: 18px; background: #ffffff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+              <span style="background:#e0f2fe; color:#0284c7; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">교과서 p.31 연계</span>
+              <h4 style="font-size:0.95rem; font-weight:800; color:#1e293b; margin:0;">생각열기: 기온과 양수·음수의 뜻</h4>
+            </div>
+
+            <div style="margin-bottom:18px; padding:14px; background:#f8fafc; border-radius:10px; border:1px solid #f1f5f9;">
+              <label style="font-size:0.88rem; font-weight:700; color:#334155; display:block; margin-bottom:12px; line-height:1.5;">
+                <b>[생각열기 탐구]</b> 어느 겨울날 대전의 기온을 부호 <b>$+$</b> 또는 <b>$-$</b>를 사용하여 나타내시오.
+              </label>
+
+              <!-- Problem (1) -->
+              <div style="padding:12px 14px; background:#ffffff; border:1.5px solid #e2e8f0; border-radius:10px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                <span style="font-size:0.92rem; font-weight:800; color:#1e293b;">(1) 최저 기온: <b>영하 $5^\\circ\\text{C}$</b></span>
+                <input type="text" id="ans-1-1-1" class="form-control" placeholder="부호와 수 입력" style="width:130px; text-align:center; font-weight:800; font-size:0.95rem;" autocomplete="off">
+              </div>
+
+              <!-- Problem (2) -->
+              <div style="padding:12px 14px; background:#ffffff; border:1.5px solid #e2e8f0; border-radius:10px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                <span style="font-size:0.92rem; font-weight:800; color:#1e293b;">(2) 최고 기온: <b>영상 $8^\\circ\\text{C}$</b></span>
+                <input type="text" id="ans-1-1-2" class="form-control" placeholder="부호와 수 입력" style="width:130px; text-align:center; font-weight:800; font-size:0.95rem;" autocomplete="off">
+              </div>
+
+              <p style="font-size:0.75rem; color:#64748b; margin:0;">(부호 $+$ 또는 $-$를 붙여 나타내세요. 예: +3, -2)</p>
+            </div>
+
+            <button class="btn btn-primary" onclick="gradeStep1_1()" style="width:100%; padding:11px; font-weight:800; font-size:0.92rem;">
+              ✅ 정답 확인 및 채점하기
+            </button>
+
+            <div id="feedback-1-1" style="display:none; margin-top:14px;"></div>
+          </div>
+        `;
+        if (window.renderMathInElement) renderMathInElement(formArea);
+      }
+
+      drawStep1_1Canvas();
+    }
+
+    function cleanSignInput(val) {
+      if (!val) return '';
+      return val.trim()
+        .replace(/℃|도|\s+/g, '')
+        .replace(/－/g, '-')
+        .replace(/＋/g, '+');
+    }
+
+    async function gradeStep1_1() {
+      const a1 = cleanSignInput(document.getElementById('ans-1-1-1')?.value || '');
+      const a2 = cleanSignInput(document.getElementById('ans-1-1-2')?.value || '');
+
+      const is1Correct = (a1 === '-5');
+      const is2Correct = (a2 === '+8' || a2 === '8');
+
+      const fb = document.getElementById('feedback-1-1');
+      if (!fb) return;
+
+      if (is1Correct && is2Correct) {
+        state.lab1_1.isPassed = true;
+
+        fb.style.display = 'block';
+        fb.innerHTML = `
+          <div style="padding:14px; background:#ecfdf5; border:1.5px solid #6ee7b7; border-radius:10px; color:#065f46;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+              <span style="font-size:1.2rem;">🎉</span>
+              <h4 style="font-size:0.95rem; font-weight:800; margin:0;">100점 완벽합니다!</h4>
+            </div>
+            <p style="font-size:0.84rem; line-height:1.6; margin:0;">
+              • (1) 영하 $5^\\circ\\text{C}$는 $0^\\circ\\text{C}$보다 $5^\\circ\\text{C}$ 낮으므로 <b>$-5^\\circ\\text{C}$</b>입니다.<br>
+              • (2) 영상 $8^\\circ\\text{C}$는 $0^\\circ\\text{C}$보다 $8^\\circ\\text{C}$ 높으므로 <b>$+8^\\circ\\text{C}$</b>입니다.<br>
+              기준 $0$을 중심으로 서로 반대되는 성질의 수량을 $+$와 $-$ 부호로 명확히 표현하였습니다!
+            </p>
+          </div>
+        `;
+        if (window.renderMathInElement) renderMathInElement(fb);
+
+        if (!state.completedSubSteps.includes('1-1')) {
+          state.completedSubSteps.push('1-1');
+        }
+        if (!state.unlockedSubSteps.includes('1-2')) {
+          state.unlockedSubSteps.push('1-2');
+        }
+
+        if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+          LMSIntegration.saveStudentProgress('1-1', { score: 100, passed: true }, 'unit2');
+        }
+
+        drawStep1_1Canvas();
+      } else {
+        fb.style.display = 'block';
+        let hint = '';
+        if (!is1Correct && is2Correct) {
+          hint = '(1)번의 영하(0℃보다 낮음) 기온에는 어떤 부호(-)를 붙여야 할까요?';
+        } else if (is1Correct && !is2Correct) {
+          hint = '(2)번의 영상(0℃보다 높음) 기온에는 어떤 부호(+)를 붙여야 할까요?';
+        } else {
+          hint = '영하는 $0^\\circ\\text{C}$보다 낮은 기온(-), 영상은 $0^\\circ\\text{C}$보다 높은 기온(+)을 뜻합니다.';
+        }
+
+        fb.innerHTML = `
+          <div style="padding:14px; background:#fef2f2; border:1.5px solid #fca5a5; border-radius:10px; color:#991b1b;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+              <span style="font-size:1.1rem;">💡</span>
+              <h4 style="font-size:0.92rem; font-weight:800; margin:0;">다시 한 번 확인해 볼까요?</h4>
+            </div>
+            <p style="font-size:0.84rem; line-height:1.6; margin:0;">
+              ${hint}<br>
+              좌측 캔버스에서 대전 최저/최고 기온 버튼을 눌러 온도계의 위치를 확인해 보세요!
+            </p>
+          </div>
+        `;
+        if (window.renderMathInElement) renderMathInElement(fb);
+      }
+    }
+
+    function drawStep1_1Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      const container = document.getElementById('two-container');
+      container.onpointerdown = null;
+      const canvasEl = container ? container.querySelector('canvas') : null;
+
+      drawTemperatureInteractiveLab(two, width, height, canvasEl);
+    }
+
+    function drawTemperatureInteractiveLab(two, width, height, canvasEl) {
+      two.clear();
+
+      const tempVal = state.lab1_1.tempVal;
+      const isPassed = state.lab1_1.isPassed;
+
+      // Vertical Budgeting:
+      // y=20: Title
+      // y=42: Subtitle
+      // y=68 ~ 360: Thermometer Lab Card (h=292px)
+      // y=395: Bottom Banner (h=40px)
+      const title = two.makeText('🌡️ 대화형 수직 온도계 랩: 기온과 양수·음수의 뜻', width / 2, 20);
+      title.size = 15;
+      title.weight = 800;
+      title.fill = '#1e293b';
+
+      const sub = two.makeText(
+        '0℃(어는점)를 기준으로 위쪽(영상)은 +, 아래쪽(영하)은 - 부호를 붙입니다.',
+        width / 2, 42
+      );
+      sub.size = 11.5;
+      sub.fill = '#475569';
+
+      // Outer Card Box (y=68 ~ 360)
+      const boxH = 292;
+      const boxY = 68 + boxH / 2;
+      const box = two.makeRoundedRectangle(width / 2, boxY, width - 40, boxH, 12);
+      box.fill = '#ffffff';
+      box.stroke = '#e2e8f0';
+      box.linewidth = 1.5;
+
+      // Thermometer specifications
+      const tubeX = 115;
+      const tubeTopY = 100;
+      const tubeBottomY = 310;
+      const tubeH = tubeBottomY - tubeTopY; // 210px
+
+      // 0℃ position: 20/50 from bottom = 0.4
+      const zeroY = tubeBottomY - (20 / 50) * tubeH; // 226px
+
+      function tempToY(t) {
+        const clamped = Math.max(-20, Math.min(30, t));
+        return tubeBottomY - ((clamped - (-20)) / 50) * tubeH;
+      }
+
+      function yToTemp(y) {
+        const clampedY = Math.max(tubeTopY, Math.min(tubeBottomY, y));
+        const ratio = (tubeBottomY - clampedY) / tubeH;
+        return Math.round(-20 + ratio * 50);
+      }
+
+      const curY = tempToY(tempVal);
+
+      // 1. Thermometer Glass Tube Outer
+      const tubeBg = two.makeRoundedRectangle(tubeX, tubeTopY + tubeH / 2, 24, tubeH + 12, 12);
+      tubeBg.fill = '#f1f5f9';
+      tubeBg.stroke = '#cbd5e1';
+      tubeBg.linewidth = 2;
+
+      // 2. Mercury Bulb at bottom
+      const bulb = two.makeCircle(tubeX, tubeBottomY + 16, 20);
+      const bulbFill = (tempVal >= 0) ? '#ef4444' : '#3b82f6';
+      bulb.fill = bulbFill;
+      bulb.stroke = '#ffffff';
+      bulb.linewidth = 2;
+
+      // 3. Mercury Column Fill
+      const colTop = Math.min(zeroY, curY);
+      const colBottom = Math.max(zeroY, curY);
+      const colH = Math.max(2, colBottom - colTop);
+      const colCenterY = (colTop + colBottom) / 2;
+
+      const mercuryCol = two.makeRoundedRectangle(tubeX, colCenterY, 14, colH, 6);
+      mercuryCol.fill = bulbFill;
+      mercuryCol.stroke = 'none';
+
+      // Fill from zero down to bulb
+      const baseCol = two.makeRoundedRectangle(tubeX, (zeroY + tubeBottomY + 10) / 2, 14, (tubeBottomY + 10 - zeroY), 4);
+      baseCol.fill = '#3b82f6';
+      baseCol.stroke = 'none';
+
+      // 4. Reference Line for 0℃
+      const zeroLine = two.makeLine(tubeX - 25, zeroY, tubeX + 55, zeroY);
+      zeroLine.stroke = '#0284c7';
+      zeroLine.linewidth = 2;
+      zeroLine.dashes = [4, 3];
+
+      const zeroTagBg = two.makeRoundedRectangle(tubeX + 32, zeroY, 44, 18, 5);
+      zeroTagBg.fill = '#e0f2fe';
+      zeroTagBg.stroke = '#0284c7';
+      zeroTagBg.linewidth = 1;
+
+      const zeroTagTxt = two.makeText('0℃ 기준', tubeX + 32, zeroY);
+      zeroTagTxt.size = 9.5;
+      zeroTagTxt.weight = 800;
+      zeroTagTxt.fill = '#0369a1';
+
+      // 5. Ticks & Labels on Left Side
+      const tickVals = [30, 20, 10, 0, -10, -20];
+      tickVals.forEach(v => {
+        const y = tempToY(v);
+        const isZero = (v === 0);
+        const tick = two.makeLine(tubeX - 18, y, tubeX - 6, y);
+        tick.stroke = isZero ? '#0284c7' : '#64748b';
+        tick.linewidth = isZero ? 2.5 : 1.5;
+
+        const lbl = two.makeText((v > 0 ? '+' : '') + v + '°', tubeX - 32, y);
+        lbl.size = 10;
+        lbl.weight = isZero ? 800 : 700;
+        lbl.fill = isZero ? '#0284c7' : (v > 0 ? '#dc2626' : '#2563eb');
+      });
+
+      // 6. Interactive Handle on Mercury Top
+      const handle = two.makeCircle(tubeX, curY, 9);
+      handle.fill = '#ffffff';
+      handle.stroke = bulbFill;
+      handle.linewidth = 3;
+
+      const handleDot = two.makeCircle(tubeX, curY, 3);
+      handleDot.fill = bulbFill;
+      handleDot.stroke = 'none';
+
+      // 7. Right Panel: Real-time Analysis Card (x: 210 ~ width - 50)
+      const rightX = (width + 190) / 2;
+      const rightW = width - 230;
+
+      // Card 1: Current Temp Badge & Sign Expression (y = 135)
+      const rBox1 = two.makeRoundedRectangle(rightX, 138, rightW, 95, 10);
+      rBox1.fill = (tempVal >= 0) ? '#fef2f2' : '#eff6ff';
+      rBox1.stroke = (tempVal >= 0) ? '#fca5a5' : '#bfdbfe';
+      rBox1.linewidth = 1.5;
+
+      const t1Title = two.makeText('📊 현재 온도 상태 분석', rightX, 108);
+      t1Title.size = 11;
+      t1Title.weight = 800;
+      t1Title.fill = '#475569';
+
+      const tempStr = (tempVal > 0 ? '+' : '') + tempVal + '℃';
+      const tempBig = two.makeText(tempStr, rightX, 138);
+      tempBig.size = 24;
+      tempBig.weight = 800;
+      tempBig.fill = (tempVal >= 0) ? '#b91c1c' : '#1d4ed8';
+
+      let descText = '';
+      if (tempVal > 0) {
+        descText = '0℃보다 ' + tempVal + '℃ 높음 → 영상 (양의 부호 +) 표현';
+      } else if (tempVal < 0) {
+        descText = '0℃보다 ' + Math.abs(tempVal) + '℃ 낮음 → 영하 (음의 부호 -) 표현';
+      } else {
+        descText = '기준점 0℃ (양수도 음수도 아닌 기준의 수)';
+      }
+      const descLabel = two.makeText(descText, rightX, 168);
+      descLabel.size = 11;
+      descLabel.weight = 700;
+      descLabel.fill = (tempVal >= 0) ? '#991b1b' : '#1e40af';
+
+      // Card 2: Weather City Info Box (Zero-spoiler: shows concept without revealing final answers before pass)
+      const rBox2 = two.makeRoundedRectangle(rightX, 260, rightW, 115, 10);
+      rBox2.fill = '#f8fafc';
+      rBox2.stroke = '#e2e8f0';
+      rBox2.linewidth = 1.2;
+
+      const t2Title = two.makeText('🌦️ 교과서 p.31 일기예보 탐구 가이드', rightX, 222);
+      t2Title.size = 11.5;
+      t2Title.weight = 800;
+      t2Title.fill = '#1e293b';
+
+      let cityText1 = '';
+      let cityText2 = '';
+      if (isPassed) {
+        cityText1 = '• 대전 최저: 영하 5℃ → 0℃보다 5℃ 낮음 → -5℃';
+        cityText2 = '• 대전 최고: 영상 8℃ → 0℃보다 8℃ 높음 → +8℃';
+      } else {
+        cityText1 = '• 영하(낮은 기온): 0℃보다 낮은 기온 → 음의 부호 (-)';
+        cityText2 = '• 영상(높은 기온): 0℃보다 높은 기온 → 양의 부호 (+)';
+      }
+
+      const cityInfo1 = two.makeText(cityText1, rightX, 248);
+      cityInfo1.size = 10.5;
+      cityInfo1.weight = 700;
+      cityInfo1.fill = isPassed ? '#1d4ed8' : '#334155';
+
+      const cityInfo2 = two.makeText(cityText2, rightX, 272);
+      cityInfo2.size = 10.5;
+      cityInfo2.weight = 700;
+      cityInfo2.fill = isPassed ? '#b91c1c' : '#334155';
+
+      const cityTip = two.makeText('👉 상단 툴바 버튼을 누르거나 온도계를 드래그하여 수은주를 확인해 보세요.', rightX, 298);
+      cityTip.size = 10;
+      cityTip.weight = 700;
+      cityTip.fill = '#64748b';
+
+      // Bottom Banner (y=395, h=40)
+      const bannerBg = two.makeRoundedRectangle(width / 2, 395, Math.min(width - 40, 680), 40, 10);
+      bannerBg.fill = '#f8fafc';
+      bannerBg.stroke = '#e2e8f0';
+      bannerBg.linewidth = 1;
+
+      const bMsg = isPassed
+        ? '🎉 [생각열기 완료] 0℃를 기준으로 영상(+), 영하(-) 부호의 개념을 완벽하게 이해하였습니다!'
+        : '💡 온도계의 수은주 핸들을 위아래로 드래그하여 영상과 영하의 기온을 탐구해 보세요.';
+      const bannerText = two.makeText(bMsg, width / 2, 395);
+      bannerText.size = 11.5;
+      bannerText.weight = 700;
+      bannerText.fill = isPassed ? '#059669' : '#334155';
+
+      two.update();
+
+      // Pointer event binding for thermometer drag
+      if (canvasEl) {
+        canvasEl.onpointerdown = (e) => {
+          const rect = canvasEl.getBoundingClientRect();
+          const cx = e.clientX - rect.left;
+          const cy = e.clientY - rect.top;
+
+          // Check click near thermometer tube
+          if (cx >= tubeX - 35 && cx <= tubeX + 35 && cy >= tubeTopY - 15 && cy <= tubeBottomY + 35) {
+            state.lab1_1.isDragging = true;
+            state.lab1_1.tempVal = yToTemp(cy);
+            canvasEl.setPointerCapture(e.pointerId);
+            drawTemperatureInteractiveLab(two, width, height, canvasEl);
+          }
+        };
+
+        canvasEl.onpointermove = (e) => {
+          if (!state.lab1_1.isDragging) return;
+          const rect = canvasEl.getBoundingClientRect();
+          const cy = e.clientY - rect.top;
+          state.lab1_1.tempVal = yToTemp(cy);
+          drawTemperatureInteractiveLab(two, width, height, canvasEl);
+        };
+
+        canvasEl.onpointerup = (e) => {
+          if (state.lab1_1.isDragging) {
+            state.lab1_1.isDragging = false;
+            try { canvasEl.releasePointerCapture(e.pointerId); } catch (_) {}
+            drawTemperatureInteractiveLab(two, width, height, canvasEl);
           }
         };
       }
