@@ -1022,7 +1022,7 @@
       // Tab 4
       '4-1': { code: '4-1', tab: 4, substepLabel: '1. 생각열기: 세계 시차와 뺄셈', missionText: '[4-1] 생각열기: 세계 주요 도시의 시차와 뺄셈 (p.46)', drawer: 'drawStep4_1Canvas' },
       '4-2': { code: '4-2', tab: 4, substepLabel: '2. 뺄셈의 원리 (부호 반전 덧셈 변환)', missionText: '[4-2] 뺄셈의 원리: 빼는 수의 부호를 바꾸어 덧셈으로 변환 (pp.46~47)', drawer: 'drawStep4_2Canvas' },
-      '4-3': { code: '4-3', tab: 4, substepLabel: '3. 정수와 유리수의 뺄셈 연습', missionText: '[4-3] 뺄셈 연습 (p.47)', drawer: 'drawGenericScaffoldCanvas' },
+      '4-3': { code: '4-3', tab: 4, substepLabel: '3. 정수와 유리수의 뺄셈 연습', missionText: '[4-3] 정수와 유리수의 뺄셈 계산 연습 (p.47)', drawer: 'drawStep4_3Canvas' },
       '4-4': { code: '4-4', tab: 4, substepLabel: '4. 덧셈과 뺄셈의 혼합 계산', missionText: '[4-4] 혼합 계산 (p.48)', drawer: 'drawGenericScaffoldCanvas' },
       '4-5': { code: '4-5', tab: 4, substepLabel: '5. 부호가 생략된 수의 계산', missionText: '[4-5] 부호 생략 식 (p.48)', drawer: 'drawGenericScaffoldCanvas' },
       '4-6': { code: '4-6', tab: 4, substepLabel: '6. [스스로 확인 1] 뺄셈 마스터 4문항', missionText: '[4-6] 스스로 확인하기 1번 (p.49)', drawer: 'drawGenericScaffoldCanvas' },
@@ -1540,6 +1540,11 @@
         activePreset: 1, // 1: (+) - (+), 2: (+) - (-), 3: (-) - (+), 4: (-) - (-)
         isInverted: false, // 뺄셈 기호 인버터 작동 여부
         isPassed: false
+      },
+      lab4_3: {
+        activeMode: 0, // 0: 최고/최저 기온차 온도계 랩, 1: 분수/소수 수직선 랩
+        activePreset: 1, // 1: 정수 1, 2: 정수 2, 3: 분수, 4: 소수
+        isPassed: false
       }
     };
 
@@ -1733,6 +1738,9 @@
       } else if (code === '4-2') {
         renderToolbar4_2();
         renderSubstep4_2();
+      } else if (code === '4-3') {
+        renderToolbar4_3();
+        renderSubstep4_3();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
@@ -19429,6 +19437,600 @@
                 toggleLab4_2Inverter();
               } else if (box.type === 'preset') {
                 setLab4_2Preset(box.id);
+              }
+              return;
+            }
+          }
+        };
+      }
+
+      two.update();
+    }
+
+    // ==========================================
+    // 6. Substep [4-3] Implementation (2.4 정수와 유리수의 뺄셈 연습)
+    // ==========================================
+    const PRACTICE_PRESETS_4_3 = [
+      { id: 1, title: '⑴ 정수: (+7) - (+3)', type: 'int', a: 7, b: 3, res: 4, convStr: '(+7) + (-3)', resStr: '+4', desc: '양수에서 양수를 빼는 기본 정수 계산' },
+      { id: 2, title: '⑵ 정수: (-9) - (-4)', type: 'int', a: -9, b: -4, res: -5, convStr: '(-9) + (+4)', resStr: '-5', desc: '음수에서 음수를 빼는 부호 반전 계산' },
+      { id: 3, title: '⑶ 분수: (-2/3) - (-5/6)', type: 'frac', a: -2/3, b: -5/6, res: 1/6, convStr: '(-4/6) + (+5/6)', resStr: '+1/6', desc: '분모가 다른 분수의 통분과 뺄셈 계산' },
+      { id: 4, title: '⑷ 소수/기온차: (+3.4) - (-1.8)', type: 'temp', a: 3.4, b: -1.8, res: 5.2, convStr: '(+3.4) + (+1.8)', resStr: '+5.2', desc: '최고 기온(+3.4℃)과 최저 기온(-1.8℃)의 일교차' }
+    ];
+
+    function renderToolbar4_3() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      const curMode = state.lab4_3.activeMode;
+
+      tb.innerHTML = `
+        <span style="font-size:0.78rem; font-weight:800; color:#475569;">🌡️ 연습 모드:</span>
+        <button class="tool-btn ${curMode === 0 ? 'active' : ''}" onclick="setLab4_3Mode(0)">🌡️ 1. 기온차 온도계 랩</button>
+        <button class="tool-btn ${curMode === 1 ? 'active' : ''}" onclick="setLab4_3Mode(1)">📏 2. 유리수 수직선 뺄셈 랩</button>
+        <div style="height:18px; width:1px; background:#cbd5e1; margin:0 4px;"></div>
+        <button class="tool-btn" onclick="resetLab4_3()" style="margin-left:auto;">🔄 초기화</button>
+        <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;" onclick="openSecurePasswordModal('teacher_pass')" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스</button>
+      `;
+    }
+
+    function setLab4_3Mode(mode) {
+      state.lab4_3.activeMode = mode;
+      renderToolbar4_3();
+      drawStep4_3Canvas();
+    }
+
+    function setLab4_3Preset(presetId) {
+      state.lab4_3.activePreset = presetId;
+      if (presetId === 4) {
+        state.lab4_3.activeMode = 0; // temperature thermometer
+      }
+      renderToolbar4_3();
+      drawStep4_3Canvas();
+    }
+
+    function resetLab4_3() {
+      state.lab4_3.activeMode = 0;
+      state.lab4_3.activePreset = 1;
+      renderToolbar4_3();
+      drawStep4_3Canvas();
+    }
+
+    function renderSubstep4_3() {
+      const data = SUBSTEPS_DATA['4-3'];
+      const missionEl = document.getElementById('mission-text');
+      if (missionEl) {
+        missionEl.innerText = data.missionText;
+      }
+
+      const formBox = document.getElementById('form-box');
+      if (!formBox) return;
+
+      const isPassed = state.lab4_3.isPassed;
+
+      formBox.innerHTML = `
+        <div style="font-size:0.86rem; font-weight:800; color:#1e293b; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+          <span>✏️</span>
+          <span>[계산 연습] 정수와 유리수의 뺄셈 마스터 (교과서 p.47)</span>
+        </div>
+
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:14px;">
+          <div style="font-size:0.82rem; font-weight:800; color:#1e293b; margin-bottom:6px;">
+            🧭 뺄셈 계산 2단계 로드맵
+          </div>
+          <div style="font-size:0.80rem; color:#475569; line-height:1.6;">
+            1단계: <b>빼는 수의 부호를 바꾸어 덧셈으로 변환</b><br>
+            2단계: <b>덧셈의 연산 법칙(분모 통분, 절댓값 대소 비교)을 적용하여 계산</b>
+          </div>
+        </div>
+
+        <!-- 문항 1: 정수 ⑴ -->
+        <div style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+          <div style="font-size:0.82rem; font-weight:800; color:#0f172a; margin-bottom:6px;">
+            ⑴ $(+7) - (+3)$ : 기본 정수 뺄셈
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:0.84rem; font-weight:700; color:#334155;">
+            <span>$(+7) + ($</span>
+            <input type="text" id="ans-4-3-1-conv" class="form-control" placeholder="수 입력" style="width:75px; text-align:center; font-weight:800; font-size:0.86rem;" autocomplete="off" value="${isPassed ? '-3' : ''}">
+            <span>$) =$</span>
+            <input type="text" id="ans-4-3-1-res" class="form-control" placeholder="수 입력" style="width:75px; text-align:center; font-weight:800; font-size:0.86rem;" autocomplete="off" value="${isPassed ? '+4' : ''}">
+          </div>
+        </div>
+
+        <!-- 문항 2: 정수 ⑵ -->
+        <div style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+          <div style="font-size:0.82rem; font-weight:800; color:#0f172a; margin-bottom:6px;">
+            ⑵ $(-9) - (-4)$ : 음수 빼기 음수
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:0.84rem; font-weight:700; color:#334155;">
+            <span>$(-9) + ($</span>
+            <input type="text" id="ans-4-3-2-conv" class="form-control" placeholder="수 입력" style="width:75px; text-align:center; font-weight:800; font-size:0.86rem;" autocomplete="off" value="${isPassed ? '+4' : ''}">
+            <span>$) =$</span>
+            <input type="text" id="ans-4-3-2-res" class="form-control" placeholder="수 입력" style="width:75px; text-align:center; font-weight:800; font-size:0.86rem;" autocomplete="off" value="${isPassed ? '-5' : ''}">
+          </div>
+        </div>
+
+        <!-- 문항 3: 분수 ⑶ -->
+        <div style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+          <div style="font-size:0.82rem; font-weight:800; color:#0f172a; margin-bottom:6px;">
+            ⑶ $\\left(-\\frac{2}{3}\\right) - \\left(-\\frac{5}{6}\\right)$ : 분수 통분 뺄셈
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:0.84rem; font-weight:700; color:#334155;">
+            <span>$\\left(-\\frac{4}{6}\\right) + ($</span>
+            <input type="text" id="ans-4-3-3-conv" class="form-control" placeholder="수 입력" style="width:80px; text-align:center; font-weight:800; font-size:0.86rem;" autocomplete="off" value="${isPassed ? '+5/6' : ''}">
+            <span>$) =$</span>
+            <input type="text" id="ans-4-3-3-res" class="form-control" placeholder="수 입력" style="width:80px; text-align:center; font-weight:800; font-size:0.86rem;" autocomplete="off" value="${isPassed ? '+1/6' : ''}">
+          </div>
+          <div style="font-size:0.75rem; color:#64748b; margin-top:4px;">(예: 5/6, 1/6 형태의 분수로 입력)</div>
+        </div>
+
+        <!-- 문항 4: 소수 ⑷ & 기온차 -->
+        <div style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+          <div style="font-size:0.82rem; font-weight:800; color:#0f172a; margin-bottom:6px;">
+            ⑷ $(+3.4) - (-1.8)$ : 소수 뺄셈 (최고/최저 기온차)
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:0.84rem; font-weight:700; color:#334155;">
+            <span>$(+3.4) + ($</span>
+            <input type="text" id="ans-4-3-4-conv" class="form-control" placeholder="수 입력" style="width:80px; text-align:center; font-weight:800; font-size:0.86rem;" autocomplete="off" value="${isPassed ? '+1.8' : ''}">
+            <span>$) =$</span>
+            <input type="text" id="ans-4-3-4-res" class="form-control" placeholder="수 입력" style="width:80px; text-align:center; font-weight:800; font-size:0.86rem;" autocomplete="off" value="${isPassed ? '+5.2' : ''}">
+          </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="gradeStep4_3()" style="width:100%; font-weight:800; font-size:0.9rem; padding:10px; border-radius:8px;">
+          정답 확인 및 채점 ➔
+        </button>
+
+        <div id="feedback-4-3" style="margin-top:14px; display:${isPassed ? 'block' : 'none'};">
+          ${isPassed ? getStep4_3SuccessHtml() : ''}
+        </div>
+      `;
+
+      if (window.renderMathInElement) renderMathInElement(formBox);
+    }
+
+    function getStep4_3SuccessHtml() {
+      return `
+        <div style="padding:16px; background:#f0fdf4; border:1.5px solid #bbf7d0; border-radius:10px; color:#166534;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:1.3rem;">🎉</span>
+            <h4 style="font-size:0.95rem; font-weight:800; margin:0;">정답입니다! 100점 만점 통과!</h4>
+          </div>
+          <p style="font-size:0.84rem; margin:0 0 10px 0; line-height:1.6;">
+            정수뿐만 아니라 분수와 소수 뺄셈까지 완벽하게 정복하셨습니다!<br>
+            <b>[교과서 상세 풀이]</b><br>
+            ⑴ $(+7) - (+3) = (+7) + (\\mathbf{-3}) = \\mathbf{+4}$ (또는 $4$)<br>
+            ⑵ $(-9) - (-4) = (-9) + (\\mathbf{+4}) = \\mathbf{-5}$<br>
+            ⑶ $\\left(-\\frac{2}{3}\\right) - \\left(-\\frac{5}{6}\\right) = \\left(-\\frac{4}{6}\\right) + \\left(\\mathbf{+\\frac{5}{6}}\\right) = \\mathbf{+\\frac{1}{6}}$ (또는 $\\frac{1}{6}$)<br>
+            ⑷ $(+3.4) - (-1.8) = (+3.4) + (\\mathbf{+1.8}) = \\mathbf{+5.2}$ (또는 $5.2$)<br>
+            💡 <b>실생활에서 최고 기온과 최저 기온의 일교차는 두 기온의 뺄셈식으로 정확히 계산됩니다!</b>
+          </p>
+          <div style="display:flex; gap:8px; margin-top:10px;">
+            <button class="btn btn-sm btn-outline-success" onclick="loadSubStep('4-4')" style="font-weight:800; font-size:0.84rem; padding:6px 14px; border-radius:6px; background:#16a34a; border:none; color:#ffffff; cursor:pointer;">
+              다음 활동 [4-4] 덧셈과 뺄셈의 혼합 계산 도전 ➔
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function parseStep4_3Rational(raw) {
+      if (!raw) return NaN;
+      let s = raw.trim().replace(/\s+/g, '').replace(/[()]/g, '');
+      let sign = 1;
+      if (s.startsWith('+')) {
+        s = s.substring(1);
+      } else if (s.startsWith('-')) {
+        sign = -1;
+        s = s.substring(1);
+      }
+      if (s.includes('/')) {
+        const parts = s.split('/');
+        if (parts.length === 2) {
+          const num = parseFloat(parts[0]);
+          const den = parseFloat(parts[1]);
+          if (!isNaN(num) && !isNaN(den) && den !== 0) {
+            return sign * (num / den);
+          }
+        }
+      }
+      const val = parseFloat(s);
+      return isNaN(val) ? NaN : sign * val;
+    }
+
+    async function gradeStep4_3() {
+      const fb = document.getElementById('feedback-4-3');
+      const v1c = parseStep4_3Rational(document.getElementById('ans-4-3-1-conv')?.value || '');
+      const v1r = parseStep4_3Rational(document.getElementById('ans-4-3-1-res')?.value || '');
+
+      const v2c = parseStep4_3Rational(document.getElementById('ans-4-3-2-conv')?.value || '');
+      const v2r = parseStep4_3Rational(document.getElementById('ans-4-3-2-res')?.value || '');
+
+      const v3c = parseStep4_3Rational(document.getElementById('ans-4-3-3-conv')?.value || '');
+      const v3r = parseStep4_3Rational(document.getElementById('ans-4-3-3-res')?.value || '');
+
+      const v4c = parseStep4_3Rational(document.getElementById('ans-4-3-4-conv')?.value || '');
+      const v4r = parseStep4_3Rational(document.getElementById('ans-4-3-4-res')?.value || '');
+
+      const eps = 1e-4;
+      const ok1 = (Math.abs(v1c - (-3)) < eps && Math.abs(v1r - 4) < eps);
+      const ok2 = (Math.abs(v2c - 4) < eps && Math.abs(v2r - (-5)) < eps);
+      const ok3 = (Math.abs(v3c - (5/6)) < eps && Math.abs(v3r - (1/6)) < eps);
+      const ok4 = (Math.abs(v4c - 1.8) < eps && Math.abs(v4r - 5.2) < eps);
+
+      const allCorrect = ok1 && ok2 && ok3 && ok4;
+
+      if (fb) {
+        fb.style.display = 'block';
+        if (allCorrect) {
+          state.lab4_3.isPassed = true;
+
+          // Unlock Substep 4-4
+          if (!state.unlockedSubSteps.includes('4-4')) {
+            state.unlockedSubSteps.push('4-4');
+          }
+          if (window.LMSIntegration) {
+            await LMSIntegration.saveStudentProgress('4-3', { score: 100, completed: true }, 'unit2');
+          }
+          if (typeof playSuccessSfx === 'function') playSuccessSfx();
+
+          fb.innerHTML = getStep4_3SuccessHtml();
+          if (window.renderMathInElement) renderMathInElement(fb);
+          renderToolbar4_3();
+          drawStep4_3Canvas();
+        } else {
+          let errs = [];
+          if (!ok1) errs.push('⑴ $(+7) - (+3)$: 변환 수는 $\\mathbf{-3}$, 결과는 $\\mathbf{+4}$ (또는 $4$)입니다.');
+          if (!ok2) errs.push('⑵ $(-9) - (-4)$: 변환 수는 $\\mathbf{+4}$ (또는 $4$), 결과는 $\\mathbf{-5}$입니다.');
+          if (!ok3) errs.push('⑶ $\\left(-\\frac{2}{3}\\right) - \\left(-\\frac{5}{6}\\right)$: 통분 후 변환 수는 $\\mathbf{+5/6}$ (또는 $5/6$), 결과는 $\\mathbf{+1/6}$ (또는 $1/6$)입니다.');
+          if (!ok4) errs.push('⑷ $(+3.4) - (-1.8)$: 변환 수는 $\\mathbf{+1.8}$ (또는 $1.8$), 결과는 $\\mathbf{+5.2}$ (또는 $5.2$)입니다.');
+
+          fb.innerHTML = `
+            <div style="padding:14px; background:#fff1f2; border:1.5px solid #fecdd3; border-radius:10px; color:#9f1239;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                <span style="font-size:1.1rem;">💡</span>
+                <h4 style="font-size:0.92rem; font-weight:800; margin:0;">답안을 다시 점검해 보세요</h4>
+              </div>
+              <ul style="font-size:0.82rem; margin:0 0 8px 18px; padding:0; line-height:1.5;">
+                ${errs.map(e => `<li>${e}</li>`).join('')}
+              </ul>
+              <p style="font-size:0.78rem; margin:0; color:#881337;">
+                좌측 캔버스에서 기온차 온도계와 수직선 분수 점프를 활용해 보세요!
+              </p>
+            </div>
+          `;
+          if (window.renderMathInElement) renderMathInElement(fb);
+        }
+      }
+    }
+
+    function drawStep4_3Canvas() {
+      const engine = initTwoEngine();
+      if (!engine) return;
+      const { two, width, height } = engine;
+      const container = document.getElementById('two-container');
+      if (container) container.onpointerdown = null;
+      const canvasEl = container ? container.querySelector('canvas') : null;
+
+      drawSubtractionPracticeLab(two, width, height, canvasEl || container);
+    }
+
+    function drawSubtractionPracticeLab(two, width, height, canvasEl) {
+      two.clear();
+
+      const curMode = state.lab4_3.activeMode;
+      const isPassed = state.lab4_3.isPassed;
+      const presetId = state.lab4_3.activePreset;
+      const p = PRACTICE_PRESETS_4_3.find(item => item.id === presetId) || PRACTICE_PRESETS_4_3[0];
+
+      const hitBoxes = [];
+
+      // 1. Top Title (y=20)
+      const title = two.makeText('🌡️ 정수와 유리수의 뺄셈 실생활·수직선 랩 (교과서 p.47)', width / 2, 20);
+      title.size = 15;
+      title.weight = 800;
+      title.fill = '#1e293b';
+
+      // 2. Subtitle (y=40)
+      let subMsg = '';
+      if (isPassed) {
+        subMsg = '🎉 정수, 분수, 소수의 뺄셈을 완벽하게 마스터하셨습니다!';
+      } else {
+        if (curMode === 0) {
+          subMsg = '실생활 기온차: 최고 기온에서 최저 기온을 빼는 원리를 세로 온도계로 관찰하세요.';
+        } else {
+          subMsg = '수직선 상에서 부호가 반전되어 이동하는 분수와 정수의 뺄셈 궤적을 확인하세요.';
+        }
+      }
+      const sub = two.makeText(subMsg, width / 2, 40);
+      sub.size = 10.5;
+      sub.weight = 600;
+      sub.fill = isPassed ? '#166534' : '#64748b';
+
+      if (curMode === 0) {
+        // ==========================================
+        // Mode 0: Temperature Thermometer Lab
+        // ==========================================
+        const thermX = width / 2 - 160;
+        const thermY = 175;
+        const thermH = 200;
+        const minTemp = -10, maxTemp = 15;
+        const tempSpan = maxTemp - minTemp;
+
+        const tempToY = (t) => thermY + thermH / 2 - ((t - minTemp) / tempSpan) * thermH;
+
+        // Thermometer Glass Tube Outer
+        const tubeOuter = two.makeRoundedRectangle(thermX, thermY, 26, thermH + 16, 12);
+        tubeOuter.fill = '#f1f5f9'; tubeOuter.stroke = '#94a3b8'; tubeOuter.linewidth = 2.5;
+
+        // Liquid Column Background
+        const tubeInner = two.makeRoundedRectangle(thermX, thermY, 14, thermH, 6);
+        tubeInner.fill = '#e2e8f0'; tubeInner.noStroke();
+
+        // Mercury Bulb at bottom
+        const bulb = two.makeCircle(thermX, thermY + thermH / 2 + 16, 18);
+        bulb.fill = '#ef4444'; bulb.stroke = '#dc2626'; bulb.linewidth = 2;
+
+        // Mercury Liquid from bulb up to +3.4
+        const yHigh = tempToY(3.4);
+        const yLow = tempToY(-1.8);
+        const liquidH = (thermY + thermH / 2) - yHigh;
+        const mercury = two.makeRectangle(thermX, (yHigh + (thermY + thermH / 2)) / 2, 12, liquidH);
+        mercury.fill = '#ef4444'; mercury.noStroke();
+
+        // Thermometer Ticks (-10 to +15)
+        for (let t = minTemp; t <= maxTemp; t += 5) {
+          const ty = tempToY(t);
+          const isZero = (t === 0);
+          const tick = two.makeLine(thermX + 13, ty, thermX + 24, ty);
+          tick.stroke = isZero ? '#0f172a' : '#64748b';
+          tick.linewidth = isZero ? 2 : 1.2;
+
+          const tStr = (t > 0) ? `+${t}℃` : `${t}℃`;
+          const tLbl = two.makeText(tStr, thermX + 44, ty);
+          tLbl.size = isZero ? 9.5 : 8.5;
+          tLbl.weight = isZero ? 900 : 700;
+          tLbl.fill = isZero ? '#0f172a' : '#64748b';
+        }
+
+        // Marker: Max Temp (+3.4℃)
+        const maxPinLine = two.makeLine(thermX - 50, yHigh, thermX - 14, yHigh);
+        maxPinLine.stroke = '#dc2626'; maxPinLine.linewidth = 2;
+        const maxBadge = two.makeRoundedRectangle(thermX - 85, yHigh, 64, 22, 5);
+        maxBadge.fill = '#fef2f2'; maxBadge.stroke = '#f87171'; maxBadge.linewidth = 1.5;
+        const maxTxt = two.makeText('최고 +3.4℃', thermX - 85, yHigh);
+        maxTxt.size = 8.5; maxTxt.weight = 800; maxTxt.fill = '#b91c1c';
+
+        // Marker: Min Temp (-1.8℃)
+        const minPinLine = two.makeLine(thermX - 50, yLow, thermX - 14, yLow);
+        minPinLine.stroke = '#2563eb'; minPinLine.linewidth = 2;
+        const minBadge = two.makeRoundedRectangle(thermX - 85, yLow, 64, 22, 5);
+        minBadge.fill = '#eff6ff'; minBadge.stroke = '#60a5fa'; minBadge.linewidth = 1.5;
+        const minTxt = two.makeText('최저 -1.8℃', thermX - 85, yLow);
+        minTxt.size = 8.5; minTxt.weight = 800; minTxt.fill = '#1d4ed8';
+
+        // Temperature Difference Bracket between -1.8 and +3.4
+        const brkX = thermX + 85;
+        const brkLine = two.makeLine(brkX, yHigh, brkX, yLow);
+        brkLine.stroke = '#4f46e5'; brkLine.linewidth = 2;
+
+        const brkTop = two.makeLine(brkX - 6, yHigh, brkX + 6, yHigh);
+        brkTop.stroke = '#4f46e5'; brkTop.linewidth = 2;
+        const brkBot = two.makeLine(brkX - 6, yLow, brkX + 6, yLow);
+        brkBot.stroke = '#4f46e5'; brkBot.linewidth = 2;
+
+        // Diff Badge
+        const diffBadge = two.makeRoundedRectangle(brkX + 60, (yHigh + yLow) / 2, 94, 26, 6);
+        diffBadge.fill = '#4f46e5'; diffBadge.noStroke();
+
+        let diffTxtStr = '';
+        if (isPassed) {
+          diffTxtStr = '기온차: 5.2 ℃';
+        } else {
+          diffTxtStr = '기온차: ? ℃';
+        }
+        const diffTxt = two.makeText(diffTxtStr, brkX + 60, (yHigh + yLow) / 2);
+        diffTxt.size = 9.5; diffTxt.weight = 800; diffTxt.fill = '#ffffff';
+
+        // Right Explanation Card (y=175)
+        const cardX = width / 2 + 145;
+        const expBox = two.makeRoundedRectangle(cardX, thermY, 210, 150, 10);
+        expBox.fill = '#f8fafc'; expBox.stroke = '#e2e8f0'; expBox.linewidth = 1.5;
+
+        const eTitle = two.makeText('🌡️ 실생활 일교차 뺄셈 식', cardX, thermY - 50);
+        eTitle.size = 11; eTitle.weight = 800; eTitle.fill = '#1e293b';
+
+        const eLine1 = two.makeText('일교차 ＝ (최고 기온) － (최저 기온)', cardX, thermY - 26);
+        eLine1.size = 9; eLine1.weight = 700; eLine1.fill = '#334155';
+
+        const eLine2 = two.makeText('식: (+3.4) － (-1.8)', cardX, thermY - 4);
+        eLine2.size = 10; eLine2.weight = 800; eLine2.fill = '#4f46e5';
+
+        const eLine3 = two.makeText('＝ (+3.4) ＋ (+1.8)', cardX, thermY + 18);
+        eLine3.size = 10; eLine3.weight = 800; eLine3.fill = '#16a34a';
+
+        let resDesc = isPassed ? '＝ 5.2 ℃ (기온차 5.2도)' : '＝ ? ℃ (우측 폼 4번에 입력)';
+        const eLine4 = two.makeText(resDesc, cardX, thermY + 42);
+        eLine4.size = 10; eLine4.weight = 800; eLine4.fill = isPassed ? '#166534' : '#ea580c';
+
+      } else {
+        // ==========================================
+        // Mode 1: Rational Fraction/Decimal Numberline Lab
+        // ==========================================
+        const lineY = 175;
+        const minVal = (p.type === 'frac') ? -1.2 : -11;
+        const maxVal = (p.type === 'frac') ? 1.2 : 11;
+        const totalSpan = maxVal - minVal;
+        const marginX = 60;
+        const lineW = width - marginX * 2;
+        const valToX = (v) => marginX + ((v - minVal) / totalSpan) * lineW;
+
+        // Axis Line
+        const axis = two.makeLine(marginX - 15, lineY, width - marginX + 15, lineY);
+        axis.stroke = '#475569'; axis.linewidth = 2.5;
+
+        if (p.type === 'frac') {
+          // Fraction Sixths ticks (-6/6 to +6/6)
+          for (let i = -6; i <= 6; i++) {
+            const v = i / 6;
+            const tx = valToX(v);
+            const isZero = (i === 0);
+            const isTarget = (i === -4 || i === 1);
+            const tickH = isZero ? 16 : (isTarget ? 14 : 8);
+            const tick = two.makeLine(tx, lineY - tickH / 2, tx, lineY + tickH / 2);
+            tick.stroke = isTarget ? '#4f46e5' : (isZero ? '#0f172a' : '#94a3b8');
+            tick.linewidth = (isTarget || isZero) ? 2 : 1;
+
+            if (i % 2 === 0 || isZero || isTarget) {
+              let fracLabel = '';
+              if (i === 0) fracLabel = '0';
+              else if (i === -4) fracLabel = '-4/6 (-2/3)';
+              else if (i === 1) fracLabel = '+1/6';
+              else fracLabel = (i > 0) ? `+${i}/6` : `${i}/6`;
+
+              const tTxt = two.makeText(fracLabel, tx, lineY + 20);
+              tTxt.size = isTarget ? 9 : 8;
+              tTxt.weight = isTarget ? 900 : 700;
+              tTxt.fill = isTarget ? '#4f46e5' : (isZero ? '#0f172a' : '#64748b');
+            }
+          }
+
+          // Jump Arrow: from -4/6 jump right +5/6 to +1/6
+          const xStart = valToX(-4/6);
+          const xEnd = valToX(1/6);
+
+          const arcY = 110;
+          const jLine = two.makeLine(xStart, arcY, xEnd, arcY);
+          jLine.stroke = '#16a34a'; jLine.linewidth = 3;
+
+          const head = two.makeLine(xEnd, arcY, xEnd - 7, arcY - 5);
+          head.stroke = '#16a34a'; head.linewidth = 2.5;
+          const head2 = two.makeLine(xEnd, arcY, xEnd - 7, arcY + 5);
+          head2.stroke = '#16a34a'; head2.linewidth = 2.5;
+
+          const jTxt = two.makeText('빼기 (-5/6) ＝ 오른쪽으로 +5/6 점프!', (xStart + xEnd) / 2, arcY - 14);
+          jTxt.size = 10; jTxt.weight = 800; jTxt.fill = '#15803d';
+
+          // Dots on axis
+          const d1 = two.makeCircle(xStart, lineY, 5);
+          d1.fill = '#2563eb'; d1.stroke = '#ffffff'; d1.linewidth = 1.5;
+
+          const d2 = two.makeCircle(xEnd, lineY, 6);
+          d2.fill = isPassed ? '#16a34a' : '#ea580c';
+          d2.stroke = '#ffffff'; d2.linewidth = 2;
+
+        } else {
+          // Integer ticks (-10 to +10)
+          for (let v = -10; v <= 10; v += 2) {
+            const tx = valToX(v);
+            const isZero = (v === 0);
+            const tick = two.makeLine(tx, lineY - 6, tx, lineY + 6);
+            tick.stroke = isZero ? '#0f172a' : '#94a3b8';
+            tick.linewidth = isZero ? 2 : 1;
+
+            const vStr = (v > 0) ? `+${v}` : `${v}`;
+            const tTxt = two.makeText(vStr, tx, lineY + 18);
+            tTxt.size = 8.5; tTxt.weight = isZero ? 900 : 700;
+            tTxt.fill = isZero ? '#0f172a' : '#64748b';
+          }
+
+          // Jump from A to Final
+          const xA = valToX(p.a);
+          const xFin = valToX(p.res);
+          const arcY = 115;
+
+          const jLine = two.makeLine(xA, arcY, xFin, arcY);
+          jLine.stroke = '#16a34a'; jLine.linewidth = 3;
+
+          const dir = (xFin > xA) ? 1 : -1;
+          const head = two.makeLine(xFin, arcY, xFin - dir * 6, arcY - 5);
+          head.stroke = '#16a34a'; head.linewidth = 2.5;
+          const head2 = two.makeLine(xFin, arcY, xFin - dir * 6, arcY + 5);
+          head2.stroke = '#16a34a'; head2.linewidth = 2.5;
+
+          const jTxt = two.makeText(`변환 식: ${p.convStr}`, (xA + xFin) / 2, arcY - 14);
+          jTxt.size = 10; jTxt.weight = 800; jTxt.fill = '#15803d';
+
+          const d1 = two.makeCircle(xA, lineY, 5);
+          d1.fill = '#2563eb'; d1.stroke = '#ffffff'; d1.linewidth = 1.5;
+
+          const d2 = two.makeCircle(xFin, lineY, 6);
+          d2.fill = isPassed ? '#16a34a' : '#ea580c';
+          d2.stroke = '#ffffff'; d2.linewidth = 2;
+        }
+
+        // Summary Card (y=265 ~ 310)
+        const sCard = two.makeRoundedRectangle(width / 2, 275, width - 60, 54, 8);
+        sCard.fill = '#f8fafc'; sCard.stroke = '#e2e8f0'; sCard.linewidth = 1.2;
+
+        const st1 = two.makeText(`선택 문항 식: ${p.title} (${p.desc})`, width / 2, 264);
+        st1.size = 11; st1.weight = 800; st1.fill = '#1e293b';
+
+        let st2Str = isPassed 
+          ? `덧셈 변환: ${p.convStr} ➔ 최종 결과 = ${p.resStr}`
+          : `빼는 수의 부호를 바꾸어 덧셈으로 고쳐 계산하세요! (우측 폼에 입력)`;
+        const st2 = two.makeText(st2Str, width / 2, 286);
+        st2.size = 9.5; st2.weight = 700; st2.fill = isPassed ? '#166534' : '#475569';
+      }
+
+      // 5. Preset Deck Buttons (y=345, h=32)
+      const deckBox = two.makeRoundedRectangle(width / 2, 345, width - 40, 36, 8);
+      deckBox.fill = '#f8fafc';
+      deckBox.stroke = '#e2e8f0';
+      deckBox.linewidth = 1.2;
+
+      const pBtnW = 142, pBtnH = 26;
+      PRACTICE_PRESETS_4_3.forEach((item, idx) => {
+        const bx = width / 2 - 225 + idx * 150;
+        const isAct = (presetId === item.id);
+
+        const b = two.makeRoundedRectangle(bx, 345, pBtnW, pBtnH, 6);
+        b.fill = isAct ? '#4f46e5' : '#ffffff';
+        b.stroke = isAct ? '#4338ca' : '#cbd5e1';
+        b.linewidth = 1.5;
+
+        const t = two.makeText(item.title.split(':')[0], bx, 345);
+        t.size = 8.5; t.weight = 800;
+        t.fill = isAct ? '#ffffff' : '#334155';
+
+        hitBoxes.push({
+          type: 'preset',
+          id: item.id,
+          x1: bx - pBtnW / 2,
+          x2: bx + pBtnW / 2,
+          y1: 345 - pBtnH / 2,
+          y2: 345 + pBtnH / 2
+        });
+      });
+
+      // 6. Bottom Status Banner (y=396, h=32, margin bottom: 440 - 412 = 28px >= 25px)
+      const bBanner = two.makeRoundedRectangle(width / 2, 396, width - 40, 32, 8);
+      bBanner.fill = isPassed ? '#f0fdf4' : '#f1f5f9';
+      bBanner.stroke = isPassed ? '#86efac' : '#cbd5e1';
+      bBanner.linewidth = 1.2;
+
+      let bannerMsg = '';
+      if (isPassed) {
+        bannerMsg = '🎉 정수와 유리수의 뺄셈 연습 통과! 분수와 소수 뺄셈까지 완벽하게 정복하셨습니다!';
+      } else {
+        bannerMsg = '🎯 4가지 뺄셈 프리셋(정수, 분수, 소수)을 확인하고, 우측 폼에서 답안을 완성하세요.';
+      }
+
+      const bTxt = two.makeText(bannerMsg, width / 2, 396);
+      bTxt.size = 9.5;
+      bTxt.weight = 800;
+      bTxt.fill = isPassed ? '#166534' : '#334155';
+
+      // 7. Pointer Event Listeners
+      const containerEl = document.getElementById('two-container');
+      if (containerEl) {
+        containerEl.onpointerdown = (e) => {
+          const rect = containerEl.getBoundingClientRect();
+          const px = (e.clientX - rect.left) * (width / rect.width);
+          const py = (e.clientY - rect.top) * (height / rect.height);
+
+          for (const box of hitBoxes) {
+            if (px >= box.x1 && px <= box.x2 && py >= box.y1 && py <= box.y2) {
+              if (box.type === 'preset') {
+                setLab4_3Preset(box.id);
               }
               return;
             }
