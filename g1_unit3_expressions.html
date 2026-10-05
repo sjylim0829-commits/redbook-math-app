@@ -924,8 +924,8 @@
       },
       '1-12': {
         code: '1-12', tab: 1,
-        substepLabel: '12. 생각 넓히기: 달 표면에서의 몸무게 (p.75)',
-        missionText: '<b>[1-12] 12. 생각 넓히기: 달 표면에서의 몸무게 (p.75)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '12. 스스로 확인하기 3, 4, 5: 식의 값과 실생활 응용 (p.76)',
+        missionText: '<b>[스스로 확인하기 3, 4, 5] 식의 값과 실생활 응용 (교과서 p.76)</b><br>• <b>3번 (식의 값):</b> 음수 대입 시 괄호를 씌우고 거듭제곱과 부호 곱셈을 정확히 계산합니다.<br>• <b>4번 (소리의 속력):</b> 기온 $x\\,{}^\\circ\\text{C}$에 따른 소리 속력 공식 $331 + 0.6x$의 값을 구합니다.<br>• <b>5번 (달 표면 몸무게):</b> 중력이 지구의 $\\frac{1}{6}$인 달 표면에서의 몸무게 $\\frac{1}{6}x$를 탐구합니다.<br>좌측 캔버스에서 3종 탐구 랩(식의 값 단계별 연산, 소리 음파 시뮬레이터, 지구·달 저울)을 조작해 보고 정답을 입력해 보세요.',
         drawer: 'drawStep1_12Canvas'
       },
       '2-1': {
@@ -1400,6 +1400,18 @@
       
       
       
+      
+      // Substep 1-12 State (Self Check 3, 4, 5 Lab)
+      lab1_12: {
+        activeTab: 'mode1',
+        mode1Q: 'q1',
+        valX: -2,
+        valA: 3,
+        valB: -2,
+        tempX: 15,
+        weightX: 48,
+        isPassed: false
+      },
       // Substep 1-11 State (Self Check 1 & 2 Lab)
       lab1_11: {
         activeTab: 'mode1',
@@ -10903,6 +10915,843 @@ function gradeStep1_11() {
 
 // --- End Substep 1-11 Implementation ---
 
+    
+    // --- Substep 1-12 Implementation ---
+// code_1_12.js: Substep [1-12] 3.1 스스로 확인하기 3, 4, 5번 (교과서 p.76: 식의 값, 소리의 속력, 달 표면 몸무게)
+
+function renderToolbar1_12() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab1_12) {
+    state.lab1_12 = {
+      activeTab: 'mode1', // 'mode1' (3번 식의 값) | 'mode2' (4번 소리의 속력) | 'mode3' (5번 달 몸무게)
+      mode1Q: 'q1',       // 'q1' (5 - 3x) | 'q2' (a² - 4b)
+      valX: -2,           // default -2
+      valA: 3,            // default 3
+      valB: -2,           // default -2
+      tempX: 15,          // 4번 기온 15℃
+      weightX: 48,        // 5번 몸무게 48kg
+      isPassed: false
+    };
+  }
+
+  const curTab = state.lab1_12.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab1_12Tab('mode1')">
+        1. 식의 값 계산 랩 (3번)
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab1_12Tab('mode2')">
+        2. 소리의 속력 시뮬레이터 (4번)
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab1_12Tab('mode3')">
+        3. 지구·달 저울 탐구 (5번)
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn" onclick="resetLab1_12()" title="초기화">
+        🔄 초기화
+      </button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('1-12')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab1_12Tab(tabKey) {
+  if (!state.lab1_12) resetLab1_12();
+  state.lab1_12.activeTab = tabKey;
+  renderToolbar1_12();
+  drawStep1_12Canvas();
+}
+
+function resetLab1_12() {
+  state.lab1_12 = {
+    activeTab: 'mode1',
+    mode1Q: 'q1',
+    valX: -2,
+    valA: 3,
+    valB: -2,
+    tempX: 15,
+    weightX: 48,
+    isPassed: false
+  };
+  renderToolbar1_12();
+  drawStep1_12Canvas();
+}
+
+function setMode1Q(qKey) {
+  if (!state.lab1_12) resetLab1_12();
+  state.lab1_12.mode1Q = qKey;
+  drawStep1_12Canvas();
+}
+
+function setLab1_12ValX(x) {
+  if (!state.lab1_12) resetLab1_12();
+  state.lab1_12.valX = x;
+  drawStep1_12Canvas();
+}
+
+function setLab1_12ValA(a) {
+  if (!state.lab1_12) resetLab1_12();
+  state.lab1_12.valA = a;
+  drawStep1_12Canvas();
+}
+
+function setLab1_12ValB(b) {
+  if (!state.lab1_12) resetLab1_12();
+  state.lab1_12.valB = b;
+  drawStep1_12Canvas();
+}
+
+function setLab1_12Temp(t) {
+  if (!state.lab1_12) resetLab1_12();
+  state.lab1_12.tempX = Math.max(-10, Math.min(40, t));
+  drawStep1_12Canvas();
+}
+
+function setLab1_12Weight(w) {
+  if (!state.lab1_12) resetLab1_12();
+  state.lab1_12.weightX = Math.max(12, Math.min(96, w));
+  drawStep1_12Canvas();
+}
+
+function renderSubstep1_12() {
+  const container = document.getElementById('substep-form-container');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="card p-3 mb-3" style="border-left: 4px solid var(--primary);">
+      <h6 style="font-weight:700; color:var(--primary); margin-bottom:6px;">
+        📖 [교과서 p.76 스스로 확인하기] 3, 4, 5번 핵심 원리
+      </h6>
+      <div style="font-size:0.86rem; color:#334155; line-height:1.55;">
+        <ul style="margin:0; padding-left:18px;">
+          <li><b>음수 대입 시 괄호 사용:</b> $5 - 3x$에 $x = -2$ 대입 시 $5 - 3(-2) = 5 + 6 = 11$.</li>
+          <li><b>거듭제곱 부호 주의:</b> $a^2 - 4b$에 $a = 3, b = -2$ 대입 시 $3^2 - 4(-2) = 9 + 8 = 17$.</li>
+          <li><b>실생활 공식:</b> 기온 $15^\\circ\\text{C}$일 때 소리 속력 $331 + 0.6(15) = 340\\text{ m/s}$, 달 표면 몸무게 $\\frac{1}{6}(48) = 8\\text{ kg}$.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 3번 문제 카드 -->
+    <div class="card p-3 mb-3">
+      <h6 style="font-weight:700; color:#1e293b; margin-bottom:8px;">
+        ✏️ [3번] 다음 식의 값을 구하시오.
+      </h6>
+
+      <div class="form-group mb-2">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑴ $x = -2$일 때, $5 - 3x$의 값
+        </label>
+        <input type="text" id="ans-1-12-1" class="proof-input-text w-100" placeholder="수 입력 (식의 값)" autocomplete="off">
+      </div>
+
+      <div class="form-group mb-2">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑵ $a = 3, b = -2$일 때, $a^2 - 4b$의 값
+        </label>
+        <input type="text" id="ans-1-12-2" class="proof-input-text w-100" placeholder="수 입력 (식의 값)" autocomplete="off">
+      </div>
+    </div>
+
+    <!-- 4번, 5번 실생활 문제 카드 -->
+    <div class="card p-3 mb-3">
+      <h6 style="font-weight:700; color:#1e293b; margin-bottom:8px;">
+        ✏️ [4번, 5번] 실생활 공식과 식의 값
+      </h6>
+
+      <div class="form-group mb-2">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b; line-height:1.4;">
+          <b>[4번 소리의 속력]</b> 기온이 $x\\,{}^\\circ\\text{C}$일 때 소리의 속력은 초속 $(331 + 0.6x)\\text{ m}$이다. 기온이 $15\\,{}^\\circ\\text{C}$일 때의 소리의 속력을 구하시오.
+        </label>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span style="font-size:0.86rem; font-weight:700; color:#475569;">초속</span>
+          <input type="text" id="ans-1-12-3" class="proof-input-text" placeholder="속력 입력 (단위 제외)" style="flex:1;" autocomplete="off">
+          <span style="font-size:0.86rem; font-weight:700; color:#475569;">m</span>
+        </div>
+      </div>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b; line-height:1.4;">
+          <b>[5번 달 표면 몸무게]</b> 지구에서의 몸무게가 $x\\text{ kg}$인 사람의 달 표면 몸무게는 약 $\\frac{1}{6}x\\text{ kg}$이다. 지구에서 몸무게가 $48\\text{ kg}$인 사람이 달에 갔을 때의 몸무게를 구하시오.
+        </label>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <input type="text" id="ans-1-12-4" class="proof-input-text" placeholder="몸무게 입력 (단위 제외)" style="flex:1;" autocomplete="off">
+          <span style="font-size:0.86rem; font-weight:700; color:#475569;">kg</span>
+        </div>
+      </div>
+
+      <button id="btn-grade-1-12" class="primary-btn w-100" onclick="gradeStep1_12()" style="margin-top:6px; font-weight:700;">
+        🚀 정답 확인 및 LMS DB 기록
+      </button>
+    </div>
+
+    <div id="feedback-1-12" style="display:none; margin-top:8px;"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawStep1_12Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+
+  if (state.twoInstance) {
+    state.twoInstance.clear();
+  } else {
+    container.innerHTML = '';
+    const two = new Two({
+      width: container.clientWidth || 600,
+      height: 440,
+      type: Two.Types.svg
+    }).appendTo(container);
+    state.twoInstance = two;
+  }
+
+  const two = state.twoInstance;
+  if (!two) return;
+
+  two.clear();
+  drawSelfCheck1_12Lab(two);
+  two.update();
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawSelfCheck1_12Lab(two) {
+  const w = two.width;
+  const h = two.height;
+  const tab = (state.lab1_12 && state.lab1_12.activeTab) || 'mode1';
+
+  // Background
+  const bg = two.makeRectangle(w / 2, h / 2, w, h);
+  bg.fill = '#f8fafc';
+  bg.stroke = '#e2e8f0';
+  bg.linewidth = 1;
+
+  if (tab === 'mode1') {
+    drawMode1EvalLab(two, w, h);
+  } else if (tab === 'mode2') {
+    drawMode2SoundSpeedLab(two, w, h);
+  } else {
+    drawMode3MoonWeightLab(two, w, h);
+  }
+
+  // Bottom info banner (Strict Vertical Budget: Y=385, H=26 -> Bottom=411, Margin=29px >= 25px)
+  const bannerY = 385;
+  const bannerH = 26;
+  const bannerBox = two.makeRoundedRectangle(w / 2, bannerY, w - 24, bannerH, 6);
+  bannerBox.fill = '#eff6ff';
+  bannerBox.stroke = '#bfdbfe';
+  bannerBox.linewidth = 1;
+
+  const bannerMsgs = {
+    'mode1': '💡 3번: 음수를 대입할 때는 항상 괄호를 씌워 부호 실수(- × - = +)를 철저히 예방합니다.',
+    'mode2': '💡 4번: 기온 15℃일 때 소리의 속력 = 331 + 0.6 × 15 = 331 + 9 = 초속 340 m 입니다.',
+    'mode3': '💡 5번: 달의 중력은 지구의 1/6이므로, 몸무게 48 kg인 사람의 달 몸무게는 48 / 6 = 8 kg 입니다.'
+  };
+
+  const bannerTxt = two.makeText(bannerMsgs[tab], w / 2, bannerY);
+  bannerTxt.size = 11.5;
+  bannerTxt.weight = 700;
+  bannerTxt.fill = '#1d4ed8';
+}
+
+// -------------------------------------------------------------
+// Model 1: 식의 값 계산 랩 (3번 ⑴, ⑵)
+// -------------------------------------------------------------
+function drawMode1EvalLab(two, w, h) {
+  const curQ = (state.lab1_12 && state.lab1_12.mode1Q) || 'q1';
+  const vx = (state.lab1_12 && state.lab1_12.valX !== undefined) ? state.lab1_12.valX : -2;
+  const va = (state.lab1_12 && state.lab1_12.valA !== undefined) ? state.lab1_12.valA : 3;
+  const vb = (state.lab1_12 && state.lab1_12.valB !== undefined) ? state.lab1_12.valB : -2;
+
+  // Header Title
+  const titleTxt = two.makeText('식의 값 정밀 계산 랩 (교과서 p.76 3번)', w / 2, 22);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  // Question Selector Tabs (Y: 48)
+  const tabW = 200;
+  const tab1X = w / 2 - 110;
+  const tab2X = w / 2 + 110;
+
+  const b1 = two.makeRoundedRectangle(tab1X, 48, tabW, 28, 6);
+  b1.fill = (curQ === 'q1') ? '#4f46e5' : '#ffffff';
+  b1.stroke = (curQ === 'q1') ? '#4338ca' : '#cbd5e1';
+  b1.linewidth = (curQ === 'q1') ? 1.5 : 1;
+  const t1 = two.makeText('⑴ 5 - 3x (x = -2)', tab1X, 48);
+  t1.size = 12;
+  t1.weight = (curQ === 'q1') ? 800 : 600;
+  t1.fill = (curQ === 'q1') ? '#ffffff' : '#334155';
+
+  if (b1._renderer && b1._renderer.elem) {
+    b1._renderer.elem.style.cursor = 'pointer';
+    b1._renderer.elem.onclick = () => setMode1Q('q1');
+  }
+
+  const b2 = two.makeRoundedRectangle(tab2X, 48, tabW, 28, 6);
+  b2.fill = (curQ === 'q2') ? '#4f46e5' : '#ffffff';
+  b2.stroke = (curQ === 'q2') ? '#4338ca' : '#cbd5e1';
+  b2.linewidth = (curQ === 'q2') ? 1.5 : 1;
+  const t2 = two.makeText('⑵ a² - 4b (a = 3, b = -2)', tab2X, 48);
+  t2.size = 12;
+  t2.weight = (curQ === 'q2') ? 800 : 600;
+  t2.fill = (curQ === 'q2') ? '#ffffff' : '#334155';
+
+  if (b2._renderer && b2._renderer.elem) {
+    b2._renderer.elem.style.cursor = 'pointer';
+    b2._renderer.elem.onclick = () => setMode1Q('q2');
+  }
+
+  // Main Card Area
+  const cardW = w - 40;
+  const cardH = 270;
+  const cardX = w / 2;
+  const cardY = 210;
+
+  const card = two.makeRoundedRectangle(cardX, cardY, cardW, cardH, 12);
+  card.fill = '#ffffff';
+  card.stroke = '#e2e8f0';
+  card.linewidth = 1.5;
+
+  if (curQ === 'q1') {
+    // ⑴ 5 - 3x
+    const presX = [-3, -2, -1, 0, 1, 2, 3];
+    const presY = 96;
+
+    const lbl = two.makeText('x 값 변경 테스트:', cardX - 180, presY);
+    lbl.size = 12;
+    lbl.weight = 700;
+    lbl.fill = '#475569';
+
+    presX.forEach((px, i) => {
+      const bx = cardX - 80 + i * 40;
+      const isSel = (vx === px);
+      const isBook = (px === -2);
+
+      const pBox = two.makeRoundedRectangle(bx, presY, 34, 24, 4);
+      pBox.fill = isSel ? '#4f46e5' : (isBook ? '#fef08a' : '#f1f5f9');
+      pBox.stroke = isSel ? '#4338ca' : (isBook ? '#ca8a04' : '#cbd5e1');
+      pBox.linewidth = isSel || isBook ? 1.5 : 1;
+
+      const pTxt = two.makeText(`${px}`, bx, presY);
+      pTxt.size = 11.5;
+      pTxt.weight = isSel || isBook ? 800 : 600;
+      pTxt.fill = isSel ? '#ffffff' : '#1e293b';
+
+      if (pBox._renderer && pBox._renderer.elem) {
+        pBox._renderer.elem.style.cursor = 'pointer';
+        pBox._renderer.elem.onclick = () => setLab1_12ValX(px);
+      }
+    });
+
+    // Step-by-step breakdown boxes
+    const calcVal = 5 - 3 * vx;
+    const s1 = `원래 식:  5 - 3x`;
+    const s2 = `x = (${vx}) 괄호 대입:  5 - 3 × (${vx})`;
+    const s3 = `곱셈 계산:  5 - (${3 * vx}) = 5 + (${-3 * vx})`;
+    const s4 = `최종 식의 값:  ${calcVal}`;
+
+    const steps = [s1, s2, s3, s4];
+    steps.forEach((st, idx) => {
+      const sy = 142 + idx * 36;
+      const isFinal = (idx === 3);
+
+      const stepBox = two.makeRoundedRectangle(cardX, sy, cardW - 48, 30, 6);
+      stepBox.fill = isFinal ? '#ecfdf5' : '#f8fafc';
+      stepBox.stroke = isFinal ? '#10b981' : '#e2e8f0';
+      stepBox.linewidth = isFinal ? 1.5 : 1;
+
+      const stTxt = two.makeText(st, cardX, sy);
+      stTxt.size = isFinal ? 13.5 : 12;
+      stTxt.weight = isFinal ? 800 : 700;
+      stTxt.fill = isFinal ? '#047857' : '#334155';
+    });
+
+    // Tip
+    const tipBox = two.makeRoundedRectangle(cardX, 308, cardW - 48, 28, 6);
+    tipBox.fill = '#fffbeb';
+    tipBox.stroke = '#fde68a';
+    tipBox.linewidth = 1;
+    const tipTxt = two.makeText('💡 음수 대입 핵심: 5 - 3 × (-2) = 5 - (-6) = 5 + 6 = 11 (부호 반전 주의!)', cardX, 308);
+    tipTxt.size = 11.5;
+    tipTxt.weight = 700;
+    tipTxt.fill = '#b45309';
+
+  } else {
+    // ⑵ a² - 4b
+    const aList = [2, 3, 4];
+    const bList = [-3, -2, -1];
+    const ctrlY = 96;
+
+    // Controls for a
+    const aLbl = two.makeText('a 선택:', cardX - 180, ctrlY);
+    aLbl.size = 12;
+    aLbl.weight = 700;
+    aLbl.fill = '#475569';
+
+    aList.forEach((val, i) => {
+      const bx = cardX - 125 + i * 36;
+      const isSel = (va === val);
+      const isBook = (val === 3);
+
+      const box = two.makeRoundedRectangle(bx, ctrlY, 30, 24, 4);
+      box.fill = isSel ? '#4f46e5' : (isBook ? '#fef08a' : '#f1f5f9');
+      box.stroke = isSel ? '#4338ca' : (isBook ? '#ca8a04' : '#cbd5e1');
+
+      const txt = two.makeText(`${val}`, bx, ctrlY);
+      txt.size = 11;
+      txt.weight = isSel || isBook ? 800 : 600;
+      txt.fill = isSel ? '#ffffff' : '#1e293b';
+
+      if (box._renderer && box._renderer.elem) {
+        box._renderer.elem.style.cursor = 'pointer';
+        box._renderer.elem.onclick = () => setLab1_12ValA(val);
+      }
+    });
+
+    // Controls for b
+    const bLbl = two.makeText('b 선택:', cardX + 30, ctrlY);
+    bLbl.size = 12;
+    bLbl.weight = 700;
+    bLbl.fill = '#475569';
+
+    bList.forEach((val, i) => {
+      const bx = cardX + 85 + i * 36;
+      const isSel = (vb === val);
+      const isBook = (val === -2);
+
+      const box = two.makeRoundedRectangle(bx, ctrlY, 30, 24, 4);
+      box.fill = isSel ? '#4f46e5' : (isBook ? '#fef08a' : '#f1f5f9');
+      box.stroke = isSel ? '#4338ca' : (isBook ? '#ca8a04' : '#cbd5e1');
+
+      const txt = two.makeText(`${val}`, bx, ctrlY);
+      txt.size = 11;
+      txt.weight = isSel || isBook ? 800 : 600;
+      txt.fill = isSel ? '#ffffff' : '#1e293b';
+
+      if (box._renderer && box._renderer.elem) {
+        box._renderer.elem.style.cursor = 'pointer';
+        box._renderer.elem.onclick = () => setLab1_12ValB(val);
+      }
+    });
+
+    // Step breakdown
+    const term1 = va * va;
+    const term2 = 4 * vb;
+    const total = term1 - term2;
+
+    const s1 = `원래 식:  a² - 4b`;
+    const s2 = `a = (${va}), b = (${vb}) 괄호 대입:  (${va})² - 4 × (${vb})`;
+    const s3 = `거듭제곱과 곱셈 계산:  ${term1} - (${term2}) = ${term1} + (${-term2})`;
+    const s4 = `최종 식의 값:  ${total}`;
+
+    const steps = [s1, s2, s3, s4];
+    steps.forEach((st, idx) => {
+      const sy = 142 + idx * 36;
+      const isFinal = (idx === 3);
+
+      const stepBox = two.makeRoundedRectangle(cardX, sy, cardW - 48, 30, 6);
+      stepBox.fill = isFinal ? '#ecfdf5' : '#f8fafc';
+      stepBox.stroke = isFinal ? '#10b981' : '#e2e8f0';
+      stepBox.linewidth = isFinal ? 1.5 : 1;
+
+      const stTxt = two.makeText(st, cardX, sy);
+      stTxt.size = isFinal ? 13.5 : 12;
+      stTxt.weight = isFinal ? 800 : 700;
+      stTxt.fill = isFinal ? '#047857' : '#334155';
+    });
+
+    const tipBox = two.makeRoundedRectangle(cardX, 308, cardW - 48, 28, 6);
+    tipBox.fill = '#fffbeb';
+    tipBox.stroke = '#fde68a';
+    tipBox.linewidth = 1;
+    const tipTxt = two.makeText('💡 두 문자 대입: 3² - 4 × (-2) = 9 - (-8) = 9 + 8 = 17 (거듭제곱과 음수곱 결합)', cardX, 308);
+    tipTxt.size = 11.5;
+    tipTxt.weight = 700;
+    tipTxt.fill = '#b45309';
+  }
+}
+
+// -------------------------------------------------------------
+// Model 2: 소리의 속력 시뮬레이터 (4번 문항)
+// -------------------------------------------------------------
+function drawMode2SoundSpeedLab(two, w, h) {
+  const tx = (state.lab1_12 && state.lab1_12.tempX !== undefined) ? state.lab1_12.tempX : 15;
+  const speed = (331 + 0.6 * tx).toFixed(1);
+
+  // Header Title
+  const titleTxt = two.makeText('기온에 따른 소리의 속력 시뮬레이터 (교과서 p.76 4번)', w / 2, 22);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  const cardW = w - 40;
+  const cardH = 280;
+  const cardX = w / 2;
+  const cardY = 205;
+
+  const card = two.makeRoundedRectangle(cardX, cardY, cardW, cardH, 12);
+  card.fill = '#ffffff';
+  card.stroke = '#e2e8f0';
+  card.linewidth = 1.5;
+
+  // Temperature Controls (Presets: -10, 0, 15, 25, 35)
+  const ctrlY = 82;
+  const tLbl = two.makeText('기온(x) 프리셋 선택:', cardX - 160, ctrlY);
+  tLbl.size = 12;
+  tLbl.weight = 700;
+  tLbl.fill = '#475569';
+
+  const presets = [-10, 0, 15, 25, 35];
+  presets.forEach((t, i) => {
+    const bx = cardX - 50 + i * 54;
+    const isSel = (tx === t);
+    const isBook = (t === 15);
+
+    const box = two.makeRoundedRectangle(bx, ctrlY, 48, 24, 4);
+    box.fill = isSel ? '#4f46e5' : (isBook ? '#fef08a' : '#f1f5f9');
+    box.stroke = isSel ? '#4338ca' : (isBook ? '#ca8a04' : '#cbd5e1');
+
+    const txt = two.makeText(`${t}℃`, bx, ctrlY);
+    txt.size = 11.5;
+    txt.weight = isSel || isBook ? 800 : 600;
+    txt.fill = isSel ? '#ffffff' : '#1e293b';
+
+    if (box._renderer && box._renderer.elem) {
+      box._renderer.elem.style.cursor = 'pointer';
+      box._renderer.elem.onclick = () => setLab1_12Temp(t);
+    }
+  });
+
+  // Sound Waves Visualization Area (Y: 120 ~ 210)
+  const soundOriginX = cardX - 180;
+  const soundOriginY = 165;
+
+  // Speaker icon
+  const speaker = two.makeText('📢', soundOriginX, soundOriginY);
+  speaker.size = 32;
+
+  // Concentric wave arcs
+  const waveCount = 5;
+  const baseRadius = 25;
+  const speedScale = (parseFloat(speed) - 300) / 70; // 0 ~ 1 scale
+
+  for (let i = 1; i <= waveCount; i++) {
+    const r = baseRadius + i * 28 * speedScale;
+    const arc = two.makeArcSegment(soundOriginX, soundOriginY, r - 2, r + 2, -Math.PI / 3, Math.PI / 3);
+    arc.fill = '#38bdf8';
+    arc.opacity = 0.9 - i * 0.15;
+  }
+
+  // Listener / Sound Meter
+  const meterX = cardX + 130;
+  const meterBox = two.makeRoundedRectangle(meterX, soundOriginY, 180, 80, 8);
+  meterBox.fill = '#f0fdf4';
+  meterBox.stroke = '#86efac';
+  meterBox.linewidth = 1.5;
+
+  const mHead = two.makeText(`소리 속력 측정치 (기온 ${tx}℃)`, meterX, soundOriginY - 20);
+  mHead.size = 11;
+  mHead.weight = 700;
+  mHead.fill = '#166534';
+
+  const mSpeed = two.makeText(`초속 ${speed} m`, meterX, soundOriginY + 6);
+  mSpeed.size = 18;
+  mSpeed.weight = 800;
+  mSpeed.fill = '#15803d';
+
+  const mFormula = two.makeText(`v = 331 + 0.6 × (${tx})`, meterX, soundOriginY + 26);
+  mFormula.size = 11;
+  mFormula.weight = 600;
+  mFormula.fill = '#475569';
+
+  // Formula Breakdown Card (Y: 250)
+  const fBox = two.makeRoundedRectangle(cardX, 252, cardW - 32, 60, 8);
+  fBox.fill = '#eef2ff';
+  fBox.stroke = '#818cf8';
+  fBox.linewidth = 2;
+
+  const fHead = two.makeText('📊 소리의 속력 식의 값 계산 과정', cardX, 234);
+  fHead.size = 12;
+  fHead.weight = 700;
+  fHead.fill = '#4338ca';
+
+  const fBody = two.makeText(
+    `초속 = 331 + 0.6x ➜ x = ${tx} 대입: 331 + 0.6 × (${tx}) = 331 + ${(0.6 * tx).toFixed(1)} = 초속 ${speed} m`,
+    cardX,
+    262
+  );
+  fBody.size = 13.5;
+  fBody.weight = 800;
+  fBody.fill = '#1e1b4b';
+
+  // Hint
+  const hintTxt = two.makeText('💡 기온이 1℃ 올라갈 때마다 소리의 속력은 초속 0.6m씩 빨라집니다!', cardX, 310);
+  hintTxt.size = 11.5;
+  hintTxt.weight = 700;
+  hintTxt.fill = '#0284c7';
+}
+
+// -------------------------------------------------------------
+// Model 3: 지구 vs 달 표면 몸무게 저울 랩 (5번 문항)
+// -------------------------------------------------------------
+function drawMode3MoonWeightLab(two, w, h) {
+  const wx = (state.lab1_12 && state.lab1_12.weightX !== undefined) ? state.lab1_12.weightX : 48;
+  const moonW = (wx / 6).toFixed(1);
+
+  // Header Title
+  const titleTxt = two.makeText('지구 vs 달 표면 몸무게 비교 저울 랩 (교과서 p.76 5번)', w / 2, 22);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  const cardW = w - 40;
+  const cardH = 280;
+  const cardX = w / 2;
+  const cardY = 205;
+
+  const card = two.makeRoundedRectangle(cardX, cardY, cardW, cardH, 12);
+  card.fill = '#ffffff';
+  card.stroke = '#e2e8f0';
+  card.linewidth = 1.5;
+
+  // Weight Controls (Presets: 30, 42, 48, 60, 72 kg)
+  const ctrlY = 82;
+  const wLbl = two.makeText('지구 몸무게(x) 선택:', cardX - 160, ctrlY);
+  wLbl.size = 12;
+  wLbl.weight = 700;
+  wLbl.fill = '#475569';
+
+  const presets = [30, 42, 48, 60, 72];
+  presets.forEach((val, i) => {
+    const bx = cardX - 45 + i * 52;
+    const isSel = (wx === val);
+    const isBook = (val === 48);
+
+    const box = two.makeRoundedRectangle(bx, ctrlY, 46, 24, 4);
+    box.fill = isSel ? '#4f46e5' : (isBook ? '#fef08a' : '#f1f5f9');
+    box.stroke = isSel ? '#4338ca' : (isBook ? '#ca8a04' : '#cbd5e1');
+
+    const txt = two.makeText(`${val}kg`, bx, ctrlY);
+    txt.size = 11;
+    txt.weight = isSel || isBook ? 800 : 600;
+    txt.fill = isSel ? '#ffffff' : '#1e293b';
+
+    if (box._renderer && box._renderer.elem) {
+      box._renderer.elem.style.cursor = 'pointer';
+      box._renderer.elem.onclick = () => setLab1_12Weight(val);
+    }
+  });
+
+  // Scales Comparison: Left (Earth), Right (Moon)
+  const scaleW = (cardW - 60) / 2;
+  const leftX = cardX - scaleW / 2 - 10;
+  const rightX = cardX + scaleW / 2 + 10;
+  const scaleY = 170;
+
+  // Left Scale: Earth
+  const sBox1 = two.makeRoundedRectangle(leftX, scaleY, scaleW, 110, 8);
+  sBox1.fill = '#f0fdf4';
+  sBox1.stroke = '#86efac';
+  sBox1.linewidth = 1.5;
+
+  const eIcon = two.makeText('🌍 지구 저울 (중력 1배)', leftX, scaleY - 35);
+  eIcon.size = 12.5;
+  eIcon.weight = 800;
+  eIcon.fill = '#166534';
+
+  const eWeight = two.makeText(`${wx} kg`, leftX, scaleY);
+  eWeight.size = 24;
+  eWeight.weight = 800;
+  eWeight.fill = '#15803d';
+
+  const eFormula = two.makeText('지구에서의 원래 몸무게 = x kg', leftX, scaleY + 34);
+  eFormula.size = 11.5;
+  eFormula.weight = 600;
+  eFormula.fill = '#475569';
+
+  // Right Scale: Moon
+  const sBox2 = two.makeRoundedRectangle(rightX, scaleY, scaleW, 110, 8);
+  sBox2.fill = '#fefce8';
+  sBox2.stroke = '#fde047';
+  sBox2.linewidth = 1.5;
+
+  const mIcon = two.makeText('🌕 달 저울 (중력 약 1/6배)', rightX, scaleY - 35);
+  mIcon.size = 12.5;
+  mIcon.weight = 800;
+  mIcon.fill = '#854d0e';
+
+  const mWeight = two.makeText(`${moonW} kg`, rightX, scaleY);
+  mWeight.size = 24;
+  mWeight.weight = 800;
+  mWeight.fill = '#a16207';
+
+  const mFormula = two.makeText(`달 몸무게 = 1/6 × x = ${wx} / 6 = ${moonW} kg`, rightX, scaleY + 34);
+  mFormula.size = 11.5;
+  mFormula.weight = 700;
+  mFormula.fill = '#854d0e';
+
+  // Summary Card (Y: 260)
+  const sumBox = two.makeRoundedRectangle(cardX, 260, cardW - 32, 50, 8);
+  sumBox.fill = '#f8fafc';
+  sumBox.stroke = '#cbd5e1';
+  sumBox.linewidth = 1.5;
+
+  const sumTxt = two.makeText(
+    `지구에서 몸무게가 48 kg일 때: 1/6 × 48 = 48 / 6 = 8 kg (몸무게가 6분의 1로 가벼워짐!)`,
+    cardX,
+    260
+  );
+  sumTxt.size = 13;
+  sumTxt.weight = 800;
+  sumTxt.fill = '#1e293b';
+
+  // Hint
+  const hintTxt = two.makeText('💡 달의 인력(중력)이 지구의 1/6이기 때문에 나타나는 과학적 수량 관계입니다.', cardX, 310);
+  hintTxt.size = 11.5;
+  hintTxt.weight = 700;
+  hintTxt.fill = '#64748b';
+}
+
+// -------------------------------------------------------------
+// Grading Logic (Q3 2문항, Q4 1문항, Q5 1문항 전수 채점)
+// -------------------------------------------------------------
+function gradeStep1_12() {
+  const q1Input = document.getElementById('ans-1-12-1');
+  const q2Input = document.getElementById('ans-1-12-2');
+  const q3Input = document.getElementById('ans-1-12-3');
+  const q4Input = document.getElementById('ans-1-12-4');
+  const fb = document.getElementById('feedback-1-12');
+
+  if (!q1Input || !q2Input || !q3Input || !q4Input || !fb) return;
+
+  const norm = (s) => (s || '').toLowerCase().replace(/\s+/g, '');
+
+  const a1 = norm(q1Input.value);
+  const a2 = norm(q2Input.value);
+  const a3 = norm(q3Input.value);
+  const a4 = norm(q4Input.value);
+
+  // Q3-⑴: 11 or +11
+  const is1Correct = (a1 === '11' || a1 === '+11');
+
+  // Q3-⑵: 17 or +17
+  const is2Correct = (a2 === '17' || a2 === '+17');
+
+  // Q4: 340 or 초속340m or 340m/s or 초속340 or 340m
+  const is3Correct = (
+    a3 === '340' ||
+    a3 === '+340' ||
+    a3 === '초속340m' ||
+    a3 === '초속340' ||
+    a3 === '340m' ||
+    a3 === '340m/s'
+  );
+
+  // Q5: 8 or 8kg or 8킬로그램
+  const is4Correct = (
+    a4 === '8' ||
+    a4 === '+8' ||
+    a4 === '8kg' ||
+    a4 === '8킬로그램'
+  );
+
+  const allCorrect = is1Correct && is2Correct && is3Correct && is4Correct;
+
+  fb.style.display = 'block';
+
+  if (allCorrect) {
+    if (state.lab1_12) state.lab1_12.isPassed = true;
+    state.substepProgress['1-12'] = true;
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#ecfdf5; border:1.5px solid #10b981; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.4rem;">🎉</span>
+          <h5 style="color:#065f46; font-weight:800; margin:0;">100점 완벽 통과! (3.1 문자의 사용과 식의 값 완결)</h5>
+        </div>
+        <div style="font-size:0.88rem; color:#047857; line-height:1.6;">
+          <b>[3번 식의 값 계산 완벽 풀이]</b><br>
+          • ⑴ $5 - 3x$: $x = -2$ 대입 $\\implies 5 - 3 \\times (-2) = 5 - (-6) = 5 + 6 = 11$<br>
+          • ⑵ $a^2 - 4b$: $a = 3, b = -2$ 대입 $\\implies 3^2 - 4 \\times (-2) = 9 - (-8) = 9 + 8 = 17$<br><br>
+          <b>[4, 5번 실생활 공식 완벽 풀이]</b><br>
+          • [4번 소리의 속력]: 기온 $15^\\circ\\text{C}$ 대입 $\\implies 331 + 0.6 \\times 15 = 331 + 9 = 340\\text{ (초속 340 m)}$<br>
+          • [5번 달 표면 몸무게]: 몸무게 $48\\text{ kg}$ 대입 $\\implies \\frac{1}{6} \\times 48 = 8\\text{ kg}$<br>
+          소단원 3.1 [문자의 사용과 식의 값]의 모든 개념과 실생활 탐구를 완벽히 마스터했습니다!
+        </div>
+        <div style="margin-top:10px; font-size:0.8rem; color:#059669; font-weight:700;">
+          ✅ 학습 완료 상태가 영서중 LMS DB에 안전하게 자동 저장되었습니다.
+        </div>
+      </div>
+    `;
+
+    // Remote LMS DB save
+    if (window.LMSIntegration && typeof window.LMSIntegration.saveStudentProgress === 'function') {
+      window.LMSIntegration.saveStudentProgress('1-12', { score: 100, passed: true }, 'unit3');
+    }
+
+    // Auto unlock next substep 2-1 (Tab 2 First Substep)
+    if (!state.unlockedSubSteps.includes('2-1')) {
+      state.unlockedSubSteps.push('2-1');
+    }
+  } else {
+    let errorMsg = [];
+    if (!is1Correct) errorMsg.push('3-⑴: $x = -2$ 대입 시 $5 - 3 \\times (-2) = 5 + 6 = 11$ (입력: 11) 입니다.');
+    if (!is2Correct) errorMsg.push('3-⑵: $3^2 - 4 \\times (-2) = 9 - (-8) = 9 + 8 = 17$ (입력: 17) 입니다.');
+    if (!is3Correct) errorMsg.push('4번: 기온 $15^\\circ\\text{C}$일 때 $331 + 0.6 \\times 15 = 331 + 9 = 340$ (입력: 340) 입니다.');
+    if (!is4Correct) errorMsg.push('5번: 몸무게 $48\\text{ kg}$일 때 $\\frac{1}{6} \\times 48 = 8$ (입력: 8) 입니다.');
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#fff1f2; border:1.5px solid #f43f5e; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.3rem;">💡</span>
+          <h6 style="color:#9f1239; font-weight:700; margin:0;">다시 확인해 보세요!</h6>
+        </div>
+        <div style="font-size:0.86rem; color:#be123c; line-height:1.6;">
+          ${errorMsg.map(msg => `<div>• ${msg}</div>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+    // --- End Substep 1-12 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -10970,6 +11819,9 @@ function gradeStep1_11() {
       } else if (code === '1-11') {
         renderToolbar1_11();
         renderSubstep1_11();
+      } else if (code === '1-12') {
+        renderToolbar1_12();
+        renderSubstep1_12();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
