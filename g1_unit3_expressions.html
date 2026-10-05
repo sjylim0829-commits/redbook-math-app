@@ -882,8 +882,8 @@
       },
       '1-5': {
         code: '1-5', tab: 1,
-        substepLabel: '5. 대입과 식의 값 구하기 (p.74)',
-        missionText: '<b>[1-5] 5. 대입과 식의 값 구하기 (p.74)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '5. 곱셈과 나눗셈 기호의 혼합 생략 (교과서 p.73 문제 4)',
+        missionText: '<b>[개념 및 문제 4] 곱셈과 나눗셈이 섞여 있는 식의 기호 생략 (교과서 p.73)</b><br>• 나눗셈은 <b>역수의 곱셈</b>으로 바꾸어 분수와 곱셈 꼴로 정리합니다.<br>• <b>⑴ 곱셈과 나눗셈:</b> $x \\div 2 \\times y = x \\times \\frac{1}{2} \\times y = \\frac{xy}{2}$<br>• <b>⑵ 음수와 나눗셈:</b> $a \\times (-1) \\div b = -a \\times \\frac{1}{b} = -\\frac{a}{b}$<br>• <b>⑶ 연속 나눗셈:</b> $x \\div y \\div 3 = x \\times \\frac{1}{y} \\times \\frac{1}{3} = \\frac{x}{3y}$<br>• <b>⑷ 괄호가 있는 나눗셈:</b> $a \\div (b \\div c) = a \\div \\frac{b}{c} = a \\times \\frac{c}{b} = \\frac{ac}{b}$<br>좌측 캔버스에서 4개 문제별 [다음 단계 ▶] 버튼을 눌러 단계별 변환 과정을 탐색해 보세요.',
         drawer: 'drawStep1_5Canvas'
       },
       '1-6': {
@@ -1393,6 +1393,13 @@
       
       
       
+      
+      // Substep 1-5 State (Mixed Op Omit Rules Lab)
+      lab1_5: {
+        activeQ: 'q1',
+        step: 1,
+        isPassed: false
+      },
       // Substep 1-4 State (Divide Omit Rules Lab)
       lab1_4: {
         activeCase: 'ex1',
@@ -6628,6 +6635,575 @@ function gradeStep1_4() {
 
     // --- End Substep 1-4 Implementation ---
 
+    
+    // --- Substep 1-5 Implementation ---
+// code_1_5.js: Substep [1-5] 3.1 곱셈과 나눗셈 기호가 섞여 있는 식의 생략 (교과서 p.73 문제 4)
+
+function renderToolbar1_5() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab1_5) {
+    state.lab1_5 = {
+      activeQ: 'q1', // 'q1' | 'q2' | 'q3' | 'q4'
+      step: 1,       // 1: 원식, 2: 역수의 곱셈, 3: 최종 기호 생략 분수
+      isPassed: false
+    };
+  }
+
+  const curQ = state.lab1_5.activeQ;
+  const curStep = state.lab1_5.step;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">문제 선택:</span>
+      <button class="tool-btn ${curQ === 'q1' ? 'active' : ''}" onclick="setLab1_5Q('q1')">
+        ⑴ x ÷ 2 × y
+      </button>
+      <button class="tool-btn ${curQ === 'q2' ? 'active' : ''}" onclick="setLab1_5Q('q2')">
+        ⑵ a × (-1) ÷ b
+      </button>
+      <button class="tool-btn ${curQ === 'q3' ? 'active' : ''}" onclick="setLab1_5Q('q3')">
+        ⑶ x ÷ y ÷ 3
+      </button>
+      <button class="tool-btn ${curQ === 'q4' ? 'active' : ''}" onclick="setLab1_5Q('q4')">
+        ⑷ a ÷ (b ÷ c)
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn" onclick="prevStep1_5()" ${curStep === 1 ? 'disabled style="opacity:0.5;"' : ''} title="이전 단계">
+        ◀ 이전
+      </button>
+      <span style="font-size:0.8rem; font-weight:700; color:#1e293b; background:#f1f5f9; padding:2px 8px; border-radius:4px;">
+        ${curStep}/3 단계
+      </span>
+      <button class="icon-btn" onclick="nextStep1_5()" ${curStep === 3 ? 'disabled style="opacity:0.5;"' : ''} title="다음 단계">
+        다음 ▶
+      </button>
+      <button class="icon-btn" onclick="resetLab1_5()" title="초기화">
+        🔄 초기화
+      </button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('1-5')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab1_5Q(qKey) {
+  if (!state.lab1_5) state.lab1_5 = { activeQ: 'q1', step: 1, isPassed: false };
+  state.lab1_5.activeQ = qKey;
+  state.lab1_5.step = 1;
+  renderToolbar1_5();
+  drawStep1_5Canvas();
+}
+
+function prevStep1_5() {
+  if (!state.lab1_5) state.lab1_5 = { activeQ: 'q1', step: 1, isPassed: false };
+  if (state.lab1_5.step > 1) {
+    state.lab1_5.step--;
+    renderToolbar1_5();
+    drawStep1_5Canvas();
+  }
+}
+
+function nextStep1_5() {
+  if (!state.lab1_5) state.lab1_5 = { activeQ: 'q1', step: 1, isPassed: false };
+  if (state.lab1_5.step < 3) {
+    state.lab1_5.step++;
+    renderToolbar1_5();
+    drawStep1_5Canvas();
+  }
+}
+
+function resetLab1_5() {
+  state.lab1_5 = {
+    activeQ: 'q1',
+    step: 1,
+    isPassed: false
+  };
+  renderToolbar1_5();
+  drawStep1_5Canvas();
+}
+
+function renderSubstep1_5() {
+  const container = document.getElementById('substep-form-container');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="card p-3 mb-3" style="border-left: 4px solid var(--primary);">
+      <h6 style="font-weight:700; color:var(--primary); margin-bottom:6px;">
+        📖 [교과서 p.73] 곱셈과 나눗셈 기호가 섞여 있는 식의 생략 원리
+      </h6>
+      <div style="font-size:0.86rem; color:#334155; line-height:1.55;">
+        <ul style="margin:0; padding-left:18px;">
+          <li><b>혼합 계산의 기본 원칙:</b> 나눗셈은 <b>역수의 곱셈</b>으로 바꾸어 계산하면 편리합니다.</li>
+          <li><b>괄호가 있는 경우:</b> 괄호 안을 먼저 계산한 후 전체 식을 정리합니다.</li>
+          <li>좌측 캔버스에서 <b>[다음 ▶]</b> 버튼을 눌러 단계별 변환 과정을 확인해 보세요.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card p-3 mb-3">
+      <h6 style="font-weight:700; color:#1e293b; margin-bottom:8px;">
+        ✏️ [교과서 p.73 문제 4] 기호 $\\times, \\div$를 생략한 식으로 나타내기
+      </h6>
+      <div style="font-size:0.84rem; color:#64748b; margin-bottom:12px;">
+        분수는 슬래시 <code style="background:#f1f5f9; padding:2px 4px; border-radius:3px;">/</code>를 사용하세요. (분모에 식이 오면 괄호를 쓰세요: <code style="background:#f1f5f9; padding:2px 4px; border-radius:3px;">x/(3y)</code>)
+      </div>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.88rem; color:#1e293b;">
+          ⑴ $x \\div 2 \\times y$
+        </label>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="text" id="ans-1-5-1" class="proof-input-text" placeholder="식 입력 (예: xy/2)" style="flex:1;" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.88rem; color:#1e293b;">
+          ⑵ $a \\times (-1) \\div b$
+        </label>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="text" id="ans-1-5-2" class="proof-input-text" placeholder="식 입력 (예: -a/b)" style="flex:1;" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.88rem; color:#1e293b;">
+          ⑶ $x \\div y \\div 3$
+        </label>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="text" id="ans-1-5-3" class="proof-input-text" placeholder="식 입력 (예: x/(3y))" style="flex:1;" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.88rem; color:#1e293b;">
+          ⑷ $a \\div (b \\div c)$
+        </label>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="text" id="ans-1-5-4" class="proof-input-text" placeholder="식 입력 (예: ac/b)" style="flex:1;" autocomplete="off">
+        </div>
+      </div>
+
+      <button id="btn-grade-1-5" class="primary-btn w-100" onclick="gradeStep1_5()" style="margin-top:6px; font-weight:700;">
+        🚀 정답 확인 및 LMS DB 기록
+      </button>
+    </div>
+
+    <div id="feedback-1-5" style="display:none; margin-top:8px;"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawStep1_5Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+
+  if (state.twoInstance) {
+    state.twoInstance.clear();
+  } else {
+    container.innerHTML = '';
+    const two = new Two({
+      width: container.clientWidth || 600,
+      height: 440,
+      type: Two.Types.svg
+    }).appendTo(container);
+    state.twoInstance = two;
+  }
+
+  const two = state.twoInstance;
+  const W = two.width;
+  const H = 440;
+
+  // Background
+  const bg = two.makeRectangle(W / 2, H / 2, W, H);
+  bg.fill = '#f8fafc';
+  bg.noStroke();
+
+  drawMixedOpOmitLab(two, W, H);
+
+  // Strict Vertical Budget Bottom Safety Banner (Y=396, H=28, margin bottom = 30 >= 25px)
+  const bannerY = 396;
+  const bannerH = 28;
+  const bottomBar = two.makeRoundedRectangle(W / 2, bannerY, W - 32, bannerH, 6);
+  bottomBar.fill = '#e2e8f0';
+  bottomBar.stroke = '#cbd5e1';
+  bottomBar.linewidth = 1;
+
+  const qNames = {
+    'q1': '⑴ x ÷ 2 × y: 나눗셈 역수 변환 ➜ xy/2 [교과서 p.73 문제 4-(1)]',
+    'q2': '⑵ a × (-1) ÷ b: 부호와 분모 정리 ➜ -a/b [교과서 p.73 문제 4-(2)]',
+    'q3': '⑶ x ÷ y ÷ 3: 연속 나눗셈의 분모 결합 ➜ x/(3y) [교과서 p.73 문제 4-(3)]',
+    'q4': '⑷ a ÷ (b ÷ c): 괄호 안 우선 계산 후 역수 ➜ ac/b [교과서 p.73 문제 4-(4)]'
+  };
+
+  const activeQ = (state.lab1_5 && state.lab1_5.activeQ) || 'q1';
+  const bannerTxt = two.makeText(qNames[activeQ], W / 2, bannerY);
+  bannerTxt.size = 12;
+  bannerTxt.weight = 700;
+  bannerTxt.fill = '#334155';
+
+  two.update();
+}
+
+function drawMixedOpOmitLab(two, W, H) {
+  if (!state.lab1_5) state.lab1_5 = { activeQ: 'q1', step: 1, isPassed: false };
+  const curQ = state.lab1_5.activeQ;
+  const step = state.lab1_5.step;
+
+  // Main Card
+  const cardW = Math.min(W - 40, 560);
+  const cardH = 340;
+  const cardX = W / 2;
+  const cardY = 190;
+
+  const cardBg = two.makeRoundedRectangle(cardX, cardY, cardW, cardH, 12);
+  cardBg.fill = '#ffffff';
+  cardBg.stroke = '#e2e8f0';
+  cardBg.linewidth = 1.5;
+
+  // Header Title
+  const titleBox = two.makeRoundedRectangle(cardX, cardY - 135, cardW - 24, 40, 8);
+  titleBox.fill = '#f1f5f9';
+  titleBox.stroke = '#cbd5e1';
+  titleBox.linewidth = 1;
+
+  const titles = {
+    'q1': '문제 4-(1) ➜ x ÷ 2 × y 의 단계별 변환 탐구',
+    'q2': '문제 4-(2) ➜ a × (-1) ÷ b 의 단계별 변환 탐구',
+    'q3': '문제 4-(3) ➜ x ÷ y ÷ 3 의 단계별 변환 탐구',
+    'q4': '문제 4-(4) ➜ a ÷ (b ÷ c) 의 단계별 변환 탐구'
+  };
+
+  const titleTxt = two.makeText(titles[curQ], cardX, cardY - 135);
+  titleTxt.size = 13.5;
+  titleTxt.weight = 700;
+  titleTxt.fill = '#1e293b';
+
+  // Step Indicator Pills
+  const stepNames = ['1. 원래 식', '2. 역수의 곱셈', '3. 최종 생략 식'];
+  const pillW = 120;
+  const pillGap = 12;
+  const startPillX = cardX - (pillW * 3 + pillGap * 2) / 2 + pillW / 2;
+  const pillY = cardY - 85;
+
+  stepNames.forEach((sName, idx) => {
+    const pX = startPillX + idx * (pillW + pillGap);
+    const isCur = (step === idx + 1);
+    const pill = two.makeRoundedRectangle(pX, pillY, pillW, 26, 13);
+    pill.fill = isCur ? '#4f46e5' : '#f1f5f9';
+    pill.stroke = isCur ? '#3730a3' : '#cbd5e1';
+    pill.linewidth = 1;
+
+    const pTxt = two.makeText(sName, pX, pillY);
+    pTxt.size = 11;
+    pTxt.weight = 700;
+    pTxt.fill = isCur ? '#ffffff' : '#64748b';
+  });
+
+  // Stage Center Content by Step
+  const stageY = cardY - 5;
+  drawStepContent(two, cardX, stageY, curQ, step);
+
+  // Bottom Navigation Buttons on Canvas
+  const btnPrev = two.makeRoundedRectangle(cardX - 100, cardY + 75, 120, 36, 6);
+  btnPrev.fill = step > 1 ? '#f8fafc' : '#f1f5f9';
+  btnPrev.stroke = step > 1 ? '#cbd5e1' : '#e2e8f0';
+  btnPrev.linewidth = 1;
+
+  const prevTxt = two.makeText('◀ 이전 단계', cardX - 100, cardY + 75);
+  prevTxt.size = 13;
+  prevTxt.weight = 700;
+  prevTxt.fill = step > 1 ? '#334155' : '#94a3b8';
+
+  const btnNext = two.makeRoundedRectangle(cardX + 100, cardY + 75, 120, 36, 6);
+  btnNext.fill = step < 3 ? '#4f46e5' : '#e2e8f0';
+  btnNext.stroke = step < 3 ? '#3730a3' : '#cbd5e1';
+  btnNext.linewidth = 1;
+
+  const nextTxt = two.makeText(step < 3 ? '다음 단계 ▶' : '변환 완료! 🎉', cardX + 100, cardY + 75);
+  nextTxt.size = 13;
+  nextTxt.weight = 700;
+  nextTxt.fill = step < 3 ? '#ffffff' : '#64748b';
+
+  two.update();
+
+  if (step > 1 && btnPrev._renderer && btnPrev._renderer.elem) {
+    btnPrev._renderer.elem.style.cursor = 'pointer';
+    btnPrev._renderer.elem.onclick = () => prevStep1_5();
+  }
+  if (step < 3 && btnNext._renderer && btnNext._renderer.elem) {
+    btnNext._renderer.elem.style.cursor = 'pointer';
+    btnNext._renderer.elem.onclick = () => nextStep1_5();
+  }
+
+  // Tip Card at Card Bottom
+  const tipBoxY = cardY + 125;
+  const tipBox = two.makeRoundedRectangle(cardX, tipBoxY, cardW - 32, 34, 6);
+  tipBox.fill = '#f8fafc';
+  tipBox.stroke = '#e2e8f0';
+  tipBox.linewidth = 1;
+
+  const tips = {
+    'q1': '역수 원리: ÷ 2 는 × (1/2) 로 바뀌어 분모는 2, 분자는 x × y 가 됩니다',
+    'q2': '부호 원리: 음의 부호(-)는 맨 앞으로 나오고, ÷ b 는 분모 b로 내려갑니다',
+    'q3': '나눗셈 연쇄: ÷ y ÷ 3 ➜ × (1/y) × (1/3) 이므로 분모는 3y가 됩니다',
+    'q4': '괄호 우선: (b ÷ c) = b/c 먼저 계산 후 a ÷ (b/c) = a × (c/b) = ac/b 가 됩니다'
+  };
+
+  const tipTxt = two.makeText(tips[curQ], cardX, tipBoxY);
+  tipTxt.size = 11.5;
+  tipTxt.weight = 600;
+  tipTxt.fill = '#475569';
+}
+
+function drawStepContent(two, cx, cy, qKey, step) {
+  const qData = {
+    'q1': {
+      s1: 'x  ÷  2  ×  y',
+      s2: 'x  ×  ( 1 / 2 )  ×  y',
+      s3_sign: '', s3_num: 'xy', s3_den: '2',
+      desc1: '원래 식: 나눗셈 기호(÷)와 곱셈 기호(×)가 혼합되어 있습니다.',
+      desc2: '÷ 2 를 곱셈 역수 × (1/2) 로 변환합니다.',
+      desc3: '분모는 2, 분자는 x와 y의 곱이 되어 xy / 2 로 나타냅니다.'
+    },
+    'q2': {
+      s1: 'a  ×  ( - 1 )  ÷  b',
+      s2: '- a  ×  ( 1 / b )',
+      s3_sign: '-', s3_num: 'a', s3_den: 'b',
+      desc1: '원래 식: 곱셈과 나눗셈, 음수(-1)가 혼합되어 있습니다.',
+      desc2: '(-1)은 맨 앞의 부호(-)로, ÷ b 는 곱셈 역수 × (1/b) 로 변환합니다.',
+      desc3: '음의 부호(-)를 분수 앞에 두고 분자 a, 분모 b로 -a / b 가 됩니다.'
+    },
+    'q3': {
+      s1: 'x  ÷  y  ÷  3',
+      s2: 'x  ×  ( 1 / y )  ×  ( 1 / 3 )',
+      s3_sign: '', s3_num: 'x', s3_den: '3y',
+      desc1: '원래 식: 나눗셈 기호가 연속 2번 사용되었습니다.',
+      desc2: '÷ y 와 ÷ 3 을 각각 역수 × (1/y), × (1/3) 로 바꿉니다.',
+      desc3: '분모는 3과 y의 곱인 3y, 분자는 x가 되어 x / 3y 로 나타냅니다.'
+    },
+    'q4': {
+      s1: 'a  ÷  ( b  ÷  c )',
+      s2: 'a  ÷  ( b / c )  ➜  a  ×  ( c / b )',
+      s3_sign: '', s3_num: 'ac', s3_den: 'b',
+      desc1: '원래 식: 괄호 안의 나눗셈이 먼저 계산되어야 합니다.',
+      desc2: '괄호 안 (b ÷ c) = b/c 를 먼저 계산한 뒤, 나눗셈 역수 × (c/b) 로 바꿉니다.',
+      desc3: '분자는 a와 c의 곱 ac, 분모는 b가 되어 ac / b 가 됩니다.'
+    }
+  };
+
+  const item = qData[qKey];
+
+  if (step === 1 || step === 2) {
+    const box = two.makeRoundedRectangle(cx, cy - 10, 340, 52, 8);
+    box.fill = step === 1 ? '#eff6ff' : '#f0fdf4';
+    box.stroke = step === 1 ? '#3b82f6' : '#22c55e';
+    box.linewidth = 1.5;
+
+    const txt = two.makeText(step === 1 ? item.s1 : item.s2, cx, cy - 10);
+    txt.size = 16;
+    txt.weight = 700;
+    txt.fill = step === 1 ? '#1e40af' : '#15803d';
+
+    const desc = two.makeText(step === 1 ? item.desc1 : item.desc2, cx, cy + 32);
+    desc.size = 12.5;
+    desc.weight = 600;
+    desc.fill = '#475569';
+  } else {
+    // Step 3: Final Fraction Box
+    const fracBox = two.makeRoundedRectangle(cx, cy - 10, 200, 68, 8);
+    fracBox.fill = '#eef2ff';
+    fracBox.stroke = '#4f46e5';
+    fracBox.linewidth = 1.5;
+
+    const fCenter = cx + (item.s3_sign ? 12 : 0);
+
+    if (item.s3_sign) {
+      const sTxt = two.makeText(item.s3_sign, cx - 45, cy - 10);
+      sTxt.size = 24;
+      sTxt.weight = 800;
+      sTxt.fill = '#dc2626';
+    }
+
+    // Numerator
+    const nTxt = two.makeText(item.s3_num, fCenter, cy - 24);
+    nTxt.size = 16;
+    nTxt.weight = 700;
+    nTxt.fill = '#1e293b';
+
+    // Bar
+    const barW = Math.max(50, Math.max(item.s3_num.length, item.s3_den.length) * 14 + 20);
+    const bar = two.makeLine(fCenter - barW / 2, cy - 10, fCenter + barW / 2, cy - 10);
+    bar.stroke = '#1e293b';
+    bar.linewidth = 2;
+
+    // Denominator
+    const dTxt = two.makeText(item.s3_den, fCenter, cy + 6);
+    dTxt.size = 16;
+    dTxt.weight = 700;
+    dTxt.fill = '#1e293b';
+
+    const desc = two.makeText(item.desc3, cx, cy + 40);
+    desc.size = 12.5;
+    desc.weight = 700;
+    desc.fill = '#1d4ed8';
+  }
+}
+
+function gradeStep1_5() {
+  const q1Input = document.getElementById('ans-1-5-1');
+  const q2Input = document.getElementById('ans-1-5-2');
+  const q3Input = document.getElementById('ans-1-5-3');
+  const q4Input = document.getElementById('ans-1-5-4');
+  const fb = document.getElementById('feedback-1-5');
+  if (!q1Input || !q2Input || !q3Input || !q4Input || !fb) return;
+
+  const raw1 = (q1Input.value || '').trim();
+  const raw2 = (q2Input.value || '').trim();
+  const raw3 = (q3Input.value || '').trim();
+  const raw4 = (q4Input.value || '').trim();
+
+  // Normalize helper
+  const norm = (s) => s.toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/×/g, '*')
+    .replace(/÷/g, '/');
+
+  const a1 = norm(raw1);
+  const a2 = norm(raw2);
+  const a3 = norm(raw3);
+  const a4 = norm(raw4);
+
+  // Q1: x ÷ 2 × y => xy/2 or yx/2 or (1/2)xy or 1/2xy
+  const isQ1Correct = (
+    a1 === 'xy/2' ||
+    a1 === 'yx/2' ||
+    a1 === '(xy)/2' ||
+    a1 === '(yx)/2' ||
+    a1 === '(1/2)xy' ||
+    a1 === '1/2xy' ||
+    a1 === '(1/2)*xy' ||
+    a1 === '1/2*xy'
+  );
+
+  // Q2: a × (-1) ÷ b => -a/b or -(a/b) or (-a)/b or -1/b*a
+  const isQ2Correct = (
+    a2 === '-a/b' ||
+    a2 === '-(a/b)' ||
+    a2 === '(-a)/b' ||
+    a2 === '-(1/b)a' ||
+    a2 === '-1/ba' ||
+    a2 === '-a*(1/b)' ||
+    a2 === '-(a)*1/b'
+  );
+
+  // Q3: x ÷ y ÷ 3 => x/(3y) or x/(3*y) or (x)/(3y) or (1/3)*(x/y) or (1/(3y))*x
+  const isQ3Correct = (
+    a3 === 'x/(3y)' ||
+    a3 === 'x/(3*y)' ||
+    a3 === '(x)/(3y)' ||
+    a3 === '((x)/(3y))' ||
+    a3 === '(1/3)*(x/y)' ||
+    a3 === '(1/(3y))*x' ||
+    a3 === '(1/(3y))x' ||
+    a3 === '1/(3y)*x'
+  );
+
+  // Q4: a ÷ (b ÷ c) => ac/b or ca/b or (ac)/b or (ca)/b or a*c/b
+  const isQ4Correct = (
+    a4 === 'ac/b' ||
+    a4 === 'ca/b' ||
+    a4 === '(ac)/b' ||
+    a4 === '(ca)/b' ||
+    a4 === 'a*c/b' ||
+    a4 === '(a*c)/b' ||
+    a4 === 'a*(c/b)' ||
+    a4 === '(c/b)*a'
+  );
+
+  const allCorrect = isQ1Correct && isQ2Correct && isQ3Correct && isQ4Correct;
+
+  fb.style.display = 'block';
+
+  if (allCorrect) {
+    if (state.lab1_5) state.lab1_5.isPassed = true;
+    state.substepProgress['1-5'] = true;
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#ecfdf5; border:1.5px solid #10b981; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.4rem;">🎉</span>
+          <h5 style="color:#065f46; font-weight:800; margin:0;">100점 완벽 통과! (교과서 p.73 문제 4 완벽 해결)</h5>
+        </div>
+        <div style="font-size:0.88rem; color:#047857; line-height:1.6;">
+          • ⑴ $x \\div 2 \\times y = \\frac{xy}{2}$ : 나눗셈의 역수 변환 후 분자/분모 정리<br>
+          • ⑵ $a \\times (-1) \\div b = -\\frac{a}{b}$ : 부호는 맨 앞, 나눗셈 문자는 분모로 이동<br>
+          • ⑶ $x \\div y \\div 3 = \\frac{x}{3y}$ : 연속 나눗셈의 역수 곱으로 분모에 $3y$ 결합<br>
+          • ⑷ $a \\div (b \\div c) = \\frac{ac}{b}$ : 괄호 안 $\\frac{b}{c}$ 계산 후 역수 $\\frac{c}{b}$ 곱셈<br>
+          곱셈과 나눗셈이 섞여 있는 식의 생략 원리를 완벽하게 마스터했습니다!
+        </div>
+        <div style="margin-top:10px; font-size:0.8rem; color:#059669; font-weight:700;">
+          ✅ 학습 완료 상태가 영서중 LMS DB에 안전하게 자동 저장되었습니다.
+        </div>
+      </div>
+    `;
+
+    // Remote LMS DB save
+    if (window.LMSIntegration && typeof window.LMSIntegration.saveStudentProgress === 'function') {
+      window.LMSIntegration.saveStudentProgress('1-5', { score: 100, passed: true }, 'unit3');
+    }
+
+    // Auto unlock next substep 1-6
+    if (!state.unlockedSubSteps.includes('1-6')) {
+      state.unlockedSubSteps.push('1-6');
+    }
+  } else {
+    let errorMsg = [];
+    if (!isQ1Correct) errorMsg.push('⑴ $x \\div 2 \\times y$: $x \\times \\frac{1}{2} \\times y$ 이므로 $\\frac{xy}{2}$ (입력: xy/2)로 씁니다.');
+    if (!isQ2Correct) errorMsg.push('⑵ $a \\times (-1) \\div b$: $(-1)$의 부호(-)를 분수 앞에 두고 $\\frac{1}{b}$를 곱하여 $-\\frac{a}{b}$ (입력: -a/b)로 씁니다.');
+    if (!isQ3Correct) errorMsg.push('⑶ $x \\div y \\div 3$: $x \\times \\frac{1}{y} \\times \\frac{1}{3} = \\frac{x}{3y}$ (입력: x/(3y))로 씁니다.');
+    if (!isQ4Correct) errorMsg.push('⑷ $a \\div (b \\div c)$: 괄호 안 $b \\div c = \\frac{b}{c}$이므로 $a \\times \\frac{c}{b} = \\frac{ac}{b}$ (입력: ac/b)로 씁니다.');
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#fff1f2; border:1.5px solid #f43f5e; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.3rem;">💡</span>
+          <h6 style="color:#9f1239; font-weight:700; margin:0;">다시 확인해 보세요!</h6>
+        </div>
+        <div style="font-size:0.86rem; color:#be123c; line-height:1.6;">
+          ${errorMsg.map(msg => `<div>• ${msg}</div>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+    // --- End Substep 1-5 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -6674,6 +7250,9 @@ function gradeStep1_4() {
       } else if (code === '1-4') {
         renderToolbar1_4();
         renderSubstep1_4();
+      } else if (code === '1-5') {
+        renderToolbar1_5();
+        renderSubstep1_5();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
