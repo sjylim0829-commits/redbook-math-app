@@ -864,8 +864,8 @@
       },
       '1-2': {
         code: '1-2', tab: 1,
-        substepLabel: '2. 수량 관계의 문자식 표현 (p.72)',
-        missionText: '<b>[1-2] 2. 수량 관계의 문자식 표현 (p.72)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '2. 수량 사이의 관계를 문자로 나타내기 (교과서 p.72 문제 1)',
+        missionText: '<b>[개념 및 문제 1] 수량 사이의 관계를 문자를 사용한 식으로 나타내기 (교과서 p.72)</b><br>• 문자를 사용하면 수량이나 수량 사이의 관계를 간단한 식으로 나타낼 수 있습니다.<br>• <b>⑴ 전체 인원과 부분:</b> 전체 $50$명 중 남자가 $n$명이면, 여자는 전체에서 남자를 뺀 수량 $\\implies (50 - n)$명<br>• <b>⑵ 개수와 단가:</b> 한 줄에 $3500$원인 김밥 $a$줄의 가격은 $(3500 \\times a)$원, $1$인분에 $5000$원인 떡볶이 $b$인분의 가격은 $(5000 \\times b)$원이므로 총 금액은 $(3500 \\times a + 5000 \\times b)$원<br>좌측 캔버스에서 슬라이더와 프리셋 버튼으로 수량을 조작해 보며 문자로 식을 세워 보세요.',
         drawer: 'drawStep1_2Canvas'
       },
       '1-3': {
@@ -1390,6 +1390,15 @@
       
       
       
+      
+      // Substep 1-2 State (Quantity Relation Lab)
+      lab1_2: {
+        activeTab: 'club',
+        maleCount: 22,
+        kimbapA: 2,
+        ddukB: 3,
+        isPassed: false
+      },
       // Substep 1-1 State (Icecream & Piggy Bank Lab)
       lab1_1: {
         activeTab: 'icecream',
@@ -5038,6 +5047,538 @@ function getStep1_1SuccessHtml() {
 
     // --- End Substep 1-1 Implementation ---
 
+    
+    // --- Substep 1-2 Implementation ---
+// code_1_2.js: Substep [1-2] 3.1 수량 관계의 문자식 표현 (교과서 p.72 문제 1)
+
+function renderToolbar1_2() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab1_2) {
+    state.lab1_2 = {
+      activeTab: 'club', // 'club' | 'food'
+      maleCount: 22,     // 15, 20, 22, 28, 35
+      kimbapA: 2,        // 1, 2, 3, 4
+      ddukB: 3,          // 1, 2, 3
+      isPassed: false
+    };
+  }
+
+  const curTab = state.lab1_2.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:4px;">상황 모델:</span>
+      <button class="tool-btn ${curTab === 'club' ? 'active' : ''}" onclick="setLab1_2Tab('club')">
+        👥 1. 동아리 회원 수 (50 - n)
+      </button>
+      <button class="tool-btn ${curTab === 'food' ? 'active' : ''}" onclick="setLab1_2Tab('food')">
+        🍱 2. 분식 주문 금액 (3500a + 5000b)
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 4px;"></div>
+      <button class="icon-btn" onclick="resetLab1_2()" title="캔버스 초기화">
+        🔄 초기화
+      </button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('1-2')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab1_2Tab(tabName) {
+  if (!state.lab1_2) state.lab1_2 = { activeTab: 'club', maleCount: 22, kimbapA: 2, ddukB: 3, isPassed: false };
+  state.lab1_2.activeTab = tabName;
+  renderToolbar1_2();
+  drawStep1_2Canvas();
+}
+
+function resetLab1_2() {
+  state.lab1_2 = {
+    activeTab: 'club',
+    maleCount: 22,
+    kimbapA: 2,
+    ddukB: 3,
+    isPassed: false
+  };
+  renderToolbar1_2();
+  drawStep1_2Canvas();
+}
+
+function renderSubstep1_2() {
+  const mTitle = document.getElementById('mission-title');
+  const mDesc = document.getElementById('mission-desc');
+  const cont = document.getElementById('substep-form-content');
+
+  if (mTitle) {
+    mTitle.innerText = '[1-2] 3.1 수량 관계의 문자식 표현 (교과서 p.72 문제 1)';
+  }
+
+  if (mDesc) {
+    mDesc.innerHTML = `
+      <b>[교과서 p.72 문제 1: 실생활 수량 관계를 문자로 나타내기]</b><br>
+      • <b>전체와 부분(뺄셈)</b>: 전체 회원 $50$명에서 남자 회원 $n$명을 빼면 여자 회원 수는 <b>$(50 - n)$명</b>이 됩니다.<br>
+      • <b>단가와 수량의 합(곱셈과 덧셈)</b>: $1$줄에 $3500$원인 김밥 $a$줄과 $1$인분에 $5000$원인 떡볶이 $b$인분의 총 금액은 <b>$(3500 \\times a + 5000 \\times b)$원</b>이 됩니다.<br>
+      좌측 캔버스에서 인원수와 주문 수량을 조작해 보며 아래 2문항의 식을 완성해 보세요.
+    `;
+  }
+
+  if (cont) {
+    cont.innerHTML = `
+      <div class="scaffold-card" style="padding:16px; border:1px solid #e2e8f0; border-radius:12px; background:#ffffff; box-shadow:0 1px 3px rgba(0,0,0,0.05); margin-bottom:12px;">
+        <h4 style="font-size:0.92rem; font-weight:700; color:#1e293b; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+          <span style="background:#e0e7ff; color:#4338ca; width:22px; height:22px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:0.75rem;">1</span>
+          문제 1-(1) 동아리 여자 회원 수
+        </h4>
+        <p style="font-size:0.84rem; color:#475569; line-height:1.5; margin-bottom:10px;">
+          전체 회원 수가 $50$명인 어느 동아리의 남자 회원 수가 $n$명일 때, <b>여자 회원 수</b>를 $n$을 사용한 식으로 나타내시오. (단위 '명' 제외)
+        </p>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <label style="font-size:0.84rem; font-weight:600; color:#334155;">여자 회원 수 식:</label>
+          <input type="text" id="q1_2_ans1" class="proof-input-text" placeholder="문자식 입력" style="width:180px; font-weight:700; text-align:center;">
+        </div>
+      </div>
+
+      <div class="scaffold-card" style="padding:16px; border:1px solid #e2e8f0; border-radius:12px; background:#ffffff; box-shadow:0 1px 3px rgba(0,0,0,0.05); margin-bottom:14px;">
+        <h4 style="font-size:0.92rem; font-weight:700; color:#1e293b; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+          <span style="background:#e0e7ff; color:#4338ca; width:22px; height:22px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:0.75rem;">2</span>
+          문제 1-(2) 김밥과 떡볶이 총 지불 금액
+        </h4>
+        <p style="font-size:0.84rem; color:#475569; line-height:1.5; margin-bottom:10px;">
+          $1$줄에 $3500$원인 김밥 $a$줄과 $1$인분에 $5000$원인 떡볶이 $b$인분을 주문하고 <b>지불해야 하는 금액</b>을 문자를 사용한 식으로 나타내시오. (단위 '원' 제외)
+        </p>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <label style="font-size:0.84rem; font-weight:600; color:#334155;">총 지불 금액 식:</label>
+          <input type="text" id="q1_2_ans2" class="proof-input-text" placeholder="문자식 입력" style="width:220px; font-weight:700; text-align:center;">
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-bottom:14px;">
+        <button class="primary-btn" style="flex:1; padding:12px; font-size:0.95rem;" onclick="gradeStep1_2()">
+          ✨ 채점 및 학습 완료
+        </button>
+      </div>
+
+      <!-- Tip Card -->
+      <div style="padding:12px 14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; display:flex; align-items:flex-start; gap:10px;">
+        <span style="font-size:1.3rem;">💡</span>
+        <div>
+          <b style="font-size:0.84rem; color:#1e40af;">문자식 작성 팁</b>
+          <p style="font-size:0.78rem; color:#2563eb; margin-top:2px; line-height:1.4;">
+            곱셈 기호($*$, $\\times$)를 포함한 식이나 곱셈 기호가 생략된 식($3500a + 5000b$) 모두 올바른 정답으로 인정됩니다.
+          </p>
+        </div>
+      </div>
+    `;
+
+    if (window.renderMathInElement) {
+      window.renderMathInElement(cont, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false }
+        ]
+      });
+    }
+  }
+
+  // Draw Two.js canvas
+  drawStep1_2Canvas();
+}
+
+function drawStep1_2Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const width = container.clientWidth || 580;
+  const height = 440; // Strict Vertical Budget
+
+  const two = new Two({
+    width: width,
+    height: height,
+    type: Two.Types.svg
+  }).appendTo(container);
+
+  drawQuantityRelationLab(two, width, height);
+  two.update();
+}
+
+function drawQuantityRelationLab(two, width, height) {
+  // Background card
+  const bg = two.makeRoundedRectangle(width / 2, height / 2, width - 12, height - 12, 12);
+  bg.fill = '#f8fafc';
+  bg.stroke = '#e2e8f0';
+  bg.linewidth = 1.5;
+
+  if (!state.lab1_2) {
+    state.lab1_2 = { activeTab: 'club', maleCount: 22, kimbapA: 2, ddukB: 3, isPassed: false };
+  }
+
+  const tab = state.lab1_2.activeTab || 'club';
+
+  if (tab === 'club') {
+    drawClubMemberLab(two, width, height);
+  } else {
+    drawFoodOrderLab(two, width, height);
+  }
+
+  // Bottom Safety Banner (Y=396px, H=28px, strict vertical budget: 440 - 396 - 14 = 30px >= 25px)
+  const bannerY = 396;
+  const bannerH = 28;
+  const banner = two.makeRoundedRectangle(width / 2, bannerY, width - 36, bannerH, 8);
+  banner.fill = '#eff6ff';
+  banner.stroke = '#bfdbfe';
+  banner.linewidth = 1;
+
+  two.makeText(
+    '💡 실생활의 수량 관계에서 전체에서 뺄 때는 뺄셈(-)을, 단가와 개수의 합은 곱셈(×)과 덧셈(+)으로 나타냅니다.',
+    width / 2, bannerY, {
+      family: 'Pretendard, sans-serif',
+      size: 11.5,
+      weight: 600,
+      fill: '#1e40af',
+      alignment: 'center'
+    }
+  );
+}
+
+// 1. Club Member Lab: 전체 50명, 남자 n명 -> 여자 (50 - n)명
+function drawClubMemberLab(two, width, height) {
+  two.makeText('👥 문제 1-(1): 동아리 회원 수 분할 랩 (전체 50명)', width / 2, 28, {
+    family: 'Pretendard, sans-serif', size: 14, weight: 700, fill: '#1e293b', alignment: 'center'
+  });
+
+  const n = state.lab1_2.maleCount || 22;
+  const total = 50;
+  const female = total - n;
+
+  // Male Count Controller
+  const ctrlBox = two.makeRoundedRectangle(width / 2, 68, width - 40, 42, 8);
+  ctrlBox.fill = '#ffffff';
+  ctrlBox.stroke = '#cbd5e1';
+  ctrlBox.linewidth = 1.5;
+
+  two.makeText('남자 회원 수 (n) 선택:', width * 0.22, 68, {
+    family: 'Pretendard, sans-serif', size: 11.5, weight: 600, fill: '#475569', alignment: 'center'
+  });
+
+  const counts = [15, 20, 22, 28, 35];
+  const startX = width * 0.44;
+  const spacing = 58;
+
+  counts.forEach((c, idx) => {
+    const bx = startX + idx * spacing;
+    const isAct = (c === n);
+
+    const btn = two.makeRoundedRectangle(bx, 68, 50, 26, 6);
+    btn.fill = isAct ? '#2563eb' : '#f1f5f9';
+    btn.stroke = isAct ? '#1d4ed8' : '#cbd5e1';
+
+    two.makeText(`n=${c}`, bx, 68, {
+      family: 'Pretendard, sans-serif', size: 11, weight: isAct ? 700 : 500, fill: isAct ? '#ffffff' : '#475569', alignment: 'center'
+    });
+
+    two.update();
+    if (btn._renderer && btn._renderer.elem) {
+      btn._renderer.elem.style.cursor = 'pointer';
+      btn._renderer.elem.onclick = () => {
+        state.lab1_2.maleCount = c;
+        drawStep1_2Canvas();
+      };
+    }
+  });
+
+  // Proportion Bar (전체 50명 분할 시각화)
+  const barY = 175;
+  const barW = width - 80;
+  const barH = 50;
+  const maleW = (n / total) * barW;
+  const femaleW = barW - maleW;
+
+  // Total Boundary Container
+  const totalBox = two.makeRoundedRectangle(width / 2, barY - 42, barW, 24, 6);
+  totalBox.fill = '#f1f5f9';
+  totalBox.stroke = '#94a3b8';
+  two.makeText('동아리 전체 회원: 50명', width / 2, barY - 42, {
+    family: 'Pretendard, sans-serif', size: 11.5, weight: 700, fill: '#0f172a', alignment: 'center'
+  });
+
+  // Male Portion (Blue)
+  const mBoxX = 40 + maleW / 2;
+  const maleBox = two.makeRoundedRectangle(mBoxX, barY, maleW, barH, 6);
+  maleBox.fill = '#bfdbfe';
+  maleBox.stroke = '#2563eb';
+  maleBox.linewidth = 2;
+  two.makeText(`남자 회원: n명 (${n}명)`, mBoxX, barY, {
+    family: 'Pretendard, sans-serif', size: 11, weight: 800, fill: '#1e40af', alignment: 'center'
+  });
+
+  // Female Portion (Pink/Rose)
+  const fBoxX = 40 + maleW + femaleW / 2;
+  const femaleBox = two.makeRoundedRectangle(fBoxX, barY, femaleW, barH, 6);
+  femaleBox.fill = '#fecdd3';
+  femaleBox.stroke = '#e11d48';
+  femaleBox.linewidth = 2;
+  two.makeText(`여자 회원: (50 - n)명 (${female}명)`, fBoxX, barY, {
+    family: 'Pretendard, sans-serif', size: 11, weight: 800, fill: '#9f1239', alignment: 'center'
+  });
+
+  // Relationship Formula Diagram
+  const diagY = 248;
+  two.makeText('전체 회원(50)  -  남자 회원(n)  =  여자 회원(50 - n)', width / 2, diagY, {
+    family: 'Pretendard, sans-serif', size: 12.5, weight: 700, fill: '#334155', alignment: 'center'
+  });
+
+  // Summary Panel
+  const panelY = 315;
+  const panelH = 75;
+  const panel = two.makeRoundedRectangle(width / 2, panelY, width - 40, panelH, 10);
+  panel.fill = '#ffffff';
+  panel.stroke = '#2563eb';
+  panel.linewidth = 2;
+
+  two.makeText('문자를 사용한 식:  50 - n (명)', width / 2, panelY - 12, {
+    family: 'Pretendard, sans-serif', size: 14, weight: 800, fill: '#1e40af', alignment: 'center'
+  });
+  two.makeText(
+    `현재 n=${n}명 선택 시 여자 회원 수: 50 - ${n} = ${female}명`,
+    width / 2, panelY + 14, {
+      family: 'Pretendard, sans-serif', size: 12, weight: 700, fill: '#0f172a', alignment: 'center'
+    }
+  );
+}
+
+// 2. Food Order Lab: 김밥 a줄(3500원) + 떡볶이 b인분(5000원)
+function drawFoodOrderLab(two, width, height) {
+  two.makeText('🍱 문제 1-(2): 분식 주문 금액 합성 랩 (김밥과 떡볶이)', width / 2, 28, {
+    family: 'Pretendard, sans-serif', size: 14, weight: 700, fill: '#1e293b', alignment: 'center'
+  });
+
+  const a = state.lab1_2.kimbapA || 2;
+  const b = state.lab1_2.ddukB || 3;
+  const priceA = 3500 * a;
+  const priceB = 5000 * b;
+  const totalCost = priceA + priceB;
+
+  // Controllers Row (a & b)
+  const ctrlBox = two.makeRoundedRectangle(width / 2, 68, width - 40, 42, 8);
+  ctrlBox.fill = '#ffffff';
+  ctrlBox.stroke = '#cbd5e1';
+  ctrlBox.linewidth = 1.5;
+
+  // Kimbap a selector
+  two.makeText('김밥 a줄:', width * 0.14, 68, {
+    family: 'Pretendard, sans-serif', size: 11, weight: 700, fill: '#166534', alignment: 'center'
+  });
+  [1, 2, 3, 4].forEach((val, idx) => {
+    const bx = width * 0.23 + idx * 36;
+    const isAct = (val === a);
+    const btn = two.makeRoundedRectangle(bx, 68, 30, 24, 4);
+    btn.fill = isAct ? '#16a34a' : '#f1f5f9';
+    btn.stroke = isAct ? '#15803d' : '#cbd5e1';
+    two.makeText(`${val}`, bx, 68, {
+      family: 'Pretendard, sans-serif', size: 10.5, weight: isAct ? 800 : 500, fill: isAct ? '#ffffff' : '#475569', alignment: 'center'
+    });
+
+    two.update();
+    if (btn._renderer && btn._renderer.elem) {
+      btn._renderer.elem.style.cursor = 'pointer';
+      btn._renderer.elem.onclick = () => {
+        state.lab1_2.kimbapA = val;
+        drawStep1_2Canvas();
+      };
+    }
+  });
+
+  // Divider
+  two.makeLine(width * 0.52, 54, width * 0.52, 82).stroke = '#cbd5e1';
+
+  // Ddukbokki b selector
+  two.makeText('떡볶이 b인분:', width * 0.62, 68, {
+    family: 'Pretendard, sans-serif', size: 11, weight: 700, fill: '#b91c1c', alignment: 'center'
+  });
+  [1, 2, 3].forEach((val, idx) => {
+    const bx = width * 0.74 + idx * 38;
+    const isAct = (val === b);
+    const btn = two.makeRoundedRectangle(bx, 68, 32, 24, 4);
+    btn.fill = isAct ? '#dc2626' : '#f1f5f9';
+    btn.stroke = isAct ? '#b91c1c' : '#cbd5e1';
+    two.makeText(`${val}`, bx, 68, {
+      family: 'Pretendard, sans-serif', size: 10.5, weight: isAct ? 800 : 500, fill: isAct ? '#ffffff' : '#475569', alignment: 'center'
+    });
+
+    two.update();
+    if (btn._renderer && btn._renderer.elem) {
+      btn._renderer.elem.style.cursor = 'pointer';
+      btn._renderer.elem.onclick = () => {
+        state.lab1_2.ddukB = val;
+        drawStep1_2Canvas();
+      };
+    }
+  });
+
+  // 2 Food Plates Area
+  const plateY = 175;
+  const colW = (width - 70) / 2;
+
+  // Left Plate: Kimbap
+  const kX = 40 + colW / 2;
+  const kBox = two.makeRoundedRectangle(kX, plateY, colW - 10, 110, 8);
+  kBox.fill = '#ffffff';
+  kBox.stroke = '#86efac';
+  two.makeText('🍙 1줄 3500원 김밥 a줄', kX, plateY - 36, {
+    family: 'Pretendard, sans-serif', size: 11.5, weight: 700, fill: '#15803d', alignment: 'center'
+  });
+  two.makeText(`주문: a = ${a}줄`, kX, plateY - 14, {
+    family: 'Pretendard, sans-serif', size: 12, weight: 700, fill: '#0f172a', alignment: 'center'
+  });
+  two.makeText('3500 × a (원)', kX, plateY + 12, {
+    family: 'Pretendard, Georgia, serif', size: 13, weight: 800, fill: '#166534', alignment: 'center'
+  });
+  two.makeText(`금액: 3500 × ${a} = ${priceA}원`, kX, plateY + 34, {
+    family: 'Pretendard, sans-serif', size: 10.5, weight: 600, fill: '#475569', alignment: 'center'
+  });
+
+  // Right Plate: Ddukbokki
+  const dX = 40 + colW * 1.5;
+  const dBox = two.makeRoundedRectangle(dX, plateY, colW - 10, 110, 8);
+  dBox.fill = '#ffffff';
+  dBox.stroke = '#fca5a5';
+  two.makeText('🥘 1인분 5000원 떡볶이 b인분', dX, plateY - 36, {
+    family: 'Pretendard, sans-serif', size: 11.5, weight: 700, fill: '#dc2626', alignment: 'center'
+  });
+  two.makeText(`주문: b = ${b}인분`, dX, plateY - 14, {
+    family: 'Pretendard, sans-serif', size: 12, weight: 700, fill: '#0f172a', alignment: 'center'
+  });
+  two.makeText('5000 × b (원)', dX, plateY + 12, {
+    family: 'Pretendard, Georgia, serif', size: 13, weight: 800, fill: '#b91c1c', alignment: 'center'
+  });
+  two.makeText(`금액: 5000 × ${b} = ${priceB}원`, dX, plateY + 34, {
+    family: 'Pretendard, sans-serif', size: 10.5, weight: 600, fill: '#475569', alignment: 'center'
+  });
+
+  // Plus symbol between plates
+  two.makeText('+', width / 2, plateY, {
+    family: 'Pretendard, sans-serif', size: 28, weight: 800, fill: '#64748b', alignment: 'center'
+  });
+
+  // Summary Panel
+  const panelY = 305;
+  const panelH = 80;
+  const panel = two.makeRoundedRectangle(width / 2, panelY, width - 40, panelH, 10);
+  panel.fill = '#ffffff';
+  panel.stroke = '#f97316';
+  panel.linewidth = 2;
+
+  two.makeText('문자를 사용한 식:  3500 × a + 5000 × b (원)   또는   3500a + 5000b (원)', width / 2, panelY - 12, {
+    family: 'Pretendard, sans-serif', size: 13, weight: 800, fill: '#c2410c', alignment: 'center'
+  });
+  two.makeText(
+    `현재 a=${a}, b=${b} 대입 시 총 금액: ${priceA}원 + ${priceB}원 = ${totalCost}원`,
+    width / 2, panelY + 14, {
+      family: 'Pretendard, sans-serif', size: 12, weight: 700, fill: '#0f172a', alignment: 'center'
+    }
+  );
+}
+
+function gradeStep1_2() {
+  const in1 = document.getElementById('q1_2_ans1');
+  const in2 = document.getElementById('q1_2_ans2');
+  const banner = document.getElementById('feedback-banner');
+
+  if (!in1 || !in2 || !banner) return;
+
+  const a1 = in1.value.trim().replace(/\s+/g, '').toLowerCase();
+  const a2 = in2.value.trim().replace(/\s+/g, '').toLowerCase();
+
+  if (!a1 || !a2) {
+    banner.style.display = 'block';
+    banner.className = 'feedback-card error';
+    banner.innerHTML = `
+      <div style="font-weight:700; color:#dc2626; margin-bottom:4px;">⚠️ 미입력 문항이 있습니다.</div>
+      <div style="font-size:0.84rem; color:#475569;">1번과 2번 문항의 식을 모두 입력한 후 채점해 주세요.</div>
+    `;
+    return;
+  }
+
+  // Question 1: 동아리 여자 회원 수 -> 50-n (or -n+50)
+  const allowedQ1 = ['50-n', '-n+50', '(50-n)'];
+  const isQ1Correct = allowedQ1.includes(a1);
+
+  // Question 2: 총 지불 금액 -> 3500*a+5000*b or 3500a+5000b etc.
+  const norm2 = a2.replace(/×/g, '*');
+  const allowedQ2 = [
+    '3500*a+5000*b', '3500a+5000b', '5000*b+3500*a', '5000b+3500a',
+    '3500*a+5000b', '3500a+5000*b',
+    '(3500*a+5000*b)', '(3500a+5000b)'
+  ];
+  const isQ2Correct = allowedQ2.includes(norm2);
+
+  if (isQ1Correct && isQ2Correct) {
+    if (!state.lab1_2) state.lab1_2 = {};
+    state.lab1_2.isPassed = true;
+    passCurrentSubstepGeneric('1-2');
+
+    banner.style.display = 'block';
+    banner.className = 'feedback-card success';
+    banner.innerHTML = getStep1_2SuccessHtml();
+
+    if (window.renderMathInElement) {
+      window.renderMathInElement(banner, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false }
+        ]
+      });
+    }
+  } else {
+    const hints = [];
+    if (!isQ1Correct) {
+      hints.push('<b>1번 문항</b>: 전체 회원($50$)에서 남자 회원($n$)을 뺀 식($50 - n$)을 확인해 보세요.');
+    }
+    if (!isQ2Correct) {
+      hints.push('<b>2번 문항</b>: 김밥 $a$줄의 가격($3500 \\times a$)과 떡볶이 $b$인분의 가격($5000 \\times b$)을 더한 식을 확인해 보세요.');
+    }
+
+    banner.style.display = 'block';
+    banner.className = 'feedback-card error';
+    banner.innerHTML = `
+      <div style="font-weight:700; color:#dc2626; margin-bottom:6px;">❌ 아쉽습니다! 다시 한번 확인해 보세요.</div>
+      <div style="font-size:0.84rem; color:#475569; line-height:1.5;">${hints.join('<br>')}</div>
+    `;
+  }
+}
+
+function getStep1_2SuccessHtml() {
+  return `
+    <div style="text-align:center; padding:6px 0;">
+      <div style="font-size:2rem; margin-bottom:6px;">🎉 100점 완벽 통과!</div>
+      <h3 style="font-size:1.15rem; color:#15803d; font-weight:800; margin-bottom:8px;">
+        3.1 수량 관계의 문자식 표현 (문제 1) 완료!
+      </h3>
+      <p style="font-size:0.88rem; color:#334155; line-height:1.6; margin-bottom:12px;">
+        실생활의 전체와 부분, 단가와 개수의 합을 문자를 사용한 식으로 완벽히 나타냈습니다!
+      </p>
+      <div style="background:#ffffff; border:1px solid #bbf7d0; border-radius:10px; padding:12px; margin-bottom:12px; text-align:left;">
+        <b style="font-size:0.88rem; color:#166534;">📝 정답 및 해설 정리:</b>
+        <ul style="font-size:0.82rem; color:#475569; margin-top:6px; padding-left:18px; line-height:1.6;">
+          <li><b>⑴ 여자 회원 수</b>: $50 - n$ (명)</li>
+          <li><b>⑵ 총 지불 금액</b>: $3500 \\times a + 5000 \\times b$ (원) 또는 $3500a + 5000b$ (원)</li>
+          <li><b>개념 요약</b>: 미지수나 변하는 수량을 문자로 두면 복잡한 일상 상황도 하나의 명쾌한 식으로 표현할 수 있습니다.</li>
+        </ul>
+      </div>
+      <div style="font-size:0.82rem; color:#059669; font-weight:700;">
+        ⚡ 영서중 수학 LMS 원격 DB에 학습 성과(100점)가 실시간 기록되었습니다!
+      </div>
+    </div>
+  `;
+}
+
+    // --- End Substep 1-2 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -5075,6 +5616,9 @@ function getStep1_1SuccessHtml() {
       } else if (code === '1-1') {
         renderToolbar1_1();
         renderSubstep1_1();
+      } else if (code === '1-2') {
+        renderToolbar1_2();
+        renderSubstep1_2();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
