@@ -900,8 +900,8 @@
       },
       '1-8': {
         code: '1-8', tab: 1,
-        substepLabel: '8. 스스로 확인하기 2: 실생활 문자식 (p.75)',
-        missionText: '<b>[1-8] 8. 스스로 확인하기 2: 실생활 문자식 (p.75)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '8. 식의 값과 대입 (교과서 p.75 생각 열기 및 예제 3)',
+        missionText: '<b>[개념 및 생각 열기, 예제 3] 대입과 식의 값 (교과서 p.75)</b><br>• <b>대입:</b> 문자를 포함한 식에서 문자 대신 수를 넣는 것.<br>• <b>식의 값:</b> 문자에 수를 대입하여 계산한 결과.<br>• <b>⑴ 생각 열기:</b> 기온 $15^\\circ\\text{C}$일 때 음속 $331 + 0.6x \\implies 331 + 0.6 \\times 15 = 340\\text{ m/초}$<br>• <b>⑵ 예제 3-(1):</b> $a = -3$ 대입 $\\implies 5 - 2 \\times (-3) = 5 - (-6) = 11$<br>• <b>⑶ 예제 3-(2):</b> $a = -3$ 대입 $\\implies \\frac{(-3)^2}{3} = \\frac{9}{3} = 3$<br>좌측 캔버스에서 온도 및 음수 대입 모델을 조작해 보고 식의 값을 계산해 보세요.',
         drawer: 'drawStep1_8Canvas'
       },
       '1-9': {
@@ -1396,6 +1396,15 @@
       
       
       
+      
+      // Substep 1-8 State (Substitution Lab)
+      lab1_8: {
+        activeTab: 'sound',
+        tempX: 15,
+        valA1: -3,
+        valA2: -3,
+        isPassed: false
+      },
       // Substep 1-7 State (Speed, Time, Salt Lab)
       lab1_7: {
         activeTab: 'dist',
@@ -8507,6 +8516,581 @@ function gradeStep1_7() {
 
     // --- End Substep 1-7 Implementation ---
 
+    
+    // --- Substep 1-8 Implementation ---
+// code_1_8.js: Substep [1-8] 3.1 식의 값과 대입 (교과서 p.75 생각 열기 및 예제 3)
+
+function renderToolbar1_8() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab1_8) {
+    state.lab1_8 = {
+      activeTab: 'sound', // 'sound' | 'ex3_1' | 'ex3_2'
+      tempX: 15,          // deg C (0, 10, 15, 20, 25)
+      valA1: -3,          // for 5 - 2a (-3, -2, -1, 0, 1)
+      valA2: -3,          // for a^2 / 3 (-3, -2, -1, 3)
+      isPassed: false
+    };
+  }
+
+  const curTab = state.lab1_8.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'sound' ? 'active' : ''}" onclick="setLab1_8Tab('sound')">
+        🌡️ 1. 생각 열기: 기온과 음속 (x=15)
+      </button>
+      <button class="tool-btn ${curTab === 'ex3_1' ? 'active' : ''}" onclick="setLab1_8Tab('ex3_1')">
+        ⑴ 예제 3-(1): 5 - 2a (a=-3)
+      </button>
+      <button class="tool-btn ${curTab === 'ex3_2' ? 'active' : ''}" onclick="setLab1_8Tab('ex3_2')">
+        ⑵ 예제 3-(2): a²/3 (a=-3)
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn" onclick="resetLab1_8()" title="초기화">
+        🔄 초기화
+      </button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('1-8')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab1_8Tab(tabKey) {
+  if (!state.lab1_8) state.lab1_8 = { activeTab: 'sound', tempX: 15, valA1: -3, valA2: -3, isPassed: false };
+  state.lab1_8.activeTab = tabKey;
+  renderToolbar1_8();
+  drawStep1_8Canvas();
+}
+
+function resetLab1_8() {
+  state.lab1_8 = {
+    activeTab: 'sound',
+    tempX: 15,
+    valA1: -3,
+    valA2: -3,
+    isPassed: false
+  };
+  renderToolbar1_8();
+  drawStep1_8Canvas();
+}
+
+function setTempX(x) {
+  if (!state.lab1_8) resetLab1_8();
+  state.lab1_8.tempX = x;
+  drawStep1_8Canvas();
+}
+
+function setValA1(a) {
+  if (!state.lab1_8) resetLab1_8();
+  state.lab1_8.valA1 = a;
+  drawStep1_8Canvas();
+}
+
+function setValA2(a) {
+  if (!state.lab1_8) resetLab1_8();
+  state.lab1_8.valA2 = a;
+  drawStep1_8Canvas();
+}
+
+function renderSubstep1_8() {
+  const container = document.getElementById('substep-form-container');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="card p-3 mb-3" style="border-left: 4px solid var(--primary);">
+      <h6 style="font-weight:700; color:var(--primary); margin-bottom:6px;">
+        📖 [교과서 p.75] 대입과 식의 값의 정의 및 음수 대입 원칙
+      </h6>
+      <div style="font-size:0.86rem; color:#334155; line-height:1.55;">
+        <ul style="margin:0; padding-left:18px;">
+          <li><b>대입:</b> 문자를 포함한 식에서 문자 대신 수를 넣는 것.</li>
+          <li><b>식의 값:</b> 문자에 수를 대입하여 계산한 결과.</li>
+          <li><b>음수를 대입할 때의 핵심 주의사항:</b>
+            <div style="background:#fee2e2; border-left:3px solid #ef4444; padding:4px 8px; border-radius:4px; margin-top:4px; color:#991b1b; font-weight:700;">
+              음수를 대입할 때는 반드시 괄호 $(\dots)$를 쳐서 부호와 거듭제곱을 계산합니다!
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card p-3 mb-3">
+      <h6 style="font-weight:700; color:#1e293b; margin-bottom:8px;">
+        ✏️ [교과서 p.75 생각 열기 및 예제 3] 식의 값 구하기
+      </h6>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.88rem; color:#1e293b;">
+          ⑴ [생각 열기] 기온이 $15^\\circ\\text{C}$일 때 소리의 속력 $(331 + 0.6x)\\text{ m/초}$의 값
+        </label>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="text" id="ans-1-8-1" class="proof-input-text" placeholder="수 입력 (식의 값)" style="flex:1;" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.88rem; color:#1e293b;">
+          ⑵ [예제 3-(1)] $a = -3$일 때, $5 - 2a$의 식의 값
+        </label>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="text" id="ans-1-8-2" class="proof-input-text" placeholder="수 입력 (식의 값)" style="flex:1;" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.88rem; color:#1e293b;">
+          ⑶ [예제 3-(2)] $a = -3$일 때, $\\frac{a^2}{3}$의 식의 값
+        </label>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="text" id="ans-1-8-3" class="proof-input-text" placeholder="수 입력 (식의 값)" style="flex:1;" autocomplete="off">
+        </div>
+      </div>
+
+      <button id="btn-grade-1-8" class="primary-btn w-100" onclick="gradeStep1_8()" style="margin-top:6px; font-weight:700;">
+        🚀 정답 확인 및 LMS DB 기록
+      </button>
+    </div>
+
+    <div id="feedback-1-8" style="display:none; margin-top:8px;"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawStep1_8Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+
+  if (state.twoInstance) {
+    state.twoInstance.clear();
+  } else {
+    container.innerHTML = '';
+    const two = new Two({
+      width: container.clientWidth || 600,
+      height: 440,
+      type: Two.Types.svg
+    }).appendTo(container);
+    state.twoInstance = two;
+  }
+
+  const two = state.twoInstance;
+  const W = two.width;
+  const H = 440;
+
+  // Background
+  const bg = two.makeRectangle(W / 2, H / 2, W, H);
+  bg.fill = '#f8fafc';
+  bg.noStroke();
+
+  drawSubstitutionLab(two, W, H);
+
+  // Strict Vertical Budget Bottom Safety Banner (Y=396, H=28, margin bottom = 30 >= 25px)
+  const bannerY = 396;
+  const bannerH = 28;
+  const bottomBar = two.makeRoundedRectangle(W / 2, bannerY, W - 32, bannerH, 6);
+  bottomBar.fill = '#e2e8f0';
+  bottomBar.stroke = '#cbd5e1';
+  bottomBar.linewidth = 1;
+
+  const tabNames = {
+    'sound': '🌡️ 생각 열기: 기온 x=15 대입 ➜ 331 + 0.6 × 15 = 340 m/초 [교과서 p.75]',
+    'ex3_1': '⑴ 예제 3-(1): a = -3 대입 ➜ 5 - 2 × (-3) = 5 - (-6) = 11 [교과서 p.75]',
+    'ex3_2': '⑵ 예제 3-(2): a = -3 대입 ➜ (-3)² / 3 = 9 / 3 = 3 [교과서 p.75]'
+  };
+
+  const activeTab = (state.lab1_8 && state.lab1_8.activeTab) || 'sound';
+  const bannerTxt = two.makeText(tabNames[activeTab], W / 2, bannerY);
+  bannerTxt.size = 12;
+  bannerTxt.weight = 700;
+  bannerTxt.fill = '#334155';
+
+  two.update();
+}
+
+function drawSubstitutionLab(two, W, H) {
+  if (!state.lab1_8) resetLab1_8();
+  const curTab = state.lab1_8.activeTab;
+
+  const cardW = Math.min(W - 40, 560);
+  const cardH = 340;
+  const cardX = W / 2;
+  const cardY = 190;
+
+  const cardBg = two.makeRoundedRectangle(cardX, cardY, cardW, cardH, 12);
+  cardBg.fill = '#ffffff';
+  cardBg.stroke = '#e2e8f0';
+  cardBg.linewidth = 1.5;
+
+  // Header Title
+  const titleBox = two.makeRoundedRectangle(cardX, cardY - 135, cardW - 24, 40, 8);
+  titleBox.fill = '#f1f5f9';
+  titleBox.stroke = '#cbd5e1';
+  titleBox.linewidth = 1;
+
+  const titles = {
+    'sound': '생각 열기 : 기온 x ℃ 에 따른 음속 (331 + 0.6x) m/초 계산 모델',
+    'ex3_1': '예제 3-(1) : 5 - 2a 에서 문자 a 에 음수(-3) 대입 모델',
+    'ex3_2': '예제 3-(2) : a² / 3 에서 문자 a 에 음수(-3) 대입과 거듭제곱'
+  };
+
+  const titleTxt = two.makeText(titles[curTab], cardX, cardY - 135);
+  titleTxt.size = 13.5;
+  titleTxt.weight = 700;
+  titleTxt.fill = '#1e293b';
+
+  if (curTab === 'sound') {
+    drawSoundSpeedVisual(two, cardX, cardY, cardW);
+  } else if (curTab === 'ex3_1') {
+    drawEx3_1Visual(two, cardX, cardY, cardW);
+  } else {
+    drawEx3_2Visual(two, cardX, cardY, cardW);
+  }
+}
+
+function drawSoundSpeedVisual(two, cx, cy, cw) {
+  const x = state.lab1_8.tempX || 15;
+
+  const presets = [
+    { x: 0, label: '0℃' },
+    { x: 10, label: '10℃' },
+    { x: 15, label: '15℃' },
+    { x: 20, label: '20℃' },
+    { x: 25, label: '25℃' }
+  ];
+
+  const startX = cx - 180;
+  const btnY = cy - 85;
+
+  presets.forEach((p, idx) => {
+    const pX = startX + idx * 90;
+    const isAct = (x === p.x);
+    const pBtn = two.makeRoundedRectangle(pX, btnY, 78, 26, 6);
+    pBtn.fill = isAct ? '#4f46e5' : '#f8fafc';
+    pBtn.stroke = isAct ? '#3730a3' : '#cbd5e1';
+    pBtn.linewidth = 1;
+
+    const pTxt = two.makeText(p.label, pX, btnY);
+    pTxt.size = 11;
+    pTxt.weight = 700;
+    pTxt.fill = isAct ? '#ffffff' : '#475569';
+
+    two.update();
+    if (pBtn._renderer && pBtn._renderer.elem) {
+      pBtn._renderer.elem.style.cursor = 'pointer';
+      pBtn._renderer.elem.onclick = () => setTempX(p.x);
+    }
+  });
+
+  // Thermometer Graphic on Left
+  const thermX = cx - 140;
+  const thermY = cy + 20;
+
+  const tube = two.makeRoundedRectangle(thermX, thermY - 10, 16, 75, 8);
+  tube.fill = '#f1f5f9';
+  tube.stroke = '#94a3b8';
+  tube.linewidth = 1.5;
+
+  const bulb = two.makeCircle(thermX, thermY + 30, 16);
+  bulb.fill = '#ef4444';
+  bulb.stroke = '#dc2626';
+  bulb.linewidth = 1.5;
+
+  const mercuryH = Math.max(10, (x / 30) * 60);
+  const mercury = two.makeRoundedRectangle(thermX, thermY + 20 - mercuryH / 2, 10, mercuryH, 5);
+  mercury.fill = '#ef4444';
+  mercury.noStroke();
+
+  const tempTxt = two.makeText(`기온 x = ${x}℃`, thermX, thermY - 58);
+  tempTxt.size = 12.5;
+  tempTxt.weight = 800;
+  tempTxt.fill = '#b91c1c';
+
+  // Calculation Board on Right
+  const calcX = cx + 60;
+  const calcBox = two.makeRoundedRectangle(calcX, cy + 15, 270, 95, 8);
+  calcBox.fill = '#f0fdf4';
+  calcBox.stroke = '#86efac';
+  calcBox.linewidth = 1.5;
+
+  const speedVal = 331 + 0.6 * x;
+
+  const line1 = two.makeText('소리의 속력 식:  331 + 0.6 × x', calcX, cy - 14);
+  line1.size = 13;
+  line1.weight = 700;
+  line1.fill = '#1e293b';
+
+  const line2 = two.makeText(`x = ${x} 대입 ➜ 331 + 0.6 × (${x})`, calcX, cy + 10);
+  line2.size = 13.5;
+  line2.weight = 700;
+  line2.fill = '#4f46e5';
+
+  const line3 = two.makeText(`식의 값 = 331 + ${0.6 * x} = ${speedVal} m/초`, calcX, cy + 34);
+  line3.size = 14;
+  line3.weight = 800;
+  line3.fill = '#15803d';
+
+  // Result Banner inside Card
+  const tipY = cy + 125;
+  const tipBox = two.makeRoundedRectangle(cx, tipY, cw - 32, 34, 6);
+  tipBox.fill = '#f8fafc';
+  tipBox.stroke = '#e2e8f0';
+  tipBox.linewidth = 1;
+
+  const tipTxt = two.makeText(`기온이 15℃일 때 소리의 속력 식의 값: 331 + 0.6 × 15 = 340 m/초`, cx, tipY);
+  tipTxt.size = 12.5;
+  tipTxt.weight = 700;
+  tipTxt.fill = '#1d4ed8';
+}
+
+function drawEx3_1Visual(two, cx, cy, cw) {
+  const a = state.lab1_8.valA1 !== undefined ? state.lab1_8.valA1 : -3;
+
+  const presets = [
+    { a: -3, label: 'a = -3 (교과서)' },
+    { a: -2, label: 'a = -2' },
+    { a: -1, label: 'a = -1' },
+    { a: 0, label: 'a = 0' },
+    { a: 2, label: 'a = 2' }
+  ];
+
+  const startX = cx - 180;
+  const btnY = cy - 85;
+
+  presets.forEach((p, idx) => {
+    const pX = startX + idx * 90;
+    const isAct = (a === p.a);
+    const pBtn = two.makeRoundedRectangle(pX, btnY, 82, 26, 6);
+    pBtn.fill = isAct ? '#4f46e5' : '#f8fafc';
+    pBtn.stroke = isAct ? '#3730a3' : '#cbd5e1';
+    pBtn.linewidth = 1;
+
+    const pTxt = two.makeText(p.label, pX, btnY);
+    pTxt.size = 11;
+    pTxt.weight = 700;
+    pTxt.fill = isAct ? '#ffffff' : '#475569';
+
+    two.update();
+    if (pBtn._renderer && pBtn._renderer.elem) {
+      pBtn._renderer.elem.style.cursor = 'pointer';
+      pBtn._renderer.elem.onclick = () => setValA1(p.a);
+    }
+  });
+
+  // Substitution Animation Flow Box
+  const stageY = cy + 15;
+  const stageBox = two.makeRoundedRectangle(cx, stageY, 400, 100, 8);
+  stageBox.fill = '#eff6ff';
+  stageBox.stroke = '#3b82f6';
+  stageBox.linewidth = 1.5;
+
+  const s1 = two.makeText('원래 식:  5 - 2 a', cx, stageY - 26);
+  s1.size = 14;
+  s1.weight = 700;
+  s1.fill = '#1e293b';
+
+  const s2 = two.makeText(`a 에 (${a}) 대입 ➜ 5 - 2 × (${a})`, cx, stageY - 2);
+  s2.size = 14.5;
+  s2.weight = 800;
+  s2.fill = '#4f46e5';
+
+  const mulVal = -2 * a;
+  const finalVal = 5 - 2 * a;
+  const s3 = two.makeText(`계산: 5 - (${2 * a}) = 5 + (${mulVal}) = ${finalVal}`, cx, stageY + 24);
+  s3.size = 14;
+  s3.weight = 800;
+  s3.fill = '#15803d';
+
+  // Result Banner inside Card
+  const tipY = cy + 125;
+  const tipBox = two.makeRoundedRectangle(cx, tipY, cw - 32, 34, 6);
+  tipBox.fill = '#fef2f2';
+  tipBox.stroke = '#fecaca';
+  tipBox.linewidth = 1;
+
+  const tipTxt = two.makeText(`음수 대입 주의: 5 - 2 × (-3) = 5 - (-6) = 5 + 6 = 11 (부호 반전!)`, cx, tipY);
+  tipTxt.size = 12.5;
+  tipTxt.weight = 700;
+  tipTxt.fill = '#b91c1c';
+}
+
+function drawEx3_2Visual(two, cx, cy, cw) {
+  const a = state.lab1_8.valA2 !== undefined ? state.lab1_8.valA2 : -3;
+
+  const presets = [
+    { a: -3, label: 'a = -3 (교과서)' },
+    { a: -2, label: 'a = -2' },
+    { a: -1, label: 'a = -1' },
+    { a: 3, label: 'a = 3' }
+  ];
+
+  const startX = cx - 180;
+  const btnY = cy - 85;
+
+  presets.forEach((p, idx) => {
+    const pX = startX + idx * 95;
+    const isAct = (a === p.a);
+    const pBtn = two.makeRoundedRectangle(pX, btnY, 86, 26, 6);
+    pBtn.fill = isAct ? '#4f46e5' : '#f8fafc';
+    pBtn.stroke = isAct ? '#3730a3' : '#cbd5e1';
+    pBtn.linewidth = 1;
+
+    const pTxt = two.makeText(p.label, pX, btnY);
+    pTxt.size = 11;
+    pTxt.weight = 700;
+    pTxt.fill = isAct ? '#ffffff' : '#475569';
+
+    two.update();
+    if (pBtn._renderer && pBtn._renderer.elem) {
+      pBtn._renderer.elem.style.cursor = 'pointer';
+      pBtn._renderer.elem.onclick = () => setValA2(p.a);
+    }
+  });
+
+  // Stage Box
+  const stageY = cy + 15;
+  const stageBox = two.makeRoundedRectangle(cx, stageY, 400, 100, 8);
+  stageBox.fill = '#faf5ff';
+  stageBox.stroke = '#a855f7';
+  stageBox.linewidth = 1.5;
+
+  const s1 = two.makeText('원래 식:  a² / 3', cx, stageY - 26);
+  s1.size = 14;
+  s1.weight = 700;
+  s1.fill = '#1e293b';
+
+  const powVal = a * a;
+  const s2 = two.makeText(`a = ${a} 대입 ➜ (${a})² / 3`, cx, stageY - 2);
+  s2.size = 15;
+  s2.weight = 800;
+  s2.fill = '#7e22ce';
+
+  const finalVal = (a * a) / 3;
+  const s3 = two.makeText(`분자 거듭제곱 계산: (${a})² = ${powVal} ➜ ${powVal} / 3 = ${finalVal}`, cx, stageY + 24);
+  s3.size = 14;
+  s3.weight = 800;
+  s3.fill = '#15803d';
+
+  // Result Banner inside Card
+  const tipY = cy + 125;
+  const tipBox = two.makeRoundedRectangle(cx, tipY, cw - 32, 34, 6);
+  tipBox.fill = '#fef2f2';
+  tipBox.stroke = '#fecaca';
+  tipBox.linewidth = 1;
+
+  const tipTxt = two.makeText(`음수 거듭제곱 주의: (-3)² = (-3) × (-3) = +9 (괄호가 필수입니다!)`, cx, tipY);
+  tipTxt.size = 12.5;
+  tipTxt.weight = 700;
+  tipTxt.fill = '#b91c1c';
+}
+
+function gradeStep1_8() {
+  const q1Input = document.getElementById('ans-1-8-1');
+  const q2Input = document.getElementById('ans-1-8-2');
+  const q3Input = document.getElementById('ans-1-8-3');
+  const fb = document.getElementById('feedback-1-8');
+  if (!q1Input || !q2Input || !q3Input || !fb) return;
+
+  const raw1 = (q1Input.value || '').trim();
+  const raw2 = (q2Input.value || '').trim();
+  const raw3 = (q3Input.value || '').trim();
+
+  // Normalize
+  const norm = (s) => s.toLowerCase().replace(/\s+/g, '');
+
+  const a1 = norm(raw1);
+  const a2 = norm(raw2);
+  const a3 = norm(raw3);
+
+  // Q1: 340 (or 340m/s, 340m/초)
+  const isQ1Correct = (a1 === '340' || a1 === '340m/s' || a1 === '340m/초');
+
+  // Q2: 11
+  const isQ2Correct = (a2 === '11');
+
+  // Q3: 3
+  const isQ3Correct = (a3 === '3');
+
+  const allCorrect = isQ1Correct && isQ2Correct && isQ3Correct;
+
+  fb.style.display = 'block';
+
+  if (allCorrect) {
+    if (state.lab1_8) state.lab1_8.isPassed = true;
+    state.substepProgress['1-8'] = true;
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#ecfdf5; border:1.5px solid #10b981; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.4rem;">🎉</span>
+          <h5 style="color:#065f46; font-weight:800; margin:0;">100점 완벽 통과! (생각 열기 및 예제 3 식의 값 해결)</h5>
+        </div>
+        <div style="font-size:0.88rem; color:#047857; line-height:1.6;">
+          • ⑴ 생각 열기: $331 + 0.6 \\times 15 = 331 + 9 = 340\\text{ (m/초)}$<br>
+          • ⑵ 예제 3-(1): $5 - 2 \\times (-3) = 5 - (-6) = 5 + 6 = 11$<br>
+          • ⑶ 예제 3-(2): $\\frac{(-3)^2}{3} = \\frac{9}{3} = 3$<br>
+          문자 대신 수를 대입하여 식의 값을 정확히 계산하는 원리와 음수 괄호 대입 규칙을 완벽히 익혔습니다!
+        </div>
+        <div style="margin-top:10px; font-size:0.8rem; color:#059669; font-weight:700;">
+          ✅ 학습 완료 상태가 영서중 LMS DB에 안전하게 자동 저장되었습니다.
+        </div>
+      </div>
+    `;
+
+    // Remote LMS DB save
+    if (window.LMSIntegration && typeof window.LMSIntegration.saveStudentProgress === 'function') {
+      window.LMSIntegration.saveStudentProgress('1-8', { score: 100, passed: true }, 'unit3');
+    }
+
+    // Auto unlock next substep 1-9
+    if (!state.unlockedSubSteps.includes('1-9')) {
+      state.unlockedSubSteps.push('1-9');
+    }
+  } else {
+    let errorMsg = [];
+    if (!isQ1Correct) errorMsg.push('⑴ 소리의 속력: $331 + 0.6 \\times 15 = 331 + 9 = 340$ (입력: 340) 입니다.');
+    if (!isQ2Correct) errorMsg.push('⑵ $5 - 2a$: $a = -3$을 대입하면 $5 - 2 \\times (-3) = 5 - (-6) = 11$ (입력: 11) 입니다.');
+    if (!isQ3Correct) errorMsg.push('⑶ $\\frac{a^2}{3}$: $a = -3$을 대입하면 $(-3)^2 = 9$이므로 $\\frac{9}{3} = 3$ (입력: 3) 입니다.');
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#fff1f2; border:1.5px solid #f43f5e; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.3rem;">💡</span>
+          <h6 style="color:#9f1239; font-weight:700; margin:0;">다시 확인해 보세요!</h6>
+        </div>
+        <div style="font-size:0.86rem; color:#be123c; line-height:1.6;">
+          ${errorMsg.map(msg => `<div>• ${msg}</div>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+    // --- End Substep 1-8 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -8562,6 +9146,9 @@ function gradeStep1_7() {
       } else if (code === '1-7') {
         renderToolbar1_7();
         renderSubstep1_7();
+      } else if (code === '1-8') {
+        renderToolbar1_8();
+        renderSubstep1_8();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
