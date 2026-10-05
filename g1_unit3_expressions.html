@@ -888,8 +888,8 @@
       },
       '1-6': {
         code: '1-6', tab: 1,
-        substepLabel: '6. 음수·분수의 대입과 괄호 (p.74)',
-        missionText: '<b>[1-6] 6. 음수·분수의 대입과 괄호 (p.74)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '6. 문자를 사용한 식 세우기: 도형의 넓이와 할인 가격 (교과서 p.74)',
+        missionText: '<b>[개념 및 문제 5, 예제 2] 문자를 사용한 식 세우기 (교과서 p.74)</b><br>• 도형의 넓이나 실생활의 비율 관계를 문자를 사용한 식으로 나타냅니다.<br>• <b>⑴ 평행사변형 넓이:</b> 밑변 $a\\text{ cm}$, 높이 $h\\text{ cm} \\implies ah\\text{ cm}^2$<br>• <b>⑵ 삼각형 넓이:</b> 밑변 $x\\text{ cm}$, 높이 $y\\text{ cm} \\implies \\frac{xy}{2}\\text{ cm}^2$ (또는 $\\frac{1}{2}xy\\text{ cm}^2$)<br>• <b>⑶ [예제 2] 할인 가격:</b> 정가 $x$원의 $20\\%$ 할인 $\\implies x - \\frac{1}{5}x = \\frac{4}{5}x$원 (또는 $0.8x$원)<br>좌측 캔버스에서 3가지 모델 탭과 수치 프리셋을 조작해 보고 식을 완성해 보세요.',
         drawer: 'drawStep1_6Canvas'
       },
       '1-7': {
@@ -1394,6 +1394,17 @@
       
       
       
+      
+      // Substep 1-6 State (Shape and Discount Lab)
+      lab1_6: {
+        activeTab: 'parallelogram',
+        baseA: 6,
+        heightH: 4,
+        baseX: 8,
+        heightY: 5,
+        priceX: 10000,
+        isPassed: false
+      },
       // Substep 1-5 State (Mixed Op Omit Rules Lab)
       lab1_5: {
         activeQ: 'q1',
@@ -7204,6 +7215,667 @@ function gradeStep1_5() {
 
     // --- End Substep 1-5 Implementation ---
 
+    
+    // --- Substep 1-6 Implementation ---
+// code_1_6.js: Substep [1-6] 3.1 문자를 사용한 식 세우기: 도형의 넓이와 할인 가격 (교과서 p.74 문제 5, 예제 2)
+
+function renderToolbar1_6() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab1_6) {
+    state.lab1_6 = {
+      activeTab: 'parallelogram', // 'parallelogram' | 'triangle' | 'discount'
+      baseA: 6,
+      heightH: 4,
+      baseX: 8,
+      heightY: 5,
+      priceX: 10000,
+      isPassed: false
+    };
+  }
+
+  const curTab = state.lab1_6.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'parallelogram' ? 'active' : ''}" onclick="setLab1_6Tab('parallelogram')">
+        ▰ 1. 평행사변형 넓이 (ah)
+      </button>
+      <button class="tool-btn ${curTab === 'triangle' ? 'active' : ''}" onclick="setLab1_6Tab('triangle')">
+        ▲ 2. 삼각형 넓이 (xy/2)
+      </button>
+      <button class="tool-btn ${curTab === 'discount' ? 'active' : ''}" onclick="setLab1_6Tab('discount')">
+        🏷️ 3. 20% 할인 판매가 (4/5x)
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn" onclick="resetLab1_6()" title="초기화">
+        🔄 초기화
+      </button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('1-6')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab1_6Tab(tabKey) {
+  if (!state.lab1_6) state.lab1_6 = { activeTab: 'parallelogram', baseA: 6, heightH: 4, baseX: 8, heightY: 5, priceX: 10000, isPassed: false };
+  state.lab1_6.activeTab = tabKey;
+  renderToolbar1_6();
+  drawStep1_6Canvas();
+}
+
+function resetLab1_6() {
+  state.lab1_6 = {
+    activeTab: 'parallelogram',
+    baseA: 6,
+    heightH: 4,
+    baseX: 8,
+    heightY: 5,
+    priceX: 10000,
+    isPassed: false
+  };
+  renderToolbar1_6();
+  drawStep1_6Canvas();
+}
+
+function setParallelogramParams(a, h) {
+  if (!state.lab1_6) resetLab1_6();
+  state.lab1_6.baseA = a;
+  state.lab1_6.heightH = h;
+  drawStep1_6Canvas();
+}
+
+function setTriangleParams(x, y) {
+  if (!state.lab1_6) resetLab1_6();
+  state.lab1_6.baseX = x;
+  state.lab1_6.heightY = y;
+  drawStep1_6Canvas();
+}
+
+function setDiscountPrice(x) {
+  if (!state.lab1_6) resetLab1_6();
+  state.lab1_6.priceX = x;
+  drawStep1_6Canvas();
+}
+
+function renderSubstep1_6() {
+  const container = document.getElementById('substep-form-container');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="card p-3 mb-3" style="border-left: 4px solid var(--primary);">
+      <h6 style="font-weight:700; color:var(--primary); margin-bottom:6px;">
+        📖 [교과서 p.74] 문자를 사용한 식 세우기: 도형의 넓이와 비율/할인
+      </h6>
+      <div style="font-size:0.86rem; color:#334155; line-height:1.55;">
+        <ul style="margin:0; padding-left:18px;">
+          <li><b>평행사변형의 넓이:</b> $(\\text{밑변}) \\times (\\text{높이}) \\implies a \\times h = ah$</li>
+          <li><b>삼각형의 넓이:</b> $\\frac{1}{2} \\times (\\text{밑변}) \\times (\\text{높이}) \\implies \\frac{1}{2} \\times x \\times y = \\frac{xy}{2}$ (또는 $\\frac{1}{2}xy$)</li>
+          <li><b>[예제 2] $20\\%$ 할인 판매 가격:</b><br>
+            • 할인 금액: $x \\times \\frac{20}{100} = \\frac{1}{5}x$ (원)<br>
+            • 판매 가격: $x - \\frac{1}{5}x = \\frac{4}{5}x$ (원) (또는 $0.8x$원)
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card p-3 mb-3">
+      <h6 style="font-weight:700; color:#1e293b; margin-bottom:8px;">
+        ✏️ [교과서 p.74 문제 5 및 예제 2] 문자를 사용한 식 완성하기
+      </h6>
+      <div style="font-size:0.84rem; color:#64748b; margin-bottom:12px;">
+        기호 $\\times, \\div$를 생략한 가장 간단한 식으로 나타내세요. (단위는 제외하고 식만 입력)
+      </div>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.88rem; color:#1e293b;">
+          ⑴ 밑변의 길이가 $a\\text{ cm}$, 높이가 $h\\text{ cm}$인 평행사변형의 넓이 $(\\text{cm}^2)$
+        </label>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="text" id="ans-1-6-1" class="proof-input-text" placeholder="식 입력 (예: ah)" style="flex:1;" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.88rem; color:#1e293b;">
+          ⑵ 밑변의 길이가 $x\\text{ cm}$, 높이가 $y\\text{ cm}$인 삼각형의 넓이 $(\\text{cm}^2)$
+        </label>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="text" id="ans-1-6-2" class="proof-input-text" placeholder="식 입력 (예: xy/2 또는 1/2xy)" style="flex:1;" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.88rem; color:#1e293b;">
+          ⑶ [예제 2] 정가가 $x$원인 상품을 $20\\%$ 할인하여 판매할 때의 판매 가격 (원)
+        </label>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="text" id="ans-1-6-3" class="proof-input-text" placeholder="식 입력 (예: 4/5x 또는 0.8x)" style="flex:1;" autocomplete="off">
+        </div>
+      </div>
+
+      <button id="btn-grade-1-6" class="primary-btn w-100" onclick="gradeStep1_6()" style="margin-top:6px; font-weight:700;">
+        🚀 정답 확인 및 LMS DB 기록
+      </button>
+    </div>
+
+    <div id="feedback-1-6" style="display:none; margin-top:8px;"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawStep1_6Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+
+  if (state.twoInstance) {
+    state.twoInstance.clear();
+  } else {
+    container.innerHTML = '';
+    const two = new Two({
+      width: container.clientWidth || 600,
+      height: 440,
+      type: Two.Types.svg
+    }).appendTo(container);
+    state.twoInstance = two;
+  }
+
+  const two = state.twoInstance;
+  const W = two.width;
+  const H = 440;
+
+  // Background
+  const bg = two.makeRectangle(W / 2, H / 2, W, H);
+  bg.fill = '#f8fafc';
+  bg.noStroke();
+
+  drawShapeAndDiscountLab(two, W, H);
+
+  // Strict Vertical Budget Bottom Safety Banner (Y=396, H=28, margin bottom = 30 >= 25px)
+  const bannerY = 396;
+  const bannerH = 28;
+  const bottomBar = two.makeRoundedRectangle(W / 2, bannerY, W - 32, bannerH, 6);
+  bottomBar.fill = '#e2e8f0';
+  bottomBar.stroke = '#cbd5e1';
+  bottomBar.linewidth = 1;
+
+  const tabNames = {
+    'parallelogram': '▰ 평행사변형 넓이: (밑변 a) × (높이 h) = ah [교과서 p.74 문제 5-(1)]',
+    'triangle': '▲ 삼각형 넓이: (밑변 x) × (높이 y) ÷ 2 = xy/2 [교과서 p.74 문제 5-(2)]',
+    'discount': '🏷️ 할인 판매가: 정가 x - 할인액(0.2x) = 0.8x = 4/5x [교과서 p.74 예제 2]'
+  };
+
+  const activeTab = (state.lab1_6 && state.lab1_6.activeTab) || 'parallelogram';
+  const bannerTxt = two.makeText(tabNames[activeTab], W / 2, bannerY);
+  bannerTxt.size = 12;
+  bannerTxt.weight = 700;
+  bannerTxt.fill = '#334155';
+
+  two.update();
+}
+
+function drawShapeAndDiscountLab(two, W, H) {
+  if (!state.lab1_6) resetLab1_6();
+  const curTab = state.lab1_6.activeTab;
+
+  const cardW = Math.min(W - 40, 560);
+  const cardH = 340;
+  const cardX = W / 2;
+  const cardY = 190;
+
+  const cardBg = two.makeRoundedRectangle(cardX, cardY, cardW, cardH, 12);
+  cardBg.fill = '#ffffff';
+  cardBg.stroke = '#e2e8f0';
+  cardBg.linewidth = 1.5;
+
+  // Header Title
+  const titleBox = two.makeRoundedRectangle(cardX, cardY - 135, cardW - 24, 40, 8);
+  titleBox.fill = '#f1f5f9';
+  titleBox.stroke = '#cbd5e1';
+  titleBox.linewidth = 1;
+
+  const titles = {
+    'parallelogram': '도형 모델 ① : 밑변 a cm, 높이 h cm 인 평행사변형',
+    'triangle': '도형 모델 ② : 밑변 x cm, 높이 y cm 인 삼각형',
+    'discount': '실생활 비율 모델 ③ : 정가 x 원의 20% 할인 판매 가격'
+  };
+
+  const titleTxt = two.makeText(titles[curTab], cardX, cardY - 135);
+  titleTxt.size = 13.5;
+  titleTxt.weight = 700;
+  titleTxt.fill = '#1e293b';
+
+  if (curTab === 'parallelogram') {
+    drawParallelogramVisual(two, cardX, cardY, cardW);
+  } else if (curTab === 'triangle') {
+    drawTriangleVisual(two, cardX, cardY, cardW);
+  } else {
+    drawDiscountVisual(two, cardX, cardY, cardW);
+  }
+}
+
+function drawParallelogramVisual(two, cx, cy, cw) {
+  const a = state.lab1_6.baseA || 6;
+  const h = state.lab1_6.heightH || 4;
+
+  // Interactive Preset Buttons
+  const presets = [
+    { a: 5, h: 3, label: 'a=5, h=3' },
+    { a: 6, h: 4, label: 'a=6, h=4' },
+    { a: 8, h: 5, label: 'a=8, h=5' },
+    { a: 10, h: 6, label: 'a=10, h=6' }
+  ];
+
+  const startX = cx - 180;
+  const btnY = cy - 85;
+
+  presets.forEach((p, idx) => {
+    const pX = startX + idx * 95;
+    const isAct = (a === p.a && h === p.h);
+    const pBtn = two.makeRoundedRectangle(pX, btnY, 85, 26, 6);
+    pBtn.fill = isAct ? '#4f46e5' : '#f8fafc';
+    pBtn.stroke = isAct ? '#3730a3' : '#cbd5e1';
+    pBtn.linewidth = 1;
+
+    const pTxt = two.makeText(p.label, pX, btnY);
+    pTxt.size = 11;
+    pTxt.weight = 700;
+    pTxt.fill = isAct ? '#ffffff' : '#475569';
+
+    two.update();
+    if (pBtn._renderer && pBtn._renderer.elem) {
+      pBtn._renderer.elem.style.cursor = 'pointer';
+      pBtn._renderer.elem.onclick = () => setParallelogramParams(p.a, p.h);
+    }
+  });
+
+  // Parallelogram Canvas Drawing
+  const polyScale = 22;
+  const pw = a * polyScale;
+  const ph = h * polyScale;
+  const skew = ph * 0.55;
+
+  const polyY = cy + 10;
+  const x1 = cx - pw / 2 - skew / 2;
+  const y1 = polyY + ph / 2;
+  const x2 = cx + pw / 2 - skew / 2;
+  const y2 = polyY + ph / 2;
+  const x3 = cx + pw / 2 + skew / 2;
+  const y3 = polyY - ph / 2;
+  const x4 = cx - pw / 2 + skew / 2;
+  const y4 = polyY - ph / 2;
+
+  // Polygon
+  const poly = two.makePolygon([
+    new Two.Anchor(x1, y1),
+    new Two.Anchor(x2, y2),
+    new Two.Anchor(x3, y3),
+    new Two.Anchor(x4, y4)
+  ]);
+  poly.fill = '#e0f2fe';
+  poly.stroke = '#0284c7';
+  poly.linewidth = 2;
+
+  // Height line (dashed)
+  const hLineX = x4;
+  const hLine = two.makeLine(hLineX, y4, hLineX, y1);
+  hLine.stroke = '#dc2626';
+  hLine.linewidth = 1.5;
+  hLine.dashes = [4, 3];
+
+  // Right angle symbol
+  const raSize = 10;
+  const raLine1 = two.makeLine(hLineX, y1 - raSize, hLineX + raSize, y1 - raSize);
+  const raLine2 = two.makeLine(hLineX + raSize, y1 - raSize, hLineX + raSize, y1);
+  raLine1.stroke = '#dc2626';
+  raLine2.stroke = '#dc2626';
+
+  // Base Label: a cm
+  const baseTxt = two.makeText(`밑변 = a cm (${a} cm)`, cx - skew / 2, y1 + 18);
+  baseTxt.size = 12.5;
+  baseTxt.weight = 700;
+  baseTxt.fill = '#0284c7';
+
+  // Height Label: h cm
+  const hTxt = two.makeText(`높이 = h cm (${h} cm)`, hLineX - 48, (y4 + y1) / 2);
+  hTxt.size = 12;
+  hTxt.weight = 700;
+  hTxt.fill = '#dc2626';
+
+  // Result Banner inside Card
+  const tipY = cy + 125;
+  const tipBox = two.makeRoundedRectangle(cx, tipY, cw - 32, 34, 6);
+  tipBox.fill = '#f0fdf4';
+  tipBox.stroke = '#86efac';
+  tipBox.linewidth = 1;
+
+  const tipTxt = two.makeText(`넓이 = (밑변) × (높이) = a × h = ah cm² (현재 값: ${a * h} cm²)`, cx, tipY);
+  tipTxt.size = 12.5;
+  tipTxt.weight = 700;
+  tipTxt.fill = '#15803d';
+}
+
+function drawTriangleVisual(two, cx, cy, cw) {
+  const x = state.lab1_6.baseX || 8;
+  const y = state.lab1_6.heightY || 5;
+
+  const presets = [
+    { x: 6, y: 4, label: 'x=6, y=4' },
+    { x: 8, y: 5, label: 'x=8, y=5' },
+    { x: 10, y: 6, label: 'x=10, y=6' },
+    { x: 12, y: 7, label: 'x=12, y=7' }
+  ];
+
+  const startX = cx - 180;
+  const btnY = cy - 85;
+
+  presets.forEach((p, idx) => {
+    const pX = startX + idx * 95;
+    const isAct = (x === p.x && y === p.y);
+    const pBtn = two.makeRoundedRectangle(pX, btnY, 85, 26, 6);
+    pBtn.fill = isAct ? '#4f46e5' : '#f8fafc';
+    pBtn.stroke = isAct ? '#3730a3' : '#cbd5e1';
+    pBtn.linewidth = 1;
+
+    const pTxt = two.makeText(p.label, pX, btnY);
+    pTxt.size = 11;
+    pTxt.weight = 700;
+    pTxt.fill = isAct ? '#ffffff' : '#475569';
+
+    two.update();
+    if (pBtn._renderer && pBtn._renderer.elem) {
+      pBtn._renderer.elem.style.cursor = 'pointer';
+      pBtn._renderer.elem.onclick = () => setTriangleParams(p.x, p.y);
+    }
+  });
+
+  const scale = 20;
+  const tw = x * scale;
+  const th = y * scale;
+
+  const triY = cy + 10;
+  const x1 = cx - tw / 2;
+  const y1 = triY + th / 2;
+  const x2 = cx + tw / 2;
+  const y2 = triY + th / 2;
+  const x3 = cx - tw / 6;
+  const y3 = triY - th / 2;
+
+  const tri = two.makePolygon([
+    new Two.Anchor(x1, y1),
+    new Two.Anchor(x2, y2),
+    new Two.Anchor(x3, y3)
+  ]);
+  tri.fill = '#fef3c7';
+  tri.stroke = '#d97706';
+  tri.linewidth = 2;
+
+  // Height line (dashed)
+  const hLine = two.makeLine(x3, y3, x3, y1);
+  hLine.stroke = '#dc2626';
+  hLine.linewidth = 1.5;
+  hLine.dashes = [4, 3];
+
+  // Right angle symbol
+  const raSize = 10;
+  const raLine1 = two.makeLine(x3, y1 - raSize, x3 + raSize, y1 - raSize);
+  const raLine2 = two.makeLine(x3 + raSize, y1 - raSize, x3 + raSize, y1);
+  raLine1.stroke = '#dc2626';
+  raLine2.stroke = '#dc2626';
+
+  // Base Label: x cm
+  const baseTxt = two.makeText(`밑변 = x cm (${x} cm)`, cx, y1 + 18);
+  baseTxt.size = 12.5;
+  baseTxt.weight = 700;
+  baseTxt.fill = '#b45309';
+
+  // Height Label: y cm
+  const hTxt = two.makeText(`높이 = y cm (${y} cm)`, x3 - 48, (y3 + y1) / 2);
+  hTxt.size = 12;
+  hTxt.weight = 700;
+  hTxt.fill = '#dc2626';
+
+  // Result Banner inside Card
+  const tipY = cy + 125;
+  const tipBox = two.makeRoundedRectangle(cx, tipY, cw - 32, 34, 6);
+  tipBox.fill = '#f0fdf4';
+  tipBox.stroke = '#86efac';
+  tipBox.linewidth = 1;
+
+  const tipTxt = two.makeText(`넓이 = 1/2 × (밑변) × (높이) = xy/2 cm² (현재 값: ${(x * y) / 2} cm²)`, cx, tipY);
+  tipTxt.size = 12.5;
+  tipTxt.weight = 700;
+  tipTxt.fill = '#15803d';
+}
+
+function drawDiscountVisual(two, cx, cy, cw) {
+  const p = state.lab1_6.priceX || 10000;
+
+  const presets = [
+    { p: 5000, label: 'x = 5,000원' },
+    { p: 10000, label: 'x = 10,000원' },
+    { p: 20000, label: 'x = 20,000원' },
+    { p: 50000, label: 'x = 50,000원' }
+  ];
+
+  const startX = cx - 180;
+  const btnY = cy - 85;
+
+  presets.forEach((item, idx) => {
+    const pX = startX + idx * 95;
+    const isAct = (p === item.p);
+    const pBtn = two.makeRoundedRectangle(pX, btnY, 88, 26, 6);
+    pBtn.fill = isAct ? '#4f46e5' : '#f8fafc';
+    pBtn.stroke = isAct ? '#3730a3' : '#cbd5e1';
+    pBtn.linewidth = 1;
+
+    const pTxt = two.makeText(item.label, pX, btnY);
+    pTxt.size = 11;
+    pTxt.weight = 700;
+    pTxt.fill = isAct ? '#ffffff' : '#475569';
+
+    two.update();
+    if (pBtn._renderer && pBtn._renderer.elem) {
+      pBtn._renderer.elem.style.cursor = 'pointer';
+      pBtn._renderer.elem.onclick = () => setDiscountPrice(item.p);
+    }
+  });
+
+  // Price Tape Visual
+  const tapeW = 380;
+  const tapeH = 46;
+  const tapeY = cy + 10;
+
+  // 80% Paid Part
+  const paidW = tapeW * 0.8;
+  const paidX = cx - tapeW / 2 + paidW / 2;
+  const paidBox = two.makeRoundedRectangle(paidX, tapeY, paidW, tapeH, 6);
+  paidBox.fill = '#e0e7ff';
+  paidBox.stroke = '#4f46e5';
+  paidBox.linewidth = 2;
+
+  const paidTxt = two.makeText(`판매 가격: 80% (4/5 x 원 = 0.8x 원)`, paidX, tapeY - 6);
+  paidTxt.size = 12.5;
+  paidTxt.weight = 700;
+  paidTxt.fill = '#3730a3';
+
+  const paidVal = two.makeText(`${(p * 0.8).toLocaleString()}원`, paidX, tapeY + 12);
+  paidVal.size = 11.5;
+  paidVal.weight = 700;
+  paidVal.fill = '#4338ca';
+
+  // 20% Discount Part
+  const discW = tapeW * 0.2;
+  const discX = cx + tapeW / 2 - discW / 2;
+  const discBox = two.makeRoundedRectangle(discX, tapeY, discW, tapeH, 6);
+  discBox.fill = '#fee2e2';
+  discBox.stroke = '#ef4444';
+  discBox.linewidth = 1.5;
+
+  const discTxt = two.makeText(`할인: 20%`, discX, tapeY - 6);
+  discTxt.size = 11.5;
+  discTxt.weight = 700;
+  discTxt.fill = '#b91c1c';
+
+  const discVal = two.makeText(`-${(p * 0.2).toLocaleString()}원`, discX, tapeY + 12);
+  discVal.size = 11;
+  discVal.weight = 700;
+  discVal.fill = '#dc2626';
+
+  // Overall Price Indicator
+  const totalTxt = two.makeText(`전체 정가 = x 원 (${p.toLocaleString()}원)`, cx, tapeY - 36);
+  totalTxt.size = 13;
+  totalTxt.weight = 700;
+  totalTxt.fill = '#1e293b';
+
+  // Result Banner inside Card
+  const tipY = cy + 125;
+  const tipBox = two.makeRoundedRectangle(cx, tipY, cw - 32, 34, 6);
+  tipBox.fill = '#f0fdf4';
+  tipBox.stroke = '#86efac';
+  tipBox.linewidth = 1;
+
+  const tipTxt = two.makeText(`판매 가격 = x - 0.2x = 0.8x 원 (또는 4/5x 원)`, cx, tipY);
+  tipTxt.size = 12.5;
+  tipTxt.weight = 700;
+  tipTxt.fill = '#15803d';
+}
+
+function gradeStep1_6() {
+  const q1Input = document.getElementById('ans-1-6-1');
+  const q2Input = document.getElementById('ans-1-6-2');
+  const q3Input = document.getElementById('ans-1-6-3');
+  const fb = document.getElementById('feedback-1-6');
+  if (!q1Input || !q2Input || !q3Input || !fb) return;
+
+  const raw1 = (q1Input.value || '').trim();
+  const raw2 = (q2Input.value || '').trim();
+  const raw3 = (q3Input.value || '').trim();
+
+  // Normalize helper
+  const norm = (s) => s.toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/×/g, '*')
+    .replace(/÷/g, '/');
+
+  const a1 = norm(raw1);
+  const a2 = norm(raw2);
+  const a3 = norm(raw3);
+
+  // Q1: ah or ha or a*h
+  const isQ1Correct = (a1 === 'ah' || a1 === 'ha' || a1 === 'a*h' || a1 === 'h*a');
+
+  // Q2: xy/2 or yx/2 or (1/2)xy or 1/2xy
+  const isQ2Correct = (
+    a2 === 'xy/2' ||
+    a2 === 'yx/2' ||
+    a2 === '(xy)/2' ||
+    a2 === '(1/2)xy' ||
+    a2 === '1/2xy' ||
+    a2 === '(1/2)*xy' ||
+    a2 === '1/2*xy' ||
+    a2 === '0.5xy' ||
+    a2 === '0.5*xy'
+  );
+
+  // Q3: 4/5x or (4/5)x or 0.8x or 4x/5 or x-1/5x or x-0.2x
+  const isQ3Correct = (
+    a3 === '4/5x' ||
+    a3 === '(4/5)x' ||
+    a3 === '0.8x' ||
+    a3 === '4x/5' ||
+    a3 === '(4x)/5' ||
+    a3 === '4/5*x' ||
+    a3 === '(4/5)*x' ||
+    a3 === '0.8*x' ||
+    a3 === 'x-1/5x' ||
+    a3 === 'x-(1/5)x' ||
+    a3 === 'x-0.2x' ||
+    a3 === '(1-0.2)x' ||
+    a3 === '(1-1/5)x'
+  );
+
+  const allCorrect = isQ1Correct && isQ2Correct && isQ3Correct;
+
+  fb.style.display = 'block';
+
+  if (allCorrect) {
+    if (state.lab1_6) state.lab1_6.isPassed = true;
+    state.substepProgress['1-6'] = true;
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#ecfdf5; border:1.5px solid #10b981; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.4rem;">🎉</span>
+          <h5 style="color:#065f46; font-weight:800; margin:0;">100점 완벽 통과! (도형 넓이와 할인 가격 식 세우기 완성)</h5>
+        </div>
+        <div style="font-size:0.88rem; color:#047857; line-height:1.6;">
+          • ⑴ 평행사변형 넓이: $(\\text{밑변}) \\times (\\text{높이}) = ah\\text{ cm}^2$<br>
+          • ⑵ 삼각형 넓이: $\\frac{1}{2} \\times (\\text{밑변}) \\times (\\text{높이}) = \\frac{xy}{2}\\text{ cm}^2$ (또는 $\\frac{1}{2}xy\\text{ cm}^2$)<br>
+          • ⑶ $20\\%$ 할인 판매가: 정가에서 $20\\%$를 뺀 $0.8x$원 (또는 $\\frac{4}{5}x$원)<br>
+          도형 공식과 실생활 비율 문제를 문자를 사용한 식으로 완벽하게 표현했습니다!
+        </div>
+        <div style="margin-top:10px; font-size:0.8rem; color:#059669; font-weight:700;">
+          ✅ 학습 완료 상태가 영서중 LMS DB에 안전하게 자동 저장되었습니다.
+        </div>
+      </div>
+    `;
+
+    // Remote LMS DB save
+    if (window.LMSIntegration && typeof window.LMSIntegration.saveStudentProgress === 'function') {
+      window.LMSIntegration.saveStudentProgress('1-6', { score: 100, passed: true }, 'unit3');
+    }
+
+    // Auto unlock next substep 1-7
+    if (!state.unlockedSubSteps.includes('1-7')) {
+      state.unlockedSubSteps.push('1-7');
+    }
+  } else {
+    let errorMsg = [];
+    if (!isQ1Correct) errorMsg.push('⑴ 평행사변형 넓이: $(\\text{밑변}) \\times (\\text{높이}) = a \\times h = ah$ (입력: ah)로 씁니다.');
+    if (!isQ2Correct) errorMsg.push('⑵ 삼각형 넓이: $\\frac{1}{2} \\times (\\text{밑변}) \\times (\\text{높이}) = \\frac{xy}{2}$ (입력: xy/2 또는 1/2xy)로 씁니다.');
+    if (!isQ3Correct) errorMsg.push('⑶ 할인 판매가: $x - x \\times \\frac{20}{100} = \\frac{4}{5}x$ 또는 $0.8x$ (입력: 4/5x 또는 0.8x)로 씁니다.');
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#fff1f2; border:1.5px solid #f43f5e; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.3rem;">💡</span>
+          <h6 style="color:#9f1239; font-weight:700; margin:0;">다시 확인해 보세요!</h6>
+        </div>
+        <div style="font-size:0.86rem; color:#be123c; line-height:1.6;">
+          ${errorMsg.map(msg => `<div>• ${msg}</div>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+    // --- End Substep 1-6 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -7253,6 +7925,9 @@ function gradeStep1_5() {
       } else if (code === '1-5') {
         renderToolbar1_5();
         renderSubstep1_5();
+      } else if (code === '1-6') {
+        renderToolbar1_6();
+        renderSubstep1_6();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
