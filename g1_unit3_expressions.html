@@ -906,8 +906,8 @@
       },
       '1-9': {
         code: '1-9', tab: 1,
-        substepLabel: '9. 스스로 확인하기 3: 식의 값 계산 (p.75)',
-        missionText: '<b>[1-9] 9. 스스로 확인하기 3: 식의 값 계산 (p.75)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '9. 식의 값 계산 연습 (교과서 p.75 문제 7)',
+        missionText: '<b>[개념 및 문제 7] $x = -2$일 때의 식의 값 계산 (교과서 p.75)</b><br>• 음수 대입 시 항상 괄호 $(-2)$를 사용하고 부호와 거듭제곱 순서에 유의합니다.<br>• <b>⑴ 일차식:</b> $3x - 1 \\implies 3 \\times (-2) - 1 = -7$<br>• <b>⑵ 뺄셈:</b> $4 - x \\implies 4 - (-2) = 4 + 2 = 6$<br>• <b>⑶ 거듭제곱 부호:</b> $-x^2 \\implies -(-2)^2 = -(4) = -4$ (단, $(-x)^2 = 4$)<br>• <b>⑷ 분수식:</b> $\\frac{10}{x} \\implies \\frac{10}{-2} = -5$<br>좌측 캔버스에서 4개 문제 탭과 부호 비교 도구를 조작해 보고 식의 값을 계산해 보세요.',
         drawer: 'drawStep1_9Canvas'
       },
       '1-10': {
@@ -1397,6 +1397,14 @@
       
       
       
+      
+      // Substep 1-9 State (Expression Value Practice Lab)
+      lab1_9: {
+        activeQ: 'q1',
+        valX: -2,
+        compareSign: false,
+        isPassed: false
+      },
       // Substep 1-8 State (Substitution Lab)
       lab1_8: {
         activeTab: 'sound',
@@ -9091,6 +9099,469 @@ function gradeStep1_8() {
 
     // --- End Substep 1-8 Implementation ---
 
+    
+    // --- Substep 1-9 Implementation ---
+// code_1_9.js: Substep [1-9] 3.1 식의 값 계산 연습 (교과서 p.75 문제 7)
+
+function renderToolbar1_9() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab1_9) {
+    state.lab1_9 = {
+      activeQ: 'q1', // 'q1' | 'q2' | 'q3' | 'q4'
+      valX: -2,      // default -2 (textbook)
+      compareSign: false, // for q3: compare -x^2 vs (-x)^2
+      isPassed: false
+    };
+  }
+
+  const curQ = state.lab1_9.activeQ;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">문제 선택:</span>
+      <button class="tool-btn ${curQ === 'q1' ? 'active' : ''}" onclick="setLab1_9Q('q1')">
+        ⑴ 3x - 1
+      </button>
+      <button class="tool-btn ${curQ === 'q2' ? 'active' : ''}" onclick="setLab1_9Q('q2')">
+        ⑵ 4 - x
+      </button>
+      <button class="tool-btn ${curQ === 'q3' ? 'active' : ''}" onclick="setLab1_9Q('q3')">
+        ⑶ -x²
+      </button>
+      <button class="tool-btn ${curQ === 'q4' ? 'active' : ''}" onclick="setLab1_9Q('q4')">
+        ⑷ 10/x
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      ${curQ === 'q3' ? `
+        <button class="icon-btn" onclick="toggleCompareSign1_9()" style="background:#fef3c7; color:#b45309; font-weight:700;">
+          ⚖️ (-x)²과 부호 비교
+        </button>
+      ` : ''}
+      <button class="icon-btn" onclick="resetLab1_9()" title="초기화">
+        🔄 초기화
+      </button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('1-9')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab1_9Q(qKey) {
+  if (!state.lab1_9) state.lab1_9 = { activeQ: 'q1', valX: -2, compareSign: false, isPassed: false };
+  state.lab1_9.activeQ = qKey;
+  state.lab1_9.compareSign = false;
+  renderToolbar1_9();
+  drawStep1_9Canvas();
+}
+
+function toggleCompareSign1_9() {
+  if (!state.lab1_9) state.lab1_9 = { activeQ: 'q3', valX: -2, compareSign: false, isPassed: false };
+  state.lab1_9.compareSign = !state.lab1_9.compareSign;
+  renderToolbar1_9();
+  drawStep1_9Canvas();
+}
+
+function resetLab1_9() {
+  state.lab1_9 = {
+    activeQ: 'q1',
+    valX: -2,
+    compareSign: false,
+    isPassed: false
+  };
+  renderToolbar1_9();
+  drawStep1_9Canvas();
+}
+
+function setValX1_9(x) {
+  if (!state.lab1_9) resetLab1_9();
+  state.lab1_9.valX = x;
+  drawStep1_9Canvas();
+}
+
+function renderSubstep1_9() {
+  const container = document.getElementById('substep-form-container');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="card p-3 mb-3" style="border-left: 4px solid var(--primary);">
+      <h6 style="font-weight:700; color:var(--primary); margin-bottom:6px;">
+        📖 [교과서 p.75 문제 7] 음수 대입 시 식의 값 계산 주의사항
+      </h6>
+      <div style="font-size:0.86rem; color:#334155; line-height:1.55;">
+        <ul style="margin:0; padding-left:18px;">
+          <li><b>음수를 대입할 때는 항상 괄호를 씌웁니다:</b> $x = -2$일 때 $x$ 대신 $(-2)$를 대입합니다.</li>
+          <li><b>뺄셈 주의:</b> $4 - x = 4 - (-2) = 4 + 2 = 6$</li>
+          <li><b>거듭제곱 부호 주의:</b> $-x^2 = -(-2)^2 = -(4) = -4$ (단, $(-x)^2 = (-(-2))^2 = 2^2 = 4$)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card p-3 mb-3">
+      <h6 style="font-weight:700; color:#1e293b; margin-bottom:8px;">
+        ✏️ [교과서 p.75 문제 7] $x = -2$일 때, 다음 식의 값 구하기
+      </h6>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.88rem; color:#1e293b;">
+          ⑴ $3x - 1$
+        </label>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="text" id="ans-1-9-1" class="proof-input-text" placeholder="수 입력 (식의 값)" style="flex:1;" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.88rem; color:#1e293b;">
+          ⑵ $4 - x$
+        </label>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="text" id="ans-1-9-2" class="proof-input-text" placeholder="수 입력 (식의 값)" style="flex:1;" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.88rem; color:#1e293b;">
+          ⑶ $-x^2$
+        </label>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="text" id="ans-1-9-3" class="proof-input-text" placeholder="수 입력 (식의 값)" style="flex:1;" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.88rem; color:#1e293b;">
+          ⑷ $\\frac{10}{x}$
+        </label>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="text" id="ans-1-9-4" class="proof-input-text" placeholder="수 입력 (식의 값)" style="flex:1;" autocomplete="off">
+        </div>
+      </div>
+
+      <button id="btn-grade-1-9" class="primary-btn w-100" onclick="gradeStep1_9()" style="margin-top:6px; font-weight:700;">
+        🚀 정답 확인 및 LMS DB 기록
+      </button>
+    </div>
+
+    <div id="feedback-1-9" style="display:none; margin-top:8px;"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawStep1_9Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+
+  if (state.twoInstance) {
+    state.twoInstance.clear();
+  } else {
+    container.innerHTML = '';
+    const two = new Two({
+      width: container.clientWidth || 600,
+      height: 440,
+      type: Two.Types.svg
+    }).appendTo(container);
+    state.twoInstance = two;
+  }
+
+  const two = state.twoInstance;
+  const W = two.width;
+  const H = 440;
+
+  // Background
+  const bg = two.makeRectangle(W / 2, H / 2, W, H);
+  bg.fill = '#f8fafc';
+  bg.noStroke();
+
+  drawEvalPracticeLab(two, W, H);
+
+  // Strict Vertical Budget Bottom Safety Banner (Y=396, H=28, margin bottom = 30 >= 25px)
+  const bannerY = 396;
+  const bannerH = 28;
+  const bottomBar = two.makeRoundedRectangle(W / 2, bannerY, W - 32, bannerH, 6);
+  bottomBar.fill = '#e2e8f0';
+  bottomBar.stroke = '#cbd5e1';
+  bottomBar.linewidth = 1;
+
+  const qNames = {
+    'q1': '⑴ 3x - 1: x = -2 대입 ➜ 3 × (-2) - 1 = -6 - 1 = -7 [교과서 p.75]',
+    'q2': '⑵ 4 - x: x = -2 대입 ➜ 4 - (-2) = 4 + 2 = 6 [교과서 p.75]',
+    'q3': '⑶ -x²: x = -2 대입 ➜ -(-2)² = -(4) = -4 [교과서 p.75]',
+    'q4': '⑷ 10/x: x = -2 대입 ➜ 10 / (-2) = -5 [교과서 p.75]'
+  };
+
+  const activeQ = (state.lab1_9 && state.lab1_9.activeQ) || 'q1';
+  const bannerTxt = two.makeText(qNames[activeQ], W / 2, bannerY);
+  bannerTxt.size = 12;
+  bannerTxt.weight = 700;
+  bannerTxt.fill = '#334155';
+
+  two.update();
+}
+
+function drawEvalPracticeLab(two, W, H) {
+  if (!state.lab1_9) resetLab1_9();
+  const curQ = state.lab1_9.activeQ;
+  const x = state.lab1_9.valX !== undefined ? state.lab1_9.valX : -2;
+
+  const cardW = Math.min(W - 40, 560);
+  const cardH = 340;
+  const cardX = W / 2;
+  const cardY = 190;
+
+  const cardBg = two.makeRoundedRectangle(cardX, cardY, cardW, cardH, 12);
+  cardBg.fill = '#ffffff';
+  cardBg.stroke = '#e2e8f0';
+  cardBg.linewidth = 1.5;
+
+  // Header Title
+  const titleBox = two.makeRoundedRectangle(cardX, cardY - 135, cardW - 24, 40, 8);
+  titleBox.fill = '#f1f5f9';
+  titleBox.stroke = '#cbd5e1';
+  titleBox.linewidth = 1;
+
+  const titles = {
+    'q1': '문제 7-(1) : 3x - 1 에 음수 x 대입 계산 모델',
+    'q2': '문제 7-(2) : 4 - x 에 음수 x 대입과 뺄셈 부호 반전',
+    'q3': '문제 7-(3) : -x² 에 음수 x 대입과 거듭제곱 부호 판정',
+    'q4': '문제 7-(4) : 10 / x 에 음수 x 대입과 분수 나눗셈'
+  };
+
+  const titleTxt = two.makeText(titles[curQ], cardX, cardY - 135);
+  titleTxt.size = 13.5;
+  titleTxt.weight = 700;
+  titleTxt.fill = '#1e293b';
+
+  // Presets for x
+  const presets = [
+    { x: -3, label: 'x = -3' },
+    { x: -2, label: 'x = -2 (교과서)' },
+    { x: -1, label: 'x = -1' },
+    { x: 1, label: 'x = 1' },
+    { x: 2, label: 'x = 2' }
+  ];
+
+  const startX = cardX - 180;
+  const btnY = cardY - 85;
+
+  presets.forEach((p, idx) => {
+    const pX = startX + idx * 90;
+    const isAct = (x === p.x);
+    const pBtn = two.makeRoundedRectangle(pX, btnY, 82, 26, 6);
+    pBtn.fill = isAct ? '#4f46e5' : '#f8fafc';
+    pBtn.stroke = isAct ? '#3730a3' : '#cbd5e1';
+    pBtn.linewidth = 1;
+
+    const pTxt = two.makeText(p.label, pX, btnY);
+    pTxt.size = 11;
+    pTxt.weight = 700;
+    pTxt.fill = isAct ? '#ffffff' : '#475569';
+
+    two.update();
+    if (pBtn._renderer && pBtn._renderer.elem) {
+      pBtn._renderer.elem.style.cursor = 'pointer';
+      pBtn._renderer.elem.onclick = () => setValX1_9(p.x);
+    }
+  });
+
+  // Stage Center
+  const stageY = cardY + 15;
+  const stageBox = two.makeRoundedRectangle(cardX, stageY, 420, 105, 8);
+  stageBox.fill = '#eff6ff';
+  stageBox.stroke = '#3b82f6';
+  stageBox.linewidth = 1.5;
+
+  if (curQ === 'q1') {
+    const s1 = two.makeText('원래 식:  3 x - 1', cardX, stageY - 28);
+    s1.size = 14; s1.weight = 700; s1.fill = '#1e293b';
+
+    const s2 = two.makeText(`x = ${x} 대입 ➜  3 × (${x}) - 1`, cardX, stageY - 4);
+    s2.size = 14.5; s2.weight = 800; s2.fill = '#4f46e5';
+
+    const res = 3 * x - 1;
+    const s3 = two.makeText(`계산: (${3 * x}) - 1 = ${res}`, cardX, stageY + 22);
+    s3.size = 15; s3.weight = 800; s3.fill = '#15803d';
+  } else if (curQ === 'q2') {
+    const s1 = two.makeText('원래 식:  4 - x', cardX, stageY - 28);
+    s1.size = 14; s1.weight = 700; s1.fill = '#1e293b';
+
+    const s2 = two.makeText(`x = ${x} 대입 ➜  4 - (${x})`, cardX, stageY - 4);
+    s2.size = 14.5; s2.weight = 800; s2.fill = '#4f46e5';
+
+    const res = 4 - x;
+    const s3 = two.makeText(`계산: 4 + (${-x}) = ${res}  (음수 뺄셈은 덧셈으로 변환)`, cardX, stageY + 22);
+    s3.size = 13.5; s3.weight = 800; s3.fill = '#15803d';
+  } else if (curQ === 'q3') {
+    if (state.lab1_9.compareSign) {
+      // Comparison Mode: -x^2 vs (-x)^2
+      const s1 = two.makeText(`[비교] x = ${x} 일 때:`, cardX, stageY - 28);
+      s1.size = 13; s1.weight = 700; s1.fill = '#b45309';
+
+      const res1 = -(x * x);
+      const res2 = Math.pow(-x, 2);
+      const s2 = two.makeText(`-x² = -(${x})² = -(${x * x}) = ${res1}`, cardX, stageY - 4);
+      s2.size = 14; s2.weight = 800; s2.fill = '#dc2626';
+
+      const s3 = two.makeText(`(-x)² = (-(${x}))² = (${-x})² = ${res2}`, cardX, stageY + 22);
+      s3.size = 14; s3.weight = 800; s3.fill = '#059669';
+    } else {
+      const s1 = two.makeText('원래 식:  - x²', cardX, stageY - 28);
+      s1.size = 14; s1.weight = 700; s1.fill = '#1e293b';
+
+      const s2 = two.makeText(`x = ${x} 대입 ➜  - (${x})²`, cardX, stageY - 4);
+      s2.size = 15; s2.weight = 800; s2.fill = '#4f46e5';
+
+      const res = -(x * x);
+      const s3 = two.makeText(`계산: - (${x * x}) = ${res}  (거듭제곱 먼저 계산 후 - 부호)`, cardX, stageY + 22);
+      s3.size = 13.5; s3.weight = 800; s3.fill = '#15803d';
+    }
+  } else if (curQ === 'q4') {
+    const s1 = two.makeText('원래 식:  10 / x', cardX, stageY - 28);
+    s1.size = 14; s1.weight = 700; s1.fill = '#1e293b';
+
+    const s2 = two.makeText(`x = ${x} 대입 ➜  10 / (${x})`, cardX, stageY - 4);
+    s2.size = 14.5; s2.weight = 800; s2.fill = '#4f46e5';
+
+    const res = 10 / x;
+    const s3 = two.makeText(`계산: 10 ÷ (${x}) = ${res}`, cardX, stageY + 22);
+    s3.size = 15; s3.weight = 800; s3.fill = '#15803d';
+  }
+
+  // Tip Banner inside Card
+  const tipY = cardY + 125;
+  const tipBox = two.makeRoundedRectangle(cardX, tipY, cardW - 32, 34, 6);
+  tipBox.fill = '#fef2f2';
+  tipBox.stroke = '#fecaca';
+  tipBox.linewidth = 1;
+
+  const tips = {
+    'q1': '3x - 1 ➜ 3 × (-2) - 1 = -6 - 1 = -7',
+    'q2': '4 - x ➜ 4 - (-2) = 4 + 2 = 6 (부호가 양수로 바뀝니다!)',
+    'q3': '-x² ➜ -(-2)² = -(4) = -4 (괄호 밖의 -는 그대로 유지됩니다)',
+    'q4': '10 / x ➜ 10 / (-2) = -5 (양수를 음수로 나누면 음수입니다)'
+  };
+
+  const tipTxt = two.makeText(tips[curQ], cardX, tipY);
+  tipTxt.size = 12.5;
+  tipTxt.weight = 700;
+  tipTxt.fill = '#b91c1c';
+}
+
+function gradeStep1_9() {
+  const q1Input = document.getElementById('ans-1-9-1');
+  const q2Input = document.getElementById('ans-1-9-2');
+  const q3Input = document.getElementById('ans-1-9-3');
+  const q4Input = document.getElementById('ans-1-9-4');
+  const fb = document.getElementById('feedback-1-9');
+  if (!q1Input || !q2Input || !q3Input || !q4Input || !fb) return;
+
+  const raw1 = (q1Input.value || '').trim();
+  const raw2 = (q2Input.value || '').trim();
+  const raw3 = (q3Input.value || '').trim();
+  const raw4 = (q4Input.value || '').trim();
+
+  // Normalize
+  const norm = (s) => s.toLowerCase().replace(/\s+/g, '');
+
+  const a1 = norm(raw1);
+  const a2 = norm(raw2);
+  const a3 = norm(raw3);
+  const a4 = norm(raw4);
+
+  // Q1: -7
+  const isQ1Correct = (a1 === '-7');
+
+  // Q2: 6 (or +6)
+  const isQ2Correct = (a2 === '6' || a2 === '+6');
+
+  // Q3: -4
+  const isQ3Correct = (a3 === '-4');
+
+  // Q4: -5
+  const isQ4Correct = (a4 === '-5');
+
+  const allCorrect = isQ1Correct && isQ2Correct && isQ3Correct && isQ4Correct;
+
+  fb.style.display = 'block';
+
+  if (allCorrect) {
+    if (state.lab1_9) state.lab1_9.isPassed = true;
+    state.substepProgress['1-9'] = true;
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#ecfdf5; border:1.5px solid #10b981; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.4rem;">🎉</span>
+          <h5 style="color:#065f46; font-weight:800; margin:0;">100점 완벽 통과! (교과서 p.75 문제 7 완벽 해결)</h5>
+        </div>
+        <div style="font-size:0.88rem; color:#047857; line-height:1.6;">
+          • ⑴ $3x - 1 = 3 \\times (-2) - 1 = -6 - 1 = -7$<br>
+          • ⑵ $4 - x = 4 - (-2) = 4 + 2 = 6$<br>
+          • ⑶ $-x^2 = -(-2)^2 = -(4) = -4$ ($-x^2$과 $(-x)^2$의 차이 완벽 구별!)<br>
+          • ⑷ $\\frac{10}{x} = \\frac{10}{-2} = -5$<br>
+          음수 대입 시의 부호 규칙과 거듭제곱 연산을 빈틈없이 정확하게 마스터했습니다!
+        </div>
+        <div style="margin-top:10px; font-size:0.8rem; color:#059669; font-weight:700;">
+          ✅ 학습 완료 상태가 영서중 LMS DB에 안전하게 자동 저장되었습니다.
+        </div>
+      </div>
+    `;
+
+    // Remote LMS DB save
+    if (window.LMSIntegration && typeof window.LMSIntegration.saveStudentProgress === 'function') {
+      window.LMSIntegration.saveStudentProgress('1-9', { score: 100, passed: true }, 'unit3');
+    }
+
+    // Auto unlock next substep 1-10
+    if (!state.unlockedSubSteps.includes('1-10')) {
+      state.unlockedSubSteps.push('1-10');
+    }
+  } else {
+    let errorMsg = [];
+    if (!isQ1Correct) errorMsg.push('⑴ $3x - 1$: $3 \\times (-2) - 1 = -6 - 1 = -7$ (입력: -7) 입니다.');
+    if (!isQ2Correct) errorMsg.push('⑵ $4 - x$: $4 - (-2) = 4 + 2 = 6$ (입력: 6) 입니다.');
+    if (!isQ3Correct) errorMsg.push('⑶ $-x^2$: $-(-2)^2 = -(4) = -4$ (입력: -4) 입니다. 괄호 밖의 음부호(-)에 주의하세요.');
+    if (!isQ4Correct) errorMsg.push('⑷ $\\frac{10}{x}$: $\\frac{10}{-2} = -5$ (입력: -5) 입니다.');
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#fff1f2; border:1.5px solid #f43f5e; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.3rem;">💡</span>
+          <h6 style="color:#9f1239; font-weight:700; margin:0;">다시 확인해 보세요!</h6>
+        </div>
+        <div style="font-size:0.86rem; color:#be123c; line-height:1.6;">
+          ${errorMsg.map(msg => `<div>• ${msg}</div>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+    // --- End Substep 1-9 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -9149,6 +9620,9 @@ function gradeStep1_8() {
       } else if (code === '1-8') {
         renderToolbar1_8();
         renderSubstep1_8();
+      } else if (code === '1-9') {
+        renderToolbar1_9();
+        renderSubstep1_9();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
