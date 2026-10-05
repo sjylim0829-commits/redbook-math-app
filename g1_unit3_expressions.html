@@ -841,7 +841,7 @@
       '0-2': {
         code: '0-2', tab: 0,
         substepLabel: '2. 되짚어 보기 1: 대응 관계 (□, △를 사용한 식) (p.70)',
-        missionText: '<b>[0-2] 2. 되짚어 보기 1: 대응 관계 (□, △를 사용한 식) (p.70)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        missionText: '<b>[되짚어 보기 1] 초등 대응 관계 (교과서 p.70)</b><br>• 변하는 두 양 사이의 관계를 기호 $\square, \triangle$를 사용한 식으로 나타냅니다.<br>• 한 개에 $\square$원 하는 볼펜 4개의 값: $4 \times \square$ 또는 $\square \times 4$<br>• $6$보다 $\triangle$ 작은 수: $6 - \triangle$<br>좌측 캔버스에서 볼펜 가격과 수직선 거리를 조작해 보고 아래 문제에 답해 봅시다.',
         drawer: 'drawStep0_2Canvas'
       },
       '0-3': {
@@ -1386,6 +1386,14 @@
       currentUser: null,
       selectedZoomStudentId: null,
 
+      
+      // Substep 0-2 State (Variable Relation Lab)
+      lab0_2: {
+        activeTab: 'pen',
+        penPrice: 500,
+        deltaTri: 2,
+        isPassed: false
+      },
       // Substep 0-1 State (Symbol Explorer Lab)
       lab0_1: {
         activeTab: 'sign', // 'sign' | 'music' | 'math'
@@ -2414,6 +2422,608 @@ function getStep0_1SuccessHtml() {
 
 // --- End Substep 0-1 Implementation ---
 
+    
+    // --- Substep 0-2 Implementation ---
+// code_0_2.js: Substep [0-2] 되짚어 보기 1: 초등 대응 관계 (□, △를 사용한 식) (교과서 p.70)
+
+function renderToolbar0_2() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab0_2) {
+    state.lab0_2 = {
+      activeTab: 'pen', // 'pen' | 'line'
+      penPrice: 500,    // 300, 500, 700, 1000, 1200
+      deltaTri: 2,      // 1, 2, 3, 4, 5
+      isPassed: false
+    };
+  }
+
+  const curTab = state.lab0_2.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:4px;">대응 탐구:</span>
+      <button class="tool-btn ${curTab === 'pen' ? 'active' : ''}" onclick="setLab0_2Tab('pen')">
+        🖊️ 1. 볼펜 4개 가격 (4 × □)
+      </button>
+      <button class="tool-btn ${curTab === 'line' ? 'active' : ''}" onclick="setLab0_2Tab('line')">
+        📏 2. 수직선 거리 (6 - △)
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 4px;"></div>
+      <button class="icon-btn" onclick="resetLab0_2()" title="캔버스 초기화">
+        🔄 초기화
+      </button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('0-2')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab0_2Tab(tabName) {
+  if (!state.lab0_2) state.lab0_2 = { activeTab: 'pen', penPrice: 500, deltaTri: 2, isPassed: false };
+  state.lab0_2.activeTab = tabName;
+  renderToolbar0_2();
+  drawStep0_2Canvas();
+}
+
+function resetLab0_2() {
+  state.lab0_2 = {
+    activeTab: 'pen',
+    penPrice: 500,
+    deltaTri: 2,
+    isPassed: false
+  };
+  renderToolbar0_2();
+  drawStep0_2Canvas();
+}
+
+function renderSubstep0_2() {
+  const mTitle = document.getElementById('mission-title');
+  const mDesc = document.getElementById('mission-desc');
+  const cont = document.getElementById('substep-form-content');
+
+  if (mTitle) {
+    mTitle.innerText = '[0-2] 되짚어 보기 1: 대응 관계 (□, △를 사용한 식) (교과서 p.70)';
+  }
+
+  if (mDesc) {
+    mDesc.innerHTML = `
+      <b>[초등 5~6학년 연계: 대응 관계를 식으로 나타내기]</b><br>
+      • 변하는 두 양 사이의 관계를 나타낼 때 <b>기호 $\\square, \\triangle$</b>를 사용하면 규칙을 간단한 식으로 표현할 수 있습니다.<br>
+      • 한 개에 $\\square$원 하는 물건 4개의 값은 <b>$4 \\times \\square$</b> 또는 <b>$\\square \\times 4$</b>로 나타냅니다.<br>
+      • $6$보다 $\\triangle$만큼 작은 수는 기준 $6$에서 $\\triangle$를 뺀 <b>$6 - \\triangle$</b>로 나타냅니다.<br>
+      좌측 캔버스에서 볼펜 가격과 수직선 거리를 조작해 보며 아래 2문항을 완성해 보세요.
+    `;
+  }
+
+  if (cont) {
+    cont.innerHTML = `
+      <div class="scaffold-card" style="padding:16px; border:1px solid #e2e8f0; border-radius:12px; background:#ffffff; box-shadow:0 1px 3px rgba(0,0,0,0.05); margin-bottom:12px;">
+        <h4 style="font-size:0.92rem; font-weight:700; color:#1e293b; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+          <span style="background:#e0e7ff; color:#4338ca; width:22px; height:22px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:0.75rem;">1</span>
+          볼펜 4개의 값 표현 (교과서 1-(1))
+        </h4>
+        <p style="font-size:0.84rem; color:#475569; line-height:1.5; margin-bottom:10px;">
+          한 개에 $\\square$원 하는 볼펜 <b>4개의 값</b>을 $\\square$를 사용한 곱셈 식으로 나타내시오.<br>
+          <span style="font-size:0.78rem; color:#64748b;">(단위 '원'은 제외하고 식만 입력하며, 곱셈 기호는 * 또는 ×를 사용합니다)</span>
+        </p>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <label style="font-size:0.84rem; font-weight:600; color:#334155;">답안 식:</label>
+          <input type="text" id="q0_2_ans1" class="proof-input-text" placeholder="식 입력" style="width:180px; font-weight:700; text-align:center;">
+          <button type="button" class="tool-btn" style="padding:4px 10px; font-size:0.82rem;" onclick="insertSymbolIntoInput('q0_2_ans1', '□')">
+            + □ 기호
+          </button>
+        </div>
+      </div>
+
+      <div class="scaffold-card" style="padding:16px; border:1px solid #e2e8f0; border-radius:12px; background:#ffffff; box-shadow:0 1px 3px rgba(0,0,0,0.05); margin-bottom:14px;">
+        <h4 style="font-size:0.92rem; font-weight:700; color:#1e293b; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+          <span style="background:#e0e7ff; color:#4338ca; width:22px; height:22px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:0.75rem;">2</span>
+          작은 수의 뺄셈 표현 (교과서 1-(2))
+        </h4>
+        <p style="font-size:0.84rem; color:#475569; line-height:1.5; margin-bottom:10px;">
+          $6$보다 $\\triangle$ <b>작은 수</b>를 $\\triangle$를 사용한 식으로 나타내시오.
+        </p>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <label style="font-size:0.84rem; font-weight:600; color:#334155;">답안 식:</label>
+          <input type="text" id="q0_2_ans2" class="proof-input-text" placeholder="식 입력" style="width:180px; font-weight:700; text-align:center;">
+          <button type="button" class="tool-btn" style="padding:4px 10px; font-size:0.82rem;" onclick="insertSymbolIntoInput('q0_2_ans2', '△')">
+            + △ 기호
+          </button>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-bottom:14px;">
+        <button class="primary-btn" style="flex:1; padding:12px; font-size:0.95rem;" onclick="gradeStep0_2()">
+          ✨ 채점 및 학습 완료
+        </button>
+      </div>
+
+      <!-- Conceptual Bridge Card (초등 기호 -> 중등 문자) -->
+      <div style="padding:12px 14px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; display:flex; align-items:flex-start; gap:10px;">
+        <span style="font-size:1.3rem;">💡</span>
+        <div>
+          <b style="font-size:0.84rem; color:#334155;">중학 수학으로의 도약: 기호에서 문자로</b>
+          <p style="font-size:0.78rem; color:#64748b; margin-top:2px; line-height:1.4;">
+            초등학교에서 사용한 $\\square, \\triangle$ 같은 기호는 중학교에서 $x, y, a, b$와 같은 <b>문자</b>로 자연스럽게 발전합니다.
+          </p>
+        </div>
+      </div>
+    `;
+
+    if (window.renderMathInElement) {
+      window.renderMathInElement(cont, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false }
+        ]
+      });
+    }
+  }
+
+  // Draw Two.js canvas
+  drawStep0_2Canvas();
+}
+
+function insertSymbolIntoInput(inputId, symbol) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  input.value += symbol;
+  input.focus();
+}
+
+function drawStep0_2Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const width = container.clientWidth || 580;
+  const height = 440; // Strict Vertical Budget
+
+  const two = new Two({
+    width: width,
+    height: height,
+    type: Two.Types.svg
+  }).appendTo(container);
+
+  drawVariableRelationLab(two, width, height);
+  two.update();
+}
+
+function drawVariableRelationLab(two, width, height) {
+  // Background card
+  const bg = two.makeRoundedRectangle(width / 2, height / 2, width - 12, height - 12, 12);
+  bg.fill = '#f8fafc';
+  bg.stroke = '#e2e8f0';
+  bg.linewidth = 1.5;
+
+  if (!state.lab0_2) {
+    state.lab0_2 = { activeTab: 'pen', penPrice: 500, deltaTri: 2, isPassed: false };
+  }
+
+  const mode = state.lab0_2.activeTab || 'pen';
+
+  if (mode === 'pen') {
+    drawPenPriceLab(two, width, height);
+  } else {
+    drawNumberLineDistanceLab(two, width, height);
+  }
+
+  // Bottom Safety Banner (Y=396px, H=28px, strict vertical budget: 440 - 396 - 14 = 30px >= 25px)
+  const bannerY = 396;
+  const bannerH = 28;
+  const banner = two.makeRoundedRectangle(width / 2, bannerY, width - 36, bannerH, 8);
+  banner.fill = '#eff6ff';
+  banner.stroke = '#bfdbfe';
+  banner.linewidth = 1;
+
+  two.makeText(
+    '💡 기호 □와 △를 사용하면 어떤 수가 오더라도 수량 사이의 관계를 하나의 식으로 나타낼 수 있습니다.',
+    width / 2, bannerY, {
+      family: 'Pretendard, sans-serif',
+      size: 11.5,
+      weight: 600,
+      fill: '#1e40af',
+      alignment: 'center'
+    }
+  );
+}
+
+// 1. 볼펜 4개의 값 대응 관계 랩 (한 개에 □원 하는 볼펜 4개)
+function drawPenPriceLab(two, width, height) {
+  two.makeText('🖊️ 한 개에 □원 하는 볼펜 4개의 값 대응 관계 랩', width / 2, 28, {
+    family: 'Pretendard, sans-serif', size: 14, weight: 700, fill: '#1e293b', alignment: 'center'
+  });
+
+  const penPrice = state.lab0_2.penPrice || 500;
+  const totalPrice = 4 * penPrice;
+
+  // Price Selector Buttons (□ = 300, 500, 700, 1000, 1200)
+  const selBox = two.makeRoundedRectangle(width / 2, 68, width - 40, 42, 8);
+  selBox.fill = '#ffffff';
+  selBox.stroke = '#cbd5e1';
+  selBox.linewidth = 1.5;
+
+  two.makeText('볼펜 1개 가격 (□) 설정:', width * 0.22, 68, {
+    family: 'Pretendard, sans-serif', size: 11.5, weight: 600, fill: '#475569', alignment: 'center'
+  });
+
+  const prices = [300, 500, 700, 1000, 1200];
+  const startX = width * 0.45;
+  const spacing = 58;
+
+  prices.forEach((p, idx) => {
+    const bx = startX + idx * spacing;
+    const isAct = (p === penPrice);
+
+    const btn = two.makeRoundedRectangle(bx, 68, 50, 26, 6);
+    btn.fill = isAct ? '#4f46e5' : '#f1f5f9';
+    btn.stroke = isAct ? '#4338ca' : '#cbd5e1';
+    btn.linewidth = isAct ? 2 : 1;
+
+    two.makeText(`${p}원`, bx, 68, {
+      family: 'Pretendard, sans-serif', size: 10.5, weight: isAct ? 700 : 500, fill: isAct ? '#ffffff' : '#475569', alignment: 'center'
+    });
+
+    two.update();
+    if (btn._renderer && btn._renderer.elem) {
+      btn._renderer.elem.style.cursor = 'pointer';
+      btn._renderer.elem.onclick = () => {
+        state.lab0_2.penPrice = p;
+        drawStep0_2Canvas();
+      };
+    }
+  });
+
+  // 4 Pens Visualization
+  const penAreaY = 175;
+  const penW = (width - 80) / 4;
+  const penH = 120;
+
+  for (let i = 0; i < 4; i++) {
+    const px = 40 + penW / 2 + i * penW;
+
+    // Card for each pen
+    const penCard = two.makeRoundedRectangle(px, penAreaY, penW - 10, penH, 10);
+    penCard.fill = '#ffffff';
+    penCard.stroke = '#818cf8';
+    penCard.linewidth = 1.5;
+
+    // Pen Illustration
+    const body = two.makeRoundedRectangle(px, penAreaY - 14, 14, 60, 4);
+    body.fill = '#4f46e5';
+    body.stroke = '#3730a3';
+
+    // Pen Tip
+    const tip = two.makePolygon(px, penAreaY + 24, 7, 3);
+    tip.rotation = Math.PI;
+    tip.fill = '#94a3b8';
+
+    // Pen Cap / Grip
+    const grip = two.makeRoundedRectangle(px, penAreaY - 34, 16, 12, 2);
+    grip.fill = '#312e81';
+
+    // Number Badge
+    two.makeText(`볼펜 ${i + 1}`, px, penAreaY - 44, {
+      family: 'Pretendard, sans-serif', size: 10.5, weight: 700, fill: '#475569', alignment: 'center'
+    });
+
+    // Tag (□원)
+    const tag = two.makeRoundedRectangle(px, penAreaY + 40, penW - 24, 20, 4);
+    tag.fill = '#eef2ff';
+    tag.stroke = '#c7d2fe';
+    two.makeText(`□원 (${penPrice}원)`, px, penAreaY + 40, {
+      family: 'Pretendard, sans-serif', size: 10.5, weight: 700, fill: '#4338ca', alignment: 'center'
+    });
+  }
+
+  // Calculation & Formula Summary Panel
+  const panelY = 295;
+  const panelH = 95;
+  const panel = two.makeRoundedRectangle(width / 2, panelY, width - 40, panelH, 12);
+  panel.fill = '#ffffff';
+  panel.stroke = '#10b981';
+  panel.linewidth = 2;
+
+  // Header Badge
+  const badge = two.makeRoundedRectangle(width / 2, panelY - 35, 260, 24, 12);
+  badge.fill = '#10b981';
+  two.makeText('✨ 대응 관계 식과 수치 대입 결과', width / 2, panelY - 35, {
+    family: 'Pretendard, sans-serif', size: 11.5, weight: 700, fill: '#ffffff', alignment: 'center'
+  });
+
+  // Formula Display
+  two.makeText('일반적인 대응 관계 식:  4 × □ (원)   또는   □ × 4 (원)', width / 2, panelY - 6, {
+    family: 'Pretendard, sans-serif', size: 13, weight: 800, fill: '#166534', alignment: 'center'
+  });
+
+  two.makeText(
+    `현재 설정 대입: 4 × ${penPrice}원 = ${totalPrice}원 (볼펜 4개의 총 가격)`,
+    width / 2, panelY + 24, {
+      family: 'Pretendard, sans-serif', size: 12, weight: 600, fill: '#0f172a', alignment: 'center'
+    }
+  );
+}
+
+// 2. 수직선 거리와 뺄셈 대응 관계 랩 (6보다 △ 작은 수)
+function drawNumberLineDistanceLab(two, width, height) {
+  two.makeText('📏 6보다 △ 작은 수 대응 관계 수직선 랩', width / 2, 28, {
+    family: 'Pretendard, sans-serif', size: 14, weight: 700, fill: '#1e293b', alignment: 'center'
+  });
+
+  const delta = state.lab0_2.deltaTri || 2;
+  const finalVal = 6 - delta;
+
+  // Delta Selector Buttons (△ = 1, 2, 3, 4, 5)
+  const selBox = two.makeRoundedRectangle(width / 2, 68, width - 40, 42, 8);
+  selBox.fill = '#ffffff';
+  selBox.stroke = '#cbd5e1';
+  selBox.linewidth = 1.5;
+
+  two.makeText('작아지는 수 (△) 설정:', width * 0.22, 68, {
+    family: 'Pretendard, sans-serif', size: 11.5, weight: 600, fill: '#475569', alignment: 'center'
+  });
+
+  const deltas = [1, 2, 3, 4, 5];
+  const startX = width * 0.45;
+  const spacing = 58;
+
+  deltas.forEach((d, idx) => {
+    const bx = startX + idx * spacing;
+    const isAct = (d === delta);
+
+    const btn = two.makeRoundedRectangle(bx, 68, 48, 26, 6);
+    btn.fill = isAct ? '#0284c7' : '#f1f5f9';
+    btn.stroke = isAct ? '#0369a1' : '#cbd5e1';
+    btn.linewidth = isAct ? 2 : 1;
+
+    two.makeText(`△=${d}`, bx, 68, {
+      family: 'Pretendard, sans-serif', size: 10.5, weight: isAct ? 700 : 500, fill: isAct ? '#ffffff' : '#475569', alignment: 'center'
+    });
+
+    two.update();
+    if (btn._renderer && btn._renderer.elem) {
+      btn._renderer.elem.style.cursor = 'pointer';
+      btn._renderer.elem.onclick = () => {
+        state.lab0_2.deltaTri = d;
+        drawStep0_2Canvas();
+      };
+    }
+  });
+
+  // Number Line (수직선: 0 ~ 7)
+  const nlY = 195;
+  const nlLeft = 50;
+  const nlRight = width - 50;
+  const nlWidth = nlRight - nlLeft;
+  const stepW = nlWidth / 7;
+
+  // Main Axis Line
+  const axis = two.makeLine(nlLeft, nlY, nlRight, nlY);
+  axis.stroke = '#475569';
+  axis.linewidth = 2.5;
+
+  // Arrows
+  const leftArrow = two.makeLine(nlLeft, nlY, nlLeft + 8, nlY - 5);
+  leftArrow.stroke = '#475569';
+  leftArrow.linewidth = 2;
+  const leftArrow2 = two.makeLine(nlLeft, nlY, nlLeft + 8, nlY + 5);
+  leftArrow2.stroke = '#475569';
+  leftArrow2.linewidth = 2;
+
+  const rightArrow = two.makeLine(nlRight, nlY, nlRight - 8, nlY - 5);
+  rightArrow.stroke = '#475569';
+  rightArrow.linewidth = 2;
+  const rightArrow2 = two.makeLine(nlRight, nlY, nlRight - 8, nlY + 5);
+  rightArrow2.stroke = '#475569';
+  rightArrow2.linewidth = 2;
+
+  // Ticks 0 to 7
+  for (let val = 0; val <= 7; val++) {
+    const tx = nlLeft + val * stepW;
+    const isBase = (val === 6);
+    const isTarget = (val === finalVal);
+
+    // Tick
+    const tick = two.makeLine(tx, nlY - 8, tx, nlY + 8);
+    tick.stroke = isBase ? '#4f46e5' : (isTarget ? '#dc2626' : '#94a3b8');
+    tick.linewidth = (isBase || isTarget) ? 3 : 1.5;
+
+    // Label
+    two.makeText(`${val}`, tx, nlY + 24, {
+      family: 'Pretendard, sans-serif',
+      size: (isBase || isTarget) ? 14 : 11,
+      weight: (isBase || isTarget) ? 800 : 500,
+      fill: isBase ? '#4f46e5' : (isTarget ? '#dc2626' : '#475569'),
+      alignment: 'center'
+    });
+  }
+
+  // Jump Vector (6 -> 6 - delta)
+  const startJumpX = nlLeft + 6 * stepW;
+  const endJumpX = nlLeft + finalVal * stepW;
+  const jumpMidX = (startJumpX + endJumpX) / 2;
+  const arcY = nlY - 55;
+
+  // Curved Arrow Arc
+  const path = two.makeCurve(
+    startJumpX, nlY - 12,
+    jumpMidX, arcY,
+    endJumpX, nlY - 12,
+    true
+  );
+  path.fill = 'transparent';
+  path.stroke = '#ea580c';
+  path.linewidth = 3;
+
+  // Leftward Arrowhead at endJumpX
+  const a1 = two.makeLine(endJumpX, nlY - 12, endJumpX + 8, nlY - 22);
+  a1.stroke = '#ea580c';
+  a1.linewidth = 3;
+  const a2 = two.makeLine(endJumpX, nlY - 12, endJumpX + 12, nlY - 10);
+  a2.stroke = '#ea580c';
+  a2.linewidth = 3;
+
+  // Delta Label on Vector
+  const triBadge = two.makeRoundedRectangle(jumpMidX, arcY - 4, 110, 22, 6);
+  triBadge.fill = '#fff7ed';
+  triBadge.stroke = '#fed7aa';
+  two.makeText(`왼쪽으로 △ (${delta}) 만큼 이동`, jumpMidX, arcY - 4, {
+    family: 'Pretendard, sans-serif', size: 10.5, weight: 700, fill: '#ea580c', alignment: 'center'
+  });
+
+  // Base Point Circle (6)
+  const cBase = two.makeCircle(startJumpX, nlY, 7);
+  cBase.fill = '#4f46e5';
+  cBase.stroke = '#ffffff';
+  cBase.linewidth = 2;
+
+  // Target Point Circle (6 - delta)
+  const cTarget = two.makeCircle(endJumpX, nlY, 8);
+  cTarget.fill = '#dc2626';
+  cTarget.stroke = '#ffffff';
+  cTarget.linewidth = 2.5;
+
+  // Summary Panel
+  const panelY = 295;
+  const panelH = 95;
+  const panel = two.makeRoundedRectangle(width / 2, panelY, width - 40, panelH, 12);
+  panel.fill = '#ffffff';
+  panel.stroke = '#0284c7';
+  panel.linewidth = 2;
+
+  const badge = two.makeRoundedRectangle(width / 2, panelY - 35, 260, 24, 12);
+  badge.fill = '#0284c7';
+  two.makeText('✨ 뺄셈 대응 관계 식과 수치 대입 결과', width / 2, panelY - 35, {
+    family: 'Pretendard, sans-serif', size: 11.5, weight: 700, fill: '#ffffff', alignment: 'center'
+  });
+
+  two.makeText('일반적인 대응 관계 식:  6 - △', width / 2, panelY - 6, {
+    family: 'Pretendard, sans-serif', size: 14, weight: 800, fill: '#0369a1', alignment: 'center'
+  });
+
+  two.makeText(
+    `현재 설정 대입: 6에서 △(${delta})만큼 작은 수 = 6 - ${delta} = ${finalVal}`,
+    width / 2, panelY + 24, {
+      family: 'Pretendard, sans-serif', size: 12, weight: 600, fill: '#0f172a', alignment: 'center'
+    }
+  );
+}
+
+function gradeStep0_2() {
+  const in1 = document.getElementById('q0_2_ans1');
+  const in2 = document.getElementById('q0_2_ans2');
+  const banner = document.getElementById('feedback-banner');
+
+  if (!in1 || !in2 || !banner) return;
+
+  const raw1 = in1.value.trim().replace(/\s+/g, '').toLowerCase();
+  const raw2 = in2.value.trim().replace(/\s+/g, '').toLowerCase();
+
+  // Validate empty
+  if (!raw1 || !raw2) {
+    banner.style.display = 'block';
+    banner.className = 'feedback-card error';
+    banner.innerHTML = `
+      <div style="font-weight:700; color:#dc2626; margin-bottom:4px;">⚠️ 미입력 문항이 있습니다.</div>
+      <div style="font-size:0.84rem; color:#475569;">1번과 2번 문항의 식을 모두 입력한 후 채점해 주세요.</div>
+    `;
+    return;
+  }
+
+  // Question 1: 볼펜 4개의 값 (한 개에 □원)
+  // Allowed: 4*□, □*4, 4×□, □×4, 4(□), (□)*4, 4□, 4*box, box*4, 4*네모, 4네모, 4x□, □x4
+  const norm1 = raw1
+    .replace(/×/g, '*')
+    .replace(/x/g, '*')
+    .replace(/네모/g, '□')
+    .replace(/box/g, '□')
+    .replace(/\[\]/g, '□');
+
+  const allowedQ1 = [
+    '4*□', '□*4', '4(□)', '(□)*4', '(4)*□', '□(4)', '4□',
+    '(4*□)', '(□*4)'
+  ];
+  const isQ1Correct = allowedQ1.includes(norm1);
+
+  // Question 2: 6보다 △ 작은 수
+  // Allowed: 6-△, 6-세모, 6-triangle, -△+6
+  const norm2 = raw2
+    .replace(/세모/g, '△')
+    .replace(/triangle/g, '△')
+    .replace(/삼각형/g, '△');
+
+  const allowedQ2 = [
+    '6-△', '(6-△)', '-△+6', '(-△+6)'
+  ];
+  const isQ2Correct = allowedQ2.includes(norm2);
+
+  if (isQ1Correct && isQ2Correct) {
+    if (!state.lab0_2) state.lab0_2 = {};
+    state.lab0_2.isPassed = true;
+    passCurrentSubstepGeneric('0-2');
+
+    banner.style.display = 'block';
+    banner.className = 'feedback-card success';
+    banner.innerHTML = getStep0_2SuccessHtml();
+
+    if (window.renderMathInElement) {
+      window.renderMathInElement(banner, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false }
+        ]
+      });
+    }
+  } else {
+    const hints = [];
+    if (!isQ1Correct) {
+      hints.push('<b>1번 문항</b>: 한 개의 가격($\\square$)에 볼펜의 개수($4$)를 곱하는 식($4 \\times \\square$ 또는 $\\square \\times 4$)을 확인해 보세요.');
+    }
+    if (!isQ2Correct) {
+      hints.push('<b>2번 문항</b>: 기준이 되는 수 $6$에서 작은 만큼 빼 주는 식($6 - \\triangle$)을 확인해 보세요.');
+    }
+
+    banner.style.display = 'block';
+    banner.className = 'feedback-card error';
+    banner.innerHTML = `
+      <div style="font-weight:700; color:#dc2626; margin-bottom:6px;">❌ 아쉽습니다! 다시 한번 확인해 보세요.</div>
+      <div style="font-size:0.84rem; color:#475569; line-height:1.5;">${hints.join('<br>')}</div>
+    `;
+  }
+}
+
+function getStep0_2SuccessHtml() {
+  return `
+    <div style="text-align:center; padding:6px 0;">
+      <div style="font-size:2rem; margin-bottom:6px;">🎉 100점 완벽 통과!</div>
+      <h3 style="font-size:1.15rem; color:#15803d; font-weight:800; margin-bottom:8px;">
+        되짚어 보기 1: 대응 관계 (□, △를 사용한 식) 완료!
+      </h3>
+      <p style="font-size:0.88rem; color:#334155; line-height:1.6; margin-bottom:12px;">
+        변하는 두 양 사이의 규칙을 기호 $\\square, \\triangle$로 훌륭하게 표현하였습니다.<br>
+        중학교에서는 이러한 기호 대신 $x, y, a, b$와 같은 <b>문자</b>를 사용하게 됩니다!
+      </p>
+      <div style="background:#ffffff; border:1px solid #bbf7d0; border-radius:10px; padding:12px; margin-bottom:12px; text-align:left;">
+        <b style="font-size:0.88rem; color:#166534;">📝 정답 및 개념 정리:</b>
+        <ul style="font-size:0.82rem; color:#475569; margin-top:6px; padding-left:18px; line-height:1.6;">
+          <li><b>(1) 볼펜 4개의 값</b>: $4 \\times \\square$원 (또는 $\\square \\times 4$원) $\\implies$ 중학 과정: $4a$원</li>
+          <li><b>(2) 6보다 △ 작은 수</b>: $6 - \\triangle \\implies$ 중학 과정: $6 - x$</li>
+        </ul>
+      </div>
+      <div style="font-size:0.82rem; color:#059669; font-weight:700;">
+        ⚡ 영서중 수학 LMS 원격 DB에 학습 성과(100점)가 실시간 기록되었습니다!
+      </div>
+    </div>
+  `;
+}
+
+    // --- End Substep 0-2 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -2439,6 +3049,9 @@ function getStep0_1SuccessHtml() {
       if (code === '0-1') {
         renderToolbar0_1();
         renderSubstep0_1();
+      } else if (code === '0-2') {
+        renderToolbar0_2();
+        renderSubstep0_2();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
