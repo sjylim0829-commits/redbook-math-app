@@ -1195,7 +1195,13 @@
         missionText: '<b>[6-10] 스스로 확인하기 4: 잘못 나눈 어떤 유리수 (교과서 p.63)</b><br>• <b>역연산(Reverse Operation)의 원리</b>:<br>어떤 수 $\\square$에 $A$를 나누어 $B$가 되었다면($\\square \\div A = B$), 나눗셈의 역연산은 곱셈이므로 $\\square = B \\times A$ 로 원래의 수를 복원할 수 있습니다.<br>• <b>바른 계산의 수행</b>:<br>복원한 어떤 수 $\\square$에 원래 해야 했던 연산(곱셈)을 적용하여 바른 답을 완성합니다.<br>• <b>탐구 미션</b>: 캔버스의 역연산 레트로 체인을 관찰하고, ⑴ 어떤 유리수와 ⑵ 바르게 계산한 답을 기약분수 형태로 입력하여 정답을 완성하세요!',
         drawer: 'drawStep6_10Canvas'
       },
-      '6-11': { code: '6-11', tab: 6, substepLabel: '11. [스스로 확인 5] 실생활 사칙 문장제', missionText: '[6-11] 스스로 확인하기 5번 (p.63)', drawer: 'drawGenericScaffoldCanvas' },
+      '6-11': {
+        code: '6-11',
+        tab: 6,
+        substepLabel: '11. [스스로 확인하기 5] 실생활 사칙 문장제 (볼링공 평균 무게)',
+        missionText: '<b>[6-11] 스스로 확인하기 5: 실생활 사칙 혼합 계산 (교과서 p.63)</b><br>• <b>실생활 편차와 평균</b>:<br>기준 무게보다 무거우면 양의 부호 $(+)$, 가벼우면 음의 부호 $(-)$로 편차를 나타냅니다.<br>• <b>평균을 구하는 2가지 방법</b>:<br>① <b>편차 평균 방식</b>: $(\\text{기준 무게}) + \\{ (\\text{편차의 합}) \\div (\\text{전체 개수}) \\}$<br>② <b>총합 평균 방식</b>: $(\\text{각 볼링공의 실제 무게 합}) \\div (\\text{전체 개수})$<br>• <b>탐구 미션</b>: 캔버스에서 5개 볼링공의 편차와 실제 무게를 관찰하고, 5개 볼링공의 평균 무게를 소수 또는 분수 형태로 입력하여 정답을 완성하세요!',
+        drawer: 'drawStep6_11Canvas'
+      },
       '6-12': { code: '6-12', tab: 6, substepLabel: '12. [생각 넓히기] 나만의 사칙 식 만들기', missionText: '[6-12] 생각 넓히기 사칙 식 제작 (p.63)', drawer: 'drawGenericScaffoldCanvas' },
 
       // Tab 7
@@ -1860,6 +1866,12 @@
       lab6_10: {
         stepPhase: 0,        // 0: 문제 상황, 1: 역연산 식, 2: 어떤 수 복원, 3: 바른 계산식, 4: 최종 정답
         isPassed: false
+      },
+      lab6_11: {
+        selectedBall: 'ALL',
+        calcMethod: 'deviation', // 'deviation' or 'actual'
+        showAverageLine: false,
+        isPassed: false
       }
     };
 
@@ -2146,6 +2158,9 @@
       } else if (code === '6-10') {
         renderToolbar6_10();
         renderSubstep6_10();
+      } else if (code === '6-11') {
+        renderToolbar6_11();
+        renderSubstep6_11();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
@@ -37257,6 +37272,494 @@ function drawRetroEquationChainLab(two, width, height, canvasEl) {
 }
 
 
+// ==========================================
+// [6-11] [스스로 확인하기 5] 실생활 사칙 혼합 문장제 (교과서 p.63 문제 5번)
+// ==========================================
+
+const BOWLING_AVERAGE_DATA_6_11 = {
+  baseWeight: 5.4,
+  balls: [
+    { id: 'A', name: '공 A', diff: -0.2, actual: 5.2, color: '#f87171' },
+    { id: 'B', name: '공 B', diff: +0.4, actual: 5.8, color: '#60a5fa' },
+    { id: 'C', name: '공 C', diff: -0.5, actual: 4.9, color: '#f43f5e' },
+    { id: 'D', name: '공 D', diff: +0.1, actual: 5.5, color: '#38bdf8' },
+    { id: 'E', name: '공 E', diff: -0.3, actual: 5.1, color: '#fb923c' }
+  ],
+  diffSum: -0.5,
+  diffAvg: -0.1,
+  actualSum: 26.5,
+  finalAvg: 5.3,
+  ansVal: '5.3',
+  ansAlt: ['5.3', '5.3kg', '53/10']
+};
+
+function renderToolbar6_11() {
+  const toolbar = document.getElementById('plane-toolbar');
+  if (!toolbar) return;
+  const curMethod = state.lab6_11.calcMethod || 'deviation';
+  const showAvg = state.lab6_11.showAverageLine;
+  toolbar.innerHTML = `
+    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; width:100%;">
+      <span style="font-weight:700; font-size:0.9rem; color:#1e293b;">[6-11] 볼링공 평균 무게 시뮬레이터</span>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 4px;"></div>
+      <button class="btn ${curMethod === 'deviation' ? 'btn-primary' : 'btn-outline-secondary'}" style="padding:3px 9px; font-size:0.8rem;" onclick="setLab6_11Method('deviation')">① 편차 평균 방식</button>
+      <button class="btn ${curMethod === 'actual' ? 'btn-primary' : 'btn-outline-secondary'}" style="padding:3px 9px; font-size:0.8rem;" onclick="setLab6_11Method('actual')">② 실제 합 평균 방식</button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 4px;"></div>
+      <button class="btn ${showAvg ? 'btn-success' : 'btn-outline-success'}" style="padding:3px 9px; font-size:0.8rem;" onclick="toggleLab6_11AverageLine()">${showAvg ? '평균선 ON' : '평균선 표시'}</button>
+      <button class="btn btn-outline-danger" style="padding:3px 9px; font-size:0.8rem;" onclick="resetLab6_11()">🔄 초기화</button>
+      <button class="tool-btn" style="padding:4px 8px; font-size:0.75rem; background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700; margin-left:auto;" onclick="passCurrentSubstepGeneric('6-11')" title="교사 비밀번호로 현재 세부활동을 통과합니다">🔑 교사 패스</button>
+    </div>
+  `;
+}
+
+function setLab6_11Method(method) {
+  state.lab6_11.calcMethod = method;
+  renderToolbar6_11();
+  drawStep6_11Canvas();
+}
+
+function selectLab6_11Ball(ballId) {
+  state.lab6_11.selectedBall = (state.lab6_11.selectedBall === ballId ? 'ALL' : ballId);
+  drawStep6_11Canvas();
+}
+
+function toggleLab6_11AverageLine() {
+  state.lab6_11.showAverageLine = !state.lab6_11.showAverageLine;
+  renderToolbar6_11();
+  drawStep6_11Canvas();
+}
+
+function resetLab6_11() {
+  state.lab6_11.selectedBall = 'ALL';
+  state.lab6_11.calcMethod = 'deviation';
+  state.lab6_11.showAverageLine = false;
+  renderToolbar6_11();
+  drawStep6_11Canvas();
+}
+
+function renderSubstep6_11() {
+  const formBox = document.getElementById('form-box');
+  if (!formBox) return;
+
+  formBox.innerHTML = `
+    <div class="card p-3 shadow-sm" style="border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+      <div class="d-flex align-items-center justify-content-between mb-2 pb-2" style="border-bottom: 2px solid #e2e8f0;">
+        <span class="badge" style="background:#0284c7; color:#fff; font-size:0.85rem; padding:5px 10px; border-radius:6px;">
+          교과서 p.63 [스스로 확인하기 5]
+        </span>
+        <span style="font-size:0.82rem; color:#64748b; font-weight:600;">실생활 사칙 혼합 문장제</span>
+      </div>
+
+      <div class="mb-3 p-2" style="background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
+        <div style="font-weight:700; font-size:0.88rem; color:#0f172a; margin-bottom:6px;">
+          문제 5. 어느 볼링장에서 볼링공의 무게를 잴 때 기준 무게보다 무거우면 양의 부호 $(+)$, 가벼우면 음의 부호 $(-)$를 붙여 나타내기로 하였다. 기준 무게가 $5.4\\text{ kg}$일 때, $5$개의 볼링공 $\\text{A}, \\text{B}, \\text{C}, \\text{D}, \\text{E}$의 무게를 기준 무게와 비교하여 나타낸 표이다. $5$개의 볼링공의 평균 무게를 구하시오.
+        </div>
+
+        <div style="overflow-x:auto; margin-bottom:8px;">
+          <table class="table table-bordered table-sm text-center mb-0" style="font-size:0.82rem; background:#ffffff;">
+            <thead style="background:#e0f2fe; color:#0369a1;">
+              <tr>
+                <th>볼링공</th>
+                <th>A</th>
+                <th>B</th>
+                <th>C</th>
+                <th>D</th>
+                <th>E</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-weight:600; color:#475569;">기준 무게와의 차($\\text{kg}$)</td>
+                <td style="color:#ef4444; font-weight:700;">-0.2</td>
+                <td style="color:#2563eb; font-weight:700;">+0.4</td>
+                <td style="color:#ef4444; font-weight:700;">-0.5</td>
+                <td style="color:#2563eb; font-weight:700;">+0.1</td>
+                <td style="color:#ef4444; font-weight:700;">-0.3</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style="padding:12px; background:#ffffff; border:1.5px solid #cbd5e1; border-radius:8px; margin-bottom:12px; display:flex; flex-direction:column; gap:6px;">
+        <span style="font-weight:700; color:#1e293b; font-size:0.88rem;">5개 볼링공의 평균 무게:</span>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="text" id="ans-6-11" class="form-control form-control-sm proof-input-text" placeholder="소수 또는 분수 입력 (예: 5.1)" style="max-width:260px; font-size:0.85rem;" ${state.lab6_11.isPassed ? 'disabled value="5.3"' : ''}>
+          <span style="font-weight:600; color:#64748b; font-size:0.85rem;">kg</span>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <button class="btn btn-sm btn-outline-warning w-100" onclick="toggleHint6_11()" style="font-size:0.82rem; font-weight:600;">
+          💡 힌트 열기 / 닫기
+        </button>
+        <div id="hint-box-6-11" style="display:none; background:#fefce8; border:1px dashed #eab308; padding:10px 12px; border-radius:6px; font-size:0.82rem; color:#854d0e; line-height:1.4; margin-top:6px;">
+          • <b>방법 1 (편차 평균 이용)</b>:<br>
+          5개 볼링공의 편차의 합: $(-0.2) + (+0.4) + (-0.5) + (+0.1) + (-0.3) = -0.5\\text{ kg}$<br>
+          편차의 평균: $(-0.5) \\div 5 = -0.1\\text{ kg}$<br>
+          평균 무게: $5.4 + (-0.1) = \\mathbf{?\\text{ kg}}$ (기준 무게에 편차의 평균을 더해 보세요!)
+        </div>
+      </div>
+
+      <div id="result-box-6-11" class="mb-2"></div>
+
+      <button id="btn-check-6-11" class="btn btn-primary w-100" style="padding:8px; font-weight:700; font-size:0.95rem; background:#0284c7; border:none;" onclick="gradeStep6_11()" ${state.lab6_11.isPassed ? 'disabled' : ''}>
+        ${state.lab6_11.isPassed ? '✅ 채점 통과 완료' : '정답 확인 및 채점'}
+      </button>
+    </div>
+  `;
+
+  if (window.renderMathInElement) {
+    try {
+      renderMathInElement(formBox);
+    } catch (e) {
+      console.warn('KaTeX render warning:', e);
+    }
+  }
+}
+
+function toggleHint6_11() {
+  const box = document.getElementById('hint-box-6-11');
+  if (box) {
+    box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  }
+}
+
+async function gradeStep6_11() {
+  const a1 = document.getElementById('ans-6-11');
+  const resBox = document.getElementById('result-box-6-11');
+
+  if (!a1 || !resBox) return;
+
+  const v1 = a1.value.trim().replace(/\s+/g, '');
+
+  if (!v1) {
+    resBox.innerHTML = `
+      <div class="alert alert-warning p-2" style="font-size:0.85rem; border-radius:6px;">
+        ⚠️ 평균 무게 답안을 입력해 주세요.
+      </div>
+    `;
+    return;
+  }
+
+  const ok = BOWLING_AVERAGE_DATA_6_11.ansAlt.includes(v1);
+
+  if (ok) {
+    state.lab6_11.isPassed = true;
+    state.lab6_11.showAverageLine = true;
+    if (!state.completedSubSteps.includes('6-11')) {
+      state.completedSubSteps.push('6-11');
+    }
+    if (!state.unlockedSubSteps.includes('6-12')) {
+      state.unlockedSubSteps.push('6-12');
+    }
+
+    if (typeof soundEffect !== 'undefined' && soundEffect.play) {
+      soundEffect.play('correct');
+    }
+
+    if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+      await LMSIntegration.saveStudentProgress('6-11', {
+        answers: { avg: v1 },
+        passed: true,
+        score: 100,
+        timestamp: new Date().toISOString()
+      }, 'unit2');
+    } else if (window.LMSIntegration && window.LMSIntegration.saveStudentProgress) {
+      await window.LMSIntegration.saveStudentProgress('6-11', {
+        answers: { avg: v1 },
+        passed: true,
+        score: 100,
+        timestamp: new Date().toISOString()
+      }, 'unit2');
+    }
+
+    resBox.innerHTML = getStep6_11SuccessHtml();
+    if (window.renderMathInElement) {
+      try { renderMathInElement(resBox); } catch (e) {}
+    }
+    a1.disabled = true;
+    const btn = document.getElementById('btn-check-6-11');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerText = '✅ 채점 통과 완료';
+    }
+    renderToolbar6_11();
+    drawStep6_11Canvas();
+  } else {
+    if (typeof soundEffect !== 'undefined' && soundEffect.play) {
+      soundEffect.play('wrong');
+    }
+    resBox.innerHTML = `
+      <div class="alert alert-danger p-2" style="font-size:0.85rem; border-radius:6px;">
+        ❌ 오답입니다.<br>
+        기준 무게 5.4 kg과 5개 볼링공의 편차의 합 및 평균을 다시 확인해 보세요!
+      </div>
+    `;
+  }
+}
+
+function getStep6_11SuccessHtml() {
+  return `
+    <div style="background:#f0fdf4; border:1.5px solid #22c55e; border-radius:8px; padding:12px; margin-bottom:10px;">
+      <div style="font-weight:700; color:#15803d; font-size:0.95rem; margin-bottom:4px;">
+        🎉 완벽합니다! [스스로 확인하기 5] 통과! (100점)
+      </div>
+      <div style="font-size:0.85rem; color:#166534; line-height:1.5; margin-bottom:8px;">
+        • <b>편차의 합</b>: $(-0.2) + (+0.4) + (-0.5) + (+0.1) + (-0.3) = -0.5\\text{ kg}$<br>
+        • <b>편차의 평균</b>: $(-0.5) \\div 5 = -0.1\\text{ kg}$<br>
+        • <b>5개 볼링공의 평균 무게</b>: $5.4 + (-0.1) = \\mathbf{5.3\\text{ kg}}$
+      </div>
+      <div style="font-size:0.82rem; color:#15803d; margin-bottom:10px;">
+        Tab 6의 마지막 단계인 <b>[6-12] 생각 넓히기: 나만의 사칙 혼합 식 만들기</b>가 잠금 해제되었습니다.
+      </div>
+      <button class="primary-btn" onclick="goToNextSubstep()" style="width:100%; padding:10px 0; font-size:0.95rem; background:#16a34a; border-color:#16a34a;">
+        다음 단계 [6-12] 생각 넓히기: 나만의 사칙 식으로 이동 →
+      </button>
+    </div>
+  `;
+}
+
+function drawStep6_11Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+  container.innerHTML = '';
+  container.onpointerdown = null;
+  container.onpointermove = null;
+  container.onpointerup = null;
+
+  const width = container.clientWidth || 560;
+  const height = 440; // Vertical Budget Strictly Preserved
+
+  const two = new Two({
+    width: width,
+    height: height,
+    type: Two.Types.svg
+  }).appendTo(container);
+
+  const canvasEl = container.querySelector('svg') || container;
+  drawBowlingAverageDistributionLab(two, width, height, canvasEl);
+  two.update();
+}
+
+function drawBowlingAverageDistributionLab(two, width, height, canvasEl) {
+  // 1. 배경
+  const bg = two.makeRoundedRectangle(width / 2, height / 2, width - 4, height - 4, 10);
+  bg.fill = '#f8fafc';
+  bg.stroke = '#cbd5e1';
+  bg.linewidth = 1.5;
+
+  // 2. Y=22: 상단 헤더 뱃지
+  const headerBg = two.makeRoundedRectangle(width / 2, 22, width - 24, 28, 6);
+  headerBg.fill = '#0284c7';
+  headerBg.noStroke();
+
+  const headerText = two.makeText('🎳 볼링공 무게 편차 및 평균 분포 시뮬레이터 (교과서 p.63)', width / 2, 22);
+  headerText.fill = '#ffffff';
+  headerText.size = 12;
+  headerText.weight = 700;
+
+  // 3. Y=58: 계산 방법 탭 바
+  const curMethod = state.lab6_11.calcMethod || 'deviation';
+  const tabW = (width - 40) / 2;
+  const methodTabs = [
+    { key: 'deviation', label: '① 편차 평균 방식 (기준 5.4kg + 편차평균)' },
+    { key: 'actual', label: '② 실제 무게 총합 방식 (총합 26.5kg ÷ 5)' }
+  ];
+  const tabBoxes = [];
+
+  methodTabs.forEach((tab, idx) => {
+    const tx = 20 + tabW / 2 + idx * tabW;
+    const isAct = (tab.key === curMethod);
+
+    const tBg = two.makeRoundedRectangle(tx, 58, tabW - 8, 26, 4);
+    tBg.fill = isAct ? '#0369a1' : '#ffffff';
+    tBg.stroke = isAct ? '#0284c7' : '#cbd5e1';
+    tBg.linewidth = isAct ? 2 : 1;
+
+    const tText = two.makeText(tab.label, tx, 58);
+    tText.fill = isAct ? '#ffffff' : '#475569';
+    tText.size = 10;
+    tText.weight = isAct ? 700 : 500;
+
+    tabBoxes.push({ key: tab.key, x: tx, y: 58, w: tabW - 8, h: 26 });
+  });
+
+  // 4. Y=95 ~ Y=275: 중앙 5개 볼링공 게이지 스테이지
+  const stageBg = two.makeRoundedRectangle(width / 2, 185, width - 40, 180, 10);
+  stageBg.fill = '#ffffff';
+  stageBg.stroke = '#bae6fd';
+  stageBg.linewidth = 2;
+
+  // 기준 무게 수평선 (5.4 kg): Y=180
+  const baseY = 180;
+  const baseLine = two.makeLine(35, baseY, width - 35, baseY);
+  baseLine.stroke = '#64748b';
+  baseLine.linewidth = 1.5;
+  baseLine.dashes = [5, 4];
+
+  const baseLabel = two.makeText('기준 무게: 5.4 kg (0.0)', width - 85, baseY - 8);
+  baseLabel.fill = '#475569';
+  baseLabel.size = 10;
+  baseLabel.weight = 700;
+
+  // 평균선 (5.3 kg): 편차 -0.1 kg ➔ Y = baseY + 18 (아래쪽 18px)
+  const avgY = baseY + 18;
+  const isPassed = state.lab6_11.isPassed;
+  if (state.lab6_11.showAverageLine || isPassed) {
+    const avgLine = two.makeLine(35, avgY, width - 35, avgY);
+    avgLine.stroke = '#16a34a';
+    avgLine.linewidth = 2;
+
+    const avgLabel = two.makeText(isPassed ? '★ 평균 무게: 5.3 kg (-0.1)' : '★ 평균선 (편차 합 -0.5kg ÷ 5 지점)', width - 85, avgY + 12);
+    avgLabel.fill = '#15803d';
+    avgLabel.size = 10;
+    avgLabel.weight = 700;
+  }
+
+  // 5개 볼링공 렌더링
+  const balls = BOWLING_AVERAGE_DATA_6_11.balls;
+  const ballSpacing = (width - 80) / 5;
+  const ballBoxes = [];
+
+  balls.forEach((b, idx) => {
+    const bx = 40 + ballSpacing / 2 + idx * ballSpacing;
+    // 편차에 따른 Y축 위치: scale 1kg = 180px, 0.1kg = 18px
+    // diff가 양수면 위쪽(-), 음수면 아래쪽(+)
+    const diffPx = -b.diff * 180;
+    const by = baseY + diffPx;
+
+    const isSel = (state.lab6_11.selectedBall === b.id);
+
+    // 기준선에서 공까지의 편차 연결 기둥
+    const pole = two.makeLine(bx, baseY, bx, by);
+    pole.stroke = b.diff >= 0 ? '#3b82f6' : '#ef4444';
+    pole.linewidth = isSel ? 3 : 2;
+
+    // 볼링공 원형 그래픽
+    const circle = two.makeCircle(bx, by, isSel ? 22 : 19);
+    circle.fill = isSel ? '#0284c7' : b.color;
+    circle.stroke = isSel ? '#0369a1' : '#ffffff';
+    circle.linewidth = 2;
+
+    // 공 라벨 (A, B, C, D, E)
+    const nameText = two.makeText(b.id, bx, by - 1);
+    nameText.fill = '#ffffff';
+    nameText.size = 12;
+    nameText.weight = 800;
+
+    // 공 상단 편차 텍스트
+    const diffText = two.makeText((b.diff > 0 ? '+' : '') + b.diff, bx, by + (b.diff >= 0 ? -28 : 28));
+    diffText.fill = b.diff >= 0 ? '#1d4ed8' : '#b91c1c';
+    diffText.size = 10.5;
+    diffText.weight = 700;
+
+    // 공 하단 실제 무게
+    const actualText = two.makeText(b.actual + ' kg', bx, 262);
+    actualText.fill = isSel ? '#0284c7' : '#334155';
+    actualText.size = 10;
+    actualText.weight = isSel ? 700 : 500;
+
+    ballBoxes.push({ id: b.id, x: bx, y: by, r: 24 });
+  });
+
+  // 5. Y=305: 수식 계산 단계 카드
+  const calcBox = two.makeRoundedRectangle(width / 2, 305, width - 40, 32, 6);
+  calcBox.fill = '#f0f9ff';
+  calcBox.stroke = '#7dd3fc';
+  calcBox.linewidth = 1;
+
+  let calcFormulaStr = '';
+  if (curMethod === 'deviation') {
+    calcFormulaStr = isPassed
+      ? '편차 합: (-0.2)+(+0.4)+(-0.5)+(+0.1)+(-0.3) = -0.5 kg  ➔  평균: 5.4 + (-0.5 ÷ 5) = 5.3 kg'
+      : '편차 합: (-0.2)+(+0.4)+(-0.5)+(+0.1)+(-0.3) = -0.5 kg  ➔  평균: 5.4 + (-0.1) = ? kg';
+  } else {
+    calcFormulaStr = isPassed
+      ? '실제 합: 5.2 + 5.8 + 4.9 + 5.5 + 5.1 = 26.5 kg  ➔  평균: 26.5 ÷ 5 = 5.3 kg'
+      : '실제 합: 5.2 + 5.8 + 4.9 + 5.5 + 5.1 = 26.5 kg  ➔  평균: 26.5 ÷ 5 = ? kg';
+  }
+
+  const calcFormula = two.makeText(calcFormulaStr, width / 2, 305);
+  calcFormula.fill = '#0369a1';
+  calcFormula.size = 11;
+  calcFormula.weight = 700;
+
+  // 6. Y=355: 하단 핵심 원리 가이드 카드
+  const guideCard = two.makeRoundedRectangle(width / 2, 355, width - 40, 26, 6);
+  guideCard.fill = '#f0fdf4';
+  guideCard.stroke = '#86efac';
+  guideCard.linewidth = 1;
+
+  const guideText = two.makeText('📌 핵심: 실생활 편차 평균 = (기준값) + (편차의 합 ÷ 개수) 로 계산하면 훨씬 빠르고 정확합니다!', width / 2, 355);
+  guideText.fill = '#166534';
+  guideText.size = 10.5;
+  guideText.weight = 600;
+
+  // 7. Y=396: 최하단 안내 배너 (Vertical Budget H=440 Strict Preservation)
+  const bottomBanner = two.makeRoundedRectangle(width / 2, 396, width - 40, 28, 6);
+  bottomBanner.fill = '#0f172a';
+  bottomBanner.noStroke();
+
+  const bottomText = two.makeText('🎯 캔버스의 공을 클릭하여 편차를 탐구하고 우측 입력창에 5개 볼링공의 평균 무게를 입력하세요.', width / 2, 396);
+  bottomText.fill = '#38bdf8';
+  bottomText.size = 11;
+  bottomText.weight = 600;
+
+  // 8. 포인터 이벤트 핸들러 바인딩 (60fps Interactive Engine)
+  if (canvasEl) {
+    canvasEl.onpointermove = (e) => {
+      const rect = canvasEl.getBoundingClientRect();
+      const px = (e.clientX - rect.left) * (width / rect.width);
+      const py = (e.clientY - rect.top) * (height / rect.height);
+
+      let isHover = false;
+      // 탭 호버 검사
+      for (const t of tabBoxes) {
+        if (Math.abs(px - t.x) <= t.w / 2 && Math.abs(py - t.y) <= t.h / 2) {
+          isHover = true;
+          break;
+        }
+      }
+      // 공 호버 검사
+      if (!isHover) {
+        for (const b of ballBoxes) {
+          const dist = Math.hypot(px - b.x, py - b.y);
+          if (dist <= b.r) {
+            isHover = true;
+            break;
+          }
+        }
+      }
+      canvasEl.style.cursor = isHover ? 'pointer' : 'default';
+    };
+
+    canvasEl.onpointerdown = (e) => {
+      const rect = canvasEl.getBoundingClientRect();
+      const px = (e.clientX - rect.left) * (width / rect.width);
+      const py = (e.clientY - rect.top) * (height / rect.height);
+
+      // 탭 클릭
+      for (const t of tabBoxes) {
+        if (Math.abs(px - t.x) <= t.w / 2 && Math.abs(py - t.y) <= t.h / 2) {
+          setLab6_11Method(t.key);
+          return;
+        }
+      }
+
+      // 공 클릭
+      for (const b of ballBoxes) {
+        const dist = Math.hypot(px - b.x, py - b.y);
+        if (dist <= b.r) {
+          selectLab6_11Ball(b.id);
+          return;
+        }
+      }
+    };
+  }
+}
+
+
 function renderToolbar2_4() {
       const tb = document.getElementById('plane-toolbar');
       if (!tb) return;
@@ -39617,7 +40120,24 @@ function renderToolbar2_4() {
 
     function passCurrentSubstepGeneric(code) {
       checkSubstepGeneric(code);
-      if (code === '6-10') {
+      if (code === '6-11') {
+        state.lab6_11.isPassed = true;
+        state.lab6_11.showAverageLine = true;
+        const a1 = document.getElementById('ans-6-11');
+        if (a1) { a1.value = '5.3'; a1.disabled = true; }
+        const resBox = document.getElementById('result-box-6-11');
+        if (resBox) {
+          resBox.innerHTML = getStep6_11SuccessHtml();
+          if (window.renderMathInElement) renderMathInElement(resBox);
+        }
+        const btn = document.getElementById('btn-check-6-11');
+        if (btn) {
+          btn.disabled = true;
+          btn.innerText = '✅ 채점 통과 완료';
+        }
+        renderToolbar6_11();
+        drawStep6_11Canvas();
+      } else if (code === '6-10') {
         state.lab6_10.isPassed = true;
         state.lab6_10.stepPhase = 4;
         const a1 = document.getElementById('ans-6-10-1');
