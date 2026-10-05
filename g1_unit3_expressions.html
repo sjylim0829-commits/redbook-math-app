@@ -894,8 +894,8 @@
       },
       '1-7': {
         code: '1-7', tab: 1,
-        substepLabel: '7. 스스로 확인하기 1: 기호 생략 (p.75)',
-        missionText: '<b>[1-7] 7. 스스로 확인하기 1: 기호 생략 (p.75)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '7. 문자를 사용한 식 세우기: 거·속·시와 농도 (교과서 p.74 문제 6)',
+        missionText: '<b>[개념 및 문제 6] 거리·속력·시간 및 소금물 농도 식 세우기 (교과서 p.74)</b><br>• 수학의 대표적인 실생활 공식들을 문자를 사용한 식으로 간결하게 나타냅니다.<br>• <b>⑴ 이동 거리:</b> $(\\text{거리}) = (\\text{속력}) \\times (\\text{시간}) \\implies 60 \\times t = 60t\\text{ km}$<br>• <b>⑵ 걸린 시간:</b> $(\\text{시간}) = (\\text{거리}) \\div (\\text{속력}) \\implies x \\div 4 = \\frac{x}{4}\\text{ 시간}$ (또는 $\\frac{1}{4}x\\text{ 시간}$)<br>• <b>⑶ 소금의 양:</b> $(\\text{소금물}) \\times \\frac{\\text{농도}}{100} \\implies 300 \\times \\frac{a}{100} = 3a\\text{ g}$<br>좌측 캔버스에서 3가지 모델 탭과 시간·거리·농도 프리셋을 조작해 보고 식을 완성해 보세요.',
         drawer: 'drawStep1_7Canvas'
       },
       '1-8': {
@@ -1395,6 +1395,15 @@
       
       
       
+      
+      // Substep 1-7 State (Speed, Time, Salt Lab)
+      lab1_7: {
+        activeTab: 'dist',
+        timeT: 2,
+        distX: 12,
+        saltRateA: 10,
+        isPassed: false
+      },
       // Substep 1-6 State (Shape and Discount Lab)
       lab1_6: {
         activeTab: 'parallelogram',
@@ -7876,6 +7885,628 @@ function gradeStep1_6() {
 
     // --- End Substep 1-6 Implementation ---
 
+    
+    // --- Substep 1-7 Implementation ---
+// code_1_7.js: Substep [1-7] 3.1 문자를 사용한 식 세우기: 거·속·시와 농도 (교과서 p.74 문제 6)
+
+function renderToolbar1_7() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab1_7) {
+    state.lab1_7 = {
+      activeTab: 'dist', // 'dist' | 'time' | 'salt'
+      timeT: 2,          // hours
+      distX: 12,         // km
+      saltRateA: 10,     // %
+      isPassed: false
+    };
+  }
+
+  const curTab = state.lab1_7.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'dist' ? 'active' : ''}" onclick="setLab1_7Tab('dist')">
+        🚗 1. 이동 거리 (60t)
+      </button>
+      <button class="tool-btn ${curTab === 'time' ? 'active' : ''}" onclick="setLab1_7Tab('time')">
+        🚶 2. 걸린 시간 (x/4)
+      </button>
+      <button class="tool-btn ${curTab === 'salt' ? 'active' : ''}" onclick="setLab1_7Tab('salt')">
+        🧪 3. 소금의 양 (3a)
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn" onclick="resetLab1_7()" title="초기화">
+        🔄 초기화
+      </button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('1-7')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab1_7Tab(tabKey) {
+  if (!state.lab1_7) state.lab1_7 = { activeTab: 'dist', timeT: 2, distX: 12, saltRateA: 10, isPassed: false };
+  state.lab1_7.activeTab = tabKey;
+  renderToolbar1_7();
+  drawStep1_7Canvas();
+}
+
+function resetLab1_7() {
+  state.lab1_7 = {
+    activeTab: 'dist',
+    timeT: 2,
+    distX: 12,
+    saltRateA: 10,
+    isPassed: false
+  };
+  renderToolbar1_7();
+  drawStep1_7Canvas();
+}
+
+function setDistTimeT(t) {
+  if (!state.lab1_7) resetLab1_7();
+  state.lab1_7.timeT = t;
+  drawStep1_7Canvas();
+}
+
+function setTimeDistX(x) {
+  if (!state.lab1_7) resetLab1_7();
+  state.lab1_7.distX = x;
+  drawStep1_7Canvas();
+}
+
+function setSaltRateA(a) {
+  if (!state.lab1_7) resetLab1_7();
+  state.lab1_7.saltRateA = a;
+  drawStep1_7Canvas();
+}
+
+function renderSubstep1_7() {
+  const container = document.getElementById('substep-form-container');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="card p-3 mb-3" style="border-left: 4px solid var(--primary);">
+      <h6 style="font-weight:700; color:var(--primary); margin-bottom:6px;">
+        📖 [교과서 p.74] 거리·속력·시간 및 소금물 농도 공식 정리
+      </h6>
+      <div style="font-size:0.86rem; color:#334155; line-height:1.55;">
+        <ul style="margin:0; padding-left:18px;">
+          <li><b>(거리) = (속력) $\\times$ (시간)</b> $\\implies 60 \\times t = 60t$ (시속 $60\\text{ km}$, $t$시간)</li>
+          <li><b>(시간) = (거리) $\\div$ (속력)</b> $\\implies x \\div 4 = \\frac{x}{4}$ ($x\\text{ km}$, 시속 $4\\text{ km}$)</li>
+          <li><b>(소금의 양) = (소금물의 양) $\\times \\frac{\\text{농도}}{100}$</b> $\\implies 300 \\times \\frac{a}{100} = 3a$ (소금물 $300\\text{ g}$, $a\\%$)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card p-3 mb-3">
+      <h6 style="font-weight:700; color:#1e293b; margin-bottom:8px;">
+        ✏️ [교과서 p.74 문제 6] 기호 $\\times, \\div$를 생략한 식으로 나타내기
+      </h6>
+      <div style="font-size:0.84rem; color:#64748b; margin-bottom:12px;">
+        단위는 생략하고 문자를 사용한 식만 입력하세요.
+      </div>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.88rem; color:#1e293b;">
+          ⑴ 시속 $60\\text{ km}$로 $t$시간 동안 이동한 거리 $(\\text{km})$
+        </label>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="text" id="ans-1-7-1" class="proof-input-text" placeholder="식 입력 (예: 60t)" style="flex:1;" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.88rem; color:#1e293b;">
+          ⑵ $x\\text{ km}$의 거리를 시속 $4\\text{ km}$로 걸을 때 걸린 시간 $(\\text{시간})$
+        </label>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="text" id="ans-1-7-2" class="proof-input-text" placeholder="식 입력 (예: x/4 또는 1/4x)" style="flex:1;" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.88rem; color:#1e293b;">
+          ⑶ $a\\%$의 소금물 $300\\text{ g}$에 녹아 있는 소금의 양 $(\\text{g})$
+        </label>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="text" id="ans-1-7-3" class="proof-input-text" placeholder="식 입력 (예: 3a)" style="flex:1;" autocomplete="off">
+        </div>
+      </div>
+
+      <button id="btn-grade-1-7" class="primary-btn w-100" onclick="gradeStep1_7()" style="margin-top:6px; font-weight:700;">
+        🚀 정답 확인 및 LMS DB 기록
+      </button>
+    </div>
+
+    <div id="feedback-1-7" style="display:none; margin-top:8px;"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawStep1_7Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+
+  if (state.twoInstance) {
+    state.twoInstance.clear();
+  } else {
+    container.innerHTML = '';
+    const two = new Two({
+      width: container.clientWidth || 600,
+      height: 440,
+      type: Two.Types.svg
+    }).appendTo(container);
+    state.twoInstance = two;
+  }
+
+  const two = state.twoInstance;
+  const W = two.width;
+  const H = 440;
+
+  // Background
+  const bg = two.makeRectangle(W / 2, H / 2, W, H);
+  bg.fill = '#f8fafc';
+  bg.noStroke();
+
+  drawSpeedAndSaltLab(two, W, H);
+
+  // Strict Vertical Budget Bottom Safety Banner (Y=396, H=28, margin bottom = 30 >= 25px)
+  const bannerY = 396;
+  const bannerH = 28;
+  const bottomBar = two.makeRoundedRectangle(W / 2, bannerY, W - 32, bannerH, 6);
+  bottomBar.fill = '#e2e8f0';
+  bottomBar.stroke = '#cbd5e1';
+  bottomBar.linewidth = 1;
+
+  const tabNames = {
+    'dist': '🚗 이동 거리: (거리) = (속력 60) × (시간 t) = 60t km [교과서 p.74 문제 6-(1)]',
+    'time': '🚶 걸린 시간: (시간) = (거리 x) ÷ (속력 4) = x/4 시간 [교과서 p.74 문제 6-(2)]',
+    'salt': '🧪 소금의 양: (소금물 300) × (a/100) = 3a g [교과서 p.74 문제 6-(3)]'
+  };
+
+  const activeTab = (state.lab1_7 && state.lab1_7.activeTab) || 'dist';
+  const bannerTxt = two.makeText(tabNames[activeTab], W / 2, bannerY);
+  bannerTxt.size = 12;
+  bannerTxt.weight = 700;
+  bannerTxt.fill = '#334155';
+
+  two.update();
+}
+
+function drawSpeedAndSaltLab(two, W, H) {
+  if (!state.lab1_7) resetLab1_7();
+  const curTab = state.lab1_7.activeTab;
+
+  const cardW = Math.min(W - 40, 560);
+  const cardH = 340;
+  const cardX = W / 2;
+  const cardY = 190;
+
+  const cardBg = two.makeRoundedRectangle(cardX, cardY, cardW, cardH, 12);
+  cardBg.fill = '#ffffff';
+  cardBg.stroke = '#e2e8f0';
+  cardBg.linewidth = 1.5;
+
+  // Header Title
+  const titleBox = two.makeRoundedRectangle(cardX, cardY - 135, cardW - 24, 40, 8);
+  titleBox.fill = '#f1f5f9';
+  titleBox.stroke = '#cbd5e1';
+  titleBox.linewidth = 1;
+
+  const titles = {
+    'dist': '상황 ① : 시속 60 km 로 t 시간 동안 이동한 거리 (km)',
+    'time': '상황 ② : x km 거리를 시속 4 km 로 이동할 때 걸린 시간 (시간)',
+    'salt': '상황 ③ : a % 소금물 300 g 에 녹아 있는 소금의 양 (g)'
+  };
+
+  const titleTxt = two.makeText(titles[curTab], cardX, cardY - 135);
+  titleTxt.size = 13.5;
+  titleTxt.weight = 700;
+  titleTxt.fill = '#1e293b';
+
+  if (curTab === 'dist') {
+    drawDistanceVisual(two, cardX, cardY, cardW);
+  } else if (curTab === 'time') {
+    drawTimeVisual(two, cardX, cardY, cardW);
+  } else {
+    drawSaltVisual(two, cardX, cardY, cardW);
+  }
+}
+
+function drawDistanceVisual(two, cx, cy, cw) {
+  const t = state.lab1_7.timeT || 2;
+
+  // Presets
+  const presets = [
+    { t: 1, label: 't = 1시간' },
+    { t: 2, label: 't = 2시간' },
+    { t: 3, label: 't = 3시간' },
+    { t: 4, label: 't = 4시간' }
+  ];
+
+  const startX = cx - 180;
+  const btnY = cy - 85;
+
+  presets.forEach((p, idx) => {
+    const pX = startX + idx * 95;
+    const isAct = (t === p.t);
+    const pBtn = two.makeRoundedRectangle(pX, btnY, 85, 26, 6);
+    pBtn.fill = isAct ? '#4f46e5' : '#f8fafc';
+    pBtn.stroke = isAct ? '#3730a3' : '#cbd5e1';
+    pBtn.linewidth = 1;
+
+    const pTxt = two.makeText(p.label, pX, btnY);
+    pTxt.size = 11;
+    pTxt.weight = 700;
+    pTxt.fill = isAct ? '#ffffff' : '#475569';
+
+    two.update();
+    if (pBtn._renderer && pBtn._renderer.elem) {
+      pBtn._renderer.elem.style.cursor = 'pointer';
+      pBtn._renderer.elem.onclick = () => setDistTimeT(p.t);
+    }
+  });
+
+  // Track & Moving Car Graphic
+  const roadY = cy + 20;
+  const roadW = 400;
+  const road = two.makeLine(cx - roadW / 2, roadY, cx + roadW / 2, roadY);
+  road.stroke = '#94a3b8';
+  road.linewidth = 4;
+
+  // Mile markers
+  for (let i = 0; i <= 4; i++) {
+    const mX = cx - roadW / 2 + (roadW / 4) * i;
+    const tick = two.makeLine(mX, roadY - 5, mX, roadY + 5);
+    tick.stroke = '#64748b';
+    tick.linewidth = 2;
+
+    const mTxt = two.makeText(`${i * 60}km`, mX, roadY + 18);
+    mTxt.size = 10.5;
+    mTxt.weight = 600;
+    mTxt.fill = '#64748b';
+  }
+
+  // Car Position based on t
+  const carX = cx - roadW / 2 + (roadW / 4) * t;
+  const carBody = two.makeRoundedRectangle(carX, roadY - 18, 54, 24, 6);
+  carBody.fill = '#0284c7';
+  carBody.stroke = '#0369a1';
+  carBody.linewidth = 1.5;
+
+  const carTxt = two.makeText('🚗 60km/h', carX, roadY - 18);
+  carTxt.size = 10;
+  carTxt.weight = 700;
+  carTxt.fill = '#ffffff';
+
+  // Distance highlight line
+  const distBar = two.makeLine(cx - roadW / 2, roadY - 38, carX, roadY - 38);
+  distBar.stroke = '#4f46e5';
+  distBar.linewidth = 3;
+
+  const distLabel = two.makeText(`이동 거리 = 60 × t = 60t km (현재: ${60 * t} km)`, (cx - roadW / 2 + carX) / 2, roadY - 48);
+  distLabel.size = 12;
+  distLabel.weight = 700;
+  distLabel.fill = '#4f46e5';
+
+  // Result Banner inside Card
+  const tipY = cy + 125;
+  const tipBox = two.makeRoundedRectangle(cx, tipY, cw - 32, 34, 6);
+  tipBox.fill = '#f0fdf4';
+  tipBox.stroke = '#86efac';
+  tipBox.linewidth = 1;
+
+  const tipTxt = two.makeText(`(거리) = (속력) × (시간) = 60 × t = 60t km`, cx, tipY);
+  tipTxt.size = 12.5;
+  tipTxt.weight = 700;
+  tipTxt.fill = '#15803d';
+}
+
+function drawTimeVisual(two, cx, cy, cw) {
+  const x = state.lab1_7.distX || 12;
+
+  const presets = [
+    { x: 4, label: 'x = 4km' },
+    { x: 8, label: 'x = 8km' },
+    { x: 12, label: 'x = 12km' },
+    { x: 16, label: 'x = 16km' }
+  ];
+
+  const startX = cx - 180;
+  const btnY = cy - 85;
+
+  presets.forEach((p, idx) => {
+    const pX = startX + idx * 95;
+    const isAct = (x === p.x);
+    const pBtn = two.makeRoundedRectangle(pX, btnY, 85, 26, 6);
+    pBtn.fill = isAct ? '#4f46e5' : '#f8fafc';
+    pBtn.stroke = isAct ? '#3730a3' : '#cbd5e1';
+    pBtn.linewidth = 1;
+
+    const pTxt = two.makeText(p.label, pX, btnY);
+    pTxt.size = 11;
+    pTxt.weight = 700;
+    pTxt.fill = isAct ? '#ffffff' : '#475569';
+
+    two.update();
+    if (pBtn._renderer && pBtn._renderer.elem) {
+      pBtn._renderer.elem.style.cursor = 'pointer';
+      pBtn._renderer.elem.onclick = () => setTimeDistX(p.x);
+    }
+  });
+
+  // Track & Walker
+  const roadY = cy + 20;
+  const roadW = 400;
+  const road = two.makeLine(cx - roadW / 2, roadY, cx + roadW / 2, roadY);
+  road.stroke = '#94a3b8';
+  road.linewidth = 4;
+
+  for (let i = 0; i <= 4; i++) {
+    const km = i * 4;
+    const mX = cx - roadW / 2 + (roadW / 4) * i;
+    const tick = two.makeLine(mX, roadY - 5, mX, roadY + 5);
+    tick.stroke = '#64748b';
+    tick.linewidth = 2;
+
+    const mTxt = two.makeText(`${km}km`, mX, roadY + 18);
+    mTxt.size = 10.5;
+    mTxt.weight = 600;
+    mTxt.fill = '#64748b';
+  }
+
+  // Walker Position based on x
+  const walkerX = cx - roadW / 2 + (roadW / 16) * x;
+  const walkerBadge = two.makeRoundedRectangle(walkerX, roadY - 18, 54, 24, 6);
+  walkerBadge.fill = '#059669';
+  walkerBadge.stroke = '#047857';
+  walkerBadge.linewidth = 1.5;
+
+  const walkerTxt = two.makeText('🚶 4km/h', walkerX, roadY - 18);
+  walkerTxt.size = 10;
+  walkerTxt.weight = 700;
+  walkerTxt.fill = '#ffffff';
+
+  // Time Formula Line
+  const timeBar = two.makeLine(cx - roadW / 2, roadY - 38, walkerX, roadY - 38);
+  timeBar.stroke = '#059669';
+  timeBar.linewidth = 3;
+
+  const timeLabel = two.makeText(`걸린 시간 = x ÷ 4 = x/4 시간 (현재: ${x / 4} 시간)`, (cx - roadW / 2 + walkerX) / 2, roadY - 48);
+  timeLabel.size = 12;
+  timeLabel.weight = 700;
+  timeLabel.fill = '#047857';
+
+  // Result Banner inside Card
+  const tipY = cy + 125;
+  const tipBox = two.makeRoundedRectangle(cx, tipY, cw - 32, 34, 6);
+  tipBox.fill = '#f0fdf4';
+  tipBox.stroke = '#86efac';
+  tipBox.linewidth = 1;
+
+  const tipTxt = two.makeText(`(시간) = (거리) ÷ (속력) = x ÷ 4 = x/4 시간 (또는 1/4x 시간)`, cx, tipY);
+  tipTxt.size = 12.5;
+  tipTxt.weight = 700;
+  tipTxt.fill = '#15803d';
+}
+
+function drawSaltVisual(two, cx, cy, cw) {
+  const a = state.lab1_7.saltRateA || 10;
+
+  const presets = [
+    { a: 5, label: 'a = 5%' },
+    { a: 10, label: 'a = 10%' },
+    { a: 15, label: 'a = 15%' },
+    { a: 20, label: 'a = 20%' }
+  ];
+
+  const startX = cx - 180;
+  const btnY = cy - 85;
+
+  presets.forEach((p, idx) => {
+    const pX = startX + idx * 95;
+    const isAct = (a === p.a);
+    const pBtn = two.makeRoundedRectangle(pX, btnY, 85, 26, 6);
+    pBtn.fill = isAct ? '#4f46e5' : '#f8fafc';
+    pBtn.stroke = isAct ? '#3730a3' : '#cbd5e1';
+    pBtn.linewidth = 1;
+
+    const pTxt = two.makeText(p.label, pX, btnY);
+    pTxt.size = 11;
+    pTxt.weight = 700;
+    pTxt.fill = isAct ? '#ffffff' : '#475569';
+
+    two.update();
+    if (pBtn._renderer && pBtn._renderer.elem) {
+      pBtn._renderer.elem.style.cursor = 'pointer';
+      pBtn._renderer.elem.onclick = () => setSaltRateA(p.a);
+    }
+  });
+
+  // Beaker Visual
+  const beakerX = cx - 100;
+  const beakerY = cy + 15;
+  const bW = 110;
+  const bH = 110;
+
+  // Beaker glass
+  const beaker = two.makeRoundedRectangle(beakerX, beakerY, bW, bH, 8);
+  beaker.fill = '#f0f9ff';
+  beaker.stroke = '#38bdf8';
+  beaker.linewidth = 2;
+
+  // Liquid level
+  const liquid = two.makeRoundedRectangle(beakerX, beakerY + 15, bW - 8, bH - 30, 4);
+  liquid.fill = '#bae6fd';
+  liquid.noStroke();
+
+  const bLabel = two.makeText('소금물 300g', beakerX, beakerY - 10);
+  bLabel.size = 11.5;
+  bLabel.weight = 700;
+  bLabel.fill = '#0369a1';
+
+  const concLabel = two.makeText(`농도 a% = ${a}%`, beakerX, beakerY + 12);
+  concLabel.size = 11.5;
+  concLabel.weight = 800;
+  concLabel.fill = '#0284c7';
+
+  // Salt Particles & Calculation Card on Right
+  const calcX = cx + 90;
+  const calcBox = two.makeRoundedRectangle(calcX, beakerY, 210, 90, 8);
+  calcBox.fill = '#f8fafc';
+  calcBox.stroke = '#cbd5e1';
+  calcBox.linewidth = 1;
+
+  const cTxt1 = two.makeText('소금의 양 공식:', calcX, beakerY - 26);
+  cTxt1.size = 12;
+  cTxt1.weight = 700;
+  cTxt1.fill = '#334155';
+
+  const cTxt2 = two.makeText(`300 × ( a / 100 ) = 3a g`, calcX, beakerY - 2);
+  cTxt2.size = 14;
+  cTxt2.weight = 800;
+  cTxt2.fill = '#4f46e5';
+
+  const cTxt3 = two.makeText(`현재 소금의 양: 3 × ${a} = ${3 * a} g`, calcX, beakerY + 24);
+  cTxt3.size = 12;
+  cTxt3.weight = 700;
+  cTxt3.fill = '#059669';
+
+  // Result Banner inside Card
+  const tipY = cy + 125;
+  const tipBox = two.makeRoundedRectangle(cx, tipY, cw - 32, 34, 6);
+  tipBox.fill = '#f0fdf4';
+  tipBox.stroke = '#86efac';
+  tipBox.linewidth = 1;
+
+  const tipTxt = two.makeText(`(소금의 양) = (소금물 300) × (a/100) = 300/100 × a = 3a g`, cx, tipY);
+  tipTxt.size = 12.5;
+  tipTxt.weight = 700;
+  tipTxt.fill = '#15803d';
+}
+
+function gradeStep1_7() {
+  const q1Input = document.getElementById('ans-1-7-1');
+  const q2Input = document.getElementById('ans-1-7-2');
+  const q3Input = document.getElementById('ans-1-7-3');
+  const fb = document.getElementById('feedback-1-7');
+  if (!q1Input || !q2Input || !q3Input || !fb) return;
+
+  const raw1 = (q1Input.value || '').trim();
+  const raw2 = (q2Input.value || '').trim();
+  const raw3 = (q3Input.value || '').trim();
+
+  // Normalize helper
+  const norm = (s) => s.toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/×/g, '*')
+    .replace(/÷/g, '/');
+
+  const a1 = norm(raw1);
+  const a2 = norm(raw2);
+  const a3 = norm(raw3);
+
+  // Q1: 60t or 60*t or t*60
+  const isQ1Correct = (a1 === '60t' || a1 === '60*t' || a1 === 't*60');
+
+  // Q2: x/4 or (1/4)x or 1/4x or (x)/4 or 0.25x
+  const isQ2Correct = (
+    a2 === 'x/4' ||
+    a2 === '(x)/4' ||
+    a2 === '(1/4)x' ||
+    a2 === '1/4x' ||
+    a2 === '(1/4)*x' ||
+    a2 === '1/4*x' ||
+    a2 === '0.25x' ||
+    a2 === '0.25*x'
+  );
+
+  // Q3: 3a or 3*a or a*3
+  const isQ3Correct = (a3 === '3a' || a3 === '3*a' || a3 === 'a*3');
+
+  const allCorrect = isQ1Correct && isQ2Correct && isQ3Correct;
+
+  fb.style.display = 'block';
+
+  if (allCorrect) {
+    if (state.lab1_7) state.lab1_7.isPassed = true;
+    state.substepProgress['1-7'] = true;
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#ecfdf5; border:1.5px solid #10b981; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.4rem;">🎉</span>
+          <h5 style="color:#065f46; font-weight:800; margin:0;">100점 완벽 통과! (거·속·시와 농도 식 세우기 완성)</h5>
+        </div>
+        <div style="font-size:0.88rem; color:#047857; line-height:1.6;">
+          • ⑴ 이동 거리: $(\\text{속력}) \\times (\\text{시간}) = 60 \\times t = 60t\\text{ km}$<br>
+          • ⑵ 걸린 시간: $(\\text{거리}) \\div (\\text{속력}) = x \\div 4 = \\frac{x}{4}\\text{ 시간}$ (또는 $\\frac{1}{4}x\\text{ 시간}$)<br>
+          • ⑶ 소금의 양: $(\\text{소금물}) \\times \\frac{\\text{농도}}{100} = 300 \\times \\frac{a}{100} = 3a\\text{ g}$<br>
+          거리·속력·시간 공식과 소금물 농도 공식을 문자를 사용한 식으로 완벽히 세웠습니다!
+        </div>
+        <div style="margin-top:10px; font-size:0.8rem; color:#059669; font-weight:700;">
+          ✅ 학습 완료 상태가 영서중 LMS DB에 안전하게 자동 저장되었습니다.
+        </div>
+      </div>
+    `;
+
+    // Remote LMS DB save
+    if (window.LMSIntegration && typeof window.LMSIntegration.saveStudentProgress === 'function') {
+      window.LMSIntegration.saveStudentProgress('1-7', { score: 100, passed: true }, 'unit3');
+    }
+
+    // Auto unlock next substep 1-8
+    if (!state.unlockedSubSteps.includes('1-8')) {
+      state.unlockedSubSteps.push('1-8');
+    }
+  } else {
+    let errorMsg = [];
+    if (!isQ1Correct) errorMsg.push('⑴ 이동 거리: $(\\text{속력}) \\times (\\text{시간}) = 60 \\times t = 60t$ (입력: 60t)로 씁니다.');
+    if (!isQ2Correct) errorMsg.push('⑵ 걸린 시간: $(\\text{거리}) \\div (\\text{속력}) = x \\div 4 = \\frac{x}{4}$ (입력: x/4 또는 1/4x)로 씁니다.');
+    if (!isQ3Correct) errorMsg.push('⑶ 소금의 양: $300 \\times \\frac{a}{100} = 3a$ (입력: 3a)로 씁니다.');
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#fff1f2; border:1.5px solid #f43f5e; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.3rem;">💡</span>
+          <h6 style="color:#9f1239; font-weight:700; margin:0;">다시 확인해 보세요!</h6>
+        </div>
+        <div style="font-size:0.86rem; color:#be123c; line-height:1.6;">
+          ${errorMsg.map(msg => `<div>• ${msg}</div>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+    // --- End Substep 1-7 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -7928,6 +8559,9 @@ function gradeStep1_6() {
       } else if (code === '1-6') {
         renderToolbar1_6();
         renderSubstep1_6();
+      } else if (code === '1-7') {
+        renderToolbar1_7();
+        renderSubstep1_7();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
