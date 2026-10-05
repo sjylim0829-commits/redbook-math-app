@@ -1246,7 +1246,13 @@
         missionText: '<b>[7-4] 스스로 마무리하기 04번: 절댓값 조건식과 정수의 합 (교과서 p.64)</b><br>• <b>조건 ㈎</b>: 음의 정수의 절댓값은 2<br>• <b>조건 ㈏</b>: 양의 정수와 음의 정수의 절댓값의 합이 7<br>• 두 정수를 구하고 그 합을 계산하시오.',
         drawer: 'drawStep7_4Canvas'
       },
-      '7-5': { code: '7-5', tab: 7, substepLabel: '5. [05번] 유리수 범위 내 정수 합', missionText: '[7-5] 스스로 마무리하기 05번 (p.64)', drawer: 'drawGenericScaffoldCanvas' },
+      '7-5': {
+        code: '7-5',
+        tab: 7,
+        substepLabel: '05번: 정수의 최대·최소 합',
+        missionText: '<b>[7-5] 스스로 마무리하기 05번: 유리수 범위 내 정수의 최대·최소 합 (교과서 p.64)</b><br>• <b>범위</b>: $-\\frac{5}{2} < x < \\frac{16}{5}$ ($-2.5 < x < 3.2$)<br>• 범위 내 정수 중 가장 작은 수와 가장 큰 수를 찾고 그 합을 구하시오.',
+        drawer: 'drawStep7_5Canvas'
+      },
       '7-6': { code: '7-6', tab: 7, substepLabel: '6. [06번] 3x3 사칙 마방진 빈칸', missionText: '[7-6] 스스로 마무리하기 06번 (p.64)', drawer: 'drawGenericScaffoldCanvas' },
       '7-7': { code: '7-7', tab: 7, substepLabel: '7. [07번] 거듭제곱·나눗셈 빈칸', missionText: '[7-7] 스스로 마무리하기 07번 (p.64)', drawer: 'drawGenericScaffoldCanvas' },
       '7-8': { code: '7-8', tab: 7, substepLabel: '8. [08번] 합과 곱 부호 추론', missionText: '[7-8] 스스로 마무리하기 08번 (p.64)', drawer: 'drawGenericScaffoldCanvas' },
@@ -1949,6 +1955,13 @@
         posInput: '',
         sumInput: '',
         isPassed: false
+      },
+      lab7_5: {
+        selectedInt: null,
+        minInput: '',
+        maxInput: '',
+        sumInput: '',
+        isPassed: false
       }
     };
 
@@ -2256,6 +2269,9 @@
       } else if (code === '7-4') {
         renderToolbar7_4();
         renderSubstep7_4();
+      } else if (code === '7-5') {
+        renderToolbar7_5();
+        renderSubstep7_5();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
@@ -40849,13 +40865,23 @@ async function gradeStep7_4() {
       soundEffect.play('correct');
     }
 
-    if (window.LMSIntegration) {
+    if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+      await LMSIntegration.saveStudentProgress('7-4', {
+        neg: negVal,
+        pos: posVal,
+        sum: sumVal,
+        passed: true,
+        score: 100,
+        timestamp: new Date().toISOString()
+      }, 'unit2');
+    } else if (window.LMSIntegration && window.LMSIntegration.saveStudentProgress) {
       await window.LMSIntegration.saveStudentProgress('7-4', {
         neg: negVal,
         pos: posVal,
         sum: sumVal,
         passed: true,
-        score: 100
+        score: 100,
+        timestamp: new Date().toISOString()
       }, 'unit2');
     }
 
@@ -40909,7 +40935,7 @@ function getStep7_4SuccessHtml() {
       <div style="font-size:0.82rem; color:#15803d; margin-bottom:10px;">
         다음 실전 문제인 <b>[7-5] 05번: 유리수 범위 내 정수의 최대/최소 합</b>이 잠금 해제되었습니다.
       </div>
-      <button class="btn btn-sm btn-success w-100" style="font-weight:700;" onclick="goToNextSubstep()">
+      <button class="primary-btn w-100" style="font-weight:700; background:#16a34a; border-color:#16a34a; padding:10px 0; border-radius:6px; cursor:pointer;" onclick="goToNextSubstep()">
         [7-5] 05번 문제 풀러 가기 ➔
       </button>
     </div>
@@ -41141,6 +41167,495 @@ function drawAbsoluteSumLab(two, width, height, canvasEl) {
         if (px >= b.x - b.w / 2 && px <= b.x + b.w / 2 && py >= b.y - b.h / 2 && py <= b.y + b.h / 2) {
           if (b.type === 'tick') {
             setLab7_4Pos(b.val);
+          }
+          break;
+        }
+      }
+    };
+  }
+}
+
+
+    // ==========================================
+// [7-5] 05번: 유리수 범위 내 정수의 최대·최소 합 (교과서 p.64)
+// ==========================================
+
+function renderToolbar7_5() {
+  const toolbar = document.getElementById('plane-toolbar');
+  if (!toolbar) return;
+
+  toolbar.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; width:100%;">
+      <span style="font-weight:700; font-size:0.88rem; color:#1e293b;">[7-5] 05번: 정수의 최대·최소 합</span>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 3px;"></div>
+      <button class="btn btn-outline-primary" style="padding:2px 8px; font-size:0.78rem;" onclick="selectLab7_5Int(null)">🔍 범위 안 정수(6개) 전체 보기</button>
+      <button class="btn btn-outline-danger" style="padding:2px 8px; font-size:0.78rem; font-weight:700;" onclick="selectLab7_5Int(-2)">🟠 최솟값 (-2)</button>
+      <button class="btn btn-outline-success" style="padding:2px 8px; font-size:0.78rem; font-weight:700;" onclick="selectLab7_5Int(3)">🟢 최댓값 (+3)</button>
+      <button class="tool-btn" style="margin-left:auto; background:#fef3c7; border:1px solid #f59e0b; color:#b45309; padding:2px 9px; font-size:0.8rem; font-weight:700; border-radius:6px; cursor:pointer;" onclick="passCurrentSubstepGeneric('7-5')">🔑 교사 패스</button>
+    </div>
+  `;
+}
+
+function selectLab7_5Int(val) {
+  state.lab7_5.selectedInt = val;
+  drawStep7_5Canvas();
+}
+
+function renderSubstep7_5() {
+  const formBox = document.getElementById('form-box');
+  if (!formBox) return;
+
+  const isPassed = state.lab7_5.isPassed;
+  const curMin = state.lab7_5.minInput;
+  const curMax = state.lab7_5.maxInput;
+  const curSum = state.lab7_5.sumInput;
+
+  formBox.innerHTML = `
+    <div class="card p-3 shadow-sm" style="border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+      <div class="d-flex align-items-center justify-content-between mb-2 pb-2" style="border-bottom: 2px solid #e2e8f0;">
+        <span class="badge" style="background:#0284c7; color:#fff; font-size:0.85rem; padding:5px 10px; border-radius:6px;">
+          교과서 p.64 [스스로 마무리하기]
+        </span>
+        <span style="font-size:0.82rem; color:#64748b; font-weight:600;">05번: 정수의 최대·최소 합</span>
+      </div>
+
+      <div class="mb-3 p-2" style="background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
+        <div style="font-weight:700; font-size:0.88rem; color:#0f172a; margin-bottom:6px;">
+          05. $-\\frac{5}{2}$보다 크고 $\\frac{16}{5}$보다 작은 정수 중에서 가장 큰 수와 가장 작은 수의 합을 구하시오.
+        </div>
+        <div style="padding:8px 12px; background:#ffffff; border-radius:6px; border:1.5px solid #cbd5e1; font-size:0.84rem; color:#1e293b; line-height:1.6; margin-bottom:6px;">
+          • 범위: $-\\frac{5}{2} < x < \\frac{16}{5}$<br>
+          • 소수 변환: $-2.5 < x < 3.2$
+        </div>
+        <div style="font-size:0.78rem; color:#64748b; line-height:1.4;">
+          좌측 캔버스의 수직선에서 범위 내 정수들을 확인하고 최솟값, 최댓값 및 그 합을 입력하세요.
+        </div>
+      </div>
+
+      <!-- 3단계 입력 폼 -->
+      <div style="display:flex; flex-direction:column; gap:9px; margin-bottom:12px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:7px 10px; background:#ffffff; border:1.5px solid #cbd5e1; border-radius:8px;">
+          <span style="font-size:0.84rem; color:#dc2626; font-weight:700;">⑴ 가장 작은 정수 (최솟값)</span>
+          <input type="text" id="ans-7-5-min" class="form-control form-control-sm proof-input-text" placeholder="가장 작은 수 입력" style="max-width:130px; font-size:0.85rem;" ${isPassed ? 'disabled value="-2"' : `value="${curMin || ''}"`}>
+        </div>
+
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:7px 10px; background:#ffffff; border:1.5px solid #cbd5e1; border-radius:8px;">
+          <span style="font-size:0.84rem; color:#16a34a; font-weight:700;">⑵ 가장 큰 정수 (최댓값)</span>
+          <input type="text" id="ans-7-5-max" class="form-control form-control-sm proof-input-text" placeholder="가장 큰 수 입력" style="max-width:130px; font-size:0.85rem;" ${isPassed ? 'disabled value="3"' : `value="${curMax || ''}"`}>
+        </div>
+
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:7px 10px; background:#f0fdf4; border:1.5px solid #86efac; border-radius:8px;">
+          <span style="font-size:0.84rem; color:#15803d; font-weight:700;">⑶ 두 정수의 합</span>
+          <input type="text" id="ans-7-5-sum" class="form-control form-control-sm proof-input-text" placeholder="최종 합 입력" style="max-width:130px; font-size:0.85rem; font-weight:700;" ${isPassed ? 'disabled value="1"' : `value="${curSum || ''}"`}>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <button class="btn btn-sm btn-outline-warning w-100" onclick="toggleHint7_5()" style="font-size:0.82rem; font-weight:600;">
+          💡 힌트 열기 / 닫기
+        </button>
+        <div id="hint-box-7-5" style="display:none; background:#fefce8; border:1px dashed #eab308; padding:10px 12px; border-radius:6px; font-size:0.82rem; color:#854d0e; line-height:1.5; margin-top:6px;">
+          • $-\\frac{5}{2} = -2.5$이고, $\\frac{16}{5} = 3.2$입니다.<br>
+          • $-2.5$보다 크고 $3.2$보다 작은 정수는 $-2, -1, 0, 1, 2, 3$입니다.<br>
+          • 가장 작은 정수는 $-2$, 가장 큰 정수는 $3$이므로 두 수의 합은 $(-2) + 3 = 1$입니다.
+        </div>
+      </div>
+
+      <div id="result-box-7-5" class="mb-2"></div>
+
+      <button id="btn-check-7-5" class="btn btn-primary w-100" style="padding:8px; font-weight:700; font-size:0.95rem; background:#0284c7; border:none;" onclick="gradeStep7_5()" ${isPassed ? 'disabled' : ''}>
+        ${isPassed ? '✅ 05번 문제 통과 완료' : '정답 확인 및 채점'}
+      </button>
+    </div>
+  `;
+
+  if (window.renderMathInElement) {
+    try {
+      renderMathInElement(formBox);
+    } catch (e) {
+      console.warn('KaTeX render warning:', e);
+    }
+  }
+}
+
+function toggleHint7_5() {
+  const box = document.getElementById('hint-box-7-5');
+  if (box) {
+    box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  }
+}
+
+async function gradeStep7_5() {
+  const minIn = document.getElementById('ans-7-5-min');
+  const maxIn = document.getElementById('ans-7-5-max');
+  const sumIn = document.getElementById('ans-7-5-sum');
+  const resBox = document.getElementById('result-box-7-5');
+
+  if (!minIn || !maxIn || !sumIn || !resBox) return;
+
+  const minVal = minIn.value.trim().replace(/\s+/g, '');
+  const maxVal = maxIn.value.trim().replace(/\s+/g, '');
+  const sumVal = sumIn.value.trim().replace(/\s+/g, '');
+
+  if (!minVal || !maxVal || !sumVal) {
+    resBox.innerHTML = `
+      <div class="alert alert-warning p-2" style="font-size:0.85rem; border-radius:6px;">
+        ⚠️ 가장 작은 수, 가장 큰 수, 두 정수의 합을 모두 입력해 주세요.
+      </div>
+    `;
+    return;
+  }
+
+  state.lab7_5.minInput = minVal;
+  state.lab7_5.maxInput = maxVal;
+  state.lab7_5.sumInput = sumVal;
+
+  const isMinCorrect = (minVal === '-2');
+  const isMaxCorrect = (maxVal === '3' || maxVal === '+3');
+  const isSumCorrect = (sumVal === '1' || sumVal === '+1');
+
+  if (isMinCorrect && isMaxCorrect && isSumCorrect) {
+    state.lab7_5.isPassed = true;
+    if (!state.completedSubSteps.includes('7-5')) {
+      state.completedSubSteps.push('7-5');
+    }
+    // 다음 문제 '7-6' 언락!
+    if (!state.unlockedSubSteps.includes('7-6')) {
+      state.unlockedSubSteps.push('7-6');
+    }
+
+    if (typeof soundEffect !== 'undefined' && soundEffect.play) {
+      soundEffect.play('correct');
+    }
+
+    if (window.LMSIntegration) {
+      await window.LMSIntegration.saveStudentProgress('7-5', {
+        min: minVal,
+        max: maxVal,
+        sum: sumVal,
+        passed: true,
+        score: 100
+      }, 'unit2');
+    }
+
+    resBox.innerHTML = getStep7_5SuccessHtml();
+    if (window.renderMathInElement) {
+      try { renderMathInElement(resBox); } catch (e) {}
+    }
+
+    minIn.disabled = true;
+    maxIn.disabled = true;
+    sumIn.disabled = true;
+
+    const btn = document.getElementById('btn-check-7-5');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerText = '✅ 05번 문제 통과 완료';
+    }
+
+    renderToolbar7_5();
+    drawStep7_5Canvas();
+  } else {
+    if (typeof soundEffect !== 'undefined' && soundEffect.play) {
+      soundEffect.play('wrong');
+    }
+
+    let wrongItems = [];
+    if (!isMinCorrect) wrongItems.push('⑴ 가장 작은 정수 (-2.5보다 큰 가장 작은 정수)');
+    if (!isMaxCorrect) wrongItems.push('⑵ 가장 큰 정수 (3.2보다 작은 가장 큰 정수)');
+    if (!isSumCorrect) wrongItems.push('⑶ 두 수의 합');
+
+    resBox.innerHTML = `
+      <div class="alert alert-danger p-2" style="font-size:0.85rem; border-radius:6px;">
+        ❌ 오답 항목: ${wrongItems.join(', ')}<br>
+        수직선 위에서 -2.5와 3.2 사이에 속하는 정수들을 다시 확인해 보세요!
+      </div>
+    `;
+  }
+}
+
+function getStep7_5SuccessHtml() {
+  return `
+    <div style="background:#f0fdf4; border:1.5px solid #22c55e; border-radius:8px; padding:12px; margin-bottom:10px;">
+      <div style="font-weight:700; color:#15803d; font-size:0.95rem; margin-bottom:4px;">
+        🎉 정답입니다! 05번 문제 해결 완료! (100점)
+      </div>
+      <div style="font-size:0.84rem; color:#166534; line-height:1.5; margin-bottom:8px;">
+        • <b>범위 내 정수</b>: $\\{-2,\\ -1,\\ 0,\\ 1,\\ 2,\\ 3\\}$ (총 6개)<br>
+        • <b>가장 작은 정수</b>: <b>$-2$</b>, <b>가장 큰 정수</b>: <b>$+3$</b><br>
+        • <b>두 정수의 합</b>: $(-2) + (+3) = \\mathbf{+1}$
+      </div>
+      <div style="font-size:0.82rem; color:#15803d; margin-bottom:10px;">
+        다음 실전 문제인 <b>[7-6] 06번: 정수와 유리수 3x3 마방진 빈칸 채우기</b>가 잠금 해제되었습니다.
+      </div>
+      <button class="btn btn-sm btn-success w-100" style="font-weight:700;" onclick="goToNextSubstep()">
+        [7-6] 06번 문제 풀러 가기 ➔
+      </button>
+    </div>
+  `;
+}
+
+function drawStep7_5Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+  container.innerHTML = '';
+  container.onpointerdown = null;
+  container.onpointermove = null;
+  container.onpointerup = null;
+
+  const width = container.clientWidth || 560;
+  const height = 440; // Vertical Budget Strictly Preserved
+
+  const two = new Two({
+    width: width,
+    height: height,
+    type: Two.Types.svg
+  }).appendTo(container);
+
+  const canvasEl = container.querySelector('svg') || container;
+  drawRationalClampLab(two, width, height, canvasEl);
+  two.update();
+}
+
+function drawRationalClampLab(two, width, height, canvasEl) {
+  // 1. 전체 배경
+  const bg = two.makeRoundedRectangle(width / 2, height / 2, width - 4, height - 4, 10);
+  bg.fill = '#f8fafc';
+  bg.stroke = '#cbd5e1';
+  bg.linewidth = 1.5;
+
+  // 2. Y=22: 상단 타이틀 뱃지
+  const headerBg = two.makeRoundedRectangle(width / 2, 22, width - 24, 28, 6);
+  headerBg.fill = '#0284c7';
+  headerBg.noStroke();
+
+  const headerText = two.makeText('🚧 유리수 경계 클램퍼 & 정수 수확 랩 (교과서 p.64 05번)', width / 2, 22);
+  headerText.fill = '#ffffff';
+  headerText.size = 12;
+  headerText.weight = 700;
+
+  const hitBoxes = [];
+  const selectedInt = state.lab7_5.selectedInt;
+
+  // 3. Y=64: 2대 경계벽 인디케이터 카드
+  const cardW = width - 40;
+  const cardH = 34;
+  const condBg = two.makeRoundedRectangle(width / 2, 64, cardW, cardH, 6);
+  condBg.fill = '#ffffff';
+  condBg.stroke = '#cbd5e1';
+  condBg.linewidth = 1.5;
+
+  const cLeft = two.makeText('좌측 경계: -5/2 = -2.5 (초과 ○)', width / 2 - cardW * 0.25, 64);
+  cLeft.fill = '#dc2626';
+  cLeft.size = 10;
+  cLeft.weight = 700;
+
+  const cRight = two.makeText('우측 경계: +16/5 = +3.2 (미만 ○)', width / 2 + cardW * 0.25, 64);
+  cRight.fill = '#0284c7';
+  cRight.size = 10;
+  cRight.weight = 700;
+
+  // 4. Y=165: 수직선 (-4 ~ +5)
+  const lineY = 165;
+  const startX = 40;
+  const endX = width - 40;
+
+  const axis = two.makeLine(startX, lineY, endX, lineY);
+  axis.stroke = '#475569';
+  axis.linewidth = 2;
+
+  // 화살표
+  const aHead1 = two.makeLine(endX - 8, lineY - 4, endX, lineY);
+  aHead1.stroke = '#475569';
+  aHead1.linewidth = 2;
+  const aHead2 = two.makeLine(endX - 8, lineY + 4, endX, lineY);
+  aHead2.stroke = '#475569';
+  aHead2.linewidth = 2;
+
+  // 스케일 (-4 ~ +5, 총 9단위)
+  const minN = -4;
+  const maxN = 5;
+  function toX(v) {
+    return startX + 25 + ((v - minN) / (maxN - minN)) * (endX - startX - 50);
+  }
+
+  const originX = toX(0);
+
+  // 유리수 경계벽 좌표 (-2.5, +3.2)
+  const clampLeftX = toX(-2.5);
+  const clampRightX = toX(3.2);
+
+  // 반투명 클램퍼 존 하이라이트
+  const clampZoneW = clampRightX - clampLeftX;
+  const clampZone = two.makeRoundedRectangle((clampLeftX + clampRightX) / 2, lineY, clampZoneW, 64, 6);
+  clampZone.fill = '#e0f2fe';
+  clampZone.opacity = 0.55;
+  clampZone.stroke = '#38bdf8';
+  clampZone.linewidth = 1.5;
+  clampZone.dashes = [4, 3];
+
+  // 좌측 경계선 점선 (-2.5) & 빈 원
+  const leftWall = two.makeLine(clampLeftX, lineY - 36, clampLeftX, lineY + 36);
+  leftWall.stroke = '#ef4444';
+  leftWall.linewidth = 2;
+  leftWall.dashes = [3, 2];
+
+  const leftCircle = two.makeCircle(clampLeftX, lineY, 5);
+  leftCircle.fill = '#ffffff';
+  leftCircle.stroke = '#ef4444';
+  leftCircle.linewidth = 2;
+
+  const leftLabel = two.makeText('-2.5', clampLeftX, lineY - 44);
+  leftLabel.fill = '#dc2626';
+  leftLabel.size = 9.5;
+  leftLabel.weight = 800;
+
+  // 우측 경계선 점선 (+3.2) & 빈 원
+  const rightWall = two.makeLine(clampRightX, lineY - 36, clampRightX, lineY + 36);
+  rightWall.stroke = '#0284c7';
+  rightWall.linewidth = 2;
+  rightWall.dashes = [3, 2];
+
+  const rightCircle = two.makeCircle(clampRightX, lineY, 5);
+  rightCircle.fill = '#ffffff';
+  rightCircle.stroke = '#0284c7';
+  rightCircle.linewidth = 2;
+
+  const rightLabel = two.makeText('+3.2', clampRightX, lineY - 44);
+  rightLabel.fill = '#0369a1';
+  rightLabel.size = 9.5;
+  rightLabel.weight = 800;
+
+  // 정수 눈금 플롯 (-4 ~ +5)
+  for (let n = minN; n <= maxN; n++) {
+    const nx = toX(n);
+    const isInRange = (n > -2.5 && n < 3.2);
+    const isMin = (n === -2);
+    const isMax = (n === 3);
+    const isSel = (selectedInt === n);
+
+    const tick = two.makeLine(nx, lineY - 6, nx, lineY + 6);
+    tick.stroke = isInRange ? '#0284c7' : '#94a3b8';
+    tick.linewidth = isInRange ? 2 : 1;
+
+    // 정수 점 (원)
+    const dot = two.makeCircle(nx, lineY, isMin || isMax ? 6 : 4.5);
+    if (isMin) {
+      dot.fill = '#ef4444';
+      dot.stroke = '#ffffff';
+      dot.linewidth = 1.5;
+    } else if (isMax) {
+      dot.fill = '#16a34a';
+      dot.stroke = '#ffffff';
+      dot.linewidth = 1.5;
+    } else if (isInRange) {
+      dot.fill = '#0284c7';
+      dot.stroke = '#ffffff';
+      dot.linewidth = 1;
+    } else {
+      dot.fill = '#cbd5e1';
+      dot.noStroke();
+    }
+
+    // 눈금 텍스트
+    const tNum = two.makeText(n === 0 ? '0' : (n > 0 ? `+${n}` : `${n}`), nx, lineY + 18);
+    tNum.fill = isMin ? '#dc2626' : (isMax ? '#15803d' : (isInRange ? '#0f172a' : '#94a3b8'));
+    tNum.size = isMin || isMax ? 10.5 : 9;
+    tNum.weight = isMin || isMax ? 800 : (isInRange ? 700 : 400);
+
+    // 극값 뱃지
+    if (isMin) {
+      const minBadge = two.makeRoundedRectangle(nx, lineY - 20, 42, 16, 4);
+      minBadge.fill = '#fee2e2';
+      minBadge.stroke = '#ef4444';
+      minBadge.linewidth = 1.2;
+      const minTxt = two.makeText('최솟값', nx, lineY - 20);
+      minTxt.fill = '#dc2626';
+      minTxt.size = 8.5;
+      minTxt.weight = 800;
+    } else if (isMax) {
+      const maxBadge = two.makeRoundedRectangle(nx, lineY - 20, 42, 16, 4);
+      maxBadge.fill = '#dcfce7';
+      maxBadge.stroke = '#22c55e';
+      maxBadge.linewidth = 1.2;
+      const maxTxt = two.makeText('최댓값', nx, lineY - 20);
+      maxTxt.fill = '#15803d';
+      maxTxt.size = 8.5;
+      maxTxt.weight = 800;
+    }
+
+    hitBoxes.push({ type: 'int', val: n, x: nx, y: lineY, w: 24, h: 36 });
+  }
+
+  // 5. Y=265: 범위 내 정수 리스트 & 극값 합산 카드
+  const sumBg = two.makeRoundedRectangle(width / 2, 265, width - 40, 56, 8);
+  sumBg.fill = '#ffffff';
+  sumBg.stroke = '#bae6fd';
+  sumBg.linewidth = 1.5;
+
+  const tInts = two.makeText('범위 내 정수: [ -2,  -1,  0,  1,  2,  3 ]  ➔  총 6개', width / 2, 252);
+  tInts.fill = '#0f172a';
+  tInts.size = 11;
+  tInts.weight = 800;
+
+  const tCalc = two.makeText('가장 작은 정수(-2) + 가장 큰 정수(+3) = +1', width / 2, 276);
+  tCalc.fill = '#0369a1';
+  tCalc.size = 11.5;
+  tCalc.weight = 800;
+
+  // 6. Y=340: 3단계 수학적 추론 요약 카드 (H=42px)
+  const infoCard = two.makeRoundedRectangle(width / 2, 340, width - 40, 42, 6);
+  infoCard.fill = '#f0fdf4';
+  infoCard.stroke = '#86efac';
+  infoCard.linewidth = 1.5;
+
+  const tStep1 = two.makeText('❶ 경계 변환: -2.5 < x < 3.2', width / 2 - 145, 340);
+  tStep1.fill = '#334155';
+  tStep1.size = 9.5;
+  tStep1.weight = 700;
+
+  const tStep2 = two.makeText('❷ 정수 추출: -2 ~ 3 (6개)', width / 2, 340);
+  tStep2.fill = '#0284c7';
+  tStep2.size = 9.5;
+  tStep2.weight = 700;
+
+  const tStep3 = two.makeText('❸ 극값의 합: (-2) + (+3) = +1', width / 2 + 145, 340);
+  tStep3.fill = '#16a34a';
+  tStep3.size = 10;
+  tStep3.weight = 800;
+
+  // 7. Y=396: 최하단 안내 배너 (Vertical Budget H=440 Strict Preservation)
+  const bottomBanner = two.makeRoundedRectangle(width / 2, 396, width - 40, 28, 6);
+  bottomBanner.fill = '#0f172a';
+  bottomBanner.noStroke();
+
+  const bottomText = two.makeText('🎯 수직선의 정수 칩을 클릭하여 범위를 확인하고 가장 작은 수와 큰 수의 합을 구하세요.', width / 2, 396);
+  bottomText.fill = '#38bdf8';
+  bottomText.size = 11;
+  bottomText.weight = 600;
+
+  // 8. 포인터 이벤트 바인딩 (60fps Interactive Engine)
+  if (canvasEl) {
+    canvasEl.onpointermove = (e) => {
+      const rect = canvasEl.getBoundingClientRect();
+      const px = (e.clientX - rect.left) * (width / rect.width);
+      const py = (e.clientY - rect.top) * (height / rect.height);
+
+      const hit = hitBoxes.some(b => {
+        return px >= b.x - b.w / 2 && px <= b.x + b.w / 2 && py >= b.y - b.h / 2 && py <= b.y + b.h / 2;
+      });
+      canvasEl.style.cursor = hit ? 'pointer' : 'default';
+    };
+
+    canvasEl.onpointerdown = (e) => {
+      const rect = canvasEl.getBoundingClientRect();
+      const px = (e.clientX - rect.left) * (width / rect.width);
+      const py = (e.clientY - rect.top) * (height / rect.height);
+
+      for (const b of hitBoxes) {
+        if (px >= b.x - b.w / 2 && px <= b.x + b.w / 2 && py >= b.y - b.h / 2 && py <= b.y + b.h / 2) {
+          if (b.type === 'int') {
+            selectLab7_5Int(b.val);
           }
           break;
         }
@@ -43510,7 +44025,39 @@ function drawAbsoluteSumLab(two, width, height, canvasEl) {
 
     function passCurrentSubstepGeneric(code) {
       checkSubstepGeneric(code);
-      if (code === '7-3') {
+      if (code === '7-4') {
+        state.lab7_4.isPassed = true;
+        state.lab7_4.negInput = '-2';
+        state.lab7_4.posInput = '5';
+        state.lab7_4.sumInput = '3';
+        state.lab7_4.posVal = 5;
+        if (!state.completedSubSteps.includes('7-4')) {
+          state.completedSubSteps.push('7-4');
+        }
+        if (!state.unlockedSubSteps.includes('7-5')) {
+          state.unlockedSubSteps.push('7-5');
+        }
+        const negIn = document.getElementById('ans-7-4-neg');
+        if (negIn) { negIn.value = '-2'; negIn.disabled = true; }
+        const posIn = document.getElementById('ans-7-4-pos');
+        if (posIn) { posIn.value = '5'; posIn.disabled = true; }
+        const sumIn = document.getElementById('ans-7-4-sum');
+        if (sumIn) { sumIn.value = '3'; sumIn.disabled = true; }
+        const resBox = document.getElementById('result-box-7-4');
+        if (resBox) {
+          resBox.innerHTML = getStep7_4SuccessHtml();
+          if (window.renderMathInElement) {
+            try { renderMathInElement(resBox); } catch (e) {}
+          }
+        }
+        const btn = document.getElementById('btn-check-7-4');
+        if (btn) {
+          btn.disabled = true;
+          btn.innerText = '✅ 04번 문제 통과 완료';
+        }
+        renderToolbar7_4();
+        drawStep7_4Canvas();
+      } else if (code === '7-3') {
         state.lab7_3.isPassed = true;
         state.lab7_3.choice = 4;
         state.lab7_3.absValReason = '1';
