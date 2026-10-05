@@ -918,8 +918,8 @@
       },
       '1-11': {
         code: '1-11', tab: 1,
-        substepLabel: '11. 스스로 확인하기 5: 소리의 속력 (p.75)',
-        missionText: '<b>[1-11] 11. 스스로 확인하기 5: 소리의 속력 (p.75)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '11. 스스로 확인하기 1, 2: 기호 생략과 식 세우기 (p.76)',
+        missionText: '<b>[스스로 확인하기 1, 2] 기호 생략과 식 세우기 종합 (교과서 p.76)</b><br>• <b>1번 (기호 생략):</b> 곱셈·나눗셈 기호를 생략하고 수와 문자의 순서, 분수 꼴로 나타냅니다.<br>• <b>2번 (식 세우기):</b> 문장제 상황(학용품 구매 금액, 사다리꼴 넓이)을 문자를 사용한 식으로 간결하게 표현합니다.<br>좌측 캔버스에서 각 문항 랩(기호 생략 카드, 주문 계산기, 사다리꼴 도형)을 조작해 보고 정답을 입력해 보세요.',
         drawer: 'drawStep1_11Canvas'
       },
       '1-12': {
@@ -1399,6 +1399,20 @@
       
       
       
+      
+      // Substep 1-11 State (Self Check 1 & 2 Lab)
+      lab1_11: {
+        activeTab: 'mode1',
+        mode1Step: 0,
+        mode1AnimStep: 0,
+        pencilCount: 3,
+        noteCount: 2,
+        trapA: 4,
+        trapB: 8,
+        trapH: 5,
+        showDoubleTrap: false,
+        isPassed: false
+      },
       // Substep 1-10 State (Multi-Variable Substitution Lab)
       lab1_10: {
         activeQ: 'q1',
@@ -9973,6 +9987,922 @@ function gradeStep1_10() {
 
     // --- End Substep 1-10 Implementation ---
 
+    
+    // --- Substep 1-11 Implementation ---
+// code_1_11.js: Substep [1-11] 3.1 스스로 확인하기 1, 2번 (교과서 p.76: 기호 생략 및 식 세우기 종합)
+
+function renderToolbar1_11() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab1_11) {
+    state.lab1_11 = {
+      activeTab: 'mode1', // 'mode1' (1번 기호 생략) | 'mode2' (2-⑴ 학용품) | 'mode3' (2-⑵ 사다리꼴)
+      mode1Step: 0,       // 0: ⑴ -3ab, 1: ⑵ x/5, 2: ⑶ 0.1ab, 3: ⑷ (x-1)/y
+      mode1AnimStep: 0,   // 0: 원식, 1: 규칙 적용, 2: 최종 생략 식
+      pencilCount: 3,     // 연필 x
+      noteCount: 2,       // 공책 y
+      trapA: 4,           // 윗변 a
+      trapB: 8,           // 아랫변 b
+      trapH: 5,           // 높이 h
+      showDoubleTrap: false, // 사다리꼴 2개 붙이기 토글
+      isPassed: false
+    };
+  }
+
+  const curTab = state.lab1_11.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab1_11Tab('mode1')">
+        1. 기호 생략 변환기 (1번)
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab1_11Tab('mode2')">
+        2. 학용품 주문 계산기 (2-⑴)
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab1_11Tab('mode3')">
+        3. 사다리꼴 동적 기하 (2-⑵)
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn" onclick="resetLab1_11()" title="초기화">
+        🔄 초기화
+      </button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('1-11')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab1_11Tab(tabKey) {
+  if (!state.lab1_11) resetLab1_11();
+  state.lab1_11.activeTab = tabKey;
+  renderToolbar1_11();
+  drawStep1_11Canvas();
+}
+
+function resetLab1_11() {
+  state.lab1_11 = {
+    activeTab: 'mode1',
+    mode1Step: 0,
+    mode1AnimStep: 0,
+    pencilCount: 3,
+    noteCount: 2,
+    trapA: 4,
+    trapB: 8,
+    trapH: 5,
+    showDoubleTrap: false,
+    isPassed: false
+  };
+  renderToolbar1_11();
+  drawStep1_11Canvas();
+}
+
+function setMode1Question(idx) {
+  if (!state.lab1_11) resetLab1_11();
+  state.lab1_11.mode1Step = idx;
+  state.lab1_11.mode1AnimStep = 0;
+  drawStep1_11Canvas();
+}
+
+function setMode1AnimStep(step) {
+  if (!state.lab1_11) resetLab1_11();
+  state.lab1_11.mode1AnimStep = step;
+  drawStep1_11Canvas();
+}
+
+function changePencilCount(delta) {
+  if (!state.lab1_11) resetLab1_11();
+  const next = Math.max(1, Math.min(10, state.lab1_11.pencilCount + delta));
+  state.lab1_11.pencilCount = next;
+  drawStep1_11Canvas();
+}
+
+function changeNoteCount(delta) {
+  if (!state.lab1_11) resetLab1_11();
+  const next = Math.max(1, Math.min(10, state.lab1_11.noteCount + delta));
+  state.lab1_11.noteCount = next;
+  drawStep1_11Canvas();
+}
+
+function toggleDoubleTrap() {
+  if (!state.lab1_11) resetLab1_11();
+  state.lab1_11.showDoubleTrap = !state.lab1_11.showDoubleTrap;
+  drawStep1_11Canvas();
+}
+
+function setTrapDim(dim, val) {
+  if (!state.lab1_11) resetLab1_11();
+  if (dim === 'a') state.lab1_11.trapA = Math.max(2, Math.min(10, val));
+  if (dim === 'b') state.lab1_11.trapB = Math.max(state.lab1_11.trapA + 1, Math.min(14, val));
+  if (dim === 'h') state.lab1_11.trapH = Math.max(3, Math.min(8, val));
+  drawStep1_11Canvas();
+}
+
+function renderSubstep1_11() {
+  const container = document.getElementById('substep-form-container');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="card p-3 mb-3" style="border-left: 4px solid var(--primary);">
+      <h6 style="font-weight:700; color:var(--primary); margin-bottom:6px;">
+        📖 [교과서 p.76 스스로 확인하기] 1번, 2번 핵심 원리
+      </h6>
+      <div style="font-size:0.86rem; color:#334155; line-height:1.55;">
+        <ul style="margin:0; padding-left:18px;">
+          <li><b>기호 생략 3대 원칙:</b> 수 $\\to$ 문자(알파벳 순), $1$ 생략(단, $0.1$은 생략 안 함), 나눗셈은 분수 꼴 $\\frac{A}{B}$.</li>
+          <li><b>문장제 식 세우기:</b> (총액) = (단가 $\\times$ 개수)의 합, (사다리꼴 넓이) = $\\frac{(\\text{윗변}+\\text{아랫변}) \\times \\text{높이}}{2}$.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 1번 문제 카드 -->
+    <div class="card p-3 mb-3">
+      <h6 style="font-weight:700; color:#1e293b; margin-bottom:8px;">
+        ✏️ [1번] 다음 식을 기호 $\\times, \\div$를 생략하여 나타내시오.
+      </h6>
+
+      <div class="form-group mb-2">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑴ $a \\times (-3) \\times b$
+        </label>
+        <input type="text" id="ans-1-11-1" class="proof-input-text w-100" placeholder="간단히 한 식 입력" autocomplete="off">
+      </div>
+
+      <div class="form-group mb-2">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑵ $x \\div 5$
+        </label>
+        <input type="text" id="ans-1-11-2" class="proof-input-text w-100" placeholder="간단히 한 식 입력" autocomplete="off">
+      </div>
+
+      <div class="form-group mb-2">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑶ $a \\times 0.1 \\times b$
+        </label>
+        <input type="text" id="ans-1-11-3" class="proof-input-text w-100" placeholder="간단히 한 식 입력" autocomplete="off">
+      </div>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑷ $(x - 1) \\div y$
+        </label>
+        <input type="text" id="ans-1-11-4" class="proof-input-text w-100" placeholder="간단히 한 식 입력" autocomplete="off">
+      </div>
+    </div>
+
+    <!-- 2번 문제 카드 -->
+    <div class="card p-3 mb-3">
+      <h6 style="font-weight:700; color:#1e293b; margin-bottom:8px;">
+        ✏️ [2번] 다음을 문자를 사용한 식으로 나타내시오.
+      </h6>
+
+      <div class="form-group mb-2">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b; line-height:1.4;">
+          ⑴ 한 자루에 $800$원인 연필 $x$자루와 한 권에 $1200$원인 공책 $y$권을 사고 지불해야 하는 금액
+        </label>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <input type="text" id="ans-1-11-5" class="proof-input-text" placeholder="문자식 입력 (단위 제외)" style="flex:1;" autocomplete="off">
+          <span style="font-size:0.88rem; font-weight:700; color:#475569;">원</span>
+        </div>
+      </div>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b; line-height:1.4;">
+          ⑵ 윗변의 길이가 $a\\text{ cm}$, 아랫변의 길이가 $b\\text{ cm}$, 높이가 $h\\text{ cm}$인 사다리꼴의 넓이
+        </label>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <input type="text" id="ans-1-11-6" class="proof-input-text" placeholder="문자식 입력 (단위 제외)" style="flex:1;" autocomplete="off">
+          <span style="font-size:0.88rem; font-weight:700; color:#475569;">$\\text{cm}^2$</span>
+        </div>
+      </div>
+
+      <button id="btn-grade-1-11" class="primary-btn w-100" onclick="gradeStep1_11()" style="margin-top:6px; font-weight:700;">
+        🚀 정답 확인 및 LMS DB 기록
+      </button>
+    </div>
+
+    <div id="feedback-1-11" style="display:none; margin-top:8px;"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawStep1_11Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+
+  if (state.twoInstance) {
+    state.twoInstance.clear();
+  } else {
+    container.innerHTML = '';
+    const two = new Two({
+      width: container.clientWidth || 600,
+      height: 440,
+      type: Two.Types.svg
+    }).appendTo(container);
+    state.twoInstance = two;
+  }
+
+  const two = state.twoInstance;
+  if (!two) return;
+
+  two.clear();
+  drawSelfCheck1_11Lab(two);
+  two.update();
+
+  // KaTeX overlay re-render
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawSelfCheck1_11Lab(two) {
+  const w = two.width;
+  const h = two.height;
+  const tab = (state.lab1_11 && state.lab1_11.activeTab) || 'mode1';
+
+  // Background grid
+  const bg = two.makeRectangle(w / 2, h / 2, w, h);
+  bg.fill = '#f8fafc';
+  bg.stroke = '#e2e8f0';
+  bg.linewidth = 1;
+
+  if (tab === 'mode1') {
+    drawMode1SymbolOmission(two, w, h);
+  } else if (tab === 'mode2') {
+    drawMode2StationeryOrder(two, w, h);
+  } else {
+    drawMode3TrapezoidGeo(two, w, h);
+  }
+
+  // Bottom info banner (Strict Vertical Budget: Y=385, H=26 -> Bottom=411, Margin=29px >= 25px)
+  const bannerY = 385;
+  const bannerH = 26;
+  const bannerBox = two.makeRoundedRectangle(w / 2, bannerY, w - 24, bannerH, 6);
+  bannerBox.fill = '#eff6ff';
+  bannerBox.stroke = '#bfdbfe';
+  bannerBox.linewidth = 1;
+
+  const bannerMsgs = {
+    'mode1': '💡 1번: 곱셈·나눗셈 기호를 생략할 때는 수 우선, 문자 알파벳 순, 분수 꼴 표기를 철저히 지킵니다.',
+    'mode2': '💡 2-⑴: 수량의 합은 (연필 가격 800x) + (공책 가격 1200y) = 800x + 1200y (원)입니다.',
+    'mode3': '💡 2-⑵: 사다리꼴 2개를 이어붙이면 밑변 (a+b), 높이 h인 평행사변형이 되므로 넓이는 (a+b)h / 2 입니다.'
+  };
+
+  const bannerTxt = two.makeText(bannerMsgs[tab], w / 2, bannerY);
+  bannerTxt.size = 11.5;
+  bannerTxt.weight = 700;
+  bannerTxt.fill = '#1d4ed8';
+}
+
+// -------------------------------------------------------------
+// Model 1: 기호 생략 4대 변환 랩 (1번 문항)
+// -------------------------------------------------------------
+function drawMode1SymbolOmission(two, w, h) {
+  const qIdx = (state.lab1_11 && state.lab1_11.mode1Step) || 0;
+  const anim = (state.lab1_11 && state.lab1_11.mode1AnimStep) || 0;
+
+  // Header Title
+  const titleTxt = two.makeText('기호 생략 4대 원리 탐구 랩 (교과서 p.76 1번)', w / 2, 22);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  // 4 Question Selector Tabs (Y: 48)
+  const qList = [
+    { label: '⑴ a × (-3) × b', key: 0 },
+    { label: '⑵ x ÷ 5', key: 1 },
+    { label: '⑶ a × 0.1 × b', key: 2 },
+    { label: '⑷ (x - 1) ÷ y', key: 3 }
+  ];
+
+  const btnW = 140;
+  const btnH = 28;
+  const startX = (w - (4 * btnW + 3 * 8)) / 2 + btnW / 2;
+
+  qList.forEach((q, i) => {
+    const bx = startX + i * (btnW + 8);
+    const by = 48;
+    const isSel = (qIdx === i);
+
+    const bBox = two.makeRoundedRectangle(bx, by, btnW, btnH, 6);
+    bBox.fill = isSel ? '#4f46e5' : '#ffffff';
+    bBox.stroke = isSel ? '#4338ca' : '#cbd5e1';
+    bBox.linewidth = isSel ? 1.5 : 1;
+
+    const bTxt = two.makeText(q.label, bx, by);
+    bTxt.size = 11.5;
+    bTxt.weight = isSel ? 800 : 600;
+    bTxt.fill = isSel ? '#ffffff' : '#334155';
+
+    // Click handler via invisible overlay
+    if (bBox._renderer && bBox._renderer.elem) {
+      bBox._renderer.elem.style.cursor = 'pointer';
+      bBox._renderer.elem.onclick = () => setMode1Question(i);
+    }
+  });
+
+  // Main Card Area (Y: 76 ~ 320)
+  const cardW = w - 40;
+  const cardH = 244;
+  const cardX = w / 2;
+  const cardY = 196;
+
+  const card = two.makeRoundedRectangle(cardX, cardY, cardW, cardH, 12);
+  card.fill = '#ffffff';
+  card.stroke = '#e2e8f0';
+  card.linewidth = 1.5;
+
+  // Question Info
+  const qData = [
+    {
+      title: '⑴ $a \\times (-3) \\times b$',
+      desc: '• 음의 정수 $(-3)$을 식의 맨 앞으로 이동<br>• 곱셈 기호 $\\times$를 생략하고 문자를 알파벳 순서($ab$)로 표기',
+      stage0: 'a  ×  (-3)  ×  b',
+      stage1: '(-3)  ×  a  ×  b  (수 앞으로, 알파벳 순)',
+      stage2: '-3ab  (최종 생략 꼴)',
+      rule: '⚠️ 수와 문자의 곱에서는 수를 문자 앞에 쓰고, 괄호 $(-3)$의 음부호는 맨 앞에 둡니다.'
+    },
+    {
+      title: '⑵ $x \\div 5$',
+      desc: '• 나눗셈 기호 $\\div$를 생략하고 분수 꼴로 나타내기<br>• 나눗셈을 곱셈으로 바꾸어 역수의 곱으로 표현: $x \\times \\frac{1}{5}$',
+      stage0: 'x  ÷  5',
+      stage1: 'x  ×  (1 / 5)  (역수의 곱으로 변환)',
+      stage2: 'x / 5  또는  (1/5)x',
+      rule: '⚠️ 분수 꼴 $\\frac{x}{5}$ 또는 수 $\\frac{1}{5}$을 문자 앞에 곱한 $\\frac{1}{5}x$ 모두 정답입니다.'
+    },
+    {
+      title: '⑶ $a \\times 0.1 \\times b$',
+      desc: '• 소수 $0.1$을 식의 맨 앞으로 이동<br>• 주의: $1$과 $-1$에서만 $1$을 생략하고, $0.1$의 $1$은 절대 생략하지 않음!',
+      stage0: 'a  ×  0.1  ×  b',
+      stage1: '0.1  ×  a  ×  b  (0.1 앞으로, 알파벳 순)',
+      stage2: '0.1ab  (주의: 0.ab 로 쓰면 오답!)',
+      rule: '🚨 $1$의 생략 규칙은 수 $1, -1$에만 적용됩니다! $0.1$에서 $1$을 생략하여 $0.ab$로 쓰지 마세요!'
+    },
+    {
+      title: '⑷ $(x - 1) \\div y$',
+      desc: '• 괄호가 있는 식의 나눗셈: $(x-1)$이 분자, 나누는 수 $y$가 분모<br>• 분수 꼴로 나타낼 때는 괄호를 생략함',
+      stage0: '(x - 1)  ÷  y',
+      stage1: '(x - 1)  ×  (1 / y)  (역수의 곱)',
+      stage2: '(x - 1) / y  (분수 꼴에서 괄호 생략)',
+      rule: '⚠️ 분수 선 자체가 괄호 역할을 하므로 $\\frac{x-1}{y}$에서는 괄호를 쓰지 않습니다.'
+    }
+  ];
+
+  const cur = qData[qIdx];
+
+  // Card Content Header
+  const qHead = two.makeText(cur.title, cardX, 94);
+  qHead.size = 14;
+  qHead.weight = 800;
+  qHead.fill = '#1e293b';
+
+  // 3-Stage Progress Indicator
+  const steps = [
+    { title: '단계 1: 원래 식', label: cur.stage0 },
+    { title: '단계 2: 규칙 적용', label: cur.stage1 },
+    { title: '단계 3: 기호 생략 완성', label: cur.stage2 }
+  ];
+
+  const colW = (cardW - 48) / 3;
+  const colY = 162;
+
+  steps.forEach((s, i) => {
+    const cx = cardX - (cardW - 48) / 2 + colW / 2 + i * (colW + 12);
+    const isCur = (anim >= i);
+    const isFocus = (anim === i);
+
+    const sBox = two.makeRoundedRectangle(cx, colY, colW, 88, 8);
+    sBox.fill = isFocus ? '#eef2ff' : (isCur ? '#f8fafc' : '#ffffff');
+    sBox.stroke = isFocus ? '#6366f1' : (isCur ? '#cbd5e1' : '#e2e8f0');
+    sBox.linewidth = isFocus ? 2 : 1;
+
+    const sBadge = two.makeRoundedRectangle(cx, colY - 26, colW - 20, 18, 4);
+    sBadge.fill = isFocus ? '#4f46e5' : '#94a3b8';
+
+    const bTxt = two.makeText(s.title, cx, colY - 26);
+    bTxt.size = 10;
+    bTxt.weight = 700;
+    bTxt.fill = '#ffffff';
+
+    const valTxt = two.makeText(s.label, cx, colY + 8);
+    valTxt.size = 12;
+    valTxt.weight = 700;
+    valTxt.fill = isFocus ? '#1e1b4b' : '#334155';
+
+    // Click to jump to stage
+    if (sBox._renderer && sBox._renderer.elem) {
+      sBox._renderer.elem.style.cursor = 'pointer';
+      sBox._renderer.elem.onclick = () => setMode1AnimStep(i);
+    }
+  });
+
+  // Step Navigation Buttons (Y: 236)
+  const navY = 236;
+  const prevBtn = two.makeRoundedRectangle(cardX - 90, navY, 110, 26, 6);
+  prevBtn.fill = anim > 0 ? '#ffffff' : '#f1f5f9';
+  prevBtn.stroke = anim > 0 ? '#64748b' : '#cbd5e1';
+  prevBtn.linewidth = 1;
+  const prevTxt = two.makeText('◀ 이전 단계', cardX - 90, navY);
+  prevTxt.size = 11;
+  prevTxt.weight = 700;
+  prevTxt.fill = anim > 0 ? '#334155' : '#94a3b8';
+
+  if (anim > 0 && prevBtn._renderer && prevBtn._renderer.elem) {
+    prevBtn._renderer.elem.style.cursor = 'pointer';
+    prevBtn._renderer.elem.onclick = () => setMode1AnimStep(anim - 1);
+  }
+
+  const nextBtn = two.makeRoundedRectangle(cardX + 90, navY, 110, 26, 6);
+  nextBtn.fill = anim < 2 ? '#4f46e5' : '#10b981';
+  nextBtn.stroke = anim < 2 ? '#4338ca' : '#059669';
+  nextBtn.linewidth = 1;
+  const nextTxt = two.makeText(anim < 2 ? '▶ 다음 단계' : '✨ 완성!', cardX + 90, navY);
+  nextTxt.size = 11;
+  nextTxt.weight = 700;
+  nextTxt.fill = '#ffffff';
+
+  if (anim < 2 && nextBtn._renderer && nextBtn._renderer.elem) {
+    nextBtn._renderer.elem.style.cursor = 'pointer';
+    nextBtn._renderer.elem.onclick = () => setMode1AnimStep(anim + 1);
+  }
+
+  // Tip / Warning Box (Y: 288)
+  const ruleBox = two.makeRoundedRectangle(cardX, 288, cardW - 32, 34, 6);
+  ruleBox.fill = qIdx === 2 ? '#fff7ed' : '#f0fdf4';
+  ruleBox.stroke = qIdx === 2 ? '#fdba74' : '#86efac';
+  ruleBox.linewidth = 1;
+
+  const ruleTxt = two.makeText(cur.rule, cardX, 288);
+  ruleTxt.size = 11.5;
+  ruleTxt.weight = 700;
+  ruleTxt.fill = qIdx === 2 ? '#c2410c' : '#15803d';
+}
+
+// -------------------------------------------------------------
+// Model 2: 학용품 주문 시뮬레이터 (2-⑴ 문항)
+// -------------------------------------------------------------
+function drawMode2StationeryOrder(two, w, h) {
+  const pCount = (state.lab1_11 && state.lab1_11.pencilCount) || 3;
+  const nCount = (state.lab1_11 && state.lab1_11.noteCount) || 2;
+
+  // Header Title
+  const titleTxt = two.makeText('학용품 주문 금액 계산 랩 (교과서 p.76 2-⑴)', w / 2, 22);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  const cardW = w - 40;
+  const cardH = 300;
+  const cardX = w / 2;
+  const cardY = 196;
+
+  const card = two.makeRoundedRectangle(cardX, cardY, cardW, cardH, 12);
+  card.fill = '#ffffff';
+  card.stroke = '#e2e8f0';
+  card.linewidth = 1.5;
+
+  // Two columns: Left (Pencil 800원), Right (Note 1200원)
+  const colW = (cardW - 40) / 2;
+  const col1X = cardX - cardW / 4 + 5;
+  const col2X = cardX + cardW / 4 - 5;
+
+  // --- Left Column: Pencil (800x 원) ---
+  const box1 = two.makeRoundedRectangle(col1X, 124, colW, 116, 8);
+  box1.fill = '#fefce8';
+  box1.stroke = '#fde047';
+  box1.linewidth = 1.5;
+
+  const pTitle = two.makeText('✏️ 연필 (한 자루 800원)', col1X, 82);
+  pTitle.size = 13;
+  pTitle.weight = 800;
+  pTitle.fill = '#854d0e';
+
+  // Stepper controls
+  const minusP = two.makeCircle(col1X - 60, 118, 14);
+  minusP.fill = pCount > 1 ? '#eab308' : '#e2e8f0';
+  const mPTxt = two.makeText('-', col1X - 60, 118);
+  mPTxt.size = 16;
+  mPTxt.weight = 800;
+  mPTxt.fill = '#ffffff';
+
+  if (pCount > 1 && minusP._renderer && minusP._renderer.elem) {
+    minusP._renderer.elem.style.cursor = 'pointer';
+    minusP._renderer.elem.onclick = () => changePencilCount(-1);
+  }
+
+  const pCountTxt = two.makeText(`x = ${pCount} 자루`, col1X, 118);
+  pCountTxt.size = 15;
+  pCountTxt.weight = 800;
+  pCountTxt.fill = '#1e293b';
+
+  const plusP = two.makeCircle(col1X + 60, 118, 14);
+  plusP.fill = pCount < 10 ? '#eab308' : '#e2e8f0';
+  const pPTxt = two.makeText('+', col1X + 60, 118);
+  pPTxt.size = 15;
+  pPTxt.weight = 800;
+  pPTxt.fill = '#ffffff';
+
+  if (pCount < 10 && plusP._renderer && plusP._renderer.elem) {
+    plusP._renderer.elem.style.cursor = 'pointer';
+    plusP._renderer.elem.onclick = () => changePencilCount(1);
+  }
+
+  const pCostTxt = two.makeText(`금액: 800 × x = 800x = ${800 * pCount} 원`, col1X, 156);
+  pCostTxt.size = 12;
+  pCostTxt.weight = 700;
+  pCostTxt.fill = '#a16207';
+
+  // --- Right Column: Notebook (1200y 원) ---
+  const box2 = two.makeRoundedRectangle(col2X, 124, colW, 116, 8);
+  box2.fill = '#f0fdf4';
+  box2.stroke = '#86efac';
+  box2.linewidth = 1.5;
+
+  const nTitle = two.makeText('📒 공책 (한 권 1200원)', col2X, 82);
+  nTitle.size = 13;
+  nTitle.weight = 800;
+  nTitle.fill = '#166534';
+
+  const minusN = two.makeCircle(col2X - 60, 118, 14);
+  minusN.fill = nCount > 1 ? '#22c55e' : '#e2e8f0';
+  const mNTxt = two.makeText('-', col2X - 60, 118);
+  mNTxt.size = 16;
+  mNTxt.weight = 800;
+  mNTxt.fill = '#ffffff';
+
+  if (nCount > 1 && minusN._renderer && minusN._renderer.elem) {
+    minusN._renderer.elem.style.cursor = 'pointer';
+    minusN._renderer.elem.onclick = () => changeNoteCount(-1);
+  }
+
+  const nCountTxt = two.makeText(`y = ${nCount} 권`, col2X, 118);
+  nCountTxt.size = 15;
+  nCountTxt.weight = 800;
+  nCountTxt.fill = '#1e293b';
+
+  const plusN = two.makeCircle(col2X + 60, 118, 14);
+  plusN.fill = nCount < 10 ? '#22c55e' : '#e2e8f0';
+  const pNTxt = two.makeText('+', col2X + 60, 118);
+  pNTxt.size = 15;
+  pNTxt.weight = 800;
+  pNTxt.fill = '#ffffff';
+
+  if (nCount < 10 && plusN._renderer && plusN._renderer.elem) {
+    plusN._renderer.elem.style.cursor = 'pointer';
+    plusN._renderer.elem.onclick = () => changeNoteCount(1);
+  }
+
+  const nCostTxt = two.makeText(`금액: 1200 × y = 1200y = ${1200 * nCount} 원`, col2X, 156);
+  nCostTxt.size = 12;
+  nCostTxt.weight = 700;
+  nCostTxt.fill = '#15803d';
+
+  // --- Total Summary Box (Y: 240) ---
+  const totBox = two.makeRoundedRectangle(cardX, 236, cardW - 32, 64, 8);
+  totBox.fill = '#eef2ff';
+  totBox.stroke = '#818cf8';
+  totBox.linewidth = 2;
+
+  const totHead = two.makeText('🛒 지불해야 하는 총 금액 식 세우기', cardX, 218);
+  totHead.size = 12.5;
+  totHead.weight = 700;
+  totHead.fill = '#4338ca';
+
+  const totFormula = two.makeText(
+    `총 금액 = 800x + 1200y  (현재: 800×${pCount} + 1200×${nCount} = ${800 * pCount + 1200 * nCount} 원)`,
+    cardX,
+    248
+  );
+  totFormula.size = 14;
+  totFormula.weight = 800;
+  totFormula.fill = '#1e1b4b';
+
+  // Tip on Bottom of card
+  const receiptTip = two.makeText('💡 연필과 공책의 수량 x, y를 바꾸어도 총 금액의 기본 구조는 항상 800x + 1200y 입니다.', cardX, 298);
+  receiptTip.size = 11.5;
+  receiptTip.weight = 700;
+  receiptTip.fill = '#475569';
+}
+
+// -------------------------------------------------------------
+// Model 3: 사다리꼴 동적 기하 랩 (2-⑵ 문항)
+// -------------------------------------------------------------
+function drawMode3TrapezoidGeo(two, w, h) {
+  const a = (state.lab1_11 && state.lab1_11.trapA) || 4;
+  const b = (state.lab1_11 && state.lab1_11.trapB) || 8;
+  const th = (state.lab1_11 && state.lab1_11.trapH) || 5;
+  const showDouble = (state.lab1_11 && state.lab1_11.showDoubleTrap) || false;
+
+  // Header Title
+  const titleTxt = two.makeText('사다리꼴 넓이 공식 유도 동적 기하 (교과서 p.76 2-⑵)', w / 2, 22);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  // Dimension Controls (Y: 48)
+  const ctrlY = 48;
+  const btnGroupW = w - 40;
+
+  // Toggle button for Double Trapezoid
+  const toggleBtn = two.makeRoundedRectangle(w / 2, ctrlY, 320, 28, 6);
+  toggleBtn.fill = showDouble ? '#10b981' : '#4f46e5';
+  toggleBtn.stroke = showDouble ? '#059669' : '#4338ca';
+  toggleBtn.linewidth = 1.5;
+
+  const toggleTxt = two.makeText(
+    showDouble ? '🧩 결합 해제 (원래 사다리꼴만 보기)' : '🧩 합동인 사다리꼴 1개 더 붙이기 (평행사변형 유도)',
+    w / 2,
+    ctrlY
+  );
+  toggleTxt.size = 11.5;
+  toggleTxt.weight = 800;
+  toggleTxt.fill = '#ffffff';
+
+  if (toggleBtn._renderer && toggleBtn._renderer.elem) {
+    toggleBtn._renderer.elem.style.cursor = 'pointer';
+    toggleBtn._renderer.elem.onclick = toggleDoubleTrap;
+  }
+
+  // Geometry Drawing Area (Y: 72 ~ 280)
+  const scale = 20; // 1cm = 20px
+  const baseY = 240;
+  const topY = baseY - th * scale;
+
+  // Trapezoid 1 coordinates
+  // Bottom: from (bStartX, baseY) to (bStartX + b*scale, baseY)
+  // Top: centered or offset
+  const totalW = showDouble ? (a + b) * scale : b * scale;
+  const startX = (w - totalW) / 2;
+
+  const t1_bl = { x: startX, y: baseY };
+  const t1_br = { x: startX + b * scale, y: baseY };
+  const t1_tr = { x: startX + a * scale + (b - a) * scale * 0.4, y: topY };
+  const t1_tl = { x: startX + (b - a) * scale * 0.4, y: topY };
+
+  // Draw Trapezoid 1
+  const path1 = two.makePath(
+    t1_bl.x, t1_bl.y,
+    t1_br.x, t1_br.y,
+    t1_tr.x, t1_tr.y,
+    t1_tl.x, t1_tl.y,
+    false
+  );
+  path1.fill = '#dbeafe';
+  path1.stroke = '#2563eb';
+  path1.linewidth = 2;
+
+  // Labels for Trapezoid 1
+  // Top edge (a)
+  const aLbl = two.makeText(`윗변 a = ${a} cm`, (t1_tl.x + t1_tr.x) / 2, topY - 12);
+  aLbl.size = 12;
+  aLbl.weight = 800;
+  aLbl.fill = '#1d4ed8';
+
+  // Bottom edge (b)
+  const bLbl = two.makeText(`아랫변 b = ${b} cm`, (t1_bl.x + t1_br.x) / 2, baseY + 18);
+  bLbl.size = 12;
+  bLbl.weight = 800;
+  bLbl.fill = '#1d4ed8';
+
+  // Height guide line (h)
+  const hLine = two.makeLine(t1_tl.x, topY, t1_tl.x, baseY);
+  hLine.stroke = '#dc2626';
+  hLine.linewidth = 1.5;
+  hLine.dashes = [4, 3];
+
+  const hLbl = two.makeText(`h = ${th} cm`, t1_tl.x - 28, (topY + baseY) / 2);
+  hLbl.size = 11.5;
+  hLbl.weight = 800;
+  hLbl.fill = '#dc2626';
+
+  // If double trapezoid is active, draw upside-down twin attached to right
+  if (showDouble) {
+    // Trapezoid 2 attached:
+    // It shares edge or extends bottom to (b + a)*scale and top to (a + b)*scale!
+    const t2_bl = { x: t1_br.x, y: baseY };
+    const t2_br = { x: t1_br.x + a * scale, y: baseY };
+    const t2_tr = { x: t1_tr.x + b * scale, y: topY };
+    const t2_tl = { x: t1_tr.x, y: topY };
+
+    const path2 = two.makePath(
+      t2_bl.x, t2_bl.y,
+      t2_br.x, t2_br.y,
+      t2_tr.x, t2_tr.y,
+      t2_tl.x, t2_tl.y,
+      false
+    );
+    path2.fill = '#fef3c7';
+    path2.stroke = '#d97706';
+    path2.linewidth = 2;
+    path2.opacity = 0.85;
+
+    // Labels for twin
+    const twinLbl = two.makeText('합동인 사다리꼴 (뒤집어 결합)', (t2_bl.x + t2_tr.x) / 2, (topY + baseY) / 2);
+    twinLbl.size = 11;
+    twinLbl.weight = 700;
+    twinLbl.fill = '#b45309';
+
+    // Total parallelogram base bracket
+    const paraLbl = two.makeText(`합성 평행사변형 밑변 = a + b = ${a + b} cm`, startX + (a + b) * scale / 2, baseY + 36);
+    paraLbl.size = 12.5;
+    paraLbl.weight = 800;
+    paraLbl.fill = '#047857';
+  }
+
+  // Formula Deduction Card (Y: 298)
+  const cardW = w - 40;
+  const fBox = two.makeRoundedRectangle(w / 2, 310, cardW, 64, 8);
+  fBox.fill = '#f8fafc';
+  fBox.stroke = '#cbd5e1';
+  fBox.linewidth = 1.5;
+
+  const fHead = two.makeText('📐 사다리꼴 넓이 공식의 수학적 표현', w / 2, 292);
+  fHead.size = 12.5;
+  fHead.weight = 700;
+  fHead.fill = '#334155';
+
+  const fBody = two.makeText(
+    showDouble
+      ? `(평행사변형 넓이) = (a + b) × h ➜ (사다리꼴 1개) = (a + b)h / 2 = (${a}+${b})×${th}/2 = ${(a + b) * th / 2} cm²`
+      : '사다리꼴의 넓이 = (윗변 + 아랫변) × 높이 ÷ 2 ➜ 문자로 표현: (a + b)h / 2  또는  1/2(a + b)h',
+    w / 2,
+    324
+  );
+  fBody.size = 13.5;
+  fBody.weight = 800;
+  fBody.fill = '#1e293b';
+}
+
+// -------------------------------------------------------------
+// Grading Logic (Q1 4문항, Q2 2문항 전수 채점 및 관용성)
+// -------------------------------------------------------------
+function gradeStep1_11() {
+  const q1Input = document.getElementById('ans-1-11-1');
+  const q2Input = document.getElementById('ans-1-11-2');
+  const q3Input = document.getElementById('ans-1-11-3');
+  const q4Input = document.getElementById('ans-1-11-4');
+  const q5Input = document.getElementById('ans-1-11-5');
+  const q6Input = document.getElementById('ans-1-11-6');
+  const fb = document.getElementById('feedback-1-11');
+
+  if (!q1Input || !q2Input || !q3Input || !q4Input || !q5Input || !q6Input || !fb) return;
+
+  const norm = (s) => (s || '').toLowerCase().replace(/\s+/g, '');
+
+  const a1 = norm(q1Input.value);
+  const a2 = norm(q2Input.value);
+  const a3 = norm(q3Input.value);
+  const a4 = norm(q4Input.value);
+  const a5 = norm(q5Input.value);
+  const a6 = norm(q6Input.value);
+
+  // 1-⑴: -3ab (or -3ba)
+  const is1Correct = (a1 === '-3ab' || a1 === '-3ba');
+
+  // 1-⑵: x/5 or (1/5)x or 1/5x or (x)/5 or 0.2x
+  const is2Correct = (
+    a2 === 'x/5' ||
+    a2 === '(x)/5' ||
+    a2 === '(1/5)x' ||
+    a2 === '1/5x' ||
+    a2 === '(1/5)*x' ||
+    a2 === '1/5*x' ||
+    a2 === '0.2x' ||
+    a2 === '+x/5' ||
+    a2 === '+(1/5)x'
+  );
+
+  // 1-⑶: 0.1ab (or 0.1ba)
+  const is3Correct = (a3 === '0.1ab' || a3 === '0.1ba');
+
+  // 1-⑷: (x-1)/y or ((x-1)/y) or (x-1)*(1/y) or (1/y)(x-1)
+  const is4Correct = (
+    a4 === '(x-1)/y' ||
+    a4 === '((x-1)/y)' ||
+    a4 === '(x-1)*(1/y)' ||
+    a4 === '(1/y)(x-1)' ||
+    a4 === '-(1-x)/y'
+  );
+
+  // 2-⑴: 800x+1200y or 1200y+800x
+  const is5Correct = (
+    a5 === '800x+1200y' ||
+    a5 === '1200y+800x' ||
+    a5 === '800*x+1200*y' ||
+    a5 === '1200*y+800*x'
+  );
+
+  // 2-⑵: (a+b)h/2 or ((a+b)h)/2 or 1/2(a+b)h or (1/2)(a+b)h or h(a+b)/2 or (b+a)h/2
+  const is6Correct = (
+    a6 === '(a+b)h/2' ||
+    a6 === '((a+b)h)/2' ||
+    a6 === '((a+b)*h)/2' ||
+    a6 === '(a+b)*h/2' ||
+    a6 === '(b+a)h/2' ||
+    a6 === 'h(a+b)/2' ||
+    a6 === 'h*(a+b)/2' ||
+    a6 === '(1/2)(a+b)h' ||
+    a6 === '1/2(a+b)h' ||
+    a6 === '(1/2)*(a+b)*h' ||
+    a6 === '1/2*(a+b)*h' ||
+    a6 === '0.5(a+b)h' ||
+    a6 === '0.5*(a+b)*h'
+  );
+
+  const allCorrect = is1Correct && is2Correct && is3Correct && is4Correct && is5Correct && is6Correct;
+
+  fb.style.display = 'block';
+
+  if (allCorrect) {
+    if (state.lab1_11) state.lab1_11.isPassed = true;
+    state.substepProgress['1-11'] = true;
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#ecfdf5; border:1.5px solid #10b981; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.4rem;">🎉</span>
+          <h5 style="color:#065f46; font-weight:800; margin:0;">100점 완벽 통과! (스스로 확인하기 1, 2번 완성)</h5>
+        </div>
+        <div style="font-size:0.88rem; color:#047857; line-height:1.6;">
+          <b>[1번 기호 생략 완성]</b><br>
+          • ⑴ $a \\times (-3) \\times b = -3ab$<br>
+          • ⑵ $x \\div 5 = \\frac{x}{5}$ 또는 $\\frac{1}{5}x$<br>
+          • ⑶ $a \\times 0.1 \\times b = 0.1ab$ ($0.1$의 $1$은 생략 안 함)<br>
+          • ⑷ $(x - 1) \\div y = \\frac{x - 1}{y}$<br><br>
+          <b>[2번 문장제 식 세우기 완성]</b><br>
+          • ⑴ 연필 $x$자루와 공책 $y$권: $800x + 1200y$ 원<br>
+          • ⑵ 사다리꼴의 넓이: $\\frac{(a + b)h}{2}\\text{ cm}^2$ 또는 $\\frac{1}{2}(a + b)h\\text{ cm}^2$<br>
+          곱셈·나눗셈 기호의 생략 규칙과 문장제 상황의 문자식 표현을 모두 정확하게 마스터했습니다!
+        </div>
+        <div style="margin-top:10px; font-size:0.8rem; color:#059669; font-weight:700;">
+          ✅ 학습 완료 상태가 영서중 LMS DB에 안전하게 자동 저장되었습니다.
+        </div>
+      </div>
+    `;
+
+    // Remote LMS DB save
+    if (window.LMSIntegration && typeof window.LMSIntegration.saveStudentProgress === 'function') {
+      window.LMSIntegration.saveStudentProgress('1-11', { score: 100, passed: true }, 'unit3');
+    }
+
+    // Auto unlock next substep 1-12
+    if (!state.unlockedSubSteps.includes('1-12')) {
+      state.unlockedSubSteps.push('1-12');
+    }
+  } else {
+    let errorMsg = [];
+    if (!is1Correct) errorMsg.push('1-⑴: 수 $(-3)$을 맨 앞에 쓰고 알파벳 순서로 $-3ab$ 입니다.');
+    if (!is2Correct) errorMsg.push('1-⑵: 나눗셈을 분수 꼴로 나타내어 $\\frac{x}{5}$ 또는 $\\frac{1}{5}x$ (입력: x/5) 입니다.');
+    if (!is3Correct) errorMsg.push('1-⑶: 소수 $0.1$의 $1$은 생략하지 않고 수 $0.1$을 앞에 써서 $0.1ab$ 입니다.');
+    if (!is4Correct) errorMsg.push('1-⑷: 분수 꼴에서 괄호를 생략하여 $\\frac{x-1}{y}$ (입력: (x-1)/y) 입니다.');
+    if (!is5Correct) errorMsg.push('2-⑴: 연필 가격 $800x$와 공책 가격 $1200y$의 합인 $800x + 1200y$ 입니다.');
+    if (!is6Correct) errorMsg.push('2-⑵: 사다리꼴 넓이는 (윗변+아랫변)×높이÷2 이므로 $\\frac{(a+b)h}{2}$ (입력: (a+b)h/2) 입니다.');
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#fff1f2; border:1.5px solid #f43f5e; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.3rem;">💡</span>
+          <h6 style="color:#9f1239; font-weight:700; margin:0;">다시 확인해 보세요!</h6>
+        </div>
+        <div style="font-size:0.86rem; color:#be123c; line-height:1.6;">
+          ${errorMsg.map(msg => `<div>• ${msg}</div>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+// --- End Substep 1-11 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -10037,6 +10967,9 @@ function gradeStep1_10() {
       } else if (code === '1-10') {
         renderToolbar1_10();
         renderSubstep1_10();
+      } else if (code === '1-11') {
+        renderToolbar1_11();
+        renderSubstep1_11();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
