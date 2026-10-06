@@ -963,8 +963,8 @@
       },
       '2-3': {
         code: '2-3', tab: 2,
-        substepLabel: '3. 단항식과 수의 곱셈·나눗셈 (p.78)',
-        missionText: '<b>[2-3] 3. 단항식과 수의 곱셈·나눗셈 (p.78)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '3. 수와 단항식의 곱셈과 나눗셈 (p.78 예제 1, p.79 문제 3)',
+        missionText: '<b>[예제 1 및 문제 3] 수와 단항식의 곱셈과 나눗셈 (교과서 p.78~p.79)</b><br>• <b>수 × 단항식:</b> 수끼리 곱하여 문자 앞에 씁니다. (결합법칙 활용)<br>• <b>단항식 ÷ 수:</b> 나누는 수를 <b>역수</b>로 바꾸어 곱셈으로 고쳐서 계산합니다.<br>• <b>부호 규칙:</b> 음수의 곱셈과 나눗셈 부호 결정 규칙을 철저히 준수합니다.<br>좌측 캔버스에서 결합법칙 및 역수 변환 랩을 조작하고 문제 3의 4문항을 직접 풀어 보세요.',
         drawer: 'drawStep2_3Canvas'
       },
       '2-4': {
@@ -1462,6 +1462,15 @@
       },
       
       
+      
+      // Substep 2-3 State (Monomial Mult & Div Lab)
+      lab2_3: {
+        activeTab: 'mode1',
+        coeffA: 4,
+        multK: 3,
+        mode3Q: 0,
+        isPassed: false
+      },
       // Substep 2-2 State (Degree and Linear Expression Lab)
       lab2_2: {
         activeTab: 'mode1',
@@ -13811,6 +13820,653 @@ function gradeStep2_2() {
 
     // --- End Substep 2-2 Implementation ---
 
+    
+    // --- Substep 2-3 Implementation ---
+// code_2_3.js: Substep [2-3] 3.2 수와 일차식의 곱셈과 나눗셈 (교과서 p.78 예제 1, p.79 문제 3)
+
+function renderToolbar2_3() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab2_3) {
+    state.lab2_3 = {
+      activeTab: 'mode1', // 'mode1' (곱셈 결합법칙) | 'mode2' (나눗셈 역수 변환) | 'mode3' (문제 3 4종 랩)
+      coeffA: 4,          // 4x * 3
+      multK: 3,
+      mode3Q: 0,          // 0: 2x*5, 1: -3*4a, 2: 16b/4, 3: -10y/(-5/2)
+      isPassed: false
+    };
+  }
+
+  const curTab = state.lab2_3.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab2_3Tab('mode1')">
+        1. 단항식 × 수 (결합법칙)
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab2_3Tab('mode2')">
+        2. 단항식 ÷ 수 (역수 변환)
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab2_3Tab('mode3')">
+        3. 문제 3 4종 연산 훈련
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn" onclick="resetLab2_3()" title="초기화">🔄 초기화</button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('2-3')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab2_3Tab(tabKey) {
+  if (!state.lab2_3) resetLab2_3();
+  state.lab2_3.activeTab = tabKey;
+  renderToolbar2_3();
+  drawStep2_3Canvas();
+}
+
+function resetLab2_3() {
+  state.lab2_3 = {
+    activeTab: 'mode1',
+    coeffA: 4,
+    multK: 3,
+    mode3Q: 0,
+    isPassed: false
+  };
+  renderToolbar2_3();
+  drawStep2_3Canvas();
+}
+
+function changeMode1Coeff(delta) {
+  if (!state.lab2_3) resetLab2_3();
+  state.lab2_3.coeffA = Math.max(-6, Math.min(6, state.lab2_3.coeffA + delta));
+  if (state.lab2_3.coeffA === 0) state.lab2_3.coeffA = delta > 0 ? 1 : -1;
+  drawStep2_3Canvas();
+}
+
+function changeMode1Mult(delta) {
+  if (!state.lab2_3) resetLab2_3();
+  state.lab2_3.multK = Math.max(-5, Math.min(5, state.lab2_3.multK + delta));
+  if (state.lab2_3.multK === 0) state.lab2_3.multK = delta > 0 ? 1 : -1;
+  drawStep2_3Canvas();
+}
+
+function setMode3Q(idx) {
+  if (!state.lab2_3) resetLab2_3();
+  state.lab2_3.mode3Q = idx;
+  drawStep2_3Canvas();
+}
+
+function renderSubstep2_3() {
+  const container = document.getElementById('substep-form-container');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="card p-3 mb-3" style="border-left: 4px solid var(--primary);">
+      <h6 style="font-weight:700; color:var(--primary); margin-bottom:6px;">
+        📖 [교과서 p.78 예제 1, p.79] 수와 단항식의 곱셈과 나눗셈 원리
+      </h6>
+      <div style="font-size:0.86rem; color:#334155; line-height:1.55;">
+        <ul style="margin:0; padding-left:18px;">
+          <li><b>곱셈 원리:</b> 수끼리 곱하여 문자 앞에 씁니다. (결합법칙)<br>
+            예: $4x \\times 3 = (4 \\times 3) \\times x = 12x$
+          </li>
+          <li><b>나눗셈 원리:</b> 나누는 수의 <b>역수</b>를 곱하여 수끼리 계산합니다.<br>
+            예: $6a \\div \\left(-\\frac{2}{3}\\right) = 6a \\times \\left(-\\frac{3}{2}\\right) = \\left(6 \\times -\\frac{3}{2}\\right)a = -9a$
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 문제 3 카드 -->
+    <div class="card p-3 mb-3">
+      <h6 style="font-weight:700; color:#1e293b; margin-bottom:8px;">
+        ✏️ [문제 3] 다음을 계산하시오.
+      </h6>
+
+      <div class="form-group mb-2">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑴ $2x \\times 5$
+        </label>
+        <input type="text" id="ans-2-3-1" class="proof-input-text w-100" placeholder="계산 결과 식 입력" autocomplete="off">
+      </div>
+
+      <div class="form-group mb-2">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑵ $(-3) \\times 4a$
+        </label>
+        <input type="text" id="ans-2-3-2" class="proof-input-text w-100" placeholder="계산 결과 식 입력" autocomplete="off">
+      </div>
+
+      <div class="form-group mb-2">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑶ $16b \\div 4$
+        </label>
+        <input type="text" id="ans-2-3-3" class="proof-input-text w-100" placeholder="계산 결과 식 입력" autocomplete="off">
+      </div>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑷ $(-10y) \\div \\left(-\\frac{5}{2}\\right)$
+        </label>
+        <input type="text" id="ans-2-3-4" class="proof-input-text w-100" placeholder="계산 결과 식 입력" autocomplete="off">
+      </div>
+
+      <button id="btn-grade-2-3" class="primary-btn w-100" onclick="gradeStep2_3()" style="margin-top:6px; font-weight:700;">
+        🚀 정답 확인 및 LMS DB 기록
+      </button>
+    </div>
+
+    <div id="feedback-2-3" style="display:none; margin-top:8px;"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawStep2_3Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+
+  if (state.twoInstance) {
+    state.twoInstance.clear();
+  } else {
+    container.innerHTML = '';
+    const two = new Two({
+      width: container.clientWidth || 600,
+      height: 440,
+      type: Two.Types.svg
+    }).appendTo(container);
+    state.twoInstance = two;
+  }
+
+  const two = state.twoInstance;
+  if (!two) return;
+
+  two.clear();
+  drawMonomialCalcLab(two);
+  two.update();
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawMonomialCalcLab(two) {
+  const w = two.width;
+  const h = two.height;
+  const tab = (state.lab2_3 && state.lab2_3.activeTab) || 'mode1';
+
+  // Background
+  const bg = two.makeRectangle(w / 2, h / 2, w, h);
+  bg.fill = '#f8fafc';
+  bg.stroke = '#e2e8f0';
+  bg.linewidth = 1;
+
+  if (tab === 'mode1') {
+    drawMode1MultLab(two, w, h);
+  } else if (tab === 'mode2') {
+    drawMode2DivLab(two, w, h);
+  } else {
+    drawMode3Q3Lab(two, w, h);
+  }
+
+  // Bottom info banner (Strict Vertical Budget: Y=385, H=26 -> Margin=29px >= 25px)
+  const bannerY = 385;
+  const bannerH = 26;
+  const bannerBox = two.makeRoundedRectangle(w / 2, bannerY, w - 24, bannerH, 6);
+  bannerBox.fill = '#eff6ff';
+  bannerBox.stroke = '#bfdbfe';
+  bannerBox.linewidth = 1;
+
+  const bannerMsgs = {
+    'mode1': '💡 단항식과 수의 곱셈은 곱셈의 결합법칙을 사용하여 수끼리 먼저 곱합니다.',
+    'mode2': '💡 나눗셈은 나누는 수를 역수로 바꾸어 곱셈으로 변환한 뒤 약분하여 계산합니다.',
+    'mode3': '💡 문제 3: 음수의 곱셈·나눗셈 부호 규칙(- × - = +, - ÷ - = +)에 주의하세요!'
+  };
+
+  const bannerTxt = two.makeText(bannerMsgs[tab], w / 2, bannerY);
+  bannerTxt.size = 11.5;
+  bannerTxt.weight = 700;
+  bannerTxt.fill = '#1d4ed8';
+}
+
+// -------------------------------------------------------------
+// Model 1: 단항식 × 수 결합법칙 연산 랩
+// -------------------------------------------------------------
+function drawMode1MultLab(two, w, h) {
+  const a = (state.lab2_3 && state.lab2_3.coeffA !== undefined) ? state.lab2_3.coeffA : 4;
+  const k = (state.lab2_3 && state.lab2_3.multK !== undefined) ? state.lab2_3.multK : 3;
+  const total = a * k;
+
+  const titleTxt = two.makeText('단항식과 수의 곱셈: 결합법칙 랩 (교과서 p.78 예제 1-⑴)', w / 2, 24);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  const cardW = w - 40;
+  const cardH = 290;
+  const cardX = w / 2;
+  const cardY = 205;
+
+  const card = two.makeRoundedRectangle(cardX, cardY, cardW, cardH, 12);
+  card.fill = '#ffffff';
+  card.stroke = '#e2e8f0';
+  card.linewidth = 1.5;
+
+  // Steppers (Y: 66)
+  const ctrlY = 66;
+
+  // Coeff a stepper
+  const aLbl = two.makeText('계수 a:', cardX - 180, ctrlY);
+  aLbl.size = 12;
+  aLbl.weight = 700;
+  aLbl.fill = '#475569';
+
+  const btnMa = two.makeCircle(cardX - 120, ctrlY, 12);
+  btnMa.fill = '#6366f1';
+  const tMa = two.makeText('-', cardX - 120, ctrlY);
+  tMa.size = 14;
+  tMa.weight = 800;
+  tMa.fill = '#ffffff';
+
+  if (btnMa._renderer && btnMa._renderer.elem) {
+    btnMa._renderer.elem.style.cursor = 'pointer';
+    btnMa._renderer.elem.onclick = () => changeMode1Coeff(-1);
+  }
+
+  const txtA = two.makeText(`${a}`, cardX - 90, ctrlY);
+  txtA.size = 14;
+  txtA.weight = 800;
+  txtA.fill = '#1e293b';
+
+  const btnPa = two.makeCircle(cardX - 60, ctrlY, 12);
+  btnPa.fill = '#6366f1';
+  const tPa = two.makeText('+', cardX - 60, ctrlY);
+  tPa.size = 14;
+  tPa.weight = 800;
+  tPa.fill = '#ffffff';
+
+  if (btnPa._renderer && btnPa._renderer.elem) {
+    btnPa._renderer.elem.style.cursor = 'pointer';
+    btnPa._renderer.elem.onclick = () => changeMode1Coeff(1);
+  }
+
+  // Mult k stepper
+  const kLbl = two.makeText('곱하는 수 k:', cardX + 30, ctrlY);
+  kLbl.size = 12;
+  kLbl.weight = 700;
+  kLbl.fill = '#475569';
+
+  const btnMk = two.makeCircle(cardX + 110, ctrlY, 12);
+  btnMk.fill = '#10b981';
+  const tMk = two.makeText('-', cardX + 110, ctrlY);
+  tMk.size = 14;
+  tMk.weight = 800;
+  tMk.fill = '#ffffff';
+
+  if (btnMk._renderer && btnMk._renderer.elem) {
+    btnMk._renderer.elem.style.cursor = 'pointer';
+    btnMk._renderer.elem.onclick = () => changeMode1Mult(-1);
+  }
+
+  const txtK = two.makeText(`${k}`, cardX + 140, ctrlY);
+  txtK.size = 14;
+  txtK.weight = 800;
+  txtK.fill = '#1e293b';
+
+  const btnPk = two.makeCircle(cardX + 170, ctrlY, 12);
+  btnPk.fill = '#10b981';
+  const tPk = two.makeText('+', cardX + 170, ctrlY);
+  tPk.size = 14;
+  tPk.weight = 800;
+  tPk.fill = '#ffffff';
+
+  if (btnPk._renderer && btnPk._renderer.elem) {
+    btnPk._renderer.elem.style.cursor = 'pointer';
+    btnPk._renderer.elem.onclick = () => changeMode1Mult(1);
+  }
+
+  // 3-Stage Visual Pipeline (Y: 130 ~ 230)
+  const aStr = a === 1 ? 'x' : (a === -1 ? '-x' : `${a}x`);
+  const kStr = k < 0 ? `(${k})` : `${k}`;
+  const totStr = total === 1 ? 'x' : (total === -1 ? '-x' : `${total}x`);
+
+  const s1 = `원래 식:  ${aStr} × ${kStr}`;
+  const s2 = `곱셈 기호 부활 및 결합법칙:  (${a} × ${kStr}) × x`;
+  const s3 = `수끼리 곱셈 계산:  ${total} × x`;
+  const s4 = `곱셈 기호 생략 최종 결과:  ${totStr}`;
+
+  const steps = [
+    { label: '단계 1: 원래의 식', val: s1, bg: '#f8fafc', stroke: '#cbd5e1', col: '#1e293b' },
+    { label: '단계 2: 수끼리 괄호 묶기', val: s2, bg: '#eff6ff', stroke: '#93c5fd', col: '#1d4ed8' },
+    { label: '단계 3: 수 계산', val: s3, bg: '#fefce8', stroke: '#fde047', col: '#a16207' },
+    { label: '단계 4: 최종 곱셈 생략', val: s4, bg: '#ecfdf5', stroke: '#86efac', col: '#047857' }
+  ];
+
+  steps.forEach((st, idx) => {
+    const sy = 120 + idx * 42;
+    const isFinal = (idx === 3);
+
+    const b = two.makeRoundedRectangle(cardX, sy, cardW - 48, 34, 6);
+    b.fill = st.bg;
+    b.stroke = st.stroke;
+    b.linewidth = isFinal ? 2 : 1;
+
+    const bTxt = two.makeText(st.val, cardX, sy);
+    bTxt.size = isFinal ? 14 : 12.5;
+    bTxt.weight = 800;
+    bTxt.fill = st.col;
+  });
+
+  // Notice
+  const tipTxt = two.makeText('💡 원리: 단항식과 수를 곱할 때는 수끼리 곱하여 문자 앞에 씁니다.', cardX, 308);
+  tipTxt.size = 11.5;
+  tipTxt.weight = 700;
+  tipTxt.fill = '#475569';
+}
+
+// -------------------------------------------------------------
+// Model 2: 단항식 ÷ 수 역수 변환 랩
+// -------------------------------------------------------------
+function drawMode2DivLab(two, w, h) {
+  const titleTxt = two.makeText('단항식과 수의 나눗셈: 역수 변환과 약분 (교과서 p.78 예제 1-⑵)', w / 2, 24);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  const cardW = w - 40;
+  const cardH = 290;
+  const cardX = w / 2;
+  const cardY = 205;
+
+  const card = two.makeRoundedRectangle(cardX, cardY, cardW, cardH, 12);
+  card.fill = '#ffffff';
+  card.stroke = '#e2e8f0';
+  card.linewidth = 1.5;
+
+  // Example formula
+  const fBox = two.makeRoundedRectangle(cardX, 86, cardW - 48, 44, 8);
+  fBox.fill = '#f8fafc';
+  fBox.stroke = '#cbd5e1';
+  fBox.linewidth = 1.5;
+
+  const fTxt = two.makeText('예제 1-⑵:  6a ÷ (-2/3)', cardX, 86);
+  fTxt.size = 15;
+  fTxt.weight = 800;
+  fTxt.fill = '#1e293b';
+
+  // Step 1: Inversion Box (Y: 150)
+  const b1 = two.makeRoundedRectangle(cardX, 146, cardW - 48, 46, 8);
+  b1.fill = '#eff6ff';
+  b1.stroke = '#93c5fd';
+  b1.linewidth = 1.5;
+
+  const b1Txt = two.makeText('1단계: 나눗셈을 곱셈으로 바꾸고 나누는 수의 역수(-3/2) 곱하기  ➜  6a × (-3/2)', cardX, 146);
+  b1Txt.size = 13;
+  b1Txt.weight = 800;
+  b1Txt.fill = '#1d4ed8';
+
+  // Step 2: Cross Cancellation (Y: 210)
+  const b2 = two.makeRoundedRectangle(cardX, 206, cardW - 48, 46, 8);
+  b2.fill = '#fefce8';
+  b2.stroke = '#fde047';
+  b2.linewidth = 1.5;
+
+  const b2Txt = two.makeText('2단계: 수 6과 분모 2를 약분(6 ÷ 2 = 3)하여 수끼리 계산  ➜  { 3 × (-3) } × a', cardX, 206);
+  b2Txt.size = 13;
+  b2Txt.weight = 800;
+  b2Txt.fill = '#a16207';
+
+  // Step 3: Final Result (Y: 270)
+  const b3 = two.makeRoundedRectangle(cardX, 266, cardW - 48, 46, 8);
+  b3.fill = '#ecfdf5';
+  b3.stroke = '#86efac';
+  b3.linewidth = 2;
+
+  const b3Txt = two.makeText('3단계: 최종 계산 결과  ➜  -9a  (부호 음수 주의!)', cardX, 266);
+  b3Txt.size = 15;
+  b3Txt.weight = 800;
+  b3Txt.fill = '#047857';
+
+  // Tip
+  const tipTxt = two.makeText('💡 나눗셈은 역수의 곱으로 바꾸면 곱셈과 완전히 동일한 원리로 해결됩니다.', cardX, 316);
+  tipTxt.size = 11.5;
+  tipTxt.weight = 700;
+  tipTxt.fill = '#475569';
+}
+
+// -------------------------------------------------------------
+// Model 3: 문제 3 4종 연산 훈련 랩
+// -------------------------------------------------------------
+function drawMode3Q3Lab(two, w, h) {
+  const qIdx = (state.lab2_3 && state.lab2_3.mode3Q !== undefined) ? state.lab2_3.mode3Q : 0;
+
+  const titleTxt = two.makeText('문제 3: 4대 곱셈·나눗셈 연산 분광 랩 (교과서 p.79)', w / 2, 24);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  const qList = [
+    { label: '⑴ 2x × 5', key: 0 },
+    { label: '⑵ (-3) × 4a', key: 1 },
+    { label: '⑶ 16b ÷ 4', key: 2 },
+    { label: '⑷ (-10y) ÷ (-5/2)', key: 3 }
+  ];
+
+  const btnW = 140;
+  const startX = (w - (4 * btnW + 3 * 8)) / 2 + btnW / 2;
+
+  qList.forEach((q, i) => {
+    const bx = startX + i * (btnW + 8);
+    const by = 54;
+    const isSel = (qIdx === i);
+
+    const bBox = two.makeRoundedRectangle(bx, by, btnW, 28, 6);
+    bBox.fill = isSel ? '#4f46e5' : '#ffffff';
+    bBox.stroke = isSel ? '#4338ca' : '#cbd5e1';
+    bBox.linewidth = isSel ? 1.5 : 1;
+
+    const bTxt = two.makeText(q.label, bx, by);
+    bTxt.size = 11.5;
+    bTxt.weight = isSel ? 800 : 600;
+    bTxt.fill = isSel ? '#ffffff' : '#334155';
+
+    if (bBox._renderer && bBox._renderer.elem) {
+      bBox._renderer.elem.style.cursor = 'pointer';
+      bBox._renderer.elem.onclick = () => setMode3Q(i);
+    }
+  });
+
+  const cardW = w - 40;
+  const cardH = 270;
+  const cardX = w / 2;
+  const cardY = 214;
+
+  const card = two.makeRoundedRectangle(cardX, cardY, cardW, cardH, 12);
+  card.fill = '#ffffff';
+  card.stroke = '#e2e8f0';
+  card.linewidth = 1.5;
+
+  const qData = [
+    {
+      title: '⑴ 2x × 5',
+      s1: '수끼리 괄호 묶기:  (2 × 5) × x',
+      s2: '수 곱셈 계산:  10 × x',
+      ans: '최종 결과:  10x',
+      tip: '양수끼리의 곱셈: 2 × 5 = 10'
+    },
+    {
+      title: '⑵ (-3) × 4a',
+      s1: '수끼리 괄호 묶기:  (-3 × 4) × a',
+      s2: '음수와 양수의 곱셈:  -12 × a',
+      ans: '최종 결과:  -12a',
+      tip: '음수 × 양수 = 음수: -3 × 4 = -12'
+    },
+    {
+      title: '⑶ 16b ÷ 4',
+      s1: '역수의 곱으로 변환:  16b × (1/4)',
+      s2: '약분 및 수 곱셈:  (16 × 1/4) × b = 4 × b',
+      ans: '최종 결과:  4b',
+      tip: '16 ÷ 4 = 4'
+    },
+    {
+      title: '⑷ (-10y) ÷ (-5/2)',
+      s1: '역수(-2/5) 곱으로 변환:  (-10y) × (-2/5)',
+      s2: '수끼리 약분:  {-10 × (-2/5)} × y = (+4) × y',
+      ans: '최종 결과:  4y',
+      tip: '음수 ÷ 음수 = 양수: (-10) × (-2/5) = +4'
+    }
+  ];
+
+  const cur = qData[qIdx];
+
+  const tHead = two.makeText(cur.title, cardX, 104);
+  tHead.size = 16;
+  tHead.weight = 800;
+  tHead.fill = '#1e293b';
+
+  const b1 = two.makeRoundedRectangle(cardX, 150, cardW - 48, 36, 6);
+  b1.fill = '#eff6ff';
+  b1.stroke = '#bfdbfe';
+  const t1 = two.makeText(cur.s1, cardX, 150);
+  t1.size = 13;
+  t1.weight = 700;
+  t1.fill = '#1d4ed8';
+
+  const b2 = two.makeRoundedRectangle(cardX, 198, cardW - 48, 36, 6);
+  b2.fill = '#fefce8';
+  b2.stroke = '#fde047';
+  const t2 = two.makeText(cur.s2, cardX, 198);
+  t2.size = 13;
+  t2.weight = 700;
+  t2.fill = '#a16207';
+
+  const b3 = two.makeRoundedRectangle(cardX, 250, cardW - 48, 44, 8);
+  b3.fill = '#ecfdf5';
+  b3.stroke = '#86efac';
+  b3.linewidth = 2;
+  const t3 = two.makeText(cur.ans, cardX, 250);
+  t3.size = 16;
+  t3.weight = 800;
+  t3.fill = '#047857';
+
+  const tipTxt = two.makeText(`💡 연산 포인트: ${cur.tip}`, cardX, 304);
+  tipTxt.size = 12;
+  tipTxt.weight = 700;
+  tipTxt.fill = '#64748b';
+}
+
+// -------------------------------------------------------------
+// Grading Logic (문제 3 4문항 전수 채점)
+// -------------------------------------------------------------
+function gradeStep2_3() {
+  const q1 = document.getElementById('ans-2-3-1');
+  const q2 = document.getElementById('ans-2-3-2');
+  const q3 = document.getElementById('ans-2-3-3');
+  const q4 = document.getElementById('ans-2-3-4');
+  const fb = document.getElementById('feedback-2-3');
+
+  if (!q1 || !q2 || !q3 || !q4 || !fb) return;
+
+  const norm = (s) => (s || '').toLowerCase().replace(/\s+/g, '');
+
+  const a1 = norm(q1.value);
+  const a2 = norm(q2.value);
+  const a3 = norm(q3.value);
+  const a4 = norm(q4.value);
+
+  const is1Ok = (a1 === '10x' || a1 === '+10x');
+  const is2Ok = (a2 === '-12a');
+  const is3Ok = (a3 === '4b' || a3 === '+4b');
+  const is4Ok = (a4 === '4y' || a4 === '+4y');
+
+  const allCorrect = is1Ok && is2Ok && is3Ok && is4Ok;
+
+  fb.style.display = 'block';
+
+  if (allCorrect) {
+    if (state.lab2_3) state.lab2_3.isPassed = true;
+    state.substepProgress['2-3'] = true;
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#ecfdf5; border:1.5px solid #10b981; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.4rem;">🎉</span>
+          <h5 style="color:#065f46; font-weight:800; margin:0;">100점 완벽 통과! (수와 일차식의 곱셈·나눗셈 완성)</h5>
+        </div>
+        <div style="font-size:0.88rem; color:#047857; line-height:1.6;">
+          <b>[문제 3 계산 완벽 정답]</b><br>
+          • ⑴ $2x \\times 5 = (2 \\times 5)x = 10x$<br>
+          • ⑵ $(-3) \\times 4a = (-3 \\times 4)a = -12a$<br>
+          • ⑶ $16b \\div 4 = 16b \\times \\frac{1}{4} = 4b$<br>
+          • ⑷ $(-10y) \\div \\left(-\\frac{5}{2}\\right) = (-10y) \\times \\left(-\\frac{2}{5}\\right) = 4y$<br>
+          단항식과 수의 곱셈 및 나눗셈(역수 변환) 원리를 완벽하게 마스터했습니다!
+        </div>
+        <div style="margin-top:10px; font-size:0.8rem; color:#059669; font-weight:700;">
+          ✅ 학습 완료 상태가 영서중 LMS DB에 안전하게 자동 저장되었습니다.
+        </div>
+      </div>
+    `;
+
+    if (window.LMSIntegration && typeof window.LMSIntegration.saveStudentProgress === 'function') {
+      window.LMSIntegration.saveStudentProgress('2-3', { score: 100, passed: true }, 'unit3');
+    }
+
+    if (!state.unlockedSubSteps.includes('2-4')) {
+      state.unlockedSubSteps.push('2-4');
+    }
+  } else {
+    let errorMsg = [];
+    if (!is1Ok) errorMsg.push('⑴: $2x \\times 5 = (2 \\times 5)x = 10x$ (입력: 10x) 입니다.');
+    if (!is2Ok) errorMsg.push('⑵: $(-3) \\times 4a = (-3 \\times 4)a = -12a$ (입력: -12a) 입니다.');
+    if (!is3Ok) errorMsg.push('⑶: $16b \\div 4 = 4b$ (입력: 4b) 입니다.');
+    if (!is4Ok) errorMsg.push('⑷: $(-10y) \\times \\left(-\\frac{2}{5}\\right) = 4y$ (입력: 4y) 입니다.');
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#fff1f2; border:1.5px solid #f43f5e; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.3rem;">💡</span>
+          <h6 style="color:#9f1239; font-weight:700; margin:0;">다시 확인해 보세요!</h6>
+        </div>
+        <div style="font-size:0.86rem; color:#be123c; line-height:1.6;">
+          ${errorMsg.map(msg => `<div>• ${msg}</div>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+    // --- End Substep 2-3 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -13896,6 +14552,9 @@ function gradeStep2_2() {
       } else if (code === '2-2') {
         renderToolbar2_2();
         renderSubstep2_2();
+      } else if (code === '2-3') {
+        renderToolbar2_3();
+        renderSubstep2_3();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
