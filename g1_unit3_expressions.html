@@ -1018,7 +1018,7 @@
       '3-1': {
         code: '3-1', tab: 3,
         substepLabel: '1. 생각열기: 호떡과 어묵, 동류항의 뜻 (p.81)',
-        missionText: '<b>[3-1] 1. 생각열기: 호떡과 어묵, 동류항의 뜻 (p.81)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        missionText: '<b>[생각 열기] 호떡과 어묵, 동류항의 뜻 (교과서 p.81)</b><br>• <b>수량의 문자와 식 표현:</b> 호떡 1개 $x$원, 어묵 1개 $y$원일 때 각 사람이 산 수량을 문자로 나타냅니다.<br>• <b>동류항 모으기:</b> 문자와 차수가 같은 항끼리 모아 $(2x + 3x) + (3y + y) = 5x + 4y$로 간단히 계산합니다.<br>• <b>동류항의 뜻:</b> 문자와 차수가 각각 같은 항을 동류항이라 하며, 상수항은 모두 동류항입니다.<br>좌측 캔버스에서 호떡과 어묵을 모아보고 동류항 분류 랩을 탐구해 보세요.',
         drawer: 'drawStep3_1Canvas'
       },
       '3-2': {
@@ -1471,6 +1471,29 @@
       
       
       
+      
+      // Substep 3-1 State (Street Food & Like Terms Concept)
+      lab3_1: {
+        activeTab: 'mode1',
+        minwooH: 2,
+        minwooO: 3,
+        sujiH: 3,
+        sujiO: 1,
+        isMerged: false,
+        cards: [
+          { id: 1, text: '2x', type: 'x', target: 'x', matched: false },
+          { id: 2, text: '-5x', type: 'x', target: 'x', matched: false },
+          { id: 3, text: '3y', type: 'y', target: 'y', matched: false },
+          { id: 4, text: '-y', type: 'y', target: 'y', matched: false },
+          { id: 5, text: '4', type: 'const', target: 'const', matched: false },
+          { id: 6, text: '-7', type: 'const', target: 'const', matched: false },
+          { id: 7, text: '2x²', type: 'trap', target: 'trap', matched: false },
+          { id: 8, text: '3xy', type: 'trap', target: 'trap', matched: false }
+        ],
+        selectedCardId: null,
+        trapNotice: null,
+        isPassed: false
+      },
       // Substep 2-11 State (Thinking Expansion: Linear Expression Card Game)
       lab2_11: {
         activeTab: 'mode1',
@@ -19905,6 +19928,902 @@ function gradeStep2_11() {
 
     // --- End Substep 2-11 Implementation ---
 
+    
+    // --- Substep 3-1 Implementation ---
+// code_3_1.js: Substep [3-1] 3.3 생각 열기: 호떡과 어묵, 동류항의 뜻 (교과서 p.81)
+
+function renderToolbar3_1() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab3_1) {
+    state.lab3_1 = {
+      activeTab: 'mode1', // 'mode1' (호떡과 어묵 생각열기) | 'mode2' (동류항 분류 랩) | 'mode3' (동류항 정의 렌즈)
+      minwooH: 2,         // 민우 호떡 2개 (x)
+      minwooO: 3,         // 민우 어묵 3개 (y)
+      sujiH: 3,           // 수지 호떡 3개 (x)
+      sujiO: 1,           // 수지 어묵 1개 (y)
+      isMerged: false,    // 같은 종류끼리 모으기
+      cards: [
+        { id: 1, text: '2x', type: 'x', target: 'x', matched: false },
+        { id: 2, text: '-5x', type: 'x', target: 'x', matched: false },
+        { id: 3, text: '3y', type: 'y', target: 'y', matched: false },
+        { id: 4, text: '-y', type: 'y', target: 'y', matched: false },
+        { id: 5, text: '4', type: 'const', target: 'const', matched: false },
+        { id: 6, text: '-7', type: 'const', target: 'const', matched: false },
+        { id: 7, text: '2x²', type: 'trap', target: 'trap', matched: false },
+        { id: 8, text: '3xy', type: 'trap', target: 'trap', matched: false }
+      ],
+      selectedCardId: null,
+      trapNotice: null,
+      isPassed: false
+    };
+  }
+
+  const curTab = state.lab3_1.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab3_1Tab('mode1')">
+        1. 🍡 호떡과 어묵 생각 열기
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab3_1Tab('mode2')">
+        2. 🧩 동류항 분류 랩
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab3_1Tab('mode3')">
+        3. 🔍 동류항 정의 렌즈
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn" onclick="toggleMerge3_1()" title="같은 종류끼리 모으기">
+        ${state.lab3_1.isMerged ? '🍽️ 각자 접시로 나누기' : '🧺 종류별(동류항) 모으기'}
+      </button>
+      <button class="icon-btn" onclick="resetLab3_1()" title="초기화">🔄 초기화</button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('3-1')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab3_1Tab(tabKey) {
+  if (!state.lab3_1) resetLab3_1();
+  state.lab3_1.activeTab = tabKey;
+  renderToolbar3_1();
+  drawStep3_1Canvas();
+}
+
+function resetLab3_1() {
+  state.lab3_1 = {
+    activeTab: 'mode1',
+    minwooH: 2,
+    minwooO: 3,
+    sujiH: 3,
+    sujiO: 1,
+    isMerged: false,
+    cards: [
+      { id: 1, text: '2x', type: 'x', target: 'x', matched: false },
+      { id: 2, text: '-5x', type: 'x', target: 'x', matched: false },
+      { id: 3, text: '3y', type: 'y', target: 'y', matched: false },
+      { id: 4, text: '-y', type: 'y', target: 'y', matched: false },
+      { id: 5, text: '4', type: 'const', target: 'const', matched: false },
+      { id: 6, text: '-7', type: 'const', target: 'const', matched: false },
+      { id: 7, text: '2x²', type: 'trap', target: 'trap', matched: false },
+      { id: 8, text: '3xy', type: 'trap', target: 'trap', matched: false }
+    ],
+    selectedCardId: null,
+    trapNotice: null,
+    isPassed: false
+  };
+  renderToolbar3_1();
+  drawStep3_1Canvas();
+}
+
+function toggleMerge3_1() {
+  if (!state.lab3_1) resetLab3_1();
+  state.lab3_1.isMerged = !state.lab3_1.isMerged;
+  renderToolbar3_1();
+  drawStep3_1Canvas();
+}
+
+function selectCard3_1(cardId) {
+  if (!state.lab3_1) resetLab3_1();
+  const c = state.lab3_1.cards.find(item => item.id === cardId);
+  if (!c) return;
+
+  if (c.type === 'trap') {
+    if (c.text === '2x²') {
+      state.lab3_1.trapNotice = '⚠️ 2x²은 문자는 x이지만 차수가 2이므로, 차수가 1인 x와 동류항이 아닙니다!';
+    } else {
+      state.lab3_1.trapNotice = '⚠️ 3xy는 문자가 x, y 2개이므로 x 또는 y와 동류항이 아닙니다!';
+    }
+    state.lab3_1.selectedCardId = null;
+  } else {
+    state.lab3_1.trapNotice = null;
+    c.matched = true;
+    state.lab3_1.selectedCardId = null;
+  }
+  drawStep3_1Canvas();
+}
+
+function resetCards3_1() {
+  if (!state.lab3_1) resetLab3_1();
+  state.lab3_1.cards.forEach(c => { c.matched = false; });
+  state.lab3_1.trapNotice = null;
+  drawStep3_1Canvas();
+}
+
+function renderSubstep3_1() {
+  const container = document.getElementById('substep-form-container');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="card" style="padding:16px; margin-bottom:12px; border-left:4px solid #4f46e5;">
+      <h4 style="margin:0 0 6px 0; font-size:1.02rem; color:#1e293b; display:flex; align-items:center; gap:6px;">
+        <span>🍡 [생각 열기] 호떡과 어묵, 동류항의 뜻 (교과서 p.81)</span>
+      </h4>
+      <p style="margin:0; font-size:0.87rem; color:#475569; line-height:1.5;">
+        분식집에서 호떡 1개의 가격을 <b>$x$원</b>, 어묵 1개의 가격을 <b>$y$원</b>이라 할 때,<br>
+        민우는 호떡 2개와 어묵 3개를 샀고, 수지는 호떡 3개와 어묵 1개를 샀습니다.
+      </p>
+    </div>
+
+    <!-- Question 1 -->
+    <div class="card" style="padding:14px; margin-bottom:12px;">
+      <div style="font-weight:700; font-size:0.92rem; color:#1e293b; margin-bottom:8px;">
+        ⑴ 민우와 수지가 산 <span style="color:#b45309;">호떡의 총 개수</span>를 $x$를 사용하여 나타내시오.
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:0.88rem; color:#64748b;">호떡 식:</span>
+        <input type="text" id="substep3_1_ans1" class="proof-input-text"
+               placeholder="x에 대한 식 입력 (예: ax)"
+               style="width:200px; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.92rem;"
+               onkeydown="if(event.key==='Enter') gradeStep3_1()">
+        <span style="font-size:0.85rem; color:#64748b;">(원)</span>
+      </div>
+    </div>
+
+    <!-- Question 2 -->
+    <div class="card" style="padding:14px; margin-bottom:12px;">
+      <div style="font-weight:700; font-size:0.92rem; color:#1e293b; margin-bottom:8px;">
+        ⑵ 민우와 수지가 산 <span style="color:#0369a1;">어묵의 총 개수</span>를 $y$를 사용하여 나타내시오.
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:0.88rem; color:#64748b;">어묵 식:</span>
+        <input type="text" id="substep3_1_ans2" class="proof-input-text"
+               placeholder="y에 대한 식 입력 (예: by)"
+               style="width:200px; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.92rem;"
+               onkeydown="if(event.key==='Enter') gradeStep3_1()">
+        <span style="font-size:0.85rem; color:#64748b;">(원)</span>
+      </div>
+    </div>
+
+    <!-- Question 3 -->
+    <div class="card" style="padding:14px; margin-bottom:12px;">
+      <div style="font-weight:700; font-size:0.92rem; color:#1e293b; margin-bottom:8px;">
+        ⑶ 두 사람이 지불해야 할 <span style="color:#4f46e5;">총 금액</span>을 $x, y$를 사용한 식으로 나타내시오.
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:0.88rem; color:#64748b;">총 금액 식:</span>
+        <input type="text" id="substep3_1_ans3" class="proof-input-text"
+               placeholder="일차식 입력 (예: ax + by)"
+               style="width:220px; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.92rem;"
+               onkeydown="if(event.key==='Enter') gradeStep3_1()">
+        <span style="font-size:0.85rem; color:#64748b;">(원)</span>
+      </div>
+    </div>
+
+    <!-- Question 4 -->
+    <div class="card" style="padding:14px; margin-bottom:14px;">
+      <div style="font-weight:700; font-size:0.92rem; color:#1e293b; margin-bottom:8px;">
+        ⑷ [동류항 개념 체크] 다음 보기 중 <span style="color:#059669;">동류항끼리 짝지어진 것</span>을 모두 고르시오.
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px; font-size:0.88rem; color:#334155; margin-left:4px;">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="substep3_1_chk1" value="1">
+          <span>① $2a$와 $3b$</span>
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="substep3_1_chk2" value="2">
+          <span>② $3x$와 $-5x$</span>
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="substep3_1_chk3" value="3">
+          <span>③ $x^2$과 $2x$</span>
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="substep3_1_chk4" value="4">
+          <span>④ $4$와 $-7$</span>
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="substep3_1_chk5" value="5">
+          <span>⑤ $a^2b$와 $ab^2$</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div style="display:flex; gap:10px; align-items:center; margin-bottom:14px;">
+      <button class="primary-btn" onclick="gradeStep3_1()" style="flex:1; padding:10px; font-weight:700; font-size:0.95rem;">
+        ✅ 정답 확인 및 채점
+      </button>
+      <button class="secondary-btn" onclick="resetForm3_1()" style="padding:10px 16px;">
+        🔄 다시 풀기
+      </button>
+    </div>
+
+    <div id="substep3_1_feedback"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function resetForm3_1() {
+  const i1 = document.getElementById('substep3_1_ans1');
+  const i2 = document.getElementById('substep3_1_ans2');
+  const i3 = document.getElementById('substep3_1_ans3');
+  const c1 = document.getElementById('substep3_1_chk1');
+  const c2 = document.getElementById('substep3_1_chk2');
+  const c3 = document.getElementById('substep3_1_chk3');
+  const c4 = document.getElementById('substep3_1_chk4');
+  const c5 = document.getElementById('substep3_1_chk5');
+  const fb = document.getElementById('substep3_1_feedback');
+
+  if (i1) i1.value = '';
+  if (i2) i2.value = '';
+  if (i3) i3.value = '';
+  if (c1) c1.checked = false;
+  if (c2) c2.checked = false;
+  if (c3) c3.checked = false;
+  if (c4) c4.checked = false;
+  if (c5) c5.checked = false;
+  if (fb) fb.innerHTML = '';
+}
+
+function gradeStep3_1() {
+  const i1 = document.getElementById('substep3_1_ans1');
+  const i2 = document.getElementById('substep3_1_ans2');
+  const i3 = document.getElementById('substep3_1_ans3');
+  const c1 = document.getElementById('substep3_1_chk1');
+  const c2 = document.getElementById('substep3_1_chk2');
+  const c3 = document.getElementById('substep3_1_chk3');
+  const c4 = document.getElementById('substep3_1_chk4');
+  const c5 = document.getElementById('substep3_1_chk5');
+  const fb = document.getElementById('substep3_1_feedback');
+  if (!fb) return;
+
+  const raw1 = (i1 ? i1.value : '').replace(/\s+/g, '').toLowerCase();
+  const raw2 = (i2 ? i2.value : '').replace(/\s+/g, '').toLowerCase();
+  const raw3 = (i3 ? i3.value : '').replace(/\s+/g, '').toLowerCase();
+
+  const isAns1Correct = (raw1 === '5x' || raw1 === '+5x');
+  const isAns2Correct = (raw2 === '4y' || raw2 === '+4y');
+  const isAns3Correct = (raw3 === '5x+4y' || raw3 === '4y+5x' || raw3 === '+5x+4y' || raw3 === '+4y+5x');
+
+  const chk1 = c1 ? c1.checked : false;
+  const chk2 = c2 ? c2.checked : false;
+  const chk3 = c3 ? c3.checked : false;
+  const chk4 = c4 ? c4.checked : false;
+  const chk5 = c5 ? c5.checked : false;
+
+  // 정답은 2번, 4번만 체크
+  const isAns4Correct = (!chk1 && chk2 && !chk3 && chk4 && !chk5);
+
+  if (isAns1Correct && isAns2Correct && isAns3Correct && isAns4Correct) {
+    if (state.lab3_1) state.lab3_1.isPassed = true;
+    fb.innerHTML = `
+      <div class="card" style="padding:16px; background:#f0fdf4; border:1px solid #86efac; border-radius:8px;">
+        <div style="font-weight:700; color:#15803d; font-size:1.02rem; margin-bottom:6px;">
+          🎉 100점 완벽 통과! 호떡과 어묵, 동류항의 뜻을 정확히 파악했습니다!
+        </div>
+        <div style="font-size:0.88rem; color:#166534; line-height:1.55;">
+          • <b>호떡의 총 개수:</b> 민우 2개 + 수지 3개 $= 5$개 $\\to$ <b>$5x$원</b><br>
+          • <b>어묵의 총 개수:</b> 민우 3개 + 수지 1개 $= 4$개 $\\to$ <b>$4y$원</b><br>
+          • <b>총 금액:</b> $(2x + 3y) + (3x + y) = (2x + 3x) + (3y + y) =$ <b>$5x + 4y$ (원)</b><br>
+          • <b>동류항의 뜻:</b> 문자와 차수가 각각 같은 항! 상수항은 모두 동류항입니다.<br>
+          (② $3x$와 $-5x$는 문자 $x$, 차수 $1$로 일치 / ④ $4$와 $-7$은 상수항끼리 동류항)
+        </div>
+      </div>
+    `;
+
+    if (!state.unlockedSubSteps.includes('3-2')) {
+      state.unlockedSubSteps.push('3-2');
+    }
+
+    if (window.LMSIntegration) {
+      window.LMSIntegration.saveStudentProgress('3-1', { score: 100, passed: true }, 'unit3');
+    }
+
+    drawStep3_1Canvas();
+  } else {
+    let errorMsg = [];
+    if (!isAns1Correct) errorMsg.push('⑴ 호떡: 민우 2개, 수지 3개의 합은 5개입니다. $x$에 대한 식 $5x$를 입력해 보세요.');
+    if (!isAns2Correct) errorMsg.push('⑵ 어묵: 민우 3개, 수지 1개의 합은 4개입니다. $y$에 대한 식 $4y$를 입력해 보세요.');
+    if (!isAns3Correct) errorMsg.push('⑶ 총 금액: 동류항끼리 모아 $(2x+3x)+(3y+y)$를 간단히 한 $5x+4y$를 입력해 보세요.');
+    if (!isAns4Correct) errorMsg.push('⑷ 동류항 체크: 문자와 차수가 모두 같아야 하며, 상수항끼리는 모두 동류항입니다. (②, ④ 확인)');
+
+    fb.innerHTML = `
+      <div class="card" style="padding:14px; background:#fef2f2; border:1px solid #fecaca; border-radius:8px;">
+        <div style="font-weight:700; color:#b91c1c; font-size:0.95rem; margin-bottom:4px;">
+          ⚠️ 다시 확인해 보세요!
+        </div>
+        <div style="font-size:0.86rem; color:#991b1b; line-height:1.5;">
+          ${errorMsg.join('<br>')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+// -------------------------------------------------------------
+// Two.js 60fps Canvas Implementation for Substep 3-1
+// -------------------------------------------------------------
+function drawStep3_1Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+
+  if (!state.twoInstance) {
+    state.twoInstance = new Two({
+      width: container.clientWidth || 560,
+      height: 440,
+      type: Two.Types.svg
+    }).appendTo(container);
+  }
+
+  const two = state.twoInstance;
+  two.clear();
+
+  if (!state.lab3_1) resetLab3_1();
+
+  const tab = state.lab3_1.activeTab;
+  if (tab === 'mode1') {
+    drawMode1StreetFoodLab(two);
+  } else if (tab === 'mode2') {
+    drawMode2LikeTermsSorter(two);
+  } else if (tab === 'mode3') {
+    drawMode3DefinitionLens(two);
+  }
+
+  two.update();
+}
+
+// -------------------------------------------------------------
+// Mode 1: 호떡과 어묵 생각 열기 랩
+// -------------------------------------------------------------
+function drawMode1StreetFoodLab(two) {
+  const W = two.width;
+  const H = 440;
+  const isMerged = state.lab3_1.isMerged;
+
+  // 1. Background Frame
+  const bg = two.makeRoundedRectangle(W / 2, H / 2, W - 20, H - 20, 10);
+  bg.fill = '#f8fafc';
+  bg.stroke = '#cbd5e1';
+  bg.linewidth = 1.5;
+
+  // 2. Header Banner
+  const headerBg = two.makeRoundedRectangle(W / 2, 34, W - 40, 36, 6);
+  headerBg.fill = '#eff6ff';
+  headerBg.stroke = '#bfdbfe';
+  headerBg.linewidth = 1;
+
+  const headerTxt = two.makeText(
+    '🍡 분식점 생각 열기: 호떡 1개 x원, 어묵 1개 y원',
+    W / 2, 34
+  );
+  headerTxt.fill = '#1e40af';
+  headerTxt.size = 14;
+  headerTxt.weight = 700;
+
+  if (!isMerged) {
+    // ---- [나누어 보기 모드] 민우의 접시 & 수지의 접시 ----
+    const plateW = (W - 60) / 2;
+    const plateH = 260;
+    const plateY = 190;
+
+    // 민우 플레이트
+    const minwooX = 20 + plateW / 2;
+    const minwooCard = two.makeRoundedRectangle(minwooX, plateY, plateW, plateH, 10);
+    minwooCard.fill = '#ffffff';
+    minwooCard.stroke = '#93c5fd';
+    minwooCard.linewidth = 1.5;
+
+    const minwooTitle = two.makeText('👦 민우의 접시: 2x + 3y', minwooX, plateY - 105);
+    minwooTitle.fill = '#1e3a8a';
+    minwooTitle.size = 13.5;
+    minwooTitle.weight = 700;
+
+    // 민우 호떡 2개 (x원)
+    const hLabel1 = two.makeText('호떡 2개 (2x원)', minwooX, plateY - 75);
+    hLabel1.fill = '#b45309';
+    hLabel1.size = 12;
+    hLabel1.weight = 600;
+
+    drawHotteokIcons(two, minwooX, plateY - 45, 2);
+
+    // 민우 어묵 3개 (y원)
+    const oLabel1 = two.makeText('어묵 3개 (3y원)', minwooX, plateY + 10);
+    oLabel1.fill = '#0369a1';
+    oLabel1.size = 12;
+    oLabel1.weight = 600;
+
+    drawEomukIcons(two, minwooX, plateY + 50, 3);
+
+    const minwooSubtotal = two.makeText('소계: 2x + 3y (원)', minwooX, plateY + 105);
+    minwooSubtotal.fill = '#475569';
+    minwooSubtotal.size = 12.5;
+    minwooSubtotal.weight = 700;
+
+    // 수지 플레이트
+    const sujiX = W - 20 - plateW / 2;
+    const sujiCard = two.makeRoundedRectangle(sujiX, plateY, plateW, plateH, 10);
+    sujiCard.fill = '#ffffff';
+    sujiCard.stroke = '#fbcfe8';
+    sujiCard.linewidth = 1.5;
+
+    const sujiTitle = two.makeText('👧 수지의 접시: 3x + y', sujiX, plateY - 105);
+    sujiTitle.fill = '#9d174d';
+    sujiTitle.size = 13.5;
+    sujiTitle.weight = 700;
+
+    // 수지 호떡 3개 (x원)
+    const hLabel2 = two.makeText('호떡 3개 (3x원)', sujiX, plateY - 75);
+    hLabel2.fill = '#b45309';
+    hLabel2.size = 12;
+    hLabel2.weight = 600;
+
+    drawHotteokIcons(two, sujiX, plateY - 45, 3);
+
+    // 수지 어묵 1개 (y원)
+    const oLabel2 = two.makeText('어묵 1개 (y원)', sujiX, plateY + 10);
+    oLabel2.fill = '#0369a1';
+    oLabel2.size = 12;
+    oLabel2.weight = 600;
+
+    drawEomukIcons(two, sujiX, plateY + 50, 1);
+
+    const sujiSubtotal = two.makeText('소계: 3x + y (원)', sujiX, plateY + 105);
+    sujiSubtotal.fill = '#475569';
+    sujiSubtotal.size = 12.5;
+    sujiSubtotal.weight = 700;
+
+  } else {
+    // ---- [모아 보기 모드] 같은 종류(동류항)끼리 모으기 ----
+    const basketW = (W - 60) / 2;
+    const basketH = 260;
+    const basketY = 190;
+
+    // 호떡 바구니 (x에 대한 동류항 모으기)
+    const hotteokX = 20 + basketW / 2;
+    const hotteokCard = two.makeRoundedRectangle(hotteokX, basketY, basketW, basketH, 10);
+    hotteokCard.fill = '#fffbeb';
+    hotteokCard.stroke = '#fcd34d';
+    hotteokCard.linewidth = 2;
+
+    const hTitle = two.makeText('🧺 호떡 바구니 (x의 동류항)', hotteokX, basketY - 105);
+    hTitle.fill = '#92400e';
+    hTitle.size = 13.5;
+    hTitle.weight = 700;
+
+    const hCalc = two.makeText('민우 2개 + 수지 3개 = 총 5개', hotteokX, basketY - 75);
+    hCalc.fill = '#b45309';
+    hCalc.size = 12;
+    hCalc.weight = 600;
+
+    // 호떡 5개 아이콘 렌더링
+    drawHotteokIcons(two, hotteokX, basketY - 35, 3);
+    drawHotteokIcons(two, hotteokX, basketY + 15, 2);
+
+    const hFormula = two.makeText('식: 2x + 3x = (2+3)x = 5x (원)', hotteokX, basketY + 80);
+    hFormula.fill = '#78350f';
+    hFormula.size = 12.5;
+    hFormula.weight = 700;
+
+    // 어묵 바구니 (y에 대한 동류항 모으기)
+    const eomukX = W - 20 - basketW / 2;
+    const eomukCard = two.makeRoundedRectangle(eomukX, basketY, basketW, basketH, 10);
+    eomukCard.fill = '#f0f9ff';
+    eomukCard.stroke = '#7dd3fc';
+    eomukCard.linewidth = 2;
+
+    const oTitle = two.makeText('🧺 어묵 바구니 (y의 동류항)', eomukX, basketY - 105);
+    oTitle.fill = '#075985';
+    oTitle.size = 13.5;
+    oTitle.weight = 700;
+
+    const oCalc = two.makeText('민우 3개 + 수지 1개 = 총 4개', eomukX, basketY - 75);
+    oCalc.fill = '#0369a1';
+    oCalc.size = 12;
+    oCalc.weight = 600;
+
+    // 어묵 4개 아이콘 렌더링
+    drawEomukIcons(two, eomukX, basketY - 20, 4);
+
+    const oFormula = two.makeText('식: 3y + y = (3+1)y = 4y (원)', eomukX, basketY + 80);
+    oFormula.fill = '#0c4a6e';
+    oFormula.size = 12.5;
+    oFormula.weight = 700;
+  }
+
+  // 4. Bottom Safety Guide Banner (Strict Y=385, H=26)
+  const bannerY = 385;
+  const bannerBg = two.makeRoundedRectangle(W / 2, bannerY, W - 40, 26, 6);
+  bannerBg.fill = '#f1f5f9';
+  bannerBg.stroke = '#cbd5e1';
+  bannerBg.linewidth = 1;
+
+  const bannerTxt = two.makeText(
+    isMerged
+      ? '💡 동류항끼리 모아 계산: (2x+3y) + (3x+y) = (2+3)x + (3+1)y = 5x + 4y (원)'
+      : '👉 상단 [🧺 종류별(동류항) 모으기] 버튼을 눌러 호떡(x)과 어묵(y)을 모아보세요!',
+    W / 2, bannerY
+  );
+  bannerTxt.fill = isMerged ? '#4338ca' : '#475569';
+  bannerTxt.size = 11.5;
+  bannerTxt.weight = 600;
+}
+
+// 호떡 원형 그래픽
+function drawHotteokIcons(two, cx, cy, count) {
+  const spacing = 38;
+  const startX = cx - ((count - 1) * spacing) / 2;
+
+  for (let i = 0; i < count; i++) {
+    const x = startX + i * spacing;
+    // 호떡 바깥 바삭한 반죽
+    const circle = two.makeCircle(x, cy, 14);
+    circle.fill = '#f59e0b';
+    circle.stroke = '#d97706';
+    circle.linewidth = 1.5;
+
+    // 호떡 안쪽 달콤한 꿀 점
+    const inner = two.makeCircle(x + 2, cy - 2, 4);
+    inner.fill = '#b45309';
+    inner.noStroke();
+
+    const t = two.makeText('x', x, cy + 1);
+    t.fill = '#ffffff';
+    t.size = 10;
+    t.weight = 700;
+  }
+}
+
+// 어묵 꼬치 그래픽
+function drawEomukIcons(two, cx, cy, count) {
+  const spacing = 34;
+  const startX = cx - ((count - 1) * spacing) / 2;
+
+  for (let i = 0; i < count; i++) {
+    const x = startX + i * spacing;
+    // 대나무 꼬치 막대
+    const stick = two.makeLine(x, cy - 18, x, cy + 18);
+    stick.stroke = '#d97706';
+    stick.linewidth = 2;
+
+    // 어묵 조각 3겹
+    for (let j = -1; j <= 1; j++) {
+      const seg = two.makeRoundedRectangle(x, cy + j * 9, 18, 7, 2);
+      seg.fill = '#fed7aa';
+      seg.stroke = '#f97316';
+      seg.linewidth = 1;
+    }
+
+    const t = two.makeText('y', x + 15, cy);
+    t.fill = '#0284c7';
+    t.size = 10;
+    t.weight = 700;
+  }
+}
+
+// -------------------------------------------------------------
+// Mode 2: 동류항 분류기 랩
+// -------------------------------------------------------------
+function drawMode2LikeTermsSorter(two) {
+  const W = two.width;
+  const H = 440;
+  const lab = state.lab3_1;
+
+  // Background
+  const bg = two.makeRoundedRectangle(W / 2, H / 2, W - 20, H - 20, 10);
+  bg.fill = '#f8fafc';
+  bg.stroke = '#cbd5e1';
+  bg.linewidth = 1.5;
+
+  // Title Banner
+  const titleBg = two.makeRoundedRectangle(W / 2, 34, W - 40, 36, 6);
+  titleBg.fill = '#f0fdf4';
+  titleBg.stroke = '#bbf7d0';
+  titleBg.linewidth = 1;
+
+  const titleTxt = two.makeText('🧩 동류항 분류기: 각 항 카드를 클릭하여 올바른 상자에 쏙 넣으세요!', W / 2, 34);
+  titleTxt.fill = '#15803d';
+  titleTxt.size = 13.5;
+  titleTxt.weight = 700;
+
+  // 8 Cards Display Area (Y=80 ~ 170)
+  const cardW = 60;
+  const cardH = 38;
+  const cardsRow1 = lab.cards.slice(0, 4);
+  const cardsRow2 = lab.cards.slice(4, 8);
+
+  [cardsRow1, cardsRow2].forEach((row, rIdx) => {
+    const startX = W / 2 - ((row.length - 1) * 76) / 2;
+    const y = 85 + rIdx * 48;
+
+    row.forEach((c, cIdx) => {
+      const x = startX + cIdx * 76;
+      const cardGroup = two.makeGroup();
+
+      const box = two.makeRoundedRectangle(x, y, cardW, cardH, 8);
+      if (c.matched) {
+        box.fill = '#e2e8f0';
+        box.stroke = '#94a3b8';
+        box.linewidth = 1;
+      } else {
+        box.fill = '#ffffff';
+        box.stroke = c.type === 'trap' ? '#f43f5e' : '#6366f1';
+        box.linewidth = 2;
+      }
+
+      const txt = two.makeText(c.text, x, y);
+      txt.fill = c.matched ? '#94a3b8' : (c.type === 'trap' ? '#e11d48' : '#312e81');
+      txt.size = 14;
+      txt.weight = 700;
+
+      cardGroup.add(box, txt);
+
+      if (!c.matched) {
+        two.update();
+        if (cardGroup._renderer && cardGroup._renderer.elem) {
+          const el = cardGroup._renderer.elem;
+          el.style.cursor = 'pointer';
+          el.onclick = () => selectCard3_1(c.id);
+        }
+      }
+    });
+  });
+
+  // 3 Classification Boxes (Y=260)
+  const boxW = (W - 60) / 3;
+  const boxH = 120;
+  const boxY = 270;
+
+  // 1. Box X
+  const b1X = 20 + boxW / 2;
+  const b1 = two.makeRoundedRectangle(b1X, boxY, boxW, boxH, 8);
+  b1.fill = '#eff6ff';
+  b1.stroke = '#60a5fa';
+  b1.linewidth = 2;
+
+  const t1 = two.makeText('📦 x에 대한 동류항', b1X, boxY - 42);
+  t1.fill = '#1d4ed8';
+  t1.size = 12.5;
+  t1.weight = 700;
+
+  // 2. Box Y
+  const b2X = W / 2;
+  const b2 = two.makeRoundedRectangle(b2X, boxY, boxW, boxH, 8);
+  b2.fill = '#f0fdf4';
+  b2.stroke = '#4ade80';
+  b2.linewidth = 2;
+
+  const t2 = two.makeText('📦 y에 대한 동류항', b2X, boxY - 42);
+  t2.fill = '#15803d';
+  t2.size = 12.5;
+  t2.weight = 700;
+
+  // 3. Box Const
+  const b3X = W - 20 - boxW / 2;
+  const b3 = two.makeRoundedRectangle(b3X, boxY, boxW, boxH, 8);
+  b3.fill = '#fff7ed';
+  b3.stroke = '#fb923c';
+  b3.linewidth = 2;
+
+  const t3 = two.makeText('📦 상수항 (모두 동류항)', b3X, boxY - 42);
+  t3.fill = '#c2410c';
+  t3.size = 12.5;
+  t3.weight = 700;
+
+  // Matched items in boxes
+  const matchedX = lab.cards.filter(c => c.matched && c.target === 'x').map(c => c.text);
+  const matchedY = lab.cards.filter(c => c.matched && c.target === 'y').map(c => c.text);
+  const matchedC = lab.cards.filter(c => c.matched && c.target === 'const').map(c => c.text);
+
+  const mt1 = two.makeText(matchedX.length > 0 ? matchedX.join(',  ') : '(비어 있음)', b1X, boxY);
+  mt1.fill = matchedX.length > 0 ? '#1e3a8a' : '#94a3b8';
+  mt1.size = 14;
+  mt1.weight = 700;
+
+  const mt2 = two.makeText(matchedY.length > 0 ? matchedY.join(',  ') : '(비어 있음)', b2X, boxY);
+  mt2.fill = matchedY.length > 0 ? '#14532d' : '#94a3b8';
+  mt2.size = 14;
+  mt2.weight = 700;
+
+  const mt3 = two.makeText(matchedC.length > 0 ? matchedC.join(',  ') : '(비어 있음)', b3X, boxY);
+  mt3.fill = matchedC.length > 0 ? '#7c2d12' : '#94a3b8';
+  mt3.size = 14;
+  mt3.weight = 700;
+
+  // Reset button inside canvas
+  const rstGroup = two.makeGroup();
+  const rstBox = two.makeRoundedRectangle(W / 2, 345, 120, 24, 6);
+  rstBox.fill = '#f1f5f9';
+  rstBox.stroke = '#cbd5e1';
+  rstBox.linewidth = 1;
+  const rstTxt = two.makeText('🔄 카드 다시 채우기', W / 2, 345);
+  rstTxt.fill = '#475569';
+  rstTxt.size = 11.5;
+  rstTxt.weight = 600;
+  rstGroup.add(rstBox, rstTxt);
+
+  two.update();
+  if (rstGroup._renderer && rstGroup._renderer.elem) {
+    rstGroup._renderer.elem.style.cursor = 'pointer';
+    rstGroup._renderer.elem.onclick = () => resetCards3_1();
+  }
+
+  // Trap notice banner or bottom guide banner (Strict Y=385, H=26)
+  const bannerY = 385;
+  const bannerBg = two.makeRoundedRectangle(W / 2, bannerY, W - 40, 26, 6);
+  bannerBg.fill = lab.trapNotice ? '#fef2f2' : '#f8fafc';
+  bannerBg.stroke = lab.trapNotice ? '#fca5a5' : '#cbd5e1';
+  bannerBg.linewidth = 1;
+
+  const bannerTxt = two.makeText(
+    lab.trapNotice || '💡 2x², 3xy처럼 문자가 다르거나 차수가 다른 항은 동류항이 아닙니다!',
+    W / 2, bannerY
+  );
+  bannerTxt.fill = lab.trapNotice ? '#b91c1c' : '#475569';
+  bannerTxt.size = 11;
+  bannerTxt.weight = 600;
+}
+
+// -------------------------------------------------------------
+// Mode 3: 동류항 정의 렌즈 랩
+// -------------------------------------------------------------
+function drawMode3DefinitionLens(two) {
+  const W = two.width;
+  const H = 440;
+
+  // Background
+  const bg = two.makeRoundedRectangle(W / 2, H / 2, W - 20, H - 20, 10);
+  bg.fill = '#f8fafc';
+  bg.stroke = '#cbd5e1';
+  bg.linewidth = 1.5;
+
+  // Title
+  const titleBg = two.makeRoundedRectangle(W / 2, 34, W - 40, 36, 6);
+  titleBg.fill = '#faf5ff';
+  titleBg.stroke = '#e9d5ff';
+  titleBg.linewidth = 1;
+
+  const titleTxt = two.makeText('🔍 동류항(同類項)의 2대 판정 법칙 (교과서 p.81)', W / 2, 34);
+  titleTxt.fill = '#6b21a8';
+  titleTxt.size = 13.5;
+  titleTxt.weight = 700;
+
+  // 2 Law Panels
+  const cardW = (W - 60) / 2;
+  const cardH = 140;
+  const cardY = 130;
+
+  // Condition 1: 문자 일치
+  const c1X = 20 + cardW / 2;
+  const c1Bg = two.makeRoundedRectangle(c1X, cardY, cardW, cardH, 8);
+  c1Bg.fill = '#ffffff';
+  c1Bg.stroke = '#3b82f6';
+  c1Bg.linewidth = 1.5;
+
+  const c1T1 = two.makeText('① 문자가 같아야 한다!', c1X, cardY - 50);
+  c1T1.fill = '#1d4ed8';
+  c1T1.size = 13;
+  c1T1.weight = 700;
+
+  const c1O = two.makeText('✅ 2a 와 5a  (문자 a 일치)', c1X, cardY - 20);
+  c1O.fill = '#15803d';
+  c1O.size = 12;
+  c1O.weight = 600;
+
+  const c1X_txt = two.makeText('❌ 2a 와 2b  (문자 a ≠ b 불일치)', c1X, cardY + 12);
+  c1X_txt.fill = '#b91c1c';
+  c1X_txt.size = 12;
+  c1X_txt.weight = 600;
+
+  const c1Tip = two.makeText('계수(수)가 달라도 문자가 같으면 OK!', c1X, cardY + 45);
+  c1Tip.fill = '#64748b';
+  c1Tip.size = 11;
+  c1Tip.weight = 500;
+
+  // Condition 2: 차수 일치
+  const c2X = W - 20 - cardW / 2;
+  const c2Bg = two.makeRoundedRectangle(c2X, cardY, cardW, cardH, 8);
+  c2Bg.fill = '#ffffff';
+  c2Bg.stroke = '#8b5cf6';
+  c2Bg.linewidth = 1.5;
+
+  const c2T1 = two.makeText('② 차수가 같아야 한다!', c2X, cardY - 50);
+  c2T1.fill = '#6d28d9';
+  c2T1.size = 13;
+  c2T1.weight = 700;
+
+  const c2O = two.makeText('✅ 3x² 과 -x²  (차수 2 일치)', c2X, cardY - 20);
+  c2O.fill = '#15803d';
+  c2O.size = 12;
+  c2O.weight = 600;
+
+  const c2X_txt = two.makeText('❌ x² 과 2x  (차수 2 ≠ 1 불일치)', c2X, cardY + 12);
+  c2X_txt.fill = '#b91c1c';
+  c2X_txt.size = 12;
+  c2X_txt.weight = 600;
+
+  const c2Tip = two.makeText('문자가 같아도 차수가 다르면 동류항 아님!', c2X, cardY + 45);
+  c2Tip.fill = '#64748b';
+  c2Tip.size = 11;
+  c2Tip.weight = 500;
+
+  // Special Rule: 상수항 패널
+  const constCardW = W - 40;
+  const constCardH = 100;
+  const constCardY = 275;
+
+  const constBg = two.makeRoundedRectangle(W / 2, constCardY, constCardW, constCardH, 8);
+  constBg.fill = '#fffbeb';
+  constBg.stroke = '#f59e0b';
+  constBg.linewidth = 1.5;
+
+  const ct1 = two.makeText('⭐ 특별 규칙: 상수항은 모두 동류항이다!', W / 2, constCardY - 30);
+  ct1.fill = '#92400e';
+  ct1.size = 13.5;
+  ct1.weight = 700;
+
+  const ct2 = two.makeText('예:  4 와 -7,   0.5 와 1/3   (문자가 없는 수끼리는 모두 동류항)', W / 2, constCardY);
+  ct2.fill = '#b45309';
+  ct2.size = 12.5;
+  ct2.weight = 600;
+
+  const ct3 = two.makeText('수끼리는 사칙연산으로 즉시 하나의 수로 계산할 수 있기 때문입니다.', W / 2, constCardY + 28);
+  ct3.fill = '#78350f';
+  ct3.size = 11.5;
+  ct3.weight = 500;
+
+  // Bottom Safety Banner (Strict Y=385, H=26)
+  const bannerY = 385;
+  const bannerBg = two.makeRoundedRectangle(W / 2, bannerY, W - 40, 26, 6);
+  bannerBg.fill = '#f1f5f9';
+  bannerBg.stroke = '#cbd5e1';
+  bannerBg.linewidth = 1;
+
+  const bannerTxt = two.makeText(
+    '💡 문자와 차수가 각각 같은 항을 동류항이라 하고, 상수항은 모두 동류항입니다.',
+    W / 2, bannerY
+  );
+  bannerTxt.fill = '#475569';
+  bannerTxt.size = 11.5;
+  bannerTxt.weight = 600;
+}
+
+    // --- End Substep 3-1 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -20017,6 +20936,9 @@ function gradeStep2_11() {
       } else if (code === '2-11') {
         renderToolbar2_11();
         renderSubstep2_11();
+      } else if (code === '3-1') {
+        renderToolbar3_1();
+        renderSubstep3_1();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
