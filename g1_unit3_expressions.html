@@ -1011,8 +1011,8 @@
       },
       '2-11': {
         code: '2-11', tab: 2,
-        substepLabel: '11. 생각 넓히기: 일차식 카드 게임 (p.80)',
-        missionText: '<b>[2-11] 11. 생각 넓히기: 일차식 카드 게임 (p.80)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '11. 생각 넓히기: 일차식 카드 게임과 계수의 합 비교 (p.80)',
+        missionText: '<b>[생각 넓히기] 일차식 카드 게임과 계수의 합 비교 (교과서 p.80)</b><br>• <b>카드 슬롯 배치:</b> 4장의 수 카드 $\\{-2, -1, 3, 4\\}$ 중 3장을 골라 $\\text{A}(\\text{B}x + \\text{C})$ 빈칸에 배치합니다.<br>• <b>분배법칙 전개와 계수의 합:</b> 전개식 $(\\text{A}\\times\\text{B})x + (\\text{A}\\times\\text{C})$에서 $x$의 계수와 상수항의 합 $\\text{A}(\\text{B}+\\text{C})$의 변화를 관찰합니다.<br>• <b>최댓값과 최솟값 탐구:</b> 계수와 상수항의 합이 가장 클 때와 가장 작을 때의 카드 배치를 탐구합니다.<br>좌측 캔버스에서 카드 슬롯을 조작하며 질문에 답해 보세요.',
         drawer: 'drawStep2_11Canvas'
       },
       '3-1': {
@@ -1470,6 +1470,17 @@
       
       
       
+      
+      // Substep 2-11 State (Thinking Expansion: Linear Expression Card Game)
+      lab2_11: {
+        activeTab: 'mode1',
+        cards: [-2, -1, 3, 4],
+        slotA: 3,
+        slotB: 4,
+        slotC: -1,
+        selectedCardIdx: null,
+        isPassed: false
+      },
       // Substep 2-10 State (Self Check 5: Roller Coaster Speed)
       lab2_10: {
         activeTab: 'mode1',
@@ -19242,6 +19253,658 @@ function gradeStep2_10() {
 
     // --- End Substep 2-10 Implementation ---
 
+    
+    // --- Substep 2-11 Implementation ---
+// code_2_11.js: Substep [2-11] 3.2 생각 넓히기: 일차식 카드 게임과 계수의 합 비교 (교과서 p.80)
+
+function renderToolbar2_11() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab2_11) {
+    state.lab2_11 = {
+      activeTab: 'mode1', // 'mode1' (카드 슬롯 배틀) | 'mode2' (극값 탐색기) | 'mode3' (분배법칙 비밀)
+      cards: [-2, -1, 3, 4],
+      slotA: 3,           // A(Bx + C)
+      slotB: 4,
+      slotC: -1,
+      selectedCardIdx: null,
+      isPassed: false
+    };
+  }
+
+  const curTab = state.lab2_11.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab2_11Tab('mode1')">
+        1. 일차식 카드 슬롯 배틀
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab2_11Tab('mode2')">
+        2. 최댓값·최솟값 탐색기
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab2_11Tab('mode3')">
+        3. 분배법칙의 비밀 원리
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn" onclick="presetMax2_11()" title="최댓값 조합">🏆 최댓값 세팅</button>
+      <button class="icon-btn" onclick="presetMin2_11()" title="최솟값 조합">📉 최솟값 세팅</button>
+      <button class="icon-btn" onclick="resetLab2_11()" title="초기화">🔄 초기화</button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('2-11')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab2_11Tab(tabKey) {
+  if (!state.lab2_11) resetLab2_11();
+  state.lab2_11.activeTab = tabKey;
+  renderToolbar2_11();
+  drawStep2_11Canvas();
+}
+
+function resetLab2_11() {
+  state.lab2_11 = {
+    activeTab: 'mode1',
+    cards: [-2, -1, 3, 4],
+    slotA: 3,
+    slotB: 4,
+    slotC: -1,
+    selectedCardIdx: null,
+    isPassed: false
+  };
+  renderToolbar2_11();
+  drawStep2_11Canvas();
+}
+
+function presetMax2_11() {
+  if (!state.lab2_11) resetLab2_11();
+  state.lab2_11.slotA = 3;
+  state.lab2_11.slotB = 4;
+  state.lab2_11.slotC = -1;
+  drawStep2_11Canvas();
+}
+
+function presetMin2_11() {
+  if (!state.lab2_11) resetLab2_11();
+  state.lab2_11.slotA = 4;
+  state.lab2_11.slotB = -2;
+  state.lab2_11.slotC = -1;
+  drawStep2_11Canvas();
+}
+
+function placeCardInSlot(slotName, val) {
+  if (!state.lab2_11) resetLab2_11();
+  if (slotName === 'A') state.lab2_11.slotA = val;
+  if (slotName === 'B') state.lab2_11.slotB = val;
+  if (slotName === 'C') state.lab2_11.slotC = val;
+  drawStep2_11Canvas();
+}
+
+function cycleSlot(slotName) {
+  if (!state.lab2_11) resetLab2_11();
+  const pool = [-2, -1, 3, 4];
+  const cur = state.lab2_11[`slot${slotName}`];
+  const nextIdx = (pool.indexOf(cur) + 1) % pool.length;
+  state.lab2_11[`slot${slotName}`] = pool[nextIdx];
+  drawStep2_11Canvas();
+}
+
+function renderSubstep2_11() {
+  const container = document.getElementById('substep-form-container');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="card p-3 mb-3" style="border-left: 4px solid var(--primary);">
+      <h6 style="font-weight:700; color:var(--primary); margin-bottom:6px;">
+        📖 [교과서 p.80 생각 넓히기] 일차식 카드 게임과 계수의 합
+      </h6>
+      <div style="font-size:0.86rem; color:#334155; line-height:1.55;">
+        4장의 수 카드 <b>[-2, -1, 3, 4]</b> 중 서로 다른 3장의 카드를 뽑아 다음 식의 빈칸에 하나씩 넣어 일차식을 만듭니다.
+        <div class="text-center my-2 p-2" style="background:#f8fafc; border-radius:6px; font-weight:700; color:#1d4ed8; font-size:1.1rem;">
+          $$\\square ( \\square x + \\square )$$
+        </div>
+      </div>
+    </div>
+
+    <!-- 카드 게임 탐구 과제 카드 -->
+    <div class="card p-3 mb-3">
+      <h6 style="font-weight:700; color:#1e293b; margin-bottom:8px;">
+        ✏️ [생각 넓히기 탐구 과제]
+      </h6>
+
+      <div class="form-group mb-2">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑴ 카드 $3, 4, -1$을 순서대로 넣어 $3(4x - 1)$을 만들었을 때, 전개한 일차식
+        </label>
+        <input type="text" id="ans-2-11-1-poly" class="proof-input-text w-100" placeholder="전개된 일차식 입력 (예: ax + b)" autocomplete="off">
+      </div>
+
+      <div class="form-group mb-2">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑴ 위 식에서 $x$의 계수와 상수항의 합
+        </label>
+        <input type="text" id="ans-2-11-1-sum" class="proof-input-text w-100" placeholder="계수와 상수항의 합 입력 (수)" autocomplete="off">
+      </div>
+
+      <div class="form-group mb-2">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑵ $x$의 계수와 상수항의 합이 <b>가장 클 때의 합(최댓값)</b>
+        </label>
+        <input type="text" id="ans-2-11-2-max" class="proof-input-text w-100" placeholder="최댓값 입력 (수)" autocomplete="off">
+      </div>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑶ $x$의 계수와 상수항의 합이 <b>가장 작을 때의 합(최솟값)</b>
+        </label>
+        <input type="text" id="ans-2-11-3-min" class="proof-input-text w-100" placeholder="최솟값 입력 (수)" autocomplete="off">
+      </div>
+
+      <button id="btn-grade-2-11" class="primary-btn w-100" onclick="gradeStep2_11()" style="margin-top:6px; font-weight:700;">
+        🚀 정답 확인 및 Tab 2 완결 LMS DB 기록
+      </button>
+    </div>
+
+    <div id="feedback-2-11" style="display:none; margin-top:8px;"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawStep2_11Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+
+  if (state.twoInstance) {
+    state.twoInstance.clear();
+  } else {
+    container.innerHTML = '';
+    const two = new Two({
+      width: container.clientWidth || 600,
+      height: 440,
+      type: Two.Types.svg
+    }).appendTo(container);
+    state.twoInstance = two;
+  }
+
+  const two = state.twoInstance;
+  if (!two) return;
+
+  two.clear();
+  drawCardGame2_11Lab(two);
+  two.update();
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawCardGame2_11Lab(two) {
+  const w = two.width;
+  const h = two.height;
+  const tab = (state.lab2_11 && state.lab2_11.activeTab) || 'mode1';
+
+  // Background
+  const bg = two.makeRectangle(w / 2, h / 2, w, h);
+  bg.fill = '#f8fafc';
+  bg.stroke = '#e2e8f0';
+  bg.linewidth = 1;
+
+  if (tab === 'mode1') {
+    drawMode1SlotBattle(two, w, h);
+  } else if (tab === 'mode2') {
+    drawMode2MinMaxScanner(two, w, h);
+  } else {
+    drawMode3SecretPrinciple(two, w, h);
+  }
+
+  // Bottom info banner (Strict Vertical Budget: Y=385, H=26 -> Margin=42px >= 25px)
+  const bannerY = 385;
+  const bannerH = 26;
+  const bannerBox = two.makeRoundedRectangle(w / 2, bannerY, w - 24, bannerH, 6);
+  bannerBox.fill = '#eff6ff';
+  bannerBox.stroke = '#bfdbfe';
+  bannerBox.linewidth = 1;
+
+  const bannerMsgs = {
+    'mode1': '💡 카드 배틀: 슬롯(A, B, C)을 클릭하여 카드를 변경하고 실시간 계수 합을 확인하세요.',
+    'mode2': '💡 극값 탐색: 계수와 상수항의 합은 A(B + C)입니다. 최댓값은 9, 최솟값은 -12 입니다.',
+    'mode3': '💡 분배법칙: AB + AC = A(B + C)를 활용하면 식을 전개하지 않고도 합을 한눈에 알 수 있습니다.'
+  };
+
+  const bannerTxt = two.makeText(bannerMsgs[tab], w / 2, bannerY);
+  bannerTxt.size = 11.5;
+  bannerTxt.weight = 700;
+  bannerTxt.fill = '#1d4ed8';
+}
+
+// -------------------------------------------------------------
+// Model 1: 일차식 카드 슬롯 배틀 랩
+// -------------------------------------------------------------
+function drawMode1SlotBattle(two, w, h) {
+  const sA = state.lab2_11 ? state.lab2_11.slotA : 3;
+  const sB = state.lab2_11 ? state.lab2_11.slotB : 4;
+  const sC = state.lab2_11 ? state.lab2_11.slotC : -1;
+
+  // Title Box
+  const titleBox = two.makeRoundedRectangle(w / 2, 28, w - 32, 34, 6);
+  titleBox.fill = '#ffffff';
+  titleBox.stroke = '#cbd5e1';
+  const titleTxt = two.makeText('🃏 생각 넓히기: 일차식 카드 슬롯 배틀 랩 (카드를 클릭하여 교체)', w / 2, 28);
+  titleTxt.size = 13.5;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  // 3 Slots Rendering: [ A ] ( [ B ]x + [ C ] ) (Y = 110)
+  const slotY = 100;
+  const cx = w / 2;
+
+  // Bracket & Plus text labels
+  const txtLBracket = two.makeText('(', cx - 74, slotY);
+  txtLBracket.size = 32;
+  txtLBracket.weight = 300;
+  txtLBracket.fill = '#64748b';
+
+  const txtX = two.makeText('x  +', cx + 18, slotY);
+  txtX.size = 20;
+  txtX.weight = 800;
+  txtX.fill = '#334155';
+
+  const txtRBracket = two.makeText(')', cx + 114, slotY);
+  txtRBracket.size = 32;
+  txtRBracket.weight = 300;
+  txtRBracket.fill = '#64748b';
+
+  // Slot A Box (cx - 120)
+  const boxA = two.makeRoundedRectangle(cx - 120, slotY, 48, 54, 8);
+  boxA.fill = sA > 0 ? '#eff6ff' : '#fef2f2';
+  boxA.stroke = sA > 0 ? '#3b82f6' : '#ef4444';
+  boxA.linewidth = 2;
+  const txtSlotA = two.makeText(`${sA}`, cx - 120, slotY);
+  txtSlotA.size = 22;
+  txtSlotA.weight = 900;
+  txtSlotA.fill = sA > 0 ? '#1d4ed8' : '#b91c1c';
+
+  const lblA = two.makeText('슬롯 A (클릭)', cx - 120, slotY - 36);
+  lblA.size = 10.5;
+  lblA.weight = 700;
+  lblA.fill = '#64748b';
+
+  // Slot B Box (cx - 28)
+  const boxB = two.makeRoundedRectangle(cx - 28, slotY, 48, 54, 8);
+  boxB.fill = sB > 0 ? '#eff6ff' : '#fef2f2';
+  boxB.stroke = sB > 0 ? '#3b82f6' : '#ef4444';
+  boxB.linewidth = 2;
+  const txtSlotB = two.makeText(`${sB}`, cx - 28, slotY);
+  txtSlotB.size = 22;
+  txtSlotB.weight = 900;
+  txtSlotB.fill = sB > 0 ? '#1d4ed8' : '#b91c1c';
+
+  const lblB = two.makeText('슬롯 B (클릭)', cx - 28, slotY - 36);
+  lblB.size = 10.5;
+  lblB.weight = 700;
+  lblB.fill = '#64748b';
+
+  // Slot C Box (cx + 66)
+  const boxC = two.makeRoundedRectangle(cx + 66, slotY, 48, 54, 8);
+  boxC.fill = sC > 0 ? '#eff6ff' : '#fef2f2';
+  boxC.stroke = sC > 0 ? '#3b82f6' : '#ef4444';
+  boxC.linewidth = 2;
+  const txtSlotC = two.makeText(`${sC}`, cx + 66, slotY);
+  txtSlotC.size = 22;
+  txtSlotC.weight = 900;
+  txtSlotC.fill = sC > 0 ? '#1d4ed8' : '#b91c1c';
+
+  const lblC = two.makeText('슬롯 C (클릭)', cx + 66, slotY - 36);
+  lblC.size = 10.5;
+  lblC.weight = 700;
+  lblC.fill = '#64748b';
+
+  setTimeout(() => {
+    if (boxA._renderer && boxA._renderer.elem) {
+      boxA._renderer.elem.style.cursor = 'pointer';
+      boxA._renderer.elem.onclick = () => cycleSlot('A');
+    }
+    if (boxB._renderer && boxB._renderer.elem) {
+      boxB._renderer.elem.style.cursor = 'pointer';
+      boxB._renderer.elem.onclick = () => cycleSlot('B');
+    }
+    if (boxC._renderer && boxC._renderer.elem) {
+      boxC._renderer.elem.style.cursor = 'pointer';
+      boxC._renderer.elem.onclick = () => cycleSlot('C');
+    }
+  }, 10);
+
+  // Calculation Results Display Card (Y = 224)
+  const cardW = Math.min(500, w - 40);
+  const cardBox = two.makeRoundedRectangle(w / 2, 228, cardW, 140, 10);
+  cardBox.fill = '#ffffff';
+  cardBox.stroke = '#cbd5e1';
+  cardBox.linewidth = 1.5;
+
+  const coeffX = sA * sB;
+  const constTerm = sA * sC;
+  const sumVal = coeffX + constTerm;
+
+  const cSign = constTerm >= 0 ? `+ ${constTerm}` : `- ${Math.abs(constTerm)}`;
+  const polyStr = `${coeffX}x ${cSign}`;
+
+  const t1 = two.makeText(`전개식:  ${sA}(${sB}x + ${sC >= 0 ? sC : '(' + sC + ')'}) = ${polyStr}`, w / 2, 178);
+  t1.size = 15;
+  t1.weight = 800;
+  t1.fill = '#1e293b';
+
+  const t2 = two.makeText(`x의 계수 = ${coeffX}    |    상수항 = ${constTerm}`, w / 2, 208);
+  t2.size = 14;
+  t2.weight = 700;
+  t2.fill = '#2563eb';
+
+  // Highlight Score Badge
+  const scoreBox = two.makeRoundedRectangle(w / 2, 252, cardW - 40, 42, 8);
+  scoreBox.fill = sumVal === 9 ? '#ecfdf5' : (sumVal === -12 ? '#fef2f2' : '#f8fafc');
+  scoreBox.stroke = sumVal === 9 ? '#10b981' : (sumVal === -12 ? '#ef4444' : '#cbd5e1');
+  scoreBox.linewidth = 2;
+
+  let tagTxt = '';
+  if (sumVal === 9) tagTxt = ' 🏆 [최댓값 달성!]';
+  else if (sumVal === -12) tagTxt = ' 📉 [최솟값 달성!]';
+
+  const t3 = two.makeText(`계수와 상수항의 합 = ${coeffX} + (${constTerm}) = ${sumVal}${tagTxt}`, w / 2, 252);
+  t3.size = 15;
+  t3.weight = 900;
+  t3.fill = sumVal === 9 ? '#047857' : (sumVal === -12 ? '#b91c1c' : '#0f172a');
+
+  // Tip on Bottom of card
+  const tTip = two.makeText(`💡 분배법칙 비밀: 계수와 상수항의 합은 항상 A(B + C) = ${sA} × (${sB + sC}) = ${sumVal} 입니다!`, w / 2, 284);
+  tTip.size = 11.5;
+  tTip.weight = 700;
+  tTip.fill = '#64748b';
+}
+
+// -------------------------------------------------------------
+// Model 2: 최댓값 & 최솟값 극값 탐색기
+// -------------------------------------------------------------
+function drawMode2MinMaxScanner(two, w, h) {
+  // Title Box
+  const titleBox = two.makeRoundedRectangle(w / 2, 28, w - 32, 34, 6);
+  titleBox.fill = '#ffffff';
+  titleBox.stroke = '#cbd5e1';
+  const titleTxt = two.makeText('🔍 최댓값 & 최솟값 극값 탐색기: 모든 조합 비교 분석', w / 2, 28);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  const cardW = (w - 50) / 2;
+  const cardH = 220;
+  const cardY = 200;
+  const leftX = 20 + cardW / 2;
+  const rightX = w - 20 - cardW / 2;
+
+  // Max Card (Left - Green)
+  const bMax = two.makeRoundedRectangle(leftX, cardY, cardW, cardH, 8);
+  bMax.fill = '#ffffff';
+  bMax.stroke = '#10b981';
+  bMax.linewidth = 2;
+
+  const hMax = two.makeText('🏆 최댓값 (Max = 9)', leftX, 114);
+  hMax.size = 15;
+  hMax.weight = 900;
+  hMax.fill = '#047857';
+
+  const m1 = two.makeText('선택 카드: A = 3, B = 4, C = -1', leftX, 148);
+  m1.size = 12;
+  m1.weight = 700;
+  m1.fill = '#334155';
+
+  const m2 = two.makeText('일차식: 3(4x - 1) = 12x - 3', leftX, 180);
+  m2.size = 13.5;
+  m2.weight = 800;
+  m2.fill = '#1d4ed8';
+
+  const m3 = two.makeText('계수 = 12,  상수항 = -3', leftX, 210);
+  m3.size = 12.5;
+  m3.weight = 700;
+  m3.fill = '#334155';
+
+  const bMaxScore = two.makeRoundedRectangle(leftX, 252, cardW - 32, 36, 6);
+  bMaxScore.fill = '#ecfdf5';
+  bMaxScore.stroke = '#86efac';
+  const m4 = two.makeText('최대 합:  12 + (-3) = 9', leftX, 252);
+  m4.size = 15;
+  m4.weight = 900;
+  m4.fill = '#047857';
+
+  const m5 = two.makeText('💡 원리: A=3, B+C=3 ➔ 3 × 3 = 9', leftX, 290);
+  m5.size = 11;
+  m5.weight = 700;
+  m5.fill = '#059669';
+
+  // Min Card (Right - Red)
+  const bMin = two.makeRoundedRectangle(rightX, cardY, cardW, cardH, 8);
+  bMin.fill = '#ffffff';
+  bMin.stroke = '#ef4444';
+  bMin.linewidth = 2;
+
+  const hMin = two.makeText('📉 최솟값 (Min = -12)', rightX, 114);
+  hMin.size = 15;
+  hMin.weight = 900;
+  hMin.fill = '#b91c1c';
+
+  const n1 = two.makeText('선택 카드: A = 4, B = -2, C = -1', rightX, 148);
+  n1.size = 12;
+  n1.weight = 700;
+  n1.fill = '#334155';
+
+  const n2 = two.makeText('일차식: 4(-2x - 1) = -8x - 4', rightX, 180);
+  n2.size = 13.5;
+  n2.weight = 800;
+  n2.fill = '#b91c1c';
+
+  const n3 = two.makeText('계수 = -8,  상수항 = -4', rightX, 210);
+  n3.size = 12.5;
+  n3.weight = 700;
+  n3.fill = '#334155';
+
+  const bMinScore = two.makeRoundedRectangle(rightX, 252, cardW - 32, 36, 6);
+  bMinScore.fill = '#fef2f2';
+  bMinScore.stroke = '#f87171';
+  const n4 = two.makeText('최소 합:  -8 + (-4) = -12', rightX, 252);
+  n4.size = 15;
+  n4.weight = 900;
+  n4.fill = '#b91c1c';
+
+  const n5 = two.makeText('💡 원리: A=4, B+C=-3 ➔ 4 × (-3) = -12', rightX, 290);
+  n5.size = 11;
+  n5.weight = 700;
+  n5.fill = '#be123c';
+
+  // Bottom Notice
+  const tNotice = two.makeText('✨ 4장의 카드 중 3장을 고르는 총 24가지 순열 중 9와 -12가 각각 극값(최대/최소)입니다.', w / 2, 332);
+  tNotice.size = 12;
+  tNotice.weight = 700;
+  tNotice.fill = '#475569';
+}
+
+// -------------------------------------------------------------
+// Model 3: 분배법칙의 비밀 원리 (Secret Principle)
+// -------------------------------------------------------------
+function drawMode3SecretPrinciple(two, w, h) {
+  // Title Box
+  const titleBox = two.makeRoundedRectangle(w / 2, 28, w - 32, 34, 6);
+  titleBox.fill = '#ffffff';
+  titleBox.stroke = '#cbd5e1';
+  const titleTxt = two.makeText('✨ 분배법칙의 역발상: 계수와 상수항의 합 = A(B + C)', w / 2, 28);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  const cardW = Math.min(520, w - 40);
+
+  // Big Equation Box (Y = 114)
+  const bEq = two.makeRoundedRectangle(w / 2, 114, cardW, 80, 8);
+  bEq.fill = '#f0fdf4';
+  bEq.stroke = '#86efac';
+  bEq.linewidth = 2;
+
+  const eq1 = two.makeText('A(Bx + C)  =  (A × B)x  +  (A × C)', w / 2, 94);
+  eq1.size = 15;
+  eq1.weight = 800;
+  eq1.fill = '#166534';
+
+  const eq2 = two.makeText('➔ 계수와 상수항의 합 = (A × B) + (A × C) = A × (B + C)', w / 2, 130);
+  eq2.size = 15;
+  eq2.weight = 900;
+  eq2.fill = '#047857';
+
+  // 3 Key Strategies Cards (Y = 224)
+  const bStrat = two.makeRoundedRectangle(w / 2, 228, cardW, 130, 8);
+  bStrat.fill = '#ffffff';
+  bStrat.stroke = '#cbd5e1';
+
+  const s1 = two.makeText('1. 최댓값을 만들려면?', w / 2 - cardW / 2 + 18, 184);
+  s1.size = 13.5;
+  s1.weight = 800;
+  s1.alignment = 'left';
+  s1.fill = '#1d4ed8';
+
+  const s1_d = two.makeText('• A > 0 이고 (B + C) > 0 이 최대가 되도록: A = 3, B = 4, C = -1 ➔ 3 × 3 = 9', w / 2 - cardW / 2 + 18, 206);
+  s1_d.size = 12;
+  s1_d.weight = 600;
+  s1_d.alignment = 'left';
+  s1_d.fill = '#334155';
+
+  const s2 = two.makeText('2. 최솟값을 만들려면?', w / 2 - cardW / 2 + 18, 238);
+  s2.size = 13.5;
+  s2.weight = 800;
+  s2.alignment = 'left';
+  s2.fill = '#b91c1c';
+
+  const s2_d = two.makeText('• A > 0 이 가장 크고 (B + C) < 0 이 최소가 되도록: A = 4, B = -2, C = -1 ➔ 4 × (-3) = -12', w / 2 - cardW / 2 + 18, 260);
+  s2_d.size = 12;
+  s2_d.weight = 600;
+  s2_d.alignment = 'left';
+  s2_d.fill = '#334155';
+
+  const s3 = two.makeText('💡 결론: 일일이 전개하지 않고도 A와 B+C의 곱으로 빠르게 극값을 판별할 수 있습니다!', w / 2, 330);
+  s3.size = 12;
+  s3.weight = 800;
+  s3.fill = '#15803d';
+}
+
+// -------------------------------------------------------------
+// Grading Logic (생각 넓히기 채점)
+// -------------------------------------------------------------
+function gradeStep2_11() {
+  const qPoly = document.getElementById('ans-2-11-1-poly');
+  const qSum = document.getElementById('ans-2-11-1-sum');
+  const qMax = document.getElementById('ans-2-11-2-max');
+  const qMin = document.getElementById('ans-2-11-3-min');
+  const fb = document.getElementById('feedback-2-11');
+
+  if (!qPoly || !qSum || !qMax || !qMin || !fb) return;
+
+  const norm = (s) => (s || '').toLowerCase().replace(/\s+/g, '');
+
+  const vPoly = norm(qPoly.value);
+  const vSum = norm(qSum.value);
+  const vMax = norm(qMax.value);
+  const vMin = norm(qMin.value);
+
+  const isPolyOk = (vPoly === '12x-3' || vPoly === '12x+-3' || vPoly === '-3+12x');
+  const isSumOk = (vSum === '9' || vSum === '+9');
+  const isMaxOk = (vMax === '9' || vMax === '+9');
+  const isMinOk = (vMin === '-12');
+
+  const allCorrect = isPolyOk && isSumOk && isMaxOk && isMinOk;
+
+  fb.style.display = 'block';
+
+  if (allCorrect) {
+    if (state.lab2_11) state.lab2_11.isPassed = true;
+    state.substepProgress['2-11'] = true;
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#ecfdf5; border:1.5px solid #10b981; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.4rem;">🎉</span>
+          <h5 style="color:#065f46; font-weight:800; margin:0;">100점 완벽 통과! (Tab 2 [3.2 일차식의 계산] 전 과정 마스터 달성)</h5>
+        </div>
+        <div style="font-size:0.88rem; color:#047857; line-height:1.6;">
+          <b>[생각 넓히기 정답 완벽 분석]</b><br>
+          • <b>⑴ $3(4x - 1)$ 전개식:</b> $12x - 3$<br>
+          • <b>⑴ $x$의 계수와 상수항의 합:</b> $12 + (-3) = 9$<br>
+          • <b>⑵ 합의 최댓값:</b> $3(4x - 1)$ 또는 $3(-x + 4)$ 일 때 <b>$9$</b><br>
+          • <b>⑶ 합의 최솟값:</b> $4(-2x - 1)$ 또는 $4(-x - 2)$ 일 때 <b>$-12$</b><br>
+          분배법칙의 원리를 역방향으로 꿰뚫어 보고 일차식의 계수 합을 완벽하게 분석해 냈습니다!
+        </div>
+        <div style="margin-top:10px; font-size:0.8rem; color:#059669; font-weight:700;">
+          ✅ Tab 2 전수 수료 상태가 영서중 LMS DB에 안전하게 자동 저장되었으며, 다음 대단원 [Tab 3. 일차식의 덧셈과 뺄셈]이 해금되었습니다.
+        </div>
+      </div>
+    `;
+
+    if (window.LMSIntegration && typeof window.LMSIntegration.saveStudentProgress === 'function') {
+      window.LMSIntegration.saveStudentProgress('2-11', { score: 100, passed: true }, 'unit3');
+    }
+
+    if (!state.unlockedSubSteps.includes('3-1')) {
+      state.unlockedSubSteps.push('3-1');
+    }
+    if (!state.unlockedTabs.includes(3)) {
+      state.unlockedTabs.push(3);
+    }
+  } else {
+    let errorMsg = [];
+    if (!isPolyOk) errorMsg.push('⑴의 전개식: $3(4x - 1) = 12x - 3$ (입력: 12x-3) 입니다.');
+    if (!isSumOk) errorMsg.push('⑴의 계수와 상수항의 합: $12 + (-3) = 9$ (입력: 9) 입니다.');
+    if (!isMaxOk) errorMsg.push('⑵ 합의 최댓값은 $9$ 입니다. (A=3, B=4, C=-1 ➔ 12 - 3 = 9)');
+    if (!isMinOk) errorMsg.push('⑶ 합의 최솟값은 $-12$ 입니다. (A=4, B=-2, C=-1 ➔ -8 - 4 = -12)');
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#fff1f2; border:1.5px solid #f43f5e; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.3rem;">💡</span>
+          <h6 style="color:#9f1239; font-weight:700; margin:0;">다시 확인해 보세요!</h6>
+        </div>
+        <div style="font-size:0.86rem; color:#be123c; line-height:1.6;">
+          ${errorMsg.map(msg => `<div>• ${msg}</div>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+    // --- End Substep 2-11 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -19351,6 +20014,9 @@ function gradeStep2_10() {
       } else if (code === '2-10') {
         renderToolbar2_10();
         renderSubstep2_10();
+      } else if (code === '2-11') {
+        renderToolbar2_11();
+        renderSubstep2_11();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
