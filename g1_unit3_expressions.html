@@ -1000,7 +1000,7 @@
       '2-9': {
         code: '2-9', tab: 2,
         substepLabel: '9. 스스로 확인하기 4: 도형 둘레 일차식 (p.80)',
-        missionText: '<b>[2-9] 9. 스스로 확인하기 4: 도형 둘레 일차식 (p.80)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        missionText: '<b>[스스로 확인하기 4번] 도형의 둘레를 일차식으로 나타내기 (교과서 p.80)</b><br>• <b>직사각형의 둘레:</b> $2 \times (\text{가로} + \text{세로})$ 또는 $2 \times \text{가로} + 2 \times \text{세로}$<br>• <b>분배법칙 적용:</b> 가로 $(3x + 1)$과 세로 $4$를 대입하여 $2(3x + 1) + 2 \times 4$를 전개합니다.<br>• <b>동류항 정리:</b> 괄호를 푼 뒤 수끼리 묶어 간단한 일차식으로 나타냅니다.<br>좌측 캔버스에서 둘레 리본 전개도를 펼쳐보고 직사각형의 둘레를 $x$에 대한 일차식으로 구해 보세요.',
         drawer: 'drawStep2_9Canvas'
       },
       '2-10': {
@@ -1468,6 +1468,16 @@
       
       
       
+      
+      // Substep 2-9 State (Self Check 4: Polygon Perimeter Linear Expression)
+      lab2_9: {
+        activeTab: 'mode1',
+        widthCoeff: 3,
+        widthConst: 1,
+        heightVal: 4,
+        isUnfolded: false,
+        isPassed: false
+      },
       // Substep 2-8 State (Self Check 3: Monomial & Linear Mult/Div)
       lab2_8: {
         activeTab: 'mode1',
@@ -17956,6 +17966,678 @@ function gradeStep2_8() {
 
     // --- End Substep 2-8 Implementation ---
 
+    
+    // --- Substep 2-9 Implementation ---
+// code_2_9.js: Substep [2-9] 3.2 스스로 확인하기 4번: 도형 둘레 일차식 (교과서 p.80)
+
+function renderToolbar2_9() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab2_9) {
+    state.lab2_9 = {
+      activeTab: 'mode1', // 'mode1' (직사각형 둘레 & 리본 전개) | 'mode2' (2대 계산법 비교) | 'mode3' (다각형 둘레 원리)
+      widthCoeff: 3,      // 가로 3x + 1
+      widthConst: 1,
+      heightVal: 4,       // 세로 4
+      isUnfolded: false,
+      isPassed: false
+    };
+  }
+
+  const curTab = state.lab2_9.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab2_9Tab('mode1')">
+        1. 둘레 리본 전개도
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab2_9Tab('mode2')">
+        2. 둘레 2대 풀이법 비교
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab2_9Tab('mode3')">
+        3. 다각형 둘레 원리
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn" onclick="toggleUnfold2_9()" title="전개도 토글">
+        ${state.lab2_9.isUnfolded ? '📦 직사각형 접기' : '📏 리본 펼치기'}
+      </button>
+      <button class="icon-btn" onclick="resetLab2_9()" title="초기화">🔄 초기화</button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('2-9')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab2_9Tab(tabKey) {
+  if (!state.lab2_9) resetLab2_9();
+  state.lab2_9.activeTab = tabKey;
+  renderToolbar2_9();
+  drawStep2_9Canvas();
+}
+
+function resetLab2_9() {
+  state.lab2_9 = {
+    activeTab: 'mode1',
+    widthCoeff: 3,
+    widthConst: 1,
+    heightVal: 4,
+    isUnfolded: false,
+    isPassed: false
+  };
+  renderToolbar2_9();
+  drawStep2_9Canvas();
+}
+
+function toggleUnfold2_9() {
+  if (!state.lab2_9) resetLab2_9();
+  state.lab2_9.isUnfolded = !state.lab2_9.isUnfolded;
+  renderToolbar2_9();
+  drawStep2_9Canvas();
+}
+
+function changeParam2_9(type, delta) {
+  if (!state.lab2_9) resetLab2_9();
+  if (type === 'wCoeff') {
+    state.lab2_9.widthCoeff = Math.max(1, Math.min(5, state.lab2_9.widthCoeff + delta));
+  } else if (type === 'wConst') {
+    state.lab2_9.widthConst = Math.max(0, Math.min(6, state.lab2_9.widthConst + delta));
+  } else if (type === 'hVal') {
+    state.lab2_9.heightVal = Math.max(1, Math.min(8, state.lab2_9.heightVal + delta));
+  }
+  drawStep2_9Canvas();
+}
+
+function renderSubstep2_9() {
+  const container = document.getElementById('substep-form-container');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="card p-3 mb-3" style="border-left: 4px solid var(--primary);">
+      <h6 style="font-weight:700; color:var(--primary); margin-bottom:6px;">
+        📖 [교과서 p.80] 스스로 확인하기 4번: 도형의 둘레
+      </h6>
+      <div style="font-size:0.86rem; color:#334155; line-height:1.55;">
+        오른쪽 그림과 같은 직사각형의 둘레의 길이를 $x$를 사용한 일차식으로 나타내시오.
+        <ul style="margin:4px 0 0 0; padding-left:18px;">
+          <li><b>가로의 길이:</b> $3x + 1$</li>
+          <li><b>세로의 길이:</b> $4$</li>
+          <li><b>직사각형의 둘레:</b> $2 \\times (\\text{가로} + \\text{세로})$ 또는 $2 \\times \\text{가로} + 2 \\times \\text{세로}$</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 답안 입력 카드 -->
+    <div class="card p-3 mb-3">
+      <h6 style="font-weight:700; color:#1e293b; margin-bottom:8px;">
+        ✏️ [4번 문항] 직사각형 둘레 계산
+      </h6>
+
+      <div class="form-group mb-2">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑴ 둘레를 구하는 식 세우기 (분배 전 식)
+        </label>
+        <input type="text" id="ans-2-9-formula" class="proof-input-text w-100" placeholder="둘레 식 입력 (예: 2(3x + 1) + 2 × 4)" autocomplete="off">
+      </div>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑵ 동류항을 정리한 최종 둘레의 일차식
+        </label>
+        <input type="text" id="ans-2-9-ans" class="proof-input-text w-100" placeholder="최종 일차식 입력" autocomplete="off">
+      </div>
+
+      <button id="btn-grade-2-9" class="primary-btn w-100" onclick="gradeStep2_9()" style="margin-top:6px; font-weight:700;">
+        🚀 정답 확인 및 LMS DB 기록
+      </button>
+    </div>
+
+    <div id="feedback-2-9" style="display:none; margin-top:8px;"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawStep2_9Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+
+  if (state.twoInstance) {
+    state.twoInstance.clear();
+  } else {
+    container.innerHTML = '';
+    const two = new Two({
+      width: container.clientWidth || 600,
+      height: 440,
+      type: Two.Types.svg
+    }).appendTo(container);
+    state.twoInstance = two;
+  }
+
+  const two = state.twoInstance;
+  if (!two) return;
+
+  two.clear();
+  drawSelfCheck2_9Lab(two);
+  two.update();
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawSelfCheck2_9Lab(two) {
+  const w = two.width;
+  const h = two.height;
+  const tab = (state.lab2_9 && state.lab2_9.activeTab) || 'mode1';
+
+  // Background
+  const bg = two.makeRectangle(w / 2, h / 2, w, h);
+  bg.fill = '#f8fafc';
+  bg.stroke = '#e2e8f0';
+  bg.linewidth = 1;
+
+  if (tab === 'mode1') {
+    drawMode1RibbonLab(two, w, h);
+  } else if (tab === 'mode2') {
+    drawMode2MethodsLab(two, w, h);
+  } else {
+    drawMode3PolygonLab(two, w, h);
+  }
+
+  // Bottom info banner (Strict Vertical Budget: Y=385, H=26 -> Margin=42px >= 25px)
+  const bannerY = 385;
+  const bannerH = 26;
+  const bannerBox = two.makeRoundedRectangle(w / 2, bannerY, w - 24, bannerH, 6);
+  bannerBox.fill = '#eff6ff';
+  bannerBox.stroke = '#bfdbfe';
+  bannerBox.linewidth = 1;
+
+  const bannerMsgs = {
+    'mode1': '💡 리본 전개도: 가로 2개와 세로 2개를 펼치면 2(3x + 1) + 2 × 4 = 6x + 10 이 됩니다.',
+    'mode2': '💡 2대 계산법: 2×(가로+세로) 또는 2×가로 + 2×세로 어느 방법을 써도 결과는 같습니다.',
+    'mode3': '💡 일반 원리: 정다각형의 둘레는 (변의 개수) × (한 변의 길이)로 분배법칙을 적용합니다.'
+  };
+
+  const bannerTxt = two.makeText(bannerMsgs[tab], w / 2, bannerY);
+  bannerTxt.size = 11.5;
+  bannerTxt.weight = 700;
+  bannerTxt.fill = '#1d4ed8';
+}
+
+// -------------------------------------------------------------
+// Model 1: 직사각형 둘레 & 리본 전개도 랩
+// -------------------------------------------------------------
+function drawMode1RibbonLab(two, w, h) {
+  const a = state.lab2_9 ? state.lab2_9.widthCoeff : 3;
+  const b = state.lab2_9 ? state.lab2_9.widthConst : 1;
+  const c = state.lab2_9 ? state.lab2_9.heightVal : 4;
+  const isUnfolded = state.lab2_9 ? state.lab2_9.isUnfolded : false;
+
+  // Title Box
+  const titleBox = two.makeRoundedRectangle(w / 2, 28, w - 32, 34, 6);
+  titleBox.fill = '#ffffff';
+  titleBox.stroke = '#cbd5e1';
+  const titleTxt = two.makeText('📐 직사각형 둘레 리본 전개 랩: 가로 (3x+1), 세로 4', w / 2, 28);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  // Steppers (Y = 66)
+  const ctrlY = 66;
+  function makeStepper(cx, label, valStr, onMinus, onPlus) {
+    const lbl = two.makeText(label, cx - 44, ctrlY);
+    lbl.size = 11.5;
+    lbl.weight = 700;
+    lbl.fill = '#475569';
+
+    const btnM = two.makeRoundedRectangle(cx - 10, ctrlY, 20, 20, 4);
+    btnM.fill = '#f1f5f9';
+    btnM.stroke = '#94a3b8';
+    const txtM = two.makeText('−', cx - 10, ctrlY);
+    txtM.size = 13;
+    txtM.weight = 800;
+    txtM.fill = '#334155';
+
+    const valBox = two.makeRoundedRectangle(cx + 12, ctrlY, 24, 20, 4);
+    valBox.fill = '#ffffff';
+    valBox.stroke = '#cbd5e1';
+    const valTxt = two.makeText(valStr, cx + 12, ctrlY);
+    valTxt.size = 12;
+    valTxt.weight = 800;
+    valTxt.fill = '#0f172a';
+
+    const btnP = two.makeRoundedRectangle(cx + 34, ctrlY, 20, 20, 4);
+    btnP.fill = '#f1f5f9';
+    btnP.stroke = '#94a3b8';
+    const txtP = two.makeText('+', cx + 34, ctrlY);
+    txtP.size = 13;
+    txtP.weight = 800;
+    txtP.fill = '#334155';
+
+    setTimeout(() => {
+      if (btnM._renderer && btnM._renderer.elem) {
+        btnM._renderer.elem.style.cursor = 'pointer';
+        btnM._renderer.elem.onclick = onMinus;
+      }
+      if (btnP._renderer && btnP._renderer.elem) {
+        btnP._renderer.elem.style.cursor = 'pointer';
+        btnP._renderer.elem.onclick = onPlus;
+      }
+    }, 10);
+  }
+
+  const secW = w / 3;
+  makeStepper(secW * 0.5, 'x계수 a =', `${a}`, () => changeParam2_9('wCoeff', -1), () => changeParam2_9('wCoeff', 1));
+  makeStepper(secW * 1.5, '가로 상수 b =', `${b}`, () => changeParam2_9('wConst', -1), () => changeParam2_9('wConst', 1));
+  makeStepper(secW * 2.5, '세로 c =', `${c}`, () => changeParam2_9('hVal', -1), () => changeParam2_9('hVal', 1));
+
+  if (!isUnfolded) {
+    // Folded Rectangle Display (Center Y = 205)
+    const rectW = 220;
+    const rectH = 110;
+    const rcX = w / 2;
+    const rcY = 205;
+
+    // Body
+    const rBody = two.makeRoundedRectangle(rcX, rcY, rectW, rectH, 6);
+    rBody.fill = '#eff6ff';
+    rBody.stroke = '#3b82f6';
+    rBody.linewidth = 2.5;
+
+    // Dimension Labels
+    // Top (가로)
+    const tTop = two.makeText(`가로: ${a}x + ${b}`, rcX, rcY - rectH / 2 - 14);
+    tTop.size = 14;
+    tTop.weight = 800;
+    tTop.fill = '#1d4ed8';
+
+    // Bottom (가로)
+    const tBot = two.makeText(`${a}x + ${b}`, rcX, rcY + rectH / 2 + 14);
+    tBot.size = 13;
+    tBot.weight = 700;
+    tBot.fill = '#2563eb';
+
+    // Left (세로)
+    const tLeft = two.makeText(`세로: ${c}`, rcX - rectW / 2 - 28, rcY);
+    tLeft.size = 13;
+    tLeft.weight = 800;
+    tLeft.fill = '#d97706';
+
+    // Right (세로)
+    const tRight = two.makeText(`${c}`, rcX + rectW / 2 + 20, rcY);
+    tRight.size = 13;
+    tRight.weight = 700;
+    tRight.fill = '#d97706';
+
+    // Center Formula Hint
+    const tInside = two.makeText('둘레 = 2 × (가로) + 2 × (세로)', rcX, rcY);
+    tInside.size = 13;
+    tInside.weight = 700;
+    tInside.fill = '#475569';
+
+    // Summary Box (Y = 328)
+    const sumBox = two.makeRoundedRectangle(w / 2, 326, Math.min(500, w - 40), 40, 8);
+    sumBox.fill = '#f0fdf4';
+    sumBox.stroke = '#86efac';
+    sumBox.linewidth = 1.5;
+
+    const totX = 2 * a;
+    const totConst = 2 * b + 2 * c;
+    const sumTxt = two.makeText(`둘레의 길이 = 2(${a}x + ${b}) + 2 × ${c} = ${totX}x + ${totConst}`, w / 2, 326);
+    sumTxt.size = 14;
+    sumTxt.weight = 800;
+    sumTxt.fill = '#15803d';
+  } else {
+    // Unfolded Ribbon Display (4 segments in a row)
+    const ribY = 175;
+    const totalW = Math.min(520, w - 40);
+    const segW1 = totalW * 0.35; // 가로
+    const segW2 = totalW * 0.15; // 세로
+    const startX = (w - totalW) / 2;
+
+    // Segment 1 (Top 가로)
+    const s1X = startX + segW1 / 2;
+    const b1 = two.makeRoundedRectangle(s1X, ribY, segW1 - 4, 46, 6);
+    b1.fill = '#dbeafe';
+    b1.stroke = '#3b82f6';
+    b1.linewidth = 2;
+    const t1 = two.makeText(`가로: ${a}x + ${b}`, s1X, ribY);
+    t1.size = 12.5;
+    t1.weight = 800;
+    t1.fill = '#1d4ed8';
+
+    // Segment 2 (Right 세로)
+    const s2X = startX + segW1 + segW2 / 2;
+    const b2 = two.makeRoundedRectangle(s2X, ribY, segW2 - 4, 46, 6);
+    b2.fill = '#fef3c7';
+    b2.stroke = '#f59e0b';
+    b2.linewidth = 2;
+    const t2 = two.makeText(`세로: ${c}`, s2X, ribY);
+    t2.size = 12;
+    t2.weight = 800;
+    t2.fill = '#b45309';
+
+    // Segment 3 (Bottom 가로)
+    const s3X = startX + segW1 + segW2 + segW1 / 2;
+    const b3 = two.makeRoundedRectangle(s3X, ribY, segW1 - 4, 46, 6);
+    b3.fill = '#dbeafe';
+    b3.stroke = '#3b82f6';
+    b3.linewidth = 2;
+    const t3 = two.makeText(`가로: ${a}x + ${b}`, s3X, ribY);
+    t3.size = 12.5;
+    t3.weight = 800;
+    t3.fill = '#1d4ed8';
+
+    // Segment 4 (Left 세로)
+    const s4X = startX + segW1 + segW2 + segW1 + segW2 / 2;
+    const b4 = two.makeRoundedRectangle(s4X, ribY, segW2 - 4, 46, 6);
+    b4.fill = '#fef3c7';
+    b4.stroke = '#f59e0b';
+    b4.linewidth = 2;
+    const t4 = two.makeText(`세로: ${c}`, s4X, ribY);
+    t4.size = 12;
+    t4.weight = 800;
+    t4.fill = '#b45309';
+
+    // Unfolded calculation steps card (Y = 270)
+    const cCard = two.makeRoundedRectangle(w / 2, 270, totalW, 76, 8);
+    cCard.fill = '#ffffff';
+    cCard.stroke = '#cbd5e1';
+
+    const totX = 2 * a;
+    const totConst = 2 * b + 2 * c;
+
+    const l1 = two.makeText(`리본 총합 = (${a}x + ${b}) + ${c} + (${a}x + ${b}) + ${c}`, w / 2, 246);
+    l1.size = 13;
+    l1.weight = 700;
+    l1.fill = '#475569';
+
+    const l2 = two.makeText(`동류항 모으기 = (${a}x + ${a}x) + (${b} + ${c} + ${b} + ${c}) = ${totX}x + ${totConst}`, w / 2, 274);
+    l2.size = 14;
+    l2.weight = 800;
+    l2.fill = '#1e40af';
+
+    const l3 = two.makeText(`🎉 최종 둘레의 일차식:  ${totX}x + ${totConst}`, w / 2, 302);
+    l3.size = 15;
+    l3.weight = 900;
+    l3.fill = '#047857';
+  }
+}
+
+// -------------------------------------------------------------
+// Model 2: 둘레 2대 풀이법 비교 랩 (Methods Comparison)
+// -------------------------------------------------------------
+function drawMode2MethodsLab(two, w, h) {
+  // Title Box
+  const titleBox = two.makeRoundedRectangle(w / 2, 28, w - 32, 34, 6);
+  titleBox.fill = '#ffffff';
+  titleBox.stroke = '#cbd5e1';
+  const titleTxt = two.makeText('⚖️ 둘레 2대 계산법 비교: 분배법칙을 이용한 동치 증명', w / 2, 28);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  const cardW = (w - 50) / 2;
+  const cardH = 210;
+  const cardY = 196;
+  const leftX = 20 + cardW / 2;
+  const rightX = w - 20 - cardW / 2;
+
+  // Method 1 (Left - Blue): 2 × (가로 + 세로)
+  const bM1 = two.makeRoundedRectangle(leftX, cardY, cardW, cardH, 8);
+  bM1.fill = '#ffffff';
+  bM1.stroke = '#60a5fa';
+  bM1.linewidth = 2;
+
+  const hM1 = two.makeText('방법 1: 2 × (가로 + 세로)', leftX, 116);
+  hM1.size = 14;
+  hM1.weight = 800;
+  hM1.fill = '#1d4ed8';
+
+  const t1_1 = two.makeText('1단계 (가로+세로 묶기): 2 × {(3x + 1) + 4}', leftX, 154);
+  t1_1.size = 12;
+  t1_1.weight = 700;
+  t1_1.fill = '#334155';
+
+  const t1_2 = two.makeText('2단계 (괄호 안 정리): 2 × (3x + 5)', leftX, 192);
+  t1_2.size = 12.5;
+  t1_2.weight = 700;
+  t1_2.fill = '#2563eb';
+
+  const t1_3 = two.makeText('3단계 (분배법칙 적용): 2 × 3x + 2 × 5', leftX, 230);
+  t1_3.size = 12;
+  t1_3.weight = 700;
+  t1_3.fill = '#1e40af';
+
+  const box1Ans = two.makeRoundedRectangle(leftX, 268, cardW - 32, 34, 6);
+  box1Ans.fill = '#eff6ff';
+  box1Ans.stroke = '#bfdbfe';
+  const t1_ans = two.makeText('결과:  6x + 10', leftX, 268);
+  t1_ans.size = 14;
+  t1_ans.weight = 800;
+  t1_ans.fill = '#1e40af';
+
+  // Method 2 (Right - Green): 2 × 가로 + 2 × 세로
+  const bM2 = two.makeRoundedRectangle(rightX, cardY, cardW, cardH, 8);
+  bM2.fill = '#ffffff';
+  bM2.stroke = '#34d399';
+  bM2.linewidth = 2;
+
+  const hM2 = two.makeText('방법 2: 2 × 가로 + 2 × 세로', rightX, 116);
+  hM2.size = 14;
+  hM2.weight = 800;
+  hM2.fill = '#047857';
+
+  const t2_1 = two.makeText('1단계 (각각 2배 식): 2(3x + 1) + 2 × 4', rightX, 154);
+  t2_1.size = 12;
+  t2_1.weight = 700;
+  t2_1.fill = '#334155';
+
+  const t2_2 = two.makeText('2단계 (앞 괄호 분배): 6x + 2 + 8', rightX, 192);
+  t2_2.size = 12.5;
+  t2_2.weight = 700;
+  t2_2.fill = '#059669';
+
+  const t2_3 = two.makeText('3단계 (상수항 동류항 계산): 6x + (2 + 8)', rightX, 230);
+  t2_3.size = 12;
+  t2_3.weight = 700;
+  t2_3.fill = '#065f46';
+
+  const box2Ans = two.makeRoundedRectangle(rightX, 268, cardW - 32, 34, 6);
+  box2Ans.fill = '#ecfdf5';
+  box2Ans.stroke = '#a7f3d0';
+  const t2_ans = two.makeText('결과:  6x + 10', rightX, 268);
+  t2_ans.size = 14;
+  t2_ans.weight = 800;
+  t2_ans.fill = '#065f46';
+
+  // Center Equivalence Badge
+  const eqBadge = two.makeCircle(w / 2, cardY, 18);
+  eqBadge.fill = '#4f46e5';
+  eqBadge.stroke = '#ffffff';
+  eqBadge.linewidth = 2;
+  const eqTxt = two.makeText('=', w / 2, cardY);
+  eqTxt.size = 18;
+  eqTxt.weight = 900;
+  eqTxt.fill = '#ffffff';
+
+  // Bottom Notice
+  const tNotice = two.makeText('✨ 어떤 방법을 선택하더라도 분배법칙을 바르게 적용하면 완벽히 일치하는 일차식 6x + 10 이 됩니다!', w / 2, 332);
+  tNotice.size = 12;
+  tNotice.weight = 700;
+  tNotice.fill = '#475569';
+}
+
+// -------------------------------------------------------------
+// Model 3: 다각형 둘레 계산 원리 (Polygon Perimeter)
+// -------------------------------------------------------------
+function drawMode3PolygonLab(two, w, h) {
+  // Title Box
+  const titleBox = two.makeRoundedRectangle(w / 2, 28, w - 32, 34, 6);
+  titleBox.fill = '#ffffff';
+  titleBox.stroke = '#cbd5e1';
+  const titleTxt = two.makeText('📐 다양한 도형의 둘레 공식과 일차식 표현 원리', w / 2, 28);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  const cardW = Math.min(520, w - 40);
+  const startY = 76;
+  const rowH = 68;
+
+  const polys = [
+    { name: '1. 직사각형 (가로 a, 세로 b)', formula: '둘레 = 2(a + b) = 2a + 2b', ex: '가로 3x+1, 세로 4 ➔ 2(3x+1) + 8 = 6x + 10', bg: '#eff6ff', col: '#1d4ed8' },
+    { name: '2. 정사각형 (한 변 a)', formula: '둘레 = 4 × a = 4a', ex: '한 변 2x - 3 ➔ 4(2x - 3) = 8x - 12', bg: '#fefce8', col: '#a16207' },
+    { name: '3. 정삼각형 (한 변 a)', formula: '둘레 = 3 × a = 3a', ex: '한 변 a + 5 ➔ 3(a + 5) = 3a + 15', bg: '#ecfdf5', col: '#047857' }
+  ];
+
+  polys.forEach((p, idx) => {
+    const ry = startY + idx * (rowH + 12) + rowH / 2;
+    const rBox = two.makeRoundedRectangle(w / 2, ry, cardW, rowH, 8);
+    rBox.fill = p.bg;
+    rBox.stroke = '#cbd5e1';
+
+    const t1 = two.makeText(p.name, w / 2 - cardW / 2 + 18, ry - 14);
+    t1.size = 13.5;
+    t1.weight = 800;
+    t1.alignment = 'left';
+    t1.fill = p.col;
+
+    const t2 = two.makeText(`• 공식: ${p.formula}`, w / 2 - cardW / 2 + 18, ry + 6);
+    t2.size = 12;
+    t2.weight = 700;
+    t2.alignment = 'left';
+    t2.fill = '#334155';
+
+    const t3 = two.makeText(`• 예시: ${p.ex}`, w / 2 - cardW / 2 + 18, ry + 22);
+    t3.size = 11.5;
+    t3.weight = 600;
+    t3.alignment = 'left';
+    t3.fill = '#64748b';
+  });
+
+  const bTip = two.makeRoundedRectangle(w / 2, 332, cardW, 36, 6);
+  bTip.fill = '#ffffff';
+  bTip.stroke = '#86efac';
+  const tTip = two.makeText('💡 도형의 둘레 문제는 모든 변의 길이를 괄호로 묶어 더한 뒤 분배법칙으로 정리합니다.', w / 2, 332);
+  tTip.size = 12;
+  tTip.weight = 700;
+  tTip.fill = '#15803d';
+}
+
+// -------------------------------------------------------------
+// Grading Logic (스스로 확인하기 4번 채점)
+// -------------------------------------------------------------
+function gradeStep2_9() {
+  const fInp = document.getElementById('ans-2-9-formula');
+  const aInp = document.getElementById('ans-2-9-ans');
+  const fb = document.getElementById('feedback-2-9');
+
+  if (!aInp || !fb) return;
+
+  const norm = (s) => (s || '').toLowerCase().replace(/\s+/g, '');
+
+  const ans = norm(aInp.value);
+  const isAnsOk = (ans === '6x+10' || ans === '10+6x' || ans === '+6x+10');
+
+  // formula check (tolerant, optional if student got final answer)
+  let isFormulaOk = true;
+  if (fInp && fInp.value.trim().length > 0) {
+    const fVal = norm(fInp.value);
+    isFormulaOk = (
+      fVal.includes('2(3x+1)') ||
+      fVal.includes('2*(3x+1)') ||
+      fVal.includes('2(3x+5)') ||
+      fVal.includes('6x+2+8') ||
+      fVal.includes('6x+10') ||
+      fVal.includes('3x+1+4+3x+1+4') ||
+      fVal.includes('(3x+1)+4')
+    );
+  }
+
+  const allCorrect = isAnsOk && isFormulaOk;
+
+  fb.style.display = 'block';
+
+  if (allCorrect) {
+    if (state.lab2_9) state.lab2_9.isPassed = true;
+    state.substepProgress['2-9'] = true;
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#ecfdf5; border:1.5px solid #10b981; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.4rem;">🎉</span>
+          <h5 style="color:#065f46; font-weight:800; margin:0;">100점 완벽 통과! (스스로 확인하기 4번 정복)</h5>
+        </div>
+        <div style="font-size:0.88rem; color:#047857; line-height:1.6;">
+          <b>[4번 문항 정답 완벽 분석]</b><br>
+          • <b>둘레 구하는 식:</b> $2(3x + 1) + 2 \\times 4$ 또는 $2\\{(3x + 1) + 4\}$<br>
+          • <b>분배 및 동류항 정리:</b> $6x + 2 + 8 = 6x + 10$<br>
+          가로와 세로의 길이를 직사각형 둘레 공식에 대입하고 분배법칙으로 완벽하게 정리했습니다!
+        </div>
+        <div style="margin-top:10px; font-size:0.8rem; color:#059669; font-weight:700;">
+          ✅ 학습 완료 상태가 영서중 LMS DB에 안전하게 자동 저장되었습니다.
+        </div>
+      </div>
+    `;
+
+    if (window.LMSIntegration && typeof window.LMSIntegration.saveStudentProgress === 'function') {
+      window.LMSIntegration.saveStudentProgress('2-9', { score: 100, passed: true }, 'unit3');
+    }
+
+    if (!state.unlockedSubSteps.includes('2-10')) {
+      state.unlockedSubSteps.push('2-10');
+    }
+  } else {
+    let errorMsg = [];
+    if (!isAnsOk) errorMsg.push('최종 둘레의 일차식: $2(3x + 1) + 2 \\times 4 = 6x + 10$ (입력: 6x+10) 입니다.');
+    if (!isFormulaOk) errorMsg.push('둘레 식은 $2(3x + 1) + 8$ 또는 $2(3x + 5)$ 등의 형태로 작성해 보세요.');
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#fff1f2; border:1.5px solid #f43f5e; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.3rem;">💡</span>
+          <h6 style="color:#9f1239; font-weight:700; margin:0;">다시 확인해 보세요!</h6>
+        </div>
+        <div style="font-size:0.86rem; color:#be123c; line-height:1.6;">
+          ${errorMsg.map(msg => `<div>• ${msg}</div>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+    // --- End Substep 2-9 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -18059,6 +18741,9 @@ function gradeStep2_8() {
       } else if (code === '2-8') {
         renderToolbar2_8();
         renderSubstep2_8();
+      } else if (code === '2-9') {
+        renderToolbar2_9();
+        renderSubstep2_9();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
