@@ -1006,7 +1006,7 @@
       '2-10': {
         code: '2-10', tab: 2,
         substepLabel: '10. 스스로 확인하기 5: 롤러코스터 속력 (p.80)',
-        missionText: '<b>[2-10] 10. 스스로 확인하기 5: 롤러코스터 속력 (p.80)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        missionText: '<b>[스스로 확인하기 5번] 롤러코스터 속력 일차식 계산 (교과서 p.80)</b><br>• <b>분배법칙 전개:</b> 속력 식 $v = 4(0.5h + 5)$의 괄호를 풀어 간단한 일차식으로 나타냅니다.<br>• <b>식의 값 대입:</b> 최고 높이 $h = 40\\text{ m}$를 대입하여 지면에서의 속력을 계산합니다.<br>• <b>실생활 응용:</b> 일차식을 활용하여 실생활 물리량의 관계를 분석합니다.<br>좌측 캔버스에서 롤러코스터 60fps 트랙 시뮬레이터를 조작하고 5번 문제를 해결해 보세요.',
         drawer: 'drawStep2_10Canvas'
       },
       '2-11': {
@@ -1469,6 +1469,15 @@
       
       
       
+      
+      // Substep 2-10 State (Self Check 5: Roller Coaster Speed)
+      lab2_10: {
+        activeTab: 'mode1',
+        hVal: 40,
+        cartProgress: 0,
+        isAnimating: false,
+        isPassed: false
+      },
       // Substep 2-9 State (Self Check 4: Polygon Perimeter Linear Expression)
       lab2_9: {
         activeTab: 'mode1',
@@ -18638,6 +18647,601 @@ function gradeStep2_9() {
 
     // --- End Substep 2-9 Implementation ---
 
+    
+    // --- Substep 2-10 Implementation ---
+// code_2_10.js: Substep [2-10] 3.2 스스로 확인하기 5번: 롤러코스터 속력 일차식 계산 (교과서 p.80)
+
+function renderToolbar2_10() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab2_10) {
+    state.lab2_10 = {
+      activeTab: 'mode1', // 'mode1' (롤러코스터 트랙 시뮬레이터) | 'mode2' (전개 및 대입 파이프라인) | 'mode3' (실생활 일차식 탐구)
+      hVal: 40,           // 높이 h (m)
+      cartProgress: 0,    // 0 (출발) ~ 1 (바닥 도달)
+      isAnimating: false,
+      isPassed: false
+    };
+  }
+
+  const curTab = state.lab2_10.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab2_10Tab('mode1')">
+        1. 롤러코스터 60fps 트랙
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab2_10Tab('mode2')">
+        2. 전개 및 대입 파이프라인
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab2_10Tab('mode3')">
+        3. 실생활 일차식 모델
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn" style="background:#dbeafe; color:#1d4ed8; font-weight:700;" onclick="launchCoaster2_10()" title="카트 출발">
+        🎢 카트 출발!
+      </button>
+      <button class="icon-btn" onclick="resetLab2_10()" title="초기화">🔄 초기화</button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('2-10')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab2_10Tab(tabKey) {
+  if (!state.lab2_10) resetLab2_10();
+  state.lab2_10.activeTab = tabKey;
+  renderToolbar2_10();
+  drawStep2_10Canvas();
+}
+
+function resetLab2_10() {
+  state.lab2_10 = {
+    activeTab: 'mode1',
+    hVal: 40,
+    cartProgress: 0,
+    isAnimating: false,
+    isPassed: false
+  };
+  renderToolbar2_10();
+  drawStep2_10Canvas();
+}
+
+function changeHVal2_10(delta) {
+  if (!state.lab2_10) resetLab2_10();
+  state.lab2_10.hVal = Math.max(10, Math.min(80, state.lab2_10.hVal + delta));
+  state.lab2_10.cartProgress = 0;
+  drawStep2_10Canvas();
+}
+
+function launchCoaster2_10() {
+  if (!state.lab2_10) resetLab2_10();
+  if (state.lab2_10.isAnimating) return;
+  state.lab2_10.isAnimating = true;
+  state.lab2_10.cartProgress = 0;
+
+  const duration = 1200; // ms
+  const startTime = performance.now();
+
+  function animate(now) {
+    const elapsed = now - startTime;
+    const p = Math.min(1, elapsed / duration);
+    // Ease-in (gravity acceleration)
+    state.lab2_10.cartProgress = p * p;
+    drawStep2_10Canvas();
+
+    if (p < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      state.lab2_10.cartProgress = 1;
+      state.lab2_10.isAnimating = false;
+      drawStep2_10Canvas();
+    }
+  }
+
+  requestAnimationFrame(animate);
+}
+
+function renderSubstep2_10() {
+  const container = document.getElementById('substep-form-container');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="card p-3 mb-3" style="border-left: 4px solid var(--primary);">
+      <h6 style="font-weight:700; color:var(--primary); margin-bottom:6px;">
+        📖 [교과서 p.80] 스스로 확인하기 5번: 롤러코스터 속력 일차식
+      </h6>
+      <div style="font-size:0.86rem; color:#334155; line-height:1.55;">
+        어떤 놀이공원의 롤러코스터가 최고 높이 $h\\text{ m}$에서 출발하여 지면에 도달할 때의 속력 $v(\\text{km/h})$는 대략 다음과 같은 식으로 나타낼 수 있다고 한다.
+        <div class="text-center my-2 p-2" style="background:#f8fafc; border-radius:6px; font-weight:700; color:#1d4ed8; font-size:1.05rem;">
+          $$v = 4(0.5h + 5)$$
+        </div>
+      </div>
+    </div>
+
+    <!-- 문제 풀이 카드 -->
+    <div class="card p-3 mb-3">
+      <h6 style="font-weight:700; color:#1e293b; margin-bottom:8px;">
+        ✏️ [5번 문항] 롤러코스터 속력 구하기
+      </h6>
+
+      <div class="form-group mb-2">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑴ 위 식을 분배법칙을 이용하여 괄호를 풀고 간단한 $h$의 일차식으로 나타내시오.
+        </label>
+        <input type="text" id="ans-2-10-1" class="proof-input-text w-100" placeholder="h에 대한 일차식 입력" autocomplete="off">
+      </div>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑵ 이 롤러코스터의 최고 높이가 $h = 40\\text{ m}$일 때의 속력($\\text{km/h}$)을 구하시오.
+        </label>
+        <input type="text" id="ans-2-10-2" class="proof-input-text w-100" placeholder="속력 입력 (수)" autocomplete="off">
+      </div>
+
+      <button id="btn-grade-2-10" class="primary-btn w-100" onclick="gradeStep2_10()" style="margin-top:6px; font-weight:700;">
+        🚀 정답 확인 및 LMS DB 기록
+      </button>
+    </div>
+
+    <div id="feedback-2-10" style="display:none; margin-top:8px;"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawStep2_10Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+
+  if (state.twoInstance) {
+    state.twoInstance.clear();
+  } else {
+    container.innerHTML = '';
+    const two = new Two({
+      width: container.clientWidth || 600,
+      height: 440,
+      type: Two.Types.svg
+    }).appendTo(container);
+    state.twoInstance = two;
+  }
+
+  const two = state.twoInstance;
+  if (!two) return;
+
+  two.clear();
+  drawSelfCheck2_10Lab(two);
+  two.update();
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawSelfCheck2_10Lab(two) {
+  const w = two.width;
+  const h = two.height;
+  const tab = (state.lab2_10 && state.lab2_10.activeTab) || 'mode1';
+
+  // Background
+  const bg = two.makeRectangle(w / 2, h / 2, w, h);
+  bg.fill = '#f8fafc';
+  bg.stroke = '#e2e8f0';
+  bg.linewidth = 1;
+
+  if (tab === 'mode1') {
+    drawMode1TrackLab(two, w, h);
+  } else if (tab === 'mode2') {
+    drawMode2PipelineLab(two, w, h);
+  } else {
+    drawMode3RealWorldLab(two, w, h);
+  }
+
+  // Bottom info banner (Strict Vertical Budget: Y=385, H=26 -> Margin=42px >= 25px)
+  const bannerY = 385;
+  const bannerH = 26;
+  const bannerBox = two.makeRoundedRectangle(w / 2, bannerY, w - 24, bannerH, 6);
+  bannerBox.fill = '#eff6ff';
+  bannerBox.stroke = '#bfdbfe';
+  bannerBox.linewidth = 1;
+
+  const bannerMsgs = {
+    'mode1': '💡 트랙 시뮬레이터: 높이 h를 조절하고 [카트 출발!]을 눌러 바닥에서의 속력을 확인하세요.',
+    'mode2': '💡 식의 계산 & 대입: 먼저 4(0.5h + 5)를 2h + 20으로 전개한 뒤 h = 40을 대입합니다.',
+    'mode3': '💡 실생활 일차식: 자연현상과 공학의 다양한 물리적 수치가 일차식으로 모델링됩니다.'
+  };
+
+  const bannerTxt = two.makeText(bannerMsgs[tab], w / 2, bannerY);
+  bannerTxt.size = 11.5;
+  bannerTxt.weight = 700;
+  bannerTxt.fill = '#1d4ed8';
+}
+
+// -------------------------------------------------------------
+// Model 1: 롤러코스터 60fps 트랙 시뮬레이터
+// -------------------------------------------------------------
+function drawMode1TrackLab(two, w, h) {
+  const hVal = state.lab2_10 ? state.lab2_10.hVal : 40;
+  const p = state.lab2_10 ? state.lab2_10.cartProgress : 0;
+
+  // Title Box
+  const titleBox = two.makeRoundedRectangle(w / 2, 28, w - 32, 34, 6);
+  titleBox.fill = '#ffffff';
+  titleBox.stroke = '#cbd5e1';
+  const curSpeed = 2 * hVal + 20;
+  const titleTxt = two.makeText(`🎢 롤러코스터 트랙 랩: 최고 높이 h = ${hVal} m  ➔  바닥 속력 v = ${curSpeed} km/h`, w / 2, 28);
+  titleTxt.size = 13.5;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  // Height Stepper (Y = 66)
+  const ctrlY = 66;
+  const cx = w / 2;
+  const lbl = two.makeText('최고 높이 h 설정:', cx - 90, ctrlY);
+  lbl.size = 12.5;
+  lbl.weight = 700;
+  lbl.fill = '#334155';
+
+  const btnM = two.makeRoundedRectangle(cx - 16, ctrlY, 24, 22, 4);
+  btnM.fill = '#f1f5f9';
+  btnM.stroke = '#94a3b8';
+  const txtM = two.makeText('−5', cx - 16, ctrlY);
+  txtM.size = 11;
+  txtM.weight = 800;
+  txtM.fill = '#334155';
+
+  const valBox = two.makeRoundedRectangle(cx + 18, ctrlY, 36, 22, 4);
+  valBox.fill = '#ffffff';
+  valBox.stroke = '#cbd5e1';
+  const valTxt = two.makeText(`${hVal}m`, cx + 18, ctrlY);
+  valTxt.size = 12;
+  valTxt.weight = 800;
+  valTxt.fill = '#1d4ed8';
+
+  const btnP = two.makeRoundedRectangle(cx + 52, ctrlY, 24, 22, 4);
+  btnP.fill = '#f1f5f9';
+  btnP.stroke = '#94a3b8';
+  const txtP = two.makeText('+5', cx + 52, ctrlY);
+  txtP.size = 11;
+  txtP.weight = 800;
+  txtP.fill = '#334155';
+
+  setTimeout(() => {
+    if (btnM._renderer && btnM._renderer.elem) {
+      btnM._renderer.elem.style.cursor = 'pointer';
+      btnM._renderer.elem.onclick = () => changeHVal2_10(-5);
+    }
+    if (btnP._renderer && btnP._renderer.elem) {
+      btnP._renderer.elem.style.cursor = 'pointer';
+      btnP._renderer.elem.onclick = () => changeHVal2_10(5);
+    }
+  }, 10);
+
+  // Track Curve Rendering (Bezier Curve)
+  const groundY = 270;
+  const startTrackX = 70;
+  const startTrackY = groundY - Math.min(140, hVal * 1.8);
+  const bottomTrackX = w - 100;
+  const bottomTrackY = groundY;
+
+  // Ground line
+  const gLine = two.makeLine(40, groundY + 14, w - 40, groundY + 14);
+  gLine.stroke = '#64748b';
+  gLine.linewidth = 2;
+
+  // Height Dimension Line (Left)
+  const hDimLine = two.makeLine(startTrackX - 25, startTrackY, startTrackX - 25, groundY);
+  hDimLine.stroke = '#f43f5e';
+  hDimLine.linewidth = 2;
+  const hDimTxt = two.makeText(`h = ${hVal}m`, startTrackX - 25, (startTrackY + groundY) / 2);
+  hDimTxt.size = 11.5;
+  hDimTxt.weight = 800;
+  hDimTxt.fill = '#be123c';
+
+  // Support Pillows
+  for (let sx = startTrackX; sx < bottomTrackX; sx += 45) {
+    const tRatio = (sx - startTrackX) / (bottomTrackX - startTrackX);
+    const sy = startTrackY + (groundY - startTrackY) * Math.sin(tRatio * Math.PI / 2);
+    const pillar = two.makeLine(sx, sy, sx, groundY + 14);
+    pillar.stroke = '#cbd5e1';
+    pillar.linewidth = 2;
+  }
+
+  // Track Rail
+  const curve = two.makeCurve(
+    startTrackX, startTrackY,
+    startTrackX + (bottomTrackX - startTrackX) * 0.4, groundY - 10,
+    bottomTrackX, bottomTrackY,
+    true
+  );
+  curve.stroke = '#3b82f6';
+  curve.linewidth = 4;
+  curve.fill = 'transparent';
+
+  // Cart Position on Curve based on progress p (0 ~ 1)
+  const cartX = startTrackX + (bottomTrackX - startTrackX) * p;
+  const cartY = startTrackY + (groundY - startTrackY) * Math.sin(p * Math.PI / 2);
+
+  // Cart Body
+  const cartBox = two.makeRoundedRectangle(cartX, cartY - 10, 28, 16, 4);
+  cartBox.fill = '#ef4444';
+  cartBox.stroke = '#b91c1c';
+  cartBox.linewidth = 2;
+
+  // Cart Wheels
+  const w1 = two.makeCircle(cartX - 8, cartY - 1, 4);
+  w1.fill = '#1e293b';
+  const w2 = two.makeCircle(cartX + 8, cartY - 1, 4);
+  w2.fill = '#1e293b';
+
+  // Speedometer Gauge on bottom right
+  const spX = w - 100;
+  const spY = 160;
+
+  const gaugeBg = two.makeCircle(spX, spY, 38);
+  gaugeBg.fill = '#ffffff';
+  gaugeBg.stroke = '#3b82f6';
+  gaugeBg.linewidth = 3;
+
+  const spLabel = two.makeText('속도계', spX, spY - 18);
+  spLabel.size = 10;
+  spLabel.weight = 700;
+  spLabel.fill = '#64748b';
+
+  const displayedSpeed = Math.round(curSpeed * p);
+  const spVal = two.makeText(`${displayedSpeed}`, spX, spY);
+  spVal.size = 18;
+  spVal.weight = 900;
+  spVal.fill = '#047857';
+
+  const spUnit = two.makeText('km/h', spX, spY + 16);
+  spUnit.size = 10;
+  spUnit.weight = 700;
+  spUnit.fill = '#64748b';
+
+  // Formula Summary Box (Y = 328)
+  const sumBox = two.makeRoundedRectangle(w / 2, 326, Math.min(500, w - 40), 40, 8);
+  sumBox.fill = '#ecfdf5';
+  sumBox.stroke = '#86efac';
+  sumBox.linewidth = 1.5;
+
+  const sumTxt = two.makeText(`속력 일차식: v = 4(0.5h + 5) = 2h + 20 ➔ h = ${hVal} 대입: v = 2(${hVal}) + 20 = ${curSpeed} km/h`, w / 2, 326);
+  sumTxt.size = 12.5;
+  sumTxt.weight = 800;
+  sumTxt.fill = '#047857';
+}
+
+// -------------------------------------------------------------
+// Model 2: 전개 및 대입 파이프라인
+// -------------------------------------------------------------
+function drawMode2PipelineLab(two, w, h) {
+  // Title Box
+  const titleBox = two.makeRoundedRectangle(w / 2, 28, w - 32, 34, 6);
+  titleBox.fill = '#ffffff';
+  titleBox.stroke = '#cbd5e1';
+  const titleTxt = two.makeText('⚙️ 분배법칙 전개 및 식의 값 대입 2단계 파이프라인', w / 2, 28);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  const cardW = Math.min(500, w - 40);
+
+  // Step 1: Distributive Expansion (Y = 110)
+  const b1 = two.makeRoundedRectangle(w / 2, 114, cardW, 80, 8);
+  b1.fill = '#eff6ff';
+  b1.stroke = '#93c5fd';
+  b1.linewidth = 1.5;
+
+  const t1_h = two.makeText('1단계: 분배법칙으로 괄호 풀기', w / 2, 90);
+  t1_h.size = 14;
+  t1_h.weight = 800;
+  t1_h.fill = '#1d4ed8';
+
+  const t1_c = two.makeText('v = 4(0.5h + 5) = 4 × 0.5h + 4 × 5', w / 2, 114);
+  t1_c.size = 13.5;
+  t1_c.weight = 700;
+  t1_c.fill = '#1e40af';
+
+  const t1_a = two.makeText('➔ 간단한 일차식:  v = 2h + 20', w / 2, 138);
+  t1_a.size = 15;
+  t1_a.weight = 900;
+  t1_a.fill = '#2563eb';
+
+  // Down Arrow
+  const arr = two.makeText('⬇️ (최고 높이 h = 40 m 대입)', w / 2, 174);
+  arr.size = 13;
+  arr.weight = 800;
+  arr.fill = '#64748b';
+
+  // Step 2: Value Substitution (Y = 234)
+  const b2 = two.makeRoundedRectangle(w / 2, 238, cardW, 80, 8);
+  b2.fill = '#f0fdf4';
+  b2.stroke = '#86efac';
+  b2.linewidth = 1.5;
+
+  const t2_h = two.makeText('2단계: h = 40 대입하여 식의 값 구하기', w / 2, 214);
+  t2_h.size = 14;
+  t2_h.weight = 800;
+  t2_h.fill = '#15803d';
+
+  const t2_c = two.makeText('v = 2 × (40) + 20 = 80 + 20', w / 2, 238);
+  t2_c.size = 14;
+  t2_c.weight = 700;
+  t2_c.fill = '#166534';
+
+  const t2_a = two.makeText('➔ 최종 계산 속력:  100 km/h', w / 2, 262);
+  t2_a.size = 16;
+  t2_a.weight = 900;
+  t2_a.fill = '#047857';
+
+  // Tip box (Y = 326)
+  const bTip = two.makeRoundedRectangle(w / 2, 326, cardW, 36, 6);
+  bTip.fill = '#ffffff';
+  bTip.stroke = '#cbd5e1';
+  const tTip = two.makeText('💡 복잡한 식에 바로 대입하기보다 분배법칙으로 먼저 식을 간단히 하면 계산이 훨씬 편리합니다.', w / 2, 326);
+  tTip.size = 11.5;
+  tTip.weight = 700;
+  tTip.fill = '#475569';
+}
+
+// -------------------------------------------------------------
+// Model 3: 실생활 일차식 모델 탐구
+// -------------------------------------------------------------
+function drawMode3RealWorldLab(two, w, h) {
+  // Title Box
+  const titleBox = two.makeRoundedRectangle(w / 2, 28, w - 32, 34, 6);
+  titleBox.fill = '#ffffff';
+  titleBox.stroke = '#cbd5e1';
+  const titleTxt = two.makeText('🌍 실생활 속의 다양한 일차식 모델', w / 2, 28);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  const cardW = Math.min(520, w - 40);
+  const startY = 76;
+  const rowH = 68;
+
+  const models = [
+    { title: '1. 롤러코스터 속력 (교과서 p.80)', formula: 'v = 4(0.5h + 5) = 2h + 20', note: '높이 h = 40 m 일 때 v = 100 km/h', bg: '#eff6ff', col: '#1d4ed8' },
+    { title: '2. 기온과 소리의 속력 (교과서 p.75)', formula: 'v = 331 + 0.6x', note: '기온 x = 15 ℃ 일 때 v = 340 m/s', bg: '#fefce8', col: '#a16207' },
+    { title: '3. 달 표면에서의 몸무게 (교과서 p.76)', formula: 'W = (1/6)x', note: '지구 몸무게 x = 60 kg 일 때 W = 10 kg', bg: '#ecfdf5', col: '#047857' }
+  ];
+
+  models.forEach((m, idx) => {
+    const ry = startY + idx * (rowH + 12) + rowH / 2;
+    const rBox = two.makeRoundedRectangle(w / 2, ry, cardW, rowH, 8);
+    rBox.fill = m.bg;
+    rBox.stroke = '#cbd5e1';
+
+    const t1 = two.makeText(m.title, w / 2 - cardW / 2 + 18, ry - 14);
+    t1.size = 13.5;
+    t1.weight = 800;
+    t1.alignment = 'left';
+    t1.fill = m.col;
+
+    const t2 = two.makeText(`• 일차식: ${m.formula}`, w / 2 - cardW / 2 + 18, ry + 6);
+    t2.size = 12.5;
+    t2.weight = 700;
+    t2.alignment = 'left';
+    t2.fill = '#334155';
+
+    const t3 = two.makeText(`• 계산 예: ${m.note}`, w / 2 - cardW / 2 + 18, ry + 22);
+    t3.size = 11.5;
+    t3.weight = 600;
+    t3.alignment = 'left';
+    t3.fill = '#64748b';
+  });
+
+  const bTip = two.makeRoundedRectangle(w / 2, 332, cardW, 36, 6);
+  bTip.fill = '#ffffff';
+  bTip.stroke = '#86efac';
+  const tTip = two.makeText('✅ 실생활 문항은 "식 간단히 정리하기"와 "주어진 값 대입하기"의 2단계를 기억하세요!', w / 2, 332);
+  tTip.size = 12;
+  tTip.weight = 800;
+  tTip.fill = '#15803d';
+}
+
+// -------------------------------------------------------------
+// Grading Logic (스스로 확인하기 5번 채점)
+// -------------------------------------------------------------
+function gradeStep2_10() {
+  const q1 = document.getElementById('ans-2-10-1');
+  const q2 = document.getElementById('ans-2-10-2');
+  const fb = document.getElementById('feedback-2-10');
+
+  if (!q1 || !q2 || !fb) return;
+
+  const norm = (s) => (s || '').toLowerCase().replace(/\s+/g, '');
+
+  const a1 = norm(q1.value);
+  const a2 = norm(q2.value);
+
+  const is1Ok = (a1 === '2h+20' || a1 === '20+2h' || a1 === '+2h+20');
+  const is2Ok = (a2 === '100' || a2 === '100km/h');
+
+  const allCorrect = is1Ok && is2Ok;
+
+  fb.style.display = 'block';
+
+  if (allCorrect) {
+    if (state.lab2_10) state.lab2_10.isPassed = true;
+    state.substepProgress['2-10'] = true;
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#ecfdf5; border:1.5px solid #10b981; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.4rem;">🎉</span>
+          <h5 style="color:#065f46; font-weight:800; margin:0;">100점 완벽 통과! (스스로 확인하기 5번 정복)</h5>
+        </div>
+        <div style="font-size:0.88rem; color:#047857; line-height:1.6;">
+          <b>[5번 문항 정답 완벽 분석]</b><br>
+          • <b>⑴ 분배법칙을 이용한 식 정리:</b> $4(0.5h + 5) = 4 \\times 0.5h + 4 \\times 5 = 2h + 20$<br>
+          • <b>⑵ $h = 40$ 대입 시 속력:</b> $2 \\times 40 + 20 = 80 + 20 = 100\\text{ km/h}$<br>
+          일차식의 분배법칙 전개와 실생활 식의 값 대입을 완벽하게 해결했습니다!
+        </div>
+        <div style="margin-top:10px; font-size:0.8rem; color:#059669; font-weight:700;">
+          ✅ 학습 완료 상태가 영서중 LMS DB에 안전하게 자동 저장되었습니다.
+        </div>
+      </div>
+    `;
+
+    if (window.LMSIntegration && typeof window.LMSIntegration.saveStudentProgress === 'function') {
+      window.LMSIntegration.saveStudentProgress('2-10', { score: 100, passed: true }, 'unit3');
+    }
+
+    if (!state.unlockedSubSteps.includes('2-11')) {
+      state.unlockedSubSteps.push('2-11');
+    }
+  } else {
+    let errorMsg = [];
+    if (!is1Ok) errorMsg.push('⑴: $4(0.5h + 5) = 4 \\times 0.5h + 4 \\times 5 = 2h + 20$ (입력: 2h+20) 입니다.');
+    if (!is2Ok) errorMsg.push('⑵: $h = 40$ 대입 시 $2 \\times 40 + 20 = 100$ (입력: 100) 입니다.');
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#fff1f2; border:1.5px solid #f43f5e; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.3rem;">💡</span>
+          <h6 style="color:#9f1239; font-weight:700; margin:0;">다시 확인해 보세요!</h6>
+        </div>
+        <div style="font-size:0.86rem; color:#be123c; line-height:1.6;">
+          ${errorMsg.map(msg => `<div>• ${msg}</div>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+    // --- End Substep 2-10 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -18744,6 +19348,9 @@ function gradeStep2_9() {
       } else if (code === '2-9') {
         renderToolbar2_9();
         renderSubstep2_9();
+      } else if (code === '2-10') {
+        renderToolbar2_10();
+        renderSubstep2_10();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
