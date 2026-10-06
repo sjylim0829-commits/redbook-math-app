@@ -969,8 +969,8 @@
       },
       '2-4': {
         code: '2-4', tab: 2,
-        substepLabel: '4. 일차식과 수의 곱셈: 분배법칙 면적 모델 (p.79)',
-        missionText: '<b>[2-4] 4. 일차식과 수의 곱셈: 분배법칙 면적 모델 (p.79)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '4. 일차식과 수의 곱셈: 분배법칙 면적 모델 (p.79 예제 2, 문제 4)',
+        missionText: '<b>[예제 2 및 문제 4] 일차식과 수의 곱셈과 나눗셈 (교과서 p.79)</b><br>• <b>분배법칙:</b> $m(a + b) = ma + mb$, $(a + b)m = am + bm$<br>• <b>곱셈 원리:</b> 괄호 밖의 수를 괄호 안의 모든 항에 각각 곱합니다.<br>• <b>나눗셈 원리:</b> 나누는 수의 역수를 곱하여 분배하거나, 각 항을 나누어 부호에 주의하며 계산합니다.<br>좌측 캔버스에서 면적 모델과 화살표 전개 랩을 탐구하고 문제 4의 4문항을 직접 해결해 보세요.',
         drawer: 'drawStep2_4Canvas'
       },
       '2-5': {
@@ -1463,6 +1463,17 @@
       
       
       
+      
+      // Substep 2-4 State (Distributive Property & Linear Calculation Lab)
+      lab2_4: {
+        activeTab: 'mode1',
+        k: 2,
+        a: 3,
+        b: 1,
+        mode2Example: 0,
+        mode3Q: 0,
+        isPassed: false
+      },
       // Substep 2-3 State (Monomial Mult & Div Lab)
       lab2_3: {
         activeTab: 'mode1',
@@ -14467,6 +14478,767 @@ function gradeStep2_3() {
 
     // --- End Substep 2-3 Implementation ---
 
+    
+    // --- Substep 2-4 Implementation ---
+// code_2_4.js: Substep [2-4] 3.2 수와 일차식의 곱셈과 나눗셈 (교과서 p.79 예제 2, 문제 4)
+
+function renderToolbar2_4() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab2_4) {
+    state.lab2_4 = {
+      activeTab: 'mode1', // 'mode1' (분배법칙 면적 모델) | 'mode2' (분배법칙 전개 랩) | 'mode3' (문제 4 4종 훈련)
+      k: 2,               // 세로 길이 (곱하는 수)
+      a: 3,               // ax
+      b: 1,               // b (상수항)
+      mode2Example: 0,    // 0: 예제 2-(1) 2(3x+1), 1: 예제 2-(2) (8x-4)/(-4)
+      mode3Q: 0,          // 0: 4(2x-3), 1: (6a+9)*(1/3), 2: (10x-5)/5, 3: (-12b+8)/(-4)
+      isPassed: false
+    };
+  }
+
+  const curTab = state.lab2_4.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab2_4Tab('mode1')">
+        1. 분배법칙 면적 모델
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab2_4Tab('mode2')">
+        2. 분배법칙 화살표 전개 랩
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab2_4Tab('mode3')">
+        3. 문제 4 4종 연산 훈련
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn" onclick="resetLab2_4()" title="초기화">🔄 초기화</button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('2-4')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab2_4Tab(tabKey) {
+  if (!state.lab2_4) resetLab2_4();
+  state.lab2_4.activeTab = tabKey;
+  renderToolbar2_4();
+  drawStep2_4Canvas();
+}
+
+function resetLab2_4() {
+  state.lab2_4 = {
+    activeTab: 'mode1',
+    k: 2,
+    a: 3,
+    b: 1,
+    mode2Example: 0,
+    mode3Q: 0,
+    isPassed: false
+  };
+  renderToolbar2_4();
+  drawStep2_4Canvas();
+}
+
+function changeMode1K(delta) {
+  if (!state.lab2_4) resetLab2_4();
+  state.lab2_4.k = Math.max(1, Math.min(5, state.lab2_4.k + delta));
+  drawStep2_4Canvas();
+}
+
+function changeMode1A(delta) {
+  if (!state.lab2_4) resetLab2_4();
+  state.lab2_4.a = Math.max(1, Math.min(5, state.lab2_4.a + delta));
+  drawStep2_4Canvas();
+}
+
+function changeMode1B(delta) {
+  if (!state.lab2_4) resetLab2_4();
+  state.lab2_4.b = Math.max(-4, Math.min(6, state.lab2_4.b + delta));
+  if (state.lab2_4.b === 0) state.lab2_4.b = delta > 0 ? 1 : -1;
+  drawStep2_4Canvas();
+}
+
+function setMode2Ex(idx) {
+  if (!state.lab2_4) resetLab2_4();
+  state.lab2_4.mode2Example = idx;
+  drawStep2_4Canvas();
+}
+
+function setMode3Q4(idx) {
+  if (!state.lab2_4) resetLab2_4();
+  state.lab2_4.mode3Q = idx;
+  drawStep2_4Canvas();
+}
+
+function renderSubstep2_4() {
+  const container = document.getElementById('substep-form-container');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="card p-3 mb-3" style="border-left: 4px solid var(--primary);">
+      <h6 style="font-weight:700; color:var(--primary); margin-bottom:6px;">
+        📖 [교과서 p.79] 수와 일차식의 곱셈과 나눗셈 (분배법칙)
+      </h6>
+      <div style="font-size:0.86rem; color:#334155; line-height:1.55;">
+        <ul style="margin:0; padding-left:18px;">
+          <li><b>분배법칙:</b> $m(a + b) = ma + mb$, $(a + b)m = am + bm$</li>
+          <li><b>곱셈 원리:</b> 괄호 밖의 수를 괄호 안의 모든 항에 각각 곱합니다.<br>
+            예: $2(3x + 1) = 2 \\times 3x + 2 \\times 1 = 6x + 2$
+          </li>
+          <li><b>나눗셈 원리:</b> 나누는 수의 역수를 곱하여 분배하거나, 각 항을 나누어 계산합니다.<br>
+            예: $(8x - 4) \\div (-4) = (8x - 4) \\times \\left(-\\frac{1}{4}\\right) = -2x + 1$
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 문제 4 카드 -->
+    <div class="card p-3 mb-3">
+      <h6 style="font-weight:700; color:#1e293b; margin-bottom:8px;">
+        ✏️ [문제 4] 다음을 계산하시오.
+      </h6>
+
+      <div class="form-group mb-2">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑴ $4(2x - 3)$
+        </label>
+        <input type="text" id="ans-2-4-1" class="proof-input-text w-100" placeholder="계산 결과 식 입력" autocomplete="off">
+      </div>
+
+      <div class="form-group mb-2">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑵ $(6a + 9) \\times \\frac{1}{3}$
+        </label>
+        <input type="text" id="ans-2-4-2" class="proof-input-text w-100" placeholder="계산 결과 식 입력" autocomplete="off">
+      </div>
+
+      <div class="form-group mb-2">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑶ $(10x - 5) \\div 5$
+        </label>
+        <input type="text" id="ans-2-4-3" class="proof-input-text w-100" placeholder="계산 결과 식 입력" autocomplete="off">
+      </div>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑷ $(-12b + 8) \\div (-4)$
+        </label>
+        <input type="text" id="ans-2-4-4" class="proof-input-text w-100" placeholder="계산 결과 식 입력" autocomplete="off">
+      </div>
+
+      <button id="btn-grade-2-4" class="primary-btn w-100" onclick="gradeStep2_4()" style="margin-top:6px; font-weight:700;">
+        🚀 정답 확인 및 LMS DB 기록
+      </button>
+    </div>
+
+    <div id="feedback-2-4" style="display:none; margin-top:8px;"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawStep2_4Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+
+  if (state.twoInstance) {
+    state.twoInstance.clear();
+  } else {
+    container.innerHTML = '';
+    const two = new Two({
+      width: container.clientWidth || 600,
+      height: 440,
+      type: Two.Types.svg
+    }).appendTo(container);
+    state.twoInstance = two;
+  }
+
+  const two = state.twoInstance;
+  if (!two) return;
+
+  two.clear();
+  drawDistributiveCalcLab(two);
+  two.update();
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawDistributiveCalcLab(two) {
+  const w = two.width;
+  const h = two.height;
+  const tab = (state.lab2_4 && state.lab2_4.activeTab) || 'mode1';
+
+  // Background
+  const bg = two.makeRectangle(w / 2, h / 2, w, h);
+  bg.fill = '#f8fafc';
+  bg.stroke = '#e2e8f0';
+  bg.linewidth = 1;
+
+  if (tab === 'mode1') {
+    drawMode1AreaModel(two, w, h);
+  } else if (tab === 'mode2') {
+    drawMode2ArrowLab(two, w, h);
+  } else {
+    drawMode3Q4Lab(two, w, h);
+  }
+
+  // Bottom info banner (Strict Vertical Budget: Y=385, H=26 -> Margin=42px >= 25px)
+  const bannerY = 385;
+  const bannerH = 26;
+  const bannerBox = two.makeRoundedRectangle(w / 2, bannerY, w - 24, bannerH, 6);
+  bannerBox.fill = '#eff6ff';
+  bannerBox.stroke = '#bfdbfe';
+  bannerBox.linewidth = 1;
+
+  const bannerMsgs = {
+    'mode1': '💡 면적 모델: 가로를 분할한 직사각형 전체 넓이는 각 조각 넓이의 합과 같습니다. m(a+b) = ma + mb',
+    'mode2': '💡 분배법칙: 괄호 밖의 수를 괄호 안의 모든 항에 빠짐없이 곱해 줍니다. 부호에 주의하세요!',
+    'mode3': '💡 문제 4: 나눗셈은 역수를 곱하거나 각 항을 나누어 부호 규칙(- ÷ - = +)에 맞게 계산합니다.'
+  };
+
+  const bannerTxt = two.makeText(bannerMsgs[tab], w / 2, bannerY);
+  bannerTxt.size = 11.5;
+  bannerTxt.weight = 700;
+  bannerTxt.fill = '#1d4ed8';
+}
+
+// -------------------------------------------------------------
+// Model 1: 분배법칙 면적 분할 모델 (Area Partition Model)
+// -------------------------------------------------------------
+function drawMode1AreaModel(two, w, h) {
+  const k = state.lab2_4 ? state.lab2_4.k : 2;
+  const a = state.lab2_4 ? state.lab2_4.a : 3;
+  const b = state.lab2_4 ? state.lab2_4.b : 1;
+
+  // Title Box
+  const titleBox = two.makeRoundedRectangle(w / 2, 28, w - 32, 34, 6);
+  titleBox.fill = '#ffffff';
+  titleBox.stroke = '#cbd5e1';
+  const bSign = b >= 0 ? `+ ${b}` : `- ${Math.abs(b)}`;
+  const titleTxt = two.makeText(`📐 분배법칙 면적 모델:  ${k}(${a}x ${bSign}) = ${k * a}x ${k * b >= 0 ? '+ ' + (k * b) : '- ' + Math.abs(k * b)}`, w / 2, 28);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  // Stepper Controls Container (Y = 68)
+  const ctrlY = 66;
+
+  function makeStepper(cx, label, valStr, onMinus, onPlus) {
+    const lbl = two.makeText(label, cx - 44, ctrlY);
+    lbl.size = 12;
+    lbl.weight = 700;
+    lbl.fill = '#475569';
+
+    // Minus btn
+    const btnM = two.makeRoundedRectangle(cx - 10, ctrlY, 20, 20, 4);
+    btnM.fill = '#f1f5f9';
+    btnM.stroke = '#94a3b8';
+    const txtM = two.makeText('−', cx - 10, ctrlY);
+    txtM.size = 13;
+    txtM.weight = 800;
+    txtM.fill = '#334155';
+
+    // Value box
+    const valBox = two.makeRoundedRectangle(cx + 12, ctrlY, 24, 20, 4);
+    valBox.fill = '#ffffff';
+    valBox.stroke = '#cbd5e1';
+    const valTxt = two.makeText(valStr, cx + 12, ctrlY);
+    valTxt.size = 12;
+    valTxt.weight = 800;
+    valTxt.fill = '#0f172a';
+
+    // Plus btn
+    const btnP = two.makeRoundedRectangle(cx + 34, ctrlY, 20, 20, 4);
+    btnP.fill = '#f1f5f9';
+    btnP.stroke = '#94a3b8';
+    const txtP = two.makeText('+', cx + 34, ctrlY);
+    txtP.size = 13;
+    txtP.weight = 800;
+    txtP.fill = '#334155';
+
+    setTimeout(() => {
+      if (btnM._renderer && btnM._renderer.elem) {
+        btnM._renderer.elem.style.cursor = 'pointer';
+        btnM._renderer.elem.onclick = onMinus;
+      }
+      if (btnP._renderer && btnP._renderer.elem) {
+        btnP._renderer.elem.style.cursor = 'pointer';
+        btnP._renderer.elem.onclick = onPlus;
+      }
+    }, 10);
+  }
+
+  const secW = w / 3;
+  makeStepper(secW * 0.5, '세로 k =', `${k}`, () => changeMode1K(-1), () => changeMode1K(1));
+  makeStepper(secW * 1.5, 'x계수 a =', `${a}`, () => changeMode1A(-1), () => changeMode1A(1));
+  makeStepper(secW * 2.5, '상수항 b =', `${b}`, () => changeMode1B(-1), () => changeMode1B(1));
+
+  // Rectangle Drawing Area
+  // Height scales with k, Width partitioned into ax and b
+  const rectBaseY = 210;
+  const rectHeight = 60 + k * 18; // 78px ~ 150px
+  const totalW = Math.min(420, w - 80);
+  const ratioA = (a * 1.2) / (a * 1.2 + Math.abs(b) + 1);
+  const part1W = Math.max(120, Math.min(totalW - 80, totalW * ratioA));
+  const part2W = totalW - part1W;
+
+  const startX = (w - totalW) / 2;
+
+  // Left Block (ax width, k height) - Blue Theme
+  const b1CenterX = startX + part1W / 2;
+  const b1 = two.makeRoundedRectangle(b1CenterX, rectBaseY, part1W - 4, rectHeight, 6);
+  b1.fill = '#dbeafe';
+  b1.stroke = '#3b82f6';
+  b1.linewidth = 2;
+
+  // Right Block (b width, k height) - Amber/Rose Theme depending on sign
+  const b2CenterX = startX + part1W + part2W / 2;
+  const b2 = two.makeRoundedRectangle(b2CenterX, rectBaseY, part2W - 4, rectHeight, 6);
+  if (b >= 0) {
+    b2.fill = '#fef3c7';
+    b2.stroke = '#f59e0b';
+  } else {
+    b2.fill = '#ffe4e6';
+    b2.stroke = '#f43f5e';
+  }
+  b2.linewidth = 2;
+
+  // Vertical Dimension Label (Left)
+  const kLbl = two.makeText(`세로 ${k}`, startX - 28, rectBaseY);
+  kLbl.size = 13;
+  kLbl.weight = 800;
+  kLbl.fill = '#1e293b';
+
+  // Dimension bracket arrow or line
+  const leftLine = two.makeLine(startX - 10, rectBaseY - rectHeight / 2, startX - 10, rectBaseY + rectHeight / 2);
+  leftLine.stroke = '#64748b';
+  leftLine.linewidth = 1.5;
+
+  // Top Dimension Labels (Horizontal)
+  const topY = rectBaseY - rectHeight / 2 - 14;
+  const top1Txt = two.makeText(`${a}x`, b1CenterX, topY);
+  top1Txt.size = 13;
+  top1Txt.weight = 800;
+  top1Txt.fill = '#2563eb';
+
+  const top2Txt = two.makeText(b >= 0 ? `+ ${b}` : `- ${Math.abs(b)}`, b2CenterX, topY);
+  top2Txt.size = 13;
+  top2Txt.weight = 800;
+  top2Txt.fill = b >= 0 ? '#d97706' : '#e11d48';
+
+  // Inside Area Labels
+  // Part 1: k * ax = (k*a)x
+  const in1Main = two.makeText(`넓이 ①`, b1CenterX, rectBaseY - 14);
+  in1Main.size = 12;
+  in1Main.weight = 700;
+  in1Main.fill = '#1d4ed8';
+
+  const in1Val = two.makeText(`${k} × ${a}x = ${k * a}x`, b1CenterX, rectBaseY + 10);
+  in1Val.size = 14;
+  in1Val.weight = 800;
+  in1Val.fill = '#1e40af';
+
+  // Part 2: k * b = k*b
+  const in2Main = two.makeText(`넓이 ②`, b2CenterX, rectBaseY - 14);
+  in2Main.size = 12;
+  in2Main.weight = 700;
+  in2Main.fill = b >= 0 ? '#b45309' : '#be123c';
+
+  const in2Calc = b >= 0 ? `${k} × ${b} = +${k * b}` : `${k} × (${b}) = ${k * b}`;
+  const in2Val = two.makeText(in2Calc, b2CenterX, rectBaseY + 10);
+  in2Val.size = 13;
+  in2Val.weight = 800;
+  in2Val.fill = b >= 0 ? '#92400e' : '#9f1239';
+
+  // Bottom Summary Formula Box (Y = 328)
+  const sumY = 326;
+  const sumBox = two.makeRoundedRectangle(w / 2, sumY, Math.min(500, w - 40), 40, 8);
+  sumBox.fill = '#f0fdf4';
+  sumBox.stroke = '#86efac';
+  sumBox.linewidth = 1.5;
+
+  const totalFormula = `전체 직사각형 넓이 = 넓이 ① + 넓이 ② = ${k * a}x ${k * b >= 0 ? '+ ' + (k * b) : '- ' + Math.abs(k * b)}`;
+  const sumTxt = two.makeText(totalFormula, w / 2, sumY);
+  sumTxt.size = 13.5;
+  sumTxt.weight = 800;
+  sumTxt.fill = '#15803d';
+}
+
+// -------------------------------------------------------------
+// Model 2: 분배법칙 화살표 전개 랩 (Arrow Distribution Lab)
+// -------------------------------------------------------------
+function drawMode2ArrowLab(two, w, h) {
+  const exIdx = (state.lab2_4 && state.lab2_4.mode2Example) || 0;
+
+  // Title Box
+  const titleBox = two.makeRoundedRectangle(w / 2, 28, w - 32, 34, 6);
+  titleBox.fill = '#ffffff';
+  titleBox.stroke = '#cbd5e1';
+  const titleTxt = two.makeText('🏹 분배법칙 화살표 전개 랩 (교과서 p.79 예제 2)', w / 2, 28);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  // Toggle Selector: 예제 2-(1) vs 예제 2-(2) (Y = 66)
+  const tab1X = w / 2 - 130;
+  const tab2X = w / 2 + 130;
+  const tabY = 66;
+
+  const bTab1 = two.makeRoundedRectangle(tab1X, tabY, 220, 28, 6);
+  bTab1.fill = exIdx === 0 ? '#3b82f6' : '#f1f5f9';
+  bTab1.stroke = exIdx === 0 ? '#2563eb' : '#cbd5e1';
+  const tTab1 = two.makeText('⑴ 2(3x + 1) 곱셈 분배', tab1X, tabY);
+  tTab1.size = 12.5;
+  tTab1.weight = 700;
+  tTab1.fill = exIdx === 0 ? '#ffffff' : '#475569';
+
+  const bTab2 = two.makeRoundedRectangle(tab2X, tabY, 220, 28, 6);
+  bTab2.fill = exIdx === 1 ? '#3b82f6' : '#f1f5f9';
+  bTab2.stroke = exIdx === 1 ? '#2563eb' : '#cbd5e1';
+  const tTab2 = two.makeText('⑵ (8x - 4) ÷ (-4) 나눗셈 분배', tab2X, tabY);
+  tTab2.size = 12.5;
+  tTab2.weight = 700;
+  tTab2.fill = exIdx === 1 ? '#ffffff' : '#475569';
+
+  setTimeout(() => {
+    if (bTab1._renderer && bTab1._renderer.elem) {
+      bTab1._renderer.elem.style.cursor = 'pointer';
+      bTab1._renderer.elem.onclick = () => setMode2Ex(0);
+    }
+    if (bTab2._renderer && bTab2._renderer.elem) {
+      bTab2._renderer.elem.style.cursor = 'pointer';
+      bTab2._renderer.elem.onclick = () => setMode2Ex(1);
+    }
+  }, 10);
+
+  // Center Display Card (Y = 208)
+  const cardW = Math.min(520, w - 40);
+  const cardH = 224;
+  const cardY = 212;
+
+  const cardBox = two.makeRoundedRectangle(w / 2, cardY, cardW, cardH, 10);
+  cardBox.fill = '#ffffff';
+  cardBox.stroke = '#93c5fd';
+  cardBox.linewidth = 2;
+
+  if (exIdx === 0) {
+    // ⑴ 2(3x + 1)
+    const tHead = two.makeText('⑴ 곱셈 분배법칙 적용: 2(3x + 1)', w / 2, 126);
+    tHead.size = 16;
+    tHead.weight = 800;
+    tHead.fill = '#1d4ed8';
+
+    // Step 1: Arrow distribution visual
+    const bStep1 = two.makeRoundedRectangle(w / 2, 172, cardW - 40, 38, 6);
+    bStep1.fill = '#eff6ff';
+    bStep1.stroke = '#bfdbfe';
+    const tStep1 = two.makeText('1단계 (각 항에 2 곱하기):  2 × (3x)  +  2 × (1)', w / 2, 172);
+    tStep1.size = 13.5;
+    tStep1.weight = 700;
+    tStep1.fill = '#1e40af';
+
+    // Step 2: Multiplication
+    const bStep2 = two.makeRoundedRectangle(w / 2, 222, cardW - 40, 38, 6);
+    bStep2.fill = '#fefce8';
+    bStep2.stroke = '#fde047';
+    const tStep2 = two.makeText('2단계 (수끼리 곱셈 계산):  (2 × 3)x  +  (2 × 1)', w / 2, 222);
+    tStep2.size = 13.5;
+    tStep2.weight = 700;
+    tStep2.fill = '#a16207';
+
+    // Step 3: Final Answer Box
+    const bStep3 = two.makeRoundedRectangle(w / 2, 276, cardW - 40, 46, 8);
+    bStep3.fill = '#ecfdf5';
+    bStep3.stroke = '#86efac';
+    bStep3.linewidth = 2;
+    const tStep3 = two.makeText('최종 계산 결과:  6x + 2', w / 2, 276);
+    tStep3.size = 17;
+    tStep3.weight = 800;
+    tStep3.fill = '#047857';
+
+    const tip = two.makeText('💡 괄호 앞의 2를 3x와 1 양쪽에 모두 곱해주어야 합니다!', w / 2, 314);
+    tip.size = 12;
+    tip.weight = 700;
+    tip.fill = '#64748b';
+  } else {
+    // ⑵ (8x - 4) ÷ (-4)
+    const tHead = two.makeText('⑵ 나눗셈 분배법칙 적용: (8x - 4) ÷ (-4)', w / 2, 126);
+    tHead.size = 16;
+    tHead.weight = 800;
+    tHead.fill = '#be123c';
+
+    // Step 1: Reciprocal conversion
+    const bStep1 = two.makeRoundedRectangle(w / 2, 172, cardW - 40, 38, 6);
+    bStep1.fill = '#eff6ff';
+    bStep1.stroke = '#bfdbfe';
+    const tStep1 = two.makeText('1단계 (역수의 곱으로 변환):  (8x - 4) × (-1/4)', w / 2, 172);
+    tStep1.size = 13.5;
+    tStep1.weight = 700;
+    tStep1.fill = '#1e40af';
+
+    // Step 2: Distribution & Sign rules
+    const bStep2 = two.makeRoundedRectangle(w / 2, 222, cardW - 40, 38, 6);
+    bStep2.fill = '#fefce8';
+    bStep2.stroke = '#fde047';
+    const tStep2 = two.makeText('2단계 (분배 및 약분):  8x × (-1/4)  -  4 × (-1/4)', w / 2, 222);
+    tStep2.size = 13.5;
+    tStep2.weight = 700;
+    tStep2.fill = '#a16207';
+
+    // Step 3: Final Answer Box
+    const bStep3 = two.makeRoundedRectangle(w / 2, 276, cardW - 40, 46, 8);
+    bStep3.fill = '#ecfdf5';
+    bStep3.stroke = '#86efac';
+    bStep3.linewidth = 2;
+    const tStep3 = two.makeText('최종 계산 결과:  -2x + 1', w / 2, 276);
+    tStep3.size = 17;
+    tStep3.weight = 800;
+    tStep3.fill = '#047857';
+
+    const tip = two.makeText('💡 음수 분배 시 부호 반전 주의: -4 × (-1/4) = +1 이 됩니다!', w / 2, 314);
+    tip.size = 12;
+    tip.weight = 700;
+    tip.fill = '#64748b';
+  }
+}
+
+// -------------------------------------------------------------
+// Model 3: 문제 4 4종 연산 훈련 랩
+// -------------------------------------------------------------
+function drawMode3Q4Lab(two, w, h) {
+  const qIdx = (state.lab2_4 && state.lab2_4.mode3Q) || 0;
+
+  // Title Box
+  const titleBox = two.makeRoundedRectangle(w / 2, 28, w - 32, 34, 6);
+  titleBox.fill = '#ffffff';
+  titleBox.stroke = '#cbd5e1';
+  const titleTxt = two.makeText('✏️ 문제 4 분배법칙 4종 연산 훈련 랩 (교과서 p.79)', w / 2, 28);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  // 4 Question Selector Tabs (Y = 66)
+  const qLabels = [
+    '⑴ 4(2x - 3)',
+    '⑵ (6a + 9) × 1/3',
+    '⑶ (10x - 5) ÷ 5',
+    '⑷ (-12b + 8) ÷ (-4)'
+  ];
+
+  const colW = (w - 40) / 4;
+  qLabels.forEach((lbl, idx) => {
+    const cx = 20 + colW * idx + colW / 2;
+    const isAct = qIdx === idx;
+    const bBox = two.makeRoundedRectangle(cx, 66, colW - 6, 28, 6);
+    bBox.fill = isAct ? '#4f46e5' : '#f1f5f9';
+    bBox.stroke = isAct ? '#4338ca' : '#cbd5e1';
+
+    const bTxt = two.makeText(lbl, cx, 66);
+    bTxt.size = 11.5;
+    bTxt.weight = isAct ? 800 : 600;
+    bTxt.fill = isAct ? '#ffffff' : '#334155';
+
+    setTimeout(() => {
+      if (bBox._renderer && bBox._renderer.elem) {
+        bBox._renderer.elem.style.cursor = 'pointer';
+        bBox._renderer.elem.onclick = () => setMode3Q4(idx);
+      }
+    }, 10);
+  });
+
+  // Solution Visual Card (Y = 212)
+  const cardW = Math.min(520, w - 40);
+  const cardH = 224;
+  const cardX = w / 2;
+  const cardY = 212;
+
+  const cardBox = two.makeRoundedRectangle(cardX, cardY, cardW, cardH, 10);
+  cardBox.fill = '#ffffff';
+  cardBox.stroke = '#cbd5e1';
+  cardBox.linewidth = 1.5;
+
+  const qData = [
+    {
+      title: '⑴ 4(2x - 3)',
+      s1: '분배법칙 적용:  4 × (2x)  -  4 × 3',
+      s2: '수끼리 곱셈 계산:  (4 × 2)x  -  12',
+      ans: '최종 결과:  8x - 12',
+      tip: '괄호 앞 4를 2x와 3에 각각 곱합니다.'
+    },
+    {
+      title: '⑵ (6a + 9) × (1/3)',
+      s1: '분배법칙 적용:  6a × (1/3)  +  9 × (1/3)',
+      s2: '약분 및 곱셈:  (6 × 1/3)a  +  (9 × 1/3)',
+      ans: '최종 결과:  2a + 3',
+      tip: '1/3을 6a와 9에 각각 곱하여 3으로 약분합니다.'
+    },
+    {
+      title: '⑶ (10x - 5) ÷ 5',
+      s1: '역수 곱으로 변환:  (10x - 5) × (1/5)',
+      s2: '분배법칙 적용:  10x × (1/5)  -  5 × (1/5)',
+      ans: '최종 결과:  2x - 1',
+      tip: '각 항을 5로 직접 나누어도 됩니다: 10x/5 - 5/5 = 2x - 1'
+    },
+    {
+      title: '⑷ (-12b + 8) ÷ (-4)',
+      s1: '역수 곱으로 변환:  (-12b + 8) × (-1/4)',
+      s2: '분배 및 부호 판정:  {-12b × (-1/4)}  +  {8 × (-1/4)}',
+      ans: '최종 결과:  3b - 2',
+      tip: '음수 ÷ 음수 = 양수 (+3b), 양수 ÷ 음수 = 음수 (-2)에 주의하세요!'
+    }
+  ];
+
+  const cur = qData[qIdx];
+
+  const tHead = two.makeText(cur.title, cardX, 126);
+  tHead.size = 16;
+  tHead.weight = 800;
+  tHead.fill = '#1e293b';
+
+  const b1 = two.makeRoundedRectangle(cardX, 172, cardW - 48, 36, 6);
+  b1.fill = '#eff6ff';
+  b1.stroke = '#bfdbfe';
+  const t1 = two.makeText(cur.s1, cardX, 172);
+  t1.size = 13;
+  t1.weight = 700;
+  t1.fill = '#1d4ed8';
+
+  const b2 = two.makeRoundedRectangle(cardX, 220, cardW - 48, 36, 6);
+  b2.fill = '#fefce8';
+  b2.stroke = '#fde047';
+  const t2 = two.makeText(cur.s2, cardX, 220);
+  t2.size = 13;
+  t2.weight = 700;
+  t2.fill = '#a16207';
+
+  const b3 = two.makeRoundedRectangle(cardX, 274, cardW - 48, 44, 8);
+  b3.fill = '#ecfdf5';
+  b3.stroke = '#86efac';
+  b3.linewidth = 2;
+  const t3 = two.makeText(cur.ans, cardX, 274);
+  t3.size = 16;
+  t3.weight = 800;
+  t3.fill = '#047857';
+
+  const tipTxt = two.makeText(`💡 연산 포인트: ${cur.tip}`, cardX, 314);
+  tipTxt.size = 12;
+  tipTxt.weight = 700;
+  tipTxt.fill = '#64748b';
+}
+
+// -------------------------------------------------------------
+// Grading Logic (문제 4 4문항 전수 채점)
+// -------------------------------------------------------------
+function gradeStep2_4() {
+  const q1 = document.getElementById('ans-2-4-1');
+  const q2 = document.getElementById('ans-2-4-2');
+  const q3 = document.getElementById('ans-2-4-3');
+  const q4 = document.getElementById('ans-2-4-4');
+  const fb = document.getElementById('feedback-2-4');
+
+  if (!q1 || !q2 || !q3 || !q4 || !fb) return;
+
+  const norm = (s) => (s || '').toLowerCase().replace(/\s+/g, '');
+
+  const a1 = norm(q1.value);
+  const a2 = norm(q2.value);
+  const a3 = norm(q3.value);
+  const a4 = norm(q4.value);
+
+  const is1Ok = (a1 === '8x-12' || a1 === '+8x-12');
+  const is2Ok = (a2 === '2a+3' || a2 === '+2a+3');
+  const is3Ok = (a3 === '2x-1' || a3 === '+2x-1');
+  const is4Ok = (a4 === '3b-2' || a4 === '+3b-2');
+
+  const allCorrect = is1Ok && is2Ok && is3Ok && is4Ok;
+
+  fb.style.display = 'block';
+
+  if (allCorrect) {
+    if (state.lab2_4) state.lab2_4.isPassed = true;
+    state.substepProgress['2-4'] = true;
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#ecfdf5; border:1.5px solid #10b981; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.4rem;">🎉</span>
+          <h5 style="color:#065f46; font-weight:800; margin:0;">100점 완벽 통과! (분배법칙과 일차식의 계산 마스터)</h5>
+        </div>
+        <div style="font-size:0.88rem; color:#047857; line-height:1.6;">
+          <b>[문제 4 계산 완벽 정답]</b><br>
+          • ⑴ $4(2x - 3) = 4 \\times 2x - 4 \\times 3 = 8x - 12$<br>
+          • ⑵ $(6a + 9) \\times \\frac{1}{3} = 6a \\times \\frac{1}{3} + 9 \\times \\frac{1}{3} = 2a + 3$<br>
+          • ⑶ $(10x - 5) \\div 5 = 10x \\times \\frac{1}{5} - 5 \\times \\frac{1}{5} = 2x - 1$<br>
+          • ⑷ $(-12b + 8) \\div (-4) = -12b \\times \\left(-\\frac{1}{4}\\right) + 8 \\times \\left(-\\frac{1}{4}\\right) = 3b - 2$<br>
+          괄호 밖의 수를 각 항에 빠짐없이 곱하고 부호를 바르게 판정하는 분배법칙을 완벽하게 습득했습니다!
+        </div>
+        <div style="margin-top:10px; font-size:0.8rem; color:#059669; font-weight:700;">
+          ✅ 학습 완료 상태가 영서중 LMS DB에 안전하게 자동 저장되었습니다.
+        </div>
+      </div>
+    `;
+
+    if (window.LMSIntegration && typeof window.LMSIntegration.saveStudentProgress === 'function') {
+      window.LMSIntegration.saveStudentProgress('2-4', { score: 100, passed: true }, 'unit3');
+    }
+
+    if (!state.unlockedSubSteps.includes('2-5')) {
+      state.unlockedSubSteps.push('2-5');
+    }
+  } else {
+    let errorMsg = [];
+    if (!is1Ok) errorMsg.push('⑴: $4(2x - 3) = 4 \\times 2x - 4 \\times 3 = 8x - 12$ (입력: 8x-12) 입니다.');
+    if (!is2Ok) errorMsg.push('⑵: $(6a + 9) \\times \\frac{1}{3} = 2a + 3$ (입력: 2a+3) 입니다.');
+    if (!is3Ok) errorMsg.push('⑶: $(10x - 5) \\div 5 = 2x - 1$ (입력: 2x-1) 입니다.');
+    if (!is4Ok) errorMsg.push('⑷: $(-12b + 8) \\div (-4) = 3b - 2$ (입력: 3b-2) 입니다.');
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#fff1f2; border:1.5px solid #f43f5e; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.3rem;">💡</span>
+          <h6 style="color:#9f1239; font-weight:700; margin:0;">다시 확인해 보세요!</h6>
+        </div>
+        <div style="font-size:0.86rem; color:#be123c; line-height:1.6;">
+          ${errorMsg.map(msg => `<div>• ${msg}</div>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+    // --- End Substep 2-4 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -14555,6 +15327,9 @@ function gradeStep2_3() {
       } else if (code === '2-3') {
         renderToolbar2_3();
         renderSubstep2_3();
+      } else if (code === '2-4') {
+        renderToolbar2_4();
+        renderSubstep2_4();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
