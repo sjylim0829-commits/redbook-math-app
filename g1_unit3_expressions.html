@@ -957,8 +957,8 @@
       },
       '2-2': {
         code: '2-2', tab: 2,
-        substepLabel: '2. 다항식의 차수와 일차식 판별 (p.77)',
-        missionText: '<b>[2-2] 2. 다항식의 차수와 일차식 판별 (p.77)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '2. 다항식의 차수와 일차식의 뜻 (p.78 문제 2)',
+        missionText: '<b>[개념 및 문제 2] 다항식의 차수와 일차식의 뜻 (교과서 p.78)</b><br>• <b>항의 차수:</b> 항에서 문자가 곱해진 개수<br>• <b>다항식의 차수:</b> 차수가 가장 큰 항의 차수<br>• <b>일차식:</b> 차수가 1인 다항식<br>• <b>오개념 주의:</b> 분모에 문자가 있는 식은 다항식이 아닙니다.<br>좌측 캔버스에서 최고차수 측정 랩을 조작해 보고 문제 2의 차수와 일차식을 판별해 보세요.',
         drawer: 'drawStep2_2Canvas'
       },
       '2-3': {
@@ -1461,6 +1461,15 @@
         isPassed: false
       },
       
+      
+      // Substep 2-2 State (Degree and Linear Expression Lab)
+      lab2_2: {
+        activeTab: 'mode1',
+        mode1Deg: 2,
+        mode2Q: 0,
+        mode3Card: 0,
+        isPassed: false
+      },
       // Substep 2-1 State (Polynomial Terms Lab)
       lab2_1: {
         activeTab: 'mode1',
@@ -13075,6 +13084,733 @@ function gradeStep2_1() {
 
     // --- End Substep 2-1 Implementation ---
 
+    
+    // --- Substep 2-2 Implementation ---
+// code_2_2.js: Substep [2-2] 3.2 다항식의 차수와 일차식의 뜻 (교과서 p.78 문제 2)
+
+function renderToolbar2_2() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab2_2) {
+    state.lab2_2 = {
+      activeTab: 'mode1', // 'mode1' (항의 차수 분광기) | 'mode2' (문제 2 다항식 4종) | 'mode3' (일차식 판별기)
+      mode1Deg: 2,        // x^2
+      mode2Q: 0,          // 0: -2x+1, 1: a^2-3a+2, 2: 5, 3: y/4-1
+      mode3Card: 0,       // 오개념 필터 카드
+      isPassed: false
+    };
+  }
+
+  const curTab = state.lab2_2.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab2_2Tab('mode1')">
+        1. 항의 차수 분광기 (문자 곱셈 개수)
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab2_2Tab('mode2')">
+        2. 문제 2 다항식 4종 최고차수 측정
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab2_2Tab('mode3')">
+        3. 일차식 판별기 (분모 문자 주의)
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn" onclick="resetLab2_2()" title="초기화">🔄 초기화</button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('2-2')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab2_2Tab(tabKey) {
+  if (!state.lab2_2) resetLab2_2();
+  state.lab2_2.activeTab = tabKey;
+  renderToolbar2_2();
+  drawStep2_2Canvas();
+}
+
+function resetLab2_2() {
+  state.lab2_2 = {
+    activeTab: 'mode1',
+    mode1Deg: 2,
+    mode2Q: 0,
+    mode3Card: 0,
+    isPassed: false
+  };
+  renderToolbar2_2();
+  drawStep2_2Canvas();
+}
+
+function setMode1Deg(deg) {
+  if (!state.lab2_2) resetLab2_2();
+  state.lab2_2.mode1Deg = deg;
+  drawStep2_2Canvas();
+}
+
+function setMode2Q(qIdx) {
+  if (!state.lab2_2) resetLab2_2();
+  state.lab2_2.mode2Q = qIdx;
+  drawStep2_2Canvas();
+}
+
+function setMode3Card(cIdx) {
+  if (!state.lab2_2) resetLab2_2();
+  state.lab2_2.mode3Card = cIdx;
+  drawStep2_2Canvas();
+}
+
+function renderSubstep2_2() {
+  const container = document.getElementById('substep-form-container');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="card p-3 mb-3" style="border-left: 4px solid var(--primary);">
+      <h6 style="font-weight:700; color:var(--primary); margin-bottom:6px;">
+        📖 [교과서 p.78] 다항식의 차수와 일차식의 정의
+      </h6>
+      <div style="font-size:0.86rem; color:#334155; line-height:1.55;">
+        <ul style="margin:0; padding-left:18px;">
+          <li><b>항의 차수:</b> 어떤 항에서 문자가 곱해진 개수 (예: $x^2$은 $2$, $3x$는 $1$, $5$는 $0$).</li>
+          <li><b>다항식의 차수:</b> 다항식을 이루는 항 중에서 <b>차수가 가장 큰 항의 차수</b>.</li>
+          <li><b>일차식:</b> 차수가 <b>1</b>인 다항식 (예: $2x - 1$, $\\frac{y}{4} - 1$).</li>
+          <li><b>오개념 주의:</b> 분모에 문자가 있는 식($\\frac{1}{x}$)은 다항식이 아니므로 일차식이 아닙니다.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 문제 2 카드 -->
+    <div class="card p-3 mb-3">
+      <h6 style="font-weight:700; color:#1e293b; margin-bottom:8px;">
+        ✏️ [문제 2] 다음 다항식의 차수를 구하고, 일차식을 모두 찾으시오.
+      </h6>
+
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-bottom:12px;">
+        <span style="font-weight:700; font-size:0.88rem; color:#1e293b;">1. 각 다항식의 차수를 쓰시오.</span>
+
+        <div class="row mt-2">
+          <div class="col-6 mb-2">
+            <label style="font-size:0.84rem; font-weight:600; color:#475569;">⑴ $-2x + 1$의 차수:</label>
+            <input type="text" id="ans-2-2-1" class="proof-input-text w-100" placeholder="차수 입력 (수)" autocomplete="off">
+          </div>
+          <div class="col-6 mb-2">
+            <label style="font-size:0.84rem; font-weight:600; color:#475569;">⑵ $a^2 - 3a + 2$의 차수:</label>
+            <input type="text" id="ans-2-2-2" class="proof-input-text w-100" placeholder="차수 입력 (수)" autocomplete="off">
+          </div>
+          <div class="col-6 mb-2">
+            <label style="font-size:0.84rem; font-weight:600; color:#475569;">⑶ $5$의 차수:</label>
+            <input type="text" id="ans-2-2-3" class="proof-input-text w-100" placeholder="차수 입력 (수)" autocomplete="off">
+          </div>
+          <div class="col-6 mb-2">
+            <label style="font-size:0.84rem; font-weight:600; color:#475569;">⑷ $\\frac{y}{4} - 1$의 차수:</label>
+            <input type="text" id="ans-2-2-4" class="proof-input-text w-100" placeholder="차수 입력 (수)" autocomplete="off">
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-bottom:12px;">
+        <span style="font-weight:700; font-size:0.88rem; color:#1e293b;">2. 위 다항식 중 일차식을 모두 고르시오.</span>
+        <div style="margin-top:6px;">
+          <input type="text" id="ans-2-2-5" class="proof-input-text w-100" placeholder="일차식 기호 입력 (예: ⑴, ⑷)" autocomplete="off">
+          <div style="font-size:0.78rem; color:#64748b; margin-top:4px;">
+            * 기호(⑴, ⑷) 또는 번호(1, 4)를 쉼표로 구분하여 입력하세요.
+          </div>
+        </div>
+      </div>
+
+      <button id="btn-grade-2-2" class="primary-btn w-100" onclick="gradeStep2_2()" style="margin-top:6px; font-weight:700;">
+        🚀 정답 확인 및 LMS DB 기록
+      </button>
+    </div>
+
+    <div id="feedback-2-2" style="display:none; margin-top:8px;"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawStep2_2Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+
+  if (state.twoInstance) {
+    state.twoInstance.clear();
+  } else {
+    container.innerHTML = '';
+    const two = new Two({
+      width: container.clientWidth || 600,
+      height: 440,
+      type: Two.Types.svg
+    }).appendTo(container);
+    state.twoInstance = two;
+  }
+
+  const two = state.twoInstance;
+  if (!two) return;
+
+  two.clear();
+  drawDegreeLinearLab(two);
+  two.update();
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawDegreeLinearLab(two) {
+  const w = two.width;
+  const h = two.height;
+  const tab = (state.lab2_2 && state.lab2_2.activeTab) || 'mode1';
+
+  // Background
+  const bg = two.makeRectangle(w / 2, h / 2, w, h);
+  bg.fill = '#f8fafc';
+  bg.stroke = '#e2e8f0';
+  bg.linewidth = 1;
+
+  if (tab === 'mode1') {
+    drawMode1TermDegree(two, w, h);
+  } else if (tab === 'mode2') {
+    drawMode2PolyDegree(two, w, h);
+  } else {
+    drawMode3LinearFilter(two, w, h);
+  }
+
+  // Bottom info banner (Strict Vertical Budget: Y=385, H=26 -> Margin=29px >= 25px)
+  const bannerY = 385;
+  const bannerH = 26;
+  const bannerBox = two.makeRoundedRectangle(w / 2, bannerY, w - 24, bannerH, 6);
+  bannerBox.fill = '#eff6ff';
+  bannerBox.stroke = '#bfdbfe';
+  bannerBox.linewidth = 1;
+
+  const bannerMsgs = {
+    'mode1': '💡 항의 차수는 문자가 곱해진 개수입니다. (x² = 2차, x = 1차, 상수항 = 0차)',
+    'mode2': '💡 다항식의 차수는 각 항 중 가장 큰 차수이며, 차수가 1인 식을 일차식이라 합니다.',
+    'mode3': '💡 분모에 문자가 있는 식(예: 1/x)이나 0x+3은 일차식이 아닙니다! 오개념에 주의하세요.'
+  };
+
+  const bannerTxt = two.makeText(bannerMsgs[tab], w / 2, bannerY);
+  bannerTxt.size = 11.5;
+  bannerTxt.weight = 700;
+  bannerTxt.fill = '#1d4ed8';
+}
+
+// -------------------------------------------------------------
+// Model 1: 항의 차수 분광기 (문자 곱셈 개수)
+// -------------------------------------------------------------
+function drawMode1TermDegree(two, w, h) {
+  const deg = (state.lab2_2 && state.lab2_2.mode1Deg !== undefined) ? state.lab2_2.mode1Deg : 2;
+
+  const titleTxt = two.makeText('항의 차수 분광기: 문자가 곱해진 개수 (교과서 p.78)', w / 2, 24);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  // Selector Buttons (Y: 54)
+  const list = [
+    { label: 'x³ (차수 3)', val: 3 },
+    { label: 'x² (차수 2)', val: 2 },
+    { label: 'x (차수 1)', val: 1 },
+    { label: '상수항 5 (차수 0)', val: 0 }
+  ];
+
+  const btnW = 120;
+  const startX = (w - (4 * btnW + 3 * 8)) / 2 + btnW / 2;
+
+  list.forEach((item, i) => {
+    const bx = startX + i * (btnW + 8);
+    const by = 54;
+    const isSel = (deg === item.val);
+
+    const bBox = two.makeRoundedRectangle(bx, by, btnW, 28, 6);
+    bBox.fill = isSel ? '#4f46e5' : '#ffffff';
+    bBox.stroke = isSel ? '#4338ca' : '#cbd5e1';
+    bBox.linewidth = isSel ? 1.5 : 1;
+
+    const bTxt = two.makeText(item.label, bx, by);
+    bTxt.size = 11.5;
+    bTxt.weight = isSel ? 800 : 600;
+    bTxt.fill = isSel ? '#ffffff' : '#334155';
+
+    if (bBox._renderer && bBox._renderer.elem) {
+      bBox._renderer.elem.style.cursor = 'pointer';
+      bBox._renderer.elem.onclick = () => setMode1Deg(item.val);
+    }
+  });
+
+  const cardW = w - 40;
+  const cardH = 270;
+  const cardX = w / 2;
+  const cardY = 214;
+
+  const card = two.makeRoundedRectangle(cardX, cardY, cardW, cardH, 12);
+  card.fill = '#ffffff';
+  card.stroke = '#e2e8f0';
+  card.linewidth = 1.5;
+
+  // Visual Breakdown Box (Y: 120)
+  const vBox = two.makeRoundedRectangle(cardX, 120, cardW - 48, 60, 8);
+  vBox.fill = '#f8fafc';
+  vBox.stroke = '#cbd5e1';
+  vBox.linewidth = 1.5;
+
+  let termName = '';
+  let multStr = '';
+  if (deg === 3) {
+    termName = 'x³';
+    multStr = 'x  ×  x  ×  x  (문자 x가 3개 곱해짐)';
+  } else if (deg === 2) {
+    termName = 'x²';
+    multStr = 'x  ×  x  (문자 x가 2개 곱해짐)';
+  } else if (deg === 1) {
+    termName = 'x';
+    multStr = 'x  (문자 x가 1개 곱해짐)';
+  } else {
+    termName = '5';
+    multStr = '5  (문자가 전혀 곱해지지 않음)';
+  }
+
+  const vHead = two.makeText(`선택한 항:  ${termName}  ➜  곱셈 전개:  ${multStr}`, cardX, 120);
+  vHead.size = 14;
+  vHead.weight = 800;
+  vHead.fill = '#1e3a8a';
+
+  // Multiplier Block Graphic (Y: 200)
+  const bY = 200;
+  if (deg > 0) {
+    const blockW = 60;
+    const totalW = deg * blockW + (deg - 1) * 30;
+    const bStartX = cardX - totalW / 2 + blockW / 2;
+
+    for (let i = 0; i < deg; i++) {
+      const bx = bStartX + i * (blockW + 30);
+      const b = two.makeRoundedRectangle(bx, bY, blockW, blockW, 10);
+      b.fill = '#eef2ff';
+      b.stroke = '#6366f1';
+      b.linewidth = 2;
+
+      const txt = two.makeText('x', bx, bY);
+      txt.size = 24;
+      txt.weight = 800;
+      txt.fill = '#4338ca';
+
+      const idxTxt = two.makeText(`${i + 1}번째 문자`, bx, bY + 44);
+      idxTxt.size = 10;
+      idxTxt.weight = 700;
+      idxTxt.fill = '#6366f1';
+
+      if (i < deg - 1) {
+        const mulTxt = two.makeText('×', bx + (blockW + 30) / 2, bY);
+        mulTxt.size = 20;
+        mulTxt.weight = 800;
+        mulTxt.fill = '#94a3b8';
+      }
+    }
+  } else {
+    const b = two.makeRoundedRectangle(cardX, bY, 120, 60, 10);
+    b.fill = '#fef2f2';
+    b.stroke = '#ef4444';
+    b.linewidth = 2;
+
+    const txt = two.makeText('수 5 (상수항)', cardX, bY - 4);
+    txt.size = 16;
+    txt.weight = 800;
+    txt.fill = '#b91c1c';
+
+    const sub = two.makeText('문자 곱 없음 ➜ 차수 = 0', cardX, bY + 18);
+    sub.size = 11;
+    sub.weight = 700;
+    sub.fill = '#dc2626';
+  }
+
+  // Summary Banner (Y: 290)
+  const sumBox = two.makeRoundedRectangle(cardX, 290, cardW - 48, 44, 8);
+  sumBox.fill = '#f0fdf4';
+  sumBox.stroke = '#86efac';
+  sumBox.linewidth = 1.5;
+
+  const sumTxt = two.makeText(`결론: 항 ${termName}에서 문자가 곱해진 개수는 ${deg}개이므로, 차수는 ${deg} 입니다.`, cardX, 290);
+  sumTxt.size = 13.5;
+  sumTxt.weight = 800;
+  sumTxt.fill = '#15803d';
+}
+
+// -------------------------------------------------------------
+// Model 2: 문제 2 다항식 4종 최고차수 측정
+// -------------------------------------------------------------
+function drawMode2PolyDegree(two, w, h) {
+  const qIdx = (state.lab2_2 && state.lab2_2.mode2Q !== undefined) ? state.lab2_2.mode2Q : 0;
+
+  const titleTxt = two.makeText('문제 2: 다항식의 최고 차수 측정 랩 (교과서 p.78)', w / 2, 24);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  // 4 Question Selector Tabs (Y: 54)
+  const qList = [
+    { label: '⑴ -2x + 1', key: 0 },
+    { label: '⑵ a² - 3a + 2', key: 1 },
+    { label: '⑶ 5', key: 2 },
+    { label: '⑷ y/4 - 1', key: 3 }
+  ];
+
+  const btnW = 140;
+  const startX = (w - (4 * btnW + 3 * 8)) / 2 + btnW / 2;
+
+  qList.forEach((q, i) => {
+    const bx = startX + i * (btnW + 8);
+    const by = 54;
+    const isSel = (qIdx === i);
+
+    const bBox = two.makeRoundedRectangle(bx, by, btnW, 28, 6);
+    bBox.fill = isSel ? '#4f46e5' : '#ffffff';
+    bBox.stroke = isSel ? '#4338ca' : '#cbd5e1';
+    bBox.linewidth = isSel ? 1.5 : 1;
+
+    const bTxt = two.makeText(q.label, bx, by);
+    bTxt.size = 11.5;
+    bTxt.weight = isSel ? 800 : 600;
+    bTxt.fill = isSel ? '#ffffff' : '#334155';
+
+    if (bBox._renderer && bBox._renderer.elem) {
+      bBox._renderer.elem.style.cursor = 'pointer';
+      bBox._renderer.elem.onclick = () => setMode2Q(i);
+    }
+  });
+
+  const cardW = w - 40;
+  const cardH = 270;
+  const cardX = w / 2;
+  const cardY = 214;
+
+  const card = two.makeRoundedRectangle(cardX, cardY, cardW, cardH, 12);
+  card.fill = '#ffffff';
+  card.stroke = '#e2e8f0';
+  card.linewidth = 1.5;
+
+  const qData = [
+    {
+      expr: '-2x + 1',
+      terms: [
+        { name: '-2x', deg: 1, desc: '문자 x가 1개 ➜ 차수 1' },
+        { name: '1', deg: 0, desc: '상수항 ➜ 차수 0' }
+      ],
+      maxDeg: 1,
+      isLinear: true,
+      reason: '가장 큰 차수가 1이므로 차수는 1이며, 일차식입니다!'
+    },
+    {
+      expr: 'a² - 3a + 2',
+      terms: [
+        { name: 'a²', deg: 2, desc: '문자 a가 2개 ➜ 차수 2' },
+        { name: '-3a', deg: 1, desc: '문자 a가 1개 ➜ 차수 1' },
+        { name: '2', deg: 0, desc: '상수항 ➜ 차수 0' }
+      ],
+      maxDeg: 2,
+      isLinear: false,
+      reason: '가장 큰 차수가 2이므로 차수는 2이며, 이차식(일차식 아님)입니다!'
+    },
+    {
+      expr: '5',
+      terms: [
+        { name: '5', deg: 0, desc: '수로만 이루어진 항 ➜ 차수 0' }
+      ],
+      maxDeg: 0,
+      isLinear: false,
+      reason: '상수항뿐이므로 차수는 0이며, 일차식이 아닙니다!'
+    },
+    {
+      expr: 'y/4 - 1  (1/4 y - 1)',
+      terms: [
+        { name: 'y/4 (1/4 y)', deg: 1, desc: '문자 y가 1개 ➜ 차수 1' },
+        { name: '-1', deg: 0, desc: '상수항 ➜ 차수 0' }
+      ],
+      maxDeg: 1,
+      isLinear: true,
+      reason: '가장 큰 차수가 1이므로 차수는 1이며, 일차식입니다!'
+    }
+  ];
+
+  const cur = qData[qIdx];
+
+  // Title Box
+  const tBox = two.makeRoundedRectangle(cardX, 106, cardW - 48, 36, 6);
+  tBox.fill = '#f8fafc';
+  tBox.stroke = '#cbd5e1';
+  tBox.linewidth = 1;
+
+  const tTxt = two.makeText(`다항식:  ${cur.expr}`, cardX, 106);
+  tTxt.size = 14;
+  tTxt.weight = 800;
+  tTxt.fill = '#1e293b';
+
+  // Term Degree Bars Graphic (Y: 190)
+  const termCount = cur.terms.length;
+  const colW = (cardW - 64) / termCount;
+  const bY = 190;
+
+  cur.terms.forEach((tm, i) => {
+    const cx = cardX - ((termCount - 1) * (colW + 12)) / 2 + i * (colW + 12);
+    const isHighest = (tm.deg === cur.maxDeg && cur.maxDeg > 0);
+
+    const b = two.makeRoundedRectangle(cx, bY, colW, 90, 8);
+    b.fill = isHighest ? '#ecfdf5' : '#f8fafc';
+    b.stroke = isHighest ? '#10b981' : '#cbd5e1';
+    b.linewidth = isHighest ? 2 : 1;
+
+    const hTxt = two.makeText(tm.name, cx, bY - 26);
+    hTxt.size = 14;
+    hTxt.weight = 800;
+    hTxt.fill = isHighest ? '#065f46' : '#1e293b';
+
+    const dTxt = two.makeText(`차수: ${tm.deg}`, cx, bY + 2);
+    dTxt.size = 16;
+    dTxt.weight = 800;
+    dTxt.fill = isHighest ? '#059669' : '#475569';
+
+    const descTxt = two.makeText(tm.desc, cx, bY + 26);
+    descTxt.size = 11;
+    descTxt.weight = 600;
+    descTxt.fill = '#64748b';
+  });
+
+  // Decision Verdict Box (Y: 286)
+  const vBox = two.makeRoundedRectangle(cardX, 286, cardW - 48, 44, 8);
+  vBox.fill = cur.isLinear ? '#ecfdf5' : '#fff1f2';
+  vBox.stroke = cur.isLinear ? '#10b981' : '#f43f5e';
+  vBox.linewidth = 1.5;
+
+  const vTxt = two.makeText(
+    `[최고 차수: ${cur.maxDeg}]  ${cur.reason}`,
+    cardX,
+    286
+  );
+  vTxt.size = 13;
+  vTxt.weight = 800;
+  vTxt.fill = cur.isLinear ? '#065f46' : '#9f1239';
+}
+
+// -------------------------------------------------------------
+// Model 3: 일차식 판별기 (분모 문자 주의 오개념 탈출 랩)
+// -------------------------------------------------------------
+function drawMode3LinearFilter(two, w, h) {
+  const cIdx = (state.lab2_2 && state.lab2_2.mode3Card !== undefined) ? state.lab2_2.mode3Card : 0;
+
+  const titleTxt = two.makeText('일차식 판별기 & 오개념 탈출 랩 (교과서 p.78)', w / 2, 24);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  const cards = [
+    { label: '① 2x - 1', isOk: true, deg: 1, tip: '차수가 1인 다항식이므로 완벽한 일차식입니다.' },
+    { label: '② x² + 3', isOk: false, deg: 2, tip: '가장 큰 차수가 2이므로 이차식이며, 일차식이 아닙니다.' },
+    { label: '③ 7', isOk: false, deg: 0, tip: '상수항만 있으므로 차수가 0이며, 일차식이 아닙니다.' },
+    { label: '④ 3/x (주의!)', isOk: false, deg: '없음', tip: '🚨 분모에 문자가 있는 식은 다항식 자체가 아니므로 일차식이 아닙니다!' },
+    { label: '⑤ 0x + 5', isOk: false, deg: 0, tip: '0 × x = 0 이므로 5만 남아 차수가 0입니다. (일차식 X)' }
+  ];
+
+  const btnW = 110;
+  const startX = (w - (5 * btnW + 4 * 6)) / 2 + btnW / 2;
+
+  cards.forEach((cd, i) => {
+    const bx = startX + i * (btnW + 6);
+    const by = 54;
+    const isSel = (cIdx === i);
+
+    const bBox = two.makeRoundedRectangle(bx, by, btnW, 28, 6);
+    bBox.fill = isSel ? '#4f46e5' : '#ffffff';
+    bBox.stroke = isSel ? '#4338ca' : '#cbd5e1';
+    bBox.linewidth = isSel ? 1.5 : 1;
+
+    const bTxt = two.makeText(cd.label, bx, by);
+    bTxt.size = 11;
+    bTxt.weight = isSel ? 800 : 600;
+    bTxt.fill = isSel ? '#ffffff' : '#334155';
+
+    if (bBox._renderer && bBox._renderer.elem) {
+      bBox._renderer.elem.style.cursor = 'pointer';
+      bBox._renderer.elem.onclick = () => setMode3Card(i);
+    }
+  });
+
+  const cardW = w - 40;
+  const cardH = 270;
+  const cardX = w / 2;
+  const cardY = 214;
+
+  const card = two.makeRoundedRectangle(cardX, cardY, cardW, cardH, 12);
+  card.fill = '#ffffff';
+  card.stroke = '#e2e8f0';
+  card.linewidth = 1.5;
+
+  const cur = cards[cIdx];
+
+  // Big Verdict Icon and Label
+  const icon = two.makeText(cur.isOk ? '✅' : '❌', cardX, 120);
+  icon.size = 40;
+
+  const vLabel = two.makeText(
+    cur.isOk ? '일차식이 맞습니다!' : '일차식이 아닙니다!',
+    cardX,
+    168
+  );
+  vLabel.size = 20;
+  vLabel.weight = 800;
+  vLabel.fill = cur.isOk ? '#059669' : '#dc2626';
+
+  const degLabel = two.makeText(`식의 차수: ${cur.deg}`, cardX, 206);
+  degLabel.size = 15;
+  degLabel.weight = 700;
+  degLabel.fill = '#334155';
+
+  // Explanation Card
+  const expBox = two.makeRoundedRectangle(cardX, 276, cardW - 48, 54, 8);
+  expBox.fill = cur.isOk ? '#f0fdf4' : '#fff1f2';
+  expBox.stroke = cur.isOk ? '#86efac' : '#fecdd3';
+  expBox.linewidth = 1.5;
+
+  const expTxt = two.makeText(cur.tip, cardX, 276);
+  expTxt.size = 13;
+  expTxt.weight = 800;
+  expTxt.fill = cur.isOk ? '#15803d' : '#b91c1c';
+}
+
+// -------------------------------------------------------------
+// Grading Logic (문제 2 차수 4항목 + 일차식 선택 전수 채점)
+// -------------------------------------------------------------
+function gradeStep2_2() {
+  const q1 = document.getElementById('ans-2-2-1');
+  const q2 = document.getElementById('ans-2-2-2');
+  const q3 = document.getElementById('ans-2-2-3');
+  const q4 = document.getElementById('ans-2-2-4');
+  const q5 = document.getElementById('ans-2-2-5');
+  const fb = document.getElementById('feedback-2-2');
+
+  if (!q1 || !q2 || !q3 || !q4 || !q5 || !fb) return;
+
+  const norm = (s) => (s || '').toLowerCase().replace(/\s+/g, '');
+
+  const a1 = norm(q1.value);
+  const a2 = norm(q2.value);
+  const a3 = norm(q3.value);
+  const a4 = norm(q4.value);
+  const a5 = norm(q5.value);
+
+  // 차수 검증
+  const is1Ok = (a1 === '1' || a1 === '1차');
+  const is2Ok = (a2 === '2' || a2 === '2차');
+  const is3Ok = (a3 === '0' || a3 === '0차');
+  const is4Ok = (a4 === '1' || a4 === '1차');
+
+  // 일차식 선택 검증 (⑴, ⑷ 또는 1, 4 조합)
+  // Clean string to digits or numbers
+  const cleaned = a5.replace(/[()⑴⑵⑶⑷,]/g, (m) => {
+    if (m === '⑴') return '1';
+    if (m === '⑵') return '2';
+    if (m === '⑶') return '3';
+    if (m === '⑷') return '4';
+    return m === ',' ? ',' : '';
+  });
+  const parts = cleaned.split(',').filter(x => x.length > 0).sort();
+
+  const is5Ok = (
+    (parts.length === 2 && parts.includes('1') && parts.includes('4')) ||
+    a5 === '⑴,⑷' ||
+    a5 === '⑷,⑴' ||
+    a5 === '1,4' ||
+    a5 === '4,1'
+  );
+
+  const allCorrect = is1Ok && is2Ok && is3Ok && is4Ok && is5Ok;
+
+  fb.style.display = 'block';
+
+  if (allCorrect) {
+    if (state.lab2_2) state.lab2_2.isPassed = true;
+    state.substepProgress['2-2'] = true;
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#ecfdf5; border:1.5px solid #10b981; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.4rem;">🎉</span>
+          <h5 style="color:#065f46; font-weight:800; margin:0;">100점 완벽 통과! (다항식의 차수와 일차식 완성)</h5>
+        </div>
+        <div style="font-size:0.88rem; color:#047857; line-height:1.6;">
+          <b>[1. 각 다항식의 차수 정답]</b><br>
+          • ⑴ $-2x + 1$: 차수 $1$ (문자 $x$가 1개 곱해짐)<br>
+          • ⑵ $a^2 - 3a + 2$: 차수 $2$ (최고차항 $a^2$의 차수 $2$)<br>
+          • ⑶ $5$: 차수 $0$ (문자가 없는 상수항)<br>
+          • ⑷ $\\frac{y}{4} - 1$: 차수 $1$ (최고차항 $\\frac{1}{4}y$의 차수 $1$)<br><br>
+          <b>[2. 일차식 정답]</b><br>
+          • 차수가 1인 다항식: <b>⑴, ⑷</b><br>
+          다항식의 차수 판정 및 일차식의 개념을 완벽하게 이해했습니다!
+        </div>
+        <div style="margin-top:10px; font-size:0.8rem; color:#059669; font-weight:700;">
+          ✅ 학습 완료 상태가 영서중 LMS DB에 안전하게 자동 저장되었습니다.
+        </div>
+      </div>
+    `;
+
+    if (window.LMSIntegration && typeof window.LMSIntegration.saveStudentProgress === 'function') {
+      window.LMSIntegration.saveStudentProgress('2-2', { score: 100, passed: true }, 'unit3');
+    }
+
+    if (!state.unlockedSubSteps.includes('2-3')) {
+      state.unlockedSubSteps.push('2-3');
+    }
+  } else {
+    let errorMsg = [];
+    if (!is1Ok) errorMsg.push('⑴ $-2x + 1$의 차수는 문자 $x$가 1개 곱해져 있으므로 $1$ 입니다.');
+    if (!is2Ok) errorMsg.push('⑵ $a^2 - 3a + 2$의 차수는 가장 큰 항 $a^2$의 차수인 $2$ 입니다.');
+    if (!is3Ok) errorMsg.push('⑶ $5$는 수로만 이루어진 상수항이므로 차수가 $0$ 입니다.');
+    if (!is4Ok) errorMsg.push('⑷ $\\frac{y}{4} - 1$은 $\\frac{1}{4}y - 1$이므로 차수가 $1$ 입니다.');
+    if (!is5Ok) errorMsg.push('일차식은 차수가 1인 다항식이므로 ⑴과 ⑷ 입니다. (입력 예: ⑴, ⑷ 또는 1, 4)');
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#fff1f2; border:1.5px solid #f43f5e; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.3rem;">💡</span>
+          <h6 style="color:#9f1239; font-weight:700; margin:0;">다시 확인해 보세요!</h6>
+        </div>
+        <div style="font-size:0.86rem; color:#be123c; line-height:1.6;">
+          ${errorMsg.map(msg => `<div>• ${msg}</div>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+    // --- End Substep 2-2 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -13157,6 +13893,9 @@ function gradeStep2_1() {
       } else if (code === '2-1') {
         renderToolbar2_1();
         renderSubstep2_1();
+      } else if (code === '2-2') {
+        renderToolbar2_2();
+        renderSubstep2_2();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
