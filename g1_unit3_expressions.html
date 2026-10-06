@@ -951,8 +951,8 @@
       },
       '2-1': {
         code: '2-1', tab: 2,
-        substepLabel: '1. 생각열기: 다항식의 용어 (항, 상수항, 계수) (p.76)',
-        missionText: '<b>[2-1] 1. 생각열기: 다항식의 용어 (항, 상수항, 계수) (p.76)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '1. 생각 열기: 다항식의 용어 (항, 상수항, 계수) (p.77)',
+        missionText: '<b>[3.2 생각 열기 및 문제 1] 다항식의 용어: 항, 상수항, 계수 (교과서 p.77)</b><br>• <b>항:</b> 수 또는 문자의 곱으로만 이루어진 식<br>• <b>상수항:</b> 수만으로 이루어진 항<br>• <b>계수:</b> 문자 앞에 곱해진 수 (음부호 및 1 생략 주의!)<br>• <b>다항식과 단항식:</b> 하나 이상의 항의 합으로 이루어진 식(다항식), 한 개의 항으로만 이루어진 식(단항식)<br>좌측 캔버스에서 3종 분해 랩을 조작해 보고 문제 1의 항, 상수항, 계수를 구해보세요.',
         drawer: 'drawStep2_1Canvas'
       },
       '2-2': {
@@ -1458,6 +1458,16 @@
       },
       lab1_14: {
         tempX: 15,
+        isPassed: false
+      },
+      
+      // Substep 2-1 State (Polynomial Terms Lab)
+      lab2_1: {
+        activeTab: 'mode1',
+        isSplit1: false,
+        coeffX1: 2,
+        constVal1: -5,
+        showHiddenOne: false,
         isPassed: false
       },
       lab1_15: {
@@ -12251,6 +12261,820 @@ function gradeStep1_15() {
 
     // --- End Substep 1-15 Implementation ---
 
+    
+    // --- Substep 2-1 Implementation ---
+// code_2_1.js: Substep [2-1] 3.2 생각 열기: 다항식의 용어 (항, 상수항, 계수) (교과서 p.77)
+
+function renderToolbar2_1() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab2_1) {
+    state.lab2_1 = {
+      activeTab: 'mode1', // 'mode1' (개념 분해 분광기) | 'mode2' (문제 1-⑴) | 'mode3' (문제 1-⑵)
+      isSplit1: false,    // mode1 덧셈 분해 토글
+      coeffX1: 2,         // mode2 2x - 5
+      constVal1: -5,
+      showHiddenOne: false, // mode3 생략된 1 보기
+      isPassed: false
+    };
+  }
+
+  const curTab = state.lab2_1.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab2_1Tab('mode1')">
+        1. 다항식 분해 분광기 (3x - 2y + 4)
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab2_1Tab('mode2')">
+        2. 문제 1-⑴ 탐구 (2x - 5)
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab2_1Tab('mode3')">
+        3. 문제 1-⑵ 탐구 (-a + 3b - 1)
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn" onclick="resetLab2_1()" title="초기화">🔄 초기화</button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('2-1')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab2_1Tab(tabKey) {
+  if (!state.lab2_1) resetLab2_1();
+  state.lab2_1.activeTab = tabKey;
+  renderToolbar2_1();
+  drawStep2_1Canvas();
+}
+
+function resetLab2_1() {
+  state.lab2_1 = {
+    activeTab: 'mode1',
+    isSplit1: false,
+    coeffX1: 2,
+    constVal1: -5,
+    showHiddenOne: false,
+    isPassed: false
+  };
+  renderToolbar2_1();
+  drawStep2_1Canvas();
+}
+
+function toggleSplit1() {
+  if (!state.lab2_1) resetLab2_1();
+  state.lab2_1.isSplit1 = !state.lab2_1.isSplit1;
+  drawStep2_1Canvas();
+}
+
+function toggleHiddenOne() {
+  if (!state.lab2_1) resetLab2_1();
+  state.lab2_1.showHiddenOne = !state.lab2_1.showHiddenOne;
+  drawStep2_1Canvas();
+}
+
+function changeMode2Coeff(delta) {
+  if (!state.lab2_1) resetLab2_1();
+  state.lab2_1.coeffX1 = Math.max(-5, Math.min(5, state.lab2_1.coeffX1 + delta));
+  if (state.lab2_1.coeffX1 === 0) state.lab2_1.coeffX1 = delta > 0 ? 1 : -1;
+  drawStep2_1Canvas();
+}
+
+function changeMode2Const(delta) {
+  if (!state.lab2_1) resetLab2_1();
+  state.lab2_1.constVal1 = Math.max(-9, Math.min(9, state.lab2_1.constVal1 + delta));
+  drawStep2_1Canvas();
+}
+
+function renderSubstep2_1() {
+  const container = document.getElementById('substep-form-container');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="card p-3 mb-3" style="border-left: 4px solid var(--primary);">
+      <h6 style="font-weight:700; color:var(--primary); margin-bottom:6px;">
+        📖 [교과서 p.77 생각 열기] 다항식의 4대 기본 용어
+      </h6>
+      <div style="font-size:0.86rem; color:#334155; line-height:1.55;">
+        <ul style="margin:0; padding-left:18px;">
+          <li><b>항 (Term):</b> 수 또는 문자의 곱으로만 이루어진 식 (예: $3x$, $-2y$, $4$)</li>
+          <li><b>상수항 (Constant):</b> 수만으로 이루어진 항 (예: $4$, $-5$)</li>
+          <li><b>계수 (Coefficient):</b> 문자를 포함한 항에서 문자 앞에 곱해진 수 (예: $3x$에서 $x$의 계수는 $3$, $-2y$에서 $y$의 계수는 $-2$)</li>
+          <li><b>다항식과 단항식:</b> 하나 이상의 항의 합으로 이루어진 식을 <b>다항식</b>, 그중 한 개의 항으로만 이루어진 식을 <b>단항식</b>이라고 합니다.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 문제 1 카드 -->
+    <div class="card p-3 mb-3">
+      <h6 style="font-weight:700; color:#1e293b; margin-bottom:8px;">
+        ✏️ [문제 1] 다음 다항식의 항, 상수항, 각 문자의 계수를 구하시오.
+      </h6>
+
+      <!-- ⑴ 2x - 5 -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-bottom:12px;">
+        <span style="font-weight:700; font-size:0.88rem; color:#1e293b;">⑴ $2x - 5$</span>
+        
+        <div class="form-group mt-2 mb-2">
+          <label style="font-size:0.84rem; font-weight:600; color:#475569;">• 항 (쉼표로 구분하여 입력):</label>
+          <input type="text" id="ans-2-1-1" class="proof-input-text w-100" placeholder="항 입력 (쉼표로 구분)" autocomplete="off">
+        </div>
+
+        <div style="display:flex; gap:10px;">
+          <div class="form-group" style="flex:1;">
+            <label style="font-size:0.84rem; font-weight:600; color:#475569;">• 상수항:</label>
+            <input type="text" id="ans-2-1-2" class="proof-input-text w-100" placeholder="상수항 입력" autocomplete="off">
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label style="font-size:0.84rem; font-weight:600; color:#475569;">• $x$의 계수:</label>
+            <input type="text" id="ans-2-1-3" class="proof-input-text w-100" placeholder="계수 입력" autocomplete="off">
+          </div>
+        </div>
+      </div>
+
+      <!-- ⑵ -a + 3b - 1 -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-bottom:12px;">
+        <span style="font-weight:700; font-size:0.88rem; color:#1e293b;">⑵ $-a + 3b - 1$</span>
+        
+        <div class="form-group mt-2 mb-2">
+          <label style="font-size:0.84rem; font-weight:600; color:#475569;">• 항 (쉼표로 구분하여 입력):</label>
+          <input type="text" id="ans-2-1-4" class="proof-input-text w-100" placeholder="항 입력 (쉼표로 구분)" autocomplete="off">
+        </div>
+
+        <div style="display:flex; gap:8px;">
+          <div class="form-group" style="flex:1;">
+            <label style="font-size:0.84rem; font-weight:600; color:#475569;">• 상수항:</label>
+            <input type="text" id="ans-2-1-5" class="proof-input-text w-100" placeholder="상수항 입력" autocomplete="off">
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label style="font-size:0.84rem; font-weight:600; color:#475569;">• $a$의 계수:</label>
+            <input type="text" id="ans-2-1-6" class="proof-input-text w-100" placeholder="계수 입력" autocomplete="off">
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label style="font-size:0.84rem; font-weight:600; color:#475569;">• $b$의 계수:</label>
+            <input type="text" id="ans-2-1-7" class="proof-input-text w-100" placeholder="계수 입력" autocomplete="off">
+          </div>
+        </div>
+      </div>
+
+      <button id="btn-grade-2-1" class="primary-btn w-100" onclick="gradeStep2_1()" style="margin-top:6px; font-weight:700;">
+        🚀 정답 확인 및 LMS DB 기록
+      </button>
+    </div>
+
+    <div id="feedback-2-1" style="display:none; margin-top:8px;"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawStep2_1Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+
+  if (state.twoInstance) {
+    state.twoInstance.clear();
+  } else {
+    container.innerHTML = '';
+    const two = new Two({
+      width: container.clientWidth || 600,
+      height: 440,
+      type: Two.Types.svg
+    }).appendTo(container);
+    state.twoInstance = two;
+  }
+
+  const two = state.twoInstance;
+  if (!two) return;
+
+  two.clear();
+  drawPolyTermLab(two);
+  two.update();
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawPolyTermLab(two) {
+  const w = two.width;
+  const h = two.height;
+  const tab = (state.lab2_1 && state.lab2_1.activeTab) || 'mode1';
+
+  // Background
+  const bg = two.makeRectangle(w / 2, h / 2, w, h);
+  bg.fill = '#f8fafc';
+  bg.stroke = '#e2e8f0';
+  bg.linewidth = 1;
+
+  if (tab === 'mode1') {
+    drawMode1DecompLab(two, w, h);
+  } else if (tab === 'mode2') {
+    drawMode2Q1Lab(two, w, h);
+  } else {
+    drawMode3Q2Lab(two, w, h);
+  }
+
+  // Bottom info banner (Strict Vertical Budget: Y=385, H=26 -> Margin=29px >= 25px)
+  const bannerY = 385;
+  const bannerH = 26;
+  const bannerBox = two.makeRoundedRectangle(w / 2, bannerY, w - 24, bannerH, 6);
+  bannerBox.fill = '#eff6ff';
+  bannerBox.stroke = '#bfdbfe';
+  bannerBox.linewidth = 1;
+
+  const bannerMsgs = {
+    'mode1': '💡 뺄셈 부호는 뒤 항의 음부호로 포함됩니다: 3x - 2y + 4 = 3x + (-2y) + 4',
+    'mode2': '💡 2x - 5의 항은 2x와 -5이며, 상수항은 -5, x의 계수는 2입니다.',
+    'mode3': '💡 -a는 (-1) × a이므로 a의 계수는 -1입니다! (1 생략 규칙 주의)'
+  };
+
+  const bannerTxt = two.makeText(bannerMsgs[tab], w / 2, bannerY);
+  bannerTxt.size = 11.5;
+  bannerTxt.weight = 700;
+  bannerTxt.fill = '#1d4ed8';
+}
+
+// -------------------------------------------------------------
+// Model 1: 다항식 분해 분광기 (3x - 2y + 4)
+// -------------------------------------------------------------
+function drawMode1DecompLab(two, w, h) {
+  const isSplit = (state.lab2_1 && state.lab2_1.isSplit1) || false;
+
+  const titleTxt = two.makeText('다항식 분해 분광기 랩 (교과서 p.77 생각 열기)', w / 2, 24);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  // Toggle button (Y: 54)
+  const btn = two.makeRoundedRectangle(w / 2, 54, 300, 28, 6);
+  btn.fill = isSplit ? '#10b981' : '#4f46e5';
+  btn.stroke = isSplit ? '#059669' : '#4338ca';
+  btn.linewidth = 1.5;
+
+  const btnTxt = two.makeText(
+    isSplit ? '🔗 다시 다항식으로 결합하기' : '✂️ 덧셈 기호로 항 분해하기',
+    w / 2,
+    54
+  );
+  btnTxt.size = 12;
+  btnTxt.weight = 800;
+  btnTxt.fill = '#ffffff';
+
+  if (btn._renderer && btn._renderer.elem) {
+    btn._renderer.elem.style.cursor = 'pointer';
+    btn._renderer.elem.onclick = toggleSplit1;
+  }
+
+  // Main Card Area (Y: 84 ~ 340)
+  const cardW = w - 40;
+  const cardH = 268;
+  const cardX = w / 2;
+  const cardY = 216;
+
+  const card = two.makeRoundedRectangle(cardX, cardY, cardW, cardH, 12);
+  card.fill = '#ffffff';
+  card.stroke = '#e2e8f0';
+  card.linewidth = 1.5;
+
+  // Expression Box (Y: 114)
+  const exprBox = two.makeRoundedRectangle(cardX, 114, cardW - 48, 42, 8);
+  exprBox.fill = '#f8fafc';
+  exprBox.stroke = '#cbd5e1';
+  exprBox.linewidth = 1;
+
+  const exprTxt = two.makeText(
+    isSplit ? '3x - 2y + 4  ➜  3x + (-2y) + 4  (덧셈으로 연결된 세 항)' : '원래의 다항식:  3x - 2y + 4',
+    cardX,
+    114
+  );
+  exprTxt.size = 13.5;
+  exprTxt.weight = 800;
+  exprTxt.fill = isSplit ? '#1d4ed8' : '#1e293b';
+
+  // 3 Term Blocks (Y: 196)
+  const blockW = (cardW - 64) / 3;
+  const blockH = 100;
+  const bY = 200;
+
+  const b1X = cardX - blockW - 8;
+  const b2X = cardX;
+  const b3X = cardX + blockW + 8;
+
+  // Term 1: 3x
+  const t1 = two.makeRoundedRectangle(b1X, bY, blockW, blockH, 8);
+  t1.fill = '#eef2ff';
+  t1.stroke = '#6366f1';
+  t1.linewidth = 1.5;
+
+  const t1Head = two.makeText('첫 번째 항', b1X, bY - 32);
+  t1Head.size = 11;
+  t1Head.weight = 700;
+  t1Head.fill = '#4f46e5';
+
+  const t1Val = two.makeText('3x', b1X, bY - 6);
+  t1Val.size = 20;
+  t1Val.weight = 800;
+  t1Val.fill = '#1e1b4b';
+
+  const t1Desc = two.makeText('문자 x의 계수: 3', b1X, bY + 24);
+  t1Desc.size = 11.5;
+  t1Desc.weight = 700;
+  t1Desc.fill = '#4338ca';
+
+  // Term 2: -2y
+  const t2 = two.makeRoundedRectangle(b2X, bY, blockW, blockH, 8);
+  t2.fill = '#fff1f2';
+  t2.stroke = '#f43f5e';
+  t2.linewidth = 1.5;
+
+  const t2Head = two.makeText('두 번째 항 (음부호 포함)', b2X, bY - 32);
+  t2Head.size = 11;
+  t2Head.weight = 700;
+  t2Head.fill = '#e11d48';
+
+  const t2Val = two.makeText('-2y', b2X, bY - 6);
+  t2Val.size = 20;
+  t2Val.weight = 800;
+  t2Val.fill = '#881337';
+
+  const t2Desc = two.makeText('문자 y의 계수: -2', b2X, bY + 24);
+  t2Desc.size = 11.5;
+  t2Desc.weight = 700;
+  t2Desc.fill = '#be123c';
+
+  // Term 3: +4 (상수항)
+  const t3 = two.makeRoundedRectangle(b3X, bY, blockW, blockH, 8);
+  t3.fill = '#f0fdf4';
+  t3.stroke = '#22c55e';
+  t3.linewidth = 1.5;
+
+  const t3Head = two.makeText('세 번째 항 (상수항)', b3X, bY - 32);
+  t3Head.size = 11;
+  t3Head.weight = 700;
+  t3Head.fill = '#16a34a';
+
+  const t3Val = two.makeText('4', b3X, bY - 6);
+  t3Val.size = 20;
+  t3Val.weight = 800;
+  t3Val.fill = '#14532d';
+
+  const t3Desc = two.makeText('수로만 이루어진 항', b3X, bY + 24);
+  t3Desc.size = 11.5;
+  t3Desc.weight = 700;
+  t3Desc.fill = '#15803d';
+
+  // Rule Summary Box (Y: 288)
+  const rBox = two.makeRoundedRectangle(cardX, 292, cardW - 48, 38, 6);
+  rBox.fill = '#f8fafc';
+  rBox.stroke = '#cbd5e1';
+  rBox.linewidth = 1;
+
+  const rTxt = two.makeText(
+    '항(Term)은 덧셈 기호로 분리되는 각각의 성분이며, 음부호(-)는 그 뒤의 항에 속합니다!',
+    cardX,
+    292
+  );
+  rTxt.size = 11.5;
+  rTxt.weight = 700;
+  rTxt.fill = '#334155';
+}
+
+// -------------------------------------------------------------
+// Model 2: 문제 1-⑴ 분해 랩 (2x - 5)
+// -------------------------------------------------------------
+function drawMode2Q1Lab(two, w, h) {
+  const cX = (state.lab2_1 && state.lab2_1.coeffX1 !== undefined) ? state.lab2_1.coeffX1 : 2;
+  const cVal = (state.lab2_1 && state.lab2_1.constVal1 !== undefined) ? state.lab2_1.constVal1 : -5;
+
+  const titleTxt = two.makeText('문제 1-⑴ 다항식 탐구 랩: 2x - 5 (교과서 p.77)', w / 2, 24);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  const cardW = w - 40;
+  const cardH = 290;
+  const cardX = w / 2;
+  const cardY = 205;
+
+  const card = two.makeRoundedRectangle(cardX, cardY, cardW, cardH, 12);
+  card.fill = '#ffffff';
+  card.stroke = '#e2e8f0';
+  card.linewidth = 1.5;
+
+  // Formula display (Y: 96)
+  const fBox = two.makeRoundedRectangle(cardX, 94, cardW - 48, 44, 8);
+  fBox.fill = '#eff6ff';
+  fBox.stroke = '#bfdbfe';
+  fBox.linewidth = 1.5;
+
+  const signStr = cVal >= 0 ? `+ ${cVal}` : `- ${Math.abs(cVal)}`;
+  const plusSignStr = cVal >= 0 ? `+ ${cVal}` : `+ (${cVal})`;
+  const coeffStr = cX === 1 ? 'x' : (cX === -1 ? '-x' : `${cX}x`);
+
+  const fTxt = two.makeText(
+    `다항식:  ${coeffStr} ${signStr}  ➜  덧셈 분해:  ${coeffStr} ${plusSignStr}`,
+    cardX,
+    94
+  );
+  fTxt.size = 14;
+  fTxt.weight = 800;
+  fTxt.fill = '#1e3a8a';
+
+  // Two Blocks: Left (Term 1: 2x), Right (Term 2: -5)
+  const colW = (cardW - 60) / 2;
+  const b1X = cardX - colW / 2 - 8;
+  const b2X = cardX + colW / 2 + 8;
+  const bY = 186;
+
+  // Block 1: coeffStr
+  const b1 = two.makeRoundedRectangle(b1X, bY, colW, 100, 8);
+  b1.fill = '#eef2ff';
+  b1.stroke = '#6366f1';
+  b1.linewidth = 1.5;
+
+  const b1Head = two.makeText('항 1: 문자 항', b1X, bY - 32);
+  b1Head.size = 11;
+  b1Head.weight = 700;
+  b1Head.fill = '#4f46e5';
+
+  const b1Val = two.makeText(coeffStr, b1X, bY - 6);
+  b1Val.size = 22;
+  b1Val.weight = 800;
+  b1Val.fill = '#1e1b4b';
+
+  const b1Desc = two.makeText(`x의 계수 = ${cX}`, b1X, bY + 24);
+  b1Desc.size = 12;
+  b1Desc.weight = 800;
+  b1Desc.fill = '#4338ca';
+
+  // Block 2: cVal
+  const b2 = two.makeRoundedRectangle(b2X, bY, colW, 100, 8);
+  b2.fill = '#fef2f2';
+  b2.stroke = '#f87171';
+  b2.linewidth = 1.5;
+
+  const b2Head = two.makeText('항 2: 상수항', b2X, bY - 32);
+  b2Head.size = 11;
+  b2Head.weight = 700;
+  b2Head.fill = '#dc2626';
+
+  const b2Val = two.makeText(`${cVal}`, b2X, bY - 6);
+  b2Val.size = 22;
+  b2Val.weight = 800;
+  b2Val.fill = '#991b1b';
+
+  const b2Desc = two.makeText(`상수항 = ${cVal}`, b2X, bY + 24);
+  b2Desc.size = 12;
+  b2Desc.weight = 800;
+  b2Desc.fill = '#b91c1c';
+
+  // Dynamic Stepper Bar (Y: 268)
+  const ctrlY = 268;
+  const cTxt = two.makeText('계수 및 상수항 변경 테스트:', cardX - 160, ctrlY);
+  cTxt.size = 11.5;
+  cTxt.weight = 700;
+  cTxt.fill = '#475569';
+
+  // x 계수 - / +
+  const btnM1 = two.makeCircle(cardX - 40, ctrlY, 12);
+  btnM1.fill = '#6366f1';
+  const tM1 = two.makeText('-', cardX - 40, ctrlY);
+  tM1.size = 14;
+  tM1.weight = 800;
+  tM1.fill = '#ffffff';
+
+  if (btnM1._renderer && btnM1._renderer.elem) {
+    btnM1._renderer.elem.style.cursor = 'pointer';
+    btnM1._renderer.elem.onclick = () => changeMode2Coeff(-1);
+  }
+
+  const lblCoeff = two.makeText(`x계수: ${cX}`, cardX, ctrlY);
+  lblCoeff.size = 11.5;
+  lblCoeff.weight = 800;
+  lblCoeff.fill = '#1e293b';
+
+  const btnP1 = two.makeCircle(cardX + 40, ctrlY, 12);
+  btnP1.fill = '#6366f1';
+  const tP1 = two.makeText('+', cardX + 40, ctrlY);
+  tP1.size = 14;
+  tP1.weight = 800;
+  tP1.fill = '#ffffff';
+
+  if (btnP1._renderer && btnP1._renderer.elem) {
+    btnP1._renderer.elem.style.cursor = 'pointer';
+    btnP1._renderer.elem.onclick = () => changeMode2Coeff(1);
+  }
+
+  // 상수항 - / +
+  const btnM2 = two.makeCircle(cardX + 110, ctrlY, 12);
+  btnM2.fill = '#ef4444';
+  const tM2 = two.makeText('-', cardX + 110, ctrlY);
+  tM2.size = 14;
+  tM2.weight = 800;
+  tM2.fill = '#ffffff';
+
+  if (btnM2._renderer && btnM2._renderer.elem) {
+    btnM2._renderer.elem.style.cursor = 'pointer';
+    btnM2._renderer.elem.onclick = () => changeMode2Const(-1);
+  }
+
+  const lblConst = two.makeText(`상수: ${cVal}`, cardX + 155, ctrlY);
+  lblConst.size = 11.5;
+  lblConst.weight = 800;
+  lblConst.fill = '#1e293b';
+
+  const btnP2 = two.makeCircle(cardX + 200, ctrlY, 12);
+  btnP2.fill = '#ef4444';
+  const tP2 = two.makeText('+', cardX + 200, ctrlY);
+  tP2.size = 14;
+  tP2.weight = 800;
+  tP2.fill = '#ffffff';
+
+  if (btnP2._renderer && btnP2._renderer.elem) {
+    btnP2._renderer.elem.style.cursor = 'pointer';
+    btnP2._renderer.elem.onclick = () => changeMode2Const(1);
+  }
+
+  // Bottom Notice
+  const noticeTxt = two.makeText('💡 2x - 5에서 항은 2x, -5이며 상수항은 -5 (부호 포함) 입니다.', cardX, 316);
+  noticeTxt.size = 11.5;
+  noticeTxt.weight = 700;
+  noticeTxt.fill = '#059669';
+}
+
+// -------------------------------------------------------------
+// Model 3: 문제 1-⑵ 분해 랩 (-a + 3b - 1)
+// -------------------------------------------------------------
+function drawMode3Q2Lab(two, w, h) {
+  const showOne = (state.lab2_1 && state.lab2_1.showHiddenOne) || false;
+
+  const titleTxt = two.makeText('문제 1-⑵ 다항식 탐구 랩: -a + 3b - 1 (교과서 p.77)', w / 2, 24);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  const toggleBtn = two.makeRoundedRectangle(w / 2, 54, 320, 28, 6);
+  toggleBtn.fill = showOne ? '#10b981' : '#4f46e5';
+  toggleBtn.stroke = showOne ? '#059669' : '#4338ca';
+  toggleBtn.linewidth = 1.5;
+
+  const toggleTxt = two.makeText(
+    showOne ? '🔍 숨겨진 1 감추기 (-a)' : '🔍 -a 앞의 숨겨진 계수(-1) 돋보기 보기',
+    w / 2,
+    54
+  );
+  toggleTxt.size = 11.5;
+  toggleTxt.weight = 800;
+  toggleTxt.fill = '#ffffff';
+
+  if (toggleBtn._renderer && toggleBtn._renderer.elem) {
+    toggleBtn._renderer.elem.style.cursor = 'pointer';
+    toggleBtn._renderer.elem.onclick = toggleHiddenOne;
+  }
+
+  const cardW = w - 40;
+  const cardH = 268;
+  const cardX = w / 2;
+  const cardY = 216;
+
+  const card = two.makeRoundedRectangle(cardX, cardY, cardW, cardH, 12);
+  card.fill = '#ffffff';
+  card.stroke = '#e2e8f0';
+  card.linewidth = 1.5;
+
+  // Formula display (Y: 104)
+  const fBox = two.makeRoundedRectangle(cardX, 104, cardW - 48, 40, 8);
+  fBox.fill = '#f8fafc';
+  fBox.stroke = '#cbd5e1';
+  fBox.linewidth = 1;
+
+  const aStr = showOne ? '(-1)a' : '-a';
+  const fTxt = two.makeText(
+    `-a + 3b - 1  ➜  ${aStr} + 3b + (-1)  (세 항으로 분해)`,
+    cardX,
+    104
+  );
+  fTxt.size = 13.5;
+  fTxt.weight = 800;
+  fTxt.fill = '#1e3a8a';
+
+  // 3 Term Blocks (Y: 188)
+  const colW = (cardW - 64) / 3;
+  const bY = 188;
+  const b1X = cardX - colW - 8;
+  const b2X = cardX;
+  const b3X = cardX + colW + 8;
+
+  // Term 1: -a
+  const b1 = two.makeRoundedRectangle(b1X, bY, colW, 96, 8);
+  b1.fill = '#fef2f2';
+  b1.stroke = '#ef4444';
+  b1.linewidth = 1.5;
+
+  const b1Head = two.makeText('첫 번째 항 (주의!)', b1X, bY - 30);
+  b1Head.size = 11;
+  b1Head.weight = 700;
+  b1Head.fill = '#dc2626';
+
+  const b1Val = two.makeText(showOne ? '(-1)a' : '-a', b1X, bY - 4);
+  b1Val.size = 20;
+  b1Val.weight = 800;
+  b1Val.fill = '#991b1b';
+
+  const b1Desc = two.makeText('a의 계수: -1 (1 생략)', b1X, bY + 24);
+  b1Desc.size = 11.5;
+  b1Desc.weight = 800;
+  b1Desc.fill = '#b91c1c';
+
+  // Term 2: 3b
+  const b2 = two.makeRoundedRectangle(b2X, bY, colW, 96, 8);
+  b2.fill = '#eef2ff';
+  b2.stroke = '#6366f1';
+  b2.linewidth = 1.5;
+
+  const b2Head = two.makeText('두 번째 항', b2X, bY - 30);
+  b2Head.size = 11;
+  b2Head.weight = 700;
+  b2Head.fill = '#4f46e5';
+
+  const b2Val = two.makeText('3b', b2X, bY - 4);
+  b2Val.size = 20;
+  b2Val.weight = 800;
+  b2Val.fill = '#1e1b4b';
+
+  const b2Desc = two.makeText('b의 계수: 3', b2X, bY + 24);
+  b2Desc.size = 11.5;
+  b2Desc.weight = 800;
+  b2Desc.fill = '#4338ca';
+
+  // Term 3: -1
+  const b3 = two.makeRoundedRectangle(b3X, bY, colW, 96, 8);
+  b3.fill = '#fffbeb';
+  b3.stroke = '#f59e0b';
+  b3.linewidth = 1.5;
+
+  const b3Head = two.makeText('세 번째 항 (상수항)', b3X, bY - 30);
+  b3Head.size = 11;
+  b3Head.weight = 700;
+  b3Head.fill = '#d97706';
+
+  const b3Val = two.makeText('-1', b3X, bY - 4);
+  b3Val.size = 20;
+  b3Val.weight = 800;
+  b3Val.fill = '#78350f';
+
+  const b3Desc = two.makeText('상수항: -1', b3X, bY + 24);
+  b3Desc.size = 11.5;
+  b3Desc.weight = 800;
+  b3Desc.fill = '#b45309';
+
+  // Warning card (Y: 284)
+  const wBox = two.makeRoundedRectangle(cardX, 284, cardW - 48, 38, 6);
+  wBox.fill = '#fff1f2';
+  wBox.stroke = '#fecdd3';
+  wBox.linewidth = 1;
+
+  const wTxt = two.makeText(
+    '🚨 오개념 주의: -a의 계수는 0이나 -가 아니라 숫자 -1 입니다! (수 1 생략 규칙)',
+    cardX,
+    284
+  );
+  wTxt.size = 11.5;
+  wTxt.weight = 800;
+  wTxt.fill = '#e11d48';
+}
+
+// -------------------------------------------------------------
+// Grading Logic (⑴ 3항목, ⑵ 4항목 전수 채점 및 관용성)
+// -------------------------------------------------------------
+function gradeStep2_1() {
+  const q1Terms = document.getElementById('ans-2-1-1');
+  const q1Const = document.getElementById('ans-2-1-2');
+  const q1Coeff = document.getElementById('ans-2-1-3');
+
+  const q2Terms = document.getElementById('ans-2-1-4');
+  const q2Const = document.getElementById('ans-2-1-5');
+  const q2CoeffA = document.getElementById('ans-2-1-6');
+  const q2CoeffB = document.getElementById('ans-2-1-7');
+
+  const fb = document.getElementById('feedback-2-1');
+
+  if (!q1Terms || !q1Const || !q1Coeff || !q2Terms || !q2Const || !q2CoeffA || !q2CoeffB || !fb) return;
+
+  const norm = (s) => (s || '').toLowerCase().replace(/\s+/g, '');
+  const parseList = (s) => norm(s).split(',').filter(x => x.length > 0).sort();
+
+  // ⑴ 2x - 5
+  // Terms: '2x', '-5'
+  const t1 = parseList(q1Terms.value);
+  const isQ1TermsOk = (t1.length === 2 && t1.includes('2x') && t1.includes('-5'));
+  const isQ1ConstOk = (norm(q1Const.value) === '-5');
+  const isQ1CoeffOk = (norm(q1Coeff.value) === '2' || norm(q1Coeff.value) === '+2');
+
+  // ⑵ -a + 3b - 1
+  // Terms: '-a', '3b', '-1'
+  const t2 = parseList(q2Terms.value);
+  const isQ2TermsOk = (t2.length === 3 && t2.includes('-a') && t2.includes('3b') && t2.includes('-1'));
+  const isQ2ConstOk = (norm(q2Const.value) === '-1');
+  const isQ2CoeffAOk = (norm(q2CoeffA.value) === '-1');
+  const isQ2CoeffBOk = (norm(q2CoeffB.value) === '3' || norm(q2CoeffB.value) === '+3');
+
+  const allQ1 = isQ1TermsOk && isQ1ConstOk && isQ1CoeffOk;
+  const allQ2 = isQ2TermsOk && isQ2ConstOk && isQ2CoeffAOk && isQ2CoeffBOk;
+  const allCorrect = allQ1 && allQ2;
+
+  fb.style.display = 'block';
+
+  if (allCorrect) {
+    if (state.lab2_1) state.lab2_1.isPassed = true;
+    state.substepProgress['2-1'] = true;
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#ecfdf5; border:1.5px solid #10b981; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.4rem;">🎉</span>
+          <h5 style="color:#065f46; font-weight:800; margin:0;">100점 완벽 통과! (다항식의 용어 마스터)</h5>
+        </div>
+        <div style="font-size:0.88rem; color:#047857; line-height:1.6;">
+          <b>[⑴ $2x - 5$ 정답 해설]</b><br>
+          • 항: $2x, -5$<br>
+          • 상수항: $-5$ (음부호 포함)<br>
+          • $x$의 계수: $2$<br><br>
+          <b>[⑵ $-a + 3b - 1$ 정답 해설]</b><br>
+          • 항: $-a, 3b, -1$<br>
+          • 상수항: $-1$<br>
+          • $a$의 계수: $-1$ ($-1 \\times a$에서 $1$ 생략 주의!)<br>
+          • $b$의 계수: $3$<br>
+          다항식의 항 분해, 상수항 판정, 계수 식별을 모두 정확하게 수행했습니다!
+        </div>
+        <div style="margin-top:10px; font-size:0.8rem; color:#059669; font-weight:700;">
+          ✅ 학습 완료 상태가 영서중 LMS DB에 안전하게 자동 저장되었습니다.
+        </div>
+      </div>
+    `;
+
+    if (window.LMSIntegration && typeof window.LMSIntegration.saveStudentProgress === 'function') {
+      window.LMSIntegration.saveStudentProgress('2-1', { score: 100, passed: true }, 'unit3');
+    }
+
+    if (!state.unlockedSubSteps.includes('2-2')) {
+      state.unlockedSubSteps.push('2-2');
+    }
+  } else {
+    let errorMsg = [];
+    if (!isQ1TermsOk) errorMsg.push('⑴의 항은 덧셈으로 연결된 $2x$와 $-5$ 입니다. (입력 예: 2x, -5)');
+    if (!isQ1ConstOk) errorMsg.push('⑴의 상수항은 수로만 이루어진 $-5$ 입니다.');
+    if (!isQ1CoeffOk) errorMsg.push('⑴의 $x$의 계수는 $x$ 앞에 곱해진 수 $2$ 입니다.');
+    if (!isQ2TermsOk) errorMsg.push('⑵의 항은 $-a, 3b, -1$ 입니다. (쉼표로 구분)');
+    if (!isQ2ConstOk) errorMsg.push('⑵의 상수항은 $-1$ 입니다.');
+    if (!isQ2CoeffAOk) errorMsg.push('⑵의 $a$의 계수는 $-1 \\times a$이므로 $-1$ 입니다.');
+    if (!isQ2CoeffBOk) errorMsg.push('⑵의 $b$의 계수는 $3$ 입니다.');
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#fff1f2; border:1.5px solid #f43f5e; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.3rem;">💡</span>
+          <h6 style="color:#9f1239; font-weight:700; margin:0;">다시 확인해 보세요!</h6>
+        </div>
+        <div style="font-size:0.86rem; color:#be123c; line-height:1.6;">
+          ${errorMsg.map(msg => `<div>• ${msg}</div>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+    // --- End Substep 2-1 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -12330,6 +13154,9 @@ function gradeStep1_15() {
       } else if (code === '1-15') {
         renderToolbar1_15();
         renderSubstep1_15();
+      } else if (code === '2-1') {
+        renderToolbar2_1();
+        renderSubstep2_1();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
