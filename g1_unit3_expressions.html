@@ -994,7 +994,7 @@
       '2-8': {
         code: '2-8', tab: 2,
         substepLabel: '8. 스스로 확인하기 3: 곱셈·나눗셈 4문항 (p.80)',
-        missionText: '<b>[2-8] 8. 스스로 확인하기 3: 곱셈·나눗셈 4문항 (p.80)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        missionText: '<b>[스스로 확인하기 3번] 일차식과 수의 곱셈과 나눗셈 (교과서 p.80)</b><br>• <b>단항식의 계산:</b> 수끼리 곱하거나 나누어 문자 앞에 씁니다.<br>• <b>일차식의 계산:</b> 분배법칙을 이용하여 괄호 안의 모든 항에 수를 곱하거나 나눕니다.<br>• <b>부호 규칙 주의:</b> 음수와 음수의 곱/나눗셈은 항상 양수가 됩니다.<br>좌측 캔버스에서 사칙 분배 파이프라인과 부호 시뮬레이터를 조작하고 문제 3번 4문항을 직접 풀어보세요.',
         drawer: 'drawStep2_8Canvas'
       },
       '2-9': {
@@ -1467,6 +1467,15 @@
       
       
       
+      
+      // Substep 2-8 State (Self Check 3: Monomial & Linear Mult/Div)
+      lab2_8: {
+        activeTab: 'mode1',
+        qIdx: 0,
+        signA: -1,
+        signB: -1,
+        isPassed: false
+      },
       // Substep 2-7 State (Self Check 2: Filter Linear Expressions)
       lab2_7: {
         activeTab: 'mode1',
@@ -17355,6 +17364,598 @@ function gradeStep2_7() {
 
     // --- End Substep 2-7 Implementation ---
 
+    
+    // --- Substep 2-8 Implementation ---
+// code_2_8.js: Substep [2-8] 3.2 스스로 확인하기 3번: 일차식과 수의 곱셈·나눗셈 4문항 (교과서 p.80)
+
+function renderToolbar2_8() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab2_8) {
+    state.lab2_8 = {
+      activeTab: 'mode1', // 'mode1' (4단계 파이프라인) | 'mode2' (부호 규칙 마스터) | 'mode3' (전체 비교 매트릭스)
+      qIdx: 0,            // 0: ⑴ 5a*(-3), 1: ⑵ (-24x)/6, 2: ⑶ -3(2x-5), 3: ⑷ (12a-8)/(-4)
+      signA: -1,          // for mode 2
+      signB: -1,
+      isPassed: false
+    };
+  }
+
+  const curTab = state.lab2_8.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab2_8Tab('mode1')">
+        1. 사칙 분배 파이프라인
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab2_8Tab('mode2')">
+        2. 부호 결정 규칙 마스터
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab2_8Tab('mode3')">
+        3. 4문항 전개 비교표
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn" onclick="resetLab2_8()" title="초기화">🔄 초기화</button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('2-8')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab2_8Tab(tabKey) {
+  if (!state.lab2_8) resetLab2_8();
+  state.lab2_8.activeTab = tabKey;
+  renderToolbar2_8();
+  drawStep2_8Canvas();
+}
+
+function resetLab2_8() {
+  state.lab2_8 = {
+    activeTab: 'mode1',
+    qIdx: 0,
+    signA: -1,
+    signB: -1,
+    isPassed: false
+  };
+  renderToolbar2_8();
+  drawStep2_8Canvas();
+}
+
+function setQIdx2_8(idx) {
+  if (!state.lab2_8) resetLab2_8();
+  state.lab2_8.qIdx = idx;
+  drawStep2_8Canvas();
+}
+
+function toggleSign(which) {
+  if (!state.lab2_8) resetLab2_8();
+  if (which === 'A') state.lab2_8.signA *= -1;
+  if (which === 'B') state.lab2_8.signB *= -1;
+  drawStep2_8Canvas();
+}
+
+function renderSubstep2_8() {
+  const container = document.getElementById('substep-form-container');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="card p-3 mb-3" style="border-left: 4px solid var(--primary);">
+      <h6 style="font-weight:700; color:var(--primary); margin-bottom:6px;">
+        📖 [교과서 p.80] 스스로 확인하기 3번: 일차식과 수의 곱셈과 나눗셈
+      </h6>
+      <div style="font-size:0.86rem; color:#334155; line-height:1.55;">
+        다음을 계산하시오.
+        <ul style="margin:4px 0 0 0; padding-left:18px;">
+          <li><b>단항식과 수:</b> 수끼리 곱하거나 나누어 문자 앞에 씁니다.</li>
+          <li><b>일차식과 수:</b> 분배법칙을 이용하여 괄호 안의 모든 항에 수를 곱합니다.</li>
+          <li><b>부호 주의:</b> $(-)$와 $(-)$의 곱과 나눗셈은 $(+)$가 됩니다.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 4문항 카드 -->
+    <div class="card p-3 mb-3">
+      <h6 style="font-weight:700; color:#1e293b; margin-bottom:8px;">
+        ✏️ [3번 문항 4종 계산]
+      </h6>
+
+      <div class="form-group mb-2">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑴ $5a \\times (-3)$
+        </label>
+        <input type="text" id="ans-2-8-1" class="proof-input-text w-100" placeholder="계산 결과 식 입력" autocomplete="off">
+      </div>
+
+      <div class="form-group mb-2">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑵ $(-24x) \\div 6$
+        </label>
+        <input type="text" id="ans-2-8-2" class="proof-input-text w-100" placeholder="계산 결과 식 입력" autocomplete="off">
+      </div>
+
+      <div class="form-group mb-2">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑶ $-3(2x - 5)$
+        </label>
+        <input type="text" id="ans-2-8-3" class="proof-input-text w-100" placeholder="계산 결과 식 입력" autocomplete="off">
+      </div>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          ⑷ $(12a - 8) \\div (-4)$
+        </label>
+        <input type="text" id="ans-2-8-4" class="proof-input-text w-100" placeholder="계산 결과 식 입력" autocomplete="off">
+      </div>
+
+      <button id="btn-grade-2-8" class="primary-btn w-100" onclick="gradeStep2_8()" style="margin-top:6px; font-weight:700;">
+        🚀 정답 확인 및 LMS DB 기록
+      </button>
+    </div>
+
+    <div id="feedback-2-8" style="display:none; margin-top:8px;"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawStep2_8Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+
+  if (state.twoInstance) {
+    state.twoInstance.clear();
+  } else {
+    container.innerHTML = '';
+    const two = new Two({
+      width: container.clientWidth || 600,
+      height: 440,
+      type: Two.Types.svg
+    }).appendTo(container);
+    state.twoInstance = two;
+  }
+
+  const two = state.twoInstance;
+  if (!two) return;
+
+  two.clear();
+  drawSelfCheck2_8Lab(two);
+  two.update();
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawSelfCheck2_8Lab(two) {
+  const w = two.width;
+  const h = two.height;
+  const tab = (state.lab2_8 && state.lab2_8.activeTab) || 'mode1';
+
+  // Background
+  const bg = two.makeRectangle(w / 2, h / 2, w, h);
+  bg.fill = '#f8fafc';
+  bg.stroke = '#e2e8f0';
+  bg.linewidth = 1;
+
+  if (tab === 'mode1') {
+    drawMode1PipelineLab(two, w, h);
+  } else if (tab === 'mode2') {
+    drawMode2SignRulesLab(two, w, h);
+  } else {
+    drawMode3MatrixLab(two, w, h);
+  }
+
+  // Bottom info banner (Strict Vertical Budget: Y=385, H=26 -> Margin=42px >= 25px)
+  const bannerY = 385;
+  const bannerH = 26;
+  const bannerBox = two.makeRoundedRectangle(w / 2, bannerY, w - 24, bannerH, 6);
+  bannerBox.fill = '#eff6ff';
+  bannerBox.stroke = '#bfdbfe';
+  bannerBox.linewidth = 1;
+
+  const bannerMsgs = {
+    'mode1': '💡 사칙 분배 파이프라인: 수끼리의 곱셈/나눗셈 후 부호 결정을 단계별로 확인하세요.',
+    'mode2': '💡 부호 규칙: 음수 × 음수 = 양수 (+), 음수 ÷ 음수 = 양수 (+) 에 주의하세요!',
+    'mode3': '💡 비교표: 4문항의 연산 형태(단항식 곱셈·나눗셈 vs 일차식 분배법칙)를 비교해 보세요.'
+  };
+
+  const bannerTxt = two.makeText(bannerMsgs[tab], w / 2, bannerY);
+  bannerTxt.size = 11.5;
+  bannerTxt.weight = 700;
+  bannerTxt.fill = '#1d4ed8';
+}
+
+// -------------------------------------------------------------
+// Model 1: 사칙 분배 파이프라인 (Pipeline Lab)
+// -------------------------------------------------------------
+function drawMode1PipelineLab(two, w, h) {
+  const qIdx = (state.lab2_8 && state.lab2_8.qIdx) || 0;
+
+  // Title Box
+  const titleBox = two.makeRoundedRectangle(w / 2, 28, w - 32, 34, 6);
+  titleBox.fill = '#ffffff';
+  titleBox.stroke = '#cbd5e1';
+  const titleTxt = two.makeText('⚙️ 사칙 분배 파이프라인: 문항을 선택하여 풀이 단계를 관찰하세요', w / 2, 28);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  // 4 Tabs (Y = 66)
+  const qTabs = [
+    '⑴ 5a × (-3)',
+    '⑵ (-24x) ÷ 6',
+    '⑶ -3(2x - 5)',
+    '⑷ (12a - 8) ÷ (-4)'
+  ];
+
+  const colW = (w - 40) / 4;
+  qTabs.forEach((lbl, idx) => {
+    const cx = 20 + colW * idx + colW / 2;
+    const isAct = qIdx === idx;
+    const bBox = two.makeRoundedRectangle(cx, 66, colW - 6, 28, 6);
+    bBox.fill = isAct ? '#4f46e5' : '#f1f5f9';
+    bBox.stroke = isAct ? '#4338ca' : '#cbd5e1';
+
+    const bTxt = two.makeText(lbl, cx, 66);
+    bTxt.size = 11.5;
+    bTxt.weight = isAct ? 800 : 600;
+    bTxt.fill = isAct ? '#ffffff' : '#334155';
+
+    setTimeout(() => {
+      if (bBox._renderer && bBox._renderer.elem) {
+        bBox._renderer.elem.style.cursor = 'pointer';
+        bBox._renderer.elem.onclick = () => setQIdx2_8(idx);
+      }
+    }, 10);
+  });
+
+  // Pipeline Data
+  const pData = [
+    {
+      title: '⑴ 단항식 × 수:  5a × (-3)',
+      type: '단항식과 수의 곱셈 (결합법칙)',
+      s1: '1단계 (수끼리 묶기):  {5 × (-3)} × a',
+      s2: '2단계 (부호 및 곱셈):  양수 × 음수 = 음수 ➔ -15',
+      ans: '최종 결과:  -15a',
+      tip: '수끼리 곱하여 문자 a 앞에 씁니다.'
+    },
+    {
+      title: '⑵ 단항식 ÷ 수:  (-24x) ÷ 6',
+      type: '단항식과 수의 나눗셈 (역수 곱셈)',
+      s1: '1단계 (역수 곱으로 변환):  (-24x) × (1/6)',
+      s2: '2단계 (약분 및 계산):  {-24 × (1/6)} × x = -4 × x',
+      ans: '최종 결과:  -4x',
+      tip: '음수 ÷ 양수 = 음수(-),  -24 ÷ 6 = -4'
+    },
+    {
+      title: '⑶ 일차식 × 수:  -3(2x - 5)',
+      type: '일차식과 수의 곱셈 (분배법칙)',
+      s1: '1단계 (괄호 안 모든 항에 -3 분배):  (-3) × 2x  -  (-3) × 5',
+      s2: '2단계 (부호 판정):  -6x  -  (-15) = -6x + 15',
+      ans: '최종 결과:  -6x + 15',
+      tip: '음수 × 음수 = 양수:  (-3) × (-5) = +15 에 주의하세요!'
+    },
+    {
+      title: '⑷ 일차식 ÷ 수:  (12a - 8) ÷ (-4)',
+      type: '일차식과 수의 나눗셈 (분배법칙 및 부호 반전)',
+      s1: '1단계 (역수 -1/4 분배):  12a × (-1/4)  -  8 × (-1/4)',
+      s2: '2단계 (약분 및 부호):  -3a  -  (-2) = -3a + 2',
+      ans: '최종 결과:  -3a + 2',
+      tip: '12a ÷ (-4) = -3a,  -8 ÷ (-4) = +2'
+    }
+  ];
+
+  const cur = pData[qIdx];
+
+  // Pipeline Display Card (Y = 212)
+  const cardW = Math.min(520, w - 40);
+  const cardH = 224;
+  const cardY = 212;
+
+  const cardBox = two.makeRoundedRectangle(w / 2, cardY, cardW, cardH, 10);
+  cardBox.fill = '#ffffff';
+  cardBox.stroke = '#cbd5e1';
+  cardBox.linewidth = 1.5;
+
+  const tHead = two.makeText(cur.title, w / 2, 126);
+  tHead.size = 16;
+  tHead.weight = 800;
+  tHead.fill = '#1e293b';
+
+  // Step 1
+  const b1 = two.makeRoundedRectangle(w / 2, 172, cardW - 44, 36, 6);
+  b1.fill = '#eff6ff';
+  b1.stroke = '#bfdbfe';
+  const t1 = two.makeText(cur.s1, w / 2, 172);
+  t1.size = 13;
+  t1.weight = 700;
+  t1.fill = '#1d4ed8';
+
+  // Step 2
+  const b2 = two.makeRoundedRectangle(w / 2, 220, cardW - 44, 36, 6);
+  b2.fill = '#fefce8';
+  b2.stroke = '#fde047';
+  const t2 = two.makeText(cur.s2, w / 2, 220);
+  t2.size = 13;
+  t2.weight = 700;
+  t2.fill = '#a16207';
+
+  // Step 3 (Ans)
+  const b3 = two.makeRoundedRectangle(w / 2, 274, cardW - 44, 44, 8);
+  b3.fill = '#ecfdf5';
+  b3.stroke = '#86efac';
+  b3.linewidth = 2;
+  const t3 = two.makeText(cur.ans, w / 2, 274);
+  t3.size = 16.5;
+  t3.weight = 800;
+  t3.fill = '#047857';
+
+  const tipTxt = two.makeText(`💡 연산 포인트: ${cur.tip}`, w / 2, 314);
+  tipTxt.size = 12;
+  tipTxt.weight = 700;
+  tipTxt.fill = '#64748b';
+}
+
+// -------------------------------------------------------------
+// Model 2: 부호 결정 규칙 마스터 랩 (Sign Rules Master)
+// -------------------------------------------------------------
+function drawMode2SignRulesLab(two, w, h) {
+  const sA = state.lab2_8 ? state.lab2_8.signA : -1;
+  const sB = state.lab2_8 ? state.lab2_8.signB : -1;
+
+  // Title Box
+  const titleBox = two.makeRoundedRectangle(w / 2, 28, w - 32, 34, 6);
+  titleBox.fill = '#ffffff';
+  titleBox.stroke = '#cbd5e1';
+  const titleTxt = two.makeText('⚡ 부호 결정 규칙 시뮬레이터: 부호 칩을 클릭해 연산 결과를 확인하세요', w / 2, 28);
+  titleTxt.size = 13.5;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  // Interactive Sign Toggle Blocks (Y = 100)
+  const blockW = 120;
+  const b1X = w / 2 - 130;
+  const b2X = w / 2 + 130;
+  const toggleY = 96;
+
+  // Toggle A
+  const boxA = two.makeRoundedRectangle(b1X, toggleY, blockW, 44, 8);
+  boxA.fill = sA > 0 ? '#eff6ff' : '#fef2f2';
+  boxA.stroke = sA > 0 ? '#3b82f6' : '#ef4444';
+  boxA.linewidth = 2;
+  const txtA = two.makeText(`첫째 수:  ${sA > 0 ? '(+)' : '(-)'}`, b1X, toggleY);
+  txtA.size = 14;
+  txtA.weight = 800;
+  txtA.fill = sA > 0 ? '#1d4ed8' : '#b91c1c';
+
+  // Toggle B
+  const boxB = two.makeRoundedRectangle(b2X, toggleY, blockW, 44, 8);
+  boxB.fill = sB > 0 ? '#eff6ff' : '#fef2f2';
+  boxB.stroke = sB > 0 ? '#3b82f6' : '#ef4444';
+  boxB.linewidth = 2;
+  const txtB = two.makeText(`둘째 수:  ${sB > 0 ? '(+)' : '(-)'}`, b2X, toggleY);
+  txtB.size = 14;
+  txtB.weight = 800;
+  txtB.fill = sB > 0 ? '#1d4ed8' : '#b91c1c';
+
+  const opTxt = two.makeText('×  또는  ÷', w / 2, toggleY);
+  opTxt.size = 15;
+  opTxt.weight = 800;
+  opTxt.fill = '#475569';
+
+  setTimeout(() => {
+    if (boxA._renderer && boxA._renderer.elem) {
+      boxA._renderer.elem.style.cursor = 'pointer';
+      boxA._renderer.elem.onclick = () => toggleSign('A');
+    }
+    if (boxB._renderer && boxB._renderer.elem) {
+      boxB._renderer.elem.style.cursor = 'pointer';
+      boxB._renderer.elem.onclick = () => toggleSign('B');
+    }
+  }, 10);
+
+  // Result Badge (Y = 186)
+  const resSign = sA * sB;
+  const resBox = two.makeRoundedRectangle(w / 2, 186, 320, 56, 12);
+  resBox.fill = resSign > 0 ? '#ecfdf5' : '#fef2f2';
+  resBox.stroke = resSign > 0 ? '#10b981' : '#f43f5e';
+  resBox.linewidth = 2.5;
+
+  const resSignTxt = resSign > 0 ? '(+) 양수' : '(-) 음수';
+  const resTxt = two.makeText(`결과 부호:  ${resSignTxt}`, w / 2, 186);
+  resTxt.size = 18;
+  resTxt.weight = 900;
+  resTxt.fill = resSign > 0 ? '#047857' : '#be123c';
+
+  // Rule Cards (Y = 280)
+  const ruleCardW = Math.min(500, w - 40);
+  const cardBox = two.makeRoundedRectangle(w / 2, 280, ruleCardW, 90, 8);
+  cardBox.fill = '#ffffff';
+  cardBox.stroke = '#cbd5e1';
+  cardBox.linewidth = 1.5;
+
+  const r1 = two.makeText('• 같은 부호끼리의 곱셈/나눗셈:  (+) × (+) = (+),  (-) × (-) = (+)', w / 2, 258);
+  r1.size = 12.5;
+  r1.weight = 700;
+  r1.fill = '#047857';
+
+  const r2 = two.makeText('• 다른 부호끼리의 곱셈/나눗셈:  (+) × (-) = (-),  (-) × (+) = (-)', w / 2, 286);
+  r2.size = 12.5;
+  r2.weight = 700;
+  r2.fill = '#b91c1c';
+
+  const r3 = two.makeText('💡 스스로 확인하기 3번 ⑶, ⑷의 음수 분배 시 반드시 부호가 반전됩니다!', w / 2, 312);
+  r3.size = 12;
+  r3.weight = 800;
+  r3.fill = '#1d4ed8';
+}
+
+// -------------------------------------------------------------
+// Model 3: 4문항 전개 비교표 (Matrix Lab)
+// -------------------------------------------------------------
+function drawMode3MatrixLab(two, w, h) {
+  // Title Box
+  const titleBox = two.makeRoundedRectangle(w / 2, 28, w - 32, 34, 6);
+  titleBox.fill = '#ffffff';
+  titleBox.stroke = '#cbd5e1';
+  const titleTxt = two.makeText('📊 스스로 확인하기 3번: 4문항 종합 풀이 비교표', w / 2, 28);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  const tableW = Math.min(520, w - 40);
+
+  const mRows = [
+    { num: '⑴', prob: '5a × (-3)', type: '단항식 × 수', rule: '{5 × (-3)}a', ans: '-15a' },
+    { num: '⑵', prob: '(-24x) ÷ 6', type: '단항식 ÷ 수', rule: '(-24 ÷ 6)x', ans: '-4x' },
+    { num: '⑶', prob: '-3(2x - 5)', type: '일차식 × 수', rule: '(-3)×2x - (-3)×5', ans: '-6x + 15' },
+    { num: '⑷', prob: '(12a - 8) ÷ (-4)', type: '일차식 ÷ 수', rule: '12a÷(-4) - 8÷(-4)', ans: '-3a + 2' }
+  ];
+
+  // Header Row (Y = 88)
+  const hRow = two.makeRoundedRectangle(w / 2, 88, tableW, 32, 4);
+  hRow.fill = '#1e293b';
+  const hTxt = two.makeText('문항           문제 식                연산 유형               적용 원리              최종 정답', w / 2, 88);
+  hTxt.size = 12;
+  hTxt.weight = 800;
+  hTxt.fill = '#ffffff';
+
+  mRows.forEach((r, idx) => {
+    const ry = 134 + idx * 48;
+    const rBox = two.makeRoundedRectangle(w / 2, ry, tableW, 42, 6);
+    rBox.fill = idx % 2 === 0 ? '#f8fafc' : '#ffffff';
+    rBox.stroke = '#cbd5e1';
+
+    const rTxt = two.makeText(
+      `${r.num}     ${r.prob.padEnd(16)}    ${r.type.padEnd(12)}    ${r.rule.padEnd(16)}    ${r.ans}`,
+      w / 2,
+      ry
+    );
+    rTxt.size = 12.5;
+    rTxt.weight = 700;
+    rTxt.fill = '#334155';
+  });
+
+  const bSummary = two.makeRoundedRectangle(w / 2, 334, tableW, 36, 6);
+  bSummary.fill = '#ecfdf5';
+  bSummary.stroke = '#86efac';
+  const tSummary = two.makeText('✅ 분배법칙 시 괄호 안의 모든 항에 수를 곱하고 부호 규칙을 철저히 준수합니다.', w / 2, 334);
+  tSummary.size = 12;
+  tSummary.weight = 800;
+  tSummary.fill = '#047857';
+}
+
+// -------------------------------------------------------------
+// Grading Logic (스스로 확인하기 3번 4문항 전수 채점)
+// -------------------------------------------------------------
+function gradeStep2_8() {
+  const q1 = document.getElementById('ans-2-8-1');
+  const q2 = document.getElementById('ans-2-8-2');
+  const q3 = document.getElementById('ans-2-8-3');
+  const q4 = document.getElementById('ans-2-8-4');
+  const fb = document.getElementById('feedback-2-8');
+
+  if (!q1 || !q2 || !q3 || !q4 || !fb) return;
+
+  const norm = (s) => (s || '').toLowerCase().replace(/\s+/g, '');
+
+  const a1 = norm(q1.value);
+  const a2 = norm(q2.value);
+  const a3 = norm(q3.value);
+  const a4 = norm(q4.value);
+
+  const is1Ok = (a1 === '-15a');
+  const is2Ok = (a2 === '-4x');
+  const is3Ok = (a3 === '-6x+15' || a3 === '15-6x' || a3 === '+15-6x');
+  const is4Ok = (a4 === '-3a+2' || a4 === '2-3a' || a4 === '+2-3a');
+
+  const allCorrect = is1Ok && is2Ok && is3Ok && is4Ok;
+
+  fb.style.display = 'block';
+
+  if (allCorrect) {
+    if (state.lab2_8) state.lab2_8.isPassed = true;
+    state.substepProgress['2-8'] = true;
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#ecfdf5; border:1.5px solid #10b981; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.4rem;">🎉</span>
+          <h5 style="color:#065f46; font-weight:800; margin:0;">100점 완벽 통과! (스스로 확인하기 3번 정복)</h5>
+        </div>
+        <div style="font-size:0.88rem; color:#047857; line-height:1.6;">
+          <b>[3번 문항 정답 완벽 분석]</b><br>
+          • ⑴ $5a \\times (-3) = -15a$<br>
+          • ⑵ $(-24x) \\div 6 = -4x$<br>
+          • ⑶ $-3(2x - 5) = (-3 \\times 2x) - (-3 \\times 5) = -6x + 15$<br>
+          • ⑷ $(12a - 8) \\div (-4) = \\frac{12a}{-4} - \\frac{8}{-4} = -3a + 2$<br>
+          단항식과 일차식의 곱셈과 나눗셈 및 부호 반전 규칙을 완벽하게 적용했습니다!
+        </div>
+        <div style="margin-top:10px; font-size:0.8rem; color:#059669; font-weight:700;">
+          ✅ 학습 완료 상태가 영서중 LMS DB에 안전하게 자동 저장되었습니다.
+        </div>
+      </div>
+    `;
+
+    if (window.LMSIntegration && typeof window.LMSIntegration.saveStudentProgress === 'function') {
+      window.LMSIntegration.saveStudentProgress('2-8', { score: 100, passed: true }, 'unit3');
+    }
+
+    if (!state.unlockedSubSteps.includes('2-9')) {
+      state.unlockedSubSteps.push('2-9');
+    }
+  } else {
+    let errorMsg = [];
+    if (!is1Ok) errorMsg.push('⑴: $5a \\times (-3) = -15a$ (입력: -15a) 입니다.');
+    if (!is2Ok) errorMsg.push('⑵: $(-24x) \\div 6 = -4x$ (입력: -4x) 입니다.');
+    if (!is3Ok) errorMsg.push('⑶: $-3(2x - 5) = -6x + 15$ (부호 주의: -3 × (-5) = +15) 입니다.');
+    if (!is4Ok) errorMsg.push('⑷: $(12a - 8) \\div (-4) = -3a + 2$ (부호 주의: -8 ÷ (-4) = +2) 입니다.');
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#fff1f2; border:1.5px solid #f43f5e; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.3rem;">💡</span>
+          <h6 style="color:#9f1239; font-weight:700; margin:0;">다시 확인해 보세요!</h6>
+        </div>
+        <div style="font-size:0.86rem; color:#be123c; line-height:1.6;">
+          ${errorMsg.map(msg => `<div>• ${msg}</div>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+    // --- End Substep 2-8 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -17455,6 +18056,9 @@ function gradeStep2_7() {
       } else if (code === '2-7') {
         renderToolbar2_7();
         renderSubstep2_7();
+      } else if (code === '2-8') {
+        renderToolbar2_8();
+        renderSubstep2_8();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
