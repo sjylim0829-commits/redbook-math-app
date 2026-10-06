@@ -988,7 +988,7 @@
       '2-7': {
         code: '2-7', tab: 2,
         substepLabel: '7. 스스로 확인하기 2: 일차식 고르기 (p.80)',
-        missionText: '<b>[2-7] 7. 스스로 확인하기 2: 일차식 고르기 (p.80)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        missionText: '<b>[스스로 확인하기 2번] 일차식 고르기 (교과서 p.80)</b><br>• <b>일차식의 조건:</b> 먼저 다항식이어야 하고, 차수가 가장 큰 항의 차수가 1이어야 합니다.<br>• <b>오개념 주의:</b> 분모에 문자가 있는 식은 다항식이 아닙니다. 상수식은 차수가 0입니다.<br>좌측 캔버스에서 5개 보기를 스캔하고 오답 트랩을 분석하여 일차식인 것을 모두 골라보세요.',
         drawer: 'drawStep2_7Canvas'
       },
       '2-8': {
@@ -1466,6 +1466,14 @@
       
       
       
+      
+      // Substep 2-7 State (Self Check 2: Filter Linear Expressions)
+      lab2_7: {
+        activeTab: 'mode1',
+        selectedCard: 0,
+        trapIdx: 0,
+        isPassed: false
+      },
       // Substep 2-6 State (Self Check 1: Terms, Degree, Coefficients)
       lab2_6: {
         activeTab: 'mode1',
@@ -16708,6 +16716,645 @@ function gradeStep2_6() {
 
     // --- End Substep 2-6 Implementation ---
 
+    
+    // --- Substep 2-7 Implementation ---
+// code_2_7.js: Substep [2-7] 3.2 스스로 확인하기 2번: 일차식 고르기 (교과서 p.80)
+
+function renderToolbar2_7() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab2_7) {
+    state.lab2_7 = {
+      activeTab: 'mode1', // 'mode1' (선별 스캐너) | 'mode2' (오답 트랩 해부) | 'mode3' (전체 매트릭스)
+      selectedCard: 0,    // 0: ㄱ(4x+1), 1: ㄴ(-3), 2: ㄷ(x^2-2x), 3: ㄹ(1/2a-5), 4: ㅁ(3/x+2)
+      trapIdx: 0,         // 0: 분모 문자, 1: 상수항, 2: 최고차수
+      isPassed: false
+    };
+  }
+
+  const curTab = state.lab2_7.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab2_7Tab('mode1')">
+        1. 일차식 선별 스캐너
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab2_7Tab('mode2')">
+        2. 오답 트랩 심층 해부실
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab2_7Tab('mode3')">
+        3. 5개 보기 비교 매트릭스
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn" onclick="resetLab2_7()" title="초기화">🔄 초기화</button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('2-7')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab2_7Tab(tabKey) {
+  if (!state.lab2_7) resetLab2_7();
+  state.lab2_7.activeTab = tabKey;
+  renderToolbar2_7();
+  drawStep2_7Canvas();
+}
+
+function resetLab2_7() {
+  state.lab2_7 = {
+    activeTab: 'mode1',
+    selectedCard: 0,
+    trapIdx: 0,
+    isPassed: false
+  };
+  renderToolbar2_7();
+  drawStep2_7Canvas();
+}
+
+function setCard2_7(idx) {
+  if (!state.lab2_7) resetLab2_7();
+  state.lab2_7.selectedCard = idx;
+  drawStep2_7Canvas();
+}
+
+function setTrap2_7(idx) {
+  if (!state.lab2_7) resetLab2_7();
+  state.lab2_7.trapIdx = idx;
+  drawStep2_7Canvas();
+}
+
+function toggleChoiceChip2_7(sym) {
+  const inp = document.getElementById('ans-2-7');
+  if (!inp) return;
+  let cur = inp.value.replace(/\s+/g, '').split(',').filter(Boolean);
+  if (cur.includes(sym)) {
+    cur = cur.filter(x => x !== sym);
+  } else {
+    cur.push(sym);
+  }
+  inp.value = cur.join(', ');
+}
+
+function renderSubstep2_7() {
+  const container = document.getElementById('substep-form-container');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="card p-3 mb-3" style="border-left: 4px solid var(--primary);">
+      <h6 style="font-weight:700; color:var(--primary); margin-bottom:6px;">
+        📖 [교과서 p.80] 스스로 확인하기 2번: 일차식 고르기
+      </h6>
+      <div style="font-size:0.86rem; color:#334155; line-height:1.55;">
+        다음 보기 중에서 <b>일차식</b>인 것을 모두 고르시오.
+        <div class="card p-2 mt-2" style="background:#f8fafc; border:1px solid #cbd5e1; font-size:0.88rem;">
+          <b>[보기]</b><br>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; margin-top:4px;">
+            <span>ㄱ. $4x + 1$</span>
+            <span>ㄴ. $-3$</span>
+            <span>ㄷ. $x^2 - 2x$</span>
+            <span>ㄹ. $\\frac{1}{2}a - 5$</span>
+            <span>ㅁ. $\\frac{3}{x} + 2$</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 답안 입력 카드 -->
+    <div class="card p-3 mb-3">
+      <h6 style="font-weight:700; color:#1e293b; margin-bottom:8px;">
+        ✏️ 일차식 선택 및 입력
+      </h6>
+
+      <div style="margin-bottom:8px; display:flex; gap:6px; flex-wrap:wrap;">
+        <span style="font-size:0.82rem; font-weight:700; color:#475569; align-self:center;">보기 선택 칩:</span>
+        <button class="tool-btn" type="button" onclick="toggleChoiceChip2_7('ㄱ')">ㄱ</button>
+        <button class="tool-btn" type="button" onclick="toggleChoiceChip2_7('ㄴ')">ㄴ</button>
+        <button class="tool-btn" type="button" onclick="toggleChoiceChip2_7('ㄷ')">ㄷ</button>
+        <button class="tool-btn" type="button" onclick="toggleChoiceChip2_7('ㄹ')">ㄹ</button>
+        <button class="tool-btn" type="button" onclick="toggleChoiceChip2_7('ㅁ')">ㅁ</button>
+      </div>
+
+      <div class="form-group mb-3">
+        <label style="font-weight:600; font-size:0.86rem; color:#1e293b;">
+          일차식인 것의 기호를 모두 입력하시오.
+        </label>
+        <input type="text" id="ans-2-7" class="proof-input-text w-100" placeholder="일차식 기호 입력 (예: ㄱ, ㄹ)" autocomplete="off">
+        <small style="color:#64748b; font-size:0.78rem; margin-top:2px; display:block;">
+          ※ 위 보기 선택 칩을 누르거나 직접 쉼표로 구분하여 입력할 수 있습니다.
+        </small>
+      </div>
+
+      <button id="btn-grade-2-7" class="primary-btn w-100" onclick="gradeStep2_7()" style="margin-top:6px; font-weight:700;">
+        🚀 정답 확인 및 LMS DB 기록
+      </button>
+    </div>
+
+    <div id="feedback-2-7" style="display:none; margin-top:8px;"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawStep2_7Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+
+  if (state.twoInstance) {
+    state.twoInstance.clear();
+  } else {
+    container.innerHTML = '';
+    const two = new Two({
+      width: container.clientWidth || 600,
+      height: 440,
+      type: Two.Types.svg
+    }).appendTo(container);
+    state.twoInstance = two;
+  }
+
+  const two = state.twoInstance;
+  if (!two) return;
+
+  two.clear();
+  drawSelfCheck2_7Lab(two);
+  two.update();
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawSelfCheck2_7Lab(two) {
+  const w = two.width;
+  const h = two.height;
+  const tab = (state.lab2_7 && state.lab2_7.activeTab) || 'mode1';
+
+  // Background
+  const bg = two.makeRectangle(w / 2, h / 2, w, h);
+  bg.fill = '#f8fafc';
+  bg.stroke = '#e2e8f0';
+  bg.linewidth = 1;
+
+  if (tab === 'mode1') {
+    drawMode1FilterScanner(two, w, h);
+  } else if (tab === 'mode2') {
+    drawMode2TrapAnatomy(two, w, h);
+  } else {
+    drawMode3SummaryMatrix(two, w, h);
+  }
+
+  // Bottom info banner (Strict Vertical Budget: Y=385, H=26 -> Margin=42px >= 25px)
+  const bannerY = 385;
+  const bannerH = 26;
+  const bannerBox = two.makeRoundedRectangle(w / 2, bannerY, w - 24, bannerH, 6);
+  bannerBox.fill = '#eff6ff';
+  bannerBox.stroke = '#bfdbfe';
+  bannerBox.linewidth = 1;
+
+  const bannerMsgs = {
+    'mode1': '💡 일차식 조건: 먼저 다항식이어야 하고, 그중 최고차항의 차수가 정확히 1이어야 합니다.',
+    'mode2': '💡 대표 함정: 분모에 문자가 있는 식은 수와 문자의 곱으로 이루어진 다항식이 아닙니다!',
+    'mode3': '💡 비교 매트릭스: 5개 보기의 다항식 여부와 최고차수를 비교해 보세요.'
+  };
+
+  const bannerTxt = two.makeText(bannerMsgs[tab], w / 2, bannerY);
+  bannerTxt.size = 11.5;
+  bannerTxt.weight = 700;
+  bannerTxt.fill = '#1d4ed8';
+}
+
+// -------------------------------------------------------------
+// Model 1: 일차식 선별 스캐너 (Filter Scanner)
+// -------------------------------------------------------------
+function drawMode1FilterScanner(two, w, h) {
+  const cIdx = (state.lab2_7 && state.lab2_7.selectedCard) || 0;
+
+  // Title Box
+  const titleBox = two.makeRoundedRectangle(w / 2, 28, w - 32, 34, 6);
+  titleBox.fill = '#ffffff';
+  titleBox.stroke = '#cbd5e1';
+  const titleTxt = two.makeText('🔍 일차식 선별 스캐너: 보기를 클릭하여 실시간 검사하세요', w / 2, 28);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  // 5 Card Tabs (Y = 66)
+  const items = [
+    { sym: 'ㄱ', expr: '4x + 1' },
+    { sym: 'ㄴ', expr: '-3' },
+    { sym: 'ㄷ', expr: 'x² - 2x' },
+    { sym: 'ㄹ', expr: '1/2a - 5' },
+    { sym: 'ㅁ', expr: '3/x + 2' }
+  ];
+
+  const colW = (w - 40) / 5;
+  items.forEach((item, idx) => {
+    const cx = 20 + colW * idx + colW / 2;
+    const isAct = cIdx === idx;
+    const bBox = two.makeRoundedRectangle(cx, 66, colW - 6, 28, 6);
+    bBox.fill = isAct ? '#4f46e5' : '#f1f5f9';
+    bBox.stroke = isAct ? '#4338ca' : '#cbd5e1';
+
+    const bTxt = two.makeText(`${item.sym}. ${item.expr}`, cx, 66);
+    bTxt.size = 11;
+    bTxt.weight = isAct ? 800 : 600;
+    bTxt.fill = isAct ? '#ffffff' : '#334155';
+
+    setTimeout(() => {
+      if (bBox._renderer && bBox._renderer.elem) {
+        bBox._renderer.elem.style.cursor = 'pointer';
+        bBox._renderer.elem.onclick = () => setCard2_7(idx);
+      }
+    }, 10);
+  });
+
+  // Scanner Analysis Card (Y = 212)
+  const cardW = Math.min(520, w - 40);
+  const cardH = 224;
+  const cardY = 212;
+
+  const cardBox = two.makeRoundedRectangle(w / 2, cardY, cardW, cardH, 10);
+  cardBox.fill = '#ffffff';
+  cardBox.stroke = '#cbd5e1';
+  cardBox.linewidth = 1.5;
+
+  const details = [
+    {
+      sym: 'ㄱ',
+      expr: '4x + 1',
+      isPoly: true,
+      degree: 1,
+      isLinear: true,
+      reason: '최고차항 4x의 차수가 1인 다항식입니다.',
+      badgeColor: '#ecfdf5',
+      badgeBorder: '#86efac',
+      badgeTxt: '🟢 일차식 통과 (O)',
+      badgeTxtColor: '#047857'
+    },
+    {
+      sym: 'ㄴ',
+      expr: '-3',
+      isPoly: true,
+      degree: 0,
+      isLinear: false,
+      reason: '문자가 없는 상수항뿐이므로 차수는 0차입니다.',
+      badgeColor: '#fef2f2',
+      badgeBorder: '#f87171',
+      badgeTxt: '🔴 탈락 (차수 0 - 일차식 아님)',
+      badgeTxtColor: '#b91c1c'
+    },
+    {
+      sym: 'ㄷ',
+      expr: 'x² - 2x',
+      isPoly: true,
+      degree: 2,
+      isLinear: false,
+      reason: '최고차항 x²의 차수가 2인 이차식입니다.',
+      badgeColor: '#fef2f2',
+      badgeBorder: '#f87171',
+      badgeTxt: '🔴 탈락 (차수 2 - 이차식)',
+      badgeTxtColor: '#b91c1c'
+    },
+    {
+      sym: 'ㄹ',
+      expr: '1/2a - 5',
+      isPoly: true,
+      degree: 1,
+      isLinear: true,
+      reason: '최고차항 (1/2)a의 차수가 1인 다항식입니다.',
+      badgeColor: '#ecfdf5',
+      badgeBorder: '#86efac',
+      badgeTxt: '🟢 일차식 통과 (O)',
+      badgeTxtColor: '#047857'
+    },
+    {
+      sym: 'ㅁ',
+      expr: '3/x + 2',
+      isPoly: false,
+      degree: '판정 불가',
+      isLinear: false,
+      reason: '문자가 분모에 있는 식(3/x)은 다항식 자체가 아닙니다.',
+      badgeColor: '#fff1f2',
+      badgeBorder: '#fb7185',
+      badgeTxt: '🚨 탈락 (다항식이 아님 - 분모 문자 트랩)',
+      badgeTxtColor: '#e11d48'
+    }
+  ];
+
+  const cur = details[cIdx];
+
+  const tHead = two.makeText(`스캔 대상: [${cur.sym}]  ${cur.expr}`, w / 2, 126);
+  tHead.size = 17;
+  tHead.weight = 800;
+  tHead.fill = '#1e293b';
+
+  // 2 Inspection Rows
+  const bRow1 = two.makeRoundedRectangle(w / 2, 172, cardW - 40, 36, 6);
+  bRow1.fill = '#eff6ff';
+  bRow1.stroke = '#bfdbfe';
+  const tRow1 = two.makeText(`1단계: 다항식 여부 판정 ➔ ${cur.isPoly ? '✅ 다항식 맞음' : '❌ 다항식 아님 (분모에 문자)'}`, w / 2, 172);
+  tRow1.size = 13;
+  tRow1.weight = 700;
+  tRow1.fill = cur.isPoly ? '#1d4ed8' : '#be123c';
+
+  const bRow2 = two.makeRoundedRectangle(w / 2, 218, cardW - 40, 36, 6);
+  bRow2.fill = '#f8fafc';
+  bRow2.stroke = '#cbd5e1';
+  const tRow2 = two.makeText(`2단계: 최고차수 확인 ➔ 최고차수 ${cur.degree}`, w / 2, 218);
+  tRow2.size = 13;
+  tRow2.weight = 700;
+  tRow2.fill = '#334155';
+
+  // Final Verdict Badge
+  const bBadge = two.makeRoundedRectangle(w / 2, 274, cardW - 40, 44, 8);
+  bBadge.fill = cur.badgeColor;
+  bBadge.stroke = cur.badgeBorder;
+  bBadge.linewidth = 2;
+
+  const tBadge = two.makeText(`최종 판정:  ${cur.badgeTxt}`, w / 2, 274);
+  tBadge.size = 15;
+  tBadge.weight = 800;
+  tBadge.fill = cur.badgeTxtColor;
+
+  const tReason = two.makeText(`💡 이유: ${cur.reason}`, w / 2, 314);
+  tReason.size = 12;
+  tReason.weight = 700;
+  tReason.fill = '#64748b';
+}
+
+// -------------------------------------------------------------
+// Model 2: 오답 트랩 심층 해부실 (Trap Anatomy)
+// -------------------------------------------------------------
+function drawMode2TrapAnatomy(two, w, h) {
+  const tIdx = (state.lab2_7 && state.lab2_7.trapIdx) || 0;
+
+  // Title Box
+  const titleBox = two.makeRoundedRectangle(w / 2, 28, w - 32, 34, 6);
+  titleBox.fill = '#ffffff';
+  titleBox.stroke = '#cbd5e1';
+  const titleTxt = two.makeText('🔬 오답 트랩 심층 해부실: 학생들이 가장 많이 빠지는 3대 함정', w / 2, 28);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#991b1b';
+
+  // 3 Trap Tabs (Y = 66)
+  const traps = [
+    '트랩 1: 분모에 문자가 있는 식',
+    '트랩 2: 상수항만 있는 식',
+    '트랩 3: 일차항이 섞인 이차식'
+  ];
+
+  const colW = (w - 40) / 3;
+  traps.forEach((lbl, idx) => {
+    const cx = 20 + colW * idx + colW / 2;
+    const isAct = tIdx === idx;
+    const bBox = two.makeRoundedRectangle(cx, 66, colW - 8, 28, 6);
+    bBox.fill = isAct ? '#ef4444' : '#f1f5f9';
+    bBox.stroke = isAct ? '#b91c1c' : '#cbd5e1';
+
+    const bTxt = two.makeText(lbl, cx, 66);
+    bTxt.size = 12;
+    bTxt.weight = isAct ? 800 : 600;
+    bTxt.fill = isAct ? '#ffffff' : '#334155';
+
+    setTimeout(() => {
+      if (bBox._renderer && bBox._renderer.elem) {
+        bBox._renderer.elem.style.cursor = 'pointer';
+        bBox._renderer.elem.onclick = () => setTrap2_7(idx);
+      }
+    }, 10);
+  });
+
+  const trapData = [
+    {
+      title: '트랩 1: ㅁ. 3/x + 2 (분모에 문자가 있는 식)',
+      warn: '❌ "x의 차수가 1이니까 일차식이다?" ➔ 절대 아닙니다!',
+      detail: '단항식은 수와 문자의 "곱"으로만 이루어져야 합니다. 3/x = 3 ÷ x로 나눗셈이므로 다항식이 아닙니다.',
+      rule: '원칙: 분모에 문자가 있으면 다항식 자체가 아니므로 일차식이 될 수 없습니다!'
+    },
+    {
+      title: '트랩 2: ㄴ. -3 (상수항만 있는 식)',
+      warn: '❌ "-3은 식이 아니거나 일차식이다?" ➔ 아닙니다!',
+      detail: '-3은 하나의 항으로 이루어진 다항식(단항식)은 맞지만, 문자가 곱해진 개수(차수)가 0입니다.',
+      rule: '원칙: 차수가 0인 상수식은 일차식이 아닙니다!'
+    },
+    {
+      title: '트랩 3: ㄷ. x² - 2x (일차항이 포함된 이차식)',
+      warn: '❌ "-2x가 일차항이니까 일차식이다?" ➔ 아닙니다!',
+      detail: '다항식의 차수는 포함된 모든 항 중에서 "차수가 가장 큰 항의 차수"로 결정됩니다.',
+      rule: '원칙: 최고차항 x²의 차수가 2이므로 이 식은 일차식이 아니라 "이차식"입니다!'
+    }
+  ];
+
+  const cur = trapData[tIdx];
+
+  // Card
+  const cardW = Math.min(520, w - 40);
+  const cardH = 224;
+  const cardY = 210;
+
+  const cardBox = two.makeRoundedRectangle(w / 2, cardY, cardW, cardH, 10);
+  cardBox.fill = '#ffffff';
+  cardBox.stroke = '#fca5a5';
+  cardBox.linewidth = 2;
+
+  const tHead = two.makeText(cur.title, w / 2, 126);
+  tHead.size = 15;
+  tHead.weight = 800;
+  tHead.fill = '#991b1b';
+
+  const bWarn = two.makeRoundedRectangle(w / 2, 170, cardW - 36, 38, 6);
+  bWarn.fill = '#fef2f2';
+  bWarn.stroke = '#f87171';
+  const tWarn = two.makeText(cur.warn, w / 2, 170);
+  tWarn.size = 13;
+  tWarn.weight = 800;
+  tWarn.fill = '#b91c1c';
+
+  const bDet = two.makeRoundedRectangle(w / 2, 222, cardW - 36, 46, 6);
+  bDet.fill = '#fffbeb';
+  bDet.stroke = '#fde68a';
+  const tDet = two.makeText(cur.detail, w / 2, 222);
+  tDet.size = 12;
+  tDet.weight = 700;
+  tDet.fill = '#92400e';
+
+  const bRule = two.makeRoundedRectangle(w / 2, 276, cardW - 36, 38, 6);
+  bRule.fill = '#f0fdf4';
+  bRule.stroke = '#86efac';
+  const tRule = two.makeText(`💡 ${cur.rule}`, w / 2, 276);
+  tRule.size = 12.5;
+  tRule.weight = 800;
+  tRule.fill = '#15803d';
+}
+
+// -------------------------------------------------------------
+// Model 3: 5개 보기 비교 매트릭스 (Full Summary Matrix)
+// -------------------------------------------------------------
+function drawMode3SummaryMatrix(two, w, h) {
+  // Title Box
+  const titleBox = two.makeRoundedRectangle(w / 2, 28, w - 32, 34, 6);
+  titleBox.fill = '#ffffff';
+  titleBox.stroke = '#cbd5e1';
+  const titleTxt = two.makeText('📊 스스로 확인하기 2번: 5개 보기 종합 비교 판정표', w / 2, 28);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  // Table Container
+  const tableW = Math.min(520, w - 40);
+  const startY = 70;
+  const rowH = 46;
+
+  const rows = [
+    { sym: 'ㄱ', expr: '4x + 1', poly: 'O', maxTerm: '4x', deg: '1차', pass: '✅ 일차식', passCol: '#047857', bg: '#ecfdf5' },
+    { sym: 'ㄴ', expr: '-3', poly: 'O', maxTerm: '-3', deg: '0차', pass: '❌ 상수식', passCol: '#b91c1c', bg: '#ffffff' },
+    { sym: 'ㄷ', expr: 'x² - 2x', poly: 'O', maxTerm: 'x²', deg: '2차', pass: '❌ 이차식', passCol: '#b91c1c', bg: '#ffffff' },
+    { sym: 'ㄹ', expr: '1/2a - 5', poly: 'O', maxTerm: '(1/2)a', deg: '1차', pass: '✅ 일차식', passCol: '#047857', bg: '#ecfdf5' },
+    { sym: 'ㅁ', expr: '3/x + 2', poly: 'X', maxTerm: '-', deg: '-', pass: '❌ 다항식 아님', passCol: '#be123c', bg: '#fff1f2' }
+  ];
+
+  // Header Row (Y = 88)
+  const hRow = two.makeRoundedRectangle(w / 2, 88, tableW, 30, 4);
+  hRow.fill = '#1e293b';
+  const hTxt = two.makeText('기호      식       다항식 여부   최고차항    차수      최종 판정', w / 2, 88);
+  hTxt.size = 12;
+  hTxt.weight = 800;
+  hTxt.fill = '#ffffff';
+
+  rows.forEach((r, idx) => {
+    const ry = 122 + idx * 42;
+    const rBox = two.makeRoundedRectangle(w / 2, ry, tableW, 36, 6);
+    rBox.fill = r.bg;
+    rBox.stroke = '#cbd5e1';
+
+    const rTxt = two.makeText(
+      `${r.sym}       ${r.expr.padEnd(8)}        ${r.poly}            ${r.maxTerm.padEnd(6)}      ${r.deg}      ${r.pass}`,
+      w / 2,
+      ry
+    );
+    rTxt.size = 12.5;
+    rTxt.weight = 700;
+    rTxt.fill = '#334155';
+  });
+
+  // Final conclusion text (Y = 340)
+  const tConc = two.makeText('🎯 종합 결론: 일차식인 것은  ㄱ,  ㄹ  입니다!', w / 2, 340);
+  tConc.size = 15;
+  tConc.weight = 900;
+  tConc.fill = '#4f46e5';
+}
+
+// -------------------------------------------------------------
+// Grading Logic (스스로 확인하기 2번 채점)
+// -------------------------------------------------------------
+function gradeStep2_7() {
+  const inp = document.getElementById('ans-2-7');
+  const fb = document.getElementById('feedback-2-7');
+
+  if (!inp || !fb) return;
+
+  const raw = (inp.value || '').trim();
+  const norm = raw
+    .replace(/\s+/g, '')
+    .replace(/및|와/g, ',')
+    .replace(/⑴/g, 'ㄱ')
+    .replace(/⑵/g, 'ㄴ')
+    .replace(/⑶/g, 'ㄷ')
+    .replace(/⑷/g, 'ㄹ')
+    .replace(/⑸/g, 'ㅁ')
+    .replace(/1/g, 'ㄱ')
+    .replace(/2/g, 'ㄴ')
+    .replace(/3/g, 'ㄷ')
+    .replace(/4/g, 'ㄹ')
+    .replace(/5/g, 'ㅁ')
+    .replace(/\(ㄱ\)/g, 'ㄱ')
+    .replace(/\(ㄹ\)/g, 'ㄹ');
+
+  const parts = norm.split(',').filter(Boolean);
+  const isCorrect = parts.length === 2 && parts.includes('ㄱ') && parts.includes('ㄹ');
+
+  fb.style.display = 'block';
+
+  if (isCorrect) {
+    if (state.lab2_7) state.lab2_7.isPassed = true;
+    state.substepProgress['2-7'] = true;
+
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#ecfdf5; border:1.5px solid #10b981; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.4rem;">🎉</span>
+          <h5 style="color:#065f46; font-weight:800; margin:0;">100점 완벽 통과! (스스로 확인하기 2번 정복)</h5>
+        </div>
+        <div style="font-size:0.88rem; color:#047857; line-height:1.6;">
+          <b>[2번 문항 정답 완벽 분석]</b><br>
+          • <b>ㄱ. $4x + 1$:</b> 최고차항 $4x$의 차수가 1인 <b>일차식 (O)</b><br>
+          • <b>ㄴ. $-3$:</b> 문자가 없는 상수항만 있으므로 차수 0 (X)<br>
+          • <b>ㄷ. $x^2 - 2x$:</b> 최고차항 $x^2$의 차수가 2인 이차식 (X)<br>
+          • <b>ㄹ. $\\frac{1}{2}a - 5$:</b> 최고차항 $\\frac{1}{2}a$의 차수가 1인 <b>일차식 (O)</b><br>
+          • <b>ㅁ. $\\frac{3}{x} + 2$:</b> 분모에 문자가 있는 식은 다항식 자체가 아님 (X)<br>
+          따라서 일차식인 것은 <b>ㄱ, ㄹ</b> 입니다!
+        </div>
+        <div style="margin-top:10px; font-size:0.8rem; color:#059669; font-weight:700;">
+          ✅ 학습 완료 상태가 영서중 LMS DB에 안전하게 자동 저장되었습니다.
+        </div>
+      </div>
+    `;
+
+    if (window.LMSIntegration && typeof window.LMSIntegration.saveStudentProgress === 'function') {
+      window.LMSIntegration.saveStudentProgress('2-7', { score: 100, passed: true }, 'unit3');
+    }
+
+    if (!state.unlockedSubSteps.includes('2-8')) {
+      state.unlockedSubSteps.push('2-8');
+    }
+  } else {
+    fb.innerHTML = `
+      <div class="card p-3" style="background:#fff1f2; border:1.5px solid #f43f5e; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.3rem;">💡</span>
+          <h6 style="color:#9f1239; font-weight:700; margin:0;">다시 확인해 보세요!</h6>
+        </div>
+        <div style="font-size:0.86rem; color:#be123c; line-height:1.6;">
+          • 일차식은 <b>다항식</b> 중에서 최고차항의 차수가 <b>1</b>인 식이어야 합니다.<br>
+          • <b>주의:</b> 분모에 문자가 있는 식(ㅁ)은 다항식이 아닙니다.<br>
+          • <b>주의:</b> 상수항만 있는 식(ㄴ)은 차수가 0이며, ㄷ은 차수가 2인 이차식입니다.
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+    // --- End Substep 2-7 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -16805,6 +17452,9 @@ function gradeStep2_6() {
       } else if (code === '2-6') {
         renderToolbar2_6();
         renderSubstep2_6();
+      } else if (code === '2-7') {
+        renderToolbar2_7();
+        renderSubstep2_7();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
