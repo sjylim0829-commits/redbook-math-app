@@ -1377,8 +1377,8 @@
       },
       '5-3': {
         code: '5-3', tab: 5,
-        substepLabel: '3. 이항을 이용한 기본 일차방정식 풀이 (p.92)',
-        missionText: '<b>[5-3] 3. 이항을 이용한 기본 일차방정식 풀이 (p.92)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '3. 개념 및 예제 1, 문제 3: 이항을 이용한 기본 일차방정식 풀이 (p.92)',
+        missionText: '<b>[5-3] 개념 및 예제 1, 문제 3: 이항을 이용한 기본 일차방정식 풀이 (교과서 p.92)</b><br>• 등식의 성질을 이용하여 식을 변형하고 $ax=b$ ($a \\neq 0$) 꼴로 나타내어 해를 구하는 4단계 표준 풀이법을 탐구합니다.<br>좌측 캔버스의 [4단계 풀이 스텝퍼], [문제 3 듀얼 솔버], [자유 시뮬레이터 & 검산] 랩을 조작하며 질문에 답해 보세요.',
         drawer: 'drawStep5_3Canvas'
       },
       '5-4': {
@@ -38330,6 +38330,9 @@ function drawMode3PropertyRuleMatrixLab(two) {
       } else if (code === '5-2') {
         renderToolbar5_2();
         renderSubstep5_2Form();
+      } else if (code === '5-3') {
+        renderToolbar5_3();
+        renderSubstep5_3Form();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
@@ -42204,7 +42207,761 @@ function drawMode3_5_2(two, lab, clickables) {
 }
 
 
-        // Auto-init on page load
+        // ========================================================
+// [5-3] 개념 및 예제 1, 문제 3: 이항을 이용한 기본 일차방정식 풀이 (교과서 p.92)
+// ========================================================
+
+function resetLab5_3() {
+  state.lab5_3 = {
+    activeTab: 'mode1', // mode1: 4단계 스텝퍼 랩, mode2: 문제 3 듀얼 솔버 랩, mode3: 자유 시뮬레이터 랩
+    mode1Prob: 0,       // 0: 예제 1 (3x - 1 = -x + 7), 1: 따라하기 (5x + 2 = 2x - 7)
+    mode1Step: 0,       // 0: 원본 등식, 1: 이항, 2: 동류항 정리, 3: 양변 나누기, 4: 대입 검산
+    mode2Prob: 0,       // 0: ⑴ -7 + 2x = -3x + 8, 1: ⑵ 3x + 9 = 4x - 11
+    mode2Step: 0,       // 0: 원본, 1: 이항, 2: 정리, 3: 해 도출
+    simPreset: 0,       // 0: 2x+3=x+7, 1: 4x-5=2x+9, 2: 6x+8=-2x-8
+    isPassed: state.completedSubSteps ? state.completedSubSteps.includes('5-3') : false
+  };
+}
+
+function setTab5_3(tab) {
+  if (!state.lab5_3) resetLab5_3();
+  state.lab5_3.activeTab = tab;
+  renderToolbar5_3();
+  drawStep5_3Canvas();
+}
+
+function setMode1Prob5_3(idx) {
+  if (!state.lab5_3) resetLab5_3();
+  state.lab5_3.mode1Prob = idx;
+  state.lab5_3.mode1Step = 0;
+  drawStep5_3Canvas();
+}
+
+function setMode1Step5_3(stepIdx) {
+  if (!state.lab5_3) resetLab5_3();
+  state.lab5_3.mode1Step = stepIdx;
+  drawStep5_3Canvas();
+}
+
+function setMode2Prob5_3(idx) {
+  if (!state.lab5_3) resetLab5_3();
+  state.lab5_3.mode2Prob = idx;
+  state.lab5_3.mode2Step = 0;
+  drawStep5_3Canvas();
+}
+
+function setMode2Step5_3(stepIdx) {
+  if (!state.lab5_3) resetLab5_3();
+  state.lab5_3.mode2Step = stepIdx;
+  drawStep5_3Canvas();
+}
+
+function setSimPreset5_3(idx) {
+  if (!state.lab5_3) resetLab5_3();
+  state.lab5_3.simPreset = idx;
+  drawStep5_3Canvas();
+}
+
+function renderToolbar5_3() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+  if (!state.lab5_3) resetLab5_3();
+  const cur = state.lab5_3.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:8px; width:100%; flex-wrap:wrap;">
+      <button class="icon-btn ${cur === 'mode1' ? 'active' : ''}" onclick="setTab5_3('mode1')">
+        🚀 1. 기본 풀이 4단계 스텝퍼 랩
+      </button>
+      <button class="icon-btn ${cur === 'mode2' ? 'active' : ''}" onclick="setTab5_3('mode2')">
+        ⚖️ 2. 문제 3 듀얼 솔버 랩
+      </button>
+      <button class="icon-btn ${cur === 'mode3' ? 'active' : ''}" onclick="setTab5_3('mode3')">
+        🎛️ 3. 방정식 자유 시뮬레이터 랩
+      </button>
+      <button class="icon-btn" onclick="resetLab5_3(); renderToolbar5_3(); drawStep5_3Canvas();" style="margin-left:auto;">
+        🔄 초기화
+      </button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:800;" onclick="passCurrentSubstepGeneric('5-3')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function renderSubstep5_3Form() {
+  const mTitle = document.getElementById('mission-title');
+  const mDesc = document.getElementById('mission-desc');
+
+  if (mTitle) mTitle.innerText = '🎯 오늘의 수학 탐구 미션';
+  if (mDesc) {
+    mDesc.innerHTML = `
+      <b>[3.5 일차방정식의 풀이: 개념 및 예제 1, 문제 3] (교과서 p.92)</b><br>
+      • <b>일차방정식의 기본 풀이 4단계</b>:<br>
+      &nbsp;&nbsp;① 미지수를 포함한 항은 좌변으로, 상수항은 우변으로 <b>이항</b>합니다.<br>
+      &nbsp;&nbsp;② 동류항끼리 정리하여 <b>$ax = b$ ($a \\neq 0$)</b> 꼴로 만듭니다.<br>
+      &nbsp;&nbsp;③ 양변을 $x$의 계수 $a$로 나누어 <b>$x = \\frac{b}{a}$</b>를 구합니다.<br>
+      &nbsp;&nbsp;④ 구한 해를 원래 방정식에 대입하여 좌변과 우변의 값이 일치하는지 <b>검산(확인)</b>합니다.<br>
+      • <b>탐구 미션</b>: 좌측 이항 스텝퍼 랩을 조작하여 예제 1, 따라하기, 문제 3의 단계별 풀이와 검산 과정을 확인하고 문제를 해결하세요.
+    `;
+    if (window.renderMathInElement) {
+      renderMathInElement(mDesc, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false }
+        ],
+        throwOnError: false
+      });
+    }
+  }
+
+  const cont = document.getElementById('substep-form-content');
+  if (!cont) return;
+
+  const isPassed = state.completedSubSteps && state.completedSubSteps.includes('5-3');
+
+  cont.innerHTML = `
+    <div class="card" style="padding:16px; border:1px solid #cbd5e1; border-radius:12px; background:#ffffff; box-shadow:0 1px 3px rgba(0,0,0,0.05); margin-bottom:14px;">
+      <!-- Dual Badge Header -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #f1f5f9; padding-bottom:8px;">
+        <span style="font-size:0.75rem; font-weight:800; background:#e0e7ff; color:#4338ca; padding:3px 8px; border-radius:6px;">
+          교과서 p.92 [3.5 일차방정식의 풀이]
+        </span>
+        <span style="font-size:0.78rem; font-weight:700; color:#64748b;">
+          예제 1 및 문제 3 (100점 만점)
+        </span>
+      </div>
+
+      <h4 style="font-size:0.95rem; font-weight:800; color:#1e293b; margin-bottom:12px; line-height:1.5;">
+        이항과 등식의 성질을 이용하여 일차방정식을 단계별로 풀고 해를 구하시오.
+      </h4>
+
+      <!-- 1단계: [예제 1] 풀이 과정 빈칸 -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-size:0.86rem; font-weight:800; color:#1e293b;">
+            1단계. [예제 1] 일차방정식 $3x - 1 = -x + 7$ 풀이 과정
+          </span>
+          <span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">
+            배점 25%
+          </span>
+        </div>
+        <p style="font-size:0.82rem; color:#475569; line-height:1.5; margin-bottom:8px;">
+          이항하면 $3x + x = 7 + $ <b>[ ① ]</b> $\\implies 4x = $ <b>[ ② ]</b> $\\implies x = $ <b>[ ③ ]</b>
+        </p>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.82rem; font-weight:700; color:#334155;">① 이항한 수:</span>
+            <input type="text" id="ans-5-3-q1_1" class="proof-input-text" placeholder="수 입력" style="width:130px;" ${isPassed ? 'disabled value="1"' : ''}>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.82rem; font-weight:700; color:#334155;">② 우변 정리 값:</span>
+            <input type="text" id="ans-5-3-q1_2" class="proof-input-text" placeholder="수 입력" style="width:130px;" ${isPassed ? 'disabled value="8"' : ''}>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.82rem; font-weight:700; color:#334155;">③ 방정식의 해 $x$:</span>
+            <input type="text" id="ans-5-3-q1_3" class="proof-input-text" placeholder="해 입력" style="width:130px;" ${isPassed ? 'disabled value="2"' : ''}>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2단계: [따라하기] 풀이 및 해 -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-size:0.86rem; font-weight:800; color:#1e293b;">
+            2단계. [따라하기] 일차방정식 $5x + 2 = 2x - 7$ 풀이
+          </span>
+          <span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">
+            배점 25%
+          </span>
+        </div>
+        <p style="font-size:0.82rem; color:#475569; line-height:1.5; margin-bottom:8px;">
+          이항하여 동류항을 정리한 식 $ax = b$를 구하고, 최종 해 $x$를 구하시오.
+        </p>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.82rem; font-weight:700; color:#334155;">① $ax = b$ 꼴 정리 식:</span>
+            <input type="text" id="ans-5-3-q2_1" class="proof-input-text" placeholder="식 입력 (예: ax=b 꼴)" style="width:170px;" ${isPassed ? 'disabled value="3x=-9"' : ''}>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.82rem; font-weight:700; color:#334155;">② 방정식의 해 $x$:</span>
+            <input type="text" id="ans-5-3-q2_2" class="proof-input-text" placeholder="해 입력" style="width:130px;" ${isPassed ? 'disabled value="-3"' : ''}>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3단계: [문제 3-(1)] 풀이 -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-size:0.86rem; font-weight:800; color:#1e293b;">
+            3단계. [문제 3-⑴] 일차방정식 $-7 + 2x = -3x + 8$ 풀기
+          </span>
+          <span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">
+            배점 25%
+          </span>
+        </div>
+        <p style="font-size:0.82rem; color:#475569; line-height:1.5; margin-bottom:8px;">
+          미지수항과 상수항을 각각 이항하여 정리한 후 해 $x$를 구하시오.
+        </p>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:0.82rem; font-weight:700; color:#334155;">방정식의 해 $x$ =</span>
+          <input type="text" id="ans-5-3-q3" class="proof-input-text" placeholder="해 입력 (예: 수 또는 x=수)" style="width:180px;" ${isPassed ? 'disabled value="3"' : ''}>
+        </div>
+      </div>
+
+      <!-- 4단계: [문제 3-(2)] 풀이 -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-size:0.86rem; font-weight:800; color:#1e293b;">
+            4단계. [문제 3-⑵] 일차방정식 $3x + 9 = 4x - 11$ 풀기
+          </span>
+          <span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">
+            배점 25%
+          </span>
+        </div>
+        <p style="font-size:0.82rem; color:#475569; line-height:1.5; margin-bottom:8px;">
+          일차방정식을 풀고 해 $x$의 값을 구하시오.
+        </p>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:0.82rem; font-weight:700; color:#334155;">방정식의 해 $x$ =</span>
+          <input type="text" id="ans-5-3-q4" class="proof-input-text" placeholder="해 입력 (예: 수 또는 x=수)" style="width:180px;" ${isPassed ? 'disabled value="20"' : ''}>
+        </div>
+      </div>
+
+      <!-- Full Width Submit Button -->
+      <button id="btn-submit-5-3" onclick="gradeStep5_3()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px; background:linear-gradient(135deg, #4f46e5, #4338ca); color:#fff; border:none; cursor:pointer;">
+        이항을 이용한 일차방정식 풀이 확인 및 채점
+      </button>
+
+      <div id="feedback-5-3" style="display:${isPassed ? 'block' : 'none'}; margin-top:14px;">
+        ${isPassed ? getStep5_3SuccessHtml() : ''}
+      </div>
+    </div>
+  `;
+
+  if (window.renderMathInElement) {
+    renderMathInElement(cont, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+
+  // Draw canvas immediately on form render
+  drawStep5_3Canvas();
+}
+
+function getStep5_3SuccessHtml() {
+  return `
+    <div class="verified-answer-card">
+      <h4 style="color:#065f46; font-size:0.95rem; font-weight:800; margin-bottom:6px;">
+        🎉 100점 완벽합니다! (일차방정식의 기본 풀이 통과)
+      </h4>
+      <p style="font-size:0.84rem; color:#047857; line-height:1.55; margin:0;">
+        <b>[교과서 공식 풀이 (p.92)]</b><br>
+        • <b>[예제 1] $3x - 1 = -x + 7$</b>: 이항하면 $3x + x = 7 + 1 \\implies 4x = 8 \\implies x = 2$<br>
+        &nbsp;&nbsp;[검산] $3(2) - 1 = 5$, $-(2) + 7 = 5$ (참)<br>
+        • <b>[따라하기] $5x + 2 = 2x - 7$</b>: 이항하면 $5x - 2x = -7 - 2 \\implies 3x = -9 \\implies x = -3$<br>
+        &nbsp;&nbsp;[검산] $5(-3) + 2 = -13$, $2(-3) - 7 = -13$ (참)<br>
+        • <b>[문제 3-⑴] $-7 + 2x = -3x + 8$</b>: $2x + 3x = 8 + 7 \\implies 5x = 15 \\implies x = 3$<br>
+        • <b>[문제 3-⑵] $3x + 9 = 4x - 11$</b>: $3x - 4x = -11 - 9 \\implies -x = -20 \\implies x = 20$<br>
+        (또는 우변으로 모으면 $9 + 11 = 4x - 3x \\implies x = 20$)
+      </p>
+      <div style="margin-top:10px; display:flex; gap:8px;">
+        <button class="icon-btn" style="background:#059669; color:#fff; font-weight:800; padding:6px 14px; border-radius:6px;" onclick="loadSubStep('5-4')">
+          다음 활동 [5-4] 괄호가 있는 일차방정식 풀이 도전 ▶
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+async function gradeStep5_3() {
+  const q1_1El = document.getElementById('ans-5-3-q1_1');
+  const q1_2El = document.getElementById('ans-5-3-q1_2');
+  const q1_3El = document.getElementById('ans-5-3-q1_3');
+  const q2_1El = document.getElementById('ans-5-3-q2_1');
+  const q2_2El = document.getElementById('ans-5-3-q2_2');
+  const q3El = document.getElementById('ans-5-3-q3');
+  const q4El = document.getElementById('ans-5-3-q4');
+  const fb = document.getElementById('feedback-5-3');
+
+  if (!q1_1El || !q1_2El || !q1_3El || !q2_1El || !q2_2El || !q3El || !q4El || !fb) return;
+
+  const q1_1 = q1_1El.value.trim().replace(/\s+/g, '');
+  const q1_2 = q1_2El.value.trim().replace(/\s+/g, '');
+  const q1_3 = q1_3El.value.trim().replace(/\s+/g, '').replace('x=', '');
+  const q2_1 = q2_1El.value.trim().toLowerCase().replace(/\s+/g, '');
+  const q2_2 = q2_2El.value.trim().replace(/\s+/g, '').replace('x=', '');
+  const q3 = q3El.value.trim().replace(/\s+/g, '').replace('x=', '');
+  const q4 = q4El.value.trim().replace(/\s+/g, '').replace('x=', '');
+
+  if (!q1_1 || !q1_2 || !q1_3 || !q2_1 || !q2_2 || !q3 || !q4) {
+    alert('모든 단계의 정답을 입력해 주세요.');
+    return;
+  }
+
+  // 1단계: 1, 8, 2
+  const isQ1_1 = (q1_1 === '1' || q1_1 === '+1');
+  const isQ1_2 = (q1_2 === '8' || q1_2 === '+8');
+  const isQ1_3 = (q1_3 === '2');
+
+  // 2단계: 3x=-9, -3
+  const isQ2_1 = (q2_1 === '3x=-9' || q2_1 === '+3x=-9' || q2_1 === '-9=3x');
+  const isQ2_2 = (q2_2 === '-3');
+
+  // 3단계: 3
+  const isQ3 = (q3 === '3' || q3 === '+3');
+
+  // 4단계: 20
+  const isQ4 = (q4 === '20' || q4 === '+20');
+
+  if (isQ1_1 && isQ1_2 && isQ1_3 && isQ2_1 && isQ2_2 && isQ3 && isQ4) {
+    fb.style.display = 'block';
+    fb.innerHTML = getStep5_3SuccessHtml();
+    if (window.renderMathInElement) {
+      renderMathInElement(fb, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false }
+        ],
+        throwOnError: false
+      });
+    }
+
+    if (!state.completedSubSteps.includes('5-3')) {
+      state.completedSubSteps.push('5-3');
+    }
+    // Unlock next step 5-4
+    if (!state.unlockedSubSteps.includes('5-4')) {
+      state.unlockedSubSteps.push('5-4');
+    }
+
+    // Save to LMS Cloud DB
+    if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+      try {
+        await LMSIntegration.saveStudentProgress('5-3', { q1_1, q1_2, q1_3, q2_1, q2_2, q3, q4 }, 'u3');
+      } catch (e) {
+        console.warn('LMS save note:', e);
+      }
+    }
+
+    q1_1El.disabled = true;
+    q1_2El.disabled = true;
+    q1_3El.disabled = true;
+    q2_1El.disabled = true;
+    q2_2El.disabled = true;
+    q3El.disabled = true;
+    q4El.disabled = true;
+
+    if (state.lab5_3) {
+      state.lab5_3.isPassed = true;
+    }
+    drawStep5_3Canvas();
+  } else {
+    let errs = [];
+    if (!isQ1_1 || !isQ1_2 || !isQ1_3) errs.push('1단계 (예제 1 풀이 과정)');
+    if (!isQ2_1 || !isQ2_2) errs.push('2단계 (따라하기 ax=b 및 해)');
+    if (!isQ3) errs.push('3단계 (문제 3-⑴ 해)');
+    if (!isQ4) errs.push('4단계 (문제 3-⑵ 해)');
+
+    fb.style.display = 'block';
+    fb.innerHTML = `
+      <div style="background:#fef2f2; border:1.5px solid #f87171; border-radius:10px; padding:12px 14px;">
+        <h4 style="color:#b91c1c; font-size:0.92rem; font-weight:800; margin-bottom:4px;">❌ 다시 확인해 보세요</h4>
+        <p style="font-size:0.84rem; color:#7f1d1d; line-height:1.5; margin:0;">
+          ${errs.join(', ')} 항목이 올바르지 않습니다.<br>
+          좌측 캔버스의 [기본 풀이 4단계 스텝퍼 랩] 및 [문제 3 듀얼 솔버 랩]을 조작하여 단계별 계산 과정을 확인해 보세요.
+        </p>
+      </div>
+    `;
+  }
+}
+
+// ----------------------------------------------------
+// Two.js 60fps Interactive Canvas Engine for Step 5-3
+// ----------------------------------------------------
+function drawStep5_3Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const two = new Two({
+    width: 680,
+    height: 440,
+    type: Two.Types.svg
+  }).appendTo(container);
+
+  if (!state.lab5_3) resetLab5_3();
+  const lab = state.lab5_3;
+  const activeTab = lab.activeTab;
+
+  // Header Title & Mode
+  const titleBox = two.makeRoundedRectangle(340, 24, 650, 36, 8);
+  titleBox.fill = '#4f46e5';
+  titleBox.stroke = 'none';
+
+  let titleStr = '';
+  if (activeTab === 'mode1') titleStr = '🚀 1. 기본 풀이 4단계 스텝퍼 랩 (교과서 예제 1 & 따라하기)';
+  else if (activeTab === 'mode2') titleStr = '⚖️ 2. 문제 3 듀얼 솔버 랩 (교과서 p.92 문제 3)';
+  else titleStr = '🎛️ 3. 방정식 자유 시뮬레이터 & 검산 랩';
+
+  const titleText = two.makeText(titleStr, 340, 24);
+  titleText.fill = '#ffffff';
+  titleText.size = 14;
+  titleText.weight = 800;
+
+  const clickables = [];
+
+  if (activeTab === 'mode1') {
+    drawMode1_5_3(two, lab, clickables);
+  } else if (activeTab === 'mode2') {
+    drawMode2_5_3(two, lab, clickables);
+  } else {
+    drawMode3_5_3(two, lab, clickables);
+  }
+
+  // Bottom Safety Banner (Y=396px, H=32px, bottom safety margin = 440 - 412 = 28px >= 25px)
+  const bannerBg = two.makeRoundedRectangle(340, 396, 650, 32, 6);
+  bannerBg.fill = '#f8fafc';
+  bannerBg.stroke = '#cbd5e1';
+  bannerBg.linewidth = 1;
+
+  let guideMsg = '';
+  if (activeTab === 'mode1') {
+    guideMsg = '💡 [기본 풀이 순서] ① 이항(부호반전) ➔ ② 동류항정리(ax=b) ➔ ③ 양변나누기(x=b/a) ➔ ④ 대입검산';
+  } else if (activeTab === 'mode2') {
+    guideMsg = '💡 [선택 팁] 미지수 계수를 양수로 만들고 싶을 때는 x항을 우변으로 이항해도 편리합니다!';
+  } else {
+    guideMsg = '💡 [검산 원리] 구한 해를 원래 방정식의 좌변과 우변에 각각 대입했을 때 등호가 성립해야 참인 해입니다.';
+  }
+
+  const guideText = two.makeText(guideMsg, 340, 396);
+  guideText.fill = '#475569';
+  guideText.size = 11.5;
+  guideText.weight = 700;
+
+  // Crucial: Update two.js FIRST so DOM elements are rendered
+  two.update();
+
+  // Safely attach onclick and pointer cursor to rendered DOM elements
+  clickables.forEach(item => {
+    const bindEl = (obj) => {
+      if (obj && obj._renderer && obj._renderer.elem) {
+        obj._renderer.elem.style.cursor = 'pointer';
+        obj._renderer.elem.onclick = (e) => {
+          if (e && e.stopPropagation) e.stopPropagation();
+          item.fn();
+        };
+      }
+    };
+    bindEl(item.bg);
+    bindEl(item.txt);
+  });
+}
+
+// ----------------------------------------------------
+// Mode 1: 4단계 스텝퍼 랩
+// ----------------------------------------------------
+function drawMode1_5_3(two, lab, clickables) {
+  const probList = [
+    {
+      title: '예제 1: 3x - 1 = -x + 7',
+      steps: [
+        { label: '0. 원본 등식', expr: '3x - 1 = -x + 7', desc: '좌변의 상수항 -1과 우변의 미지수항 -x를 확인합니다.' },
+        { label: '1. 이항 (부호 반전)', expr: '3x + x = 7 + 1', desc: '-1은 우변으로 +1, -x는 좌변으로 +x로 부호 반전 이항!' },
+        { label: '2. ax = b 꼴 정리', expr: '4x = 8', desc: '동류항끼리 계산하여 좌변 4x, 우변 8로 정리합니다.' },
+        { label: '3. 양변 나누기 4', expr: 'x = 2', desc: '양변을 x의 계수 4로 나누어 해 x = 2를 구합니다.' },
+        { label: '4. 원래 등식 대입 검산', expr: '좌변: 3(2)-1 = 5  |  우변: -(2)+7 = 5', desc: '좌변 = 우변 = 5 로 등식이 참이므로 x = 2는 확실한 해입니다! ✅' }
+      ]
+    },
+    {
+      title: '따라하기: 5x + 2 = 2x - 7',
+      steps: [
+        { label: '0. 원본 등식', expr: '5x + 2 = 2x - 7', desc: '좌변의 상수항 +2와 우변의 미지수항 2x를 확인합니다.' },
+        { label: '1. 이항 (부호 반전)', expr: '5x - 2x = -7 - 2', desc: '+2는 우변으로 -2, 2x는 좌변으로 -2x로 부호 반전 이항!' },
+        { label: '2. ax = b 꼴 정리', expr: '3x = -9', desc: '동류항끼리 계산하여 좌변 3x, 우변 -9로 정리합니다.' },
+        { label: '3. 양변 나누기 3', expr: 'x = -3', desc: '양변을 x의 계수 3으로 나누어 해 x = -3을 구합니다.' },
+        { label: '4. 원래 등식 대입 검산', expr: '좌변: 5(-3)+2 = -13  |  우변: 2(-3)-7 = -13', desc: '좌변 = 우변 = -13 으로 등식이 성립하므로 x = -3은 참인 해! ✅' }
+      ]
+    }
+  ];
+
+  const curProb = probList[lab.mode1Prob];
+  const curStep = curProb.steps[lab.mode1Step];
+
+  // Problem Switch Tabs (Y=64)
+  probList.forEach((p, idx) => {
+    const bx = 200 + idx * 280;
+    const isSel = (lab.mode1Prob === idx);
+    const bg = two.makeRoundedRectangle(bx, 64, 260, 30, 6);
+    bg.fill = isSel ? '#4338ca' : '#ffffff';
+    bg.stroke = isSel ? '#312e81' : '#cbd5e1';
+    bg.linewidth = isSel ? 2 : 1;
+
+    const txt = two.makeText(p.title, bx, 64);
+    txt.fill = isSel ? '#ffffff' : '#334155';
+    txt.size = 11.5;
+    txt.weight = 700;
+
+    clickables.push({ bg, txt, fn: () => setMode1Prob5_3(idx) });
+  });
+
+  // Step Progress Pills (Y=114, 5 steps)
+  curProb.steps.forEach((s, idx) => {
+    const sx = 80 + idx * 130;
+    const isAct = (lab.mode1Step === idx);
+    const pill = two.makeRoundedRectangle(sx, 114, 120, 26, 13);
+    pill.fill = isAct ? '#dbeafe' : (idx < lab.mode1Step ? '#f0fdf4' : '#f8fafc');
+    pill.stroke = isAct ? '#2563eb' : (idx < lab.mode1Step ? '#86efac' : '#cbd5e1');
+    pill.linewidth = isAct ? 2 : 1;
+
+    const pTxt = two.makeText(s.label.split(' ')[0], sx, 114);
+    pTxt.fill = isAct ? '#1d4ed8' : (idx < lab.mode1Step ? '#166534' : '#64748b');
+    pTxt.size = 10.5;
+    pTxt.weight = isAct ? 800 : 600;
+
+    clickables.push({ bg: pill, txt: pTxt, fn: () => setMode1Step5_3(idx) });
+  });
+
+  // Main Transformation Box (Y: 215)
+  const mainCard = two.makeRoundedRectangle(340, 215, 650, 130, 12);
+  const isFinal = (lab.mode1Step === 4);
+  mainCard.fill = isFinal ? '#f0fdf4' : '#f8fafc';
+  mainCard.stroke = isFinal ? '#22c55e' : '#cbd5e1';
+  mainCard.linewidth = 2;
+
+  const stepBadge = two.makeText(`[${curStep.label}]`, 340, 175);
+  stepBadge.fill = isFinal ? '#15803d' : '#475569';
+  stepBadge.size = 12.5;
+  stepBadge.weight = 800;
+
+  const stepFormula = two.makeText(curStep.expr, 340, 215);
+  stepFormula.fill = isFinal ? '#166534' : '#1e293b';
+  stepFormula.size = (lab.mode1Step === 4) ? 17 : 24;
+  stepFormula.weight = 800;
+
+  const stepDesc = two.makeText(curStep.desc, 340, 255);
+  stepDesc.fill = isFinal ? '#047857' : '#3b82f6';
+  stepDesc.size = 12;
+  stepDesc.weight = 700;
+
+  // Stepper Controller Buttons (Y: 320)
+  // Prev Button
+  const prevBg = two.makeRoundedRectangle(230, 320, 150, 34, 17);
+  prevBg.fill = (lab.mode1Step > 0) ? '#ffffff' : '#f1f5f9';
+  prevBg.stroke = (lab.mode1Step > 0) ? '#64748b' : '#e2e8f0';
+  prevBg.linewidth = 1.5;
+
+  const prevTxt = two.makeText('◀ 이전 단계', 230, 320);
+  prevTxt.fill = (lab.mode1Step > 0) ? '#334155' : '#94a3b8';
+  prevTxt.size = 12;
+  prevTxt.weight = 700;
+
+  if (lab.mode1Step > 0) {
+    clickables.push({ bg: prevBg, txt: prevTxt, fn: () => setMode1Step5_3(lab.mode1Step - 1) });
+  }
+
+  // Next / Repeat Button
+  const nextBg = two.makeRoundedRectangle(450, 320, 190, 34, 17);
+  nextBg.fill = '#4f46e5';
+  nextBg.stroke = '#3730a3';
+  nextBg.linewidth = 2;
+
+  const nextTxt = two.makeText(
+    (lab.mode1Step < 4) ? `다음 단계 ▶ (${curProb.steps[lab.mode1Step + 1].label.split(' ')[0]})` : '🔄 처음부터 다시 보기',
+    450, 320
+  );
+  nextTxt.fill = '#ffffff';
+  nextTxt.size = 11.5;
+  nextTxt.weight = 800;
+
+  clickables.push({
+    bg: nextBg,
+    txt: nextTxt,
+    fn: () => setMode1Step5_3((lab.mode1Step + 1) % 5)
+  });
+}
+
+// ----------------------------------------------------
+// Mode 2: 문제 3 듀얼 솔버 랩
+// ----------------------------------------------------
+function drawMode2_5_3(two, lab, clickables) {
+  const problems = [
+    {
+      label: '⑴ -7 + 2x = -3x + 8',
+      ans: 'x = 3',
+      steps: [
+        { name: '1. 원본 등식', text: '-7 + 2x = -3x + 8', note: '상수항 -7과 미지수항 -3x를 이항합니다.' },
+        { name: '2. 이항 (부호 반전)', text: '2x + 3x = 8 + 7', note: '-3x는 +3x로 좌변 이동, -7은 +7로 우변 이동!' },
+        { name: '3. 동류항 계산', text: '5x = 15', note: '동류항을 계산하여 ax = b 꼴로 정리합니다.' },
+        { name: '4. 계수로 나누기', text: 'x = 3', note: '양변을 5로 나누어 해 x = 3을 도출합니다! 🎉' }
+      ]
+    },
+    {
+      label: '⑵ 3x + 9 = 4x - 11',
+      ans: 'x = 20',
+      steps: [
+        { name: '1. 원본 등식', text: '3x + 9 = 4x - 11', note: '미지수항 4x와 상수항 +9를 이항합니다.' },
+        { name: '2. 이항 (부호 반전)', text: '3x - 4x = -11 - 9', note: '4x는 -4x로 좌변 이동, +9는 -9로 우변 이동!' },
+        { name: '3. 동류항 계산', text: '-x = -20', note: '동류항을 계산하여 -x = -20으로 정리합니다.' },
+        { name: '4. 양변에 -1 나누기', text: 'x = 20', note: '양변에 -1을 나누어(곱하여) 해 x = 20을 완성합니다! 🎉' }
+      ]
+    }
+  ];
+
+  const curProb = problems[lab.mode2Prob];
+  const curStep = curProb.steps[lab.mode2Step];
+
+  // Prob Tabs (Y=64)
+  problems.forEach((p, idx) => {
+    const bx = 200 + idx * 280;
+    const isSel = (lab.mode2Prob === idx);
+    const bg = two.makeRoundedRectangle(bx, 64, 260, 30, 6);
+    bg.fill = isSel ? '#4338ca' : '#ffffff';
+    bg.stroke = isSel ? '#312e81' : '#cbd5e1';
+    bg.linewidth = isSel ? 2 : 1;
+
+    const txt = two.makeText(p.label, bx, 64);
+    txt.fill = isSel ? '#ffffff' : '#1e293b';
+    txt.size = 12;
+    txt.weight = 700;
+
+    clickables.push({ bg, txt, fn: () => setMode2Prob5_3(idx) });
+  });
+
+  // Step Pills (Y=114, 4 steps)
+  curProb.steps.forEach((s, idx) => {
+    const sx = 100 + idx * 160;
+    const isAct = (lab.mode2Step === idx);
+    const pill = two.makeRoundedRectangle(sx, 114, 145, 26, 13);
+    pill.fill = isAct ? '#dbeafe' : (idx < lab.mode2Step ? '#f0fdf4' : '#f8fafc');
+    pill.stroke = isAct ? '#2563eb' : (idx < lab.mode2Step ? '#86efac' : '#cbd5e1');
+    pill.linewidth = isAct ? 2 : 1;
+
+    const pTxt = two.makeText(s.name, sx, 114);
+    pTxt.fill = isAct ? '#1d4ed8' : (idx < lab.mode2Step ? '#166534' : '#64748b');
+    pTxt.size = 11;
+    pTxt.weight = isAct ? 800 : 600;
+
+    clickables.push({ bg: pill, txt: pTxt, fn: () => setMode2Step5_3(idx) });
+  });
+
+  // Main Display Card (Y: 220)
+  const card = two.makeRoundedRectangle(340, 220, 650, 130, 12);
+  const isDone = (lab.mode2Step === 3);
+  card.fill = isDone ? '#f0fdf4' : '#f8fafc';
+  card.stroke = isDone ? '#10b981' : '#cbd5e1';
+  card.linewidth = 2;
+
+  const cardTitle = two.makeText(`[${curStep.name}]`, 340, 180);
+  cardTitle.fill = isDone ? '#047857' : '#475569';
+  cardTitle.size = 12.5;
+  cardTitle.weight = 800;
+
+  const cardMath = two.makeText(curStep.text, 340, 220);
+  cardMath.fill = isDone ? '#15803d' : '#1e293b';
+  cardMath.size = isDone ? 28 : 24;
+  cardMath.weight = 800;
+
+  const cardNote = two.makeText(curStep.note, 340, 260);
+  cardNote.fill = isDone ? '#065f46' : '#2563eb';
+  cardNote.size = 12.5;
+  cardNote.weight = 700;
+
+  // Next / Advance Button (Y: 320)
+  const advBg = two.makeRoundedRectangle(340, 320, 260, 34, 17);
+  advBg.fill = '#4f46e5';
+  advBg.stroke = '#3730a3';
+  advBg.linewidth = 2;
+
+  const advTxt = two.makeText(
+    (lab.mode2Step < 3) ? `다음 단계 ▶ (${curProb.steps[lab.mode2Step + 1].name})` : '🔄 처음부터 다시 풀기',
+    340, 320
+  );
+  advTxt.fill = '#ffffff';
+  advTxt.size = 12;
+  advTxt.weight = 800;
+
+  clickables.push({
+    bg: advBg,
+    txt: advTxt,
+    fn: () => setMode2Step5_3((lab.mode2Step + 1) % 4)
+  });
+}
+
+// ----------------------------------------------------
+// Mode 3: 자유 시뮬레이터 & 검산 랩
+// ----------------------------------------------------
+function drawMode3_5_3(two, lab, clickables) {
+  const simPresets = [
+    { title: '추천 1: 2x + 3 = x + 7', eq: '2x + 3 = x + 7', trans: '2x - x = 7 - 3', res: 'x = 4', check: '좌변: 2(4)+3=11 | 우변: (4)+7=11' },
+    { title: '추천 2: 4x - 5 = 2x + 9', eq: '4x - 5 = 2x + 9', trans: '4x - 2x = 9 + 5', res: '2x = 14 ⟹ x = 7', check: '좌변: 4(7)-5=23 | 우변: 2(7)+9=23' },
+    { title: '추천 3: 6x + 8 = -2x - 8', eq: '6x + 8 = -2x - 8', trans: '6x + 2x = -8 - 8', res: '8x = -16 ⟹ x = -2', check: '좌변: 6(-2)+8=-4 | 우변: -2(-2)-8=-4' }
+  ];
+
+  const curSim = simPresets[lab.simPreset];
+
+  // Preset Tabs (Y=64)
+  simPresets.forEach((p, idx) => {
+    const bx = 130 + idx * 210;
+    const isAct = (lab.simPreset === idx);
+    const bg = two.makeRoundedRectangle(bx, 64, 195, 30, 6);
+    bg.fill = isAct ? '#4338ca' : '#ffffff';
+    bg.stroke = isAct ? '#312e81' : '#cbd5e1';
+    bg.linewidth = isAct ? 2 : 1;
+
+    const txt = two.makeText(p.title, bx, 64);
+    txt.fill = isAct ? '#ffffff' : '#334155';
+    txt.size = 11;
+    txt.weight = 700;
+
+    clickables.push({ bg, txt, fn: () => setSimPreset5_3(idx) });
+  });
+
+  // Display Box 1: Original Eq & Transpose (Y: 150)
+  const box1 = two.makeRoundedRectangle(340, 150, 650, 84, 10);
+  box1.fill = '#eff6ff';
+  box1.stroke = '#3b82f6';
+  box1.linewidth = 1.5;
+
+  const lbl1 = two.makeText('① 원본 방정식 & 이항 전개', 340, 126);
+  lbl1.fill = '#1d4ed8'; lbl1.size = 11.5; lbl1.weight = 800;
+
+  const txt1 = two.makeText(`${curSim.eq}  ⟹  ${curSim.trans}`, 340, 160);
+  txt1.fill = '#1e293b'; txt1.size = 19; txt1.weight = 800;
+
+  // Display Box 2: ax = b & Solution (Y: 245)
+  const box2 = two.makeRoundedRectangle(340, 245, 650, 76, 10);
+  box2.fill = '#f0fdf4';
+  box2.stroke = '#22c55e';
+  box2.linewidth = 2;
+
+  const lbl2 = two.makeText('② ax = b 꼴 정리 및 해 x 도출', 340, 222);
+  lbl2.fill = '#15803d'; lbl2.size = 11.5; lbl2.weight = 800;
+
+  const txt2 = two.makeText(`최종 해: ${curSim.res}`, 340, 255);
+  txt2.fill = '#166534'; txt2.size = 20; txt2.weight = 800;
+
+  // Display Box 3: Verification (Y: 335)
+  const box3 = two.makeRoundedRectangle(340, 335, 650, 68, 10);
+  box3.fill = '#fdf4ff';
+  box3.stroke = '#d946ef';
+  box3.linewidth = 1.5;
+
+  const lbl3 = two.makeText('③ 원래 등식에 대입하여 일치 검산', 340, 316);
+  lbl3.fill = '#a21caf'; lbl3.size = 11.5; lbl3.weight = 800;
+
+  const txt3 = two.makeText(`${curSim.check}  ✅ (등호 성립)`, 340, 344);
+  txt3.fill = '#86198f'; txt3.size = 14; txt3.weight = 800;
+}
+
+
+// Auto-init on page load
     window.addEventListener('DOMContentLoaded', () => {
       populateSubstepDropdown();
       loadSubStep('0-1');
