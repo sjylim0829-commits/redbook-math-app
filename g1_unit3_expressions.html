@@ -1125,8 +1125,8 @@
       },
       '4-7': {
         code: '4-7', tab: 4,
-        substepLabel: '7. 등식의 성질을 이용한 방정식 풀이 (p.89)',
-        missionText: '<b>[4-7] 7. 등식의 성질을 이용한 방정식 풀이 (p.89)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '7. 문제 1: 등식의 성질 빈칸 추론 (p.90)',
+        missionText: '<b>[문제 1] 등식의 성질 빈칸 추론 (교과서 p.90)</b><br>• <b>과정 1:</b> $3x - 5 = 7$ 풀이 과정의 빈칸 ㈎, ㈏, ㈐ 추론.<br>• <b>과정 2:</b> $\\frac{1}{3}x + 2 = 6$ 풀이 과정의 빈칸 ㈑, ㈒ 추론.<br>좌측 캔버스에서 빈칸 퍼즐 랩, 성질 엑스레이 스캐너, 저울 빈칸 물리 검증기를 조작해 보세요.',
         drawer: 'drawStep4_7Canvas'
       },
       '4-8': {
@@ -1489,6 +1489,14 @@
       
       
       
+      
+      // Substep 4-7 State (Fill-in-the-blank Properties Deduction)
+      lab4_7: {
+        activeTab: 'mode1',
+        puzzleIndex: 0,
+        revealedBlanks: { ga: false, na: false, da: false, ra: false, ma: false, ba: false },
+        scanLine: 1
+      },
       // Substep 4-6 State (Solving Equations Using Properties)
       lab4_6: {
         activeTab: 'mode1',
@@ -34425,6 +34433,622 @@ function drawMode3InverseOperationStrategyLab(two) {
 
     // --- End Substep 4-6 Implementation ---
 
+    
+    // --- Substep 4-7 Implementation ---
+// code_4_7.js: Substep [4-7] 3.4 7. 문제 1: 등식의 성질 빈칸 추론 (교과서 p.90)
+
+const PUZZLE_DATA_4_7 = [
+  {
+    id: 1,
+    title: '과정 1: 3x - 5 = 7 풀이',
+    expr: '3x - 5 = 7',
+    lines: [
+      { text: '처음 방정식', math: '3x - 5 = 7', prop: '시작' },
+      { text: '양변에 [ 5 ]를 더한다', math: '3x - 5 + 5 = 7 + 5', prop: '등식의 성질 1 (덧셈)', blankKey: 'ga', blankVal: '5' },
+      { text: '식 정리', math: '3x = 12', prop: '동류항 계산' },
+      { text: '양변을 [ 3 ]으로 나눈다', math: '3x ÷ 3 = 12 ÷ 3', prop: '등식의 성질 4 (나눗셈)', blankKey: 'na', blankVal: '3' },
+      { text: '해 완성', math: 'x = 4', prop: '해 구함', blankKey: 'da', blankVal: '4' }
+    ]
+  },
+  {
+    id: 2,
+    title: '과정 2: 1/3 x + 2 = 6 풀이',
+    expr: '1/3 x + 2 = 6',
+    lines: [
+      { text: '처음 방정식', math: '1/3 x + 2 = 6', prop: '시작' },
+      { text: '양변에서 [ 2 ]를 뺀다', math: '1/3 x + 2 - 2 = 6 - 2', prop: '등식의 성질 2 (뺄셈)', blankKey: 'ra', blankVal: '2' },
+      { text: '식 정리', math: '1/3 x = 4', prop: '동류항 계산' },
+      { text: '양변에 [ 3 ]을 곱한다', math: '1/3 x × 3 = 4 × 3', prop: '등식의 성질 3 (곱셈)', blankKey: 'ma', blankVal: '3' },
+      { text: '해 완성', math: 'x = 12', prop: '해 구함', blankKey: 'ba', blankVal: '12' }
+    ]
+  }
+];
+
+function renderToolbar4_7() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab4_7) {
+    state.lab4_7 = {
+      activeTab: 'mode1', // 'mode1' (빈칸 퍼즐 랩) | 'mode2' (성질 엑스레이 스캐너) | 'mode3' (저울 빈칸 물리 검증기)
+      puzzleIndex: 0,     // 0: 3x-5=7, 1: 1/3x+2=6
+      revealedBlanks: { ga: false, na: false, da: false, ra: false, ma: false, ba: false },
+      scanLine: 1
+    };
+  }
+
+  const curTab = state.lab4_7.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab4_7Tab('mode1')">
+        🧩 1. 빈칸 퍼즐 랩 (p.90)
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab4_7Tab('mode2')">
+        🔍 2. 성질 엑스레이 스캐너
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab4_7Tab('mode3')">
+        ⚖️ 3. 저울 빈칸 물리 검증기
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn ${state.lab4_7.puzzleIndex === 0 ? 'active' : ''}" onclick="setPuzzle4_7(0)">과정 1: 3x-5=7</button>
+      <button class="icon-btn ${state.lab4_7.puzzleIndex === 1 ? 'active' : ''}" onclick="setPuzzle4_7(1)">과정 2: 1/3x+2=6</button>
+      <button class="icon-btn" onclick="revealAllBlanks4_7()">💡 빈칸 모두 보기</button>
+      <button class="icon-btn" onclick="resetLab4_7()" title="초기화">🔄 초기화</button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('4-7')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab4_7Tab(tabKey) {
+  if (!state.lab4_7) resetLab4_7();
+  state.lab4_7.activeTab = tabKey;
+  renderToolbar4_7();
+  drawStep4_7Canvas();
+}
+
+function resetLab4_7() {
+  state.lab4_7 = {
+    activeTab: 'mode1',
+    puzzleIndex: 0,
+    revealedBlanks: { ga: false, na: false, da: false, ra: false, ma: false, ba: false },
+    scanLine: 1
+  };
+  renderToolbar4_7();
+  drawStep4_7Canvas();
+}
+
+function setPuzzle4_7(idx) {
+  if (!state.lab4_7) resetLab4_7();
+  state.lab4_7.puzzleIndex = idx;
+  renderToolbar4_7();
+  drawStep4_7Canvas();
+}
+
+function toggleBlank4_7(key) {
+  if (!state.lab4_7) resetLab4_7();
+  state.lab4_7.revealedBlanks[key] = !state.lab4_7.revealedBlanks[key];
+  drawStep4_7Canvas();
+}
+
+function revealAllBlanks4_7() {
+  if (!state.lab4_7) resetLab4_7();
+  Object.keys(state.lab4_7.revealedBlanks).forEach(k => {
+    state.lab4_7.revealedBlanks[k] = true;
+  });
+  drawStep4_7Canvas();
+}
+
+function setScanLine4_7(lineIdx) {
+  if (!state.lab4_7) resetLab4_7();
+  state.lab4_7.scanLine = lineIdx;
+  drawStep4_7Canvas();
+}
+
+function renderSubstep4_7() {
+  const panel = document.getElementById('form-box');
+  if (!panel) return;
+
+  panel.innerHTML = `
+    <div class="card-title" style="display:flex; align-items:center; gap:8px;">
+      <span class="badge" style="background:#4f46e5; color:#fff;">교과서 p.90</span>
+      <span style="font-size:1.05rem; font-weight:800; color:#1e1b4b;">7. 문제 1: 등식의 성질 빈칸 추론</span>
+    </div>
+
+    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-top:10px; font-size:0.86rem; line-height:1.55; color:#334155;">
+      <b>📖 [교과서 문제 1 빈칸 추론]</b><br>
+      등식의 성질을 이용하여 방정식을 푸는 과정입니다. 빈칸에 알맞은 수를 써넣으시오.<br>
+      좌측 캔버스 <b>[🧩 빈칸 퍼즐 랩]</b> 및 <b>[🔍 성질 엑스레이 스캐너]</b>를 조작해 보세요.
+    </div>
+
+    <div style="margin-top:14px; display:flex; flex-direction:column; gap:12px;">
+      <!-- 과정 1 카드 -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px;">
+        <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px; color:#2563eb;">
+          【과정 1】 방정식 $3x - 5 = 7$ 의 풀이 과정
+        </div>
+        <div style="background:#f8fafc; padding:8px 10px; border-radius:6px; font-size:0.84rem; line-height:1.7; color:#334155; margin-bottom:8px;">
+          $3x - 5 = 7$<br>
+          $3x - 5 + [\\text{ ㈎ }] = 7 + [\\text{ ㈎ }]$<br>
+          $3x = 12$<br>
+          $\\frac{3x}{[\\text{ ㈏ }]} = \\frac{12}{[\\text{ ㈏ }]}$<br>
+          $x = [\\text{ ㈐ }]$
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+          <div>
+            <span style="font-size:0.82rem; font-weight:700; color:#475569;">㈎ :</span>
+            <input type="text" id="ans-4-7-1" class="proof-input-text" placeholder="수 입력" style="width:100%; margin-top:2px;" />
+          </div>
+          <div>
+            <span style="font-size:0.82rem; font-weight:700; color:#475569;">㈏ :</span>
+            <input type="text" id="ans-4-7-2" class="proof-input-text" placeholder="수 입력" style="width:100%; margin-top:2px;" />
+          </div>
+          <div>
+            <span style="font-size:0.82rem; font-weight:700; color:#475569;">㈐ :</span>
+            <input type="text" id="ans-4-7-3" class="proof-input-text" placeholder="수 입력" style="width:100%; margin-top:2px;" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 과정 2 카드 -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px;">
+        <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:6px; color:#059669;">
+          【과정 2】 방정식 $\\frac{1}{3}x + 2 = 6$ 의 풀이 과정
+        </div>
+        <div style="background:#f8fafc; padding:8px 10px; border-radius:6px; font-size:0.84rem; line-height:1.7; color:#334155; margin-bottom:8px;">
+          $\\frac{1}{3}x + 2 = 6$<br>
+          $\\frac{1}{3}x + 2 - [\\text{ ㈑ }] = 6 - [\\text{ ㈑ }]$<br>
+          $\\frac{1}{3}x = 4$<br>
+          $\\frac{1}{3}x \\times [\\text{ ㈒ }] = 4 \\times [\\text{ ㈒ }]$<br>
+          $x = 12$
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <div>
+            <span style="font-size:0.82rem; font-weight:700; color:#475569;">㈑ :</span>
+            <input type="text" id="ans-4-7-4" class="proof-input-text" placeholder="수 입력" style="width:100%; margin-top:2px;" />
+          </div>
+          <div>
+            <span style="font-size:0.82rem; font-weight:700; color:#475569;">㈒ :</span>
+            <input type="text" id="ans-4-7-5" class="proof-input-text" placeholder="수 입력" style="width:100%; margin-top:2px;" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:14px; display:flex; gap:8px;">
+      <button class="primary-btn" onclick="gradeStep4_7()" style="flex:1; height:38px; font-weight:700;">
+        정답 확인 및 채점
+      </button>
+      <button class="icon-btn" onclick="resetForm4_7()" style="height:38px; padding:0 12px;">
+        입력 초기화
+      </button>
+    </div>
+
+    <div id="grade-feedback-4-7" style="margin-top:12px;"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(panel, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ]
+    });
+  }
+}
+
+function resetForm4_7() {
+  for (let i = 1; i <= 5; i++) {
+    const el = document.getElementById(`ans-4-7-${i}`);
+    if (el) el.value = '';
+  }
+  const fb = document.getElementById('grade-feedback-4-7');
+  if (fb) fb.innerHTML = '';
+}
+
+function cleanVal4_7(str) {
+  if (!str) return '';
+  return str.replace(/\s+/g, '').replace(/x=/g, '');
+}
+
+function gradeStep4_7() {
+  const ans1 = cleanVal4_7(document.getElementById('ans-4-7-1')?.value || '');
+  const ans2 = cleanVal4_7(document.getElementById('ans-4-7-2')?.value || '');
+  const ans3 = cleanVal4_7(document.getElementById('ans-4-7-3')?.value || '');
+  const ans4 = cleanVal4_7(document.getElementById('ans-4-7-4')?.value || '');
+  const ans5 = cleanVal4_7(document.getElementById('ans-4-7-5')?.value || '');
+
+  const isQ1Correct = (ans1 === '5');
+  const isQ2Correct = (ans2 === '3');
+  const isQ3Correct = (ans3 === '4');
+  const isQ4Correct = (ans4 === '2');
+  const isQ5Correct = (ans5 === '3');
+
+  const fb = document.getElementById('grade-feedback-4-7');
+  if (!fb) return;
+
+  const totalScore = (isQ1Correct ? 20 : 0) + (isQ2Correct ? 20 : 0) + (isQ3Correct ? 20 : 0) + 
+                     (isQ4Correct ? 20 : 0) + (isQ5Correct ? 20 : 0);
+
+  if (totalScore === 100) {
+    fb.innerHTML = `
+      <div style="background:#ecfdf5; border:1px solid #10b981; border-radius:10px; padding:14px; color:#065f46;">
+        <div style="font-size:1.02rem; font-weight:800; display:flex; align-items:center; gap:6px;">
+          🎉 100점 만점! 등식의 성질을 이용한 빈칸 추론을 완벽히 해결했습니다!
+        </div>
+        <div style="margin-top:6px; font-size:0.87rem; line-height:1.55;">
+          • 과정 1: ㈎ = 5 (양변에 5를 더함), ㈏ = 3 (양변을 3으로 나눔), ㈐ = 4 ($x = 4$)<br>
+          • 과정 2: ㈑ = 2 (양변에서 2를 뺌), ㈒ = 3 (양변에 3을 곱함)<br>
+          다음 서브스텝 <b>[4-8] 스스로 확인하기: 등식과 방정식 5문항 완벽 정복 (p.91)</b>이 해금되었습니다!
+        </div>
+      </div>
+    `;
+
+    if (!state.unlockedSubSteps.includes('4-8')) {
+      state.unlockedSubSteps.push('4-8');
+    }
+    if (typeof updateSubstepPills === 'function') updateSubstepPills();
+    if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+      LMSIntegration.saveStudentProgress('4-7', {
+        score: 100,
+        completed: true,
+        answers: { ans1, ans2, ans3, ans4, ans5 }
+      }, 3);
+    }
+  } else {
+    let wrongNotes = [];
+    if (!isQ1Correct) wrongNotes.push('과정 1 ㈎: -5를 없애기 위해 양변에 5를 더합니다.');
+    if (!isQ2Correct) wrongNotes.push('과정 1 ㈏: 3x에서 3을 없애기 위해 양변을 3으로 나눕니다.');
+    if (!isQ3Correct) wrongNotes.push('과정 1 ㈐: 12를 3으로 나눈 최종 해는 4입니다.');
+    if (!isQ4Correct) wrongNotes.push('과정 2 ㈑: +2를 없애기 위해 양변에서 2를 뺍니다.');
+    if (!isQ5Correct) wrongNotes.push('과정 2 ㈒: 1/3x에서 분모 3을 없애기 위해 양변에 3을 곱합니다.');
+
+    fb.innerHTML = `
+      <div style="background:#fef2f2; border:1px solid #ef4444; border-radius:10px; padding:12px; color:#991b1b;">
+        <div style="font-weight:800; font-size:0.92rem;">다시 확인해 보세요! (현재 점수: ${totalScore}점)</div>
+        <div style="margin-top:6px; font-size:0.84rem; line-height:1.5;">
+          ${wrongNotes.join('<br>')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ]
+    });
+  }
+}
+
+// --- Two.js 60fps 인터랙티브 캔버스 엔진 ---
+function drawStep4_7Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const two = new Two({
+    width: 680,
+    height: 440,
+    type: Two.Types.svg
+  }).appendTo(container);
+
+  if (!state.lab4_7) {
+    resetLab4_7();
+  }
+
+  const activeTab = state.lab4_7.activeTab;
+
+  if (activeTab === 'mode1') {
+    drawMode1FillInTheBlankPuzzleLab(two);
+  } else if (activeTab === 'mode2') {
+    drawMode2PropertyXRayScannerLab(two);
+  } else if (activeTab === 'mode3') {
+    drawMode3BalanceBlankVerifierLab(two);
+  }
+
+  // 안내 배너 (Vertical Budget 준수: Y=385, H=26, 바닥 안전 여백 42px >= 25px)
+  const bannerBg = two.makeRoundedRectangle(340, 385, 620, 26, 6);
+  bannerBg.fill = '#f8fafc';
+  bannerBg.stroke = '#cbd5e1';
+  bannerBg.linewidth = 1;
+
+  let tipMsg = '💡 좌변의 식을 x로 만들기 위해 양변에 똑같은 수를 연산하는 것이 등식의 성질입니다.';
+  if (activeTab === 'mode1') {
+    tipMsg = '💡 빈칸 카드를 클릭하여 숨겨진 수(5, 3, 4 등)를 확인하고 양변의 변화를 관찰해 보세요.';
+  } else if (activeTab === 'mode2') {
+    tipMsg = '💡 각 줄을 클릭하면 적용된 등식의 성질(덧셈, 뺄셈, 곱셈, 나눗셈)을 엑스레이로 분석합니다.';
+  } else if (activeTab === 'mode3') {
+    tipMsg = '💡 양팔 저울의 양쪽에 같은 분동을 더하거나 빼어 평형을 유지하는 원리를 체험해 보세요.';
+  }
+
+  const tipText = two.makeText(tipMsg, 340, 385, {
+    family: 'Pretendard, sans-serif',
+    size: 11,
+    weight: 600,
+    fill: '#475569',
+    alignment: 'center'
+  });
+
+  two.update();
+}
+
+// Mode 1: 🧩 등식의 성질 빈칸 퍼즐 랩
+function drawMode1FillInTheBlankPuzzleLab(two) {
+  const pData = PUZZLE_DATA_4_7[state.lab4_7.puzzleIndex];
+
+  const title = two.makeText(`🧩 [빈칸 퍼즐 랩] ${pData.title} (p.90)`, 340, 26, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 800,
+    fill: '#1e1b4b',
+    alignment: 'center'
+  });
+
+  // 5개 라인 카드 (Y = 70 ~ 310)
+  pData.lines.forEach((line, lidx) => {
+    const ly = 75 + lidx * 56;
+    const isBlankLine = Boolean(line.blankKey);
+    const isRevealed = Boolean(line.blankKey && state.lab4_7.revealedBlanks[line.blankKey]);
+
+    const lBg = two.makeRoundedRectangle(340, ly, 590, 48, 8);
+    lBg.fill = isBlankLine ? (isRevealed ? '#ecfdf5' : '#f8fafc') : '#ffffff';
+    lBg.stroke = isBlankLine ? (isRevealed ? '#10b981' : '#3b82f6') : '#cbd5e1';
+    lBg.linewidth = isBlankLine ? 2 : 1;
+
+    // 단계 라벨
+    two.makeText(line.text, 145, ly, {
+      family: 'Pretendard, sans-serif',
+      size: 11.5,
+      weight: 800,
+      fill: isBlankLine ? '#1e293b' : '#64748b',
+      alignment: 'center'
+    });
+
+    // 수식 표시
+    let displayMath = line.math;
+    if (isBlankLine && !isRevealed) {
+      displayMath = displayMath.replace(new RegExp(line.blankVal, 'g'), ' [ ? ] ');
+    }
+
+    two.makeText(displayMath, 370, ly, {
+      family: 'Pretendard, sans-serif',
+      size: 14,
+      weight: 900,
+      fill: isRevealed ? '#047857' : '#1e3a8a',
+      alignment: 'center'
+    });
+
+    // 우측 빈칸 토글 버튼 또는 성질 뱃지
+    if (isBlankLine) {
+      const bBtn = two.makeRoundedRectangle(565, ly, 75, 24, 4);
+      bBtn.fill = isRevealed ? '#10b981' : '#3b82f6';
+      two.makeText(isRevealed ? `정답: ${line.blankVal}` : '빈칸 열기', 565, ly + 1, {
+        size: 10,
+        weight: 800,
+        fill: '#ffffff',
+        alignment: 'center'
+      });
+
+      if (bBtn._renderer && bBtn._renderer.elem) {
+        bBtn._renderer.elem.style.cursor = 'pointer';
+        bBtn._renderer.elem.onclick = () => toggleBlank4_7(line.blankKey);
+      }
+    } else {
+      const pBadge = two.makeRoundedRectangle(565, ly, 75, 22, 4);
+      pBadge.fill = '#f1f5f9';
+      two.makeText(line.prop, 565, ly + 1, { size: 9.5, weight: 700, fill: '#64748b', alignment: 'center' });
+    }
+  });
+
+  // 하단 힌트
+  two.makeText('👆 "빈칸 열기" 버튼을 누르거나 상단 툴바에서 [💡 빈칸 모두 보기]를 클릭해 보세요!', 340, 355, {
+    family: 'Pretendard, sans-serif',
+    size: 11.5,
+    weight: 600,
+    fill: '#4f46e5',
+    alignment: 'center'
+  });
+}
+
+// Mode 2: 🔍 성질 적용 엑스레이 스캐너
+function drawMode2PropertyXRayScannerLab(two) {
+  const pData = PUZZLE_DATA_4_7[state.lab4_7.puzzleIndex];
+
+  const title = two.makeText('🔍 [성질 엑스레이 스캐너] 줄마다 숨은 등식 성질 투시', 340, 26, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 800,
+    fill: '#1e1b4b',
+    alignment: 'center'
+  });
+
+  const scanIdx = state.lab4_7.scanLine; // 0~4
+  const curLine = pData.lines[scanIdx];
+
+  // 5개 줄 탭 (Y = 60)
+  pData.lines.forEach((l, idx) => {
+    const isSel = (scanIdx === idx);
+    const tx = 95 + idx * 122;
+    const ty = 60;
+    const tBg = two.makeRoundedRectangle(tx, ty, 114, 26, 6);
+    tBg.fill = isSel ? '#4f46e5' : '#f1f5f9';
+    tBg.stroke = isSel ? '#3730a3' : '#cbd5e1';
+    tBg.linewidth = isSel ? 2 : 1;
+
+    two.makeText(`${idx + 1}행 투시`, tx, ty + 1, {
+      family: 'Pretendard, sans-serif',
+      size: 11,
+      weight: isSel ? 800 : 600,
+      fill: isSel ? '#ffffff' : '#475569',
+      alignment: 'center'
+    });
+
+    if (tBg._renderer && tBg._renderer.elem) {
+      tBg._renderer.elem.style.cursor = 'pointer';
+      tBg._renderer.elem.onclick = () => setScanLine4_7(idx);
+    }
+  });
+
+  // 엑스레이 스캐너 카드 (Y = 200, H = 220)
+  const xRayCard = two.makeRoundedRectangle(340, 205, 590, 220, 12);
+  xRayCard.fill = '#f0fdf4';
+  xRayCard.stroke = '#10b981';
+  xRayCard.linewidth = 2;
+
+  // 헤더
+  two.makeText(`🔬 【 ${scanIdx + 1}행 엑스레이 분석 】  ${curLine.math}`, 340, 120, {
+    family: 'Pretendard, sans-serif',
+    size: 16,
+    weight: 900,
+    fill: '#065f46',
+    alignment: 'center'
+  });
+
+  // 설명
+  const bBox = two.makeRoundedRectangle(340, 175, 530, 60, 8);
+  bBox.fill = '#ffffff';
+  bBox.stroke = '#a7f3d0';
+  bBox.linewidth = 1.5;
+
+  two.makeText(`📌 적용된 연산: ${curLine.text}`, 340, 162, {
+    family: 'Pretendard, sans-serif',
+    size: 13,
+    weight: 800,
+    fill: '#1e293b',
+    alignment: 'center'
+  });
+
+  two.makeText(`⭐ 등식의 성질: [ ${curLine.prop} ]`, 340, 188, {
+    family: 'Pretendard, sans-serif',
+    size: 13,
+    weight: 900,
+    fill: '#059669',
+    alignment: 'center'
+  });
+
+  // 하단 수학적 원리 카드 (Y = 265)
+  const logicCard = two.makeRoundedRectangle(340, 265, 530, 70, 8);
+  logicCard.fill = '#ffffff';
+  logicCard.stroke = '#cbd5e1';
+
+  let detailMsg = '등식의 기본 출발점입니다.';
+  if (curLine.blankKey === 'ga') detailMsg = '양변에 같은 수 5를 더해도 등식이 성립합니다 (성질 1: a = b ➔ a + 5 = b + 5).';
+  if (curLine.blankKey === 'na') detailMsg = '양변을 0이 아닌 같은 수 3으로 나누어도 등식이 성립합니다 (성질 4: a = b ➔ a/3 = b/3).';
+  if (curLine.blankKey === 'da') detailMsg = '모든 성질 적용을 마친 최종 해 x = 4 입니다.';
+  if (curLine.blankKey === 'ra') detailMsg = '양변에서 같은 수 2를 빼어도 등식이 성립합니다 (성질 2: a = b ➔ a - 2 = b - 2).';
+  if (curLine.blankKey === 'ma') detailMsg = '양변에 같은 수 3을 곱해도 등식이 성립합니다 (성질 3: a = b ➔ 3a = 3b).';
+
+  two.makeText(`💡 해설: ${detailMsg}`, 340, 265, {
+    family: 'Pretendard, sans-serif',
+    size: 11.5,
+    weight: 700,
+    fill: '#334155',
+    alignment: 'center'
+  });
+
+  two.makeText('👆 상단 행 버튼을 눌러 각 단계에서 사용된 등식의 성질을 투시해 보세요!', 340, 345, {
+    family: 'Pretendard, sans-serif',
+    size: 11.5,
+    weight: 600,
+    fill: '#047857',
+    alignment: 'center'
+  });
+}
+
+// Mode 3: ⚖️ 저울 빈칸 물리 검증기
+function drawMode3BalanceBlankVerifierLab(two) {
+  const title = two.makeText('⚖️ [저울 빈칸 물리 검증기] 양변의 평형을 맞추는 빈칸 분동', 340, 26, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 800,
+    fill: '#1e1b4b',
+    alignment: 'center'
+  });
+
+  const pData = PUZZLE_DATA_4_7[state.lab4_7.puzzleIndex];
+
+  // 상단 안내
+  two.makeText(`방정식 ${pData.expr} 에서 좌우 양변의 무게가 평형을 이루고 있습니다.`, 340, 56, {
+    family: 'Pretendard, sans-serif',
+    size: 12,
+    weight: 700,
+    fill: '#334155',
+    alignment: 'center'
+  });
+
+  // 양팔 저울 렌더링
+  const fulcrumX = 340;
+  const fulcrumY = 220;
+
+  // 바닥
+  const ground = two.makeLine(80, 275, 600, 275);
+  ground.stroke = '#94a3b8'; ground.linewidth = 3;
+
+  // 기둥
+  const pole = two.makePath(fulcrumX, fulcrumY - 6, fulcrumX - 25, 275, fulcrumX + 25, 275, true);
+  pole.fill = '#475569'; pole.stroke = '#334155'; pole.linewidth = 2;
+
+  const pin = two.makeCircle(fulcrumX, fulcrumY - 6, 7);
+  pin.fill = '#ffffff'; pin.stroke = '#334155'; pin.linewidth = 2;
+
+  // 보드
+  const beamGroup = two.makeGroup();
+  const beam = two.makeRoundedRectangle(0, 0, 460, 14, 4);
+  beam.fill = '#f97316'; beam.stroke = '#ea580c'; beam.linewidth = 2;
+  beamGroup.add(beam);
+
+  // 좌측 트레이
+  const lRope = two.makeLine(-170, 0, -170, 40); lRope.stroke = '#64748b'; lRope.linewidth = 2;
+  const lPlate = two.makeRoundedRectangle(-170, 42, 100, 10, 3);
+  lPlate.fill = '#cbd5e1'; lPlate.stroke = '#94a3b8'; lPlate.linewidth = 1.5;
+  beamGroup.add(lRope, lPlate);
+
+  const lBox = two.makeRoundedRectangle(-170, 22, 85, 32, 6);
+  lBox.fill = '#eff6ff'; lBox.stroke = '#3b82f6'; lBox.linewidth = 2;
+  const lTxt = two.makeText(pData.lines[0].math.split('=')[0], -170, 23, { size: 13, weight: 900, fill: '#1e3a8a', alignment: 'center' });
+  beamGroup.add(lBox, lTxt);
+
+  // 우측 트레이
+  const rRope = two.makeLine(170, 0, 170, 40); rRope.stroke = '#64748b'; rRope.linewidth = 2;
+  const rPlate = two.makeRoundedRectangle(170, 42, 100, 10, 3);
+  rPlate.fill = '#cbd5e1'; rPlate.stroke = '#94a3b8'; rPlate.linewidth = 1.5;
+  beamGroup.add(rRope, rPlate);
+
+  const rBox = two.makeRoundedRectangle(170, 22, 85, 32, 6);
+  rBox.fill = '#ecfdf5'; rBox.stroke = '#10b981'; rBox.linewidth = 2;
+  const rTxt = two.makeText(pData.lines[0].math.split('=')[1], 170, 23, { size: 14, weight: 900, fill: '#065f46', alignment: 'center' });
+  beamGroup.add(rBox, rTxt);
+
+  beamGroup.translation.set(fulcrumX, fulcrumY - 6);
+
+  // 중앙 등호
+  const goldEq = two.makeCircle(fulcrumX, fulcrumY - 45, 18);
+  goldEq.fill = '#f59e0b'; goldEq.stroke = '#d97706'; goldEq.linewidth = 2;
+  two.makeText('=', fulcrumX, fulcrumY - 44, { size: 22, weight: 900, fill: '#ffffff', alignment: 'center' });
+
+  // 하단 카드
+  const botCard = two.makeRoundedRectangle(340, 325, 590, 50, 8);
+  botCard.fill = '#ffffff'; botCard.stroke = '#cbd5e1'; botCard.linewidth = 1.5;
+
+  two.makeText('💡 양변에 같은 연산을 적용하여 좌변을 x로 고립시키는 과정 전체가 저울의 평형과 일치합니다.', 340, 325, {
+    family: 'Pretendard, sans-serif',
+    size: 12,
+    weight: 700,
+    fill: '#334155',
+    alignment: 'center'
+  });
+}
+
+    // --- End Substep 4-7 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -34591,6 +35215,9 @@ function drawMode3InverseOperationStrategyLab(two) {
       } else if (code === '4-6') {
         renderToolbar4_6();
         renderSubstep4_6();
+      } else if (code === '4-7') {
+        renderToolbar4_7();
+        renderSubstep4_7();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
