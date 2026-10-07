@@ -1137,8 +1137,8 @@
       },
       '4-9': {
         code: '4-9', tab: 4,
-        substepLabel: '9. 스스로 확인하기 2: 항등식 고르기 (p.90)',
-        missionText: '<b>[4-9] 9. 스스로 확인하기 2: 항등식 고르기 (p.90)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '9. 스스로 확인하기 2: 등식과 항등식 판별 (p.90)',
+        missionText: '<b>[스스로 확인하기 2] 등식과 항등식 옳게 설명한 학생 고르기 (교과서 p.90 2번)</b><br>• <b>문제:</b> 다음 중에서 옳게 설명한 학생을 모두 고르시오.<br>• <b>학생 발언:</b> 민준($5x-2x=3x$는 등식이야), 지유($4(x+3)=4x+3$은 항등식이야), 하연($x-1=1-x$는 방정식이야), 도윤($x+5=2x+5-x$는 항등식이 아니야)<br>좌측 캔버스에서 4인 발언 검증 랩, 미러 x-스캐너, 수학적 분류 보드를 조작해 보세요.',
         drawer: 'drawStep4_9Canvas'
       },
       '4-10': {
@@ -1491,6 +1491,14 @@
       
       
       
+      
+      // Substep 4-9 State (Identity vs Equation Verifier)
+      lab4_9: {
+        activeTab: 'mode1',
+        selectedStudent: 0,
+        testValueX: 1,
+        analyzed: { 0: true, 1: false, 2: false, 3: false }
+      },
       // Substep 4-8 State (Equations and Roots Verification)
       lab4_8: {
         activeTab: 'mode1',
@@ -36048,6 +36056,890 @@ function drawMode3TruthTableRootLab(two) {
 
     // --- End Substep 4-8 Implementation ---
 
+    // --- Substep 4-9 Implementation ---
+// code_4_9.js: Substep [4-9] 3.4 9. 스스로 확인하기 2: 등식과 항등식 판별 (교과서 p.90 2번)
+
+const STUDENTS_4_9 = [
+  {
+    id: 'minjun',
+    name: '민준',
+    speech: '5x - 2x = 3x 는 등식이야.',
+    equation: '5x - 2x = 3x',
+    claim: '등식',
+    isCorrectClaim: true,
+    lhsExpr: '5x - 2x = 3x',
+    rhsExpr: '3x',
+    reason: '좌변(3x) = 우변(3x)이며, 등호(=)를 사용하여 나타내었으므로 등식입니다. (항상 참인 항등식이자 등식)',
+    detail: '좌변 5x - 2x = 3x 이고 우변도 3x 입니다. 등호(=)가 있으므로 등식이 맞으며, x에 어떤 값을 대입해도 항상 참인 항등식(등식의 일종)입니다.'
+  },
+  {
+    id: 'jiyu',
+    name: '지유',
+    speech: '4(x + 3) = 4x + 3 은 항등식이야.',
+    equation: '4(x + 3) = 4x + 3',
+    claim: '항등식',
+    isCorrectClaim: false,
+    lhsExpr: '4(x + 3) = 4x + 12',
+    rhsExpr: '4x + 3',
+    reason: '좌변(4x + 12) ≠ 우변(4x + 3) (12 ≠ 3) 이므로 어떤 x에 대해서도 참이 될 수 없어 항등식이 아닙니다.',
+    detail: '좌변을 분배법칙으로 풀면 4x + 12 입니다. 우변은 4x + 3 으로 상수항이 12 ≠ 3 이므로 항등식이 아닙니다.'
+  },
+  {
+    id: 'hayeon',
+    name: '하연',
+    speech: 'x - 1 = 1 - x 는 방정식이야.',
+    equation: 'x - 1 = 1 - x',
+    claim: '방정식',
+    isCorrectClaim: true,
+    lhsExpr: 'x - 1',
+    rhsExpr: '1 - x',
+    reason: '이항하면 2x = 2 ➜ x = 1 일 때만 참이 되고 다른 값에서는 거짓이 되므로 방정식이 맞습니다.',
+    detail: 'x - 1 = 1 - x 에서 이항하면 2x = 2, 즉 x = 1 일 때만 참이 되므로 미지수의 값에 따라 참·거짓이 갈리는 방정식이 맞습니다.'
+  },
+  {
+    id: 'doyun',
+    name: '도윤',
+    speech: 'x + 5 = 2x + 5 - x 는 항등식이 아니야.',
+    equation: 'x + 5 = 2x + 5 - x',
+    claim: '항등식이 아님',
+    isCorrectClaim: false,
+    lhsExpr: 'x + 5',
+    rhsExpr: '(2x - x) + 5 = x + 5',
+    reason: '우변을 정리하면 x + 5 로 좌변과 완전히 같으므로 항상 참인 항등식입니다. 도윤의 설명은 틀렸습니다.',
+    detail: '우변 동류항을 계산하면 (2 - 1)x + 5 = x + 5 가 되어 좌변과 일치하므로 항등식입니다. 따라서 "항등식이 아니야"라는 도윤이의 설명은 틀렸습니다.'
+  }
+];
+
+function renderToolbar4_9() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab4_9) {
+    state.lab4_9 = {
+      activeTab: 'mode1', // 'mode1' (4인 발언 검증 랩) | 'mode2' (미러 스캐너) | 'mode3' (분류 보드)
+      selectedStudent: 0, // 0: 민준, 1: 지유, 2: 하연, 3: 도윤
+      testValueX: 1,      // 모드 2에서 테스트할 x값
+      analyzed: { 0: true, 1: false, 2: false, 3: false }
+    };
+  }
+
+  const curTab = state.lab4_9.activeTab;
+  const selIdx = state.lab4_9.selectedStudent;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab4_9Tab('mode1')">
+        🗣️ 1. 4인 발언 검증 랩
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab4_9Tab('mode2')">
+        🔍 2. 미러 x-스캐너
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab4_9Tab('mode3')">
+        🏷️ 3. 수학적 분류 보드
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn ${selIdx === 0 ? 'active' : ''}" onclick="setStudent4_9(0)">민준</button>
+      <button class="icon-btn ${selIdx === 1 ? 'active' : ''}" onclick="setStudent4_9(1)">지유</button>
+      <button class="icon-btn ${selIdx === 2 ? 'active' : ''}" onclick="setStudent4_9(2)">하연</button>
+      <button class="icon-btn ${selIdx === 3 ? 'active' : ''}" onclick="setStudent4_9(3)">도윤</button>
+      <button class="icon-btn" onclick="resetLab4_9()" title="초기화">🔄 초기화</button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('4-9')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab4_9Tab(tabKey) {
+  if (!state.lab4_9) resetLab4_9();
+  state.lab4_9.activeTab = tabKey;
+  renderToolbar4_9();
+  drawStep4_9Canvas();
+}
+
+function resetLab4_9() {
+  state.lab4_9 = {
+    activeTab: 'mode1',
+    selectedStudent: 0,
+    testValueX: 1,
+    analyzed: { 0: true, 1: false, 2: false, 3: false }
+  };
+  renderToolbar4_9();
+  drawStep4_9Canvas();
+}
+
+function setStudent4_9(idx) {
+  if (!state.lab4_9) resetLab4_9();
+  state.lab4_9.selectedStudent = idx;
+  state.lab4_9.analyzed[idx] = true;
+  renderToolbar4_9();
+  drawStep4_9Canvas();
+}
+
+function setTestValueX4_9(xVal) {
+  if (!state.lab4_9) resetLab4_9();
+  state.lab4_9.testValueX = xVal;
+  renderToolbar4_9();
+  drawStep4_9Canvas();
+}
+
+function renderSubstep4_9Form() {
+  const panel = document.getElementById('step-panel');
+  if (!panel) return;
+
+  panel.innerHTML = `
+    <div style="background:#f1f5f9; padding:12px 14px; border-radius:8px; border-left:4px solid #4f46e5; margin-bottom:12px;">
+      <div style="font-weight:800; font-size:0.95rem; color:#1e1b4b; display:flex; align-items:center; gap:6px;">
+        <span>📝</span> [스스로 확인하기 2] 옳게 설명한 학생 모두 고르기 (교과서 p.90 2번)
+      </div>
+      <div style="font-size:0.83rem; color:#475569; margin-top:4px; line-height:1.5;">
+        다음 중에서 옳게 설명한 학생을 <b>모두</b> 고르시오.
+      </div>
+    </div>
+
+    <!-- 4인 학생 발언 카드 -->
+    <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:12px 14px; margin-bottom:12px;">
+      <div style="font-weight:700; color:#334155; font-size:0.86rem; margin-bottom:8px; border-bottom:1px solid #e2e8f0; padding-bottom:4px;">
+        • 학생들의 설명 •
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:0.84rem; color:#1e293b;">
+        <div style="background:#f8fafc; padding:8px 10px; border-radius:6px; border:1px solid #e2e8f0;">
+          <div style="font-weight:800; color:#4f46e5; margin-bottom:2px;">👦 민준</div>
+          <div>"$5x - 2x = 3x$는 등식이야."</div>
+        </div>
+        <div style="background:#f8fafc; padding:8px 10px; border-radius:6px; border:1px solid #e2e8f0;">
+          <div style="font-weight:800; color:#ec4899; margin-bottom:2px;">👧 지유</div>
+          <div>"$4(x + 3) = 4x + 3$은 항등식이야."</div>
+        </div>
+        <div style="background:#f8fafc; padding:8px 10px; border-radius:6px; border:1px solid #e2e8f0;">
+          <div style="font-weight:800; color:#0284c7; margin-bottom:2px;">👧 하연</div>
+          <div>"$x - 1 = 1 - x$는 방정식이야."</div>
+        </div>
+        <div style="background:#f8fafc; padding:8px 10px; border-radius:6px; border:1px solid #e2e8f0;">
+          <div style="font-weight:800; color:#eab308; margin-bottom:2px;">👦 도윤</div>
+          <div>"$x + 5 = 2x + 5 - x$는 항등식이 아니야."</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 문제 풀이 입력 카드 -->
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <!-- 문항 1: 옳게 설명한 학생 체크박스 및 텍스트 -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:12px 14px;">
+        <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:8px; color:#4f46e5;">
+          【질문 1】 옳게 설명한 학생을 모두 고르시오.
+        </div>
+        <div style="display:flex; align-items:center; gap:16px; margin-bottom:10px; flex-wrap:wrap;">
+          <label style="display:flex; align-items:center; gap:5px; font-size:0.88rem; font-weight:700; cursor:pointer;">
+            <input type="checkbox" id="chk-4-9-minjun" value="민준" style="accent-color:#4f46e5; width:16px; height:16px;">
+            <span>민준</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:5px; font-size:0.88rem; font-weight:700; cursor:pointer;">
+            <input type="checkbox" id="chk-4-9-jiyu" value="지유" style="accent-color:#4f46e5; width:16px; height:16px;">
+            <span>지유</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:5px; font-size:0.88rem; font-weight:700; cursor:pointer;">
+            <input type="checkbox" id="chk-4-9-hayeon" value="하연" style="accent-color:#4f46e5; width:16px; height:16px;">
+            <span>하연</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:5px; font-size:0.88rem; font-weight:700; cursor:pointer;">
+            <input type="checkbox" id="chk-4-9-doyun" value="도윤" style="accent-color:#4f46e5; width:16px; height:16px;">
+            <span>도윤</span>
+          </label>
+        </div>
+        <div>
+          <span style="font-size:0.82rem; font-weight:700; color:#475569;">텍스트 직접 입력:</span>
+          <input type="text" id="ans-4-9-main" class="proof-input-text" placeholder="옳게 설명한 학생 이름 입력 (예: 민준, 지유)" style="width:100%; margin-top:2px;" autocomplete="off" />
+        </div>
+      </div>
+
+      <!-- 문항 2: 각 학생별 진위 판별 (O / X) -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:12px 14px;">
+        <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:8px; color:#059669;">
+          【질문 2】 각 학생 설명의 옳고 그름을 O, X로 확인하시오.
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <!-- 민준 -->
+          <div style="background:#f8fafc; padding:6px 10px; border-radius:6px; display:flex; align-items:center; justify-content:space-between;">
+            <span style="font-size:0.84rem; font-weight:700; color:#334155;">민준:</span>
+            <input type="text" id="ans-4-9-ox-0" class="proof-input-text" placeholder="O 또는 X" style="width:70px; text-align:center;" autocomplete="off" />
+          </div>
+          <!-- 지유 -->
+          <div style="background:#f8fafc; padding:6px 10px; border-radius:6px; display:flex; align-items:center; justify-content:space-between;">
+            <span style="font-size:0.84rem; font-weight:700; color:#334155;">지유:</span>
+            <input type="text" id="ans-4-9-ox-1" class="proof-input-text" placeholder="O 또는 X" style="width:70px; text-align:center;" autocomplete="off" />
+          </div>
+          <!-- 하연 -->
+          <div style="background:#f8fafc; padding:6px 10px; border-radius:6px; display:flex; align-items:center; justify-content:space-between;">
+            <span style="font-size:0.84rem; font-weight:700; color:#334155;">하연:</span>
+            <input type="text" id="ans-4-9-ox-2" class="proof-input-text" placeholder="O 또는 X" style="width:70px; text-align:center;" autocomplete="off" />
+          </div>
+          <!-- 도윤 -->
+          <div style="background:#f8fafc; padding:6px 10px; border-radius:6px; display:flex; align-items:center; justify-content:space-between;">
+            <span style="font-size:0.84rem; font-weight:700; color:#334155;">도윤:</span>
+            <input type="text" id="ans-4-9-ox-3" class="proof-input-text" placeholder="O 또는 X" style="width:70px; text-align:center;" autocomplete="off" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:14px; display:flex; gap:8px;">
+      <button class="primary-btn" onclick="gradeStep4_9()" style="flex:1; height:38px; font-weight:700;">
+        정답 확인 및 채점
+      </button>
+      <button class="icon-btn" onclick="resetForm4_9()" style="height:38px; padding:0 12px;">
+        입력 초기화
+      </button>
+    </div>
+
+    <div id="grade-feedback-4-9" style="margin-top:12px;"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(panel, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ]
+    });
+  }
+}
+
+function resetForm4_9() {
+  ['minjun', 'jiyu', 'hayeon', 'doyun'].forEach(k => {
+    const chk = document.getElementById(`chk-4-9-${k}`);
+    if (chk) chk.checked = false;
+  });
+  const mainInput = document.getElementById('ans-4-9-main');
+  if (mainInput) mainInput.value = '';
+
+  for (let i = 0; i < 4; i++) {
+    const ox = document.getElementById(`ans-4-9-ox-${i}`);
+    if (ox) ox.value = '';
+  }
+
+  const fb = document.getElementById('grade-feedback-4-9');
+  if (fb) fb.innerHTML = '';
+}
+
+function cleanVal4_9(str) {
+  if (!str) return '';
+  return str.replace(/\s+/g, '').replace(/,/g, '');
+}
+
+function cleanOx4_9(str) {
+  if (!str) return '';
+  const s = str.trim().toUpperCase();
+  if (s === 'O' || s === 'ㅇ' || s === '0' || s === '참') return 'O';
+  if (s === 'X' || s === 'ㅌ' || s === '거짓') return 'X';
+  return s;
+}
+
+function gradeStep4_9() {
+  // 1. 체크박스 또는 텍스트 입력값 수집
+  const chkMinjun = document.getElementById('chk-4-9-minjun')?.checked || false;
+  const chkJiyu = document.getElementById('chk-4-9-jiyu')?.checked || false;
+  const chkHayeon = document.getElementById('chk-4-9-hayeon')?.checked || false;
+  const chkDoyun = document.getElementById('chk-4-9-doyun')?.checked || false;
+
+  const rawMain = cleanVal4_9(document.getElementById('ans-4-9-main')?.value || '');
+
+  // 메인 정답: '민준, 하연' (체크박스 기준: 민준=true, 하연=true, 지유=false, 도윤=false)
+  const isCheckboxCorrect = (chkMinjun && chkHayeon && !chkJiyu && !chkDoyun);
+  const isTextCorrect = (rawMain.includes('민준') && rawMain.includes('하연') && !rawMain.includes('지유') && !rawMain.includes('도윤'));
+  const isMainCorrect = isCheckboxCorrect || isTextCorrect;
+
+  // 2. O, X 보조 문항 (민준: O, 지유: X, 하연: O, 도윤: X)
+  const ox0 = cleanOx4_9(document.getElementById('ans-4-9-ox-0')?.value || '');
+  const ox1 = cleanOx4_9(document.getElementById('ans-4-9-ox-1')?.value || '');
+  const ox2 = cleanOx4_9(document.getElementById('ans-4-9-ox-2')?.value || '');
+  const ox3 = cleanOx4_9(document.getElementById('ans-4-9-ox-3')?.value || '');
+
+  const isOx0 = (ox0 === 'O');
+  const isOx1 = (ox1 === 'X');
+  const isOx2 = (ox2 === 'O');
+  const isOx3 = (ox3 === 'X');
+
+  const oxAllFilled = (ox0 !== '' && ox1 !== '' && ox2 !== '' && ox3 !== '');
+  const oxAllCorrect = (isOx0 && isOx1 && isOx2 && isOx3);
+
+  const fb = document.getElementById('grade-feedback-4-9');
+  if (!fb) return;
+
+  let score = 0;
+  if (isMainCorrect) score += 60;
+  if (isOx0) score += 10;
+  if (isOx1) score += 10;
+  if (isOx2) score += 10;
+  if (isOx3) score += 10;
+
+  // 메인 정답이 맞으면 만점 부여하여 진도 통과 인정
+  if (isMainCorrect && !oxAllFilled) {
+    score = 100;
+  }
+
+  if (score >= 90 || (isMainCorrect && score >= 60)) {
+    score = 100;
+    fb.innerHTML = `
+      <div style="background:#ecfdf5; border:1px solid #10b981; border-radius:10px; padding:14px; color:#065f46;">
+        <div style="font-size:1.02rem; font-weight:800; display:flex; align-items:center; gap:6px;">
+          🎉 100점 만점! 등식과 항등식의 개념을 완벽히 이해했습니다!
+        </div>
+        <div style="margin-top:6px; font-size:0.87rem; line-height:1.6;">
+          • <b>정답: 민준, 하연</b><br>
+          • <b>상세 해설 (교과서 p.90 / 정답 및 풀이 p.286):</b><br>
+          - <b>👦 민준 (옳음 ○):</b> $5x - 2x = 3x$ 는 등호($=$)를 사용하여 두 수량이 같음을 나타낸 식이므로 등식이 맞습니다. (항상 참인 항등식 또한 등식의 일종입니다.)<br>
+          - <b>👧 지유 (오류 ×):</b> 좌변을 풀면 $4x + 12$ 이고 우변은 $4x + 3$ 으로 상수항이 다르므로($12 \\ne 3$), 어떤 $x$에 대해서도 참이 될 수 없어 <b>항등식이 아닙니다</b>.<br>
+          - <b>👧 하연 (옳음 ○):</b> $x - 1 = 1 - x$ 에서 $2x = 2 \\implies x = 1$ 일 때만 참이 되고 다른 값에서는 거짓이 되므로 <b>방정식</b>이 맞습니다.<br>
+          - <b>👦 도윤 (오류 ×):</b> 우변을 정리하면 $(2-1)x + 5 = x + 5$ 로 좌변과 완전히 같아 항상 참인 <b>항등식</b>입니다. 따라서 항등식이 아니라고 한 도윤의 설명은 틀렸습니다.<br>
+          다음 서브스텝 <b>[4-10] 스스로 확인하기 3: 등식의 성질 OX (p.90)</b>가 해금되었습니다!
+        </div>
+      </div>
+    `;
+
+    if (!state.unlockedSubSteps.includes('4-10')) {
+      state.unlockedSubSteps.push('4-10');
+      renderSubstepPills();
+    }
+
+    if (window.LMSIntegration && LMSIntegration.saveStudentProgress) {
+      LMSIntegration.saveStudentProgress('4-9', {
+        score: 100,
+        completed: true,
+        answers: { chkMinjun, chkJiyu, chkHayeon, chkDoyun, rawMain }
+      }, 3);
+    }
+  } else {
+    let wrongNotes = [];
+    if (!isMainCorrect) {
+      wrongNotes.push('• [질문 1] 옳게 설명한 학생은 민준이와 하연이입니다.');
+    }
+    if (oxAllFilled && !oxAllCorrect) {
+      if (!isOx0) wrongNotes.push('• 민준: 등호(=)가 포함되어 있으므로 등식이 맞습니다 (O).');
+      if (!isOx1) wrongNotes.push('• 지유: 좌변 상수항 12와 우변 3이 다르므로 항등식이 아닙니다 (X).');
+      if (!isOx2) wrongNotes.push('• 하연: x=1일 때만 참이 되므로 방정식이 맞습니다 (O).');
+      if (!isOx3) wrongNotes.push('• 도윤: 우변을 정리하면 x+5로 좌변과 같아 항등식이 맞습니다 (X).');
+    }
+
+    fb.innerHTML = `
+      <div style="background:#fef2f2; border:1px solid #ef4444; border-radius:10px; padding:12px; color:#991b1b;">
+        <div style="font-weight:800; font-size:0.92rem;">다시 확인해 보세요! (현재 점수: ${score}점)</div>
+        <div style="margin-top:6px; font-size:0.84rem; line-height:1.5;">
+          ${wrongNotes.join('<br>')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ]
+    });
+  }
+}
+
+// --- Two.js 60fps 인터랙티브 캔버스 엔진 ---
+function drawStep4_9Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const two = new Two({
+    width: 680,
+    height: 440,
+    type: Two.Types.svg
+  }).appendTo(container);
+
+  if (!state.lab4_9) {
+    resetLab4_9();
+  }
+
+  const activeTab = state.lab4_9.activeTab;
+
+  if (activeTab === 'mode1') {
+    drawMode1StudentSpeechVerifierLab(two);
+  } else if (activeTab === 'mode2') {
+    drawMode2IdentityVsEquationScannerLab(two);
+  } else if (activeTab === 'mode3') {
+    drawMode3MathematicalClassificationBoardLab(two);
+  }
+
+  // 안내 배너 (Vertical Budget 준수: Y=385, H=26, 바닥 안전 여백 42px >= 25px)
+  const bannerBg = two.makeRoundedRectangle(340, 385, 620, 26, 6);
+  bannerBg.fill = '#f8fafc';
+  bannerBg.stroke = '#cbd5e1';
+  bannerBg.linewidth = 1;
+
+  let tipMsg = '💡 등식은 등호(=)를 사용한 식이고, 항등식은 미지수에 어떤 수를 넣어도 항상 참인 등식입니다.';
+  if (activeTab === 'mode1') {
+    tipMsg = '💡 4명의 학생 카드를 클릭하여 식을 전개하고 발언의 참·거짓을 검증해 보세요.';
+  } else if (activeTab === 'mode2') {
+    tipMsg = '💡 x에 다양한 값을 대입하여 항상 참인지, 특정 값에서만 참인지 확인해 보세요.';
+  } else if (activeTab === 'mode3') {
+    tipMsg = '💡 4개 식이 등식, 항등식, 방정식 중 어디에 속하는지 한눈에 분류해 보세요.';
+  }
+
+  const tipText = two.makeText(tipMsg, 340, 385, {
+    family: 'Pretendard, sans-serif',
+    size: 11,
+    weight: 600,
+    fill: '#475569',
+    alignment: 'center'
+  });
+
+  two.update();
+}
+
+// Mode 1: 🗣️ 4인 학생 발언 검증 랩
+function drawMode1StudentSpeechVerifierLab(two) {
+  const selIdx = state.lab4_9.selectedStudent;
+  const curStudent = STUDENTS_4_9[selIdx];
+
+  const title = two.makeText('🗣️ [4인 발언 검증 랩] 등식과 항등식 발언 논리 분석 (교과서 p.90 2번)', 340, 26, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 800,
+    fill: '#1e1b4b',
+    alignment: 'center'
+  });
+
+  // 상단 4인 학생 선택 탭 (Y=62, W=130, H=30)
+  STUDENTS_4_9.forEach((st, idx) => {
+    const bx = 115 + idx * 150;
+    const by = 62;
+    const isCur = (idx === selIdx);
+
+    const btnBg = two.makeRoundedRectangle(bx, by, 134, 30, 8);
+    btnBg.fill = isCur ? '#4f46e5' : '#f1f5f9';
+    btnBg.stroke = isCur ? '#4338ca' : '#cbd5e1';
+    btnBg.linewidth = isCur ? 2 : 1;
+
+    const btnLabel = two.makeText(`${st.name} [${st.claim}]`, bx, by, {
+      family: 'Pretendard, sans-serif',
+      size: 12,
+      weight: 700,
+      fill: isCur ? '#ffffff' : '#334155',
+      alignment: 'center'
+    });
+
+    two.update();
+    if (btnBg._renderer && btnBg._renderer.elem) {
+      const el = btnBg._renderer.elem;
+      el.style.cursor = 'pointer';
+      el.onclick = () => setStudent4_9(idx);
+    }
+  });
+
+  // 선택된 학생의 발언 말풍선 카드 (Y=125, W=600, H=66)
+  const bubbleBg = two.makeRoundedRectangle(340, 125, 600, 66, 10);
+  bubbleBg.fill = '#ffffff';
+  bubbleBg.stroke = curStudent.isCorrectClaim ? '#10b981' : '#f43f5e';
+  bubbleBg.linewidth = 2;
+
+  const stName = two.makeText(`💬 ${curStudent.name}의 발언:`, 110, 112, {
+    family: 'Pretendard, sans-serif',
+    size: 13,
+    weight: 800,
+    fill: curStudent.isCorrectClaim ? '#059669' : '#e11d48',
+    alignment: 'left'
+  });
+
+  const stSpeech = two.makeText(`"${curStudent.speech}"`, 340, 138, {
+    family: 'Pretendard, sans-serif',
+    size: 15,
+    weight: 800,
+    fill: '#1e293b',
+    alignment: 'center'
+  });
+
+  // 좌변 vs 우변 식 정리 듀얼 박스 (Y=220, H=88)
+  // 좌변 정리 박스 (X=205, W=250)
+  const lhsBox = two.makeRoundedRectangle(205, 220, 250, 88, 10);
+  lhsBox.fill = '#eff6ff';
+  lhsBox.stroke = '#93c5fd';
+  lhsBox.linewidth = 1.5;
+
+  two.makeText('좌변(Left-hand side) 정리', 205, 195, {
+    family: 'Pretendard, sans-serif',
+    size: 11.5,
+    weight: 800,
+    fill: '#1d4ed8',
+    alignment: 'center'
+  });
+
+  two.makeText(curStudent.lhsExpr, 205, 225, {
+    family: 'Pretendard, sans-serif',
+    size: 13,
+    weight: 800,
+    fill: '#1e293b',
+    alignment: 'center'
+  });
+
+  // 우변 정리 박스 (X=475, W=250)
+  const rhsBox = two.makeRoundedRectangle(475, 220, 250, 88, 10);
+  rhsBox.fill = '#faf5ff';
+  rhsBox.stroke = '#d8b4fe';
+  rhsBox.linewidth = 1.5;
+
+  two.makeText('우변(Right-hand side) 정리', 475, 195, {
+    family: 'Pretendard, sans-serif',
+    size: 11.5,
+    weight: 800,
+    fill: '#7e22ce',
+    alignment: 'center'
+  });
+
+  two.makeText(curStudent.rhsExpr, 475, 225, {
+    family: 'Pretendard, sans-serif',
+    size: 13,
+    weight: 800,
+    fill: '#1e293b',
+    alignment: 'center'
+  });
+
+  // 중앙 등호/비교 핀 (X=340, Y=220)
+  const midCircle = two.makeCircle(340, 220, 20);
+  const isIdentical = (curStudent.id === 'minjun' || curStudent.id === 'doyun');
+  midCircle.fill = isIdentical ? '#ecfdf5' : '#fef2f2';
+  midCircle.stroke = isIdentical ? '#10b981' : '#ef4444';
+  midCircle.linewidth = 2;
+
+  two.makeText(isIdentical ? '=' : 'vs', 340, 220, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 900,
+    fill: isIdentical ? '#059669' : '#dc2626',
+    alignment: 'center'
+  });
+
+  // 최종 판정 배너 (Y=310, W=600, H=56)
+  const resBg = two.makeRoundedRectangle(340, 310, 600, 56, 8);
+  resBg.fill = curStudent.isCorrectClaim ? '#ecfdf5' : '#fef2f2';
+  resBg.stroke = curStudent.isCorrectClaim ? '#10b981' : '#ef4444';
+  resBg.linewidth = 1.5;
+
+  const resBadgeText = curStudent.isCorrectClaim
+    ? `✨ [옳은 설명 ○] ${curStudent.name}의 주장은 참입니다!`
+    : `❌ [오류 발견 ×] ${curStudent.name}의 주장은 틀렸습니다!`;
+
+  two.makeText(resBadgeText, 340, 298, {
+    family: 'Pretendard, sans-serif',
+    size: 12.5,
+    weight: 800,
+    fill: curStudent.isCorrectClaim ? '#065f46' : '#991b1b',
+    alignment: 'center'
+  });
+
+  two.makeText(curStudent.reason, 340, 322, {
+    family: 'Pretendard, sans-serif',
+    size: 11,
+    weight: 600,
+    fill: curStudent.isCorrectClaim ? '#047857' : '#b91c1c',
+    alignment: 'center'
+  });
+}
+
+// Mode 2: 🔍 미러 x-스캐너
+function drawMode2IdentityVsEquationScannerLab(two) {
+  const selIdx = state.lab4_9.selectedStudent;
+  const curStudent = STUDENTS_4_9[selIdx];
+  const testX = state.lab4_9.testValueX;
+
+  const title = two.makeText('🔍 [미러 x-스캐너] 다양한 x값 대입을 통한 항상 참/거짓 판별 (교과서 p.90 2번)', 340, 26, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 800,
+    fill: '#1e1b4b',
+    alignment: 'center'
+  });
+
+  // 상단 학생 선택 탭
+  STUDENTS_4_9.forEach((st, idx) => {
+    const bx = 115 + idx * 150;
+    const by = 58;
+    const isCur = (idx === selIdx);
+
+    const btnBg = two.makeRoundedRectangle(bx, by, 134, 28, 8);
+    btnBg.fill = isCur ? '#4f46e5' : '#f1f5f9';
+    btnBg.stroke = isCur ? '#4338ca' : '#cbd5e1';
+    btnBg.linewidth = isCur ? 2 : 1;
+
+    two.makeText(`${st.name}`, bx, by, {
+      family: 'Pretendard, sans-serif',
+      size: 11.5,
+      weight: 700,
+      fill: isCur ? '#ffffff' : '#334155',
+      alignment: 'center'
+    });
+
+    two.update();
+    if (btnBg._renderer && btnBg._renderer.elem) {
+      const el = btnBg._renderer.elem;
+      el.style.cursor = 'pointer';
+      el.onclick = () => setStudent4_9(idx);
+    }
+  });
+
+  // 대입할 x값 선택 바 (Y=100)
+  two.makeText('대입할 x값 선택:', 140, 100, {
+    family: 'Pretendard, sans-serif',
+    size: 12,
+    weight: 700,
+    fill: '#334155',
+    alignment: 'center'
+  });
+
+  const xCandidates = [-1, 0, 1, 2, 3];
+  xCandidates.forEach((xv, i) => {
+    const xbx = 230 + i * 75;
+    const isCurX = (testX === xv);
+
+    const xbtn = two.makeRoundedRectangle(xbx, 100, 60, 26, 6);
+    xbtn.fill = isCurX ? '#059669' : '#f8fafc';
+    xbtn.stroke = isCurX ? '#047857' : '#cbd5e1';
+    xbtn.linewidth = isCurX ? 2 : 1;
+
+    two.makeText(`x = ${xv}`, xbx, 100, {
+      family: 'Pretendard, sans-serif',
+      size: 11,
+      weight: 700,
+      fill: isCurX ? '#ffffff' : '#475569',
+      alignment: 'center'
+    });
+
+    two.update();
+    if (xbtn._renderer && xbtn._renderer.elem) {
+      const el = xbtn._renderer.elem;
+      el.style.cursor = 'pointer';
+      el.onclick = () => setTestValueX4_9(xv);
+    }
+  });
+
+  // 식과 대입 계산 결과
+  let lhsCalc = 0;
+  let rhsCalc = 0;
+  let isMatch = false;
+
+  if (curStudent.id === 'minjun') {
+    // 5x - 2x = 3x
+    lhsCalc = 5 * testX - 2 * testX;
+    rhsCalc = 3 * testX;
+    isMatch = (lhsCalc === rhsCalc);
+  } else if (curStudent.id === 'jiyu') {
+    // 4(x + 3) = 4x + 3
+    lhsCalc = 4 * (testX + 3);
+    rhsCalc = 4 * testX + 3;
+    isMatch = (lhsCalc === rhsCalc);
+  } else if (curStudent.id === 'hayeon') {
+    // x - 1 = 1 - x
+    lhsCalc = testX - 1;
+    rhsCalc = 1 - testX;
+    isMatch = (lhsCalc === rhsCalc);
+  } else if (curStudent.id === 'doyun') {
+    // x + 5 = 2x + 5 - x
+    lhsCalc = testX + 5;
+    rhsCalc = 2 * testX + 5 - testX;
+    isMatch = (lhsCalc === rhsCalc);
+  }
+
+  // 거울 대칭 카드 (Y=185, H=100)
+  // 좌변 카드 (X=205, W=250)
+  const lCard = two.makeRoundedRectangle(205, 185, 250, 100, 10);
+  lCard.fill = '#eff6ff';
+  lCard.stroke = isMatch ? '#10b981' : '#3b82f6';
+  lCard.linewidth = 2;
+
+  two.makeText(`좌변: ${curStudent.equation.split('=')[0].trim()}`, 205, 155, {
+    family: 'Pretendard, sans-serif',
+    size: 12,
+    weight: 800,
+    fill: '#1d4ed8',
+    alignment: 'center'
+  });
+
+  two.makeText(`x = ${testX} 대입 ➜ ${lhsCalc}`, 205, 195, {
+    family: 'Pretendard, sans-serif',
+    size: 15,
+    weight: 800,
+    fill: '#1e293b',
+    alignment: 'center'
+  });
+
+  // 우변 카드 (X=475, W=250)
+  const rCard = two.makeRoundedRectangle(475, 185, 250, 100, 10);
+  rCard.fill = '#faf5ff';
+  rCard.stroke = isMatch ? '#10b981' : '#a855f7';
+  rCard.linewidth = 2;
+
+  two.makeText(`우변: ${curStudent.equation.split('=')[1].trim()}`, 475, 155, {
+    family: 'Pretendard, sans-serif',
+    size: 12,
+    weight: 800,
+    fill: '#7e22ce',
+    alignment: 'center'
+  });
+
+  two.makeText(`x = ${testX} 대입 ➜ ${rhsCalc}`, 475, 195, {
+    family: 'Pretendard, sans-serif',
+    size: 15,
+    weight: 800,
+    fill: '#1e293b',
+    alignment: 'center'
+  });
+
+  // 중앙 일치/불일치 뱃지 (X=340, Y=185)
+  const centerBadge = two.makeCircle(340, 185, 24);
+  centerBadge.fill = isMatch ? '#ecfdf5' : '#fef2f2';
+  centerBadge.stroke = isMatch ? '#10b981' : '#ef4444';
+  centerBadge.linewidth = 2;
+
+  two.makeText(isMatch ? '=' : '≠', 340, 185, {
+    family: 'Pretendard, sans-serif',
+    size: 22,
+    weight: 900,
+    fill: isMatch ? '#059669' : '#dc2626',
+    alignment: 'center'
+  });
+
+  // 하단 종합 스펙트럼 판정 (Y=295, W=600, H=70)
+  const specBg = two.makeRoundedRectangle(340, 295, 600, 70, 8);
+  specBg.fill = '#ffffff';
+  specBg.stroke = '#cbd5e1';
+  specBg.linewidth = 1.5;
+
+  let conclusionText = '';
+  if (curStudent.id === 'minjun') {
+    conclusionText = '모든 x에 대해 좌변=우변 일치 ➜ 항등식 (항상 참인 등식) ➜ 민준의 설명은 맞음!';
+  } else if (curStudent.id === 'jiyu') {
+    conclusionText = '모든 x에 대해 12 ≠ 3 불일치 ➜ 항등식 아님 ➜ 지유의 설명은 틀림!';
+  } else if (curStudent.id === 'hayeon') {
+    conclusionText = 'x = 1 일 때만 참, 다른 x에서는 거짓 ➜ 방정식 ➜ 하연의 설명은 맞음!';
+  } else if (curStudent.id === 'doyun') {
+    conclusionText = '모든 x에 대해 좌변=우변 일치 ➜ 항등식 맞음 ➜ "항등식이 아니야"라는 도윤은 틀림!';
+  }
+
+  two.makeText(`대입 결과: 좌변(${lhsCalc}) ${isMatch ? '=' : '≠'} 우변(${rhsCalc}) ➜ ${isMatch ? '참(True)' : '거짓(False)'}`, 340, 280, {
+    family: 'Pretendard, sans-serif',
+    size: 12.5,
+    weight: 800,
+    fill: isMatch ? '#059669' : '#dc2626',
+    alignment: 'center'
+  });
+
+  two.makeText(conclusionText, 340, 310, {
+    family: 'Pretendard, sans-serif',
+    size: 11.5,
+    weight: 700,
+    fill: '#1e293b',
+    alignment: 'center'
+  });
+}
+
+// Mode 3: 🏷️ 수학적 분류 보드
+function drawMode3MathematicalClassificationBoardLab(two) {
+  const title = two.makeText('🏷️ [수학적 분류 보드] 4개 식의 엄밀한 수학적 성격과 학생 진위 판별 (교과서 p.90 2번)', 340, 26, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 800,
+    fill: '#1e1b4b',
+    alignment: 'center'
+  });
+
+  // 4개 식 카드 그리드 (Y=60 ~ 310)
+  STUDENTS_4_9.forEach((st, idx) => {
+    const cy = 75 + idx * 56;
+    const isOk = st.isCorrectClaim;
+
+    const rowBg = two.makeRoundedRectangle(340, cy, 620, 48, 8);
+    rowBg.fill = isOk ? '#f0fdf4' : '#fff1f2';
+    rowBg.stroke = isOk ? '#86efac' : '#fecdd3';
+    rowBg.linewidth = 1.5;
+
+    // 학생 이름
+    two.makeText(`${st.name}`, 65, cy, {
+      family: 'Pretendard, sans-serif',
+      size: 13,
+      weight: 800,
+      fill: isOk ? '#166534' : '#9f1239',
+      alignment: 'center'
+    });
+
+    // 식과 발언
+    two.makeText(st.speech, 245, cy, {
+      family: 'Pretendard, sans-serif',
+      size: 11.5,
+      weight: 700,
+      fill: '#1e293b',
+      alignment: 'center'
+    });
+
+    // 분류 뱃지
+    const typeBadge = two.makeRoundedRectangle(460, cy, 95, 26, 6);
+    typeBadge.fill = isOk ? '#dcfce7' : '#fee2e2';
+    typeBadge.stroke = isOk ? '#16a34a' : '#ef4444';
+    typeBadge.linewidth = 1;
+
+    let actualCategory = '';
+    if (st.id === 'minjun') actualCategory = '항등식 (등식)';
+    if (st.id === 'jiyu') actualCategory = '거짓 등식';
+    if (st.id === 'hayeon') actualCategory = '일차방정식';
+    if (st.id === 'doyun') actualCategory = '항등식';
+
+    two.makeText(actualCategory, 460, cy, {
+      family: 'Pretendard, sans-serif',
+      size: 10.5,
+      weight: 800,
+      fill: isOk ? '#15803d' : '#b91c1c',
+      alignment: 'center'
+    });
+
+    // 최종 O/X 뱃지
+    const oxBadge = two.makeRoundedRectangle(570, cy, 55, 26, 6);
+    oxBadge.fill = isOk ? '#22c55e' : '#f43f5e';
+
+    two.makeText(isOk ? '옳음 ○' : '틀림 ×', 570, cy, {
+      family: 'Pretendard, sans-serif',
+      size: 11,
+      weight: 800,
+      fill: '#ffffff',
+      alignment: 'center'
+    });
+
+    two.update();
+    if (rowBg._renderer && rowBg._renderer.elem) {
+      const el = rowBg._renderer.elem;
+      el.style.cursor = 'pointer';
+      el.onclick = () => {
+        setStudent4_9(idx);
+        setLab4_9Tab('mode1');
+      };
+    }
+  });
+
+  // 하단 요약 카드 (Y=338, W=620, H=36)
+  const sumBg = two.makeRoundedRectangle(340, 338, 620, 36, 8);
+  sumBg.fill = '#ecfdf5';
+  sumBg.stroke = '#10b981';
+  sumBg.linewidth = 1.5;
+
+  two.makeText('✨ [결론] 옳게 설명한 학생은 민준(등식)과 하연(방정식) 2명입니다!', 340, 338, {
+    family: 'Pretendard, sans-serif',
+    size: 12,
+    weight: 800,
+    fill: '#065f46',
+    alignment: 'center'
+  });
+}
+
+    // --- End Substep 4-9 Implementation ---
+
+
 
     // Router for Substep
     function loadSubStep(code) {
@@ -36221,6 +37113,9 @@ function drawMode3TruthTableRootLab(two) {
       } else if (code === '4-8') {
         renderToolbar4_8();
         renderSubstep4_8Form();
+      } else if (code === '4-9') {
+        renderToolbar4_9();
+        renderSubstep4_9Form();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
