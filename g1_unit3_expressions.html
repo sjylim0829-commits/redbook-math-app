@@ -1078,7 +1078,7 @@
       '3-11': {
         code: '3-11', tab: 3,
         substepLabel: '11. 생각 넓히기: 3x3 마방진 퍼즐 (p.83)',
-        missionText: '<b>[3-11] 11. 생각 넓히기: 3x3 마방진 퍼즐 (p.83)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        missionText: '<b>[생각 넓히기] 3×3 마방진 일차식 퍼즐 (교과서 p.83)</b><br>• <b>마방진 성질:</b> 가로, 세로, 대각선의 세 일차식의 합이 모두 같습니다.<br>• <b>마법의 합:</b> 2행 $(2x+3) + (2x+1) + (2x-1) = 6x + 3$<br>• <b>빈칸 추론:</b> 주대각선 $\\to$ ㈎($2x-2$), 1행 $\\to$ ㈏($2x$), 1열 $\\to$ ㈐($2x+2$)<br>좌측 캔버스에서 마방진 합계 검증기, 빈칸 추론 4단계 스텝퍼, 대수 불변량 원리를 조작해 보세요.',
         drawer: 'drawStep3_11Canvas'
       },
       '3-12': {
@@ -1481,6 +1481,14 @@
       
       
       
+      
+      // Substep 3-11 State (Expanding Thoughts: 3x3 Magic Square Puzzle)
+      lab3_11: {
+        activeTab: 'mode1',
+        selectedLine: 'row2',
+        stepIdx: 1,
+        isPassed: false
+      },
       // Substep 3-10 State (Self Check 5: Reverse Calculation of Erroneous Expression)
       lab3_10: {
         activeTab: 'mode1',
@@ -28055,6 +28063,717 @@ function drawMode3DualProblemMasterLab(two, width, height) {
 
     // --- End Substep 3-10 Implementation ---
 
+    
+    // --- Substep 3-11 Implementation ---
+// code_3_11.js: Substep [3-11] 3.3 생각 넓히기: 3x3 마방진 일차식 퍼즐 (교과서 p.83)
+
+const MAGIC_CELLS_3_11 = [
+  { r: 0, c: 0, label: '㈎', expr: '2x - 2', isBlank: true, id: 'ga' },
+  { r: 0, c: 1, label: '', expr: '2x + 5', isBlank: false },
+  { r: 0, c: 2, label: '㈏', expr: '2x', isBlank: true, id: 'na' },
+  { r: 1, c: 0, label: '', expr: '2x + 3', isBlank: false },
+  { r: 1, c: 1, label: '중앙', expr: '2x + 1', isBlank: false },
+  { r: 1, c: 2, label: '', expr: '2x - 1', isBlank: false },
+  { r: 2, c: 0, label: '㈐', expr: '2x + 2', isBlank: true, id: 'da' },
+  { r: 2, c: 1, label: '㈑', expr: '2x - 3', isBlank: true, id: 'ra' },
+  { r: 2, c: 2, label: '', expr: '2x + 4', isBlank: false }
+];
+
+const LINE_DEFS_3_11 = {
+  row1: { name: '가로 1행', indices: [0, 1, 2], desc: '(2x - 2) + (2x + 5) + (2x) = 6x + 3' },
+  row2: { name: '가로 2행 (완성)', indices: [3, 4, 5], desc: '(2x + 3) + (2x + 1) + (2x - 1) = 6x + 3 (마법의 합!)' },
+  row3: { name: '가로 3행', indices: [6, 7, 8], desc: '(2x + 2) + (2x - 3) + (2x + 4) = 6x + 3' },
+  col1: { name: '세로 1열', indices: [0, 3, 6], desc: '(2x - 2) + (2x + 3) + (2x + 2) = 6x + 3' },
+  col2: { name: '세로 2열', indices: [1, 4, 7], desc: '(2x + 5) + (2x + 1) + (2x - 3) = 6x + 3' },
+  col3: { name: '세로 3열', indices: [2, 5, 8], desc: '(2x) + (2x - 1) + (2x + 4) = 6x + 3' },
+  diag1: { name: '주대각선 (↘)', indices: [0, 4, 8], desc: '(2x - 2) + (2x + 1) + (2x + 4) = 6x + 3' },
+  diag2: { name: '반대대각선 (↙)', indices: [2, 4, 6], desc: '(2x) + (2x + 1) + (2x + 2) = 6x + 3' }
+};
+
+function renderToolbar3_11() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab3_11) {
+    state.lab3_11 = {
+      activeTab: 'mode1', // 'mode1' (격자 탐구) | 'mode2' (추론 스텝퍼) | 'mode3' (불변량 원리)
+      selectedLine: 'row2',
+      stepIdx: 1,
+      isPassed: false
+    };
+  }
+
+  const curTab = state.lab3_11.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab3_11Tab('mode1')">
+        1. 🧩 3x3 마방진 합계 검증기
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab3_11Tab('mode2')">
+        2. 🔍 빈칸 추론 4단계 스텝퍼
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab3_11Tab('mode3')">
+        3. 📐 마방진 대수 불변량 원리
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn" onclick="selectLine3_11('row2')" title="2행 기준합 보기">⭐ 2행 기준합</button>
+      <button class="icon-btn" onclick="selectLine3_11('diag1')" title="대각선 검증">↘ 대각선</button>
+      <button class="icon-btn" onclick="resetLab3_11()" title="초기화">🔄 초기화</button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('3-11')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab3_11Tab(tabKey) {
+  if (!state.lab3_11) resetLab3_11();
+  state.lab3_11.activeTab = tabKey;
+  renderToolbar3_11();
+  drawStep3_11Canvas();
+}
+
+function resetLab3_11() {
+  state.lab3_11 = {
+    activeTab: 'mode1',
+    selectedLine: 'row2',
+    stepIdx: 1,
+    isPassed: false
+  };
+  renderToolbar3_11();
+  drawStep3_11Canvas();
+}
+
+function selectLine3_11(lineKey) {
+  if (!state.lab3_11) resetLab3_11();
+  state.lab3_11.selectedLine = lineKey;
+  renderToolbar3_11();
+  drawStep3_11Canvas();
+}
+
+function nextStep3_11() {
+  if (!state.lab3_11) resetLab3_11();
+  if (state.lab3_11.stepIdx >= 4) {
+    state.lab3_11.stepIdx = 1;
+  } else {
+    state.lab3_11.stepIdx++;
+  }
+  renderToolbar3_11();
+  drawStep3_11Canvas();
+}
+
+function setStepIdx3_11(idx) {
+  if (!state.lab3_11) resetLab3_11();
+  state.lab3_11.stepIdx = idx;
+  renderToolbar3_11();
+  drawStep3_11Canvas();
+}
+
+function renderSubstep3_11() {
+  const panel = document.getElementById('form-box');
+  if (!panel) return;
+
+  if (!state.lab3_11) {
+    state.lab3_11 = {
+      activeTab: 'mode1',
+      selectedLine: 'row2',
+      stepIdx: 1,
+      isPassed: false
+    };
+  }
+
+  panel.innerHTML = `
+    <div style="padding:16px; font-family:'Pretendard', sans-serif;">
+      <!-- 문제 브리핑 카드 -->
+      <div style="background:#eff6ff; border-left:4px solid #3b82f6; border-radius:8px; padding:12px 14px; margin-bottom:14px;">
+        <div style="font-size:0.95rem; font-weight:800; color:#1e40af; margin-bottom:4px;">
+          📖 [생각 넓히기] 3×3 마방진 일차식 퍼즐 (교과서 p.83)
+        </div>
+        <div style="font-size:0.83rem; color:#334155; line-height:1.5;">
+          • <b>마방진의 규칙:</b> 가로, 세로, 대각선에 있는 세 일차식의 합이 모두 같습니다.<br>
+          • <b>탐구 1단계:</b> 세 식이 모두 주어진 줄(가로 2행)을 찾아 '마법의 합'을 먼저 구합니다.<br>
+          • <b>탐구 2단계:</b> 두 식이 주어진 줄에서 마법의 합에서 빼어 빈칸 ㈎, ㈏, ㈐를 차례대로 구합니다.
+        </div>
+      </div>
+
+      <!-- 문제 풀이 영역 -->
+      <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:14px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <div style="font-size:0.9rem; font-weight:700; color:#1e293b; margin-bottom:10px;">
+          ✏️ 다음 물음에 알맞은 일차식을 구하시오.
+        </div>
+
+        <!-- ⑴ 문항 -->
+        <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px; margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <span style="font-weight:700; color:#1e293b; font-size:0.86rem;">
+              ⑴ 가로, 세로, 대각선의 세 식의 합(마법의 합)을 구하시오.
+            </span>
+            <button class="tool-btn" style="padding:2px 8px; font-size:0.75rem;" onclick="selectLine3_11('row2')">2행 합계 보기</button>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.85rem; font-weight:600; color:#475569;">합 =</span>
+            <input type="text" id="ans_3_11_1" class="proof-input-text" placeholder="답 입력 (예: ax+b)" style="flex:1; max-width:220px;" />
+          </div>
+        </div>
+
+        <!-- ⑵ 문항 -->
+        <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px; margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <span style="font-weight:700; color:#1e293b; font-size:0.86rem;">
+              ⑵ 빈칸 ㈎에 알맞은 일차식을 구하시오.
+            </span>
+            <button class="tool-btn" style="padding:2px 8px; font-size:0.75rem;" onclick="setLab3_11Tab('mode2'); setStepIdx3_11(2);">㈎ 추론 보기</button>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.85rem; font-weight:600; color:#475569;">㈎ =</span>
+            <input type="text" id="ans_3_11_2" class="proof-input-text" placeholder="답 입력 (예: ax+b)" style="flex:1; max-width:220px;" />
+          </div>
+        </div>
+
+        <!-- ⑶ 문항 -->
+        <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px; margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <span style="font-weight:700; color:#1e293b; font-size:0.86rem;">
+              ⑶ 빈칸 ㈏에 알맞은 일차식을 구하시오.
+            </span>
+            <button class="tool-btn" style="padding:2px 8px; font-size:0.75rem;" onclick="setLab3_11Tab('mode2'); setStepIdx3_11(3);">㈏ 추론 보기</button>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.85rem; font-weight:600; color:#475569;">㈏ =</span>
+            <input type="text" id="ans_3_11_3" class="proof-input-text" placeholder="답 입력 (예: ax 또는 ax+b)" style="flex:1; max-width:220px;" />
+          </div>
+        </div>
+
+        <!-- ⑷ 문항 -->
+        <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <span style="font-weight:700; color:#1e293b; font-size:0.86rem;">
+              ⑷ 빈칸 ㈐에 알맞은 일차식을 구하시오.
+            </span>
+            <button class="tool-btn" style="padding:2px 8px; font-size:0.75rem;" onclick="setLab3_11Tab('mode2'); setStepIdx3_11(4);">㈐ 추론 보기</button>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.85rem; font-weight:600; color:#475569;">㈐ =</span>
+            <input type="text" id="ans_3_11_4" class="proof-input-text" placeholder="답 입력 (예: ax+b)" style="flex:1; max-width:220px;" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 제출 및 액션 버튼 -->
+      <div style="display:flex; gap:8px; margin-bottom:12px;">
+        <button class="tool-btn" style="flex:1; height:42px; font-size:0.92rem; font-weight:700; background:#3b82f6; color:#ffffff;" onclick="gradeStep3_11()">
+          정답 확인 및 채점
+        </button>
+        <button class="icon-btn" style="height:42px; padding:0 14px;" onclick="resetForm3_11()">
+          다시 풀기
+        </button>
+      </div>
+
+      <!-- 결과 및 피드백 컨테이너 -->
+      <div id="result-box-3_11"></div>
+    </div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(panel, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function resetForm3_11() {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById(`ans_3_11_${i}`);
+    if (el) el.value = '';
+  }
+  const rbox = document.getElementById('result-box-3_11');
+  if (rbox) rbox.innerHTML = '';
+}
+
+function gradeStep3_11() {
+  const rbox = document.getElementById('result-box-3_11');
+  if (!rbox) return;
+
+  const a1 = (document.getElementById('ans_3_11_1')?.value || '').trim().replace(/\s+/g, '').toLowerCase();
+  const a2 = (document.getElementById('ans_3_11_2')?.value || '').trim().replace(/\s+/g, '').toLowerCase();
+  const a3 = (document.getElementById('ans_3_11_3')?.value || '').trim().replace(/\s+/g, '').toLowerCase();
+  const a4 = (document.getElementById('ans_3_11_4')?.value || '').trim().replace(/\s+/g, '').toLowerCase();
+
+  const isOk1 = (a1 === '6x+3' || a1 === '3+6x');
+  const isOk2 = (a2 === '2x-2' || a2 === '-2+2x');
+  const isOk3 = (a3 === '2x');
+  const isOk4 = (a4 === '2x+2' || a4 === '2+2x');
+
+  const allOk = isOk1 && isOk2 && isOk3 && isOk4;
+
+  if (allOk) {
+    if (!state.lab3_11) resetLab3_11();
+    state.lab3_11.isPassed = true;
+
+    if (window.LMSIntegration && window.LMSIntegration.saveStudentProgress) {
+      window.LMSIntegration.saveStudentProgress('3-11', { score: 100, passed: true }, 'unit3');
+    }
+
+    if (!state.unlockedSubSteps.includes('3-12')) {
+      state.unlockedSubSteps.push('3-12');
+    }
+    updateSubstepPills();
+
+    rbox.innerHTML = `
+      <div style="background:#ecfdf5; border:1px solid #10b981; border-radius:8px; padding:14px; margin-top:10px;">
+        <div style="font-weight:800; font-size:1rem; color:#065f46; margin-bottom:6px;">
+          🎉 100점 완벽 통과! 3×3 마방진 일차식 퍼즐을 완벽하게 완성했습니다!
+        </div>
+        <div style="font-size:0.85rem; color:#047857; line-height:1.6;">
+          • <b>⑴ 마법의 합:</b> 가로 2행의 세 식 합 = $(2x+3) + (2x+1) + (2x-1) = \\mathbf{6x + 3}$<br>
+          • <b>⑵ 빈칸 ㈎:</b> 주대각선 $(2x+1) + (2x+4) = 4x+5 \\implies (6x+3) - (4x+5) = \\mathbf{2x - 2}$<br>
+          • <b>⑶ 빈칸 ㈏:</b> 1행 $(2x-2) + (2x+5) = 4x+3 \\implies (6x+3) - (4x+3) = \\mathbf{2x}$<br>
+          • <b>⑷ 빈칸 ㈐:</b> 1열 $(2x-2) + (2x+3) = 4x+1 \\implies (6x+3) - (4x+1) = \\mathbf{2x + 2}$
+        </div>
+        <div style="margin-top:10px; font-weight:700; color:#047857;">
+          👉 다음 단계 [3-12] 놀이 쏙 수학: 생각한 수 맞히기 마술 랩이 해금되었습니다!
+        </div>
+      </div>
+    `;
+  } else {
+    let wrongMsg = [];
+    if (!isOk1) wrongMsg.push('<b>⑴:</b> 가로 2행의 세 식 (2x+3) + (2x+1) + (2x-1) 을 더해 마법의 합을 구하세요.');
+    if (!isOk2) wrongMsg.push('<b>⑵:</b> 주대각선 (중앙 2x+1 과 우측하단 2x+4)의 합을 마법의 합 6x+3 에서 빼보세요.');
+    if (!isOk3) wrongMsg.push('<b>⑶:</b> 1행 (2x-2 와 2x+5)의 합을 6x+3 에서 빼어 ㈏를 구하세요.');
+    if (!isOk4) wrongMsg.push('<b>⑷:</b> 1열 (2x-2 와 2x+3)의 합을 6x+3 에서 빼어 ㈐를 구하세요.');
+
+    rbox.innerHTML = `
+      <div style="background:#fef2f2; border:1px solid #ef4444; border-radius:8px; padding:12px; margin-top:10px;">
+        <div style="font-weight:700; font-size:0.9rem; color:#991b1b; margin-bottom:4px;">
+          ⚠️ 다시 확인해 보세요.
+        </div>
+        <div style="font-size:0.82rem; color:#b91c1c; line-height:1.5;">
+          ${wrongMsg.join('<br>')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(rbox, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+// ==========================================
+// Two.js 60fps Interactive Canvas Engine for 3-11
+// ==========================================
+function drawStep3_11Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+
+  container.innerHTML = '';
+  const width = container.clientWidth || 620;
+  const height = 440;
+
+  const two = new Two({
+    width: width,
+    height: height,
+    type: Two.Types.svg
+  }).appendTo(container);
+
+  if (!state.lab3_11) {
+    state.lab3_11 = {
+      activeTab: 'mode1',
+      selectedLine: 'row2',
+      stepIdx: 1,
+      isPassed: false
+    };
+  }
+
+  const tab = state.lab3_11.activeTab;
+
+  // Background
+  const bg = two.makeRectangle(width / 2, height / 2, width, height);
+  bg.fill = '#f8fafc';
+  bg.noStroke();
+
+  if (tab === 'mode1') {
+    drawMode1MagicSquareGridLab(two, width, height);
+  } else if (tab === 'mode2') {
+    drawMode2DeductionStepperLab(two, width, height);
+  } else {
+    drawMode3AlgebraicProofLab(two, width, height);
+  }
+
+  two.update();
+}
+
+// ----------------------------------------------------
+// Mode 1: 🧩 3x3 마방진 합계 검증기
+// ----------------------------------------------------
+function drawMode1MagicSquareGridLab(two, width, height) {
+  const selLineKey = state.lab3_11.selectedLine || 'row2';
+  const lineDef = LINE_DEFS_3_11[selLineKey] || LINE_DEFS_3_11.row2;
+
+  // Header Title & Current Line Sum Banner (Y=30 to Y=65)
+  const headerCard = two.makeRoundedRectangle(width / 2, 35, width - 40, 42, 8);
+  headerCard.fill = '#ffffff';
+  headerCard.stroke = '#cbd5e1';
+  headerCard.linewidth = 1;
+
+  const hT1 = two.makeText(`선택 라인: [${lineDef.name}]`, width / 2 - 130, 35);
+  hT1.size = 12;
+  hT1.weight = 800;
+  hT1.fill = '#1d4ed8';
+
+  const hT2 = two.makeText(`합계:  ${lineDef.desc}`, width / 2 + 70, 36);
+  hT2.size = 13;
+  hT2.weight = 800;
+  hT2.fill = '#047857';
+
+  // 3x3 Grid Layout (Left Area: X=190, Y=220)
+  const gridCenterX = 210;
+  const gridCenterY = 220;
+  const cellW = 100;
+  const cellH = 68;
+  const gap = 8;
+
+  for (let idx = 0; idx < 9; idx++) {
+    const cell = MAGIC_CELLS_3_11[idx];
+    const colIdx = cell.c; // 0, 1, 2
+    const rowIdx = cell.r; // 0, 1, 2
+
+    const cx = gridCenterX + (colIdx - 1) * (cellW + gap);
+    const cy = gridCenterY + (rowIdx - 1) * (cellH + gap);
+
+    const isInSelectedLine = lineDef.indices.includes(idx);
+
+    const cRect = two.makeRoundedRectangle(cx, cy, cellW, cellH, 8);
+    cRect.fill = isInSelectedLine ? '#eff6ff' : (cell.isBlank ? '#f8fafc' : '#ffffff');
+    cRect.stroke = isInSelectedLine ? '#2563eb' : (cell.isBlank ? '#cbd5e1' : '#94a3b8');
+    cRect.linewidth = isInSelectedLine ? 2.5 : 1;
+
+    // Badge label if blank
+    let bTxt = null;
+    if (cell.isBlank) {
+      const badge = two.makeRoundedRectangle(cx - cellW / 2 + 18, cy - cellH / 2 + 14, 22, 18, 4);
+      badge.fill = '#fef3c7';
+      badge.noStroke();
+
+      bTxt = two.makeText(cell.label, cx - cellW / 2 + 18, cy - cellH / 2 + 15);
+      bTxt.size = 10;
+      bTxt.weight = 800;
+      bTxt.fill = '#b45309';
+    } else if (cell.label === '중앙') {
+      const badge = two.makeRoundedRectangle(cx - cellW / 2 + 22, cy - cellH / 2 + 14, 30, 18, 4);
+      badge.fill = '#ecfdf5';
+      badge.noStroke();
+
+      bTxt = two.makeText('중앙', cx - cellW / 2 + 22, cy - cellH / 2 + 15);
+      bTxt.size = 9;
+      bTxt.weight = 800;
+      bTxt.fill = '#047857';
+    }
+
+    // Cell Expression Text
+    const expText = two.makeText(cell.expr, cx, cy + (cell.isBlank ? 6 : 2));
+    expText.size = 15;
+    expText.weight = 800;
+    expText.fill = isInSelectedLine ? '#1d4ed8' : (cell.isBlank ? '#64748b' : '#1e293b');
+
+    const grp = two.makeGroup(cRect, expText);
+    if (bTxt) grp.add(bTxt);
+
+    grp._renderer.elem.style.cursor = 'pointer';
+    grp._renderer.elem.onclick = (function(cIdx) {
+      return function() {
+        // Toggle line to one containing this cell
+        if (cIdx === 4) selectLine3_11('row2');
+        else if (cIdx === 0 || cIdx === 8) selectLine3_11('diag1');
+        else if (cIdx === 2 || cIdx === 6) selectLine3_11('diag2');
+        else if (cIdx === 1 || cIdx === 7) selectLine3_11('col2');
+        else if (cIdx === 3 || cIdx === 5) selectLine3_11('row2');
+      };
+    })(idx);
+  }
+
+  // Right Side: Line Selection Palette (X=480, Y=220)
+  const lineKeys = ['row1', 'row2', 'row3', 'col1', 'col2', 'col3', 'diag1', 'diag2'];
+  const palW = 190;
+  const palH = 260;
+  const palBg = two.makeRoundedRectangle(width - 120, 220, palW, palH, 10);
+  palBg.fill = '#ffffff';
+  palBg.stroke = '#e2e8f0';
+  palBg.linewidth = 1;
+
+  const palTitle = two.makeText('라인별 검증 선택기', width - 120, 110);
+  palTitle.size = 12;
+  palTitle.weight = 800;
+  palTitle.fill = '#334155';
+
+  const btnH = 24;
+  for (let i = 0; i < 8; i++) {
+    const lk = lineKeys[i];
+    const isCur = (selLineKey === lk);
+    const by = 138 + i * 28;
+
+    const bRect = two.makeRoundedRectangle(width - 120, by, palW - 20, btnH, 5);
+    bRect.fill = isCur ? '#3b82f6' : '#f8fafc';
+    bRect.stroke = isCur ? '#2563eb' : '#cbd5e1';
+    bRect.linewidth = isCur ? 1.5 : 1;
+
+    const bTxt = two.makeText(LINE_DEFS_3_11[lk].name, width - 120, by + 1);
+    bTxt.size = 11;
+    bTxt.weight = isCur ? 700 : 500;
+    bTxt.fill = isCur ? '#ffffff' : '#475569';
+
+    const bGrp = two.makeGroup(bRect, bTxt);
+    bGrp._renderer.elem.style.cursor = 'pointer';
+    bGrp._renderer.elem.onclick = (function(k) {
+      return function() {
+        selectLine3_11(k);
+      };
+    })(lk);
+  }
+
+  // Bottom Safety Banner
+  const bannerY = 385;
+  const bannerBg = two.makeRoundedRectangle(width / 2, bannerY, width - 40, 26, 6);
+  bannerBg.fill = '#eff6ff';
+  bannerBg.stroke = '#bfdbfe';
+  bannerBg.linewidth = 1;
+
+  const bannerTxt = two.makeText('💡 그리드의 셀이나 오른쪽 라인 버튼을 클릭하면 세 식의 합(6x+3)이 실시간 하이라이트됩니다.', width / 2, bannerY + 1);
+  bannerTxt.size = 11;
+  bannerTxt.weight = 600;
+  bannerTxt.fill = '#1d4ed8';
+}
+
+// ----------------------------------------------------
+// Mode 2: 🔍 빈칸 추론 4단계 스텝퍼
+// ----------------------------------------------------
+function drawMode2DeductionStepperLab(two, width, height) {
+  const curStep = state.lab3_11.stepIdx;
+
+  // Header Title
+  const headerCard = two.makeRoundedRectangle(width / 2, 35, width - 40, 40, 8);
+  headerCard.fill = '#ffffff';
+  headerCard.stroke = '#cbd5e1';
+  headerCard.linewidth = 1;
+
+  const hTxt = two.makeText('🔍 3x3 마방진 빈칸 추론 4단계 로드맵', width / 2, 36);
+  hTxt.size = 13;
+  hTxt.weight = 800;
+  hTxt.fill = '#1e293b';
+
+  const DEDUCE_STEPS = [
+    {
+      step: 'STEP 1: 마법의 합 구하기',
+      target: '가로 2행의 세 식 합',
+      formula: '(2x + 3) + (2x + 1) + (2x - 1) = 6x + 3',
+      result: '마법의 합 S = 6x + 3'
+    },
+    {
+      step: 'STEP 2: 빈칸 ㈎ 구하기',
+      target: '주대각선 (↘)',
+      formula: '(2x - 2) = (6x + 3) - [(2x + 1) + (2x + 4)]',
+      result: '빈칸 ㈎ = 2x - 2'
+    },
+    {
+      step: 'STEP 3: 빈칸 ㈏ 구하기',
+      target: '가로 1행',
+      formula: '(2x) = (6x + 3) - [(2x - 2) + (2x + 5)]',
+      result: '빈칸 ㈏ = 2x'
+    },
+    {
+      step: 'STEP 4: 빈칸 ㈐ 구하기',
+      target: '세로 1열',
+      formula: '(2x + 2) = (6x + 3) - [(2x - 2) + (2x + 3)]',
+      result: '빈칸 ㈐ = 2x + 2'
+    }
+  ];
+
+  const startY = 95;
+  const gapY = 66;
+
+  for (let s = 0; s < 4; s++) {
+    const sy = startY + s * gapY;
+    const isCur = (curStep === s + 1);
+    const item = DEDUCE_STEPS[s];
+
+    const card = two.makeRoundedRectangle(width / 2, sy, width - 40, 58, 8);
+    card.fill = isCur ? '#eff6ff' : '#ffffff';
+    card.stroke = isCur ? '#2563eb' : '#cbd5e1';
+    card.linewidth = isCur ? 2 : 1;
+
+    // Badge
+    const badge = two.makeRoundedRectangle(75, sy, 85, 24, 12);
+    badge.fill = isCur ? '#2563eb' : '#e2e8f0';
+    badge.noStroke();
+
+    const bTxt = two.makeText(item.step.split(':')[0], 75, sy + 1);
+    bTxt.size = 10;
+    bTxt.weight = 800;
+    bTxt.fill = isCur ? '#ffffff' : '#475569';
+
+    // Formula Line
+    const fTxt = two.makeText(item.formula, 280, sy - 8);
+    fTxt.size = 13;
+    fTxt.weight = 700;
+    fTxt.fill = isCur ? '#1d4ed8' : '#1e293b';
+
+    // Result Highlight Line
+    const rTxt = two.makeText(`👉 ${item.result}`, width - 110, sy + 14);
+    rTxt.size = 13;
+    rTxt.weight = 800;
+    rTxt.fill = isCur ? '#047857' : '#059669';
+
+    const sGrp = two.makeGroup(card, badge, bTxt, fTxt, rTxt);
+    sGrp._renderer.elem.style.cursor = 'pointer';
+    sGrp._renderer.elem.onclick = (function(st) {
+      return function() {
+        setStepIdx3_11(st);
+      };
+    })(s + 1);
+  }
+
+  // Next Step Action Button (Y=352)
+  const actBtn = two.makeRoundedRectangle(width / 2, 352, 140, 24, 6);
+  actBtn.fill = '#3b82f6';
+  actBtn.stroke = '#2563eb';
+  actBtn.linewidth = 1;
+
+  const actTxt = two.makeText(curStep === 4 ? '🔄 처음으로' : '다음 추론 단계 ▶', width / 2, 353);
+  actTxt.size = 11;
+  actTxt.weight = 700;
+  actTxt.fill = '#ffffff';
+
+  const actGrp = two.makeGroup(actBtn, actTxt);
+  actGrp._renderer.elem.style.cursor = 'pointer';
+  actGrp._renderer.elem.onclick = function() {
+    nextStep3_11();
+  };
+
+  // Bottom Safety Banner
+  const bannerY = 385;
+  const bannerBg = two.makeRoundedRectangle(width / 2, bannerY, width - 40, 26, 6);
+  bannerBg.fill = '#eff6ff';
+  bannerBg.stroke = '#bfdbfe';
+  bannerBg.linewidth = 1;
+
+  const bannerTxt = two.makeText('💡 단계를 클릭하면 2행 완성합으로부터 ㈎, ㈏, ㈐가 차례로 풀리는 알고리즘을 볼 수 있습니다.', width / 2, bannerY + 1);
+  bannerTxt.size = 11;
+  bannerTxt.weight = 600;
+  bannerTxt.fill = '#1d4ed8';
+}
+
+// ----------------------------------------------------
+// Mode 3: 📐 마방진 대수 불변량 원리
+// ----------------------------------------------------
+function drawMode3AlgebraicProofLab(two, width, height) {
+  // Title Header
+  const titleCard = two.makeRoundedRectangle(width / 2, 35, width - 40, 40, 8);
+  titleCard.fill = '#ffffff';
+  titleCard.stroke = '#cbd5e1';
+  titleCard.linewidth = 1;
+
+  const tTxt = two.makeText('📐 3x3 마방진의 대수학적 불변량 비밀 (중앙의 3배 법칙)', width / 2, 36);
+  tTxt.size = 13;
+  tTxt.weight = 800;
+  tTxt.fill = '#1e293b';
+
+  // 2 Principle Cards (Y=85 to Y=355)
+  const cardW = (width - 55) / 2;
+  const cardH = 260;
+  const cx1 = 20 + cardW / 2;
+  const cx2 = width - 20 - cardW / 2;
+
+  // Card 1: 중앙 원소 법칙
+  const c1 = two.makeRoundedRectangle(cx1, 215, cardW, cardH, 10);
+  c1.fill = '#f0fdf4';
+  c1.stroke = '#16a34a';
+  c1.linewidth = 2;
+
+  const c1Tit = two.makeText('비밀 1: 중앙 원소(C)의 3배 = 마법의 합(S)', cx1, 105);
+  c1Tit.size = 11;
+  c1Tit.weight = 800;
+  c1Tit.fill = '#15803d';
+
+  const c1Formula = two.makeText('S = 3 × C', cx1, 140);
+  c1Formula.size = 24;
+  c1Formula.weight = 800;
+  c1Formula.fill = '#166534';
+
+  const c1Exp1 = two.makeText('• 본 문제의 중앙 원소: C = 2x + 1', cx1, 180);
+  c1Exp1.size = 12;
+  c1Exp1.weight = 700;
+  c1Exp1.fill = '#334155';
+
+  const c1Exp2 = two.makeText('• 3배 곱셈: 3(2x + 1) = 6x + 3', cx1, 205);
+  c1Exp2.size = 13;
+  c1Exp2.weight = 800;
+  c1Exp2.fill = '#047857';
+
+  const c1Exp3 = two.makeText('👉 2행을 일일이 더하지 않고도 중앙 칸만 보고 마법의 합을 즉시 알 수 있습니다!', cx1, 240);
+  c1Exp3.size = 10;
+  c1Exp3.weight = 600;
+  c1Exp3.fill = '#475569';
+
+  // Card 2: 대칭성 상쇄 원리
+  const c2 = two.makeRoundedRectangle(cx2, 215, cardW, cardH, 10);
+  c2.fill = '#eff6ff';
+  c2.stroke = '#2563eb';
+  c2.linewidth = 2;
+
+  const c2Tit = two.makeText('비밀 2: 중앙을 마주보는 두 수의 대칭 합', cx2, 105);
+  c2Tit.size = 11;
+  c2Tit.weight = 800;
+  c2Tit.fill = '#1d4ed8';
+
+  const c2Formula = two.makeText('A + B = 2 × C', cx2, 140);
+  c2Formula.size = 24;
+  c2Formula.weight = 800;
+  c2Formula.fill = '#1e40af';
+
+  const c2Exp1 = two.makeText('• 마주보는 쌍: ㈎(2x-2) 와 우측하단(2x+4)', cx2, 180);
+  c2Exp1.size = 11;
+  c2Exp1.weight = 700;
+  c2Exp1.fill = '#334155';
+
+  const c2Exp2 = two.makeText('• 합: (2x-2) + (2x+4) = 4x + 2 = 2(2x+1)', cx2, 205);
+  c2Exp2.size = 12;
+  c2Exp2.weight = 800;
+  c2Exp2.fill = '#2563eb';
+
+  const c2Exp3 = two.makeText('👉 중앙 원소를 기준으로 대칭되는 두 항의 평균은 항상 중앙 원소와 같습니다!', cx2, 240);
+  c2Exp3.size = 10;
+  c2Exp3.weight = 600;
+  c2Exp3.fill = '#475569';
+
+  // Bottom Safety Banner
+  const bannerY = 385;
+  const bannerBg = two.makeRoundedRectangle(width / 2, bannerY, width - 40, 26, 6);
+  bannerBg.fill = '#eff6ff';
+  bannerBg.stroke = '#bfdbfe';
+  bannerBg.linewidth = 1;
+
+  const bannerTxt = two.makeText('💡 마방진의 중앙 원소와 대칭성을 활용하면 고난도 식의 퍼즐도 쉽게 해결할 수 있습니다.', width / 2, bannerY + 1);
+  bannerTxt.size = 11;
+  bannerTxt.weight = 600;
+  bannerTxt.fill = '#1d4ed8';
+}
+
+    // --- End Substep 3-11 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -28197,6 +28916,9 @@ function drawMode3DualProblemMasterLab(two, width, height) {
       } else if (code === '3-10') {
         renderToolbar3_10();
         renderSubstep3_10();
+      } else if (code === '3-11') {
+        renderToolbar3_11();
+        renderSubstep3_11();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
