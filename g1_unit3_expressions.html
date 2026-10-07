@@ -1413,8 +1413,8 @@
       },
       '6-2': {
         code: '6-2', tab: 6,
-        substepLabel: '2. 수량에 관한 활용: 농구 득점 (p.95)',
-        missionText: '<b>[6-2] 2. 수량에 관한 활용: 농구 득점 (p.95)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '2. 수량에 관한 활용: 농구 득점 및 도형/나이 (p.96)',
+        missionText: '<b>[6-2] 2. 수량에 관한 활용: 농구 득점 및 도형/나이 (p.96)</b><br>• 농구 경기 득점, 직사각형의 둘레, 아버지와 아들의 나이 문제를 일차방정식으로 모델링하여 해결합니다.<br>• 좌측 3대 캔버스 랩을 조작하며 수량 관계와 실시간 일치 판정을 탐구하세요.',
         drawer: 'drawStep6_2Canvas'
       },
       '6-3': {
@@ -38348,6 +38348,9 @@ function drawMode3PropertyRuleMatrixLab(two) {
       } else if (code === '6-1') {
         renderToolbar6_1();
         renderSubstep6_1Form();
+      } else if (code === '6-2') {
+        renderToolbar6_2();
+        renderSubstep6_2Form();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
@@ -47179,6 +47182,851 @@ async function gradeStep6_1() {
     if (!stepPassed[1]) failMsg += '• 2단계 [방정식 세우기]: 총 감축량 등식(400+18x=760)을 확인하세요.\\n';
     if (!stepPassed[2]) failMsg += '• 3단계 [방정식 풀기]: 이항 정리한 식(18x=360)과 해 x(20)를 확인하세요.\\n';
     if (!stepPassed[3]) failMsg += '• 4단계 [확인하기]: 총 감소량 검산(760g)과 최종 실천 일수(20)를 확인하세요.\\n';
+    alert(failMsg);
+  }
+}
+
+
+// ========================================================
+// [6-2] 2. 수량에 관한 활용: 농구 득점 및 도형/나이 (교과서 p.96)
+// ========================================================
+
+function resetLab6_2() {
+  state.lab6_2 = {
+    activeTab: 'mode1',     // mode1: 농구 코트 스코어보드, mode2: 가변 직사각형 둘레, mode3: 나이 타임라인
+    basketX: 1,             // 2점 슛 개수 x (1 ~ 5, 목표: 3)
+    rectX: 3,               // 직사각형 세로의 길이 x (2 ~ 8, 목표: 5)
+    ageX: 1,                // 몇 년 후 x (0 ~ 6, 목표: 3)
+    isPassed: state.completedSubSteps ? state.completedSubSteps.includes('6-2') : false
+  };
+}
+
+function setTab6_2(tab) {
+  if (!state.lab6_2) resetLab6_2();
+  state.lab6_2.activeTab = tab;
+  renderToolbar6_2();
+  drawStep6_2Canvas();
+}
+
+function setBasketX6_2(val) {
+  if (!state.lab6_2) resetLab6_2();
+  state.lab6_2.basketX = Math.max(1, Math.min(5, val));
+  drawStep6_2Canvas();
+}
+
+function setRectX6_2(val) {
+  if (!state.lab6_2) resetLab6_2();
+  state.lab6_2.rectX = Math.max(2, Math.min(8, val));
+  drawStep6_2Canvas();
+}
+
+function setAgeX6_2(val) {
+  if (!state.lab6_2) resetLab6_2();
+  state.lab6_2.ageX = Math.max(0, Math.min(6, val));
+  drawStep6_2Canvas();
+}
+
+function renderToolbar6_2() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+  if (!state.lab6_2) resetLab6_2();
+  const cur = state.lab6_2.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:8px; width:100%; flex-wrap:wrap;">
+      <button class="icon-btn ${cur === 'mode1' ? 'active' : ''}" onclick="setTab6_2('mode1')">
+        🏀 1. 농구 코트 스코어보드 랩
+      </button>
+      <button class="icon-btn ${cur === 'mode2' ? 'active' : ''}" onclick="setTab6_2('mode2')">
+        📐 2. 가변 직사각형 둘레 랩
+      </button>
+      <button class="icon-btn ${cur === 'mode3' ? 'active' : ''}" onclick="setTab6_2('mode3')">
+        ⏳ 3. 나이 타임라인 랩
+      </button>
+      <button class="icon-btn" onclick="resetLab6_2(); renderToolbar6_2(); drawStep6_2Canvas();">
+        🔄 초기화
+      </button>
+      <button class="icon-btn" style="background:#fef08a; color:#854d0e; border:1px solid #eab308; font-weight:700;" onclick="passCurrentSubstepGeneric('6-2')">
+        🔑 교사 즉시 패스
+      </button>
+    </div>
+  `;
+}
+
+function renderSubstep6_2Form() {
+  const mTitle = document.getElementById('mission-title');
+  const mDesc = document.getElementById('mission-desc');
+
+  if (mTitle) mTitle.innerText = '🎯 오늘의 수학 탐구 미션';
+  if (mDesc) {
+    mDesc.innerHTML = `
+      <b>[3.6 일차방정식의 활용: 농구 득점 및 도형/나이 문제] (교과서 p.96)</b><br>
+      • <b>수량에 관한 일차방정식의 해결 전략</b>:<br>
+      &nbsp;&nbsp;① <b>[예제 5] 농구 득점</b>: 2점 슛을 $x$개라 하면 3점 슛은 $2x+1$개이고, 총 득점은 $2x + 3(2x+1) = 27$점입니다.<br>
+      &nbsp;&nbsp;② <b>[문제 7] 직사각형 둘레</b>: 세로를 $x$ cm라 하면 가로는 $x+5$ cm이고, 둘레는 $2(x + x+5) = 30$ cm입니다.<br>
+      &nbsp;&nbsp;③ <b>[문제 8] 아버지와 아들 나이</b>: $x$년 후 아버지 $42+x$세, 아들 $12+x$세이고, $42+x = 3(12+x)$입니다.<br>
+      • <b>탐구 미션</b>: 좌측 3대 인터랙티브 랩을 조작하여 각 상황의 미지수와 방정식을 세우고 문제를 해결하세요.
+    `;
+    if (window.renderMathInElement) {
+      renderMathInElement(mDesc, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false }
+        ],
+        throwOnError: false
+      });
+    }
+  }
+
+  const cont = document.getElementById('substep-form-content');
+  if (!cont) return;
+
+  const isPassed = state.completedSubSteps && state.completedSubSteps.includes('6-2');
+
+  cont.innerHTML = `
+    <div class="card" style="padding:16px; border:1px solid #cbd5e1; border-radius:12px; background:#ffffff; box-shadow:0 1px 3px rgba(0,0,0,0.05); margin-bottom:14px;">
+      <!-- Dual Badge Header -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #f1f5f9; padding-bottom:8px;">
+        <span style="font-size:0.75rem; font-weight:800; background:#e0e7ff; color:#4338ca; padding:3px 8px; border-radius:6px;">
+          교과서 p.96 [3.6 일차방정식의 활용]
+        </span>
+        <span style="font-size:0.78rem; font-weight:700; color:#64748b;">
+          수량에 관한 활용 (100점 만점)
+        </span>
+      </div>
+
+      <h4 style="font-size:0.95rem; font-weight:800; color:#1e293b; margin-bottom:12px; line-height:1.5;">
+        실생활 수량 관계(농구 득점, 도형 둘레, 나이)를 일차방정식으로 해결하시오.
+      </h4>
+
+      <!-- 1단계: 예제 5 농구 득점 -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-size:0.86rem; font-weight:800; color:#1e293b;">
+            1단계. [예제 5] 농구 경기 2점 슛과 3점 슛 득점 일차방정식
+          </span>
+          <span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">
+            배점 25%
+          </span>
+        </div>
+        <p style="font-size:0.82rem; color:#475569; line-height:1.5; margin-bottom:8px;">
+          2점 슛을 $x$개라 할 때 3점 슛은 $2x+1$개이고 총 27점을 득점하였습니다.
+        </p>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.82rem; font-weight:700; color:#334155;">① 총 득점에 관한 일차방정식:</span>
+            <input type="text" id="ans-6-2-q1_1" class="proof-input-text" placeholder="식 입력 (예: 등식)" style="width:190px;" ${isPassed ? 'disabled value="2x+3(2x+1)=27"' : ''}>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.82rem; font-weight:700; color:#334155;">② 시우가 넣은 2점 슛의 개수:</span>
+            <input type="text" id="ans-6-2-q1_2" class="proof-input-text" placeholder="수 입력" style="width:100px;" ${isPassed ? 'disabled value="3"' : ''}>
+            <span style="font-size:0.82rem; color:#64748b;">개</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2단계: 문제 7 직사각형 둘레 -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-size:0.86rem; font-weight:800; color:#1e293b;">
+            2단계. [문제 7] 직사각형의 둘레(30 cm)와 세로의 길이
+          </span>
+          <span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">
+            배점 25%
+          </span>
+        </div>
+        <p style="font-size:0.82rem; color:#475569; line-height:1.5; margin-bottom:8px;">
+          세로를 $x$ cm라 하면 가로는 $x+5$ cm이고 둘레는 30 cm입니다.
+        </p>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.82rem; font-weight:700; color:#334155;">① 둘레에 관한 일차방정식:</span>
+            <input type="text" id="ans-6-2-q2_1" class="proof-input-text" placeholder="식 입력 (예: 등식)" style="width:180px;" ${isPassed ? 'disabled value="2(2x+5)=30"' : ''}>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.82rem; font-weight:700; color:#334155;">② 직사각형의 세로의 길이:</span>
+            <input type="text" id="ans-6-2-q2_2" class="proof-input-text" placeholder="수 입력" style="width:100px;" ${isPassed ? 'disabled value="5"' : ''}>
+            <span style="font-size:0.82rem; color:#64748b;">cm</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3단계: 문제 8 나이 문제 -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-size:0.86rem; font-weight:800; color:#1e293b;">
+            3단계. [문제 8] 아버지(42세)와 아들(12세)의 나이 관계
+          </span>
+          <span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">
+            배점 25%
+          </span>
+        </div>
+        <p style="font-size:0.82rem; color:#475569; line-height:1.5; margin-bottom:8px;">
+          $x$년 후 아버지의 나이가 아들의 나이의 3배가 된다고 합니다.
+        </p>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.82rem; font-weight:700; color:#334155;">① $x$년 후 나이 관계 일차방정식:</span>
+            <input type="text" id="ans-6-2-q3_1" class="proof-input-text" placeholder="식 입력 (예: 등식)" style="width:180px;" ${isPassed ? 'disabled value="42+x=3(12+x)"' : ''}>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.82rem; font-weight:700; color:#334155;">② 아버지 나이가 아들의 3배가 되는 때:</span>
+            <input type="text" id="ans-6-2-q3_2" class="proof-input-text" placeholder="수 입력" style="width:100px;" ${isPassed ? 'disabled value="3"' : ''}>
+            <span style="font-size:0.82rem; color:#64748b;">년 후</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4단계: 종합 확인 및 검산 -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-size:0.86rem; font-weight:800; color:#1e293b;">
+            4단계. [확인하기] 문제의 뜻에 맞는지 검산하고 확인
+          </span>
+          <span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">
+            배점 25%
+          </span>
+        </div>
+        <p style="font-size:0.82rem; color:#475569; line-height:1.5; margin-bottom:8px;">
+          도출한 해들을 각 원래의 문제 상황에 대입하여 확인하시오.
+        </p>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.82rem; font-weight:700; color:#334155;">① [예제 5] 2점슛 3개, 3점슛 7개 득점 합:</span>
+            <input type="text" id="ans-6-2-q4_1" class="proof-input-text" placeholder="수 입력" style="width:100px;" ${isPassed ? 'disabled value="27"' : ''}>
+            <span style="font-size:0.82rem; color:#64748b;">점</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.82rem; font-weight:700; color:#334155;">② [문제 7] 세로 5 cm, 가로 10 cm일 때 둘레:</span>
+            <input type="text" id="ans-6-2-q4_2" class="proof-input-text" placeholder="수 입력" style="width:100px;" ${isPassed ? 'disabled value="30"' : ''}>
+            <span style="font-size:0.82rem; color:#64748b;">cm</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.82rem; font-weight:700; color:#334155;">③ [문제 8] 3년 후 아버지 나이(45세)는 아들(15세)의:</span>
+            <input type="text" id="ans-6-2-q4_3" class="proof-input-text" placeholder="수 입력" style="width:100px;" ${isPassed ? 'disabled value="3"' : ''}>
+            <span style="font-size:0.82rem; color:#64748b;">배</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 전폭 채점 버튼 -->
+      <button class="primary-btn" style="background:linear-gradient(135deg, #4f46e5, #4338ca); width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:8px; color:#fff; cursor:pointer; border:none; box-shadow:0 4px 12px rgba(79, 70, 229, 0.25);" onclick="gradeStep6_2()">
+        [수량에 관한 활용] 확인 및 채점
+      </button>
+
+      <!-- 정답 및 피드백 카드 -->
+      <div id="verified-6-2" class="verified-answer-card" style="display:${isPassed ? 'block' : 'none'}; margin-top:14px; background:#f0fdf4; border:2px solid #059669; border-radius:12px; padding:14px;">
+        <h4 style="color:#065f46; font-size:0.92rem; font-weight:800; margin-bottom:6px;">
+          🎉 100점 만점! 수량에 관한 다양한 일차방정식 활용 문제를 완벽히 해결했습니다!
+        </h4>
+        <div style="font-size:0.84rem; color:#047857; line-height:1.5;">
+          • <b>예제 5</b>: 2점 슛 $x=3$개, 3점 슛 $2(3)+1=7$개 $\implies 2(3)+3(7)=27$점으로 문제의 뜻에 맞는다. (답: 3개)<br>
+          • <b>문제 7</b>: 세로 $x=5$ cm, 가로 $5+5=10$ cm $\implies 2(10+5)=30$ cm로 문제의 뜻에 맞는다. (답: 5 cm)<br>
+          • <b>문제 8</b>: $42+x=3(12+x) \implies 42+x=36+3x \implies -2x=-6 \implies x=3$년 후 (아버지 45세, 아들 15세로 3배 일치!)
+        </div>
+        <button class="primary-btn" style="margin-top:10px; width:100%; padding:10px; font-weight:700; background:#059669;" onclick="goToNextSubstep()">
+          다음 단계: [6-3] 연속하는 세 자연수의 합으로 이동 ▶
+        </button>
+      </div>
+    </div>
+  `;
+
+  if (window.renderMathInElement) {
+    renderMathInElement(cont, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function drawStep6_2Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const width = container.clientWidth || 600;
+  const height = 440;
+
+  const two = new Two({
+    width: width,
+    height: height,
+    type: Two.Types.svg
+  }).appendTo(container);
+
+  if (!state.lab6_2) resetLab6_2();
+  const cur = state.lab6_2.activeTab;
+
+  if (cur === 'mode1') {
+    drawMode1_6_2(two, width, height);
+  } else if (cur === 'mode2') {
+    drawMode2_6_2(two, width, height);
+  } else {
+    drawMode3_6_2(two, width, height);
+  }
+
+  two.update();
+}
+
+// ----------------------------------------------------
+// Mode 1: 농구 코트 스코어보드 랩 (예제 5)
+// ----------------------------------------------------
+function drawMode1_6_2(two, width, height) {
+  const x = state.lab6_2.basketX; // 1 ~ 5, 답: 3
+  const threePtCount = 2 * x + 1;
+  const twoPtScore = 2 * x;
+  const threePtScore = 3 * threePtCount;
+  const totalScore = twoPtScore + threePtScore;
+  const targetScore = 27;
+  const isMatch = totalScore === targetScore; // x === 3
+
+  // 1. 상단 인디케이터 바
+  const topBar = two.makeRoundedRectangle(width / 2, 22, width - 24, 32, 6);
+  topBar.fill = '#4f46e5';
+  topBar.noStroke();
+
+  const topText = two.makeText('🏀 1. 농구 코트 스코어보드 랩 (교과서 p.96 예제 5)', width / 2, 22);
+  topText.fill = '#ffffff';
+  topText.weight = 800;
+  topText.size = 13;
+
+  // 2. 2점 슛 개수 선택 버튼 5개 (Y=56)
+  const xList = [1, 2, 3, 4, 5];
+  const btnW = Math.min(84, (width - 40) / 5);
+  const startX = (width - btnW * 5) / 2 + btnW / 2;
+
+  xList.forEach((val, idx) => {
+    const cx = startX + idx * btnW;
+    const cy = 56;
+    const bg = two.makeRoundedRectangle(cx, cy, btnW - 6, 26, 5);
+    const isCur = x === val;
+    bg.fill = isCur ? (val === 3 ? '#15803d' : '#312e81') : '#e0e7ff';
+    bg.stroke = isCur ? (val === 3 ? '#166534' : '#4338ca') : '#c7d2fe';
+    bg.linewidth = isCur ? 2 : 1;
+
+    const txt = two.makeText(val === 3 ? `★ 2점: ${val}개` : `2점: ${val}개`, cx, cy);
+    txt.fill = isCur ? '#ffffff' : '#3730a3';
+    txt.weight = isCur ? 800 : 600;
+    txt.size = 11;
+  });
+
+  // 3. 메인 콘텐츠 카드 (Y=76 ~ 370)
+  const cardW = width - 40;
+  const cardH = 296;
+  const cardY = 224;
+
+  const mainCard = two.makeRoundedRectangle(width / 2, cardY, cardW, cardH, 12);
+  mainCard.fill = '#ffffff';
+  mainCard.stroke = '#e2e8f0';
+  mainCard.linewidth = 2;
+
+  // (1) 전광판 스타일 스코어보드 (Y=115 ~ 185)
+  const sbW = cardW - 36;
+  const sbH = 80;
+  const sbY = 135;
+
+  const sbBg = two.makeRoundedRectangle(width / 2, sbY, sbW, sbH, 10);
+  sbBg.fill = '#0f172a';
+  sbBg.stroke = '#334155';
+  sbBg.linewidth = 2;
+
+  // 2점 슛 디스플레이 (좌측)
+  const t2Pt = two.makeText(`2점 슛: ${x}개 (${twoPtScore}점)`, width / 2 - 130, sbY - 14);
+  t2Pt.fill = '#38bdf8';
+  t2Pt.weight = 800;
+  t2Pt.size = 13;
+
+  // 3점 슛 디스플레이 (중앙)
+  const t3Pt = two.makeText(`3점 슛: ${threePtCount}개 (${threePtScore}점)`, width / 2, sbY - 14);
+  t3Pt.fill = '#facc15';
+  t3Pt.weight = 800;
+  t3Pt.size = 13;
+
+  // 총점 디스플레이 (우측)
+  const tTotal = two.makeText(`총 득점: ${totalScore}점`, width / 2 + 130, sbY - 14);
+  tTotal.fill = isMatch ? '#4ade80' : '#f87171';
+  tTotal.weight = 800;
+  tTotal.size = 14;
+
+  // 하단 전광판 설명
+  const tSbSub = two.makeText(
+    `3점 슛 개수 공식: 2x + 1 = 2 × ${x} + 1 = ${threePtCount}개   |   목표: ${targetScore}점`,
+    width / 2,
+    sbY + 20
+  );
+  tSbSub.fill = '#cbd5e1';
+  tSbSub.weight = 600;
+  tSbSub.size = 11.5;
+
+  // (2) 수식 전개 및 등식 박스 (Y=200 ~ 265)
+  const eqBoxW = cardW - 36;
+  const eqBox = two.makeRoundedRectangle(width / 2, 225, eqBoxW, 70, 8);
+  eqBox.fill = '#f8fafc';
+  eqBox.stroke = '#e2e8f0';
+  eqBox.linewidth = 1.5;
+
+  const tEq1 = two.makeText('일차방정식: 2x + 3(2x + 1) = 27', width / 2, 208);
+  tEq1.fill = '#1e293b';
+  tEq1.weight = 800;
+  tEq1.size = 13.5;
+
+  const tEq2 = two.makeText(`전개 및 정리: 2x + 6x + 3 = 27  ➜  8x + 3 = 27  ➜  8x = 24  ➜  x = 3`, width / 2, 234);
+  tEq2.fill = '#475569';
+  tEq2.weight = 700;
+  tEq2.size = 12;
+
+  // (3) 판정 메시지 박스 (Y=280 ~ 345)
+  const msgBox = two.makeRoundedRectangle(width / 2, 310, eqBoxW, 58, 8);
+  msgBox.fill = isMatch ? '#f0fdf4' : '#fff7ed';
+  msgBox.stroke = isMatch ? '#22c55e' : '#fdba74';
+  msgBox.linewidth = 2;
+
+  const verdict = isMatch
+    ? '🎉 [목표 27점 적중!] 2점 슛 3개 + 3점 슛 7개(21점) = 총 27점 완벽 일치! (x = 3)'
+    : `❌ 득점 불일치: 총 ${totalScore}점으로 목표 27점과 다릅니다. (차이: ${Math.abs(totalScore - targetScore)}점)`;
+  const tVer = two.makeText(verdict, width / 2, 300);
+  tVer.fill = isMatch ? '#166534' : '#9a3412';
+  tVer.weight = 800;
+  tVer.size = 12.5;
+
+  const tCheck = two.makeText(
+    isMatch ? '검산: 2 × 3 + 3 × 7 = 6 + 21 = 27 (참!)  ➜  시우가 넣은 2점 슛은 3개입니다.' : '상단의 [★ 2점: 3개] 버튼을 눌러 정답 득점을 확인해 보세요.',
+    width / 2,
+    324
+  );
+  tCheck.fill = isMatch ? '#15803d' : '#c2410c';
+  tCheck.weight = 600;
+  tCheck.size = 11.5;
+
+  // 4. 하단 안전 배너 (Y=396)
+  const btmBanner = two.makeRoundedRectangle(width / 2, 396, width - 24, 32, 6);
+  btmBanner.fill = '#f8fafc';
+  btmBanner.stroke = '#e2e8f0';
+  btmBanner.linewidth = 1;
+
+  const btmText = two.makeText('💡 [핵심 원리] 구하려는 2점 슛을 x로 두고, 3점 슛을 2x+1로 표현하여 총 득점 방정식을 세웁니다.', width / 2, 396);
+  btmText.fill = '#64748b';
+  btmText.weight = 600;
+  btmText.size = 11.5;
+
+  // DOM 이벤트 바인딩
+  two.update();
+
+  xList.forEach((val, idx) => {
+    const bgObj = two.scene.children[1 + idx * 2];
+    if (bgObj && bgObj._renderer && bgObj._renderer.elem) {
+      bgObj._renderer.elem.style.cursor = 'pointer';
+      bgObj._renderer.elem.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        setBasketX6_2(val);
+      });
+    }
+  });
+}
+
+// ----------------------------------------------------
+// Mode 2: 가변 직사각형 둘레 랩 (문제 7)
+// ----------------------------------------------------
+function drawMode2_6_2(two, width, height) {
+  const x = state.lab6_2.rectX; // 2 ~ 8, 답: 5
+  const widthVal = x + 5;
+  const perimeter = 2 * (x + widthVal);
+  const targetPeri = 30;
+  const isMatch = perimeter === targetPeri; // x === 5
+
+  // 1. 상단 인디케이터 바
+  const topBar = two.makeRoundedRectangle(width / 2, 22, width - 24, 32, 6);
+  topBar.fill = '#4f46e5';
+  topBar.noStroke();
+
+  const topText = two.makeText('📐 2. 가변 직사각형 둘레 측정기 랩 (교과서 p.96 문제 7)', width / 2, 22);
+  topText.fill = '#ffffff';
+  topText.weight = 800;
+  topText.size = 13;
+
+  // 2. 세로 길이 x 선택 버튼 5개 (Y=56)
+  const xList = [3, 4, 5, 6, 7];
+  const btnW = Math.min(84, (width - 40) / 5);
+  const startX = (width - btnW * 5) / 2 + btnW / 2;
+
+  xList.forEach((val, idx) => {
+    const cx = startX + idx * btnW;
+    const cy = 56;
+    const bg = two.makeRoundedRectangle(cx, cy, btnW - 6, 26, 5);
+    const isCur = x === val;
+    bg.fill = isCur ? (val === 5 ? '#15803d' : '#312e81') : '#e0e7ff';
+    bg.stroke = isCur ? (val === 5 ? '#166534' : '#4338ca') : '#c7d2fe';
+    bg.linewidth = isCur ? 2 : 1;
+
+    const txt = two.makeText(val === 5 ? `★ 세로: ${val}cm` : `세로: ${val}cm`, cx, cy);
+    txt.fill = isCur ? '#ffffff' : '#3730a3';
+    txt.weight = isCur ? 800 : 600;
+    txt.size = 11;
+  });
+
+  // 3. 메인 콘텐츠 카드 (Y=76 ~ 370)
+  const cardW = width - 40;
+  const cardH = 296;
+  const cardY = 224;
+
+  const mainCard = two.makeRoundedRectangle(width / 2, cardY, cardW, cardH, 12);
+  mainCard.fill = '#ffffff';
+  mainCard.stroke = '#e2e8f0';
+  mainCard.linewidth = 2;
+
+  // (1) 동적 가변 직사각형 시각화 (Y=90 ~ 210)
+  const scale = 11;
+  const rW = widthVal * scale;
+  const rH = x * scale;
+  const rCenterY = 150;
+
+  const rectShape = two.makeRoundedRectangle(width / 2, rCenterY, rW, rH, 6);
+  rectShape.fill = isMatch ? '#f0fdf4' : '#eff6ff';
+  rectShape.stroke = isMatch ? '#22c55e' : '#3b82f6';
+  rectShape.linewidth = isMatch ? 3 : 2;
+
+  // 치수 라벨: 가로 (위쪽)
+  const tWLabel = two.makeText(`가로: x + 5 = ${x} + 5 = ${widthVal} cm`, width / 2, rCenterY - rH / 2 - 12);
+  tWLabel.fill = '#1d4ed8';
+  tWLabel.weight = 800;
+  tWLabel.size = 12.5;
+
+  // 치수 라벨: 세로 (우측)
+  const tHLabel = two.makeText(`세로: x = ${x} cm`, width / 2 + rW / 2 + 35, rCenterY);
+  tHLabel.fill = '#4338ca';
+  tHLabel.weight = 800;
+  tHLabel.size = 12;
+
+  // 내부 텍스트: 둘레 값
+  const tInside = two.makeText(`둘레 = ${perimeter} cm`, width / 2, rCenterY);
+  tInside.fill = isMatch ? '#15803d' : '#1e3a8a';
+  tInside.weight = 800;
+  tInside.size = 13;
+
+  // (2) 둘레 공식 및 수식 박스 (Y=215 ~ 275)
+  const fBoxW = cardW - 36;
+  const fBox = two.makeRoundedRectangle(width / 2, 240, fBoxW, 50, 8);
+  fBox.fill = '#f8fafc';
+  fBox.stroke = '#e2e8f0';
+  fBox.linewidth = 1;
+
+  const tForm1 = two.makeText('둘레 공식: 2 × {(가로) + (세로)} = 30  ➜  2{(x + 5) + x} = 30', width / 2, 230);
+  tForm1.fill = '#1e293b';
+  tForm1.weight = 800;
+  tForm1.size = 13;
+
+  const tForm2 = two.makeText(`방정식 풀이: 2(2x + 5) = 30  ➜  4x + 10 = 30  ➜  4x = 20  ➜  x = 5`, width / 2, 252);
+  tForm2.fill = '#475569';
+  tForm2.weight = 700;
+  tForm2.size = 12;
+
+  // (3) 판정 메시지 박스 (Y=285 ~ 350)
+  const mBox = two.makeRoundedRectangle(width / 2, 312, fBoxW, 56, 8);
+  mBox.fill = isMatch ? '#f0fdf4' : '#fff7ed';
+  mBox.stroke = isMatch ? '#22c55e' : '#fdba74';
+  mBox.linewidth = 2;
+
+  const vText = isMatch
+    ? '🎉 [목표 둘레 30cm 적중!] 세로 5cm, 가로 10cm ➜ 둘레 2(10 + 5) = 30cm 완벽 일치! (x = 5)'
+    : `❌ 둘레 불일치: 현재 둘레 ${perimeter}cm (목표 30cm까지 ${Math.abs(perimeter - targetPeri)}cm 차이)`;
+  const tV = two.makeText(vText, width / 2, 302);
+  tV.fill = isMatch ? '#166534' : '#9a3412';
+  tV.weight = 800;
+  tV.size = 12.5;
+
+  const tVSub = two.makeText(
+    isMatch ? '검산: (10 + 5) × 2 = 30 (참!)  ➜  직사각형의 세로 길이는 5 cm입니다.' : '상단의 [★ 세로: 5cm] 버튼을 눌러 정답 직사각형을 확인해 보세요.',
+    width / 2,
+    326
+  );
+  tVSub.fill = isMatch ? '#15803d' : '#c2410c';
+  tVSub.weight = 600;
+  tVSub.size = 11.5;
+
+  // 4. 하단 안전 배너 (Y=396)
+  const btmBanner = two.makeRoundedRectangle(width / 2, 396, width - 24, 32, 6);
+  btmBanner.fill = '#f8fafc';
+  btmBanner.stroke = '#e2e8f0';
+  btmBanner.linewidth = 1;
+
+  const btmText = two.makeText('💡 [도형 둘레 원리] 직사각형 둘레 = 2 × (가로 + 세로) 공식을 사용하여 일차방정식을 세웁니다.', width / 2, 396);
+  btmText.fill = '#64748b';
+  btmText.weight = 600;
+  btmText.size = 11.5;
+
+  // DOM 이벤트 바인딩
+  two.update();
+
+  xList.forEach((val, idx) => {
+    const bgObj = two.scene.children[1 + idx * 2];
+    if (bgObj && bgObj._renderer && bgObj._renderer.elem) {
+      bgObj._renderer.elem.style.cursor = 'pointer';
+      bgObj._renderer.elem.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        setRectX6_2(val);
+      });
+    }
+  });
+}
+
+// ----------------------------------------------------
+// Mode 3: 아버지와 아들 나이 타임라인 랩 (문제 8)
+// ----------------------------------------------------
+function drawMode3_6_2(two, width, height) {
+  const x = state.lab6_2.ageX; // 0 ~ 6, 답: 3
+  const dadAge = 42 + x;
+  const sonAge = 12 + x;
+  const tripleSon = 3 * sonAge;
+  const isMatch = dadAge === tripleSon; // 42 + x === 36 + 3x ➜ 2x = 6 ➜ x = 3
+
+  // 1. 상단 인디케이터 바
+  const topBar = two.makeRoundedRectangle(width / 2, 22, width - 24, 32, 6);
+  topBar.fill = '#4f46e5';
+  topBar.noStroke();
+
+  const topText = two.makeText('⏳ 3. 아버지와 아들 나이 타임라인 랩 (교과서 p.96 문제 8)', width / 2, 22);
+  topText.fill = '#ffffff';
+  topText.weight = 800;
+  topText.size = 13;
+
+  // 2. x년 후 선택 버튼 5개 (Y=56)
+  const aList = [1, 2, 3, 4, 5];
+  const btnW = Math.min(84, (width - 40) / 5);
+  const startX = (width - btnW * 5) / 2 + btnW / 2;
+
+  aList.forEach((val, idx) => {
+    const cx = startX + idx * btnW;
+    const cy = 56;
+    const bg = two.makeRoundedRectangle(cx, cy, btnW - 6, 26, 5);
+    const isCur = x === val;
+    bg.fill = isCur ? (val === 3 ? '#15803d' : '#312e81') : '#e0e7ff';
+    bg.stroke = isCur ? (val === 3 ? '#166534' : '#4338ca') : '#c7d2fe';
+    bg.linewidth = isCur ? 2 : 1;
+
+    const txt = two.makeText(val === 3 ? `★ ${val}년 후` : `${val}년 후`, cx, cy);
+    txt.fill = isCur ? '#ffffff' : '#3730a3';
+    txt.weight = isCur ? 800 : 600;
+    txt.size = 11.5;
+  });
+
+  // 3. 메인 콘텐츠 카드 (Y=76 ~ 370)
+  const cardW = width - 40;
+  const cardH = 296;
+  const cardY = 224;
+
+  const mainCard = two.makeRoundedRectangle(width / 2, cardY, cardW, cardH, 12);
+  mainCard.fill = '#ffffff';
+  mainCard.stroke = '#e2e8f0';
+  mainCard.linewidth = 2;
+
+  // 좌우 2단 분할 박스: 아버지 나이 vs 아들 나이의 3배
+  const halfW = (cardW - 40) / 2;
+
+  // 좌측: 아버지 나이
+  const leftBox = two.makeRoundedRectangle(width / 2 - halfW / 2 - 5, 155, halfW, 100, 8);
+  leftBox.fill = '#eff6ff';
+  leftBox.stroke = '#93c5fd';
+  leftBox.linewidth = 1.5;
+
+  const tL1 = two.makeText('👨 아버지의 나이 (42 + x)', width / 2 - halfW / 2 - 5, 122);
+  tL1.fill = '#1e3a8a';
+  tL1.weight = 800;
+  tL1.size = 13;
+
+  const tL2 = two.makeText(`올해 42세 + ${x}년 = ${dadAge}세`, width / 2 - halfW / 2 - 5, 150);
+  tL2.fill = '#1d4ed8';
+  tL2.weight = 800;
+  tL2.size = 14;
+
+  const tL3 = two.makeText(`현재 x = ${x}일 때 아버지 나이: ${dadAge}세`, width / 2 - halfW / 2 - 5, 178);
+  tL3.fill = '#3b82f6';
+  tL3.weight = 600;
+  tL3.size = 11.5;
+
+  // 우측: 아들 나이의 3배
+  const rightBox = two.makeRoundedRectangle(width / 2 + halfW / 2 + 5, 155, halfW, 100, 8);
+  rightBox.fill = '#fdf4ff';
+  rightBox.stroke = '#f0abfc';
+  rightBox.linewidth = 1.5;
+
+  const tR1 = two.makeText('👦 아들 나이의 3배: 3(12 + x)', width / 2 + halfW / 2 + 5, 122);
+  tR1.fill = '#86198f';
+  tR1.weight = 800;
+  tR1.size = 13;
+
+  const tR2 = two.makeText(`아들 나이(${sonAge}세) × 3 = ${tripleSon}세`, width / 2 + halfW / 2 + 5, 150);
+  tR2.fill = '#a21caf';
+  tR2.weight = 800;
+  tR2.size = 14;
+
+  const tR3 = two.makeText(`전개식: 36 + 3x = ${tripleSon}세`, width / 2 + halfW / 2 + 5, 178);
+  tR3.fill = '#c026d3';
+  tR3.weight = 600;
+  tR3.size = 11.5;
+
+  // (2) 수식 풀이 바 (Y=225)
+  const barW = cardW - 36;
+  const pBar = two.makeRoundedRectangle(width / 2, 235, barW, 44, 8);
+  pBar.fill = '#f8fafc';
+  pBar.stroke = '#e2e8f0';
+  pBar.linewidth = 1;
+
+  const tPBar = two.makeText('방정식: 42 + x = 3(12 + x)  ➜  42 + x = 36 + 3x  ➜  -2x = -6  ➜  x = 3', width / 2, 235);
+  tPBar.fill = '#334155';
+  tPBar.weight = 800;
+  tPBar.size = 12.5;
+
+  // (3) 판정 메시지 박스 (Y=285 ~ 350)
+  const resBox = two.makeRoundedRectangle(width / 2, 305, barW, 64, 8);
+  resBox.fill = isMatch ? '#f0fdf4' : '#fff7ed';
+  resBox.stroke = isMatch ? '#22c55e' : '#fdba74';
+  resBox.linewidth = 2;
+
+  const verdict = isMatch
+    ? '🎉 [3배 일치!] 3년 후 아버지(45세) = 아들(15세) × 3배 완벽 일치! (x = 3)'
+    : `❌ 불일치: 아버지(${dadAge}세) ≠ 아들의 3배(${tripleSon}세) (차이: ${Math.abs(dadAge - tripleSon)}세)`;
+  const tVer = two.makeText(verdict, width / 2, 295);
+  tVer.fill = isMatch ? '#166534' : '#9a3412';
+  tVer.weight = 800;
+  tVer.size = 13;
+
+  const tDesc = two.makeText(
+    isMatch ? '검산: 3년 후 아버지 45세, 아들 15세 ➜ 45 = 15 × 3 (참!)' : '상단의 [★ 3년 후] 버튼을 눌러 정확한 일치 시점을 확인해 보세요.',
+    width / 2,
+    320
+  );
+  tDesc.fill = isMatch ? '#15803d' : '#c2410c';
+  tDesc.weight = 600;
+  tDesc.size = 11.5;
+
+  // 4. 하단 안전 배너 (Y=396)
+  const btmBanner = two.makeRoundedRectangle(width / 2, 396, width - 24, 32, 6);
+  btmBanner.fill = '#f8fafc';
+  btmBanner.stroke = '#e2e8f0';
+  btmBanner.linewidth = 1;
+
+  const btmText = two.makeText('💡 [나이 문제 원리] x년 후에는 두 사람 모두 x살씩 더해지므로 (현재 나이 + x)로 식을 세웁니다.', width / 2, 396);
+  btmText.fill = '#64748b';
+  btmText.weight = 600;
+  btmText.size = 11.5;
+
+  // DOM 이벤트 바인딩
+  two.update();
+
+  aList.forEach((val, idx) => {
+    const bgObj = two.scene.children[1 + idx * 2];
+    if (bgObj && bgObj._renderer && bgObj._renderer.elem) {
+      bgObj._renderer.elem.style.cursor = 'pointer';
+      bgObj._renderer.elem.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        setAgeX6_2(val);
+      });
+    }
+  });
+}
+
+// ----------------------------------------------------
+// 6-2 채점 및 Supabase DB 저장 로직
+// ----------------------------------------------------
+async function gradeStep6_2() {
+  const q1_1El = document.getElementById('ans-6-2-q1_1');
+  const q1_2El = document.getElementById('ans-6-2-q1_2');
+  const q2_1El = document.getElementById('ans-6-2-q2_1');
+  const q2_2El = document.getElementById('ans-6-2-q2_2');
+  const q3_1El = document.getElementById('ans-6-2-q3_1');
+  const q3_2El = document.getElementById('ans-6-2-q3_2');
+  const q4_1El = document.getElementById('ans-6-2-q4_1');
+  const q4_2El = document.getElementById('ans-6-2-q4_2');
+  const q4_3El = document.getElementById('ans-6-2-q4_3');
+
+  if (!q1_1El || !q1_2El || !q2_1El || !q2_2El || !q3_1El || !q3_2El || !q4_1El || !q4_2El || !q4_3El) return;
+
+  const clean = str => str.replace(/\s+/g, '').toLowerCase();
+
+  const q1_1 = clean(q1_1El.value);
+  const q1_2 = clean(q1_2El.value).replace('개', '');
+
+  const q2_1 = clean(q2_1El.value);
+  const q2_2 = clean(q2_2El.value).replace('cm', '');
+
+  const q3_1 = clean(q3_1El.value);
+  const q3_2 = clean(q3_2El.value).replace('년', '').replace('후', '');
+
+  const q4_1 = clean(q4_1El.value).replace('점', '');
+  const q4_2 = clean(q4_2El.value).replace('cm', '');
+  const q4_3 = clean(q4_3El.value).replace('배', '');
+
+  // 미입력 검사
+  if (!q1_1 || !q1_2 || !q2_1 || !q2_2 || !q3_1 || !q3_2 || !q4_1 || !q4_2 || !q4_3) {
+    alert('모든 단계의 빈칸과 해를 입력해 주세요!');
+    return;
+  }
+
+  let stepPassed = [false, false, false, false];
+
+  // 1단계: 예제 5 농구 득점
+  // ① 2x+3(2x+1)=27 또는 8x+3=27 또는 27=2x+3(2x+1) 또는 27=8x+3, ② 3
+  const isQ1_1 = q1_1 === '2x+3(2x+1)=27' || q1_1 === '8x+3=27' || q1_1 === '27=2x+3(2x+1)' || q1_1 === '27=8x+3';
+  const isQ1_2 = q1_2 === '3';
+  if (isQ1_1 && isQ1_2) stepPassed[0] = true;
+
+  // 2단계: 문제 7 직사각형 둘레
+  // ① 2(2x+5)=30 또는 2(x+x+5)=30 또는 4x+10=30 또는 (x+5+x)*2=30 또는 30=2(2x+5) 또는 30=4x+10, ② 5
+  const isQ2_1 = q2_1 === '2(2x+5)=30' || q2_1 === '2(x+x+5)=30' || q2_1 === '4x+10=30' || q2_1 === '(x+5+x)*2=30' || q2_1 === '30=2(2x+5)' || q2_1 === '30=4x+10' || q2_1 === '2(x+5+x)=30';
+  const isQ2_2 = q2_2 === '5';
+  if (isQ2_1 && isQ2_2) stepPassed[1] = true;
+
+  // 3단계: 문제 8 나이 문제
+  // ① 42+x=3(12+x) 또는 42+x=36+3x 또는 3(12+x)=42+x 또는 36+3x=42+x, ② 3
+  const isQ3_1 = q3_1 === '42+x=3(12+x)' || q3_1 === '42+x=36+3x' || q3_1 === '3(12+x)=42+x' || q3_1 === '36+3x=42+x';
+  const isQ3_2 = q3_2 === '3';
+  if (isQ3_1 && isQ3_2) stepPassed[2] = true;
+
+  // 4단계: 종합 검산
+  // ① 27, ② 30, ③ 3
+  const isQ4_1 = q4_1 === '27';
+  const isQ4_2 = q4_2 === '30';
+  const isQ4_3 = q4_3 === '3';
+  if (isQ4_1 && isQ4_2 && isQ4_3) stepPassed[3] = true;
+
+  const passedCount = stepPassed.filter(Boolean).length;
+  const score = passedCount * 25;
+
+  if (score === 100) {
+    if (!state.completedSubSteps.includes('6-2')) {
+      state.completedSubSteps.push('6-2');
+    }
+    if (!state.unlockedSubSteps.includes('6-3')) {
+      state.unlockedSubSteps.push('6-3');
+    }
+
+    if (window.LMSIntegration && typeof window.LMSIntegration.saveStudentProgress === 'function') {
+      try {
+        await window.LMSIntegration.saveStudentProgress('6-2', {
+          score: 100,
+          completed: true,
+          details: { q1_1, q1_2, q2_1, q2_2, q3_1, q3_2, q4_1, q4_2, q4_3 }
+        }, 3);
+      } catch (e) {
+        console.warn('LMS save error:', e);
+      }
+    }
+
+    const card = document.getElementById('verified-6-2');
+    if (card) card.style.display = 'block';
+
+    if (typeof updateStepperControls === 'function') updateStepperControls();
+    if (typeof populateSubstepDropdown === 'function') populateSubstepDropdown();
+
+    alert('🎉 정답입니다! 100점 만점으로 [6-2] 수량에 관한 활용 문제를 완벽히 마쳤습니다! 다음 단계 [6-3]이 해금되었습니다.');
+  } else {
+    let failMsg = `현재 점수: ${score}점 / 100점\\n다시 확인해 보세요:\\n`;
+    if (!stepPassed[0]) failMsg += '• 1단계 [예제 5]: 농구 총 득점 일차방정식(2x+3(2x+1)=27)과 2점 슛 개수(3)를 확인하세요.\\n';
+    if (!stepPassed[1]) failMsg += '• 2단계 [문제 7]: 직사각형 둘레 방정식(2(2x+5)=30)과 세로의 길이(5)를 확인하세요.\\n';
+    if (!stepPassed[2]) failMsg += '• 3단계 [문제 8]: 나이 관계 방정식(42+x=3(12+x))과 연수(3)를 확인하세요.\\n';
+    if (!stepPassed[3]) failMsg += '• 4단계 [검산]: 농구 총점(27), 둘레(30), 나이 배수(3)를 확인하세요.\\n';
     alert(failMsg);
   }
 }
