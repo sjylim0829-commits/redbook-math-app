@@ -1084,7 +1084,7 @@
       '3-12': {
         code: '3-12', tab: 3,
         substepLabel: '12. 놀이 쏙 수학: 생각한 수 맞히기 마술 (p.84)',
-        missionText: '<b>[3-12] 12. 놀이 쏙 수학: 생각한 수 맞히기 마술 (p.84)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        missionText: '<b>[놀이 쏙 수학] 생각한 수 맞히기 마술 (교과서 p.84)</b><br>• <b>마술의 비밀:</b> 자연수 $x$에 대해 일련의 연산을 수행하면 마지막에 $(x+1)-x = 1$로 $x$가 완벽히 소거됩니다.<br>• <b>대수적 증명:</b> $x \\to x+3 \\to 2x+6 \\to 2x+2 \\to x+1 \\to 1$<br>좌측 캔버스에서 마술사 시뮬레이터, 대수적 증명 파이프라인, 마술 트릭 생성기를 조작해 보세요.',
         drawer: 'drawStep3_12Canvas'
       },
       '4-1': {
@@ -1482,6 +1482,14 @@
       
       
       
+      
+      // Substep 3-12 State (Fun Math: Mind Reader Number Trick)
+      lab3_12: {
+        activeTab: 'mode1',
+        chosenNum: 7,
+        magicStep: 1,
+        isPassed: false
+      },
       // Substep 3-11 State (Expanding Thoughts: 3x3 Magic Square Puzzle)
       lab3_11: {
         activeTab: 'mode1',
@@ -28774,6 +28782,746 @@ function drawMode3AlgebraicProofLab(two, width, height) {
 
     // --- End Substep 3-11 Implementation ---
 
+    
+    // --- Substep 3-12 Implementation ---
+// code_3_12.js: Substep [3-12] 3.3 놀이 쏙 수학: 생각한 수 맞히기 마술 (교과서 p.84) - [Tab 3] 완결!
+
+const MAGIC_STEPS_3_12 = [
+  { step: 1, name: '1단계: 자연수 생각하기', getNum: (x) => x, expr: 'x', desc: '마음속으로 자연수 하나를 생각합니다.' },
+  { step: 2, name: '2단계: 3 더하기', getNum: (x) => x + 3, expr: 'x + 3', desc: '생각한 수에 3을 더합니다.' },
+  { step: 3, name: '3단계: 2 곱하기', getNum: (x) => 2 * (x + 3), expr: '2(x + 3) = 2x + 6', desc: '그 결과에 2를 곱합니다 (괄호 분배법칙).' },
+  { step: 4, name: '4단계: 4 빼기', getNum: (x) => 2 * (x + 3) - 4, expr: '(2x + 6) - 4 = 2x + 2', desc: '그 결과에서 4를 뺍니다 (동류항 상수 계산).' },
+  { step: 5, name: '5단계: 2로 나누기', getNum: (x) => (2 * (x + 3) - 4) / 2, expr: '(2x + 2) ÷ 2 = x + 1', desc: '그 결과를 2로 나눕니다 (각 항 계수 나눗셈).' },
+  { step: 6, name: '6단계: 처음 수 빼기', getNum: (x) => (2 * (x + 3) - 4) / 2 - x, expr: '(x + 1) - x = 1', desc: '마지막으로 처음 생각한 수를 뺍니다! (x - x = 0 소거!)' }
+];
+
+function renderToolbar3_12() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab3_12) {
+    state.lab3_12 = {
+      activeTab: 'mode1', // 'mode1' (마술 시뮬레이터) | 'mode2' (대수 증명 파이프라인) | 'mode3' (마술 트릭 생성기)
+      chosenNum: 7,
+      magicStep: 1,       // 1~6
+      isPassed: false
+    };
+  }
+
+  const curTab = state.lab3_12.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab3_12Tab('mode1')">
+        1. 🎩 수학 마술사 시뮬레이터
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab3_12Tab('mode2')">
+        2. 🔍 마술 트릭 대수적 증명
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab3_12Tab('mode3')">
+        3. 🧪 나만의 수학 마술 빌더
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn" onclick="nextMagicStep3_12()" title="마법 주문 진행">
+        ${state.lab3_12.magicStep === 6 ? '🔄 처음 주문으로' : '✨ 다음 주문 (' + state.lab3_12.magicStep + '/6)'}
+      </button>
+      <button class="icon-btn" onclick="resetLab3_12()" title="초기화">🔄 초기화</button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('3-12')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab3_12Tab(tabKey) {
+  if (!state.lab3_12) resetLab3_12();
+  state.lab3_12.activeTab = tabKey;
+  renderToolbar3_12();
+  drawStep3_12Canvas();
+}
+
+function resetLab3_12() {
+  state.lab3_12 = {
+    activeTab: 'mode1',
+    chosenNum: 7,
+    magicStep: 1,
+    isPassed: false
+  };
+  renderToolbar3_12();
+  drawStep3_12Canvas();
+}
+
+function setChosenNum3_12(num) {
+  if (!state.lab3_12) resetLab3_12();
+  state.lab3_12.chosenNum = num;
+  state.lab3_12.magicStep = 1;
+  renderToolbar3_12();
+  drawStep3_12Canvas();
+}
+
+function nextMagicStep3_12() {
+  if (!state.lab3_12) resetLab3_12();
+  if (state.lab3_12.magicStep >= 6) {
+    state.lab3_12.magicStep = 1;
+  } else {
+    state.lab3_12.magicStep++;
+  }
+  renderToolbar3_12();
+  drawStep3_12Canvas();
+}
+
+function setMagicStep3_12(st) {
+  if (!state.lab3_12) resetLab3_12();
+  state.lab3_12.magicStep = st;
+  renderToolbar3_12();
+  drawStep3_12Canvas();
+}
+
+function renderSubstep3_12() {
+  const panel = document.getElementById('form-box');
+  if (!panel) return;
+
+  if (!state.lab3_12) {
+    state.lab3_12 = {
+      activeTab: 'mode1',
+      chosenNum: 7,
+      magicStep: 1,
+      isPassed: false
+    };
+  }
+
+  panel.innerHTML = `
+    <div style="padding:16px; font-family:'Pretendard', sans-serif;">
+      <!-- 문제 브리핑 카드 -->
+      <div style="background:#eff6ff; border-left:4px solid #3b82f6; border-radius:8px; padding:12px 14px; margin-bottom:14px;">
+        <div style="font-size:0.95rem; font-weight:800; color:#1e40af; margin-bottom:4px;">
+          📖 [놀이 쏙 수학] 생각한 수 맞히기 마술 (교과서 p.84)
+        </div>
+        <div style="font-size:0.83rem; color:#334155; line-height:1.5;">
+          • <b>마술 규칙:</b> 자연수 하나를 마음속으로 생각합니다 (이 수를 $x$라 하자).<br>
+          • <b>연산 단계:</b> ① 3 더하기 $\\to$ ② 2 곱하기 $\\to$ ③ 4 빼기 $\\to$ ④ 2로 나누기 $\\to$ ⑤ 처음 수 빼기<br>
+          • <b>마술사의 비밀:</b> 어떤 수를 생각했든 마지막 결과는 항상 일정한 수가 됩니다!
+        </div>
+      </div>
+
+      <!-- 문제 풀이 영역 -->
+      <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:14px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <div style="font-size:0.9rem; font-weight:700; color:#1e293b; margin-bottom:10px;">
+          ✏️ 처음 생각한 수를 $x$라 할 때, 다음 연산 결과를 식으로 나타내시오.
+        </div>
+
+        <!-- ⑴ 문항 -->
+        <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px; margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <span style="font-weight:700; color:#1e293b; font-size:0.86rem;">
+              ⑴ 2단계: '3을 더한 결과'를 $x$에 대한 식으로 나타내시오.
+            </span>
+            <button class="tool-btn" style="padding:2px 8px; font-size:0.75rem;" onclick="setMagicStep3_12(2)">2단계 보기</button>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.85rem; font-weight:600; color:#475569;">답:</span>
+            <input type="text" id="ans_3_12_1" class="proof-input-text" placeholder="답 입력 (예: x+a)" style="flex:1; max-width:220px;" />
+          </div>
+        </div>
+
+        <!-- ⑵ 문항 -->
+        <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px; margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <span style="font-weight:700; color:#1e293b; font-size:0.86rem;">
+              ⑵ 3단계: '2를 곱한 결과'를 괄호를 풀어 간단히 나타내시오.
+            </span>
+            <button class="tool-btn" style="padding:2px 8px; font-size:0.75rem;" onclick="setMagicStep3_12(3)">3단계 보기</button>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.85rem; font-weight:600; color:#475569;">답:</span>
+            <input type="text" id="ans_3_12_2" class="proof-input-text" placeholder="답 입력 (예: ax+b)" style="flex:1; max-width:220px;" />
+          </div>
+        </div>
+
+        <!-- ⑶ 문항 -->
+        <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px; margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <span style="font-weight:700; color:#1e293b; font-size:0.86rem;">
+              ⑶ 5단계: '2로 나눈 결과'를 간단히 나타내시오.
+            </span>
+            <button class="tool-btn" style="padding:2px 8px; font-size:0.75rem;" onclick="setMagicStep3_12(5)">5단계 보기</button>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.85rem; font-weight:600; color:#475569;">답:</span>
+            <input type="text" id="ans_3_12_3" class="proof-input-text" placeholder="답 입력 (예: x+a)" style="flex:1; max-width:220px;" />
+          </div>
+        </div>
+
+        <!-- ⑷ 문항 -->
+        <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <span style="font-weight:700; color:#1e293b; font-size:0.86rem;">
+              ⑷ 6단계: '처음 생각한 수($x$)를 뺀 최종 결과'를 구하시오.
+            </span>
+            <button class="tool-btn" style="padding:2px 8px; font-size:0.75rem;" onclick="setMagicStep3_12(6)">마술 완성</button>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.85rem; font-weight:600; color:#475569;">답:</span>
+            <input type="text" id="ans_3_12_4" class="proof-input-text" placeholder="수 입력 (예: 5)" style="flex:1; max-width:220px;" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 제출 및 액션 버튼 -->
+      <div style="display:flex; gap:8px; margin-bottom:12px;">
+        <button class="tool-btn" style="flex:1; height:42px; font-size:0.92rem; font-weight:700; background:#3b82f6; color:#ffffff;" onclick="gradeStep3_12()">
+          정답 확인 및 채점
+        </button>
+        <button class="icon-btn" style="height:42px; padding:0 14px;" onclick="resetForm3_12()">
+          다시 풀기
+        </button>
+      </div>
+
+      <!-- 결과 및 피드백 컨테이너 -->
+      <div id="result-box-3_12"></div>
+    </div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(panel, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function resetForm3_12() {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById(`ans_3_12_${i}`);
+    if (el) el.value = '';
+  }
+  const rbox = document.getElementById('result-box-3_12');
+  if (rbox) rbox.innerHTML = '';
+}
+
+function gradeStep3_12() {
+  const rbox = document.getElementById('result-box-3_12');
+  if (!rbox) return;
+
+  const a1 = (document.getElementById('ans_3_12_1')?.value || '').trim().replace(/\s+/g, '').toLowerCase();
+  const a2 = (document.getElementById('ans_3_12_2')?.value || '').trim().replace(/\s+/g, '').toLowerCase();
+  const a3 = (document.getElementById('ans_3_12_3')?.value || '').trim().replace(/\s+/g, '').toLowerCase();
+  const a4 = (document.getElementById('ans_3_12_4')?.value || '').trim().replace(/\s+/g, '');
+
+  const isOk1 = (a1 === 'x+3' || a1 === '3+x');
+  const isOk2 = (a2 === '2x+6' || a2 === '6+2x');
+  const isOk3 = (a3 === 'x+1' || a3 === '1+x');
+  const isOk4 = (a4 === '1');
+
+  const allOk = isOk1 && isOk2 && isOk3 && isOk4;
+
+  if (allOk) {
+    if (!state.lab3_12) resetLab3_12();
+    state.lab3_12.isPassed = true;
+
+    if (window.LMSIntegration && window.LMSIntegration.saveStudentProgress) {
+      window.LMSIntegration.saveStudentProgress('3-12', { score: 100, passed: true }, 'unit3');
+    }
+
+    // Unlock Tab 4 & Next Substep [4-1]
+    if (!state.unlockedTabs.includes(4)) {
+      state.unlockedTabs.push(4);
+    }
+    if (!state.unlockedSubSteps.includes('4-1')) {
+      state.unlockedSubSteps.push('4-1');
+    }
+    updateSubstepPills();
+
+    rbox.innerHTML = `
+      <div style="background:#ecfdf5; border:1px solid #10b981; border-radius:8px; padding:14px; margin-top:10px;">
+        <div style="font-weight:800; font-size:1.05rem; color:#065f46; margin-bottom:6px;">
+          🎉 100점 만점! [Tab 3] 일차식의 덧셈과 뺄셈 12개 전 서브스텝을 완벽 정복했습니다! 🎉
+        </div>
+        <div style="font-size:0.85rem; color:#047857; line-height:1.6;">
+          • <b>⑴ 2단계 (3 더하기):</b> $x + 3 = \\mathbf{x + 3}$<br>
+          • <b>⑵ 3단계 (2 곱하기):</b> $2(x + 3) = \\mathbf{2x + 6}$ (분배법칙 성공)<br>
+          • <b>⑶ 5단계 (2로 나누기):</b> $(2x + 2) \\div 2 = \\mathbf{x + 1}$<br>
+          • <b>⑷ 6단계 (처음 수 빼기):</b> $(x + 1) - x = \\mathbf{1}$ (미지수 $x$가 완벽히 소거되어 항상 1!)
+        </div>
+        <div style="margin-top:12px; padding:10px; background:#ffffff; border-radius:6px; border:1px solid #a7f3d0;">
+          <div style="font-weight:800; color:#065f46; font-size:0.92rem;">
+            🚀 다음 대단원 [Tab 4] 3.4 등식과 방정식 (pp.85~90)이 전면 해금되었습니다!
+          </div>
+          <div style="font-size:0.8rem; color:#047857; margin-top:2px;">
+            상단 메인 탭바에서 <b>'Tab 4. 3.4 등식과 방정식'</b>을 클릭하여 탐구를 이어가세요.
+          </div>
+        </div>
+      </div>
+    `;
+  } else {
+    let wrongMsg = [];
+    if (!isOk1) wrongMsg.push('<b>⑴:</b> 처음 생각한 수 x에 3을 더한 식은 x + 3 입니다.');
+    if (!isOk2) wrongMsg.push('<b>⑵:</b> 2(x + 3) 에서 2를 분배하면 2x + 6 입니다.');
+    if (!isOk3) wrongMsg.push('<b>⑶:</b> (2x + 2) 를 2로 나누면 (2x/2) + (2/2) = x + 1 입니다.');
+    if (!isOk4) wrongMsg.push('<b>⑷:</b> (x + 1) 에서 처음 수 x를 빼면 (x - x) + 1 = 1 입니다.');
+
+    rbox.innerHTML = `
+      <div style="background:#fef2f2; border:1px solid #ef4444; border-radius:8px; padding:12px; margin-top:10px;">
+        <div style="font-weight:700; font-size:0.9rem; color:#991b1b; margin-bottom:4px;">
+          ⚠️ 다시 확인해 보세요.
+        </div>
+        <div style="font-size:0.82rem; color:#b91c1c; line-height:1.5;">
+          ${wrongMsg.join('<br>')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(rbox, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+// ==========================================
+// Two.js 60fps Interactive Canvas Engine for 3-12
+// ==========================================
+function drawStep3_12Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+
+  container.innerHTML = '';
+  const width = container.clientWidth || 620;
+  const height = 440;
+
+  const two = new Two({
+    width: width,
+    height: height,
+    type: Two.Types.svg
+  }).appendTo(container);
+
+  if (!state.lab3_12) {
+    state.lab3_12 = {
+      activeTab: 'mode1',
+      chosenNum: 7,
+      magicStep: 1,
+      isPassed: false
+    };
+  }
+
+  const tab = state.lab3_12.activeTab;
+
+  // Background
+  const bg = two.makeRectangle(width / 2, height / 2, width, height);
+  bg.fill = '#f8fafc';
+  bg.noStroke();
+
+  if (tab === 'mode1') {
+    drawMode1MindReaderMagicLab(two, width, height);
+  } else if (tab === 'mode2') {
+    drawMode2AlgebraicSecretPipeline(two, width, height);
+  } else {
+    drawMode3MagicTrickBuilderLab(two, width, height);
+  }
+
+  two.update();
+}
+
+// ----------------------------------------------------
+// Mode 1: 🎩 수학 마술사 시뮬레이터
+// ----------------------------------------------------
+function drawMode1MindReaderMagicLab(two, width, height) {
+  const x = state.lab3_12.chosenNum;
+  const curStep = state.lab3_12.magicStep;
+  const sData = MAGIC_STEPS_3_12[curStep - 1];
+  const curNum = sData.getNum(x);
+
+  // Top Controller Bar: Choose X Number (X=3, 7, 15, 42, 99)
+  const ctrlBg = two.makeRoundedRectangle(width / 2, 30, width - 40, 36, 6);
+  ctrlBg.fill = '#ffffff';
+  ctrlBg.stroke = '#cbd5e1';
+  ctrlBg.linewidth = 1;
+
+  const cLabel = two.makeText('마음속으로 생각한 처음 수 x 선택:', width / 2 - 120, 31);
+  cLabel.size = 11;
+  cLabel.weight = 700;
+  cLabel.fill = '#334155';
+
+  const sampleXs = [3, 7, 15, 42, 99];
+  for (let i = 0; i < 5; i++) {
+    const sx = sampleXs[i];
+    const bx = width / 2 + 35 + i * 44;
+    const isCur = (x === sx);
+
+    const bRect = two.makeRoundedRectangle(bx, 30, 38, 22, 4);
+    bRect.fill = isCur ? '#3b82f6' : '#eff6ff';
+    bRect.stroke = isCur ? '#2563eb' : '#bfdbfe';
+    bRect.linewidth = 1;
+
+    const bTxt = two.makeText(isCur ? `${sx}★` : `${sx}`, bx, 31);
+    bTxt.size = 10;
+    bTxt.weight = 700;
+    bTxt.fill = isCur ? '#ffffff' : '#1d4ed8';
+
+    const bGrp = two.makeGroup(bRect, bTxt);
+    bGrp._renderer.elem.style.cursor = 'pointer';
+    bGrp._renderer.elem.onclick = (function(val) {
+      return function() {
+        setChosenNum3_12(val);
+      };
+    })(sx);
+  }
+
+  // Magic Stage Center (Hat, Wand, Cards)
+  // Stage Box (Y=65 to Y=355)
+  const stageBox = two.makeRoundedRectangle(width / 2, 210, width - 40, 260, 10);
+  stageBox.fill = '#ffffff';
+  stageBox.stroke = curStep === 6 ? '#10b981' : '#cbd5e1';
+  stageBox.linewidth = curStep === 6 ? 2.5 : 1.5;
+
+  // Step Progress Ribbon (Y=90)
+  const ribbonW = (width - 70) / 6;
+  for (let s = 1; s <= 6; s++) {
+    const rx = 35 + ribbonW / 2 + (s - 1) * ribbonW;
+    const isDone = (curStep >= s);
+    const isThis = (curStep === s);
+
+    const rPill = two.makeRoundedRectangle(rx, 80, ribbonW - 4, 20, 4);
+    rPill.fill = isThis ? '#2563eb' : (isDone ? '#dbeafe' : '#f1f5f9');
+    rPill.noStroke();
+
+    const rTxt = two.makeText(`${s}단계`, rx, 81);
+    rTxt.size = 9;
+    rTxt.weight = 700;
+    rTxt.fill = isThis ? '#ffffff' : (isDone ? '#1e40af' : '#94a3b8');
+
+    const rGrp = two.makeGroup(rPill, rTxt);
+    rGrp._renderer.elem.style.cursor = 'pointer';
+    rGrp._renderer.elem.onclick = (function(stepNum) {
+      return function() {
+        setMagicStep3_12(stepNum);
+      };
+    })(s);
+  }
+
+  // Magician Hat Graphic (Center Left: X=130, Y=200)
+  const hatBrim = two.makeEllipse(130, 240, 60, 14);
+  hatBrim.fill = '#1e1b4b';
+  hatBrim.noStroke();
+
+  const hatCrown = two.makeRoundedRectangle(130, 195, 75, 80, 8);
+  hatCrown.fill = '#312e81';
+  hatCrown.noStroke();
+
+  const hatBand = two.makeRectangle(130, 225, 76, 16);
+  hatBand.fill = '#e11d48';
+  hatBand.noStroke();
+
+  // Star on Hat
+  const star = two.makeStar(130, 200, 10, 5, 5);
+  star.fill = '#fbbf24';
+  star.noStroke();
+
+  // Magic Wand
+  const wand = two.makeLine(175, 130, 210, 175);
+  wand.stroke = '#78350f';
+  wand.linewidth = 4;
+  const wandTip = two.makeCircle(175, 130, 5);
+  wandTip.fill = '#fde047';
+  wandTip.noStroke();
+
+  // Center Right: Magic Order & Calculation Cards (X=390, Y=205)
+  const cardW = 340;
+  const cardX = width / 2 + 75;
+
+  const oBox = two.makeRoundedRectangle(cardX, 150, cardW, 60, 8);
+  oBox.fill = '#eff6ff';
+  oBox.stroke = '#3b82f6';
+  oBox.linewidth = 1.5;
+
+  const oT1 = two.makeText(`✨ ${sData.name}`, cardX, 138);
+  oT1.size = 12;
+  oT1.weight = 800;
+  oT1.fill = '#1d4ed8';
+
+  const oT2 = two.makeText(sData.desc, cardX, 158);
+  oT2.size = 11;
+  oT2.weight = 600;
+  oT2.fill = '#334155';
+
+  // Math Expression & Real Calculation Card
+  const cBox = two.makeRoundedRectangle(cardX, 235, cardW, 80, 8);
+  cBox.fill = curStep === 6 ? '#ecfdf5' : '#f8fafc';
+  cBox.stroke = curStep === 6 ? '#10b981' : '#cbd5e1';
+  cBox.linewidth = curStep === 6 ? 2 : 1;
+
+  const cT1 = two.makeText(`일반식 (수학 식):  ${sData.expr}`, cardX, 218);
+  cT1.size = 14;
+  cT1.weight = 800;
+  cT1.fill = curStep === 6 ? '#047857' : '#2563eb';
+
+  const cT2 = two.makeText(`당신이 생각한 수 (${x}) 계산 결과:`, cardX, 240);
+  cT2.size = 10;
+  cT2.weight = 600;
+  cT2.fill = '#64748b';
+
+  const cT3 = two.makeText(`${curNum}`, cardX, 260);
+  cT3.size = 20;
+  cT3.weight = 800;
+  cT3.fill = curStep === 6 ? '#047857' : '#1e293b';
+
+  // Final Reveal Banner if Step 6
+  if (curStep === 6) {
+    const revBadge = two.makeRoundedRectangle(130, 135, 110, 24, 12);
+    revBadge.fill = '#10b981';
+    revBadge.noStroke();
+
+    const revTxt = two.makeText('🎉 마술 완성: 1 !', 130, 136);
+    revTxt.size = 11;
+    revTxt.weight = 800;
+    revTxt.fill = '#ffffff';
+  }
+
+  // Interactive Bottom Navigation Buttons inside Canvas (Y=315)
+  const prevBtn = two.makeRoundedRectangle(cardX - 80, 312, 100, 26, 6);
+  prevBtn.fill = curStep > 1 ? '#f1f5f9' : '#f8fafc';
+  prevBtn.stroke = curStep > 1 ? '#94a3b8' : '#e2e8f0';
+  prevBtn.linewidth = 1;
+
+  const prevTxt = two.makeText('◀ 이전 주문', cardX - 80, 313);
+  prevTxt.size = 11;
+  prevTxt.weight = 700;
+  prevTxt.fill = curStep > 1 ? '#334155' : '#cbd5e1';
+
+  if (curStep > 1) {
+    const prevGrp = two.makeGroup(prevBtn, prevTxt);
+    prevGrp._renderer.elem.style.cursor = 'pointer';
+    prevGrp._renderer.elem.onclick = function() {
+      state.lab3_12.magicStep--;
+      renderToolbar3_12();
+      drawStep3_12Canvas();
+    };
+  }
+
+  const nextBtn = two.makeRoundedRectangle(cardX + 80, 312, 110, 26, 6);
+  nextBtn.fill = '#3b82f6';
+  nextBtn.stroke = '#2563eb';
+  nextBtn.linewidth = 1;
+
+  const nextTxt = two.makeText(curStep === 6 ? '🔄 처음 주문으로' : '다음 주문 외우기 ▶', cardX + 80, 313);
+  nextTxt.size = 11;
+  nextTxt.weight = 700;
+  nextTxt.fill = '#ffffff';
+
+  const nextGrp = two.makeGroup(nextBtn, nextTxt);
+  nextGrp._renderer.elem.style.cursor = 'pointer';
+  nextGrp._renderer.elem.onclick = function() {
+    nextMagicStep3_12();
+  };
+
+  // Bottom Safety Banner (Y=385, H=26, Bottom margin 42px >= 25px)
+  const bannerY = 385;
+  const bannerBg = two.makeRoundedRectangle(width / 2, bannerY, width - 40, 26, 6);
+  bannerBg.fill = '#eff6ff';
+  bannerBg.stroke = '#bfdbfe';
+  bannerBg.linewidth = 1;
+
+  const bannerTxt = two.makeText('💡 어떤 수 x를 생각하든 마지막에 (x + 1) - x = 1 로 x가 완벽히 소거되는 대수학의 마술입니다!', width / 2, bannerY + 1);
+  bannerTxt.size = 11;
+  bannerTxt.weight = 600;
+  bannerTxt.fill = '#1d4ed8';
+}
+
+// ----------------------------------------------------
+// Mode 2: 🔍 마술 트릭 대수적 증명 파이프라인
+// ----------------------------------------------------
+function drawMode2AlgebraicSecretPipeline(two, width, height) {
+  const x = state.lab3_12.chosenNum;
+
+  // Title Header
+  const headerCard = two.makeRoundedRectangle(width / 2, 35, width - 40, 40, 8);
+  headerCard.fill = '#ffffff';
+  headerCard.stroke = '#cbd5e1';
+  headerCard.linewidth = 1;
+
+  const tTxt = two.makeText('🔍 수치 계산(x=' + x + ') vs 대수적 식 전개 6단계 비교 분석', width / 2, 36);
+  tTxt.size = 13;
+  tTxt.weight = 800;
+  tTxt.fill = '#1e293b';
+
+  // Table Grid for 6 Steps (Y=75 to Y=355)
+  const cardW = width - 40;
+  const rowH = 42;
+  const startY = 90;
+
+  for (let s = 0; s < 6; s++) {
+    const sData = MAGIC_STEPS_3_12[s];
+    const sy = startY + s * (rowH + 4);
+    const isCur = (state.lab3_12.magicStep === s + 1);
+    const isFinal = (s === 5);
+
+    const rowCard = two.makeRoundedRectangle(width / 2, sy, cardW, rowH, 6);
+    rowCard.fill = isFinal ? '#ecfdf5' : (isCur ? '#eff6ff' : '#ffffff');
+    rowCard.stroke = isFinal ? '#10b981' : (isCur ? '#3b82f6' : '#e2e8f0');
+    rowCard.linewidth = isCur || isFinal ? 2 : 1;
+
+    // Badge
+    const badge = two.makeRoundedRectangle(60, sy, 60, 22, 4);
+    badge.fill = isFinal ? '#10b981' : (isCur ? '#2563eb' : '#f1f5f9');
+    badge.noStroke();
+
+    const bTxt = two.makeText(`${s + 1}단계`, 60, sy + 1);
+    bTxt.size = 9;
+    bTxt.weight = 700;
+    bTxt.fill = isFinal || isCur ? '#ffffff' : '#64748b';
+
+    // Step Order Name
+    const nTxt = two.makeText(sData.name.split(':')[1] || sData.name, 160, sy + 1);
+    nTxt.size = 11;
+    nTxt.weight = 700;
+    nTxt.fill = '#334155';
+
+    // Algebraic Formula
+    const fTxt = two.makeText(sData.expr, 330, sy + 1);
+    fTxt.size = 12;
+    fTxt.weight = 800;
+    fTxt.fill = isFinal ? '#047857' : '#1d4ed8';
+
+    // Real Number Result
+    const rTxt = two.makeText(`x=${x}일 때: ${sData.getNum(x)}`, width - 85, sy + 1);
+    rTxt.size = 11;
+    rTxt.weight = 700;
+    rTxt.fill = isFinal ? '#065f46' : '#475569';
+
+    const rGrp = two.makeGroup(rowCard, badge, bTxt, nTxt, fTxt, rTxt);
+    rGrp._renderer.elem.style.cursor = 'pointer';
+    rGrp._renderer.elem.onclick = (function(st) {
+      return function() {
+        setMagicStep3_12(st);
+        setLab3_12Tab('mode1');
+      };
+    })(s + 1);
+  }
+
+  // Bottom Safety Banner
+  const bannerY = 385;
+  const bannerBg = two.makeRoundedRectangle(width / 2, bannerY, width - 40, 26, 6);
+  bannerBg.fill = '#eff6ff';
+  bannerBg.stroke = '#bfdbfe';
+  bannerBg.linewidth = 1;
+
+  const bannerTxt = two.makeText('💡 행을 클릭하면 해당 연산 단계의 마술 시뮬레이터 무대로 즉시 이동합니다.', width / 2, bannerY + 1);
+  bannerTxt.size = 11;
+  bannerTxt.weight = 600;
+  bannerTxt.fill = '#1d4ed8';
+}
+
+// ----------------------------------------------------
+// Mode 3: 🧪 나만의 수학 마술 빌더
+// ----------------------------------------------------
+function drawMode3MagicTrickBuilderLab(two, width, height) {
+  // Title Header
+  const titleCard = two.makeRoundedRectangle(width / 2, 35, width - 40, 40, 8);
+  titleCard.fill = '#ffffff';
+  titleCard.stroke = '#cbd5e1';
+  titleCard.linewidth = 1;
+
+  const tTxt = two.makeText('🧪 나만의 수학 마술 트릭 설계 공방 (3대 마술 루틴)', width / 2, 36);
+  tTxt.size = 13;
+  tTxt.weight = 800;
+  tTxt.fill = '#1e293b';
+
+  // 3 Routine Cards in Column Stack
+  const cardW = width - 40;
+  const cardH = 80;
+  const rows = [105, 195, 285];
+
+  const ROUTINES = [
+    {
+      tit: '🎩 루틴 A: 교과서 표준 마술 (항상 1이 나오는 마술)',
+      recipe: '생각한 수 x → [+3] → [×2] → [-4] → [÷2] → [-x]',
+      proof: '(2x + 6 - 4) ÷ 2 - x = (x + 1) - x = 1',
+      res: '항상 1',
+      color: '#10b981'
+    },
+    {
+      tit: '🔮 루틴 B: 3 맞히기 마술 (응용 루틴)',
+      recipe: '생각한 수 x → [+5] → [×2] → [-4] → [÷2] → [-x]',
+      proof: '(2x + 10 - 4) ÷ 2 - x = (x + 3) - x = 3',
+      res: '항상 3',
+      color: '#3b82f6'
+    },
+    {
+      tit: '⚡ 루틴 C: 행운의 7 맞히기 마술 (고급 루틴)',
+      recipe: '생각한 수 x → [+10] → [×2] → [-6] → [÷2] → [-x]',
+      proof: '(2x + 20 - 6) ÷ 2 - x = (x + 7) - x = 7',
+      res: '항상 7',
+      color: '#8b5cf6'
+    }
+  ];
+
+  for (let i = 0; i < 3; i++) {
+    const cy = rows[i];
+    const r = ROUTINES[i];
+
+    const card = two.makeRoundedRectangle(width / 2, cy, cardW, cardH, 8);
+    card.fill = '#ffffff';
+    card.stroke = r.color;
+    card.linewidth = 1.5;
+
+    const tit = two.makeText(r.tit, width / 2 - 40, cy - 23);
+    tit.size = 11;
+    tit.weight = 800;
+    tit.fill = r.color;
+
+    const rec = two.makeText(`레시피: ${r.recipe}`, width / 2 - 40, cy - 2);
+    rec.size = 11;
+    rec.weight = 600;
+    rec.fill = '#334155';
+
+    const prf = two.makeText(`대수적 증명: ${r.proof}`, width / 2 - 40, cy + 20);
+    prf.size = 11;
+    prf.weight = 700;
+    prf.fill = '#1e293b';
+
+    // Result Badge
+    const b = two.makeRoundedRectangle(width - 65, cy, 65, 34, 6);
+    b.fill = r.color;
+    b.noStroke();
+
+    const bt = two.makeText(r.res, width - 65, cy + 1);
+    bt.size = 11;
+    bt.weight = 800;
+    bt.fill = '#ffffff';
+
+    const grp = two.makeGroup(card, tit, rec, prf, b, bt);
+    grp._renderer.elem.style.cursor = 'pointer';
+    grp._renderer.elem.onclick = function() {
+      setLab3_12Tab('mode1');
+    };
+  }
+
+  // Bottom Safety Banner
+  const bannerY = 385;
+  const bannerBg = two.makeRoundedRectangle(width / 2, bannerY, width - 40, 26, 6);
+  bannerBg.fill = '#eff6ff';
+  bannerBg.stroke = '#bfdbfe';
+  bannerBg.linewidth = 1;
+
+  const bannerTxt = two.makeText('💡 마지막에 x를 빼주면 어떤 수를 생각하든 미지수가 사라져 마술이 완성됩니다.', width / 2, bannerY + 1);
+  bannerTxt.size = 11;
+  bannerTxt.weight = 600;
+  bannerTxt.fill = '#1d4ed8';
+}
+
+    // --- End Substep 3-12 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -28919,6 +29667,9 @@ function drawMode3AlgebraicProofLab(two, width, height) {
       } else if (code === '3-11') {
         renderToolbar3_11();
         renderSubstep3_11();
+      } else if (code === '3-12') {
+        renderToolbar3_12();
+        renderSubstep3_12();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
