@@ -1539,8 +1539,8 @@
       },
       '7-11': {
         code: '7-11', tab: 7,
-        substepLabel: '11. [마무리 11번] 복잡한 일차방정식 풀이 (p.102)',
-        missionText: '<b>[7-11] 11. [마무리 11번] 복잡한 일차방정식 풀이 (p.102)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '11. [마무리 11번] 분수 계수 일차방정식 풀이 (p.101)',
+        missionText: '<b>[3.7 스스로 마무리하기: 11번] 분수 계수 일차방정식 풀이 (교과서 p.101)</b><br>• 계수가 분수인 일차방정식은 각 분모의 최소공배수를 양변의 <b>모든 항에 곱하여</b> 계수를 정수로 고쳐서 풀면 편리합니다.<br>• <b>⚠️ 핵심 주의점:</b> 분수항뿐만 아니라 정수항인 $-x$와 $-1$에도 빠짐없이 최소공배수 $12$를 곱해야 합니다!<br>• 좌측 3대 캔버스 랩(최소공배수 배율 랩, 양팔저울 이항 랩, $x=3$ 완벽 대입 검증기)을 조작하며 정답을 찾아보세요.',
         drawer: 'drawStep7_11Canvas'
       },
       '7-12': {
@@ -38411,6 +38411,9 @@ function drawMode3PropertyRuleMatrixLab(two) {
       } else if (code === '7-10') {
         renderToolbar7_10();
         renderSubstep7_10Form();
+      } else if (code === '7-11') {
+        renderToolbar7_11();
+        renderSubstep7_11Form();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
@@ -65787,6 +65790,786 @@ function bindTwoEvents7_10(two) {
       };
     }
   });
+}
+
+
+// ========================================================
+// ========================================================
+// ========================================================
+// [7-11] 11. [마무리 11번] 분수 계수 일차방정식 풀이 (교과서 p.101 11번)
+// ========================================================
+
+function resetLab7_11() {
+  state.lab7_11 = {
+    activeTab: 'mode1',     // mode1: 분모 소거 및 최소공배수 배율 랩, mode2: 양팔저울 이항 랩, mode3: x=3 완벽 대입 검증기
+    lcmStep: 0,             // mode1: 0 (원식), 1 (양변*12 분배), 2 (약분 및 전개 주의점), 3 (동류항 정리 3x-9=4x-12)
+    balanceStep: 0,         // mode2: 0 (3x-9=4x-12), 1 (상수항 이항 3x=4x-3), 2 (x항 이항 -x=-3), 3 (해 x=3)
+    verifyStep: 0,          // mode3: 0 (x=3 대입 대기), 1 (좌변 0 계산), 2 (우변 0 계산 및 참 증명)
+    isPassed: state.completedSubSteps ? state.completedSubSteps.includes('7-11') : false
+  };
+}
+
+function setTab7_11(tab) {
+  if (!state.lab7_11) resetLab7_11();
+  state.lab7_11.activeTab = tab;
+  renderToolbar7_11();
+  drawStep7_11Canvas();
+}
+
+function setLcmStep7_11(step) {
+  if (!state.lab7_11) resetLab7_11();
+  state.lab7_11.lcmStep = Math.max(0, Math.min(3, step));
+  drawStep7_11Canvas();
+}
+
+function setBalanceStep7_11(step) {
+  if (!state.lab7_11) resetLab7_11();
+  state.lab7_11.balanceStep = Math.max(0, Math.min(3, step));
+  drawStep7_11Canvas();
+}
+
+function setVerifyStep7_11(step) {
+  if (!state.lab7_11) resetLab7_11();
+  state.lab7_11.verifyStep = Math.max(0, Math.min(2, step));
+  drawStep7_11Canvas();
+}
+
+function renderToolbar7_11() {
+  const container = document.getElementById('plane-toolbar') || document.getElementById('step-toolbar-container');
+  if (!container) return;
+
+  if (!state.lab7_11) resetLab7_11();
+  const cur = state.lab7_11.activeTab;
+
+  container.innerHTML = `
+    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; width:100%; justify-content:space-between;">
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <button class="icon-btn ${cur === 'mode1' ? 'active' : ''}" style="font-size:0.8rem; padding:5px 10px; font-weight:700;" onclick="setTab7_11('mode1')">🌊 Mode 1: 최소공배수 배율 랩</button>
+        <button class="icon-btn ${cur === 'mode2' ? 'active' : ''}" style="font-size:0.8rem; padding:5px 10px; font-weight:700;" onclick="setTab7_11('mode2')">⚖️ Mode 2: 양팔저울 이항 랩</button>
+        <button class="icon-btn ${cur === 'mode3' ? 'active' : ''}" style="font-size:0.8rem; padding:5px 10px; font-weight:700;" onclick="setTab7_11('mode3')">🔍 Mode 3: x = 3 완벽 대입 검증기</button>
+      </div>
+      <div style="display:flex; gap:6px; align-items:center;">
+        <button class="icon-btn" style="font-size:0.75rem; padding:4px 8px; color:#475569;" onclick="resetLab7_11(); drawStep7_11Canvas();">↺ 초기화</button>
+        ${state.isTeacherLoggedIn ? '<button class="icon-btn" style="font-size:0.75rem; padding:4px 8px; font-weight:800; background:#fef08a; color:#854d0e; border:1px solid #eab308;" onclick="passStep7_11()">🔑 교사 즉시 패스</button>' : ''}
+      </div>
+    </div>
+  `;
+}
+
+function renderSubstep7_11Form() {
+  const formBox = document.getElementById('form-box');
+  if (!formBox) return;
+
+  formBox.innerHTML = `
+    <!-- 상단 독립 미션 카드 -->
+    <div class="card mission-card" style="border-left:4px solid var(--primary-color); border-radius:12px; margin-bottom:14px; padding:14px; background:#ffffff; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+      <h3 style="color:#4f46e5; font-size:1.02rem; font-weight:800; margin:0 0 8px 0; display:flex; align-items:center; gap:6px;">
+        <span>🎯</span> 오늘의 수학 탐구 미션
+      </h3>
+      <div style="font-size:0.88rem; color:#334155; line-height:1.55;">
+        <b>[3.7 스스로 마무리하기: 11번] 분수 계수 일차방정식 풀이 (교과서 p.101)</b><br>
+        • 계수가 분수인 일차방정식은 각 분모의 최소공배수를 양변의 <b>모든 항에 곱하여</b> 계수를 정수로 고쳐서 풀면 편리합니다.<br>
+        • <b>⚠️ 핵심 주의점:</b> 분수항뿐만 아니라 정수항인 $-x$와 $-1$에도 빠짐없이 최소공배수 $12$를 곱해야 합니다!<br>
+        • 좌측 3대 캔버스 랩(최소공배수 배율 랩, 양팔저울 이항 랩, $x=3$ 완벽 대입 검증기)을 조작하며 정답을 찾아보세요.
+      </div>
+    </div>
+
+    <!-- 단계별 스캐폴딩 문제 카드 -->
+    <div class="card" style="border-radius:12px; padding:16px; background:#ffffff; box-shadow:0 1px 4px rgba(0,0,0,0.06); margin-bottom:14px;">
+      <!-- 상단 듀얼 배지 바 -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:6px;">
+        <span style="background:#e0e7ff; color:#4338ca; font-size:0.78rem; font-weight:800; padding:3px 8px; border-radius:6px;">
+          교과서 p.101 [3.7 스스로 마무리하기]
+        </span>
+        <span style="color:#64748b; font-size:0.8rem; font-weight:700;">
+          11번 분수 계수 방정식 (100점 만점)
+        </span>
+      </div>
+
+      <h4 style="color:#1e293b; font-size:0.96rem; font-weight:800; margin:0 0 12px 0; line-height:1.45;">
+        다음 일차방정식을 푸시오: $\\frac{5x - 3}{4} - x = \\frac{x}{3} - 1$
+      </h4>
+
+      <!-- 1단계: 분모 없애기 (최소공배수) -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <strong style="color:#1e293b; font-size:0.88rem;">1단계. 분모 없애기 (두 분모 4, 3의 최소공배수 구하기)</strong>
+          <span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">배점 30%</span>
+        </div>
+        <div style="font-size:0.84rem; color:#475569; margin-bottom:8px; line-height:1.5;">
+          분모 $4$와 $3$을 모두 없애 정수 계수로 고치기 위해, 양변의 모든 항에 곱해야 하는 <b>두 분모의 최소공배수</b>를 구하시오.
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span style="font-size:0.86rem; font-weight:700; color:#334155;">양변에 곱할 최소공배수 =</span>
+          <input type="text" id="ans7_11_1" class="proof-input-text" placeholder="수 입력" style="width:110px; background:#fef08a; border:2px solid #eab308; border-radius:8px; color:#854d0e; font-weight:800; padding:6px 10px; font-size:0.88rem; outline:none; text-align:center;">
+        </div>
+      </div>
+
+      <!-- 2단계: 괄호 전개 및 이항 정리 -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <strong style="color:#1e293b; font-size:0.88rem;">2단계. 괄호 풀고 이항하여 정리하기</strong>
+          <span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">배점 30%</span>
+        </div>
+        <div style="font-size:0.84rem; color:#475569; margin-bottom:8px; line-height:1.5;">
+          양변에 $12$를 곱하여 정리한 식 $3(5x-3) - 12x = 4x - 12$에서 괄호를 풀고 $x$항은 좌변, 상수항은 우변으로 이항하여 $-x = \\square$ 꼴로 정리할 때, <b>우변의 값</b>을 구하시오.
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span style="font-size:0.86rem; font-weight:700; color:#334155;">$-x =$</span>
+          <input type="text" id="ans7_11_2" class="proof-input-text" placeholder="수 입력" style="width:110px; background:#fef08a; border:2px solid #eab308; border-radius:8px; color:#854d0e; font-weight:800; padding:6px 10px; font-size:0.88rem; outline:none; text-align:center;">
+        </div>
+      </div>
+
+      <!-- 3단계: 일차방정식의 해 구하기 -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <strong style="color:#1e293b; font-size:0.88rem;">3단계. 양변을 -1로 나누어 해 구하기</strong>
+          <span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">배점 40%</span>
+        </div>
+        <div style="font-size:0.84rem; color:#475569; margin-bottom:8px; line-height:1.5;">
+          등식의 성질을 이용하여 양변을 $-1$로 나누어 주어진 일차방정식의 <b>최종 해 $x$</b>의 값을 구하시오.
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span style="font-size:0.86rem; font-weight:700; color:#334155;">$x =$</span>
+          <input type="text" id="ans7_11_3" class="proof-input-text" placeholder="수 입력" style="width:110px; background:#fef08a; border:2px solid #eab308; border-radius:8px; color:#854d0e; font-weight:800; padding:6px 10px; font-size:0.88rem; outline:none; text-align:center;">
+        </div>
+      </div>
+
+      <!-- 하단 전폭 채점 버튼 -->
+      <button class="btn btn-primary" style="background:linear-gradient(135deg, #4f46e5, #4338ca); width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:8px; color:#fff; border:none; cursor:pointer;" onclick="gradeStep7_11()">
+        [분수 계수 일차방정식 풀이] 확인 및 채점
+      </button>
+    </div>
+
+    <!-- 채점 결과 및 정답 카드 컨테이너 -->
+    <div id="feedback-7-11"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(formBox, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ]
+    });
+  }
+}
+
+function gradeStep7_11() {
+  const ans1 = (document.getElementById('ans7_11_1')?.value || '').trim();
+  const ans2 = (document.getElementById('ans7_11_2')?.value || '').trim();
+  const ans3 = (document.getElementById('ans7_11_3')?.value || '').trim();
+  const feedback = document.getElementById('feedback-7-11');
+  if (!feedback) return;
+
+  const isAns1Correct = (ans1 === '12');
+  const isAns2Correct = (ans2 === '-3');
+  const isAns3Correct = (ans3 === '3');
+
+  let score = 0;
+  if (isAns1Correct) score += 30;
+  if (isAns2Correct) score += 30;
+  if (isAns3Correct) score += 40;
+
+  if (score === 100) {
+    if (!state.lab7_11) resetLab7_11();
+    state.lab7_11.isPassed = true;
+    if (!state.completedSubSteps.includes('7-11')) {
+      state.completedSubSteps.push('7-11');
+    }
+    if (!state.unlockedSubSteps) state.unlockedSubSteps = [];
+    if (!state.unlockedSubSteps.includes('7-12')) {
+      state.unlockedSubSteps.push('7-12');
+    }
+    if (window.unlockSubStep) {
+      window.unlockSubStep('7-12');
+    }
+
+    if (window.LMSIntegration && window.LMSIntegration.saveStudentProgress) {
+      window.LMSIntegration.saveStudentProgress('7-11', {
+        score: 100,
+        ans1: ans1,
+        ans2: ans2,
+        ans3: ans3,
+        completedAt: new Date().toISOString()
+      }, 3);
+    }
+
+    feedback.innerHTML = `
+      <div class="card verified-answer-card" style="background:#f0fdf4; border:2px solid #059669; border-radius:12px; padding:16px; margin-top:14px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+          <span style="font-size:1.4rem;">🎉</span>
+          <strong style="color:#065f46; font-size:1.02rem;">100점 만점! 분수 계수 일차방정식을 완벽하게 풀었습니다!</strong>
+        </div>
+        <div style="font-size:0.88rem; color:#1e293b; line-height:1.65;">
+          <b>[교과서 공식 풀이 4단계 정리]</b><br>
+          1. <b>양변에 두 분모 $4, 3$의 최소공배수인 $12$를 곱하기:</b><br>
+          $$12 \\times \\left(\\frac{5x - 3}{4} - x\\right) = 12 \\times \\left(\\frac{x}{3} - 1\\right)$$
+          $$3(5x - 3) - 12x = 4x - 12$$
+          (⚠️ 정수항 $-x$와 $-1$에도 빠짐없이 $12$가 곱해져 $-12x$, $-12$가 됨에 주의합니다!)<br><br>
+          2. <b>괄호를 풀고 좌변 동류항 정리:</b><br>
+          $$15x - 9 - 12x = 4x - 12 \\implies 3x - 9 = 4x - 12$$<br>
+          3. <b>이항하여 동류항 정리:</b><br>
+          $$3x - 4x = -12 + 9 \\implies -x = -3$$<br>
+          4. <b>양변을 $-1$로 나누기:</b><br>
+          $$\\mathbf{x = 3}$$
+        </div>
+      </div>
+    `;
+    drawStep7_11Canvas();
+  } else {
+    let hintMsg = '';
+    if (!isAns1Correct) {
+      hintMsg += '• <b>1단계 힌트:</b> 분모 $4$와 $3$의 최소공배수를 구해야 분모를 동시에 약분할 수 있습니다. $4$와 $3$의 공배수 중 가장 작은 수는 $12$입니다.<br>';
+    }
+    if (!isAns2Correct) {
+      hintMsg += '• <b>2단계 힌트:</b> $15x - 9 - 12x = 4x - 12$에서 좌변은 $3x - 9$입니다. $4x$와 $-9$를 이항하면 $3x - 4x = -12 + 9$가 되어 우변은 $-3$이 됩니다.<br>';
+    }
+    if (!isAns3Correct) {
+      hintMsg += '• <b>3단계 힌트:</b> $-x = -3$의 양변을 $-1$로 나누면 $x = 3$이 됩니다.<br>';
+    }
+
+    feedback.innerHTML = `
+      <div class="card" style="background:#fef2f2; border:2px solid #ef4444; border-radius:12px; padding:14px; margin-top:14px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.3rem;">⚠️</span>
+          <strong style="color:#991b1b; font-size:0.95rem;">현재 획득 점수: ${score}점 / 100점 (다시 확인해 보세요)</strong>
+        </div>
+        <div style="font-size:0.85rem; color:#7f1d1d; line-height:1.55;">
+          ${hintMsg}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(feedback, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ]
+    });
+  }
+}
+
+function passStep7_11() {
+  if (!state.lab7_11) resetLab7_11();
+  state.lab7_11.isPassed = true;
+  if (!state.completedSubSteps.includes('7-11')) {
+    state.completedSubSteps.push('7-11');
+  }
+  if (!state.unlockedSubSteps) state.unlockedSubSteps = [];
+  if (!state.unlockedSubSteps.includes('7-12')) {
+    state.unlockedSubSteps.push('7-12');
+  }
+  if (window.unlockSubStep) {
+    window.unlockSubStep('7-12');
+  }
+
+  const ans1 = document.getElementById('ans7_11_1');
+  const ans2 = document.getElementById('ans7_11_2');
+  const ans3 = document.getElementById('ans7_11_3');
+  if (ans1) ans1.value = '12';
+  if (ans2) ans2.value = '-3';
+  if (ans3) ans3.value = '3';
+
+  gradeStep7_11();
+}
+
+function drawStep7_11Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+
+  container.innerHTML = '';
+  if (!state.lab7_11) resetLab7_11();
+
+  const width = Math.min(container.clientWidth || 520, 520);
+  const height = 440; // Strictly fixed canvas height
+
+  const two = new Two({
+    width: width,
+    height: height,
+    autostart: true
+  }).appendTo(container);
+
+  const activeTab = state.lab7_11.activeTab;
+
+  // 도판 상단 공통 타이틀 (Y=20)
+  const titleTxt = two.makeText('🌊 [마무리 11번] 분수 계수 일차방정식 탐구 랩', width / 2, 20);
+  titleTxt.size = 14;
+  titleTxt.weight = 800;
+  titleTxt.fill = '#1e293b';
+
+  if (activeTab === 'mode1') {
+    drawMode1_7_11(two, width, height);
+  } else if (activeTab === 'mode2') {
+    drawMode2_7_11(two, width, height);
+  } else {
+    drawMode3_7_11(two, width, height);
+  }
+
+  // 하단 안전 안내 배너 (Y=396, H=46, Bottom=419, safe margin 21px < 440)
+  drawBottomBanner7_11(two, width, height, activeTab);
+
+  two.update();
+}
+
+// -------------------------------------------------------------
+// Mode 1: 🌊 분모 소거 및 최소공배수 배율 랩
+// -------------------------------------------------------------
+function drawMode1_7_11(two, width, height) {
+  const step = state.lab7_11.lcmStep;
+
+  // 상단 스텝 안내 박스 (Y=52)
+  const subBox = two.makeRoundedRectangle(width / 2, 52, width - 40, 32, 6);
+  subBox.fill = '#eff6ff';
+  subBox.stroke = '#3b82f6';
+  subBox.linewidth = 1.5;
+
+  const stepDesc = [
+    '[스텝 1/4] 계수가 분수인 원식을 관찰하고 두 분모(4, 3)를 확인합니다.',
+    '[스텝 2/4] 분모를 없애기 위해 최소공배수 12를 양변의 모든 항에 곱합니다.',
+    '[스텝 3/4] 약분 후 괄호를 풉니다. (정수항 -x, -1에 12 곱하기 필수!)',
+    '[스텝 4/4] 좌변 동류항을 정리하여 정수 계수 일차방정식을 완성합니다.'
+  ][step];
+
+  const subTxt = two.makeText(stepDesc, width / 2, 52);
+  subTxt.size = 11.5;
+  subTxt.weight = 700;
+  subTxt.fill = '#1d4ed8';
+
+  // 중앙 인터랙티브 캔버스 영역 (Y=78 ~ Y=320)
+  const boardBg = two.makeRoundedRectangle(width / 2, 195, width - 40, 230, 10);
+  boardBg.fill = '#ffffff';
+  boardBg.stroke = '#e2e8f0';
+  boardBg.linewidth = 1.5;
+
+  if (step === 0) {
+    // [Step 0: 원식 표시 및 4개 항 분해]
+    const introTxt = two.makeText('원식: (5x - 3) / 4 - x = x / 3 - 1', width / 2, 105);
+    introTxt.size = 13.5;
+    introTxt.weight = 800;
+    introTxt.fill = '#0f172a';
+
+    // 4개 항 카드 (분수항 2개, 정수항 2개)
+    // 좌변: 항1 ((5x-3)/4), 항2 (-x)
+    const card1 = two.makeRoundedRectangle(width * 0.22, 160, 110, 64, 8);
+    card1.fill = '#ede9fe'; card1.stroke = '#8b5cf6'; card1.linewidth = 2;
+    const t1 = two.makeText('(5x - 3) / 4', width * 0.22, 150); t1.size = 12.5; t1.weight = 800; t1.fill = '#5b21b6';
+    const tag1 = two.makeText('분모 4 (분수항)', width * 0.22, 172); tag1.size = 9.5; tag1.fill = '#6d28d9'; tag1.weight = 700;
+
+    const minusSign1 = two.makeText('-', width * 0.36, 160);
+    minusSign1.size = 18; minusSign1.weight = 800; minusSign1.fill = '#475569';
+
+    const card2 = two.makeRoundedRectangle(width * 0.45, 160, 70, 64, 8);
+    card2.fill = '#fef3c7'; card2.stroke = '#f59e0b'; card2.linewidth = 2;
+    const t2 = two.makeText('x', width * 0.45, 150); t2.size = 14; t2.weight = 800; t2.fill = '#b45309';
+    const tag2 = two.makeText('정수항', width * 0.45, 172); tag2.size = 9.5; tag2.fill = '#92400e'; tag2.weight = 700;
+
+    const eqSign = two.makeText('=', width * 0.56, 160);
+    eqSign.size = 20; eqSign.weight = 800; eqSign.fill = '#1e293b';
+
+    // 우변: 항3 (x/3), 항4 (-1)
+    const card3 = two.makeRoundedRectangle(width * 0.69, 160, 85, 64, 8);
+    card3.fill = '#ede9fe'; card3.stroke = '#8b5cf6'; card3.linewidth = 2;
+    const t3 = two.makeText('x / 3', width * 0.69, 150); t3.size = 13; t3.weight = 800; t3.fill = '#5b21b6';
+    const tag3 = two.makeText('분모 3 (분수항)', width * 0.69, 172); tag3.size = 9.5; tag3.fill = '#6d28d9'; tag3.weight = 700;
+
+    const minusSign2 = two.makeText('-', width * 0.81, 160);
+    minusSign2.size = 18; minusSign2.weight = 800; minusSign2.fill = '#475569';
+
+    const card4 = two.makeRoundedRectangle(width * 0.90, 160, 60, 64, 8);
+    card4.fill = '#fef3c7'; card4.stroke = '#f59e0b'; card4.linewidth = 2;
+    const t4 = two.makeText('1', width * 0.90, 150); t4.size = 14; t4.weight = 800; t4.fill = '#b45309';
+    const tag4 = two.makeText('정수항', width * 0.90, 172); tag4.size = 9.5; tag4.fill = '#92400e'; tag4.weight = 700;
+
+    // 설명 박스 (Y=245)
+    const explBox = two.makeRoundedRectangle(width / 2, 245, width - 70, 56, 8);
+    explBox.fill = '#f8fafc'; explBox.stroke = '#cbd5e1'; explBox.linewidth = 1;
+    const exp1 = two.makeText('두 분모 4와 3의 최소공배수는 12입니다.', width / 2, 235);
+    exp1.size = 11.5; exp1.weight = 800; exp1.fill = '#1e293b';
+    const exp2 = two.makeText('💡 다음 버튼을 눌러 양변의 모든 항에 12를 곱해보세요!', width / 2, 255);
+    exp2.size = 11; exp2.fill = '#4338ca'; exp2.weight = 700;
+
+  } else if (step === 1) {
+    // [Step 1: 최소공배수 12 분배]
+    const tHead = two.makeText('양변의 4개 항에 빠짐없이 12를 곱하기', width / 2, 105);
+    tHead.size = 13.5; tHead.weight = 800; tHead.fill = '#1e293b';
+
+    // 12 x 괄호 카드
+    const leftCard = two.makeRoundedRectangle(width * 0.32, 165, width * 0.42, 85, 8);
+    leftCard.fill = '#eff6ff'; leftCard.stroke = '#3b82f6'; leftCard.linewidth = 2;
+    const lt1 = two.makeText('12 × { (5x - 3)/4 - x }', width * 0.32, 145); lt1.size = 12; lt1.weight = 800; lt1.fill = '#1d4ed8';
+    const lt2 = two.makeText('⬇ 분배법칙 적용', width * 0.32, 168); lt2.size = 10; lt2.fill = '#64748b'; lt2.weight = 700;
+    const lt3 = two.makeText('12 × (5x-3)/4 - 12 × x', width * 0.32, 190); lt3.size = 11; lt3.weight = 800; lt3.fill = '#0f172a';
+
+    const eqText = two.makeText('=', width / 2 + 35, 165);
+    eqText.size = 20; eqText.weight = 800; eqText.fill = '#1e293b';
+
+    const rightCard = two.makeRoundedRectangle(width * 0.77, 165, width * 0.36, 85, 8);
+    rightCard.fill = '#eff6ff'; rightCard.stroke = '#3b82f6'; rightCard.linewidth = 2;
+    const rt1 = two.makeText('12 × { x/3 - 1 }', width * 0.77, 145); rt1.size = 12; rt1.weight = 800; rt1.fill = '#1d4ed8';
+    const rt2 = two.makeText('⬇ 분배법칙 적용', width * 0.77, 168); rt2.size = 10; rt2.fill = '#64748b'; rt2.weight = 700;
+    const rt3 = two.makeText('12 × (x/3) - 12 × 1', width * 0.77, 190); rt3.size = 11; rt3.weight = 800; rt3.fill = '#0f172a';
+
+    // 경고 박스
+    const alertBox = two.makeRoundedRectangle(width / 2, 252, width - 70, 48, 8);
+    alertBox.fill = '#fffbeb'; alertBox.stroke = '#f59e0b'; alertBox.linewidth = 1.5;
+    const aTxt1 = two.makeText('⚠️ 정수항 -x와 -1에도 빠짐없이 12를 곱해야 합니다!', width / 2, 243);
+    aTxt1.size = 11; aTxt1.weight = 800; aTxt1.fill = '#b45309';
+    const aTxt2 = two.makeText('(흔히 하는 실수: 분수만 약분하고 정수항을 빼먹으면 안 돼요)', width / 2, 261);
+    aTxt2.size = 10; aTxt2.fill = '#92400e';
+
+  } else if (step === 2) {
+    // [Step 2: 약분 및 괄호 전개]
+    const tHead = two.makeText('약분 및 괄호 풀기 (분배법칙)', width / 2, 105);
+    tHead.size = 13.5; tHead.weight = 800; tHead.fill = '#1e293b';
+
+    // 약분된 식
+    const step2Box = two.makeRoundedRectangle(width / 2, 150, width - 80, 52, 8);
+    step2Box.fill = '#ede9fe'; step2Box.stroke = '#8b5cf6'; step2Box.linewidth = 2;
+    const s2Txt1 = two.makeText('3(5x - 3) - 12x = 4x - 12', width / 2, 142);
+    s2Txt1.size = 13; s2Txt1.weight = 800; s2Txt1.fill = '#4c1d95';
+    const s2Sub = two.makeText('(12÷4 = 3, 12÷3 = 4 로 분모 완전 소거)', width / 2, 161);
+    s2Sub.size = 10; s2Sub.fill = '#6d28d9'; s2Sub.weight = 700;
+
+    // 분배 전개 식
+    const arrowD = two.makeText('⬇ 3(5x - 3) = 15x - 9 전개', width / 2, 192);
+    arrowD.size = 11; arrowD.weight = 700; arrowD.fill = '#475569';
+
+    const expandBox = two.makeRoundedRectangle(width / 2, 235, width - 80, 52, 8);
+    expandBox.fill = '#f0fdf4'; expandBox.stroke = '#22c55e'; expandBox.linewidth = 2;
+    const expTxt = two.makeText('15x - 9 - 12x = 4x - 12', width / 2, 227);
+    expTxt.size = 13.5; expTxt.weight = 800; expTxt.fill = '#14532d';
+    const expSub = two.makeText('좌변에 동류항 15x와 -12x가 존재합니다.', width / 2, 246);
+    expSub.size = 10; expSub.fill = '#166534'; expSub.weight = 700;
+
+  } else {
+    // [Step 3: 좌변 동류항 정리 및 정수 계수 일차방정식 완성]
+    const tHead = two.makeText('정수 계수 일차방정식 완성!', width / 2, 105);
+    tHead.size = 13.5; tHead.weight = 800; tHead.fill = '#15803d';
+
+    const calcBox = two.makeRoundedRectangle(width / 2, 150, width - 80, 50, 8);
+    calcBox.fill = '#eff6ff'; calcBox.stroke = '#3b82f6'; calcBox.linewidth = 1.5;
+    const cTxt1 = two.makeText('좌변 동류항 계산: 15x - 12x = 3x', width / 2, 142);
+    cTxt1.size = 12; cTxt1.weight = 700; cTxt1.fill = '#1e40af';
+    const cTxt2 = two.makeText('따라서 좌변은 3x - 9 가 됩니다.', width / 2, 161);
+    cTxt2.size = 10.5; cTxt2.fill = '#2563eb';
+
+    const finalBox = two.makeRoundedRectangle(width / 2, 230, width - 80, 68, 10);
+    finalBox.fill = '#fefce8'; finalBox.stroke = '#eab308'; finalBox.linewidth = 2.5;
+    const fTag = two.makeText('★ 변환된 정수 계수 일차방정식 ★', width / 2, 212);
+    fTag.size = 11; fTag.weight = 800; fTag.fill = '#854d0e';
+    const fEquation = two.makeText('3x - 9 = 4x - 12', width / 2, 240);
+    fEquation.size = 17; fEquation.weight = 800; fEquation.fill = '#713f12';
+
+    const nextTip = two.makeText('👉 상단 [Mode 2: 양팔저울 이항 랩]에서 이 방정식을 풀어보세요!', width / 2, 280);
+    nextTip.size = 10.5; nextTip.weight = 700; nextTip.fill = '#4f46e5';
+  }
+
+  // 인터랙티브 조작 버튼 바 (Y=330, H=28)
+  const prevBtn = two.makeRoundedRectangle(width / 2 - 80, 330, 95, 26, 6);
+  prevBtn.fill = step > 0 ? '#3b82f6' : '#e2e8f0';
+  prevBtn.stroke = 'transparent';
+  const prevTxt = two.makeText('◀ 이전 스텝', width / 2 - 80, 330);
+  prevTxt.size = 11; prevTxt.weight = 700;
+  prevTxt.fill = step > 0 ? '#ffffff' : '#94a3b8';
+
+  const nextBtn = two.makeRoundedRectangle(width / 2 + 80, 330, 95, 26, 6);
+  nextBtn.fill = step < 3 ? '#3b82f6' : '#e2e8f0';
+  nextBtn.stroke = 'transparent';
+  const nextTxt = two.makeText('다음 스텝 ▶', width / 2 + 80, 330);
+  nextTxt.size = 11; nextTxt.weight = 700;
+  nextTxt.fill = step < 3 ? '#ffffff' : '#94a3b8';
+
+  // Two.js DOM 이벤트 바인딩
+  two.update();
+  if (prevBtn._renderer && prevBtn._renderer.elem) {
+    prevBtn._renderer.elem.style.cursor = step > 0 ? 'pointer' : 'default';
+    prevBtn._renderer.elem.onclick = () => { if (step > 0) setLcmStep7_11(step - 1); };
+  }
+  if (nextBtn._renderer && nextBtn._renderer.elem) {
+    nextBtn._renderer.elem.style.cursor = step < 3 ? 'pointer' : 'default';
+    nextBtn._renderer.elem.onclick = () => { if (step < 3) setLcmStep7_11(step + 1); };
+  }
+}
+
+// -------------------------------------------------------------
+// Mode 2: ⚖️ 분수식 양팔저울 이항 랩 (Fraction Balance & Transposition Lab)
+// -------------------------------------------------------------
+function drawMode2_7_11(two, width, height) {
+  const step = state.lab7_11.balanceStep;
+
+  // 상단 안내 (Y=52)
+  const subBox = two.makeRoundedRectangle(width / 2, 52, width - 40, 32, 6);
+  subBox.fill = '#f5f3ff';
+  subBox.stroke = '#8b5cf6';
+  subBox.linewidth = 1.5;
+
+  const descList = [
+    '[저울 1/4] 시작 방정식: 3x - 9 = 4x - 12 (저울 완벽 평형)',
+    '[저울 2/4] 상수항 이항 (양변에 +9): 3x = 4x - 3 (평형 유지)',
+    '[저울 3/4] x항 이항 (양변에 -4x): -x = -3 (평형 유지)',
+    '[저울 4/4] 양변을 -1로 나누기: x = 3 (최종 해 도출!)'
+  ];
+  const subTxt = two.makeText(descList[step], width / 2, 52);
+  subTxt.size = 11.5; subTxt.weight = 700; subTxt.fill = '#5b21b6';
+
+  // 저울 캔버스 영역 (Y=78 ~ Y=320)
+  const boardBg = two.makeRoundedRectangle(width / 2, 195, width - 40, 230, 10);
+  boardBg.fill = '#ffffff'; boardBg.stroke = '#e2e8f0'; boardBg.linewidth = 1.5;
+
+  // 등식 표출 카드 (Y=95)
+  const eqCard = two.makeRoundedRectangle(width / 2, 95, width - 100, 30, 6);
+  eqCard.fill = '#f8fafc'; eqCard.stroke = '#cbd5e1'; eqCard.linewidth = 1;
+
+  const eqStrs = [
+    '3x - 9 = 4x - 12',
+    '3x = 4x - 3  (양변 + 9)',
+    '-x = -3  (양변 - 4x)',
+    'x = 3  (양변 ÷ (-1))'
+  ];
+  const eqTxt = two.makeText(eqStrs[step], width / 2, 95);
+  eqTxt.size = 13; eqTxt.weight = 800; eqTxt.fill = '#1e293b';
+
+  // 양팔저울 기하학적 렌더링
+  const fulcrumX = width / 2;
+  const fulcrumY = 225;
+  const beamY = 175;
+  const beamLeftX = fulcrumX - 140;
+  const beamRightX = fulcrumX + 140;
+
+  // 저울 받침대 삼각형
+  const stand = two.makePolygon(fulcrumX, fulcrumY - 15, 30, 3);
+  stand.fill = '#64748b'; stand.stroke = '#334155'; stand.linewidth = 2;
+
+  // 저울 기둥
+  const pole = two.makeLine(fulcrumX, beamY, fulcrumX, fulcrumY);
+  pole.stroke = '#475569'; pole.linewidth = 4;
+
+  // 수평 빔
+  const beam = two.makeLine(beamLeftX, beamY, beamRightX, beamY);
+  beam.stroke = '#334155'; beam.linewidth = 4;
+
+  // 좌우 매달린 줄
+  const ropeL = two.makeLine(beamLeftX, beamY, beamLeftX, beamY + 45);
+  ropeL.stroke = '#94a3b8'; ropeL.linewidth = 2;
+  const ropeR = two.makeLine(beamRightX, beamY, beamRightX, beamY + 45);
+  ropeR.stroke = '#94a3b8'; ropeR.linewidth = 2;
+
+  // 좌우 접시
+  const panL = two.makeRoundedRectangle(beamLeftX, beamY + 47, 90, 8, 3);
+  panL.fill = '#3b82f6'; panL.stroke = '#1d4ed8'; panL.linewidth = 1.5;
+  const panR = two.makeRoundedRectangle(beamRightX, beamY + 47, 90, 8, 3);
+  panR.fill = '#10b981'; panR.stroke = '#047857'; panR.linewidth = 1.5;
+
+  // 접시 위 무게 블록 표출
+  if (step === 0) {
+    // 좌: 3x, -9
+    const bL = two.makeText('3x  -9', beamLeftX, beamY + 30);
+    bL.size = 13; bL.weight = 800; bL.fill = '#1e3a8a';
+    // 우: 4x, -12
+    const bR = two.makeText('4x  -12', beamRightX, beamY + 30);
+    bR.size = 13; bR.weight = 800; bR.fill = '#064e3b';
+  } else if (step === 1) {
+    // 좌: 3x
+    const bL = two.makeText('3x', beamLeftX, beamY + 30);
+    bL.size = 14; bL.weight = 800; bL.fill = '#1e3a8a';
+    // 우: 4x, -3
+    const bR = two.makeText('4x  -3', beamRightX, beamY + 30);
+    bR.size = 13; bR.weight = 800; bR.fill = '#064e3b';
+  } else if (step === 2) {
+    // 좌: -x
+    const bL = two.makeText('-x', beamLeftX, beamY + 30);
+    bL.size = 14; bL.weight = 800; bL.fill = '#1e3a8a';
+    // 우: -3
+    const bR = two.makeText('-3', beamRightX, beamY + 30);
+    bR.size = 14; bR.weight = 800; bR.fill = '#064e3b';
+  } else {
+    // 좌: x
+    const bL = two.makeText('x', beamLeftX, beamY + 28);
+    bL.size = 16; bL.weight = 800; bL.fill = '#1e3a8a';
+    // 우: 3
+    const bR = two.makeText('3', beamRightX, beamY + 28);
+    bR.size = 16; bR.weight = 800; bR.fill = '#064e3b';
+
+    // 평형 달성 승리 뱃지 (Y=265)
+    const winBadge = two.makeRoundedRectangle(fulcrumX, 265, 200, 26, 6);
+    winBadge.fill = '#fef08a'; winBadge.stroke = '#eab308'; winBadge.linewidth = 1.5;
+    const wTxt = two.makeText('🎉 저울 완전 평형: x = 3 !', fulcrumX, 265);
+    wTxt.size = 11; wTxt.weight = 800; wTxt.fill = '#854d0e';
+  }
+
+  // 조작 스텝퍼 버튼 (Y=330)
+  const prevBtn = two.makeRoundedRectangle(width / 2 - 80, 330, 95, 26, 6);
+  prevBtn.fill = step > 0 ? '#8b5cf6' : '#e2e8f0';
+  prevBtn.stroke = 'transparent';
+  const prevTxt = two.makeText('◀ 이전 단계', width / 2 - 80, 330);
+  prevTxt.size = 11; prevTxt.weight = 700;
+  prevTxt.fill = step > 0 ? '#ffffff' : '#94a3b8';
+
+  const nextBtn = two.makeRoundedRectangle(width / 2 + 80, 330, 95, 26, 6);
+  nextBtn.fill = step < 3 ? '#8b5cf6' : '#e2e8f0';
+  nextBtn.stroke = 'transparent';
+  const nextTxt = two.makeText('다음 단계 ▶', width / 2 + 80, 330);
+  nextTxt.size = 11; nextTxt.weight = 700;
+  nextTxt.fill = step < 3 ? '#ffffff' : '#94a3b8';
+
+  two.update();
+  if (prevBtn._renderer && prevBtn._renderer.elem) {
+    prevBtn._renderer.elem.style.cursor = step > 0 ? 'pointer' : 'default';
+    prevBtn._renderer.elem.onclick = () => { if (step > 0) setBalanceStep7_11(step - 1); };
+  }
+  if (nextBtn._renderer && nextBtn._renderer.elem) {
+    nextBtn._renderer.elem.style.cursor = step < 3 ? 'pointer' : 'default';
+    nextBtn._renderer.elem.onclick = () => { if (step < 3) setBalanceStep7_11(step + 1); };
+  }
+}
+
+// -------------------------------------------------------------
+// Mode 3: 🔍 x = 3 완벽 대입 검증기 (Substitution Verification Lab)
+// -------------------------------------------------------------
+function drawMode3_7_11(two, width, height) {
+  const step = state.lab7_11.verifyStep;
+
+  // 상단 안내 (Y=52)
+  const subBox = two.makeRoundedRectangle(width / 2, 52, width - 40, 32, 6);
+  subBox.fill = '#f0fdf4';
+  subBox.stroke = '#22c55e';
+  subBox.linewidth = 1.5;
+
+  const descList = [
+    '[검산 1/3] 구한 해 x = 3 을 처음 원식의 좌변과 우변에 대입할 준비를 합니다.',
+    '[검산 2/3] 좌변: (5×3 - 3)/4 - 3 = 12/4 - 3 = 3 - 3 = 0',
+    '[검산 3/3] 우변: 3/3 - 1 = 1 - 1 = 0 ➡ 좌변 = 우변 = 0 참(True) 입증!'
+  ];
+  const subTxt = two.makeText(descList[step], width / 2, 52);
+  subTxt.size = 11; subTxt.weight = 700; subTxt.fill = '#15803d';
+
+  // 검증 카드 캔버스 영역 (Y=78 ~ Y=320)
+  const boardBg = two.makeRoundedRectangle(width / 2, 195, width - 40, 230, 10);
+  boardBg.fill = '#ffffff'; boardBg.stroke = '#e2e8f0'; boardBg.linewidth = 1.5;
+
+  // 해 캡슐 (Y=95)
+  const cap = two.makeRoundedRectangle(width / 2, 95, 140, 28, 14);
+  cap.fill = '#fef08a'; cap.stroke = '#eab308'; cap.linewidth = 2;
+  const capTxt = two.makeText('확인할 해: x = 3', width / 2, 95);
+  capTxt.size = 12; capTxt.weight = 800; capTxt.fill = '#854d0e';
+
+  // 좌변 카드 (Left)
+  const cardL = two.makeRoundedRectangle(width * 0.30, 195, width * 0.42, 145, 8);
+  cardL.fill = step >= 1 ? '#f0fdf4' : '#f8fafc';
+  cardL.stroke = step >= 1 ? '#22c55e' : '#cbd5e1';
+  cardL.linewidth = 2;
+
+  const lTitle = two.makeText('[좌변 계산 과정]', width * 0.30, 140);
+  lTitle.size = 11; lTitle.weight = 800; lTitle.fill = '#1e293b';
+
+  if (step === 0) {
+    const l1 = two.makeText('(5x - 3)/4 - x', width * 0.30, 175);
+    l1.size = 12; l1.weight = 700; l1.fill = '#64748b';
+    const l2 = two.makeText('(x = 3 대입 대기)', width * 0.30, 210);
+    l2.size = 10; l2.fill = '#94a3b8';
+  } else {
+    const l1 = two.makeText('= (5×3 - 3)/4 - 3', width * 0.30, 165);
+    l1.size = 11; l1.weight = 700; l1.fill = '#166534';
+    const l2 = two.makeText('= 12/4 - 3 = 3 - 3', width * 0.30, 190);
+    l2.size = 11; l2.weight = 700; l2.fill = '#166534';
+    const lVal = two.makeText('좌변 = 0', width * 0.30, 225);
+    lVal.size = 15; lVal.weight = 800; lVal.fill = '#15803d';
+  }
+
+  // 우변 카드 (Right)
+  const cardR = two.makeRoundedRectangle(width * 0.73, 195, width * 0.38, 145, 8);
+  cardR.fill = step >= 2 ? '#f0fdf4' : '#f8fafc';
+  cardR.stroke = step >= 2 ? '#22c55e' : '#cbd5e1';
+  cardR.linewidth = 2;
+
+  const rTitle = two.makeText('[우변 계산 과정]', width * 0.73, 140);
+  rTitle.size = 11; rTitle.weight = 800; rTitle.fill = '#1e293b';
+
+  if (step < 2) {
+    const r1 = two.makeText('x/3 - 1', width * 0.73, 175);
+    r1.size = 12; r1.weight = 700; r1.fill = '#64748b';
+    const r2 = two.makeText('(우변 대입 대기)', width * 0.73, 210);
+    r2.size = 10; r2.fill = '#94a3b8';
+  } else {
+    const r1 = two.makeText('= 3/3 - 1', width * 0.73, 168);
+    r1.size = 12; r1.weight = 700; r1.fill = '#166534';
+    const r2 = two.makeText('= 1 - 1', width * 0.73, 192);
+    r2.size = 12; r2.weight = 700; r2.fill = '#166534';
+    const rVal = two.makeText('우변 = 0', width * 0.73, 225);
+    rVal.size = 15; rVal.weight = 800; rVal.fill = '#15803d';
+  }
+
+  // 검증 완료 배지 (Y=282)
+  if (step === 2) {
+    const resBadge = two.makeRoundedRectangle(width / 2, 282, 240, 26, 6);
+    resBadge.fill = '#dcfce7'; resBadge.stroke = '#16a34a'; resBadge.linewidth = 1.5;
+    const resTxt = two.makeText('✅ 좌변(0) = 우변(0) ➡ x = 3 참(True)!', width / 2, 282);
+    resTxt.size = 11; resTxt.weight = 800; resTxt.fill = '#14532d';
+  }
+
+  // 조작 스텝퍼 버튼 (Y=330)
+  const prevBtn = two.makeRoundedRectangle(width / 2 - 80, 330, 95, 26, 6);
+  prevBtn.fill = step > 0 ? '#10b981' : '#e2e8f0';
+  prevBtn.stroke = 'transparent';
+  const prevTxt = two.makeText('◀ 이전 검산', width / 2 - 80, 330);
+  prevTxt.size = 11; prevTxt.weight = 700;
+  prevTxt.fill = step > 0 ? '#ffffff' : '#94a3b8';
+
+  const nextBtn = two.makeRoundedRectangle(width / 2 + 80, 330, 95, 26, 6);
+  nextBtn.fill = step < 2 ? '#10b981' : '#e2e8f0';
+  nextBtn.stroke = 'transparent';
+  const nextTxt = two.makeText('다음 검산 ▶', width / 2 + 80, 330);
+  nextTxt.size = 11; nextTxt.weight = 700;
+  nextTxt.fill = step < 2 ? '#ffffff' : '#94a3b8';
+
+  two.update();
+  if (prevBtn._renderer && prevBtn._renderer.elem) {
+    prevBtn._renderer.elem.style.cursor = step > 0 ? 'pointer' : 'default';
+    prevBtn._renderer.elem.onclick = () => { if (step > 0) setVerifyStep7_11(step - 1); };
+  }
+  if (nextBtn._renderer && nextBtn._renderer.elem) {
+    nextBtn._renderer.elem.style.cursor = step < 2 ? 'pointer' : 'default';
+    nextBtn._renderer.elem.onclick = () => { if (step < 2) setVerifyStep7_11(step + 1); };
+  }
+}
+
+// -------------------------------------------------------------
+// 하단 안전 안내 배너 (Y=396, H=46, Bottom=419, safe margin 21px < 440)
+// -------------------------------------------------------------
+function drawBottomBanner7_11(two, width, height, activeTab) {
+  const bannerY = 396;
+  const bannerH = 46;
+
+  const bg = two.makeRoundedRectangle(width / 2, bannerY, width - 40, bannerH, 8);
+  bg.fill = '#f8fafc';
+  bg.stroke = '#cbd5e1';
+  bg.linewidth = 1;
+
+  let guideTitle = '';
+  let guideBody = '';
+
+  if (activeTab === 'mode1') {
+    guideTitle = '💡 [탐구 가이드 (교과서 p.101)] 최소공배수 배율의 핵심 원리';
+    guideBody = '분모 4와 3의 최소공배수 12를 양변의 모든 항(정수항 -x, -1 포함)에 빠짐없이 곱합니다.';
+  } else if (activeTab === 'mode2') {
+    guideTitle = '💡 [탐구 가이드 (교과서 p.101)] 등식의 성질을 이용한 이항';
+    guideBody = 'x항은 좌변으로, 상수항은 우변으로 이항하여 -x = -3 을 만든 뒤 양변을 -1로 나눕니다.';
+  } else {
+    guideTitle = '💡 [탐구 가이드 (교과서 p.101)] 방정식의 해 검산';
+    guideBody = '구한 해 x = 3 을 처음 방정식의 좌변과 우변에 각각 대입하여 등식이 참인지 확인합니다.';
+  }
+
+  const t1 = two.makeText(guideTitle, width / 2, bannerY - 10);
+  t1.size = 11;
+  t1.weight = 800;
+  t1.fill = '#1e293b';
+
+  const t2 = two.makeText(guideBody, width / 2, bannerY + 10);
+  t2.size = 10;
+  t2.fill = '#475569';
 }
 
 
