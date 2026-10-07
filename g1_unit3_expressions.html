@@ -1042,7 +1042,7 @@
       '3-5': {
         code: '3-5', tab: 3,
         substepLabel: '5. 분수 계수 일차식의 계산 (p.82)',
-        missionText: '<b>[3-5] 5. 분수 계수 일차식의 계산 (p.82)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        missionText: '<b>[예제 3 & 문제 5] 분수 계수 일차식의 계산 (교과서 p.82)</b><br>• <b>통분 알고리즘:</b> 분모의 최소공배수로 통분하고, 분자의 괄호를 풉니다.<br>• <b>분자 뺄셈 부호 반전:</b> 분수 앞 마이너스 부호로 인한 분자 부호 반전 규칙을 주의합니다.<br>• <b>문제 5 해결:</b> 4개 소문항의 분수 계수 계산을 차례대로 해결해 보세요.<br>좌측 캔버스에서 통분 4단계 파이프라인과 2가지 풀이법을 조작해 보세요.',
         drawer: 'drawStep3_5Canvas'
       },
       '3-6': {
@@ -1475,6 +1475,15 @@
       
       
       
+      
+      // Substep 3-5 State (Fraction Linear Expressions Calculation)
+      lab3_5: {
+        activeTab: 'mode1',
+        stepIdx: 1,
+        methodType: 'common',
+        probIdx: 0,
+        isPassed: false
+      },
       // Substep 3-4 State (Linear Expressions Subtraction)
       lab3_4: {
         activeTab: 'mode1',
@@ -23286,6 +23295,771 @@ function drawMode3Problem4Lab(two) {
 
     // --- End Substep 3-4 Implementation ---
 
+    
+    // --- Substep 3-5 Implementation ---
+// code_3_5.js: Substep [3-5] 3.3 분수 계수를 포함한 복합 일차식 계산 (교과서 p.82)
+
+function renderToolbar3_5() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab3_5) {
+    state.lab3_5 = {
+      activeTab: 'mode1', // 'mode1' (통분 파이프라인) | 'mode2' (2가지 풀이법 비교) | 'mode3' (문제 5 실험실)
+      stepIdx: 1,         // 1: 원래 식 -> 2: 공통분모 통분 -> 3: 분자 분배 -> 4: 동류항 정리 완료
+      methodType: 'common', // 'common' (통분 합치기) | 'split' (항별 분리)
+      probIdx: 0,         // 0: 문제 5-(1), 1: 문제 5-(2), 2: 문제 5-(3), 3: 문제 5-(4)
+      isPassed: false
+    };
+  }
+
+  const curTab = state.lab3_5.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab3_5Tab('mode1')">
+        1. ➗ 통분 4단계 파이프라인
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab3_5Tab('mode2')">
+        2. ⚖️ 2가지 풀이법 비교
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab3_5Tab('mode3')">
+        3. 🧪 문제 5 통분 실험실
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn" onclick="nextStep3_5()" title="단계 진행">
+        ${state.lab3_5.stepIdx === 4 ? '🔄 처음으로' : '⚡ 다음 단계 (' + state.lab3_5.stepIdx + '/4)'}
+      </button>
+      <button class="icon-btn" onclick="resetLab3_5()" title="초기화">🔄 초기화</button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('3-5')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab3_5Tab(tabKey) {
+  if (!state.lab3_5) resetLab3_5();
+  state.lab3_5.activeTab = tabKey;
+  renderToolbar3_5();
+  drawStep3_5Canvas();
+}
+
+function resetLab3_5() {
+  state.lab3_5 = {
+    activeTab: 'mode1',
+    stepIdx: 1,
+    methodType: 'common',
+    probIdx: 0,
+    isPassed: false
+  };
+  renderToolbar3_5();
+  drawStep3_5Canvas();
+}
+
+function nextStep3_5() {
+  if (!state.lab3_5) resetLab3_5();
+  state.lab3_5.stepIdx = (state.lab3_5.stepIdx % 4) + 1;
+  renderToolbar3_5();
+  drawStep3_5Canvas();
+}
+
+function toggleMethod3_5(type) {
+  if (!state.lab3_5) resetLab3_5();
+  state.lab3_5.methodType = type;
+  drawStep3_5Canvas();
+}
+
+function setProbIdx3_5(idx) {
+  if (!state.lab3_5) resetLab3_5();
+  state.lab3_5.probIdx = idx;
+  drawStep3_5Canvas();
+}
+
+function renderSubstep3_5() {
+  const container = document.getElementById('substep-form-container');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="card" style="padding:16px; margin-bottom:12px; border-left:4px solid #4f46e5;">
+      <h4 style="margin:0 0 6px 0; font-size:1.02rem; color:#1e293b; display:flex; align-items:center; gap:6px;">
+        <span>➗ [예제 3 & 문제 5] 분수 계수 일차식의 계산 (교과서 p.82)</span>
+      </h4>
+      <p style="margin:0; font-size:0.87rem; color:#475569; line-height:1.5;">
+        <b>분수 계수 일차식 계산 방법:</b><br>
+        1. 분모의 최소공배수로 통분합니다.<br>
+        2. 분자의 괄호를 풀 때 <b>뺄셈 부호 반전</b>에 특히 주의합니다.<br>
+        3. 분자의 동류항을 모아서 간단히 계산합니다.
+      </p>
+    </div>
+
+    <!-- Question 1 -->
+    <div class="card" style="padding:14px; margin-bottom:12px;">
+      <div style="font-weight:700; font-size:0.92rem; color:#1e293b; margin-bottom:8px;">
+        ⑴ 다음 식을 계산하시오: $\\frac{x+3}{2} + \\frac{2x-1}{3}$
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:0.88rem; color:#64748b;">답:</span>
+        <input type="text" id="substep3_5_ans1" class="proof-input-text"
+               placeholder="답 입력 (예: (ax+b)/c)"
+               style="width:220px; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.92rem;"
+               onkeydown="if(event.key==='Enter') gradeStep3_5()">
+      </div>
+    </div>
+
+    <!-- Question 2 -->
+    <div class="card" style="padding:14px; margin-bottom:12px;">
+      <div style="font-weight:700; font-size:0.92rem; color:#1e293b; margin-bottom:8px;">
+        ⑵ 다음 식을 계산하시오: $\\frac{3a-2}{4} - \\frac{a+1}{2}$
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:0.88rem; color:#64748b;">답:</span>
+        <input type="text" id="substep3_5_ans2" class="proof-input-text"
+               placeholder="답 입력 (예: (aa-b)/c)"
+               style="width:220px; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.92rem;"
+               onkeydown="if(event.key==='Enter') gradeStep3_5()">
+      </div>
+    </div>
+
+    <!-- Question 3 -->
+    <div class="card" style="padding:14px; margin-bottom:12px;">
+      <div style="font-weight:700; font-size:0.92rem; color:#1e293b; margin-bottom:8px;">
+        ⑶ 다음 식을 계산하시오: $\\frac{2x-1}{3} - \\frac{x-4}{5}$
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:0.88rem; color:#64748b;">답:</span>
+        <input type="text" id="substep3_5_ans3" class="proof-input-text"
+               placeholder="답 입력 (예: (ax+b)/c)"
+               style="width:220px; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.92rem;"
+               onkeydown="if(event.key==='Enter') gradeStep3_5()">
+      </div>
+    </div>
+
+    <!-- Question 4 -->
+    <div class="card" style="padding:14px; margin-bottom:14px;">
+      <div style="font-weight:700; font-size:0.92rem; color:#1e293b; margin-bottom:8px;">
+        ⑷ 다음 식을 계산하시오: $\\frac{3y+1}{4} - \\frac{5y-3}{6}$
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:0.88rem; color:#64748b;">답:</span>
+        <input type="text" id="substep3_5_ans4" class="proof-input-text"
+               placeholder="답 입력 (예: (-y+b)/c)"
+               style="width:220px; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.92rem;"
+               onkeydown="if(event.key==='Enter') gradeStep3_5()">
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div style="display:flex; gap:10px; align-items:center; margin-bottom:14px;">
+      <button class="primary-btn" onclick="gradeStep3_5()" style="flex:1; padding:10px; font-weight:700; font-size:0.95rem;">
+        ✅ 정답 확인 및 채점
+      </button>
+      <button class="secondary-btn" onclick="resetForm3_5()" style="padding:10px 16px;">
+        🔄 다시 풀기
+      </button>
+    </div>
+
+    <div id="substep3_5_feedback"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function resetForm3_5() {
+  const i1 = document.getElementById('substep3_5_ans1');
+  const i2 = document.getElementById('substep3_5_ans2');
+  const i3 = document.getElementById('substep3_5_ans3');
+  const i4 = document.getElementById('substep3_5_ans4');
+  const fb = document.getElementById('substep3_5_feedback');
+
+  if (i1) i1.value = '';
+  if (i2) i2.value = '';
+  if (i3) i3.value = '';
+  if (i4) i4.value = '';
+  if (fb) fb.innerHTML = '';
+}
+
+function gradeStep3_5() {
+  const i1 = document.getElementById('substep3_5_ans1');
+  const i2 = document.getElementById('substep3_5_ans2');
+  const i3 = document.getElementById('substep3_5_ans3');
+  const i4 = document.getElementById('substep3_5_ans4');
+  const fb = document.getElementById('substep3_5_feedback');
+  if (!fb) return;
+
+  const raw1 = (i1 ? i1.value : '').replace(/\s+/g, '').toLowerCase();
+  const raw2 = (i2 ? i2.value : '').replace(/\s+/g, '').toLowerCase();
+  const raw3 = (i3 ? i3.value : '').replace(/\s+/g, '').toLowerCase();
+  const raw4 = (i4 ? i4.value : '').replace(/\s+/g, '').toLowerCase();
+
+  // 1: (7x+7)/6 또는 7/6x+7/6 등
+  const valid1 = ['(7x+7)/6', '7x+7/6', '7/6x+7/6', '(7/6)x+7/6', '7/6x+7/6', '7x/6+7/6', '(7x+7)\\div6'];
+  const isAns1Correct = valid1.some(v => raw1 === v || raw1 === `(${v})`);
+
+  // 2: (a-4)/4 또는 1/4a-1, a/4-1 등
+  const valid2 = ['(a-4)/4', 'a-4/4', '1/4a-1', '(1/4)a-1', 'a/4-1', '1/4*a-1', '(a-4)\\div4'];
+  const isAns2Correct = valid2.some(v => raw2 === v || raw2 === `(${v})`);
+
+  // 3: (7x+7)/15 또는 7/15x+7/15 등
+  const valid3 = ['(7x+7)/15', '7x+7/15', '7/15x+7/15', '(7/15)x+7/15', '7x/15+7/15', '(7x+7)\\div15'];
+  const isAns3Correct = valid3.some(v => raw3 === v || raw3 === `(${v})`);
+
+  // 4: (-y+9)/12 또는 (9-y)/12 또는 -1/12y+3/4 등
+  const valid4 = ['(-y+9)/12', '(9-y)/12', '-y+9/12', '9-y/12', '-1/12y+3/4', '(-1/12)y+3/4', '-y/12+3/4', '-1/12y+9/12', '(-y+9)\\div12'];
+  const isAns4Correct = valid4.some(v => raw4 === v || raw4 === `(${v})`);
+
+  if (isAns1Correct && isAns2Correct && isAns3Correct && isAns4Correct) {
+    if (state.lab3_5) state.lab3_5.isPassed = true;
+    fb.innerHTML = `
+      <div class="card" style="padding:16px; background:#f0fdf4; border:1px solid #86efac; border-radius:8px;">
+        <div style="font-weight:700; color:#15803d; font-size:1.02rem; margin-bottom:6px;">
+          🎉 100점 완벽 통과! 분수 계수 일차식의 통분과 뺄셈을 완벽히 정복했습니다!
+        </div>
+        <div style="font-size:0.88rem; color:#166534; line-height:1.55;">
+          • <b>⑴:</b> $\\frac{x+3}{2} + \\frac{2x-1}{3} = \\frac{3(x+3) + 2(2x-1)}{6} = \\frac{3x+9+4x-2}{6} =$ <b>$\\frac{7x+7}{6}$</b><br>
+          • <b>⑵:</b> $\\frac{3a-2}{4} - \\frac{a+1}{2} = \\frac{(3a-2) - 2(a+1)}{4} = \\frac{3a-2-2a-2}{4} =$ <b>$\\frac{a-4}{4}$</b><br>
+          • <b>⑶:</b> $\\frac{2x-1}{3} - \\frac{x-4}{5} = \\frac{5(2x-1) - 3(x-4)}{15} = \\frac{10x-5-3x+12}{15} =$ <b>$\\frac{7x+7}{15}$</b><br>
+          • <b>⑷:</b> $\\frac{3y+1}{4} - \\frac{5y-3}{6} = \\frac{3(3y+1) - 2(5y-3)}{12} = \\frac{9y+3-10y+6}{12} =$ <b>$\\frac{-y+9}{12}$</b>
+        </div>
+      </div>
+    `;
+
+    if (!state.unlockedSubSteps.includes('3-6')) {
+      state.unlockedSubSteps.push('3-6');
+    }
+
+    if (window.LMSIntegration) {
+      window.LMSIntegration.saveStudentProgress('3-5', { score: 100, passed: true }, 'unit3');
+    }
+
+    drawStep3_5Canvas();
+  } else {
+    let errorMsg = [];
+    if (!isAns1Correct) errorMsg.push('⑴ 분모의 최소공배수 6으로 통분: $\\frac{3(x+3)+2(2x-1)}{6} = \\frac{7x+7}{6}$ 형태로 입력해 보세요.');
+    if (!isAns2Correct) errorMsg.push('⑵ 분모 4로 통분: $\\frac{3a-2-2(a+1)}{4} = \\frac{a-4}{4}$ 형태로 입력해 보세요.');
+    if (!isAns3Correct) errorMsg.push('⑶ 분모 15로 통분: $\\frac{5(2x-1)-3(x-4)}{15} = \\frac{7x+7}{15}$ 형태로 입력해 보세요.');
+    if (!isAns4Correct) errorMsg.push('⑷ 분모 12로 통분: $\\frac{3(3y+1)-2(5y-3)}{12} = \\frac{-y+9}{12}$ 형태로 입력해 보세요.');
+
+    fb.innerHTML = `
+      <div class="card" style="padding:14px; background:#fef2f2; border:1px solid #fecaca; border-radius:8px;">
+        <div style="font-weight:700; color:#b91c1c; font-size:0.95rem; margin-bottom:4px;">
+          ⚠️ 다시 확인해 보세요!
+        </div>
+        <div style="font-size:0.86rem; color:#991b1b; line-height:1.5;">
+          ${errorMsg.join('<br>')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+// -------------------------------------------------------------
+// Two.js 60fps Canvas Implementation for Substep 3-5
+// -------------------------------------------------------------
+function drawStep3_5Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+
+  if (!state.twoInstance) {
+    state.twoInstance = new Two({
+      width: container.clientWidth || 560,
+      height: 440,
+      type: Two.Types.svg
+    }).appendTo(container);
+  }
+
+  const two = state.twoInstance;
+  two.clear();
+
+  if (!state.lab3_5) resetLab3_5();
+
+  const tab = state.lab3_5.activeTab;
+  if (tab === 'mode1') {
+    drawMode1CommonDenomPipeline(two);
+  } else if (tab === 'mode2') {
+    drawMode2DualMethodViewer(two);
+  } else if (tab === 'mode3') {
+    drawMode3Problem5Lab(two);
+  }
+
+  two.update();
+}
+
+// -------------------------------------------------------------
+// Mode 1: 통분 4단계 파이프라인 랩 (예제 3 기반: (x+1)/2 - (2x-1)/3)
+// -------------------------------------------------------------
+function drawMode1CommonDenomPipeline(two) {
+  const W = two.width;
+  const H = 440;
+  const step = state.lab3_5.stepIdx;
+
+  // Background
+  const bg = two.makeRoundedRectangle(W / 2, H / 2, W - 20, H - 20, 10);
+  bg.fill = '#f8fafc';
+  bg.stroke = '#cbd5e1';
+  bg.linewidth = 1.5;
+
+  // Header Title
+  const headerBg = two.makeRoundedRectangle(W / 2, 34, W - 40, 36, 6);
+  headerBg.fill = '#eff6ff';
+  headerBg.stroke = '#bfdbfe';
+  headerBg.linewidth = 1;
+
+  const headerTxt = two.makeText(
+    '➗ 예제 3: (x+1)/2 − (2x−1)/3 통분 4단계 파이프라인',
+    W / 2, 34
+  );
+  headerTxt.fill = '#1e40af';
+  headerTxt.size = 13.5;
+  headerTxt.weight = 700;
+
+  // 4 Steps Indicator Bar (Y=80)
+  const stepTitles = ['1. 원래 식', '2. 분모 통분(6)', '3. 분자 괄호 풀기', '4. 동류항 정리'];
+  const stepW = (W - 80) / 4;
+
+  for (let s = 1; s <= 4; s++) {
+    const x = 25 + stepW / 2 + (s - 1) * (stepW + 8);
+    const grp = two.makeGroup();
+    const isCur = s === step;
+    const isPast = s < step;
+
+    const box = two.makeRoundedRectangle(x, 80, stepW, 32, 6);
+    box.fill = isCur ? '#ede9fe' : (isPast ? '#f1f5f9' : '#ffffff');
+    box.stroke = isCur ? '#8b5cf6' : (isPast ? '#94a3b8' : '#e2e8f0');
+    box.linewidth = isCur ? 2 : 1;
+
+    const txt = two.makeText(stepTitles[s - 1], x, 80);
+    txt.fill = isCur ? '#6d28d9' : (isPast ? '#475569' : '#94a3b8');
+    txt.size = 11;
+    txt.weight = 700;
+
+    grp.add(box, txt);
+    two.update();
+    if (grp._renderer && grp._renderer.elem) {
+      grp._renderer.elem.style.cursor = 'pointer';
+      grp._renderer.elem.onclick = () => {
+        state.lab3_5.stepIdx = s;
+        renderToolbar3_5();
+        drawStep3_5Canvas();
+      };
+    }
+  }
+
+  // Main Stage Card (Y=230)
+  const stageY = 230;
+  const stageW = W - 60;
+  const stageH = 210;
+  const stageBg = two.makeRoundedRectangle(W / 2, stageY, stageW, stageH, 10);
+  stageBg.fill = '#ffffff';
+  stageBg.stroke = '#c4b5fd';
+  stageBg.linewidth = 1.5;
+
+  const titles = [
+    '1단계: 서로 다른 분모(2, 3)를 가진 두 식',
+    '2단계: 분모의 최소공배수 6으로 통분',
+    '3단계: 분자의 괄호 풀기 (마이너스 부호 반전 주의!)',
+    '4단계: 분자의 동류항 정리 완료'
+  ];
+
+  const tTitle = two.makeText(titles[step - 1], W / 2, stageY - 70);
+  tTitle.fill = '#5b21b6';
+  tTitle.size = 14.5;
+  tTitle.weight = 700;
+
+  // Visual Formulas per Step
+  if (step === 1) {
+    // 식 1: (x+1)/2 - (2x-1)/3
+    drawFractionBox(two, W / 2 - 90, stageY - 10, 'x + 1', '2', '#2563eb');
+    const mTxt = two.makeText('−', W / 2, stageY - 10);
+    mTxt.fill = '#dc2626'; mTxt.size = 28; mTxt.weight = 700;
+    drawFractionBox(two, W / 2 + 90, stageY - 10, '2x − 1', '3', '#d97706');
+
+    const hint = two.makeText('분모 2와 3의 최소공배수는 6입니다. 분모를 6으로 맞춥니다.', W / 2, stageY + 60);
+    hint.fill = '#64748b'; hint.size = 12.5; hint.weight = 600;
+
+  } else if (step === 2) {
+    // 식 2: 3(x+1)/6 - 2(2x-1)/6 = [ 3(x+1) - 2(2x-1) ] / 6
+    drawBigFractionBox(two, W / 2, stageY - 10, '3(x + 1)  −  2(2x − 1)', '6', '#7c3aed');
+
+    const hint = two.makeText('⚠️ 분수 앞 마이너스는 뒤 분자 전체에 괄호 -2(2x - 1)로 묶입니다!', W / 2, stageY + 60);
+    hint.fill = '#b91c1c'; hint.size = 12.5; hint.weight = 700;
+
+  } else if (step === 3) {
+    // 식 3: [ 3x + 3 - 4x + 2 ] / 6
+    drawBigFractionBox(two, W / 2, stageY - 10, '3x  +  3  −  4x  +  2', '6', '#dc2626');
+
+    const hint = two.makeText('💡 -2 × 2x = -4x 이고, -2 × (-1) = +2 로 부호가 반전되었습니다!', W / 2, stageY + 60);
+    hint.fill = '#15803d'; hint.size = 12.5; hint.weight = 700;
+
+  } else {
+    // 식 4: (-x + 5)/6
+    const resBox = two.makeRoundedRectangle(W / 2, stageY, 260, 90, 8);
+    resBox.fill = '#f0fdf4';
+    resBox.stroke = '#22c55e';
+    resBox.linewidth = 2;
+
+    const fLine = two.makeLine(W / 2 - 60, stageY, W / 2 + 60, stageY);
+    fLine.stroke = '#15803d'; fLine.linewidth = 2;
+
+    const num = two.makeText('−x + 5', W / 2, stageY - 18);
+    num.fill = '#14532d'; num.size = 20; num.weight = 700;
+
+    const den = two.makeText('6', W / 2, stageY + 22);
+    den.fill = '#14532d'; den.size = 20; den.weight = 700;
+
+    const alt = two.makeText('( 또는  − 1/6 x  +  5/6 )', W / 2, stageY + 65);
+    alt.fill = '#166534'; alt.size = 12.5; alt.weight = 600;
+  }
+
+  // Bottom Safety Guide Banner (Strict Y=385, H=26)
+  const bannerY = 385;
+  const bannerBg = two.makeRoundedRectangle(W / 2, bannerY, W - 40, 26, 6);
+  bannerBg.fill = '#f1f5f9';
+  bannerBg.stroke = '#cbd5e1';
+  bannerBg.linewidth = 1;
+
+  const bannerTxt = two.makeText(
+    step === 4
+      ? '🎉 통분 4단계 완성! 동류항 정리 결과: (-x + 5)/6'
+      : '👉 상단 [⚡ 다음 단계] 버튼을 눌러 통분 및 분자 괄호 풀기 과정을 살펴보세요.',
+    W / 2, bannerY
+  );
+  bannerTxt.fill = '#334155';
+  bannerTxt.size = 11.5;
+  bannerTxt.weight = 600;
+}
+
+// 분수 박스 그리기 도우미
+function drawFractionBox(two, cx, cy, numStr, denStr, col) {
+  const line = two.makeLine(cx - 45, cy, cx + 45, cy);
+  line.stroke = col;
+  line.linewidth = 2;
+
+  const num = two.makeText(numStr, cx, cy - 16);
+  num.fill = col;
+  num.size = 15;
+  num.weight = 700;
+
+  const den = two.makeText(denStr, cx, cy + 18);
+  den.fill = col;
+  den.size = 15;
+  den.weight = 700;
+}
+
+// 큰 분수 박스 그리기 도우미
+function drawBigFractionBox(two, cx, cy, numStr, denStr, col) {
+  const line = two.makeLine(cx - 120, cy, cx + 120, cy);
+  line.stroke = col;
+  line.linewidth = 2;
+
+  const num = two.makeText(numStr, cx, cy - 18);
+  num.fill = col;
+  num.size = 16;
+  num.weight = 700;
+
+  const den = two.makeText(denStr, cx, cy + 20);
+  den.fill = col;
+  den.size = 17;
+  den.weight = 700;
+}
+
+// -------------------------------------------------------------
+// Mode 2: 2가지 풀이법 비교 뷰어
+// -------------------------------------------------------------
+function drawMode2DualMethodViewer(two) {
+  const W = two.width;
+  const H = 440;
+  const method = state.lab3_5.methodType;
+
+  // Background
+  const bg = two.makeRoundedRectangle(W / 2, H / 2, W - 20, H - 20, 10);
+  bg.fill = '#f8fafc';
+  bg.stroke = '#cbd5e1';
+  bg.linewidth = 1.5;
+
+  // Header Title
+  const headerBg = two.makeRoundedRectangle(W / 2, 34, W - 40, 36, 6);
+  headerBg.fill = '#fffbeb';
+  headerBg.stroke = '#fde68a';
+  headerBg.linewidth = 1;
+
+  const headerTxt = two.makeText('⚖️ 분수 계수 일차식: 2가지 계산법 비교 (p.82)', W / 2, 34);
+  headerTxt.fill = '#b45309';
+  headerTxt.size = 13.5;
+  headerTxt.weight = 700;
+
+  // Toggle Selector (Y=78)
+  const selW = 140;
+  // Method 1 btn (통분 합치기)
+  const m1Grp = two.makeGroup();
+  const m1Box = two.makeRoundedRectangle(W / 2 - 80, 78, selW, 30, 6);
+  m1Box.fill = method === 'common' ? '#fef3c7' : '#ffffff';
+  m1Box.stroke = method === 'common' ? '#f59e0b' : '#cbd5e1';
+  m1Box.linewidth = method === 'common' ? 2 : 1;
+  const m1Txt = two.makeText('방법 1: 통분 합치기', W / 2 - 80, 78);
+  m1Txt.fill = method === 'common' ? '#78350f' : '#475569';
+  m1Txt.size = 12;
+  m1Txt.weight = 700;
+  m1Grp.add(m1Box, m1Txt);
+
+  // Method 2 btn (항별 분리)
+  const m2Grp = two.makeGroup();
+  const m2Box = two.makeRoundedRectangle(W / 2 + 80, 78, selW, 30, 6);
+  m2Box.fill = method === 'split' ? '#fef3c7' : '#ffffff';
+  m2Box.stroke = method === 'split' ? '#f59e0b' : '#cbd5e1';
+  m2Box.linewidth = method === 'split' ? 2 : 1;
+  const m2Txt = two.makeText('방법 2: 항별 분리 계산', W / 2 + 80, 78);
+  m2Txt.fill = method === 'split' ? '#78350f' : '#475569';
+  m2Txt.size = 12;
+  m2Txt.weight = 700;
+  m2Grp.add(m2Box, m2Txt);
+
+  two.update();
+  if (m1Grp._renderer && m1Grp._renderer.elem) {
+    m1Grp._renderer.elem.style.cursor = 'pointer';
+    m1Grp._renderer.elem.onclick = () => toggleMethod3_5('common');
+  }
+  if (m2Grp._renderer && m2Grp._renderer.elem) {
+    m2Grp._renderer.elem.style.cursor = 'pointer';
+    m2Grp._renderer.elem.onclick = () => toggleMethod3_5('split');
+  }
+
+  // Main Display Card (Y=230)
+  const mainY = 230;
+  const mainW = W - 60;
+  const mainH = 210;
+  const mainCard = two.makeRoundedRectangle(W / 2, mainY, mainW, mainH, 10);
+  mainCard.fill = '#ffffff';
+  mainCard.stroke = '#f59e0b';
+  mainCard.linewidth = 1.5;
+
+  if (method === 'common') {
+    const t = two.makeText('방법 1: 최소공배수로 통분하여 한 번에 계산 (교과서 추천 표준법)', W / 2, mainY - 70);
+    t.fill = '#92400e'; t.size = 13.5; t.weight = 700;
+
+    const lines = [
+      '    (x + 1)/2  −  (2x − 1)/3',
+      '= [ 3(x + 1) − 2(2x − 1) ] / 6        (분모 6으로 통분)',
+      '= [ 3x + 3 − 4x + 2 ] / 6             (분자 괄호 풀기: 부호 반전 주의)',
+      '= ( −x + 5 ) / 6                       (동류항 계산 완료)'
+    ];
+
+    lines.forEach((l, idx) => {
+      const lineTxt = two.makeText(l, W / 2 - 80, mainY - 30 + idx * 26);
+      lineTxt.fill = idx === 3 ? '#15803d' : '#334155';
+      lineTxt.size = idx === 3 ? 14 : 12.5;
+      lineTxt.weight = idx === 3 ? 700 : 500;
+      lineTxt.alignment = 'left';
+    });
+
+  } else {
+    const t = two.makeText('방법 2: 각 항을 분수로 분리하여 동류항끼리 계산', W / 2, mainY - 70);
+    t.fill = '#92400e'; t.size = 13.5; t.weight = 700;
+
+    const lines = [
+      '    (x + 1)/2  −  (2x − 1)/3',
+      '= ( 1/2 x + 1/2 ) − ( 2/3 x − 1/3 )   (각 항을 하트 모양으로 분리)',
+      '= 1/2 x + 1/2 − 2/3 x + 1/3           (괄호 풀기)',
+      '= ( 1/2 − 2/3 )x + ( 1/2 + 1/3 )      (동류항 모으기)',
+      '= − 1/6 x  +  5/6                     (계산 완료)'
+    ];
+
+    lines.forEach((l, idx) => {
+      const lineTxt = two.makeText(l, W / 2 - 80, mainY - 40 + idx * 24);
+      lineTxt.fill = idx === 4 ? '#15803d' : '#334155';
+      lineTxt.size = idx === 4 ? 14 : 12;
+      lineTxt.weight = idx === 4 ? 700 : 500;
+      lineTxt.alignment = 'left';
+    });
+  }
+
+  // Bottom Safety Guide Banner (Strict Y=385, H=26)
+  const bannerY = 385;
+  const bannerBg = two.makeRoundedRectangle(W / 2, bannerY, W - 40, 26, 6);
+  bannerBg.fill = '#f1f5f9';
+  bannerBg.stroke = '#cbd5e1';
+  bannerBg.linewidth = 1;
+
+  const bannerTxt = two.makeText(
+    '💡 두 방법 모두 결과는 같으므로 자신이 실수 없이 가장 편하게 풀 수 있는 방법을 선택합니다.',
+    W / 2, bannerY
+  );
+  bannerTxt.fill = '#334155';
+  bannerTxt.size = 11.5;
+  bannerTxt.weight = 600;
+}
+
+// -------------------------------------------------------------
+// Mode 3: 문제 5 4문항 통분 실험실
+// -------------------------------------------------------------
+function drawMode3Problem5Lab(two) {
+  const W = two.width;
+  const H = 440;
+  const lab = state.lab3_5;
+  const pIdx = lab.probIdx;
+
+  // Background
+  const bg = two.makeRoundedRectangle(W / 2, H / 2, W - 20, H - 20, 10);
+  bg.fill = '#f8fafc';
+  bg.stroke = '#cbd5e1';
+  bg.linewidth = 1.5;
+
+  // Header Title
+  const headerBg = two.makeRoundedRectangle(W / 2, 34, W - 40, 36, 6);
+  headerBg.fill = '#ecfdf5';
+  headerBg.stroke = '#a7f3d0';
+  headerBg.linewidth = 1;
+
+  const headerTxt = two.makeText('🧪 교과서 문제 5 통분 실험실 (p.82)', W / 2, 34);
+  headerTxt.fill = '#065f46';
+  headerTxt.size = 13.5;
+  headerTxt.weight = 700;
+
+  // 4 Problem Tab Pills (Y=78)
+  const tabW = (W - 70) / 4;
+  const probs = [
+    { label: '⑴ (x+3)/2 + (2x-1)/3', expr: '(x+3)/2 + (2x-1)/3', step: '= [3(x+3)+2(2x-1)]/6', ans: '(7x + 7)/6', col: '#2563eb' },
+    { label: '⑵ (3a-2)/4 - (a+1)/2', expr: '(3a-2)/4 - (a+1)/2', step: '= [3a-2-2(a+1)]/4', ans: '(a - 4)/4', col: '#d97706' },
+    { label: '⑶ (2x-1)/3 - (x-4)/5', expr: '(2x-1)/3 - (x-4)/5', step: '= [5(2x-1)-3(x-4)]/15', ans: '(7x + 7)/15', col: '#7c3aed' },
+    { label: '⑷ (3y+1)/4 - (5y-3)/6', expr: '(3y+1)/4 - (5y-3)/6', step: '= [3(3y+1)-2(5y-3)]/12', ans: '(-y + 9)/12', col: '#059669' }
+  ];
+
+  probs.forEach((p, idx) => {
+    const x = 25 + tabW / 2 + idx * (tabW + 6);
+    const grp = two.makeGroup();
+    const isCur = idx === pIdx;
+
+    const box = two.makeRoundedRectangle(x, 78, tabW, 30, 6);
+    box.fill = isCur ? '#d1fae5' : '#ffffff';
+    box.stroke = isCur ? '#10b981' : '#cbd5e1';
+    box.linewidth = isCur ? 2 : 1;
+
+    const txt = two.makeText(p.label, x, 78);
+    txt.fill = isCur ? '#065f46' : '#475569';
+    txt.size = 11;
+    txt.weight = 700;
+
+    grp.add(box, txt);
+    two.update();
+    if (grp._renderer && grp._renderer.elem) {
+      grp._renderer.elem.style.cursor = 'pointer';
+      grp._renderer.elem.onclick = () => setProbIdx3_5(idx);
+    }
+  });
+
+  // Main Card Area (Y=230)
+  const mainY = 230;
+  const mainW = W - 60;
+  const mainH = 210;
+  const curP = probs[pIdx];
+
+  const mainCard = two.makeRoundedRectangle(W / 2, mainY, mainW, mainH, 10);
+  mainCard.fill = '#ffffff';
+  mainCard.stroke = curP.col;
+  mainCard.linewidth = 1.5;
+
+  const pTitle = two.makeText(`문제 5의 ${curP.label}`, W / 2, mainY - 70);
+  pTitle.fill = curP.col;
+  pTitle.size = 15;
+  pTitle.weight = 700;
+
+  // Formula Flow Boxes: [주어진 식] -> [통분 및 전개] -> [최종 결과]
+  // Box 1: Given
+  const b1 = two.makeRoundedRectangle(W / 2 - 135, mainY - 15, 120, 46, 6);
+  b1.fill = '#f8fafc';
+  b1.stroke = '#cbd5e1';
+  b1.linewidth = 1;
+  const t1 = two.makeText(curP.expr, W / 2 - 135, mainY - 15);
+  t1.fill = '#1e293b';
+  t1.size = 11.5;
+  t1.weight = 700;
+
+  const a1 = two.makeText('=', W / 2 - 65, mainY - 15);
+  a1.fill = '#94a3b8';
+  a1.size = 18;
+  a1.weight = 700;
+
+  // Box 2: Step
+  const b2 = two.makeRoundedRectangle(W / 2 + 10, mainY - 15, 120, 46, 6);
+  b2.fill = '#fef3c7';
+  b2.stroke = '#f59e0b';
+  b2.linewidth = 1.5;
+  const t2 = two.makeText(curP.step, W / 2 + 10, mainY - 15);
+  t2.fill = '#78350f';
+  t2.size = 11;
+  t2.weight = 700;
+
+  const a2 = two.makeText('=', W / 2 + 85, mainY - 15);
+  a2.fill = '#94a3b8';
+  a2.size = 18;
+  a2.weight = 700;
+
+  // Box 3: Ans
+  const b3 = two.makeRoundedRectangle(W / 2 + 145, mainY - 15, 80, 46, 6);
+  b3.fill = '#d1fae5';
+  b3.stroke = '#10b981';
+  b3.linewidth = 1.5;
+  const t3 = two.makeText(curP.ans, W / 2 + 145, mainY - 15);
+  t3.fill = '#065f46';
+  t3.size = 15;
+  t3.weight = 700;
+
+  // Detailed Step by Step Explanations
+  const noteBox = two.makeRoundedRectangle(W / 2, mainY + 55, mainW - 40, 42, 6);
+  noteBox.fill = '#f8fafc';
+  noteBox.stroke = '#e2e8f0';
+  noteBox.linewidth = 1;
+
+  let note = '';
+  if (pIdx === 0) note = '⑴ 분모 6 통분: 3(x+3) + 2(2x-1) = 3x+9+4x-2 = 7x + 7 이므로 (7x+7)/6 이 됩니다.';
+  else if (pIdx === 1) note = '⑵ 분모 4 통분: 3a-2 - 2(a+1) = 3a-2-2a-2 = a - 4 이므로 (a-4)/4 가 됩니다.';
+  else if (pIdx === 2) note = '⑶ 분모 15 통분: 5(2x-1) - 3(x-4) = 10x-5-3x+12 = 7x + 7 이므로 (7x+7)/15 가 됩니다.';
+  else if (pIdx === 3) note = '⑷ 분모 12 통분: 3(3y+1) - 2(5y-3) = 9y+3-10y+6 = -y + 9 이므로 (-y+9)/12 가 됩니다.';
+
+  const noteTxt = two.makeText(`💡 해설: ${note}`, W / 2, mainY + 55);
+  noteTxt.fill = '#475569';
+  noteTxt.size = 11.5;
+  noteTxt.weight = 600;
+
+  // Bottom Safety Guide Banner (Strict Y=385, H=26)
+  const bannerY = 385;
+  const bannerBg = two.makeRoundedRectangle(W / 2, bannerY, W - 40, 26, 6);
+  bannerBg.fill = '#f1f5f9';
+  bannerBg.stroke = '#cbd5e1';
+  bannerBg.linewidth = 1;
+
+  const bannerTxt = two.makeText(
+    '💡 분수 뺄셈 시 뒤쪽 분자의 괄호를 풀 때 부호 반전(- × - = +)을 놓치지 않도록 주의합니다!',
+    W / 2, bannerY
+  );
+  bannerTxt.fill = '#334155';
+  bannerTxt.size = 11.5;
+  bannerTxt.weight = 600;
+}
+
+    // --- End Substep 3-5 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -23410,6 +24184,9 @@ function drawMode3Problem4Lab(two) {
       } else if (code === '3-4') {
         renderToolbar3_4();
         renderSubstep3_4();
+      } else if (code === '3-5') {
+        renderToolbar3_5();
+        renderSubstep3_5();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
