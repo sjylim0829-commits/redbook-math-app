@@ -1095,8 +1095,8 @@
       },
       '4-2': {
         code: '4-2', tab: 4,
-        substepLabel: '2. 문장을 등식으로 나타내기 (p.86)',
-        missionText: '<b>[4-2] 2. 문장을 등식으로 나타내기 (p.86)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '2. 문제 1: 문장을 등식으로 나타내기 (p.86)',
+        missionText: '<b>[문제 1] 문장을 등식으로 나타내기 (교과서 p.86)</b><br>• <b>일상 언어와 등식:</b> 문장의 주어와 연산 관계를 파악하여 등호($=$)가 있는 등식으로 나타냅니다.<br>• <b>도형과 공식:</b> 삼각형의 넓이 공식($S = \\frac{1}{2}ah$), 직사각형의 둘레 공식($L = 2(a+b)$)을 활용합니다.<br>좌측 캔버스에서 문장-등식 번역기, 상황·도형 시각화 랩, 등식 퍼즐 빌더를 조작해 보세요.',
         drawer: 'drawStep4_2Canvas'
       },
       '4-3': {
@@ -1484,6 +1484,17 @@
       
       
       
+      
+      // Substep 4-2 State (Translating Sentences into Equations)
+      lab4_2: {
+        activeTab: 'mode1',
+        sentenceIndex: 0,
+        builder: {
+          subjectIdx: 0,
+          opIdx: 0,
+          targetVal: 19
+        }
+      },
       // Substep 4-1 State (Seesaw Balance and Concept of Equation)
       lab4_1: {
         activeTab: 'mode1',
@@ -30539,6 +30550,911 @@ function drawMode3EquationClassifierLab(two) {
 
     // --- End Substep 4-1 Implementation ---
 
+    
+    // --- Substep 4-2 Implementation ---
+// code_4_2.js: Substep [4-2] 3.4 2. 문제 1: 문장을 등식으로 나타내기 (교과서 p.86)
+
+const TRANSLATE_DATA_4_2 = [
+  {
+    id: 1,
+    sentence: '어떤 수 x의 4배에서 3을 뺀 것은 17이다.',
+    chunks: [
+      { text: '어떤 수 x의 4배', math: '4x', color: '#3b82f6', bg: '#eff6ff', role: '좌변 항 1' },
+      { text: '에서 3을 뺀 것', math: '- 3', color: '#6366f1', bg: '#e0e7ff', role: '좌변 항 2' },
+      { text: '은 ~ 이다', math: '=', color: '#d97706', bg: '#fef3c7', role: '등호' },
+      { text: '17', math: '17', color: '#10b981', bg: '#ecfdf5', role: '우변' }
+    ],
+    finalEq: '4x - 3 = 17',
+    tip: '어떤 수 x의 4배는 4x이고, 여기서 3을 빼면 4x - 3입니다. 이것이 17과 같으므로 4x - 3 = 17입니다.',
+    vizType: 'box'
+  },
+  {
+    id: 2,
+    sentence: '한 자루에 500원인 연필 x자루와 300원인 지우개 1개의 값은 2300원이다.',
+    chunks: [
+      { text: '500원 연필 x자루', math: '500x', color: '#3b82f6', bg: '#eff6ff', role: '연필 금액' },
+      { text: '300원 지우개 1개와', math: '+ 300', color: '#6366f1', bg: '#e0e7ff', role: '지우개 금액' },
+      { text: '합한 값은', math: '=', color: '#d97706', bg: '#fef3c7', role: '등호' },
+      { text: '2300원이다', math: '2300', color: '#10b981', bg: '#ecfdf5', role: '총 금액' }
+    ],
+    finalEq: '500x + 300 = 2300',
+    tip: '연필 x자루의 가격은 500 × x = 500x원, 지우개 1개는 300원이므로 합은 500x + 300 = 2300입니다.',
+    vizType: 'store'
+  },
+  {
+    id: 3,
+    sentence: '밑변의 길이가 x cm이고 높이가 6 cm인 삼각형의 넓이는 24 cm²이다.',
+    chunks: [
+      { text: '삼각형 넓이 공식', math: '1/2 × 밑변 × 높이', color: '#3b82f6', bg: '#eff6ff', role: '기본 공식' },
+      { text: '밑변 x, 높이 6 대입', math: '1/2 × x × 6 = 3x', color: '#6366f1', bg: '#e0e7ff', role: '좌변 정리' },
+      { text: '넓이는 ~ 이다', math: '=', color: '#d97706', bg: '#fef3c7', role: '등호' },
+      { text: '24 cm²', math: '24', color: '#10b981', bg: '#ecfdf5', role: '우변' }
+    ],
+    finalEq: '3x = 24',
+    altEqs: ['1/2*6x=24', '6x/2=24', '1/2*x*6=24'],
+    tip: '삼각형의 넓이 = (밑변) × (높이) ÷ 2 = (x × 6) / 2 = 3x 이므로 3x = 24입니다.',
+    vizType: 'triangle'
+  },
+  {
+    id: 4,
+    sentence: '둘레의 길이가 30 cm인 직사각형에서 가로의 길이가 x cm이고 세로의 길이가 5 cm이다.',
+    chunks: [
+      { text: '직사각형 둘레 공식', math: '2 × (가로 + 세로)', color: '#3b82f6', bg: '#eff6ff', role: '기본 공식' },
+      { text: '가로 x, 세로 5 대입', math: '2(x + 5)', color: '#6366f1', bg: '#e0e7ff', role: '좌변 둘레' },
+      { text: '둘레 길이는', math: '=', color: '#d97706', bg: '#fef3c7', role: '등호' },
+      { text: '30 cm이다', math: '30', color: '#10b981', bg: '#ecfdf5', role: '우변 둘레' }
+    ],
+    finalEq: '2(x + 5) = 30',
+    altEqs: ['2x+10=30', '2*(x+5)=30', 'x+5=15'],
+    tip: '직사각형 둘레 = 2 × (가로 + 세로) = 2(x + 5) 이므로 2(x + 5) = 30 (또는 2x + 10 = 30)입니다.',
+    vizType: 'rectangle'
+  }
+];
+
+function renderToolbar4_2() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab4_2) {
+    state.lab4_2 = {
+      activeTab: 'mode1', // 'mode1' (문장-등식 번역기) | 'mode2' (상황·도형 시각화 랩) | 'mode3' (등식 빌더 퍼즐)
+      sentenceIndex: 0,   // 0~3
+      builder: {
+        subjectIdx: 0,    // 0: 2x, 1: 3x, 2: 5x
+        opIdx: 0,         // 0: +4, 1: -3, 2: +7
+        targetVal: 19     // 목표값
+      }
+    };
+  }
+
+  const curTab = state.lab4_2.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab4_2Tab('mode1')">
+        🔤 1. 문장-등식 번역기 (p.86)
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab4_2Tab('mode2')">
+        📐 2. 상황·도형 시각화 랩
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab4_2Tab('mode3')">
+        🧩 3. 나만의 등식 빌더
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      ${curTab === 'mode1' || curTab === 'mode2' ? `
+        <button class="icon-btn ${state.lab4_2.sentenceIndex === 0 ? 'active' : ''}" onclick="setSentence4_2(0)">문장 ⑴</button>
+        <button class="icon-btn ${state.lab4_2.sentenceIndex === 1 ? 'active' : ''}" onclick="setSentence4_2(1)">문장 ⑵</button>
+        <button class="icon-btn ${state.lab4_2.sentenceIndex === 2 ? 'active' : ''}" onclick="setSentence4_2(2)">문장 ⑶</button>
+        <button class="icon-btn ${state.lab4_2.sentenceIndex === 3 ? 'active' : ''}" onclick="setSentence4_2(3)">문장 ⑷</button>
+      ` : ''}
+      <button class="icon-btn" onclick="resetLab4_2()" title="초기화">🔄 초기화</button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('4-2')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab4_2Tab(tabKey) {
+  if (!state.lab4_2) resetLab4_2();
+  state.lab4_2.activeTab = tabKey;
+  renderToolbar4_2();
+  drawStep4_2Canvas();
+}
+
+function resetLab4_2() {
+  state.lab4_2 = {
+    activeTab: 'mode1',
+    sentenceIndex: 0,
+    builder: {
+      subjectIdx: 0,
+      opIdx: 0,
+      targetVal: 19
+    }
+  };
+  renderToolbar4_2();
+  drawStep4_2Canvas();
+}
+
+function setSentence4_2(idx) {
+  if (!state.lab4_2) resetLab4_2();
+  state.lab4_2.sentenceIndex = idx;
+  renderToolbar4_2();
+  drawStep4_2Canvas();
+}
+
+function nextSentence4_2() {
+  if (!state.lab4_2) resetLab4_2();
+  state.lab4_2.sentenceIndex = (state.lab4_2.sentenceIndex + 1) % TRANSLATE_DATA_4_2.length;
+  renderToolbar4_2();
+  drawStep4_2Canvas();
+}
+
+function prevSentence4_2() {
+  if (!state.lab4_2) resetLab4_2();
+  state.lab4_2.sentenceIndex = (state.lab4_2.sentenceIndex - 1 + TRANSLATE_DATA_4_2.length) % TRANSLATE_DATA_4_2.length;
+  renderToolbar4_2();
+  drawStep4_2Canvas();
+}
+
+function setBuilderSubject4_2(idx) {
+  if (!state.lab4_2) resetLab4_2();
+  state.lab4_2.builder.subjectIdx = idx;
+  drawStep4_2Canvas();
+}
+
+function setBuilderOp4_2(idx) {
+  if (!state.lab4_2) resetLab4_2();
+  state.lab4_2.builder.opIdx = idx;
+  drawStep4_2Canvas();
+}
+
+function renderSubstep4_2() {
+  const panel = document.getElementById('form-box');
+  if (!panel) return;
+
+  panel.innerHTML = `
+    <div class="card-title" style="display:flex; align-items:center; gap:8px;">
+      <span class="badge" style="background:#4f46e5; color:#fff;">교과서 p.86</span>
+      <span style="font-size:1.05rem; font-weight:800; color:#1e1b4b;">2. 문제 1: 문장을 등식으로 나타내기</span>
+    </div>
+
+    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-top:10px; font-size:0.86rem; line-height:1.55; color:#334155;">
+      <b>📖 [교과서 문제 1 지문]</b><br>
+      다음 문장을 읽고 주어와 서술어, 연산 관계를 파악하여 등호($=$)가 포함된 <b>등식</b>으로 나타내시오.<br>
+      좌측 캔버스 <b>[🔤 문장-등식 번역기]</b> 및 <b>[📐 시각화 랩]</b>을 조작해 보세요.
+    </div>
+
+    <div style="margin-top:14px; display:flex; flex-direction:column; gap:12px;">
+      <!-- 문제 1 -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px;">
+        <div style="font-weight:700; color:#1e293b; font-size:0.87rem; margin-bottom:6px;">
+          (1) 어떤 수 $x$의 4배에서 3을 뺀 것은 17이다.
+        </div>
+        <input type="text" id="ans-4-2-1" class="proof-input-text" placeholder="등식 입력 (예: ax-b=c)" style="width:100%;" />
+      </div>
+
+      <!-- 문제 2 -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px;">
+        <div style="font-weight:700; color:#1e293b; font-size:0.87rem; margin-bottom:6px;">
+          (2) 한 자루에 500원인 연필 $x$자루와 300원인 지우개 1개의 값은 2300원이다.
+        </div>
+        <input type="text" id="ans-4-2-2" class="proof-input-text" placeholder="등식 입력 (예: ax+b=c)" style="width:100%;" />
+      </div>
+
+      <!-- 문제 3 -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px;">
+        <div style="font-weight:700; color:#1e293b; font-size:0.87rem; margin-bottom:6px;">
+          (3) 밑변의 길이가 $x\\text{ cm}$이고 높이가 $6\\text{ cm}$인 삼각형의 넓이는 $24\\text{ cm}^2$이다.
+        </div>
+        <input type="text" id="ans-4-2-3" class="proof-input-text" placeholder="등식 입력 (예: ax=b)" style="width:100%;" />
+      </div>
+
+      <!-- 문제 4 -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px;">
+        <div style="font-weight:700; color:#1e293b; font-size:0.87rem; margin-bottom:6px;">
+          (4) 둘레의 길이가 $30\\text{ cm}$인 직사각형에서 가로의 길이가 $x\\text{ cm}$이고 세로의 길이가 $5\\text{ cm}$이다.
+        </div>
+        <input type="text" id="ans-4-2-4" class="proof-input-text" placeholder="등식 입력 (예: 2(x+a)=b)" style="width:100%;" />
+      </div>
+    </div>
+
+    <div style="margin-top:14px; display:flex; gap:8px;">
+      <button class="primary-btn" onclick="gradeStep4_2()" style="flex:1; height:38px; font-weight:700;">
+        정답 확인 및 채점
+      </button>
+      <button class="icon-btn" onclick="resetForm4_2()" style="height:38px; padding:0 12px;">
+        입력 초기화
+      </button>
+    </div>
+
+    <div id="grade-feedback-4-2" style="margin-top:12px;"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(panel, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ]
+    });
+  }
+}
+
+function resetForm4_2() {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById(`ans-4-2-${i}`);
+    if (el) el.value = '';
+  }
+  const fb = document.getElementById('grade-feedback-4-2');
+  if (fb) fb.innerHTML = '';
+}
+
+function cleanEq4_2(str) {
+  if (!str) return '';
+  return str.replace(/\s+/g, '').toLowerCase().replace(/\*/g, '');
+}
+
+function gradeStep4_2() {
+  const ans1 = cleanEq4_2(document.getElementById('ans-4-2-1')?.value || '');
+  const ans2 = cleanEq4_2(document.getElementById('ans-4-2-2')?.value || '');
+  const ans3 = cleanEq4_2(document.getElementById('ans-4-2-3')?.value || '');
+  const ans4 = cleanEq4_2(document.getElementById('ans-4-2-4')?.value || '');
+
+  // ⑴ 4x - 3 = 17
+  const isQ1Correct = (ans1 === '4x-3=17' || ans1 === '17=4x-3' || ans1 === '-3+4x=17' || ans1 === '17=-3+4x');
+
+  // ⑵ 500x + 300 = 2300
+  const isQ2Correct = (ans2 === '500x+300=2300' || ans2 === '300+500x=2300' || ans2 === '2300=500x+300' || ans2 === '2300=300+500x');
+
+  // ⑶ 3x = 24 or 1/2*6x=24 or 6x/2=24 or 6/2x=24
+  const isQ3Correct = (
+    ans3 === '3x=24' || ans3 === '24=3x' ||
+    ans3 === '6x/2=24' || ans3 === '24=6x/2' ||
+    ans3 === '1/2*6x=24' || ans3 === '1/2*x*6=24' || ans3 === '(1/2)*6x=24' || ans3 === '(1/2)*x*6=24' ||
+    ans3 === '0.5*6x=24' || ans3 === '3*x=24'
+  );
+
+  // ⑷ 2(x+5) = 30 or 2x+10 = 30 or 2(5+x) = 30 or x+5=15
+  const isQ4Correct = (
+    ans4 === '2(x+5)=30' || ans4 === '30=2(x+5)' ||
+    ans4 === '2(5+x)=30' || ans4 === '30=2(5+x)' ||
+    ans4 === '2x+10=30' || ans4 === '30=2x+10' ||
+    ans4 === '10+2x=30' || ans4 === '30=10+2x' ||
+    ans4 === '(x+5)*2=30' || ans4 === 'x+5=15' || ans4 === '15=x+5'
+  );
+
+  const fb = document.getElementById('grade-feedback-4-2');
+  if (!fb) return;
+
+  const totalScore = (isQ1Correct ? 25 : 0) + (isQ2Correct ? 25 : 0) + (isQ3Correct ? 25 : 0) + (isQ4Correct ? 25 : 0);
+
+  if (totalScore === 100) {
+    fb.innerHTML = `
+      <div style="background:#ecfdf5; border:1px solid #10b981; border-radius:10px; padding:14px; color:#065f46;">
+        <div style="font-size:1.02rem; font-weight:800; display:flex; align-items:center; gap:6px;">
+          🎉 100점 만점! 모든 문장을 정확한 등식으로 나타냈습니다!
+        </div>
+        <div style="margin-top:6px; font-size:0.87rem; line-height:1.55;">
+          • (1)번: $4x - 3 = 17$<br>
+          • (2)번: $500x + 300 = 2300$<br>
+          • (3)번: $3x = 24$ (또는 $\\frac{1}{2} \\times 6 \\times x = 24$)<br>
+          • (4)번: $2(x + 5) = 30$ (또는 $2x + 10 = 30$)<br>
+          다음 서브스텝 <b>[4-3] 3. 방정식과 그 해: 참, 거짓 판별 (p.87)</b>이 해금되었습니다!
+        </div>
+      </div>
+    `;
+
+    if (!state.unlockedSubSteps.includes('4-3')) {
+      state.unlockedSubSteps.push('4-3');
+    }
+    if (typeof updateSubstepPills === 'function') updateSubstepPills();
+    if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+      LMSIntegration.saveStudentProgress('4-2', {
+        score: 100,
+        completed: true,
+        answers: { ans1, ans2, ans3, ans4 }
+      }, 3);
+    }
+  } else {
+    let wrongNotes = [];
+    if (!isQ1Correct) wrongNotes.push('(1)번: x의 4배(4x)에서 3을 뺀 것은 17 $\\implies 4x - 3 = 17$');
+    if (!isQ2Correct) wrongNotes.push('(2)번: 연필 x자루(500x)와 지우개 1개(300)의 합은 2300 $\\implies 500x + 300 = 2300$');
+    if (!isQ3Correct) wrongNotes.push('(3)번: 삼각형 넓이 = $\\frac{1}{2} \\times x \\times 6 = 3x$이므로 $3x = 24$입니다.');
+    if (!isQ4Correct) wrongNotes.push('(4)번: 직사각형 둘레 = $2 \\times (가로 + 세로) = 2(x + 5)$이므로 $2(x + 5) = 30$입니다.');
+
+    fb.innerHTML = `
+      <div style="background:#fef2f2; border:1px solid #ef4444; border-radius:10px; padding:12px; color:#991b1b;">
+        <div style="font-weight:800; font-size:0.92rem;">다시 확인해 보세요! (현재 점수: ${totalScore}점)</div>
+        <div style="margin-top:6px; font-size:0.84rem; line-height:1.5;">
+          ${wrongNotes.join('<br>')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ]
+    });
+  }
+}
+
+// --- Two.js 60fps 인터랙티브 캔버스 엔진 ---
+function drawStep4_2Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const two = new Two({
+    width: 680,
+    height: 440,
+    type: Two.Types.svg
+  }).appendTo(container);
+
+  if (!state.lab4_2) {
+    resetLab4_2();
+  }
+
+  const activeTab = state.lab4_2.activeTab;
+
+  if (activeTab === 'mode1') {
+    drawMode1SentenceEquationTranslatorLab(two);
+  } else if (activeTab === 'mode2') {
+    drawMode2SentenceVisualizerLab(two);
+  } else if (activeTab === 'mode3') {
+    drawMode3EquationPuzzleBuilderLab(two);
+  }
+
+  // 안내 배너 (Vertical Budget 준수: Y=385, H=26, 바닥 안전 여백 42px >= 25px)
+  const bannerBg = two.makeRoundedRectangle(340, 385, 620, 26, 6);
+  bannerBg.fill = '#f8fafc';
+  bannerBg.stroke = '#cbd5e1';
+  bannerBg.linewidth = 1;
+
+  let tipMsg = '💡 문장의 핵심 관계를 등호(=)를 사용하여 식으로 나타내면 등식이 됩니다.';
+  if (activeTab === 'mode1') {
+    tipMsg = '💡 문장의 주어와 수식 어절을 대수적 표현으로 하나씩 대응시켜 등식을 완성합니다.';
+  } else if (activeTab === 'mode2') {
+    tipMsg = '💡 도형의 공식(삼각형 넓이, 직사각형 둘레)을 활용하여 좌변과 우변의 등식을 세워보세요.';
+  } else if (activeTab === 'mode3') {
+    tipMsg = '💡 다양한 문장 조각을 조합하여 새로운 등식을 만들고 그 의미를 파악해 보세요.';
+  }
+
+  const tipText = two.makeText(tipMsg, 340, 385, {
+    family: 'Pretendard, sans-serif',
+    size: 11,
+    weight: 600,
+    fill: '#475569',
+    alignment: 'center'
+  });
+
+  two.update();
+}
+
+// Mode 1: 🔤 대화형 문장-등식 번역기 랩
+function drawMode1SentenceEquationTranslatorLab(two) {
+  const title = two.makeText('🔤 [문장-등식 번역기] 일상 언어를 수학 등식으로 변환 (p.86)', 340, 26, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 800,
+    fill: '#1e1b4b',
+    alignment: 'center'
+  });
+
+  const curData = TRANSLATE_DATA_4_2[state.lab4_2.sentenceIndex];
+
+  // 상단 문장 4개 탭
+  const tabW = 135;
+  const startX = 70;
+  TRANSLATE_DATA_4_2.forEach((item, idx) => {
+    const isSel = (state.lab4_2.sentenceIndex === idx);
+    const tx = startX + idx * 140 + tabW / 2;
+    const ty = 54;
+    const tBg = two.makeRoundedRectangle(tx, ty, tabW, 26, 6);
+    tBg.fill = isSel ? '#4f46e5' : '#f1f5f9';
+    tBg.stroke = isSel ? '#3730a3' : '#cbd5e1';
+    tBg.linewidth = isSel ? 2 : 1;
+
+    const tTxt = two.makeText(`문장 (${idx + 1})`, tx, ty + 1, {
+      family: 'Pretendard, sans-serif',
+      size: 11.5,
+      weight: isSel ? 800 : 600,
+      fill: isSel ? '#ffffff' : '#475569',
+      alignment: 'center'
+    });
+
+    if (tBg._renderer && tBg._renderer.elem) {
+      tBg._renderer.elem.style.cursor = 'pointer';
+      tBg._renderer.elem.onclick = () => setSentence4_2(idx);
+    }
+  });
+
+  // 원문 문장 카드 (Y = 105)
+  const sentCard = two.makeRoundedRectangle(340, 105, 590, 52, 10);
+  sentCard.fill = '#f8fafc';
+  sentCard.stroke = '#6366f1';
+  sentCard.linewidth = 1.5;
+
+  const sentBadge = two.makeRoundedRectangle(105, 90, 70, 18, 4);
+  sentBadge.fill = '#4f46e5';
+  const sentBadgeTxt = two.makeText(`문장 (${state.lab4_2.sentenceIndex + 1}) 원문`, 105, 91, {
+    family: 'Pretendard, sans-serif',
+    size: 9.5,
+    weight: 800,
+    fill: '#ffffff',
+    alignment: 'center'
+  });
+
+  const sentTxt = two.makeText(curData.sentence, 340, 118, {
+    family: 'Pretendard, sans-serif',
+    size: 13,
+    weight: 700,
+    fill: '#1e293b',
+    alignment: 'center'
+  });
+
+  // 어절 분해 및 수학식 변환 파이프라인 (Y = 175 ~ 255)
+  const chunkCount = curData.chunks.length;
+  const chunkW = 135;
+  const gap = 12;
+  const totalW = chunkCount * chunkW + (chunkCount - 1) * gap;
+  const cStartX = 340 - totalW / 2 + chunkW / 2;
+
+  curData.chunks.forEach((chunk, cidx) => {
+    const cx = cStartX + cidx * (chunkW + gap);
+
+    // 상단 한국어 어절 박스 (Y = 175)
+    const kBg = two.makeRoundedRectangle(cx, 175, chunkW, 40, 8);
+    kBg.fill = chunk.bg;
+    kBg.stroke = chunk.color;
+    kBg.linewidth = 1.5;
+
+    const kRole = two.makeText(`[${chunk.role}]`, cx, 163, {
+      family: 'Pretendard, sans-serif',
+      size: 9.5,
+      weight: 800,
+      fill: chunk.color,
+      alignment: 'center'
+    });
+
+    const kTxt = two.makeText(chunk.text, cx, 182, {
+      family: 'Pretendard, sans-serif',
+      size: 10.5,
+      weight: 700,
+      fill: '#1e293b',
+      alignment: 'center'
+    });
+
+    // 변환 화살표 (Y = 208)
+    const arrow = two.makeLine(cx, 198, cx, 216);
+    arrow.stroke = chunk.color;
+    arrow.linewidth = 2;
+    const arrowHead = two.makePath(cx - 4, 212, cx + 4, 212, cx, 218, true);
+    arrowHead.fill = chunk.color;
+
+    // 하단 수학 기호 박스 (Y = 240)
+    const mBg = two.makeRoundedRectangle(cx, 240, chunkW, 40, 8);
+    mBg.fill = '#ffffff';
+    mBg.stroke = chunk.color;
+    mBg.linewidth = 2;
+
+    const mTxt = two.makeText(chunk.math, cx, 241, {
+      family: 'Pretendard, sans-serif',
+      size: 14,
+      weight: 900,
+      fill: chunk.color,
+      alignment: 'center'
+    });
+  });
+
+  // 최종 완성된 등식 카드 (Y = 308)
+  const finalCard = two.makeRoundedRectangle(340, 310, 520, 50, 10);
+  finalCard.fill = '#ecfdf5';
+  finalCard.stroke = '#10b981';
+  finalCard.linewidth = 2;
+
+  const finalBadge = two.makeRoundedRectangle(130, 296, 80, 18, 4);
+  finalBadge.fill = '#10b981';
+  const finalBadgeTxt = two.makeText('최종 등식 완성', 130, 297, {
+    family: 'Pretendard, sans-serif',
+    size: 9.5,
+    weight: 800,
+    fill: '#ffffff',
+    alignment: 'center'
+  });
+
+  const eqDisplay = two.makeText(curData.finalEq, 340, 320, {
+    family: 'Pretendard, sans-serif',
+    size: 20,
+    weight: 900,
+    fill: '#065f46',
+    alignment: 'center'
+  });
+
+  // 하단 팁 (Y = 352)
+  const tipText = two.makeText(`💡 ${curData.tip}`, 340, 350, {
+    family: 'Pretendard, sans-serif',
+    size: 11,
+    weight: 600,
+    fill: '#475569',
+    alignment: 'center'
+  });
+}
+
+// Mode 2: 📐 기하·실생활 시각화 랩
+function drawMode2SentenceVisualizerLab(two) {
+  const title = two.makeText('📐 [상황·도형 시각화 랩] 기하와 실생활 속의 등식 구조 (p.86)', 340, 26, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 800,
+    fill: '#1e1b4b',
+    alignment: 'center'
+  });
+
+  const curData = TRANSLATE_DATA_4_2[state.lab4_2.sentenceIndex];
+
+  // 상단 문장 탭
+  const tabW = 135;
+  const startX = 70;
+  TRANSLATE_DATA_4_2.forEach((item, idx) => {
+    const isSel = (state.lab4_2.sentenceIndex === idx);
+    const tx = startX + idx * 140 + tabW / 2;
+    const ty = 54;
+    const tBg = two.makeRoundedRectangle(tx, ty, tabW, 26, 6);
+    tBg.fill = isSel ? '#4f46e5' : '#f1f5f9';
+    tBg.stroke = isSel ? '#3730a3' : '#cbd5e1';
+    tBg.linewidth = isSel ? 2 : 1;
+
+    const tTxt = two.makeText(`문장 (${idx + 1}) 모델`, tx, ty + 1, {
+      family: 'Pretendard, sans-serif',
+      size: 11,
+      weight: isSel ? 800 : 600,
+      fill: isSel ? '#ffffff' : '#475569',
+      alignment: 'center'
+    });
+
+    if (tBg._renderer && tBg._renderer.elem) {
+      tBg._renderer.elem.style.cursor = 'pointer';
+      tBg._renderer.elem.onclick = () => setSentence4_2(idx);
+    }
+  });
+
+  // 메인 비주얼 박스 (Y = 210, H = 250)
+  const vizBg = two.makeRoundedRectangle(340, 215, 590, 240, 12);
+  vizBg.fill = '#ffffff';
+  vizBg.stroke = '#e2e8f0';
+  vizBg.linewidth = 2;
+
+  if (curData.vizType === 'box') {
+    // 문장 ⑴: 수 연산 파이프라인 상자
+    const flowTitle = two.makeText('어떤 수 x 의 4배에서 3을 빼는 연산 상자', 340, 125, {
+      family: 'Pretendard, sans-serif',
+      size: 13,
+      weight: 800,
+      fill: '#1e293b',
+      alignment: 'center'
+    });
+
+    // 1단계: x
+    const b1 = two.makeRoundedRectangle(140, 185, 70, 60, 8);
+    b1.fill = '#eff6ff';
+    b1.stroke = '#3b82f6';
+    b1.linewidth = 2;
+    two.makeText('처음 수', 140, 168, { size: 10, weight: 700, fill: '#3b82f6', alignment: 'center' });
+    two.makeText('x', 140, 195, { size: 20, weight: 900, fill: '#1e3a8a', alignment: 'center' });
+
+    // 화살표 1: × 4
+    const a1 = two.makeLine(180, 185, 235, 185);
+    a1.stroke = '#64748b'; a1.linewidth = 2;
+    two.makeText('× 4', 210, 172, { size: 11, weight: 800, fill: '#475569', alignment: 'center' });
+
+    // 2단계: 4x
+    const b2 = two.makeRoundedRectangle(275, 185, 75, 60, 8);
+    b2.fill = '#e0e7ff';
+    b2.stroke = '#6366f1';
+    b2.linewidth = 2;
+    two.makeText('4배 한 값', 275, 168, { size: 10, weight: 700, fill: '#6366f1', alignment: 'center' });
+    two.makeText('4x', 275, 195, { size: 20, weight: 900, fill: '#3730a3', alignment: 'center' });
+
+    // 화살표 2: - 3
+    const a2 = two.makeLine(315, 185, 375, 185);
+    a2.stroke = '#64748b'; a2.linewidth = 2;
+    two.makeText('- 3', 345, 172, { size: 11, weight: 800, fill: '#475569', alignment: 'center' });
+
+    // 3단계: 4x - 3
+    const b3 = two.makeRoundedRectangle(425, 185, 95, 60, 8);
+    b3.fill = '#fef3c7';
+    b3.stroke = '#f59e0b';
+    b3.linewidth = 2;
+    two.makeText('3을 뺀 결과 (좌변)', 425, 168, { size: 9.5, weight: 700, fill: '#b45309', alignment: 'center' });
+    two.makeText('4x - 3', 425, 195, { size: 18, weight: 900, fill: '#92400e', alignment: 'center' });
+
+    // 등호
+    const eqCircle = two.makeCircle(495, 185, 16);
+    eqCircle.fill = '#10b981';
+    two.makeText('=', 495, 186, { size: 18, weight: 900, fill: '#ffffff', alignment: 'center' });
+
+    // 4단계: 17
+    const b4 = two.makeRoundedRectangle(565, 185, 70, 60, 8);
+    b4.fill = '#ecfdf5';
+    b4.stroke = '#10b981';
+    b4.linewidth = 2;
+    two.makeText('우변', 565, 168, { size: 10, weight: 700, fill: '#047857', alignment: 'center' });
+    two.makeText('17', 565, 195, { size: 20, weight: 900, fill: '#065f46', alignment: 'center' });
+
+    // 하단 해설
+    two.makeText('⭐ 등식: 4x - 3 = 17 (x = 5일 때: 4 × 5 - 3 = 17로 참!)', 340, 265, {
+      family: 'Pretendard, sans-serif',
+      size: 13,
+      weight: 800,
+      fill: '#1e293b',
+      alignment: 'center'
+    });
+  } else if (curData.vizType === 'store') {
+    // 문장 ⑵: 문구류 구매 영수증 모델
+    two.makeText('✏️ 문구류 구매 금액과 총 가격의 평형 모델', 340, 125, {
+      family: 'Pretendard, sans-serif',
+      size: 13,
+      weight: 800,
+      fill: '#1e293b',
+      alignment: 'center'
+    });
+
+    // 연필 묶음 박스
+    const pencilBox = two.makeRoundedRectangle(200, 190, 180, 75, 8);
+    pencilBox.fill = '#eff6ff';
+    pencilBox.stroke = '#3b82f6';
+    pencilBox.linewidth = 2;
+    two.makeText('✏️ 연필 (500원 × x 자루)', 200, 172, { size: 11, weight: 800, fill: '#1d4ed8', alignment: 'center' });
+    two.makeText('500x 원', 200, 202, { size: 20, weight: 900, fill: '#1e3a8a', alignment: 'center' });
+
+    // 더하기 기호
+    two.makeText('+', 305, 190, { size: 24, weight: 900, fill: '#64748b', alignment: 'center' });
+
+    // 지우개 박스
+    const eraserBox = two.makeRoundedRectangle(370, 190, 100, 75, 8);
+    eraserBox.fill = '#fdf2f8';
+    eraserBox.stroke = '#ec4899';
+    eraserBox.linewidth = 2;
+    two.makeText('🧹 지우개 1개', 370, 172, { size: 11, weight: 800, fill: '#be185d', alignment: 'center' });
+    two.makeText('300 원', 370, 202, { size: 18, weight: 900, fill: '#9d174d', alignment: 'center' });
+
+    // 등호
+    const eqC = two.makeCircle(440, 190, 16);
+    eqC.fill = '#10b981';
+    two.makeText('=', 440, 191, { size: 18, weight: 900, fill: '#ffffff', alignment: 'center' });
+
+    // 총 금액 박스
+    const totalBox = two.makeRoundedRectangle(525, 190, 110, 75, 8);
+    totalBox.fill = '#ecfdf5';
+    totalBox.stroke = '#10b981';
+    totalBox.linewidth = 2;
+    two.makeText('💵 총 결제 금액', 525, 172, { size: 11, weight: 800, fill: '#047857', alignment: 'center' });
+    two.makeText('2300 원', 525, 202, { size: 19, weight: 900, fill: '#065f46', alignment: 'center' });
+
+    // 하단 해설
+    two.makeText('⭐ 등식: 500x + 300 = 2300 (x = 4일 때: 2000 + 300 = 2300으로 참!)', 340, 265, {
+      family: 'Pretendard, sans-serif',
+      size: 13,
+      weight: 800,
+      fill: '#1e293b',
+      alignment: 'center'
+    });
+  } else if (curData.vizType === 'triangle') {
+    // 문장 ⑶: 삼각형 넓이 모델
+    two.makeText('📐 밑변 x cm, 높이 6 cm인 삼각형 넓이 모델', 340, 125, {
+      family: 'Pretendard, sans-serif',
+      size: 13,
+      weight: 800,
+      fill: '#1e1b4b',
+      alignment: 'center'
+    });
+
+    // 삼각형 그리기
+    const tri = two.makePath(
+      150, 230,
+      310, 230,
+      200, 150,
+      true
+    );
+    tri.fill = '#e0e7ff';
+    tri.stroke = '#4f46e5';
+    tri.linewidth = 2.5;
+
+    // 높이 점선
+    const hLine = two.makeLine(200, 150, 200, 230);
+    hLine.stroke = '#ea580c';
+    hLine.linewidth = 2;
+    hLine.dashes = [4, 4];
+
+    // 직각 표시
+    const rightAngle = two.makePath(200, 222, 208, 222, 208, 230, false);
+    rightAngle.stroke = '#ea580c';
+    rightAngle.linewidth = 1.5;
+    rightAngle.fill = 'transparent';
+
+    // 라벨
+    two.makeText('밑변: x cm', 230, 245, { size: 12, weight: 800, fill: '#4f46e5', alignment: 'center' });
+    two.makeText('높이: 6 cm', 165, 190, { size: 12, weight: 800, fill: '#ea580c', alignment: 'center' });
+    two.makeText('넓이 = 24 cm²', 245, 185, { size: 11, weight: 800, fill: '#3730a3', alignment: 'center' });
+
+    // 우측 수식 카드
+    const calcBox = two.makeRoundedRectangle(470, 195, 230, 85, 8);
+    calcBox.fill = '#f8fafc';
+    calcBox.stroke = '#6366f1';
+    calcBox.linewidth = 1.5;
+    two.makeText('넓이 공식: 1/2 × 밑변 × 높이', 470, 172, { size: 11, weight: 700, fill: '#475569', alignment: 'center' });
+    two.makeText('1/2 × x × 6 = 3x', 470, 195, { size: 15, weight: 900, fill: '#3730a3', alignment: 'center' });
+    two.makeText('⭐ 등식: 3x = 24', 470, 222, { size: 16, weight: 900, fill: '#065f46', alignment: 'center' });
+  } else if (curData.vizType === 'rectangle') {
+    // 문장 ⑷: 직사각형 둘레 모델
+    two.makeText('📏 가로 x cm, 세로 5 cm인 직사각형 둘레 모델', 340, 125, {
+      family: 'Pretendard, sans-serif',
+      size: 13,
+      weight: 800,
+      fill: '#1e1b4b',
+      alignment: 'center'
+    });
+
+    // 직사각형 그리기
+    const rect = two.makeRoundedRectangle(220, 195, 160, 75, 4);
+    rect.fill = '#ecfdf5';
+    rect.stroke = '#10b981';
+    rect.linewidth = 2.5;
+
+    // 가로 / 세로 라벨
+    two.makeText('가로: x cm', 220, 145, { size: 12, weight: 800, fill: '#065f46', alignment: 'center' });
+    two.makeText('세로: 5 cm', 120, 195, { size: 12, weight: 800, fill: '#065f46', alignment: 'center' });
+    two.makeText('둘레 = 30 cm', 220, 195, { size: 12, weight: 800, fill: '#047857', alignment: 'center' });
+
+    // 우측 둘레 수식 카드
+    const rectCalcBox = two.makeRoundedRectangle(470, 195, 230, 85, 8);
+    rectCalcBox.fill = '#f8fafc';
+    rectCalcBox.stroke = '#10b981';
+    rectCalcBox.linewidth = 1.5;
+    two.makeText('둘레 공식: 2 × (가로 + 세로)', 470, 172, { size: 11, weight: 700, fill: '#475569', alignment: 'center' });
+    two.makeText('2 × (x + 5) = 2(x + 5)', 470, 195, { size: 15, weight: 900, fill: '#047857', alignment: 'center' });
+    two.makeText('⭐ 등식: 2(x + 5) = 30', 470, 222, { size: 16, weight: 900, fill: '#065f46', alignment: 'center' });
+  }
+
+  // 하단 팁
+  const bottomTip = two.makeText('👆 툴바에서 문장 ⑴~⑷를 선택하여 기하와 실생활 속 등식 모형을 비교해 보세요!', 340, 335, {
+    family: 'Pretendard, sans-serif',
+    size: 11.5,
+    weight: 600,
+    fill: '#4f46e5',
+    alignment: 'center'
+  });
+}
+
+// Mode 3: 🧩 나만의 등식 빌더 퍼즐
+function drawMode3EquationPuzzleBuilderLab(two) {
+  const title = two.makeText('🧩 [나만의 등식 빌더] 문장 블록 조합 퍼즐', 340, 26, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 800,
+    fill: '#1e1b4b',
+    alignment: 'center'
+  });
+
+  const builder = state.lab4_2.builder;
+
+  const subjects = [
+    { text: '어떤 수 x의 2배', math: '2x' },
+    { text: '어떤 수 x의 3배', math: '3x' },
+    { text: '어떤 수 x의 5배', math: '5x' }
+  ];
+
+  const ops = [
+    { text: '에 4를 더한 것', math: '+ 4' },
+    { text: '에서 3을 뺀 것', math: '- 3' },
+    { text: '에 7을 더한 것', math: '+ 7' }
+  ];
+
+  const selSub = subjects[builder.subjectIdx];
+  const selOp = ops[builder.opIdx];
+
+  // 1열: 주어 선택 블록들 (X = 170)
+  two.makeText('1단계: 주어 블록 선택', 170, 68, { size: 12, weight: 800, fill: '#3b82f6', alignment: 'center' });
+  subjects.forEach((sub, sidx) => {
+    const isSel = (builder.subjectIdx === sidx);
+    const sy = 100 + sidx * 48;
+    const sBg = two.makeRoundedRectangle(170, sy, 190, 38, 8);
+    sBg.fill = isSel ? '#eff6ff' : '#ffffff';
+    sBg.stroke = isSel ? '#2563eb' : '#cbd5e1';
+    sBg.linewidth = isSel ? 2.5 : 1;
+
+    two.makeText(`${sub.text} (${sub.math})`, 170, sy + 1, {
+      family: 'Pretendard, sans-serif',
+      size: 11,
+      weight: isSel ? 800 : 600,
+      fill: isSel ? '#1d4ed8' : '#475569',
+      alignment: 'center'
+    });
+
+    if (sBg._renderer && sBg._renderer.elem) {
+      sBg._renderer.elem.style.cursor = 'pointer';
+      sBg._renderer.elem.onclick = () => setBuilderSubject4_2(sidx);
+    }
+  });
+
+  // 2열: 연산 선택 블록들 (X = 400)
+  two.makeText('2단계: 연산 블록 선택', 400, 68, { size: 12, weight: 800, fill: '#7c3aed', alignment: 'center' });
+  ops.forEach((op, oidx) => {
+    const isSel = (builder.opIdx === oidx);
+    const oy = 100 + oidx * 48;
+    const oBg = two.makeRoundedRectangle(400, oy, 190, 38, 8);
+    oBg.fill = isSel ? '#f5f3ff' : '#ffffff';
+    oBg.stroke = isSel ? '#7c3aed' : '#cbd5e1';
+    oBg.linewidth = isSel ? 2.5 : 1;
+
+    two.makeText(`${op.text} (${op.math})`, 400, oy + 1, {
+      family: 'Pretendard, sans-serif',
+      size: 11,
+      weight: isSel ? 800 : 600,
+      fill: isSel ? '#6d28d9' : '#475569',
+      alignment: 'center'
+    });
+
+    if (oBg._renderer && oBg._renderer.elem) {
+      oBg._renderer.elem.style.cursor = 'pointer';
+      oBg._renderer.elem.onclick = () => setBuilderOp4_2(oidx);
+    }
+  });
+
+  // 3열: 결과 카드 (X = 580)
+  two.makeText('3단계: 등호와 우변', 580, 68, { size: 12, weight: 800, fill: '#10b981', alignment: 'center' });
+  const rBg = two.makeRoundedRectangle(580, 148, 110, 134, 8);
+  rBg.fill = '#ecfdf5';
+  rBg.stroke = '#10b981';
+  rBg.linewidth = 2;
+  two.makeText('은 ~ 이다', 580, 115, { size: 11, weight: 700, fill: '#047857', alignment: 'center' });
+  two.makeText('=', 580, 145, { size: 24, weight: 900, fill: '#059669', alignment: 'center' });
+  two.makeText('19', 580, 185, { size: 22, weight: 900, fill: '#065f46', alignment: 'center' });
+
+  // 하단 완성된 문장 및 등식 출력 패널 (Y = 285)
+  const resCard = two.makeRoundedRectangle(340, 285, 590, 75, 10);
+  resCard.fill = '#fff7ed';
+  resCard.stroke = '#ea580c';
+  resCard.linewidth = 2;
+
+  const combinedSentence = `[조합 문장] ${selSub.text}${selOp.text} 19이다.`;
+  const combinedEquation = `${selSub.math} ${selOp.math} = 19`;
+
+  two.makeText(combinedSentence, 340, 270, {
+    family: 'Pretendard, sans-serif',
+    size: 13,
+    weight: 700,
+    fill: '#7c2d12',
+    alignment: 'center'
+  });
+
+  two.makeText(`⭐ 생성된 등식:  ${combinedEquation}`, 340, 302, {
+    family: 'Pretendard, sans-serif',
+    size: 18,
+    weight: 900,
+    fill: '#ea580c',
+    alignment: 'center'
+  });
+
+  two.makeText('👆 블록을 클릭하여 다양한 문장 조각을 조합하고 완성된 등식을 관찰해 보세요!', 340, 345, {
+    family: 'Pretendard, sans-serif',
+    size: 11.5,
+    weight: 600,
+    fill: '#d97706',
+    alignment: 'center'
+  });
+}
+
+    // --- End Substep 4-2 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -30690,6 +31606,9 @@ function drawMode3EquationClassifierLab(two) {
       } else if (code === '4-1') {
         renderToolbar4_1();
         renderSubstep4_1();
+      } else if (code === '4-2') {
+        renderToolbar4_2();
+        renderSubstep4_2();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
