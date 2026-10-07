@@ -1443,8 +1443,8 @@
       },
       '6-7': {
         code: '6-7', tab: 6,
-        substepLabel: '7. 스스로 확인하기 3: 해가 같을 때 상수 구하기 (p.97)',
-        missionText: '<b>[6-7] 7. 스스로 확인하기 3: 해가 같을 때 상수 구하기 (p.97)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '7. 스스로 확인하기 3: 해가 같을 때 상수 구하기 (p.98)',
+        missionText: '<b>[6-7] 7. 스스로 확인하기 3: 해가 같을 때 상수 구하기 (p.98)</b><br>• 첫 번째 방정식에서 $x$의 해를 구하고, 두 번째 방정식에 대입하여 상수 $a$에 관한 일차방정식을 풀어 $a$를 구합니다.<br>• 좌측 3대 캔버스 랩을 조작하며 소수 계수 솔버, 해 대입 변환, 저울 검산기를 탐구하세요.',
         drawer: 'drawStep6_7Canvas'
       },
       '6-8': {
@@ -38363,6 +38363,9 @@ function drawMode3PropertyRuleMatrixLab(two) {
       } else if (code === '6-6') {
         renderToolbar6_6();
         renderSubstep6_6Form();
+      } else if (code === '6-7') {
+        renderToolbar6_7();
+        renderSubstep6_7Form();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
@@ -51711,6 +51714,831 @@ function gradeStep6_6() {
       }, 'unit3');
     }
     alert(`🎉 100점 만점! 복잡한 일차방정식 4문항을 모두 완벽하게 풀었습니다!\n다음 단계(6-7)가 해금되었습니다.`);
+  } else {
+    if (card) card.style.display = 'none';
+    alert(`현재 점수: ${score}점 / 100점\n\n` + feedback.join('\n'));
+  }
+}
+
+
+// ========================================================
+// [6-7] 7. 스스로 확인하기 3: 두 일차방정식의 해가 같을 때 상수 a 구하기 (교과서 p.98 3번)
+// ========================================================
+
+function resetLab6_7() {
+  state.lab6_7 = {
+    activeTab: 'mode1',     // mode1: 1차 방정식 소수 계수 솔버 랩, mode2: 해 대입 & a 방정식 변환 랩, mode3: 상수 a 저울 검산기 랩
+    mode1Step: 4,           // 1: 원본식, 2: 10배 정수화, 3: 괄호 전개 및 이항, 4: 해 x=3 도출
+    mode2X: 3,              // 대입할 x 값 (기본 정답 x=3)
+    mode3A: 6.5,            // 테스트 a 값 (기본 정답 a=13/2=6.5)
+    isPassed: state.completedSubSteps ? state.completedSubSteps.includes('6-7') : false
+  };
+}
+
+function setTab6_7(tab) {
+  if (!state.lab6_7) resetLab6_7();
+  state.lab6_7.activeTab = tab;
+  renderToolbar6_7();
+  drawStep6_7Canvas();
+}
+
+function setMode1Step6_7(step) {
+  if (!state.lab6_7) resetLab6_7();
+  state.lab6_7.mode1Step = Math.max(1, Math.min(4, Number(step)));
+  drawStep6_7Canvas();
+}
+
+function setMode2X6_7(x) {
+  if (!state.lab6_7) resetLab6_7();
+  state.lab6_7.mode2X = Number(x);
+  drawStep6_7Canvas();
+}
+
+function setMode3A6_7(a) {
+  if (!state.lab6_7) resetLab6_7();
+  state.lab6_7.mode3A = Number(a);
+  drawStep6_7Canvas();
+}
+
+function renderToolbar6_7() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+  if (!state.lab6_7) resetLab6_7();
+  const cur = state.lab6_7.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:8px; width:100%; flex-wrap:wrap;">
+      <button class="icon-btn ${cur === 'mode1' ? 'active' : ''}" onclick="setTab6_7('mode1')">
+        🧩 1. 1차 방정식 소수 계수 솔버 랩
+      </button>
+      <button class="icon-btn ${cur === 'mode2' ? 'active' : ''}" onclick="setTab6_7('mode2')">
+        🔄 2. 해 대입 & a 방정식 변환 랩
+      </button>
+      <button class="icon-btn ${cur === 'mode3' ? 'active' : ''}" onclick="setTab6_7('mode3')">
+        ⚖️ 3. 상수 a 저울 검산기 랩
+      </button>
+      <button class="icon-btn" onclick="resetLab6_7(); renderToolbar6_7(); drawStep6_7Canvas();">
+        🔄 초기화
+      </button>
+      <button class="icon-btn" style="background:#fef08a; border-color:#eab308; color:#854d0e; font-weight:700;" onclick="passStep6_7()">
+        🔑 교사 즉시 패스
+      </button>
+    </div>
+  `;
+}
+
+function passStep6_7() {
+  if (!state.isTeacherLoggedIn) {
+    alert('교사 권한이 필요합니다.');
+    return;
+  }
+  const el1_1 = document.getElementById('ans6_7_1_1');
+  const el1_2 = document.getElementById('ans6_7_1_2');
+  const el2_1 = document.getElementById('ans6_7_2_1');
+  const el3_1 = document.getElementById('ans6_7_3_1');
+
+  if (el1_1) el1_1.value = '2x + 14 = 10x - 10';
+  if (el1_2) el1_2.value = '3';
+  if (el2_1) el2_1.value = '13 - 2a = 0';
+  if (el3_1) el3_1.value = '13/2';
+
+  gradeStep6_7();
+}
+
+function renderSubstep6_7Form() {
+  const fb = document.getElementById('form-box');
+  if (!fb) return;
+
+  fb.innerHTML = `
+    <!-- 1. 독립 미션 카드 -->
+    <div class="card mission-card" style="border-left: 4px solid var(--primary-color, #4f46e5); border-radius: 12px; margin-bottom: 16px; background:#fff; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+        <span style="font-size:1.2rem;">🎯</span>
+        <h3 id="mission-title" style="margin:0; font-size:1.05rem; font-weight:800; color:#4f46e5;">오늘의 수학 탐구 미션</h3>
+      </div>
+      <div id="mission-desc" style="font-size:0.9rem; line-height:1.6; color:#334155;">
+        <b>[3.6 일차방정식의 활용: 스스로 확인하기 3] (교과서 p.98 3번)</b><br>
+        • <b>문제:</b> 일차방정식 $0.2(x - 1) + 1.6 = x - 1$ 의 해가 일차방정식 $3x + 4 - 2a = 0$ 을 만족시키는 $x$의 값일 때, 수 $a$의 값을 구하시오.<br>
+        • <b>3단계 풀이 전략:</b><br>
+        &nbsp;&nbsp;① 첫 번째 방정식의 양변에 10을 곱하여 정리한 후 $x$의 값을 구합니다.<br>
+        &nbsp;&nbsp;② 구한 $x$의 값을 두 번째 방정식에 대입하여 상수 $a$에 관한 일차방정식을 세웁니다.<br>
+        &nbsp;&nbsp;③ $a$에 관한 일차방정식을 풀어 수 $a$의 값을 도출합니다.<br>
+        • <b>탐구 미션:</b> 좌측 3대 캔버스 랩을 조작하며 해의 연계 대입과 저울 균형을 확인하세요.
+      </div>
+    </div>
+
+    <!-- 2. 단계별 스캐폴딩 문제 카드 -->
+    <div class="card" style="border-radius:12px; background:#fff; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.05); margin-bottom:16px;">
+      <!-- 상단 듀얼 배지 바 -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid #e2e8f0;">
+        <span style="background:#e0e7ff; color:#4338ca; font-size:0.8rem; font-weight:700; padding:3px 8px; border-radius:6px;">
+          교과서 p.98 [3.6 일차방정식의 활용]
+        </span>
+        <span style="color:#64748b; font-size:0.82rem; font-weight:700;">
+          스스로 확인하기 3 (100점 만점)
+        </span>
+      </div>
+
+      <h4 style="margin:0 0 14px 0; font-size:0.96rem; font-weight:800; color:#1e293b; line-height:1.5;">
+        두 일차방정식의 해가 같을 때, 상수 $a$의 값을 구하시오.
+      </h4>
+
+      <!-- 1단계 독립 컨테이너 -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span style="font-size:0.88rem; font-weight:800; color:#1e293b;">
+            1단계. 첫 번째 일차방정식 $0.2(x - 1) + 1.6 = x - 1$ 풀기
+          </span>
+          <span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">
+            배점 30%
+          </span>
+        </div>
+        <div style="margin-bottom:8px; font-size:0.85rem; color:#334155; display:flex; align-items:center; gap:8px;">
+          <span>① 양변에 10을 곱하여 정리한 식:</span>
+          <input type="text" id="ans6_7_1_1" class="proof-input-text" placeholder="식 입력 (예: ax+b=cx+d 또는 ax=b)" style="width:190px;" />
+        </div>
+        <div style="font-size:0.85rem; color:#334155; display:flex; align-items:center; gap:8px;">
+          <span>② 첫 번째 일차방정식의 해: <b>$x =$</b></span>
+          <input type="text" id="ans6_7_1_2" class="proof-input-text" placeholder="해 입력 (예: 정수)" style="width:140px;" />
+        </div>
+      </div>
+
+      <!-- 2단계 독립 컨테이너 -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span style="font-size:0.88rem; font-weight:800; color:#1e293b;">
+            2단계. $3x + 4 - 2a = 0$ 에 해 $x$ 대입 및 $a$의 방정식 세우기
+          </span>
+          <span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">
+            배점 30%
+          </span>
+        </div>
+        <div style="font-size:0.85rem; color:#334155; display:flex; align-items:center; gap:8px;">
+          <span>① $x$값을 대입하여 정리한 $a$에 관한 일차방정식:</span>
+          <input type="text" id="ans6_7_2_1" class="proof-input-text" placeholder="식 입력 (예: c-2a=0 또는 2a=c)" style="width:180px;" />
+        </div>
+      </div>
+
+      <!-- 3단계 독립 컨테이너 -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span style="font-size:0.88rem; font-weight:800; color:#1e293b;">
+            3단계. 수 $a$의 값 구하기
+          </span>
+          <span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">
+            배점 40%
+          </span>
+        </div>
+        <div style="font-size:0.85rem; color:#334155; display:flex; align-items:center; gap:8px;">
+          <span>① [최종 답] 상수 $a$의 값: <b>$a =$</b></span>
+          <input type="text" id="ans6_7_3_1" class="proof-input-text" placeholder="값 입력 (기약분수 예: m/n 또는 소수)" style="width:170px;" />
+        </div>
+      </div>
+
+      <!-- 하단 전폭 채점 버튼 -->
+      <button class="btn btn-primary" onclick="gradeStep6_7()" style="background: linear-gradient(135deg, #4f46e5, #4338ca); width: 100%; padding: 12px; font-weight: 800; font-size: 0.95rem; border-radius: 8px; color: #fff; cursor: pointer; border: none; box-shadow: 0 2px 4px rgba(79, 70, 229, 0.25);">
+        [상수 a의 값 구하기] 확인 및 채점
+      </button>
+
+      <!-- 정답 및 피드백 카드 -->
+      <div id="verified-6-7" class="verified-answer-card" style="display:none; margin-top:16px; background:#f0fdf4; border:2px solid #059669; border-radius:12px; padding:14px;">
+        <div style="display:flex; align-items:center; gap:6px; font-weight:800; color:#065f46; font-size:1.02rem; margin-bottom:8px;">
+          <span>🎉</span> 100점 만점! 미지수 a의 값을 완벽하게 구했습니다!
+        </div>
+        <div style="font-size:0.86rem; color:#166534; line-height:1.6;">
+          • <b>교과서 p.98 / 정답 및 풀이 p.287 공식 해설:</b><br>
+          - <b>1단계:</b> 일차방정식 $0.2(x - 1) + 1.6 = x - 1$ 의 양변에 10을 곱하면<br>
+          &nbsp;&nbsp;$2(x - 1) + 16 = 10(x - 1) \\implies 2x - 2 + 16 = 10x - 10 \\implies 2x + 14 = 10x - 10$<br>
+          &nbsp;&nbsp;$2x - 10x = -10 - 14 \\implies -8x = -24 \\implies x = 3$ ⋯ ㉠<br>
+          - <b>2단계:</b> ㉠이 일차방정식 $3x + 4 - 2a = 0$ 의 해이므로 ㉠을 대입하면<br>
+          &nbsp;&nbsp;$3 \\times 3 + 4 - 2a = 0 \\implies 9 + 4 - 2a = 0 \\implies 13 - 2a = 0$<br>
+          - <b>3단계:</b> $-2a = -13 \\implies a = \\frac{13}{2}$ (또는 $6.5$)<br>
+          - 따라서 구하는 수 $a$의 값은 <b>$\\frac{13}{2}$</b> 입니다.
+        </div>
+      </div>
+    </div>
+  `;
+
+  if (window.renderMathInElement) {
+    try {
+      renderMathInElement(fb, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false }
+        ]
+      });
+    } catch (e) {
+      console.warn('KaTeX render error:', e);
+    }
+  }
+}
+
+function drawStep6_7Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const w = container.clientWidth || 560;
+  const h = 440; // Strict budget
+
+  const two = new Two({
+    width: w,
+    height: h,
+    type: Two.Types.svg
+  }).appendTo(container);
+
+  if (!state.lab6_7) resetLab6_7();
+  const cur = state.lab6_7.activeTab;
+
+  if (cur === 'mode1') {
+    drawMode1_6_7(two, w, h);
+  } else if (cur === 'mode2') {
+    drawMode2_6_7(two, w, h);
+  } else if (cur === 'mode3') {
+    drawMode3_6_7(two, w, h);
+  }
+}
+
+// ----------------------------------------------------
+// 1. 1차 방정식 소수 계수 솔버 랩 (drawMode1_6_7)
+// ----------------------------------------------------
+function drawMode1_6_7(two, w, h) {
+  const step = state.lab6_7.mode1Step; // 1 ~ 4
+
+  // 상단 보라색 인디케이터 배너
+  const topBg = two.makeRoundedRectangle(w / 2, 20, w - 24, 28, 6);
+  topBg.fill = '#4f46e5';
+  topBg.noStroke();
+  const topTxt = two.makeText('🧩 1. 1차 방정식 소수 계수 솔버 랩: 0.2(x - 1) + 1.6 = x - 1', w / 2, 20);
+  topTxt.fill = '#ffffff';
+  topTxt.weight = 800;
+  topTxt.size = 13;
+
+  // 스텝 제어 바 (Step 1 ~ Step 4)
+  const stepY = 56;
+  const stepBtns = [
+    { s: 1, label: 'Step 1. 원본 식' },
+    { s: 2, label: 'Step 2. 양변 × 10' },
+    { s: 3, label: 'Step 3. 분배 및 정리' },
+    { s: 4, label: 'Step 4. 해 x = 3 도출' }
+  ];
+  const sBtnW = 120;
+  const sStartX = w / 2 - (stepBtns.length * (sBtnW + 8)) / 2 + sBtnW / 2;
+  const sHitBoxes = [];
+
+  stepBtns.forEach((sb, idx) => {
+    const bx = sStartX + idx * (sBtnW + 8);
+    const isCur = (sb.s === step);
+    const bg = two.makeRoundedRectangle(bx, stepY, sBtnW, 26, 5);
+    bg.fill = isCur ? '#4f46e5' : '#e0e7ff';
+    bg.stroke = isCur ? '#3730a3' : '#c7d2fe';
+    bg.linewidth = isCur ? 2 : 1;
+
+    const txt = two.makeText(sb.label, bx, stepY);
+    txt.fill = isCur ? '#ffffff' : '#3730a3';
+    txt.weight = 700;
+    txt.size = 11;
+
+    sHitBoxes.push({ bg, step: sb.s });
+  });
+
+  // 메인 수식 및 도판 카드 (Y=215, H=250)
+  const mainCard = two.makeRoundedRectangle(w / 2, 218, w - 32, 240, 10);
+  mainCard.fill = '#ffffff';
+  mainCard.stroke = '#e2e8f0';
+  mainCard.linewidth = 1.5;
+
+  const stepDetails = {
+    1: {
+      title: '📌 Step 1: 소수 계수가 포함된 원래 일차방정식',
+      lhs: '0.2(x - 1) + 1.6',
+      rhs: 'x - 1',
+      eqFull: '0.2(x - 1) + 1.6 = x - 1',
+      desc1: '• 좌변에 계수 0.2와 상수 1.6이 소수 첫째 자리까지 있습니다.',
+      desc2: '• 양변에 10을 곱하여 모든 계수와 상수를 정수로 만들어 줍니다.'
+    },
+    2: {
+      title: '⚡ Step 2: 양변에 10을 곱하여 정수 계수로 변환',
+      lhs: '2(x - 1) + 16',
+      rhs: '10(x - 1)',
+      eqFull: '10 × {0.2(x - 1) + 1.6} = 10 × (x - 1)',
+      desc1: '• 좌변: 10 × 0.2(x - 1) + 10 × 1.6 = 2(x - 1) + 16',
+      desc2: '• 우변: 10 × (x - 1) = 10(x - 1)  (우변 전체에도 반드시 10을 곱함!)'
+    },
+    3: {
+      title: '🔄 Step 3: 분배법칙으로 괄호를 풀고 이항 정리',
+      lhs: '2x - 10x',
+      rhs: '-10 - 14',
+      eqFull: '2x + 14 = 10x - 10  ➔  -8x = -24',
+      desc1: '• 괄호 전개: 2x - 2 + 16 = 2x + 14, 우변: 10x - 10',
+      desc2: '• 이항: 2x - 10x = -10 - 14 ➔ -8x = -24 로 ax = b 꼴 완성!'
+    },
+    4: {
+      title: '🎉 Step 4: 양변을 x의 계수 -8로 나누어 해 도출!',
+      lhs: 'x',
+      rhs: '3',
+      eqFull: 'x = -24 / (-8) = 3',
+      desc1: '• 첫 번째 일차방정식의 해: x = 3',
+      desc2: '• 검산: 0.2(3 - 1) + 1.6 = 0.4 + 1.6 = 2.0, 우변: 3 - 1 = 2 (완벽 일치!)'
+    }
+  };
+
+  const curInfo = stepDetails[step];
+
+  // 랩 내부 소제목 (Y=116)
+  const stTxt = two.makeText(curInfo.title, w / 2, 116);
+  stTxt.fill = '#1e293b';
+  stTxt.weight = 800;
+  stTxt.size = 13.5;
+
+  // 좌변/우변 듀얼 박스 (Y=175)
+  const boxW = 160;
+  const boxH = 54;
+  const lBoxX = w / 2 - boxW / 2 - 24;
+  const rBoxX = w / 2 + boxW / 2 + 24;
+  const boxY = 175;
+
+  const lBox = two.makeRoundedRectangle(lBoxX, boxY, boxW, boxH, 8);
+  lBox.fill = (step === 4) ? '#ecfdf5' : '#eff6ff';
+  lBox.stroke = (step === 4) ? '#10b981' : '#3b82f6';
+  lBox.linewidth = 2;
+
+  const lTag = two.makeText('좌변 (LHS)', lBoxX, boxY - 18);
+  lTag.fill = (step === 4) ? '#047857' : '#1d4ed8';
+  lTag.weight = 700;
+  lTag.size = 10;
+
+  const lTxt = two.makeText(curInfo.lhs, lBoxX, boxY + 6);
+  lTxt.fill = '#0f172a';
+  lTxt.weight = 800;
+  lTxt.size = 16;
+
+  const eqSign = two.makeText('=', w / 2, boxY);
+  eqSign.fill = '#64748b';
+  eqSign.weight = 800;
+  eqSign.size = 28;
+
+  const rBox = two.makeRoundedRectangle(rBoxX, boxY, boxW, boxH, 8);
+  rBox.fill = (step === 4) ? '#ecfdf5' : '#eff6ff';
+  rBox.stroke = (step === 4) ? '#10b981' : '#3b82f6';
+  rBox.linewidth = 2;
+
+  const rTag = two.makeText('우변 (RHS)', rBoxX, boxY - 18);
+  rTag.fill = (step === 4) ? '#047857' : '#1d4ed8';
+  rTag.weight = 700;
+  rTag.size = 10;
+
+  const rTxt = two.makeText(curInfo.rhs, rBoxX, boxY + 6);
+  rTxt.fill = '#0f172a';
+  rTxt.weight = 800;
+  rTxt.size = 16;
+
+  // 전체 등식 스트립 (Y=230)
+  const fullStrip = two.makeRoundedRectangle(w / 2, 230, w - 60, 28, 6);
+  fullStrip.fill = '#f8fafc';
+  fullStrip.stroke = '#cbd5e1';
+  fullStrip.linewidth = 1;
+
+  const fullTxt = two.makeText(`전체 식: ${curInfo.eqFull}`, w / 2, 230);
+  fullTxt.fill = '#334155';
+  fullTxt.weight = 800;
+  fullTxt.size = 13;
+
+  // 설명 카드 (Y=282)
+  const descCard = two.makeRoundedRectangle(w / 2, 282, w - 60, 52, 6);
+  descCard.fill = (step === 4) ? '#f0fdf4' : '#fffbeb';
+  descCard.stroke = (step === 4) ? '#86efac' : '#fde68a';
+  descCard.linewidth = 1.5;
+
+  const dTxt1 = two.makeText(curInfo.desc1, w / 2, 271);
+  dTxt1.fill = (step === 4) ? '#166534' : '#92400e';
+  dTxt1.weight = 700;
+  dTxt1.size = 11.5;
+
+  const dTxt2 = two.makeText(curInfo.desc2, w / 2, 293);
+  dTxt2.fill = (step === 4) ? '#15803d' : '#b45309';
+  dTxt2.weight = 600;
+  dTxt2.size = 11;
+
+  // 하단 교과서 탐구 가이드 배너 (Y=396)
+  const gBg = two.makeRoundedRectangle(w / 2, 396, w - 32, 44, 8);
+  gBg.fill = '#f1f5f9';
+  gBg.stroke = '#cbd5e1';
+  gBg.linewidth = 1;
+
+  const gTxt1 = two.makeText('💡 [탐구 가이드 (교과서 p.98)]: 계수가 소수일 때는 양변에 10을 곱하여 정수로 고친 뒤,', w / 2, 387);
+  gTxt1.fill = '#334155';
+  gTxt1.weight = 700;
+  gTxt1.size = 11.5;
+
+  const gTxt2 = two.makeText('괄호를 풀고 이항하여 일차방정식의 해 x = 3 을 먼저 구합니다.', w / 2, 405);
+  gTxt2.fill = '#475569';
+  gTxt2.weight = 600;
+  gTxt2.size = 11;
+
+  two.update();
+
+  sHitBoxes.forEach(item => {
+    if (item.bg._renderer && item.bg._renderer.elem) {
+      item.bg._renderer.elem.style.cursor = 'pointer';
+      item.bg._renderer.elem.onclick = () => setMode1Step6_7(item.step);
+    }
+  });
+}
+
+// ----------------------------------------------------
+// 2. 해 대입 & a 방정식 변환 랩 (drawMode2_6_7)
+// ----------------------------------------------------
+function drawMode2_6_7(two, w, h) {
+  const xVal = state.lab6_7.mode2X; // default 3
+
+  // 상단 보라색 인디케이터 배너
+  const topBg = two.makeRoundedRectangle(w / 2, 20, w - 24, 28, 6);
+  topBg.fill = '#4f46e5';
+  topBg.noStroke();
+  const topTxt = two.makeText('🔄 2. 해 대입 & a 방정식 변환 랩: 3x + 4 - 2a = 0 에 x 대입', w / 2, 20);
+  topTxt.fill = '#ffffff';
+  topTxt.weight = 800;
+  topTxt.size = 13;
+
+  // x값 선택 버튼 바 (Y=56)
+  const xOptions = [
+    { x: 1, lbl: 'x = 1 대입' },
+    { x: 2, lbl: 'x = 2 대입' },
+    { x: 3, lbl: '🎯 x = 3 (구한 해!)' },
+    { x: 4, lbl: 'x = 4 대입' }
+  ];
+  const xBtnW = 120;
+  const xStartX = w / 2 - (xOptions.length * (xBtnW + 8)) / 2 + xBtnW / 2;
+  const xHitBoxes = [];
+
+  xOptions.forEach((xo, idx) => {
+    const bx = xStartX + idx * (xBtnW + 8);
+    const isCur = (xo.x === xVal);
+    const isTarget = (xo.x === 3);
+    const bg = two.makeRoundedRectangle(bx, 56, xBtnW, 26, 5);
+    bg.fill = isCur ? (isTarget ? '#15803d' : '#0284c7') : (isTarget ? '#fef08a' : '#f1f5f9');
+    bg.stroke = isCur ? (isTarget ? '#166534' : '#0369a1') : (isTarget ? '#eab308' : '#cbd5e1');
+    bg.linewidth = (isCur || isTarget) ? 2 : 1;
+
+    const txt = two.makeText(xo.lbl, bx, 56);
+    txt.fill = isCur ? '#ffffff' : (isTarget ? '#854d0e' : '#334155');
+    txt.weight = 800;
+    txt.size = 11;
+
+    xHitBoxes.push({ bg, x: xo.x });
+  });
+
+  // 메인 연산 카드 (Y=218, H=240)
+  const isCorrect = (xVal === 3);
+  const mainCard = two.makeRoundedRectangle(w / 2, 218, w - 32, 240, 10);
+  mainCard.fill = isCorrect ? '#f0fdf4' : '#ffffff';
+  mainCard.stroke = isCorrect ? '#86efac' : '#e2e8f0';
+  mainCard.linewidth = 2;
+
+  // 1. 원래 두 번째 방정식
+  const origTxt = two.makeText('두 번째 일차방정식: 3x + 4 - 2a = 0', w / 2, 116);
+  origTxt.fill = '#1e293b';
+  origTxt.weight = 800;
+  origTxt.size = 14;
+
+  // 2. 대입 애니메이션 카드 (Y=168)
+  const injectBox = two.makeRoundedRectangle(w / 2, 168, w - 60, 48, 8);
+  injectBox.fill = isCorrect ? '#dcfce7' : '#eff6ff';
+  injectBox.stroke = isCorrect ? '#22c55e' : '#60a5fa';
+  injectBox.linewidth = 2;
+
+  const injTxt1 = two.makeText(`x 자리에 ${xVal} 주입: 3 × (${xVal}) + 4 - 2a = 0`, w / 2, 158);
+  injTxt1.fill = isCorrect ? '#166534' : '#1e40af';
+  injTxt1.weight = 800;
+  injTxt1.size = 13.5;
+
+  const calcConst = 3 * xVal + 4;
+  const injTxt2 = two.makeText(`계산: ${3 * xVal} + 4 - 2a = 0  ➔  ${calcConst} - 2a = 0`, w / 2, 178);
+  injTxt2.fill = isCorrect ? '#15803d' : '#2563eb';
+  injTxt2.weight = 700;
+  injTxt2.size = 13;
+
+  // 3. a에 관한 일차방정식 변환 카드 (Y=230)
+  const aEqBox = two.makeRoundedRectangle(w / 2, 230, w - 60, 40, 6);
+  aEqBox.fill = '#faf5ff';
+  aEqBox.stroke = '#d8b4fe';
+  aEqBox.linewidth = 1.5;
+
+  const aEqTxt = two.makeText(`a에 관한 방정식: 2a = ${calcConst}  (또는 ${calcConst} - 2a = 0)`, w / 2, 230);
+  aEqTxt.fill = '#6b21a8';
+  aEqTxt.weight = 800;
+  aEqTxt.size = 13.5;
+
+  // 4. a의 해 도출 스트립 (Y=282)
+  const aSolBox = two.makeRoundedRectangle(w / 2, 282, w - 60, 44, 6);
+  aSolBox.fill = isCorrect ? '#ecfdf5' : '#fffbeb';
+  aSolBox.stroke = isCorrect ? '#059669' : '#fde68a';
+  aSolBox.linewidth = 1.5;
+
+  let solDesc = '';
+  if (isCorrect) {
+    solDesc = '🎉 [해 도출 성공]: 2a = 13 ➔ a = 13/2 = 6.5 (교과서 p.98 3번 정답!)';
+  } else {
+    solDesc = `⚠️ x = ${xVal} 대입 시 2a = ${calcConst} ➔ a = ${calcConst}/2 = ${calcConst / 2} (첫 번째 방정식의 해가 아닙니다)`;
+  }
+
+  const solTxt = two.makeText(solDesc, w / 2, 282);
+  solTxt.fill = isCorrect ? '#065f46' : '#92400e';
+  solTxt.weight = 800;
+  solTxt.size = 12.5;
+
+  // 하단 교과서 가이드 배너 (Y=396)
+  const gBg = two.makeRoundedRectangle(w / 2, 396, w - 32, 44, 8);
+  gBg.fill = '#f1f5f9';
+  gBg.stroke = '#cbd5e1';
+  gBg.linewidth = 1;
+
+  const gTxt1 = two.makeText('💡 [탐구 가이드 (교과서 p.98)]: 구한 해 x = 3 을 두 번째 방정식 3x + 4 - 2a = 0 에 대입하면,', w / 2, 387);
+  gTxt1.fill = '#334155';
+  gTxt1.weight = 700;
+  gTxt1.size = 11.5;
+
+  const gTxt2 = two.makeText('13 - 2a = 0 이 되어 상수 a에 관한 일차방정식으로 전환됩니다.', w / 2, 405);
+  gTxt2.fill = '#475569';
+  gTxt2.weight = 600;
+  gTxt2.size = 11;
+
+  two.update();
+
+  xHitBoxes.forEach(item => {
+    if (item.bg._renderer && item.bg._renderer.elem) {
+      item.bg._renderer.elem.style.cursor = 'pointer';
+      item.bg._renderer.elem.onclick = () => setMode2X6_7(item.x);
+    }
+  });
+}
+
+// ----------------------------------------------------
+// 3. 상수 a 저울 검산기 랩 (drawMode3_6_7)
+// ----------------------------------------------------
+function drawMode3_6_7(two, w, h) {
+  const aVal = state.lab6_7.mode3A; // default 6.5 (13/2)
+
+  // 상단 보라색 인디케이터 배너
+  const topBg = two.makeRoundedRectangle(w / 2, 20, w - 24, 28, 6);
+  topBg.fill = '#4f46e5';
+  topBg.noStroke();
+  const topTxt = two.makeText('⚖️ 3. 상수 a 저울 검산기 랩: 13 - 2a = 0  (2a vs 13)', w / 2, 20);
+  topTxt.fill = '#ffffff';
+  topTxt.weight = 800;
+  topTxt.size = 13;
+
+  // a값 조절 컨트롤러 바 (Y=56)
+  const aBtns = [
+    { label: '◀ a - 1', delta: -1 },
+    { label: '🎯 정답 a = 13/2 (6.5)', target: 6.5 },
+    { label: 'a + 1 ▶', delta: +1 },
+    { label: 'a = 6', target: 6 },
+    { label: 'a = 7', target: 7 }
+  ];
+  const aBtnW = 100;
+  const aStartX = w / 2 - (aBtns.length * (aBtnW + 8)) / 2 + aBtnW / 2;
+  const aHitBoxes = [];
+
+  aBtns.forEach((ab, idx) => {
+    const bx = aStartX + idx * (aBtnW + 8);
+    const isSpecial = (ab.target === 6.5);
+    const bg = two.makeRoundedRectangle(bx, 56, aBtnW, 26, 5);
+    bg.fill = isSpecial ? '#fef08a' : '#f1f5f9';
+    bg.stroke = isSpecial ? '#eab308' : '#cbd5e1';
+    bg.linewidth = isSpecial ? 2 : 1;
+
+    const txt = two.makeText(ab.label, bx, 56);
+    txt.fill = isSpecial ? '#854d0e' : '#334155';
+    txt.weight = 800;
+    txt.size = 10.5;
+
+    aHitBoxes.push({ bg, item: ab });
+  });
+
+  // 메인 연산 및 저울 도판 (Y=218, H=240)
+  const lhsCalc = 2 * aVal;
+  const rhsCalc = 13;
+  const isBalanced = Math.abs(lhsCalc - rhsCalc) < 0.001;
+
+  const mainCard = two.makeRoundedRectangle(w / 2, 218, w - 32, 240, 10);
+  mainCard.fill = isBalanced ? '#f0fdf4' : '#ffffff';
+  mainCard.stroke = isBalanced ? '#86efac' : '#e2e8f0';
+  mainCard.linewidth = 2;
+
+  // 수식 타이틀 (Y=112)
+  const titleTxt = two.makeText(`방정식: 2a = 13   |   현재 테스트 a = ${Number(aVal.toFixed(2))}`, w / 2, 112);
+  titleTxt.fill = '#1e293b';
+  titleTxt.weight = 800;
+  titleTxt.size = 13.5;
+
+  // 저울 물리 엔진
+  const pivotX = w / 2;
+  const pivotY = 190;
+
+  // 받침대 삼각대
+  const tripod = two.makePolygon(pivotX, pivotY + 28, 22, 3);
+  tripod.fill = '#64748b';
+  tripod.noStroke();
+
+  // 기울기 각도 (라디안)
+  let tiltAngle = 0;
+  if (!isBalanced) {
+    const diff = lhsCalc - rhsCalc;
+    tiltAngle = Math.max(-0.16, Math.min(0.16, diff * 0.04));
+  }
+
+  // 가로 빔
+  const beamLength = w - 160;
+  const halfBeam = beamLength / 2;
+  const lx = pivotX - halfBeam * Math.cos(tiltAngle);
+  const ly = pivotY - halfBeam * Math.sin(tiltAngle);
+  const rx = pivotX + halfBeam * Math.cos(tiltAngle);
+  const ry = pivotY + halfBeam * Math.sin(tiltAngle);
+
+  const beam = two.makeLine(lx, ly, rx, ry);
+  beam.stroke = isBalanced ? '#059669' : '#475569';
+  beam.linewidth = 6;
+
+  // 좌측 접시 (2a)
+  const lPlateLine = two.makeLine(lx, ly, lx, ly + 36);
+  lPlateLine.stroke = '#94a3b8';
+  lPlateLine.linewidth = 2;
+
+  const lPlate = two.makeRoundedRectangle(lx, ly + 46, 120, 44, 6);
+  lPlate.fill = isBalanced ? '#dcfce7' : '#fee2e2';
+  lPlate.stroke = isBalanced ? '#10b981' : '#f87171';
+  lPlate.linewidth = 2;
+
+  const lTag = two.makeText('좌변: 2a', lx, ly + 36);
+  lTag.fill = '#475569';
+  lTag.weight = 700;
+  lTag.size = 10;
+
+  const lValTxt = two.makeText(`2 × ${Number(aVal.toFixed(2))} = ${Number(lhsCalc.toFixed(2))}`, lx, ly + 52);
+  lValTxt.fill = isBalanced ? '#065f46' : '#991b1b';
+  lValTxt.weight = 800;
+  lValTxt.size = 12;
+
+  // 우측 접시 (13)
+  const rPlateLine = two.makeLine(rx, ry, rx, ry + 36);
+  rPlateLine.stroke = '#94a3b8';
+  rPlateLine.linewidth = 2;
+
+  const rPlate = two.makeRoundedRectangle(rx, ry + 46, 120, 44, 6);
+  rPlate.fill = isBalanced ? '#dcfce7' : '#fee2e2';
+  rPlate.stroke = isBalanced ? '#10b981' : '#f87171';
+  rPlate.linewidth = 2;
+
+  const rTag = two.makeText('우변 상수', rx, ry + 36);
+  rTag.fill = '#475569';
+  rTag.weight = 700;
+  rTag.size = 10;
+
+  const rValTxt = two.makeText('13', rx, ry + 52);
+  rValTxt.fill = isBalanced ? '#065f46' : '#991b1b';
+  rValTxt.weight = 800;
+  rValTxt.size = 15;
+
+  // 판정 상태 박스 (Y=300)
+  const stBox = two.makeRoundedRectangle(w / 2, 300, w - 60, 36, 6);
+  stBox.fill = isBalanced ? '#ecfdf5' : '#fef2f2';
+  stBox.stroke = isBalanced ? '#059669' : '#f87171';
+  stBox.linewidth = 1.5;
+
+  let judgeMsg = '';
+  if (isBalanced) {
+    judgeMsg = `🎉 [완벽 일치] a = 13/2 (6.5) 일 때 2a = 13 이 완벽히 수평을 이루어 참인 등식이 됩니다!`;
+  } else {
+    judgeMsg = `⚠️ [불일치] 2a(${Number(lhsCalc.toFixed(2))}) ≠ 13 이므로 a = ${Number(aVal.toFixed(2))} 는 해가 아닙니다.`;
+  }
+
+  const judgeTxt = two.makeText(judgeMsg, w / 2, 300);
+  judgeTxt.fill = isBalanced ? '#065f46' : '#991b1b';
+  judgeTxt.weight = 800;
+  judgeTxt.size = 12;
+
+  // 하단 교과서 가이드 배너 (Y=396)
+  const gBg = two.makeRoundedRectangle(w / 2, 396, w - 32, 44, 8);
+  gBg.fill = '#f1f5f9';
+  gBg.stroke = '#cbd5e1';
+  gBg.linewidth = 1;
+
+  const gTxt1 = two.makeText('💡 [탐구 가이드 (교과서 p.98)]: 구한 상수 a = 13/2 를 대입했을 때,', w / 2, 387);
+  gTxt1.fill = '#334155';
+  gTxt1.weight = 700;
+  gTxt1.size = 11.5;
+
+  const gTxt2 = two.makeText('3(3) + 4 - 2(13/2) = 13 - 13 = 0 이 되어 등식이 성립합니다.', w / 2, 405);
+  gTxt2.fill = '#475569';
+  gTxt2.weight = 600;
+  gTxt2.size = 11;
+
+  two.update();
+
+  aHitBoxes.forEach(hb => {
+    if (hb.bg._renderer && hb.bg._renderer.elem) {
+      hb.bg._renderer.elem.style.cursor = 'pointer';
+      hb.bg._renderer.elem.onclick = () => {
+        if (hb.item.target !== undefined) {
+          setMode3A6_7(hb.item.target);
+        } else if (hb.item.delta !== undefined) {
+          setMode3A6_7(state.lab6_7.mode3A + hb.item.delta);
+        }
+      };
+    }
+  });
+}
+
+// ----------------------------------------------------
+// 채점 로직 (gradeStep6_7)
+// ----------------------------------------------------
+function gradeStep6_7() {
+  const el1_1 = document.getElementById('ans6_7_1_1');
+  const el1_2 = document.getElementById('ans6_7_1_2');
+  const el2_1 = document.getElementById('ans6_7_2_1');
+  const el3_1 = document.getElementById('ans6_7_3_1');
+
+  const clean = (val) => (val || '').trim().replace(/\s+/g, '').toLowerCase();
+
+  const v1_1 = clean(el1_1 ? el1_1.value : '');
+  const v1_2 = clean(el1_2 ? el1_2.value : '').replace('x=', '');
+  const v2_1 = clean(el2_1 ? el2_1.value : '');
+  const v3_1 = clean(el3_1 ? el3_1.value : '').replace('a=', '');
+
+  let score = 0;
+  const feedback = [];
+
+  // 1단계: 첫 번째 일차방정식 풀기 (배점 30%)
+  // ① 2x+14=10x-10 (또는 -8x=-24, 2(x-1)+16=10(x-1), 2x-2+16=10x-10, 8x=24)
+  // ② x = 3
+  const c1_1 = (v1_1 === '2x+14=10x-10' || v1_1 === '-8x=-24' || v1_1 === '8x=24' || v1_1 === '2(x-1)+16=10(x-1)' || v1_1 === '2x-10x=-10-14' || v1_1 === '10x-2x=14+10' || v1_1 === '2x-2+16=10x-10');
+  const c1_2 = (v1_2 === '3');
+
+  if (c1_1 && c1_2) {
+    score += 30;
+    feedback.push('1단계: 정답 (30점)');
+  } else if (c1_2) {
+    score += 15;
+    feedback.push('1단계: 해(x=3)는 맞았으나 10배 정리한 식(2x+14=10x-10 또는 -8x=-24)을 확인하세요. (15점)');
+  } else {
+    feedback.push('1단계: 다시 확인하세요 (해: 3)');
+  }
+
+  // 2단계: 두 번째 일차방정식에 대입하여 세운 a의 식 (배점 30%)
+  // 13-2a=0 (또는 2a=13, -2a=-13, 9+4-2a=0, 2a-13=0)
+  const c2_1 = (v2_1 === '13-2a=0' || v2_1 === '2a=13' || v2_1 === '-2a=-13' || v2_1 === '9+4-2a=0' || v2_1 === '2a-13=0' || v2_1 === '13=2a' || v2_1 === '3*3+4-2a=0');
+  if (c2_1) {
+    score += 30;
+    feedback.push('2단계: 정답 (30점)');
+  } else {
+    feedback.push('2단계: 다시 확인하세요 (식: 13-2a=0 또는 2a=13)');
+  }
+
+  // 3단계: 상수 a의 값 구하기 (배점 40%)
+  // a = 13/2 (또는 6.5, 6과1/2)
+  const c3_1 = (v3_1 === '13/2' || v3_1 === '6.5' || v3_1 === '6.50');
+  if (c3_1) {
+    score += 40;
+    feedback.push('3단계: 정답 (40점)');
+  } else {
+    feedback.push('3단계: 다시 확인하세요 (a: 13/2 또는 6.5)');
+  }
+
+  const card = document.getElementById('verified-6-7');
+  if (score === 100) {
+    if (card) {
+      card.style.display = 'block';
+      if (window.renderMathInElement) {
+        try {
+          renderMathInElement(card, {
+            delimiters: [
+              { left: '$$', right: '$$', display: true },
+              { left: '$', right: '$', display: false }
+            ]
+          });
+        } catch (e) {
+          console.warn('KaTeX render error:', e);
+        }
+      }
+    }
+    if (!state.completedSubSteps.includes('6-7')) {
+      state.completedSubSteps.push('6-7');
+    }
+    if (!state.unlockedSubSteps.includes('6-8')) {
+      state.unlockedSubSteps.push('6-8');
+    }
+    if (typeof updateSubstepPills === 'function') {
+      updateSubstepPills();
+    }
+    if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+      LMSIntegration.saveStudentProgress('6-7', {
+        score: 100,
+        completedAt: new Date().toISOString()
+      }, 'unit3');
+    }
+    alert(`🎉 100점 만점! 미지수 a의 값을 완벽하게 구했습니다!\n다음 단계(6-8)가 해금되었습니다.`);
   } else {
     if (card) card.style.display = 'none';
     alert(`현재 점수: ${score}점 / 100점\n\n` + feedback.join('\n'));
