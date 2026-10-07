@@ -1131,8 +1131,8 @@
       },
       '4-8': {
         code: '4-8', tab: 4,
-        substepLabel: '8. 스스로 확인하기 1: 해 판별 (p.90)',
-        missionText: '<b>[4-8] 8. 스스로 확인하기 1: 해 판별 (p.90)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '8. 스스로 확인하기 1: 방정식의 해 판별 (p.90)',
+        missionText: '<b>[스스로 확인하기 1] 주어진 수가 방정식의 해인지 판별하기 (교과서 p.90 1번)</b><br>• <b>문제:</b> 다음 보기 중에서 $[~]$ 안의 수가 주어진 방정식의 해인 것을 모두 고르시오.<br>• <b>보기:</b> ㄱ. $3x+1=-x+1~[0]$, ㄴ. $x=-12+4x~[-4]$, ㄷ. $5(x-2)=x~[2]$, ㄹ. $-\\frac{3}{2}x+3=12~[-6]$<br>좌측 캔버스에서 해 판별 타겟 랩, 양팔 저울 대입 시뮬레이터, 참·거짓 진리표 탐색기를 조작해 보세요.',
         drawer: 'drawStep4_8Canvas'
       },
       '4-9': {
@@ -1490,6 +1490,13 @@
       
       
       
+      
+      // Substep 4-8 State (Equations and Roots Verification)
+      lab4_8: {
+        activeTab: 'mode1',
+        selectedItem: 0,
+        substituted: { 0: false, 1: false, 2: false, 3: false }
+      },
       // Substep 4-7 State (Fill-in-the-blank Properties Deduction)
       lab4_7: {
         activeTab: 'mode1',
@@ -35049,6 +35056,999 @@ function drawMode3BalanceBlankVerifierLab(two) {
 
     // --- End Substep 4-7 Implementation ---
 
+    // --- Substep 4-8 Implementation ---
+// code_4_8.js: Substep [4-8] 3.4 8. 스스로 확인하기 1: 방정식의 해 판별 (교과서 p.90 1번)
+
+const ITEMS_4_8 = [
+  {
+    key: 'ga',
+    label: 'ㄱ',
+    equation: '3x + 1 = -x + 1',
+    candidate: 0,
+    lhsExpr: '3(0) + 1 = 0 + 1',
+    lhsVal: 1,
+    rhsExpr: '-(0) + 1 = 0 + 1',
+    rhsVal: 1,
+    isSolution: true,
+    reason: '좌변(1) = 우변(1) 이므로 참! ➜ 해이다.',
+    trueRoot: '0',
+    trueRootSteps: '3x + x = 1 - 1 ➜ 4x = 0 ➜ x = 0',
+    balanceTilt: 0 // rad (평형)
+  },
+  {
+    key: 'na',
+    label: 'ㄴ',
+    equation: 'x = -12 + 4x',
+    candidate: -4,
+    lhsExpr: '-4',
+    lhsVal: -4,
+    rhsExpr: '-12 + 4(-4) = -12 - 16',
+    rhsVal: -28,
+    isSolution: false,
+    reason: '좌변(-4) ≠ 우변(-28) 이므로 거짓! ➜ 해가 아니다.',
+    trueRoot: '4',
+    trueRootSteps: 'x - 4x = -12 ➜ -3x = -12 ➜ x = 4',
+    balanceTilt: -0.16 // 좌변(-4)이 우변(-28)보다 24 큼 ➜ 좌측 하강
+  },
+  {
+    key: 'da',
+    label: 'ㄷ',
+    equation: '5(x - 2) = x',
+    candidate: 2,
+    lhsExpr: '5(2 - 2) = 5(0)',
+    lhsVal: 0,
+    rhsExpr: '2',
+    rhsVal: 2,
+    isSolution: false,
+    reason: '좌변(0) ≠ 우변(2) 이므로 거짓! ➜ 해가 아니다.',
+    trueRoot: '5/2',
+    trueRootSteps: '5x - 10 = x ➜ 4x = 10 ➜ x = 5/2 (2.5)',
+    balanceTilt: 0.14 // 우변(2)이 좌변(0)보다 2 큼 ➜ 우측 하강
+  },
+  {
+    key: 'ra',
+    label: 'ㄹ',
+    equation: '-(3/2)x + 3 = 12',
+    candidate: -6,
+    lhsExpr: '-(3/2)(-6) + 3 = 9 + 3',
+    lhsVal: 12,
+    rhsExpr: '12',
+    rhsVal: 12,
+    isSolution: true,
+    reason: '좌변(12) = 우변(12) 이므로 참! ➜ 해이다.',
+    trueRoot: '-6',
+    trueRootSteps: '-(3/2)x = 9 ➜ x = 9 × (-2/3) ➜ x = -6',
+    balanceTilt: 0 // rad (평형)
+  }
+];
+
+function renderToolbar4_8() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab4_8) {
+    state.lab4_8 = {
+      activeTab: 'mode1', // 'mode1' (해 판별 타겟 랩) | 'mode2' (양팔 저울 시뮬레이터) | 'mode3' (참·거짓 진리표)
+      selectedItem: 0,    // 0: ㄱ, 1: ㄴ, 2: ㄷ, 3: ㄹ
+      substituted: { 0: false, 1: false, 2: false, 3: false }
+    };
+  }
+
+  const curTab = state.lab4_8.activeTab;
+  const selIdx = state.lab4_8.selectedItem;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab4_8Tab('mode1')">
+        🎯 1. 해 판별 타겟 랩
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab4_8Tab('mode2')">
+        ⚖️ 2. 양팔 저울 시뮬레이터
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab4_8Tab('mode3')">
+        📊 3. 참·거짓 진리표
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn ${selIdx === 0 ? 'active' : ''}" onclick="setItem4_8(0)">보기 ㄱ</button>
+      <button class="icon-btn ${selIdx === 1 ? 'active' : ''}" onclick="setItem4_8(1)">보기 ㄴ</button>
+      <button class="icon-btn ${selIdx === 2 ? 'active' : ''}" onclick="setItem4_8(2)">보기 ㄷ</button>
+      <button class="icon-btn ${selIdx === 3 ? 'active' : ''}" onclick="setItem4_8(3)">보기 ㄹ</button>
+      <button class="icon-btn" onclick="toggleSubstituted4_8(state.lab4_8.selectedItem)">
+        ${state.lab4_8.substituted[selIdx] ? '↩️ 대입 취소' : '📥 x 대입하기'}
+      </button>
+      <button class="icon-btn" onclick="resetLab4_8()" title="초기화">🔄 초기화</button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('4-8')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab4_8Tab(tabKey) {
+  if (!state.lab4_8) resetLab4_8();
+  state.lab4_8.activeTab = tabKey;
+  renderToolbar4_8();
+  drawStep4_8Canvas();
+}
+
+function resetLab4_8() {
+  state.lab4_8 = {
+    activeTab: 'mode1',
+    selectedItem: 0,
+    substituted: { 0: false, 1: false, 2: false, 3: false }
+  };
+  renderToolbar4_8();
+  drawStep4_8Canvas();
+}
+
+function setItem4_8(idx) {
+  if (!state.lab4_8) resetLab4_8();
+  state.lab4_8.selectedItem = idx;
+  renderToolbar4_8();
+  drawStep4_8Canvas();
+}
+
+function toggleSubstituted4_8(idx) {
+  if (!state.lab4_8) resetLab4_8();
+  state.lab4_8.substituted[idx] = !state.lab4_8.substituted[idx];
+  renderToolbar4_8();
+  drawStep4_8Canvas();
+}
+
+function renderSubstep4_8Form() {
+  const panel = document.getElementById('step-panel');
+  if (!panel) return;
+
+  panel.innerHTML = `
+    <div style="background:#f1f5f9; padding:12px 14px; border-radius:8px; border-left:4px solid #4f46e5; margin-bottom:12px;">
+      <div style="font-weight:800; font-size:0.95rem; color:#1e1b4b; display:flex; align-items:center; gap:6px;">
+        <span>📝</span> [스스로 확인하기 1] 주어진 수가 방정식의 해인지 판별하기 (교과서 p.90 1번)
+      </div>
+      <div style="font-size:0.83rem; color:#475569; margin-top:4px; line-height:1.5;">
+        다음 보기 중에서 $[~]$ 안의 수가 주어진 방정식의 해인 것을 <b>모두</b> 고르시오.
+      </div>
+    </div>
+
+    <!-- 보기 원문 카드 -->
+    <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 14px; margin-bottom:12px;">
+      <div style="font-weight:700; color:#334155; font-size:0.86rem; margin-bottom:8px; border-bottom:1px solid #e2e8f0; padding-bottom:4px;">
+        • 보기 •
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:0.86rem; color:#1e293b;">
+        <div style="background:#f8fafc; padding:6px 10px; border-radius:6px; border:1px solid #e2e8f0;">
+          <b>ㄱ.</b> $3x + 1 = -x + 1 \\quad [~0~]$
+        </div>
+        <div style="background:#f8fafc; padding:6px 10px; border-radius:6px; border:1px solid #e2e8f0;">
+          <b>ㄴ.</b> $x = -12 + 4x \\quad [~-4~]$
+        </div>
+        <div style="background:#f8fafc; padding:6px 10px; border-radius:6px; border:1px solid #e2e8f0;">
+          <b>ㄷ.</b> $5(x - 2) = x \\quad [~2~]$
+        </div>
+        <div style="background:#f8fafc; padding:6px 10px; border-radius:6px; border:1px solid #e2e8f0;">
+          <b>ㄹ.</b> $-\\frac{3}{2}x + 3 = 12 \\quad [~-6~]$
+        </div>
+      </div>
+    </div>
+
+    <!-- 문제 풀이 입력 카드 -->
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <!-- 문항 1: 해인 보기 모두 고르기 -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:12px 14px;">
+        <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:8px; color:#4f46e5;">
+          【질문 1】 $[~]$ 안의 수가 방정식의 해인 것을 모두 고르시오.
+        </div>
+        <div style="display:flex; align-items:center; gap:14px; margin-bottom:10px; flex-wrap:wrap;">
+          <label style="display:flex; align-items:center; gap:4px; font-size:0.88rem; font-weight:700; cursor:pointer;">
+            <input type="checkbox" id="chk-4-8-ga" value="ㄱ" style="accent-color:#4f46e5; width:16px; height:16px;">
+            <span>ㄱ</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:4px; font-size:0.88rem; font-weight:700; cursor:pointer;">
+            <input type="checkbox" id="chk-4-8-na" value="ㄴ" style="accent-color:#4f46e5; width:16px; height:16px;">
+            <span>ㄴ</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:4px; font-size:0.88rem; font-weight:700; cursor:pointer;">
+            <input type="checkbox" id="chk-4-8-da" value="ㄷ" style="accent-color:#4f46e5; width:16px; height:16px;">
+            <span>ㄷ</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:4px; font-size:0.88rem; font-weight:700; cursor:pointer;">
+            <input type="checkbox" id="chk-4-8-ra" value="ㄹ" style="accent-color:#4f46e5; width:16px; height:16px;">
+            <span>ㄹ</span>
+          </label>
+        </div>
+        <div>
+          <span style="font-size:0.82rem; font-weight:700; color:#475569;">텍스트 직접 입력:</span>
+          <input type="text" id="ans-4-8-main" class="proof-input-text" placeholder="해인 보기 기호 입력 (예: ㄱ, ㄷ)" style="width:100%; margin-top:2px;" autocomplete="off" />
+        </div>
+      </div>
+
+      <!-- 문항 2: 각 보기 좌변·우변 계산 검증 -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:12px 14px;">
+        <div style="font-weight:800; color:#1e293b; font-size:0.88rem; margin-bottom:8px; color:#059669;">
+          【질문 2】 각 방정식에 수를 대입했을 때의 좌변과 우변의 값을 써넣으시오.
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <!-- ㄱ -->
+          <div style="display:grid; grid-template-columns:80px 1fr 1fr; gap:8px; align-items:center; background:#f8fafc; padding:6px 10px; border-radius:6px;">
+            <span style="font-weight:700; font-size:0.84rem; color:#334155;">ㄱ ($x=0$):</span>
+            <input type="text" id="ans-4-8-lhs-0" class="proof-input-text" placeholder="좌변 값 입력" style="width:100%;" autocomplete="off" />
+            <input type="text" id="ans-4-8-rhs-0" class="proof-input-text" placeholder="우변 값 입력" style="width:100%;" autocomplete="off" />
+          </div>
+          <!-- ㄴ -->
+          <div style="display:grid; grid-template-columns:80px 1fr 1fr; gap:8px; align-items:center; background:#f8fafc; padding:6px 10px; border-radius:6px;">
+            <span style="font-weight:700; font-size:0.84rem; color:#334155;">ㄴ ($x=-4$):</span>
+            <input type="text" id="ans-4-8-lhs-1" class="proof-input-text" placeholder="좌변 값 입력" style="width:100%;" autocomplete="off" />
+            <input type="text" id="ans-4-8-rhs-1" class="proof-input-text" placeholder="우변 값 입력" style="width:100%;" autocomplete="off" />
+          </div>
+          <!-- ㄷ -->
+          <div style="display:grid; grid-template-columns:80px 1fr 1fr; gap:8px; align-items:center; background:#f8fafc; padding:6px 10px; border-radius:6px;">
+            <span style="font-weight:700; font-size:0.84rem; color:#334155;">ㄷ ($x=2$):</span>
+            <input type="text" id="ans-4-8-lhs-2" class="proof-input-text" placeholder="좌변 값 입력" style="width:100%;" autocomplete="off" />
+            <input type="text" id="ans-4-8-rhs-2" class="proof-input-text" placeholder="우변 값 입력" style="width:100%;" autocomplete="off" />
+          </div>
+          <!-- ㄹ -->
+          <div style="display:grid; grid-template-columns:80px 1fr 1fr; gap:8px; align-items:center; background:#f8fafc; padding:6px 10px; border-radius:6px;">
+            <span style="font-weight:700; font-size:0.84rem; color:#334155;">ㄹ ($x=-6$):</span>
+            <input type="text" id="ans-4-8-lhs-3" class="proof-input-text" placeholder="좌변 값 입력" style="width:100%;" autocomplete="off" />
+            <input type="text" id="ans-4-8-rhs-3" class="proof-input-text" placeholder="우변 값 입력" style="width:100%;" autocomplete="off" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:14px; display:flex; gap:8px;">
+      <button class="primary-btn" onclick="gradeStep4_8()" style="flex:1; height:38px; font-weight:700;">
+        정답 확인 및 채점
+      </button>
+      <button class="icon-btn" onclick="resetForm4_8()" style="height:38px; padding:0 12px;">
+        입력 초기화
+      </button>
+    </div>
+
+    <div id="grade-feedback-4-8" style="margin-top:12px;"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(panel, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ]
+    });
+  }
+}
+
+function resetForm4_8() {
+  ['ga', 'na', 'da', 'ra'].forEach(k => {
+    const chk = document.getElementById(`chk-4-8-${k}`);
+    if (chk) chk.checked = false;
+  });
+  const mainInput = document.getElementById('ans-4-8-main');
+  if (mainInput) mainInput.value = '';
+
+  for (let i = 0; i < 4; i++) {
+    const l = document.getElementById(`ans-4-8-lhs-${i}`);
+    const r = document.getElementById(`ans-4-8-rhs-${i}`);
+    if (l) l.value = '';
+    if (r) r.value = '';
+  }
+
+  const fb = document.getElementById('grade-feedback-4-8');
+  if (fb) fb.innerHTML = '';
+}
+
+function cleanVal4_8(str) {
+  if (!str) return '';
+  return str.replace(/\s+/g, '').replace(/,/g, '');
+}
+
+function gradeStep4_8() {
+  // 1. 체크박스 또는 텍스트 입력값 수집
+  const chkGa = document.getElementById('chk-4-8-ga')?.checked || false;
+  const chkNa = document.getElementById('chk-4-8-na')?.checked || false;
+  const chkDa = document.getElementById('chk-4-8-da')?.checked || false;
+  const chkRa = document.getElementById('chk-4-8-ra')?.checked || false;
+
+  const rawMain = cleanVal4_8(document.getElementById('ans-4-8-main')?.value || '');
+
+  // 메인 정답: 'ㄱ, ㄹ' (체크박스 기준: ㄱ=true, ㄹ=true, ㄴ=false, ㄷ=false)
+  const isCheckboxCorrect = (chkGa && chkRa && !chkNa && !chkDa);
+  const isTextCorrect = (rawMain === 'ㄱㄹ' || rawMain === 'ㄹㄱ' || rawMain === 'ㄱ' && rawMain.includes('ㄹ'));
+  const isMainCorrect = isCheckboxCorrect || isTextCorrect;
+
+  // 2. 좌변/우변 계산 보조 확인값
+  const l0 = cleanVal4_8(document.getElementById('ans-4-8-lhs-0')?.value || '');
+  const r0 = cleanVal4_8(document.getElementById('ans-4-8-rhs-0')?.value || '');
+  const l1 = cleanVal4_8(document.getElementById('ans-4-8-lhs-1')?.value || '');
+  const r1 = cleanVal4_8(document.getElementById('ans-4-8-rhs-1')?.value || '');
+  const l2 = cleanVal4_8(document.getElementById('ans-4-8-lhs-2')?.value || '');
+  const r2 = cleanVal4_8(document.getElementById('ans-4-8-rhs-2')?.value || '');
+  const l3 = cleanVal4_8(document.getElementById('ans-4-8-lhs-3')?.value || '');
+  const r3 = cleanVal4_8(document.getElementById('ans-4-8-rhs-3')?.value || '');
+
+  const isQ0Calc = (l0 === '1' && r0 === '1');
+  const isQ1Calc = (l1 === '-4' && r1 === '-28');
+  const isQ2Calc = (l2 === '0' && r2 === '2');
+  const isQ3Calc = (l3 === '12' && r3 === '12');
+
+  const calcAllFilled = (l0 !== '' && r0 !== '' && l1 !== '' && r1 !== '' && l2 !== '' && r2 !== '' && l3 !== '' && r3 !== '');
+  const calcAllCorrect = (isQ0Calc && isQ1Calc && isQ2Calc && isQ3Calc);
+
+  const fb = document.getElementById('grade-feedback-4-8');
+  if (!fb) return;
+
+  // 점수 계산: 메인 정답 60점, 보조 계산 4문항 각 10점 (총 40점)
+  // 단, 메인 정답이 맞고 보조 계산을 아직 안 쓴 경우에도 메인 통과 인정(100점) 가능하도록 처리
+  let score = 0;
+  if (isMainCorrect) score += 60;
+  if (isQ0Calc) score += 10;
+  if (isQ1Calc) score += 10;
+  if (isQ2Calc) score += 10;
+  if (isQ3Calc) score += 10;
+
+  // 메인 정답만 맞추고 계산창이 비어있으면 100점 부여하여 진도 방해 방지
+  if (isMainCorrect && !calcAllFilled) {
+    score = 100;
+  }
+
+  if (score >= 90 || (isMainCorrect && score >= 60)) {
+    score = 100;
+    fb.innerHTML = `
+      <div style="background:#ecfdf5; border:1px solid #10b981; border-radius:10px; padding:14px; color:#065f46;">
+        <div style="font-size:1.02rem; font-weight:800; display:flex; align-items:center; gap:6px;">
+          🎉 100점 만점! 방정식의 해 판별을 완벽히 해결했습니다!
+        </div>
+        <div style="margin-top:6px; font-size:0.87rem; line-height:1.6;">
+          • <b>정답: ㄱ, ㄹ</b><br>
+          • <b>상세 해설 (교과서 p.90 / 정답 및 풀이 p.286):</b><br>
+          - <b>ㄱ ($x=0$):</b> 좌변 $3(0)+1=1$, 우변 $-(0)+1=1$ ➜ <b>좌변=우변 (참! 해 ○)</b><br>
+          - <b>ㄴ ($x=-4$):</b> 좌변 $-4$, 우변 $-12+4(-4)=-28$ ➜ <b>좌변≠우변 (거짓! 해 ×, 실제 해는 $x=4$)</b><br>
+          - <b>ㄷ ($x=2$):</b> 좌변 $5(2-2)=0$, 우변 $2$ ➜ <b>좌변≠우변 (거짓! 해 ×, 실제 해는 $x=\\frac{5}{2}$)</b><br>
+          - <b>ㄹ ($x=-6$):</b> 좌변 $-\\frac{3}{2}(-6)+3=9+3=12$, 우변 $12$ ➜ <b>좌변=우변 (참! 해 ○)</b><br>
+          다음 서브스텝 <b>[4-9] 스스로 확인하기 2: 항등식 고르기 (p.90)</b>가 해금되었습니다!
+        </div>
+      </div>
+    `;
+
+    if (!state.unlockedSubSteps.includes('4-9')) {
+      state.unlockedSubSteps.push('4-9');
+      renderSubstepPills();
+    }
+
+    if (window.LMSIntegration && LMSIntegration.saveStudentProgress) {
+      LMSIntegration.saveStudentProgress('4-8', {
+        score: 100,
+        completed: true,
+        answers: { chkGa, chkNa, chkDa, chkRa, rawMain }
+      }, 3);
+    }
+  } else {
+    let wrongNotes = [];
+    if (!isMainCorrect) {
+      wrongNotes.push('• [질문 1] 해인 보기는 좌변과 우변의 계산 결과가 같은 것을 골라야 합니다.');
+    }
+    if (calcAllFilled && !calcAllCorrect) {
+      if (!isQ0Calc) wrongNotes.push('• ㄱ 계산: 좌변 $3(0)+1=1$, 우변 $-(0)+1=1$ 입니다.');
+      if (!isQ1Calc) wrongNotes.push('• ㄴ 계산: 좌변 $-4$, 우변 $-12-16=-28$ 입니다.');
+      if (!isQ2Calc) wrongNotes.push('• ㄷ 계산: 좌변 $5(2-2)=0$, 우변 $2$ 입니다.');
+      if (!isQ3Calc) wrongNotes.push('• ㄹ 계산: 좌변 $-\\frac{3}{2}(-6)+3=12$, 우변 $12$ 입니다.');
+    }
+
+    fb.innerHTML = `
+      <div style="background:#fef2f2; border:1px solid #ef4444; border-radius:10px; padding:12px; color:#991b1b;">
+        <div style="font-weight:800; font-size:0.92rem;">다시 확인해 보세요! (현재 점수: ${score}점)</div>
+        <div style="margin-top:6px; font-size:0.84rem; line-height:1.5;">
+          ${wrongNotes.join('<br>')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ]
+    });
+  }
+}
+
+// --- Two.js 60fps 인터랙티브 캔버스 엔진 ---
+function drawStep4_8Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const two = new Two({
+    width: 680,
+    height: 440,
+    type: Two.Types.svg
+  }).appendTo(container);
+
+  if (!state.lab4_8) {
+    resetLab4_8();
+  }
+
+  const activeTab = state.lab4_8.activeTab;
+
+  if (activeTab === 'mode1') {
+    drawMode1TargetVerifierLab(two);
+  } else if (activeTab === 'mode2') {
+    drawMode2BalanceSubSimLab(two);
+  } else if (activeTab === 'mode3') {
+    drawMode3TruthTableRootLab(two);
+  }
+
+  // 안내 배너 (Vertical Budget 준수: Y=385, H=26, 바닥 안전 여백 42px >= 25px)
+  const bannerBg = two.makeRoundedRectangle(340, 385, 620, 26, 6);
+  bannerBg.fill = '#f8fafc';
+  bannerBg.stroke = '#cbd5e1';
+  bannerBg.linewidth = 1;
+
+  let tipMsg = '💡 주어진 수를 x 자리에 대입했을 때 좌변과 우변의 값이 같으면 그 수는 방정식의 해입니다.';
+  if (activeTab === 'mode1') {
+    tipMsg = '💡 보기를 선택하고 [x 대입하기] 버튼을 눌러 좌변과 우변의 계산 결과를 비교해 보세요.';
+  } else if (activeTab === 'mode2') {
+    tipMsg = '💡 양팔 저울에 수를 대입해 보세요. 평형(수평)을 유지하면 방정식의 해입니다.';
+  } else if (activeTab === 'mode3') {
+    tipMsg = '💡 4개 보기의 대입 결과와 참·거짓, 그리고 실제 참이 되는 진짜 해를 확인해 보세요.';
+  }
+
+  const tipText = two.makeText(tipMsg, 340, 385, {
+    family: 'Pretendard, sans-serif',
+    size: 11,
+    weight: 600,
+    fill: '#475569',
+    alignment: 'center'
+  });
+
+  two.update();
+}
+
+// Mode 1: 🎯 해 판별 타겟 랩
+function drawMode1TargetVerifierLab(two) {
+  const selIdx = state.lab4_8.selectedItem;
+  const isSub = state.lab4_8.substituted[selIdx];
+  const item = ITEMS_4_8[selIdx];
+
+  const title = two.makeText('🎯 [해 판별 타겟 랩] 방정식의 미지수에 후보 수 대입하기 (교과서 p.90 1번)', 340, 26, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 800,
+    fill: '#1e1b4b',
+    alignment: 'center'
+  });
+
+  // 상단 4개 보기 선택 탭 버튼 (Y=60, W=130, H=32)
+  ITEMS_4_8.forEach((it, idx) => {
+    const bx = 115 + idx * 150;
+    const by = 62;
+    const isCur = (idx === selIdx);
+
+    const btnBg = two.makeRoundedRectangle(bx, by, 134, 30, 8);
+    btnBg.fill = isCur ? '#4f46e5' : '#f1f5f9';
+    btnBg.stroke = isCur ? '#4338ca' : '#cbd5e1';
+    btnBg.linewidth = isCur ? 2 : 1;
+
+    const btnLabel = two.makeText(`${it.label}. [${it.candidate}]`, bx, by, {
+      family: 'Pretendard, sans-serif',
+      size: 12,
+      weight: 700,
+      fill: isCur ? '#ffffff' : '#334155',
+      alignment: 'center'
+    });
+
+    two.update();
+    if (btnBg._renderer && btnBg._renderer.elem) {
+      const el = btnBg._renderer.elem;
+      el.style.cursor = 'pointer';
+      el.onclick = () => setItem4_8(idx);
+    }
+  });
+
+  // 메인 방정식 디스플레이 카드 (Y=130, W=600, H=68)
+  const cardBg = two.makeRoundedRectangle(340, 130, 600, 68, 10);
+  cardBg.fill = '#ffffff';
+  cardBg.stroke = '#e2e8f0';
+  cardBg.linewidth = 1.5;
+
+  const eqText = two.makeText(`보기 ${item.label}.   ${item.equation}     [ x = ${item.candidate} ]`, 340, 122, {
+    family: 'Pretendard, sans-serif',
+    size: 16,
+    weight: 800,
+    fill: '#1e293b',
+    alignment: 'center'
+  });
+
+  const stateText = two.makeText(
+    isSub ? `x = ${item.candidate} 대입 완료!` : `x = ${item.candidate} 대입 대기 중 (아래 대입 버튼을 누르세요)`,
+    340, 148,
+    {
+      family: 'Pretendard, sans-serif',
+      size: 11,
+      weight: 600,
+      fill: isSub ? '#059669' : '#64748b',
+      alignment: 'center'
+    }
+  );
+
+  // 대입 실행 토글 버튼 (Y=185, W=160, H=32)
+  const actBtn = two.makeRoundedRectangle(340, 185, 170, 32, 8);
+  actBtn.fill = isSub ? '#f59e0b' : '#10b981';
+  actBtn.stroke = isSub ? '#d97706' : '#059669';
+  actBtn.linewidth = 1.5;
+
+  const actLabel = two.makeText(isSub ? '↩️ 대입 이전으로 되돌리기' : `📥 x = ${item.candidate} 대입 실행`, 340, 185, {
+    family: 'Pretendard, sans-serif',
+    size: 12,
+    weight: 700,
+    fill: '#ffffff',
+    alignment: 'center'
+  });
+
+  two.update();
+  if (actBtn._renderer && actBtn._renderer.elem) {
+    const el = actBtn._renderer.elem;
+    el.style.cursor = 'pointer';
+    el.onclick = () => toggleSubstituted4_8(selIdx);
+  }
+
+  // 좌변 vs 우변 계산 비교 듀얼 패널 (Y=260, H=88)
+  // 좌변 패널 (X=205, W=250)
+  const lhsBg = two.makeRoundedRectangle(205, 260, 250, 88, 10);
+  lhsBg.fill = '#eff6ff';
+  lhsBg.stroke = isSub ? (item.isSolution ? '#10b981' : '#3b82f6') : '#93c5fd';
+  lhsBg.linewidth = 2;
+
+  const lhsHead = two.makeText('좌변 (Left-hand side)', 205, 235, {
+    family: 'Pretendard, sans-serif',
+    size: 12,
+    weight: 800,
+    fill: '#1d4ed8',
+    alignment: 'center'
+  });
+
+  const lhsContent = isSub ? item.lhsExpr : 'x 자리에 미지수 대기';
+  const lhsValue = isSub ? `➜ 값: ${item.lhsVal}` : '';
+
+  const lhsBody = two.makeText(lhsContent, 205, 260, {
+    family: 'Pretendard, sans-serif',
+    size: 13,
+    weight: 700,
+    fill: '#1e293b',
+    alignment: 'center'
+  });
+
+  const lhsRes = two.makeText(lhsValue, 205, 285, {
+    family: 'Pretendard, sans-serif',
+    size: 13,
+    weight: 800,
+    fill: '#2563eb',
+    alignment: 'center'
+  });
+
+  // 등호 또는 부등호 중앙 뱃지 (X=340, Y=260)
+  const midBadge = two.makeCircle(340, 260, 22);
+  let midSymbol = '?';
+  let midFill = '#f1f5f9';
+  let midStroke = '#cbd5e1';
+  let symFill = '#64748b';
+
+  if (isSub) {
+    if (item.isSolution) {
+      midSymbol = '=';
+      midFill = '#ecfdf5';
+      midStroke = '#10b981';
+      symFill = '#059669';
+    } else {
+      midSymbol = '≠';
+      midFill = '#fef2f2';
+      midStroke = '#ef4444';
+      symFill = '#dc2626';
+    }
+  }
+  midBadge.fill = midFill;
+  midBadge.stroke = midStroke;
+  midBadge.linewidth = 2;
+
+  const symText = two.makeText(midSymbol, 340, 260, {
+    family: 'Pretendard, sans-serif',
+    size: 20,
+    weight: 900,
+    fill: symFill,
+    alignment: 'center'
+  });
+
+  // 우변 패널 (X=475, W=250)
+  const rhsBg = two.makeRoundedRectangle(475, 260, 250, 88, 10);
+  rhsBg.fill = '#faf5ff';
+  rhsBg.stroke = isSub ? (item.isSolution ? '#10b981' : '#a855f7') : '#d8b4fe';
+  rhsBg.linewidth = 2;
+
+  const rhsHead = two.makeText('우변 (Right-hand side)', 475, 235, {
+    family: 'Pretendard, sans-serif',
+    size: 12,
+    weight: 800,
+    fill: '#7e22ce',
+    alignment: 'center'
+  });
+
+  const rhsContent = isSub ? item.rhsExpr : 'x 자리에 미지수 대기';
+  const rhsValue = isSub ? `➜ 값: ${item.rhsVal}` : '';
+
+  const rhsBody = two.makeText(rhsContent, 475, 260, {
+    family: 'Pretendard, sans-serif',
+    size: 13,
+    weight: 700,
+    fill: '#1e293b',
+    alignment: 'center'
+  });
+
+  const rhsRes = two.makeText(rhsValue, 475, 285, {
+    family: 'Pretendard, sans-serif',
+    size: 13,
+    weight: 800,
+    fill: '#7e22ce',
+    alignment: 'center'
+  });
+
+  // 최종 판정 배너 (Y=335, W=600, H=34)
+  const resBg = two.makeRoundedRectangle(340, 335, 600, 34, 8);
+  let resMsg = '위 [x 대입 실행] 버튼을 눌러 양변의 값이 같은지 확인하세요.';
+  let resFill = '#f8fafc';
+  let resStroke = '#cbd5e1';
+  let resTextColor = '#64748b';
+
+  if (isSub) {
+    if (item.isSolution) {
+      resMsg = `✨ [참] 좌변(${item.lhsVal}) = 우변(${item.rhsVal}) ➜ x = ${item.candidate} 는 방정식의 해입니다! (○)`;
+      resFill = '#ecfdf5';
+      resStroke = '#10b981';
+      resTextColor = '#065f46';
+    } else {
+      resMsg = `❌ [거짓] 좌변(${item.lhsVal}) ≠ 우변(${item.rhsVal}) ➜ x = ${item.candidate} 는 해가 아닙니다! (×) [진짜 해: x = ${item.trueRoot}]`;
+      resFill = '#fef2f2';
+      resStroke = '#ef4444';
+      resTextColor = '#991b1b';
+    }
+  }
+  resBg.fill = resFill;
+  resBg.stroke = resStroke;
+  resBg.linewidth = 1.5;
+
+  const resText = two.makeText(resMsg, 340, 335, {
+    family: 'Pretendard, sans-serif',
+    size: 12,
+    weight: 800,
+    fill: resTextColor,
+    alignment: 'center'
+  });
+}
+
+// Mode 2: ⚖️ 양팔 저울 대입 시뮬레이터
+function drawMode2BalanceSubSimLab(two) {
+  const selIdx = state.lab4_8.selectedItem;
+  const isSub = state.lab4_8.substituted[selIdx];
+  const item = ITEMS_4_8[selIdx];
+
+  const title = two.makeText('⚖️ [양팔 저울 시뮬레이터] 물리 평형으로 해 판별하기 (교과서 p.90 1번)', 340, 26, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 800,
+    fill: '#1e1b4b',
+    alignment: 'center'
+  });
+
+  // 상단 보기 선택 탭 버튼
+  ITEMS_4_8.forEach((it, idx) => {
+    const bx = 115 + idx * 150;
+    const by = 58;
+    const isCur = (idx === selIdx);
+
+    const btnBg = two.makeRoundedRectangle(bx, by, 134, 28, 8);
+    btnBg.fill = isCur ? '#4f46e5' : '#f1f5f9';
+    btnBg.stroke = isCur ? '#4338ca' : '#cbd5e1';
+    btnBg.linewidth = isCur ? 2 : 1;
+
+    const btnLabel = two.makeText(`${it.label}. [${it.candidate}]`, bx, by, {
+      family: 'Pretendard, sans-serif',
+      size: 11,
+      weight: 700,
+      fill: isCur ? '#ffffff' : '#334155',
+      alignment: 'center'
+    });
+
+    two.update();
+    if (btnBg._renderer && btnBg._renderer.elem) {
+      const el = btnBg._renderer.elem;
+      el.style.cursor = 'pointer';
+      el.onclick = () => setItem4_8(idx);
+    }
+  });
+
+  // 저울 물리 파라미터
+  const pivotX = 340;
+  const pivotY = 175;
+  const beamLength = 340;
+  const halfBeam = beamLength / 2;
+
+  // 저울 기울기 각도
+  const angle = isSub ? item.balanceTilt : 0;
+  const cosA = Math.cos(angle);
+  const sinA = Math.sin(angle);
+
+  // 빔 양 끝 좌표
+  const leftX = pivotX - halfBeam * cosA;
+  const leftY = pivotY - halfBeam * sinA;
+  const rightX = pivotX + halfBeam * cosA;
+  const rightY = pivotY + halfBeam * sinA;
+
+  // 저울 기둥 및 베이스 (Y=175 ~ 300)
+  const base = two.makePolygon(pivotX, 290, 48, 3);
+  base.fill = '#64748b';
+  base.stroke = '#475569';
+  base.linewidth = 2;
+
+  const post = two.makeLine(pivotX, pivotY, pivotX, 290);
+  post.stroke = '#475569';
+  post.linewidth = 6;
+
+  // 회전하는 빔
+  const beam = two.makeLine(leftX, leftY, rightX, rightY);
+  beam.stroke = '#334155';
+  beam.linewidth = 8;
+  beam.cap = 'round';
+
+  // 중앙 피벗 핀
+  const pin = two.makeCircle(pivotX, pivotY, 8);
+  pin.fill = '#f59e0b';
+  pin.stroke = '#b45309';
+  pin.linewidth = 2;
+
+  // 좌측 접시 체인 & 접시 (수직으로 매달림)
+  const panH = 75;
+  const leftPanX = leftX;
+  const leftPanY = leftY + panH;
+
+  const leftChain1 = two.makeLine(leftX, leftY, leftPanX - 45, leftPanY);
+  leftChain1.stroke = '#94a3b8';
+  leftChain1.linewidth = 1.5;
+
+  const leftChain2 = two.makeLine(leftX, leftY, leftPanX + 45, leftPanY);
+  leftChain2.stroke = '#94a3b8';
+  leftChain2.linewidth = 1.5;
+
+  const leftPan = two.makeArcSegment(leftPanX, leftPanY, 0, 45, 0, Math.PI);
+  leftPan.fill = '#bfdbfe';
+  leftPan.stroke = '#2563eb';
+  leftPan.linewidth = 2.5;
+
+  // 우측 접시 체인 & 접시
+  const rightPanX = rightX;
+  const rightPanY = rightY + panH;
+
+  const rightChain1 = two.makeLine(rightX, rightY, rightPanX - 45, rightPanY);
+  rightChain1.stroke = '#94a3b8';
+  rightChain1.linewidth = 1.5;
+
+  const rightChain2 = two.makeLine(rightX, rightY, rightPanX + 45, rightPanY);
+  rightChain2.stroke = '#94a3b8';
+  rightChain2.linewidth = 1.5;
+
+  const rightPan = two.makeArcSegment(rightPanX, rightPanY, 0, 45, 0, Math.PI);
+  rightPan.fill = '#e9d5ff';
+  rightPan.stroke = '#9333ea';
+  rightPan.linewidth = 2.5;
+
+  // 접시 위 분동/라벨
+  // 좌변 분동
+  const leftBlock = two.makeRoundedRectangle(leftPanX, leftPanY - 20, 100, 32, 6);
+  leftBlock.fill = isSub ? (item.isSolution ? '#dcfce7' : '#fee2e2') : '#ffffff';
+  leftBlock.stroke = isSub ? (item.isSolution ? '#16a34a' : '#ef4444') : '#3b82f6';
+  leftBlock.linewidth = 1.5;
+
+  const leftBlockLabel = isSub ? `좌변: ${item.lhsVal}` : '좌변 식';
+  const leftText = two.makeText(leftBlockLabel, leftPanX, leftPanY - 20, {
+    family: 'Pretendard, sans-serif',
+    size: 11,
+    weight: 800,
+    fill: '#1e293b',
+    alignment: 'center'
+  });
+
+  // 우변 분동
+  const rightBlock = two.makeRoundedRectangle(rightPanX, rightPanY - 20, 100, 32, 6);
+  rightBlock.fill = isSub ? (item.isSolution ? '#dcfce7' : '#fee2e2') : '#ffffff';
+  rightBlock.stroke = isSub ? (item.isSolution ? '#16a34a' : '#ef4444') : '#a855f7';
+  rightBlock.linewidth = 1.5;
+
+  const rightBlockLabel = isSub ? `우변: ${item.rhsVal}` : '우변 식';
+  const rightText = two.makeText(rightBlockLabel, rightPanX, rightPanY - 20, {
+    family: 'Pretendard, sans-serif',
+    size: 11,
+    weight: 800,
+    fill: '#1e293b',
+    alignment: 'center'
+  });
+
+  // 하단 중앙 조작 및 판정 배너 (Y=338, W=600, H=36)
+  const actBg = two.makeRoundedRectangle(340, 338, 600, 36, 8);
+  let statusMsg = isSub
+    ? (item.isSolution
+        ? `⚖️ [수평 평형 달성] 좌변(${item.lhsVal}) = 우변(${item.rhsVal}) ➜ 저울이 완벽히 평형! 따라서 x = ${item.candidate} 는 해입니다.`
+        : `⚠️ [불균형 기울어짐] 좌변(${item.lhsVal}) ≠ 우변(${item.rhsVal}) ➜ 저울이 기울어짐! 따라서 x = ${item.candidate} 는 해가 아닙니다.`)
+    : `위 대입 버튼을 누르면 x = ${item.candidate} 가 분동에 대입되어 저울이 물리적으로 반응합니다.`;
+
+  actBg.fill = isSub ? (item.isSolution ? '#ecfdf5' : '#fef2f2') : '#f8fafc';
+  actBg.stroke = isSub ? (item.isSolution ? '#10b981' : '#ef4444') : '#cbd5e1';
+  actBg.linewidth = 1.5;
+
+  const statusText = two.makeText(statusMsg, 340, 338, {
+    family: 'Pretendard, sans-serif',
+    size: 11.5,
+    weight: 800,
+    fill: isSub ? (item.isSolution ? '#065f46' : '#991b1b') : '#475569',
+    alignment: 'center'
+  });
+}
+
+// Mode 3: 📊 참·거짓 진리표 & 실제 해 분석기
+function drawMode3TruthTableRootLab(two) {
+  const selIdx = state.lab4_8.selectedItem;
+
+  const title = two.makeText('📊 [참·거짓 진리표] 4개 보기 대입 결과 및 참인 해 종합 비교 (교과서 p.90 1번)', 340, 26, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 800,
+    fill: '#1e1b4b',
+    alignment: 'center'
+  });
+
+  // 표 헤더 카드 (Y=62, W=620, H=32)
+  const headerBg = two.makeRoundedRectangle(340, 62, 620, 30, 6);
+  headerBg.fill = '#334155';
+  headerBg.stroke = '#1e293b';
+  headerBg.linewidth = 1;
+
+  const cols = [
+    { name: '보기', x: 60 },
+    { name: '주어진 방정식', x: 165 },
+    { name: '후보 수 [x]', x: 260 },
+    { name: '좌변 값', x: 330 },
+    { name: '우변 값', x: 395 },
+    { name: '참/거짓', x: 460 },
+    { name: '해 판별', x: 525 },
+    { name: '실제 참인 해', x: 600 }
+  ];
+
+  cols.forEach(c => {
+    two.makeText(c.name, c.x, 62, {
+      family: 'Pretendard, sans-serif',
+      size: 11,
+      weight: 700,
+      fill: '#ffffff',
+      alignment: 'center'
+    });
+  });
+
+  // 4개 데이터 행 (Y = 104, 158, 212, 266, H=46)
+  ITEMS_4_8.forEach((it, idx) => {
+    const ry = 104 + idx * 54;
+    const isCur = (idx === selIdx);
+
+    const rowBg = two.makeRoundedRectangle(340, ry, 620, 46, 8);
+    rowBg.fill = isCur ? '#eff6ff' : (idx % 2 === 0 ? '#ffffff' : '#f8fafc');
+    rowBg.stroke = isCur ? '#3b82f6' : '#e2e8f0';
+    rowBg.linewidth = isCur ? 2 : 1;
+
+    // 보기 기호
+    two.makeText(it.label, 60, ry, {
+      family: 'Pretendard, sans-serif',
+      size: 13,
+      weight: 800,
+      fill: isCur ? '#1d4ed8' : '#334155',
+      alignment: 'center'
+    });
+
+    // 방정식
+    two.makeText(it.equation, 165, ry, {
+      family: 'Pretendard, sans-serif',
+      size: 12,
+      weight: 700,
+      fill: '#1e293b',
+      alignment: 'center'
+    });
+
+    // 후보 수
+    two.makeText(String(it.candidate), 260, ry, {
+      family: 'Pretendard, sans-serif',
+      size: 13,
+      weight: 800,
+      fill: '#0f172a',
+      alignment: 'center'
+    });
+
+    // 좌변 값
+    two.makeText(String(it.lhsVal), 330, ry, {
+      family: 'Pretendard, sans-serif',
+      size: 12.5,
+      weight: 800,
+      fill: '#2563eb',
+      alignment: 'center'
+    });
+
+    // 우변 값
+    two.makeText(String(it.rhsVal), 395, ry, {
+      family: 'Pretendard, sans-serif',
+      size: 12.5,
+      weight: 800,
+      fill: '#7e22ce',
+      alignment: 'center'
+    });
+
+    // 참 / 거짓 뱃지
+    const tfBadge = two.makeRoundedRectangle(460, ry, 44, 22, 4);
+    tfBadge.fill = it.isSolution ? '#dcfce7' : '#fee2e2';
+    tfBadge.stroke = it.isSolution ? '#16a34a' : '#ef4444';
+    tfBadge.linewidth = 1;
+
+    two.makeText(it.isSolution ? '참' : '거짓', 460, ry, {
+      family: 'Pretendard, sans-serif',
+      size: 11,
+      weight: 800,
+      fill: it.isSolution ? '#15803d' : '#b91c1c',
+      alignment: 'center'
+    });
+
+    // 해 판별 (○ / ×)
+    const solText = two.makeText(it.isSolution ? '해 ○' : '해 ×', 525, ry, {
+      family: 'Pretendard, sans-serif',
+      size: 12,
+      weight: 800,
+      fill: it.isSolution ? '#15803d' : '#b91c1c',
+      alignment: 'center'
+    });
+
+    // 실제 참인 해
+    two.makeText(`x = ${it.trueRoot}`, 600, ry, {
+      family: 'Pretendard, sans-serif',
+      size: 11.5,
+      weight: 700,
+      fill: '#475569',
+      alignment: 'center'
+    });
+
+    two.update();
+    if (rowBg._renderer && rowBg._renderer.elem) {
+      const el = rowBg._renderer.elem;
+      el.style.cursor = 'pointer';
+      el.onclick = () => setItem4_8(idx);
+    }
+  });
+
+  // 하단 선택된 보기 상세 계산 코멘트 배너 (Y=338, W=620, H=36)
+  const curItem = ITEMS_4_8[selIdx];
+  const detailBg = two.makeRoundedRectangle(340, 338, 620, 36, 8);
+  detailBg.fill = '#f1f5f9';
+  detailBg.stroke = '#cbd5e1';
+  detailBg.linewidth = 1.5;
+
+  const detailMsg = `🔍 [보기 ${curItem.label} 상세] 좌변: ${curItem.lhsExpr} = ${curItem.lhsVal} vs 우변: ${curItem.rhsExpr} = ${curItem.rhsVal} ➜ ${curItem.reason}`;
+  two.makeText(detailMsg, 340, 338, {
+    family: 'Pretendard, sans-serif',
+    size: 11,
+    weight: 700,
+    fill: '#1e293b',
+    alignment: 'center'
+  });
+}
+
+    // --- End Substep 4-8 Implementation ---
+
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -35218,6 +36218,9 @@ function drawMode3BalanceBlankVerifierLab(two) {
       } else if (code === '4-7') {
         renderToolbar4_7();
         renderSubstep4_7();
+      } else if (code === '4-8') {
+        renderToolbar4_8();
+        renderSubstep4_8Form();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
