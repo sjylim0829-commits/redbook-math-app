@@ -1072,7 +1072,7 @@
       '3-10': {
         code: '3-10', tab: 3,
         substepLabel: '10. 스스로 확인하기 5: 잘못 뺀 식 역산 (p.83)',
-        missionText: '<b>[3-10] 10. 스스로 확인하기 5: 잘못 뺀 식 역산 (p.83)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        missionText: '<b>[스스로 확인하기 5] 어떤 다항식의 잘못 계산된 식 역산 (교과서 p.83 5번)</b><br>• <b>역산 1단계:</b> 잘못 더한 식을 도로 빼서 본래 식 $A$ 복원 $\\implies A = (7x+2) - (2x-3) = 5x+5$<br>• <b>역산 2단계:</b> 본래 식 $A$에서 바르게 계산 $\\implies (5x+5) - (2x-3) = 3x+8$<br>좌측 캔버스에서 타임머신 역산 회로 랩, 저울 밸런서 랩, 2대 역산 유형 비교 마스터를 조작해 보세요.',
         drawer: 'drawStep3_10Canvas'
       },
       '3-11': {
@@ -1480,6 +1480,14 @@
       
       
       
+      
+      // Substep 3-10 State (Self Check 5: Reverse Calculation of Erroneous Expression)
+      lab3_10: {
+        activeTab: 'mode1',
+        probIdx: 0,
+        timePhase: 1,
+        isPassed: false
+      },
       // Substep 3-9 State (Self Check 4: Bottle Refund Word Problem)
       lab3_9: {
         activeTab: 'mode1',
@@ -27272,6 +27280,781 @@ function drawMode3RefundSimulatorLab(two, width, height) {
 
     // --- End Substep 3-9 Implementation ---
 
+    
+    // --- Substep 3-10 Implementation ---
+// code_3_10.js: Substep [3-10] 3.3 스스로 확인하기 5: 어떤 일차식에서 잘못 뺀 문제 역산 (교과서 p.83)
+
+const PROBLEMS_3_10 = [
+  {
+    id: 0,
+    title: '문제 5: 어떤 식 A의 잘못된 덧셈 역산',
+    mistakeOp: '+',
+    mistakeExpr: '2x - 3',
+    wrongResult: '7x + 2',
+    origExpr: '5x + 5',
+    correctOp: '-',
+    correctResult: '3x + 8',
+    varName: 'x',
+    steps: [
+      {
+        phaseName: '1. 잘못 계산된 상황 파악',
+        eq: 'A + (2x - 3) = 7x + 2',
+        desc: '빼어야 할 (2x - 3)을 잘못하여 더했더니 7x + 2 가 되었습니다.',
+        badge: '현재 상황'
+      },
+      {
+        phaseName: '2. 타임머신 역산: 본래 식 A 복원',
+        eq: 'A = (7x + 2) - (2x - 3) = 5x + 5',
+        desc: '더했던 (2x - 3)을 도로 빼서 본래 식 A = 5x + 5 를 구합니다.',
+        badge: 'A 복원'
+      },
+      {
+        phaseName: '3. 미래 연산: 바르게 계산한 결과',
+        eq: 'A - (2x - 3) = (5x + 5) - (2x - 3) = 3x + 8',
+        desc: '본래 식 A에서 (2x - 3)을 바르게 빼어 3x + 8 을 완성합니다.',
+        badge: '바른 계산'
+      }
+    ]
+  },
+  {
+    id: 1,
+    title: '발전 문제: 어떤 식 B의 잘못된 뺄셈 역산',
+    mistakeOp: '-',
+    mistakeExpr: '-3a + 4',
+    wrongResult: 'a - 5',
+    origExpr: '-2a - 1',
+    correctOp: '+',
+    correctResult: '-5a + 3',
+    varName: 'a',
+    steps: [
+      {
+        phaseName: '1. 잘못 계산된 상황 파악',
+        eq: 'B - (-3a + 4) = a - 5',
+        desc: '더해야 할 (-3a + 4)를 잘못하여 빼었더니 a - 5 가 되었습니다.',
+        badge: '현재 상황'
+      },
+      {
+        phaseName: '2. 타임머신 역산: 본래 식 B 복원',
+        eq: 'B = (a - 5) + (-3a + 4) = -2a - 1',
+        desc: '빼었던 (-3a + 4)를 도로 더하여 본래 식 B = -2a - 1 을 구합니다.',
+        badge: 'B 복원'
+      },
+      {
+        phaseName: '3. 미래 연산: 바르게 계산한 결과',
+        eq: 'B + (-3a + 4) = (-2a - 1) + (-3a + 4) = -5a + 3',
+        desc: '본래 식 B에 (-3a + 4)를 바르게 더하여 -5a + 3 을 완성합니다.',
+        badge: '바른 계산'
+      }
+    ]
+  }
+];
+
+function renderToolbar3_10() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab3_10) {
+    state.lab3_10 = {
+      activeTab: 'mode1', // 'mode1' (타임머신 회로) | 'mode2' (저울 역산 밸런서) | 'mode3' (2대 유형 비교)
+      probIdx: 0,
+      timePhase: 1,       // 1: 잘못된 현재 -> 2: 과거 A 복원 -> 3: 바른 계산 완성
+      isPassed: false
+    };
+  }
+
+  const curTab = state.lab3_10.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab3_10Tab('mode1')">
+        1. ⏳ 타임머신 역산 회로 랩
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab3_10Tab('mode2')">
+        2. ⚖️ 저울 역산 밸런서 랩
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab3_10Tab('mode3')">
+        3. 📋 2대 역산 유형 비교 마스터
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn" onclick="nextPhase3_10()" title="타임라인 단계 진행">
+        ${state.lab3_10.timePhase === 3 ? '🔄 처음 상황으로' : '⚡ 다음 단계 (' + state.lab3_10.timePhase + '/3)'}
+      </button>
+      <button class="icon-btn" onclick="resetLab3_10()" title="초기화">🔄 초기화</button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('3-10')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab3_10Tab(tabKey) {
+  if (!state.lab3_10) resetLab3_10();
+  state.lab3_10.activeTab = tabKey;
+  renderToolbar3_10();
+  drawStep3_10Canvas();
+}
+
+function resetLab3_10() {
+  state.lab3_10 = {
+    activeTab: 'mode1',
+    probIdx: 0,
+    timePhase: 1,
+    isPassed: false
+  };
+  renderToolbar3_10();
+  drawStep3_10Canvas();
+}
+
+function setProbIdx3_10(idx) {
+  if (!state.lab3_10) resetLab3_10();
+  state.lab3_10.probIdx = idx;
+  state.lab3_10.timePhase = 1;
+  renderToolbar3_10();
+  drawStep3_10Canvas();
+}
+
+function setPhase3_10(ph) {
+  if (!state.lab3_10) resetLab3_10();
+  state.lab3_10.timePhase = ph;
+  renderToolbar3_10();
+  drawStep3_10Canvas();
+}
+
+function nextPhase3_10() {
+  if (!state.lab3_10) resetLab3_10();
+  if (state.lab3_10.timePhase >= 3) {
+    state.lab3_10.timePhase = 1;
+  } else {
+    state.lab3_10.timePhase++;
+  }
+  renderToolbar3_10();
+  drawStep3_10Canvas();
+}
+
+function renderSubstep3_10() {
+  const panel = document.getElementById('form-box');
+  if (!panel) return;
+
+  if (!state.lab3_10) {
+    state.lab3_10 = {
+      activeTab: 'mode1',
+      probIdx: 0,
+      timePhase: 1,
+      isPassed: false
+    };
+  }
+
+  panel.innerHTML = `
+    <div style="padding:16px; font-family:'Pretendard', sans-serif;">
+      <!-- 문제 브리핑 카드 -->
+      <div style="background:#eff6ff; border-left:4px solid #3b82f6; border-radius:8px; padding:12px 14px; margin-bottom:14px;">
+        <div style="font-size:0.95rem; font-weight:800; color:#1e40af; margin-bottom:4px;">
+          📖 [스스로 확인하기 5] 어떤 다항식의 잘못 계산된 식 역산 (교과서 p.83 5번)
+        </div>
+        <div style="font-size:0.83rem; color:#334155; line-height:1.5;">
+          • <b>문제 상황:</b> 어떤 식 $A$에서 $(2x - 3)$을 빼어야 할 것을 잘못하여 더했더니 $7x + 2$가 됨.<br>
+          • <b>역산 2단계 전략:</b><br>
+          &nbsp;&nbsp;① 잘못 더한 식을 도로 빼서 <b>본래 식 $A$</b>를 구합니다: $A = (7x + 2) - (2x - 3)$<br>
+          &nbsp;&nbsp;② 구한 본래 식 $A$에서 $(2x - 3)$을 <b>바르게 뺍니다</b>: $A - (2x - 3)$
+        </div>
+      </div>
+
+      <!-- 문제 풀이 영역 -->
+      <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:14px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <div style="font-size:0.9rem; font-weight:700; color:#1e293b; margin-bottom:10px;">
+          ✏️ 다음 물음에 알맞은 일차식을 구하시오.
+        </div>
+
+        <!-- ⑴ 문항 -->
+        <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px; margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <span style="font-weight:700; color:#1e293b; font-size:0.86rem;">
+              ⑴ 어떤 다항식 $A$를 구하시오.
+            </span>
+            <button class="tool-btn" style="padding:2px 8px; font-size:0.75rem;" onclick="setProbIdx3_10(0); setPhase3_10(2);">A 복원 보기</button>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.85rem; font-weight:600; color:#475569;">A =</span>
+            <input type="text" id="ans_3_10_1" class="proof-input-text" placeholder="답 입력 (예: ax+b)" style="flex:1; max-width:220px;" />
+          </div>
+        </div>
+
+        <!-- ⑵ 문항 -->
+        <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px; margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <span style="font-weight:700; color:#1e293b; font-size:0.86rem;">
+              ⑵ 바르게 계산한 식을 구하시오.
+            </span>
+            <button class="tool-btn" style="padding:2px 8px; font-size:0.75rem;" onclick="setProbIdx3_10(0); setPhase3_10(3);">바른 계산 보기</button>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.85rem; font-weight:600; color:#475569;">답:</span>
+            <input type="text" id="ans_3_10_2" class="proof-input-text" placeholder="답 입력 (예: ax+b)" style="flex:1; max-width:220px;" />
+          </div>
+        </div>
+
+        <!-- ⑶ 문항 -->
+        <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <span style="font-weight:700; color:#1e293b; font-size:0.86rem;">
+              ⑶ [발전] 식 $B$에 $(-3a + 4)$를 더해야 할 것을 잘못하여 빼었더니 $a - 5$가 되었을 때, 바르게 계산한 식을 구하시오.
+            </span>
+            <button class="tool-btn" style="padding:2px 8px; font-size:0.75rem;" onclick="setProbIdx3_10(1); setPhase3_10(3);">발전 보기</button>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.85rem; font-weight:600; color:#475569;">답:</span>
+            <input type="text" id="ans_3_10_3" class="proof-input-text" placeholder="답 입력 (예: ax+b)" style="flex:1; max-width:220px;" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 제출 및 액션 버튼 -->
+      <div style="display:flex; gap:8px; margin-bottom:12px;">
+        <button class="tool-btn" style="flex:1; height:42px; font-size:0.92rem; font-weight:700; background:#3b82f6; color:#ffffff;" onclick="gradeStep3_10()">
+          정답 확인 및 채점
+        </button>
+        <button class="icon-btn" style="height:42px; padding:0 14px;" onclick="resetForm3_10()">
+          다시 풀기
+        </button>
+      </div>
+
+      <!-- 결과 및 피드백 컨테이너 -->
+      <div id="result-box-3_10"></div>
+    </div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(panel, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function resetForm3_10() {
+  for (let i = 1; i <= 3; i++) {
+    const el = document.getElementById(`ans_3_10_${i}`);
+    if (el) el.value = '';
+  }
+  const rbox = document.getElementById('result-box-3_10');
+  if (rbox) rbox.innerHTML = '';
+}
+
+function gradeStep3_10() {
+  const rbox = document.getElementById('result-box-3_10');
+  if (!rbox) return;
+
+  const a1 = (document.getElementById('ans_3_10_1')?.value || '').trim().replace(/\s+/g, '').toLowerCase();
+  const a2 = (document.getElementById('ans_3_10_2')?.value || '').trim().replace(/\s+/g, '').toLowerCase();
+  const a3 = (document.getElementById('ans_3_10_3')?.value || '').trim().replace(/\s+/g, '').toLowerCase();
+
+  const isOk1 = (a1 === '5x+5' || a1 === '5+5x');
+  const isOk2 = (a2 === '3x+8' || a2 === '8+3x');
+  const isOk3 = (a3 === '-5a+3' || a3 === '3-5a');
+
+  const allOk = isOk1 && isOk2 && isOk3;
+
+  if (allOk) {
+    if (!state.lab3_10) resetLab3_10();
+    state.lab3_10.isPassed = true;
+
+    if (window.LMSIntegration && window.LMSIntegration.saveStudentProgress) {
+      window.LMSIntegration.saveStudentProgress('3-10', { score: 100, passed: true }, 'unit3');
+    }
+
+    if (!state.unlockedSubSteps.includes('3-11')) {
+      state.unlockedSubSteps.push('3-11');
+    }
+    updateSubstepPills();
+
+    rbox.innerHTML = `
+      <div style="background:#ecfdf5; border:1px solid #10b981; border-radius:8px; padding:14px; margin-top:10px;">
+        <div style="font-weight:800; font-size:1rem; color:#065f46; margin-bottom:6px;">
+          🎉 100점 완벽 통과! 어떤 일차식 역산 및 바르게 계산한 식을 완벽하게 마스터했습니다!
+        </div>
+        <div style="font-size:0.85rem; color:#047857; line-height:1.6;">
+          • <b>⑴ 본래 식 $A$:</b> $A = (7x + 2) - (2x - 3) = 7x + 2 - 2x + 3 = \\mathbf{5x + 5}$<br>
+          • <b>⑵ 바르게 계산한 식:</b> $A - (2x - 3) = (5x + 5) - (2x - 3) = 5x + 5 - 2x + 3 = \\mathbf{3x + 8}$<br>
+          • <b>⑶ 발전 문항:</b> $B = (a - 5) + (-3a + 4) = -2a - 1$ 이므로,<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;바르게 계산한 식: $B + (-3a + 4) = (-2a - 1) + (-3a + 4) = \\mathbf{-5a + 3}$
+        </div>
+        <div style="margin-top:10px; font-weight:700; color:#047857;">
+          👉 다음 단계 [3-11] 생각 넓히기: 3x3 마방진 일차식 퍼즐이 해금되었습니다!
+        </div>
+      </div>
+    `;
+  } else {
+    let wrongMsg = [];
+    if (!isOk1) wrongMsg.push('<b>⑴:</b> A + (2x - 3) = 7x + 2 이므로 A = (7x + 2) - (2x - 3) = 5x + 5 입니다.');
+    if (!isOk2) wrongMsg.push('<b>⑵:</b> 구한 식 A에서 (2x - 3)을 바르게 빼세요: (5x + 5) - (2x - 3) = 3x + 8');
+    if (!isOk3) wrongMsg.push('<b>⑶:</b> B - (-3a + 4) = a - 5 이므로 B = (a - 5) + (-3a + 4) = -2a - 1 입니다. 바른 계산 B + (-3a + 4) 를 확인하세요.');
+
+    rbox.innerHTML = `
+      <div style="background:#fef2f2; border:1px solid #ef4444; border-radius:8px; padding:12px; margin-top:10px;">
+        <div style="font-weight:700; font-size:0.9rem; color:#991b1b; margin-bottom:4px;">
+          ⚠️ 다시 확인해 보세요.
+        </div>
+        <div style="font-size:0.82rem; color:#b91c1c; line-height:1.5;">
+          ${wrongMsg.join('<br>')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(rbox, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+// ==========================================
+// Two.js 60fps Interactive Canvas Engine for 3-10
+// ==========================================
+function drawStep3_10Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+
+  container.innerHTML = '';
+  const width = container.clientWidth || 620;
+  const height = 440;
+
+  const two = new Two({
+    width: width,
+    height: height,
+    type: Two.Types.svg
+  }).appendTo(container);
+
+  if (!state.lab3_10) {
+    state.lab3_10 = {
+      activeTab: 'mode1',
+      probIdx: 0,
+      timePhase: 1,
+      isPassed: false
+    };
+  }
+
+  const tab = state.lab3_10.activeTab;
+
+  // Background
+  const bg = two.makeRectangle(width / 2, height / 2, width, height);
+  bg.fill = '#f8fafc';
+  bg.noStroke();
+
+  if (tab === 'mode1') {
+    drawMode1TimeMachineCircuitLab(two, width, height);
+  } else if (tab === 'mode2') {
+    drawMode2ReverseCalcBalanceLab(two, width, height);
+  } else {
+    drawMode3DualProblemMasterLab(two, width, height);
+  }
+
+  two.update();
+}
+
+// ----------------------------------------------------
+// Mode 1: ⏳ 타임머신 역산 회로 랩
+// ----------------------------------------------------
+function drawMode1TimeMachineCircuitLab(two, width, height) {
+  const prob = PROBLEMS_3_10[state.lab3_10.probIdx];
+  const phase = state.lab3_10.timePhase;
+
+  // Top Problem Selectors
+  const pCount = 2;
+  const tabW = (width - 40 - (pCount - 1) * 10) / pCount;
+  for (let i = 0; i < pCount; i++) {
+    const tx = 20 + tabW / 2 + i * (tabW + 10);
+    const isCur = (state.lab3_10.probIdx === i);
+    const tabRect = two.makeRoundedRectangle(tx, 26, tabW, 30, 6);
+    tabRect.fill = isCur ? '#3b82f6' : '#ffffff';
+    tabRect.stroke = isCur ? '#2563eb' : '#cbd5e1';
+    tabRect.linewidth = isCur ? 2 : 1;
+
+    const tTxt = two.makeText(i === 0 ? '교과서 5번: 식 A 역산' : '발전 문제: 식 B 역산', tx, 27);
+    tTxt.size = 12;
+    tTxt.weight = isCur ? 700 : 500;
+    tTxt.fill = isCur ? '#ffffff' : '#475569';
+
+    const grp = two.makeGroup(tabRect, tTxt);
+    grp._renderer.elem.style.cursor = 'pointer';
+    grp._renderer.elem.onclick = (function(pIdx) {
+      return function() {
+        setProbIdx3_10(pIdx);
+      };
+    })(i);
+  }
+
+  // Header Title
+  const headerCard = two.makeRoundedRectangle(width / 2, 68, width - 40, 36, 6);
+  headerCard.fill = '#ffffff';
+  headerCard.stroke = '#cbd5e1';
+  headerCard.linewidth = 1;
+
+  const hTxt = two.makeText(`⏳ 타임머신 역산 회로: ${prob.title}`, width / 2 - 80, 69);
+  hTxt.size = 14;
+  hTxt.weight = 800;
+  hTxt.fill = '#1e293b';
+
+  // Phase Indicator Pill
+  const pPill = two.makeRoundedRectangle(width - 95, 68, 110, 24, 12);
+  pPill.fill = '#eff6ff';
+  pPill.stroke = '#3b82f6';
+  pPill.linewidth = 1.5;
+
+  const pPillTxt = two.makeText(`단계 ${phase}/3: ${prob.steps[phase - 1].badge}`, width - 95, 69);
+  pPillTxt.size = 11;
+  pPillTxt.weight = 700;
+  pPillTxt.fill = '#1d4ed8';
+
+  // Main Circuit Display (Y=100 to Y=355)
+  // Stage 3 Timeline Cards in Horizontal Row
+  const stageBoxW = (width - 60) / 3;
+  const stages = [
+    { name: '과거: 본래 식', val: phase >= 2 ? prob.origExpr : '?', color: '#8b5cf6', bg: '#f5f3ff' },
+    { name: '사고: 잘못된 연산', val: `${prob.mistakeOp} (${prob.mistakeExpr})`, color: '#ef4444', bg: '#fef2f2' },
+    { name: '현재: 잘못 나온 결과', val: prob.wrongResult, color: '#3b82f6', bg: '#eff6ff' }
+  ];
+
+  for (let s = 0; s < 3; s++) {
+    const sx = 20 + stageBoxW / 2 + s * (stageBoxW + 10);
+    const sy = 160;
+    const isTarget = (phase === 1 && s === 2) || (phase === 2 && s === 0);
+
+    const sBox = two.makeRoundedRectangle(sx, sy, stageBoxW, 90, 8);
+    sBox.fill = stages[s].bg;
+    sBox.stroke = isTarget ? '#2563eb' : stages[s].color;
+    sBox.linewidth = isTarget ? 2.5 : 1.5;
+
+    const sTit = two.makeText(stages[s].name, sx, sy - 25);
+    sTit.size = 11;
+    sTit.weight = 700;
+    sTit.fill = stages[s].color;
+
+    const sVal = two.makeText(stages[s].val, sx, sy + 8);
+    sVal.size = 17;
+    sVal.weight = 800;
+    sVal.fill = '#1e293b';
+
+    // Connector arrows between stage cards
+    if (s < 2) {
+      const arrX = sx + stageBoxW / 2 + 5;
+      const arrT = two.makeText(phase >= 2 ? '◀ 역산 되감기' : '▶ 진행', arrX, sy);
+      arrT.size = 8;
+      arrT.weight = 700;
+      arrT.fill = '#64748b';
+    }
+  }
+
+  // Active Phase Explanation & Formula Box (Y=260)
+  const fBox = two.makeRoundedRectangle(width / 2, 260, width - 40, 85, 10);
+  fBox.fill = '#ffffff';
+  fBox.stroke = phase === 3 ? '#10b981' : (phase === 2 ? '#8b5cf6' : '#3b82f6');
+  fBox.linewidth = 2;
+
+  const fStep = prob.steps[phase - 1];
+  const fName = two.makeText(`⚡ [${fStep.phaseName}]`, width / 2, 235);
+  fName.size = 12;
+  fName.weight = 700;
+  fName.fill = '#64748b';
+
+  const fEq = two.makeText(fStep.eq, width / 2, 260);
+  fEq.size = 17;
+  fEq.weight = 800;
+  fEq.fill = phase === 3 ? '#047857' : (phase === 2 ? '#6d28d9' : '#1d4ed8');
+
+  const fDesc = two.makeText(fStep.desc, width / 2, 285);
+  fDesc.size = 11;
+  fDesc.weight = 600;
+  fDesc.fill = '#334155';
+
+  // Navigation Button Bar (Y=335)
+  const prevBtn = two.makeRoundedRectangle(width / 2 - 75, 335, 95, 26, 6);
+  prevBtn.fill = phase > 1 ? '#f1f5f9' : '#f8fafc';
+  prevBtn.stroke = phase > 1 ? '#94a3b8' : '#e2e8f0';
+  prevBtn.linewidth = 1;
+
+  const prevTxt = two.makeText('◀ 이전 단계', width / 2 - 75, 336);
+  prevTxt.size = 11;
+  prevTxt.weight = 700;
+  prevTxt.fill = phase > 1 ? '#334155' : '#cbd5e1';
+
+  if (phase > 1) {
+    const prevGrp = two.makeGroup(prevBtn, prevTxt);
+    prevGrp._renderer.elem.style.cursor = 'pointer';
+    prevGrp._renderer.elem.onclick = function() {
+      state.lab3_10.timePhase--;
+      renderToolbar3_10();
+      drawStep3_10Canvas();
+    };
+  }
+
+  const nextBtn = two.makeRoundedRectangle(width / 2 + 75, 335, 95, 26, 6);
+  nextBtn.fill = '#3b82f6';
+  nextBtn.stroke = '#2563eb';
+  nextBtn.linewidth = 1;
+
+  const nextTxt = two.makeText(phase === 3 ? '🔄 처음으로' : '다음 단계 ▶', width / 2 + 75, 336);
+  nextTxt.size = 11;
+  nextTxt.weight = 700;
+  nextTxt.fill = '#ffffff';
+
+  const nextGrp = two.makeGroup(nextBtn, nextTxt);
+  nextGrp._renderer.elem.style.cursor = 'pointer';
+  nextGrp._renderer.elem.onclick = function() {
+    nextPhase3_10();
+  };
+
+  // Bottom Safety Banner
+  const bannerY = 385;
+  const bannerBg = two.makeRoundedRectangle(width / 2, bannerY, width - 40, 26, 6);
+  bannerBg.fill = '#eff6ff';
+  bannerBg.stroke = '#bfdbfe';
+  bannerBg.linewidth = 1;
+
+  const bannerTxt = two.makeText('💡 타임머신처럼 잘못 더한 식을 도로 빼어 본래 식을 찾은 후, 바르게 계산합니다.', width / 2, bannerY + 1);
+  bannerTxt.size = 11;
+  bannerTxt.weight = 600;
+  bannerTxt.fill = '#1d4ed8';
+}
+
+// ----------------------------------------------------
+// Mode 2: ⚖️ 저울 역산 밸런서 랩
+// ----------------------------------------------------
+function drawMode2ReverseCalcBalanceLab(two, width, height) {
+  const prob = PROBLEMS_3_10[state.lab3_10.probIdx];
+
+  // Header Title
+  const headerCard = two.makeRoundedRectangle(width / 2, 35, width - 40, 40, 8);
+  headerCard.fill = '#ffffff';
+  headerCard.stroke = '#cbd5e1';
+  headerCard.linewidth = 1;
+
+  const hTxt = two.makeText('⚖️ 등식의 성질을 이용한 저울 역산 밸런서', width / 2, 36);
+  hTxt.size = 13;
+  hTxt.weight = 800;
+  hTxt.fill = '#1e293b';
+
+  // Balance Beam and Pans (Y=90 to Y=260)
+  const beamY = 120;
+  const beam = two.makeLine(width / 2 - 180, beamY, width / 2 + 180, beamY);
+  beam.stroke = '#475569';
+  beam.linewidth = 6;
+
+  // Fulcrum (Center Triangle)
+  const fulcrum = two.makePolygon(width / 2, beamY + 30, 24, 3);
+  fulcrum.fill = '#0284c7';
+  fulcrum.noStroke();
+
+  // Left Pan (A + (2x-3))
+  const lpLine = two.makeLine(width / 2 - 150, beamY, width / 2 - 150, beamY + 60);
+  lpLine.stroke = '#94a3b8';
+  lpLine.linewidth = 2;
+
+  const lpBox = two.makeRoundedRectangle(width / 2 - 150, beamY + 95, 150, 65, 8);
+  lpBox.fill = '#eff6ff';
+  lpBox.stroke = '#3b82f6';
+  lpBox.linewidth = 1.5;
+
+  const lpT1 = two.makeText('좌변 접시', width / 2 - 150, beamY + 78);
+  lpT1.size = 11;
+  lpT1.weight = 700;
+  lpT1.fill = '#1d4ed8';
+
+  const lpT2 = two.makeText(`A + (${prob.mistakeExpr})`, width / 2 - 150, beamY + 104);
+  lpT2.size = 14;
+  lpT2.weight = 800;
+  lpT2.fill = '#1e293b';
+
+  // Equal Sign in Middle
+  const eqT = two.makeText('=', width / 2, beamY + 95);
+  eqT.size = 28;
+  eqT.weight = 800;
+  eqT.fill = '#0284c7';
+
+  // Right Pan (7x + 2)
+  const rpLine = two.makeLine(width / 2 + 150, beamY, width / 2 + 150, beamY + 60);
+  rpLine.stroke = '#94a3b8';
+  rpLine.linewidth = 2;
+
+  const rpBox = two.makeRoundedRectangle(width / 2 + 150, beamY + 95, 150, 65, 8);
+  rpBox.fill = '#f0fdf4';
+  rpBox.stroke = '#10b981';
+  rpBox.linewidth = 1.5;
+
+  const rpT1 = two.makeText('우변 접시', width / 2 + 150, beamY + 78);
+  rpT1.size = 11;
+  rpT1.weight = 700;
+  rpT1.fill = '#047857';
+
+  const rpT2 = two.makeText(prob.wrongResult, width / 2 + 150, beamY + 104);
+  rpT2.size = 15;
+  rpT2.weight = 800;
+  rpT2.fill = '#065f46';
+
+  // Bottom Subtraction Action Card (Y=300)
+  const actCard = two.makeRoundedRectangle(width / 2, 300, width - 40, 75, 8);
+  actCard.fill = '#ffffff';
+  actCard.stroke = '#e2e8f0';
+  actCard.linewidth = 1;
+
+  const acT1 = two.makeText(`양변에서 똑같이 (${prob.mistakeExpr}) 를 빼면:`, width / 2, 280);
+  acT1.size = 12;
+  acT1.weight = 700;
+  acT1.fill = '#334155';
+
+  const acT2 = two.makeText(`A = (${prob.wrongResult}) - (${prob.mistakeExpr}) = ${prob.origExpr}`, width / 2, 305);
+  acT2.size = 15;
+  acT2.weight = 800;
+  acT2.fill = '#2563eb';
+
+  const acT3 = two.makeText(`👉 바른 계산: (${prob.origExpr}) - (${prob.mistakeExpr}) = ${prob.correctResult}`, width / 2, 326);
+  acT3.size = 12;
+  acT3.weight = 700;
+  acT3.fill = '#059669';
+
+  // Bottom Safety Banner
+  const bannerY = 385;
+  const bannerBg = two.makeRoundedRectangle(width / 2, bannerY, width - 40, 26, 6);
+  bannerBg.fill = '#eff6ff';
+  bannerBg.stroke = '#bfdbfe';
+  bannerBg.linewidth = 1;
+
+  const bannerTxt = two.makeText('💡 양변에 같은 식을 빼거나 더하는 등식의 성질로 어떤 식을 명확히 분리해 낼 수 있습니다.', width / 2, bannerY + 1);
+  bannerTxt.size = 11;
+  bannerTxt.weight = 600;
+  bannerTxt.fill = '#1d4ed8';
+}
+
+// ----------------------------------------------------
+// Mode 3: 📋 2대 역산 유형 비교 마스터
+// ----------------------------------------------------
+function drawMode3DualProblemMasterLab(two, width, height) {
+  // Title Header
+  const titleCard = two.makeRoundedRectangle(width / 2, 35, width - 40, 40, 8);
+  titleCard.fill = '#ffffff';
+  titleCard.stroke = '#cbd5e1';
+  titleCard.linewidth = 1;
+
+  const tTxt = two.makeText('📋 중1 일차식 시험 단골: 2대 역산 유형 완벽 공략법', width / 2, 36);
+  tTxt.size = 13;
+  tTxt.weight = 800;
+  tTxt.fill = '#1e293b';
+
+  // 2 Cards Side by Side (Y=85 to Y=355)
+  const cardW = (width - 55) / 2;
+  const cardH = 260;
+  const cx1 = 20 + cardW / 2;
+  const cx2 = width - 20 - cardW / 2;
+
+  // Type 1 Card (잘못 더했을 때)
+  const c1 = two.makeRoundedRectangle(cx1, 215, cardW, cardH, 10);
+  c1.fill = '#f0fdf4';
+  c1.stroke = '#16a34a';
+  c1.linewidth = 2;
+
+  const t1Tit = two.makeText('유형 1: 빼야 할 것을 더했을 때', cx1, 105);
+  t1Tit.size = 12;
+  t1Tit.weight = 800;
+  t1Tit.fill = '#15803d';
+
+  const t1Prob = two.makeText('A + □ = (잘못된 결과)', cx1, 135);
+  t1Prob.size = 14;
+  t1Prob.weight = 700;
+  t1Prob.fill = '#1e293b';
+
+  const t1Step1 = two.makeText('① A = (결과) - □ (도로 빼기)', cx1, 175);
+  t1Step1.size = 12;
+  t1Step1.weight = 700;
+  t1Step1.fill = '#047857';
+
+  const t1Step2 = two.makeText('② 바른 식 = A - □ (정상 뺄셈)', cx1, 210);
+  t1Step2.size = 12;
+  t1Step2.weight = 700;
+  t1Step2.fill = '#047857';
+
+  const t1Btn = two.makeRoundedRectangle(cx1, 270, 110, 26, 6);
+  t1Btn.fill = '#16a34a';
+  t1Btn.noStroke();
+
+  const t1BtnTxt = two.makeText('교과서 5번 풀기', cx1, 271);
+  t1BtnTxt.size = 11;
+  t1BtnTxt.weight = 700;
+  t1BtnTxt.fill = '#ffffff';
+
+  const grp1 = two.makeGroup(c1, t1Tit, t1Prob, t1Step1, t1Step2, t1Btn, t1BtnTxt);
+  grp1._renderer.elem.style.cursor = 'pointer';
+  grp1._renderer.elem.onclick = function() {
+    setProbIdx3_10(0);
+    setLab3_10Tab('mode1');
+  };
+
+  // Type 2 Card (잘못 빼었을 때)
+  const c2 = two.makeRoundedRectangle(cx2, 215, cardW, cardH, 10);
+  c2.fill = '#eff6ff';
+  c2.stroke = '#2563eb';
+  c2.linewidth = 2;
+
+  const t2Tit = two.makeText('유형 2: 더해야 할 것을 빼었을 때', cx2, 105);
+  t2Tit.size = 12;
+  t2Tit.weight = 800;
+  t2Tit.fill = '#1d4ed8';
+
+  const t2Prob = two.makeText('B - □ = (잘못된 결과)', cx2, 135);
+  t2Prob.size = 14;
+  t2Prob.weight = 700;
+  t2Prob.fill = '#1e293b';
+
+  const t2Step1 = two.makeText('① B = (결과) + □ (도로 더하기)', cx2, 175);
+  t2Step1.size = 12;
+  t2Step1.weight = 700;
+  t2Step1.fill = '#1d4ed8';
+
+  const t2Step2 = two.makeText('② 바른 식 = B + □ (정상 덧셈)', cx2, 210);
+  t2Step2.size = 12;
+  t2Step2.weight = 700;
+  t2Step2.fill = '#1d4ed8';
+
+  const t2Btn = two.makeRoundedRectangle(cx2, 270, 110, 26, 6);
+  t2Btn.fill = '#2563eb';
+  t2Btn.noStroke();
+
+  const t2BtnTxt = two.makeText('발전 문제 풀기', cx2, 271);
+  t2BtnTxt.size = 11;
+  t2BtnTxt.weight = 700;
+  t2BtnTxt.fill = '#ffffff';
+
+  const grp2 = two.makeGroup(c2, t2Tit, t2Prob, t2Step1, t2Step2, t2Btn, t2BtnTxt);
+  grp2._renderer.elem.style.cursor = 'pointer';
+  grp2._renderer.elem.onclick = function() {
+    setProbIdx3_10(1);
+    setLab3_10Tab('mode1');
+  };
+
+  // Bottom Safety Banner
+  const bannerY = 385;
+  const bannerBg = two.makeRoundedRectangle(width / 2, bannerY, width - 40, 26, 6);
+  bannerBg.fill = '#eff6ff';
+  bannerBg.stroke = '#bfdbfe';
+  bannerBg.linewidth = 1;
+
+  const bannerTxt = two.makeText('💡 카드를 클릭하면 해당 역산 유형의 타임머신 회로 랩으로 즉시 전환됩니다.', width / 2, bannerY + 1);
+  bannerTxt.size = 11;
+  bannerTxt.weight = 600;
+  bannerTxt.fill = '#1d4ed8';
+}
+
+    // --- End Substep 3-10 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -27411,6 +28194,9 @@ function drawMode3RefundSimulatorLab(two, width, height) {
       } else if (code === '3-9') {
         renderToolbar3_9();
         renderSubstep3_9();
+      } else if (code === '3-10') {
+        renderToolbar3_10();
+        renderSubstep3_10();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
