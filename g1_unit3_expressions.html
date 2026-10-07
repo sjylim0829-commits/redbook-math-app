@@ -1113,8 +1113,8 @@
       },
       '4-5': {
         code: '4-5', tab: 4,
-        substepLabel: '5. 등식의 성질 1, 2 (덧셈과 뺄셈) (p.88)',
-        missionText: '<b>[4-5] 5. 등식의 성질 1, 2 (덧셈과 뺄셈) (p.88)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '5. 등식의 성질 (p.89)',
+        missionText: '<b>[등식의 성질] 등식의 4대 기본 성질 (교과서 p.89)</b><br>• <b>성질 1:</b> 양변에 같은 수를 더하여도 등식은 성립한다 ($a=b \\implies a+c=b+c$).<br>• <b>성질 2:</b> 양변에서 같은 수를 빼어도 등식은 성립한다 ($a=b \\implies a-c=b-c$).<br>• <b>성질 3:</b> 양변에 같은 수를 곱하여도 등식은 성립한다 ($a=b \\implies ac=bc$).<br>• <b>성질 4:</b> 양변을 0이 아닌 같은 수로 나누어도 등식은 성립한다 ($a=b \\implies a/c=b/c, c \\neq 0$).<br>좌측 캔버스에서 양팔 저울 시뮬레이터, 성질 변형기, 0 나눗셈 트랩 랩을 조작해 보세요.',
         drawer: 'drawStep4_5Canvas'
       },
       '4-6': {
@@ -1487,6 +1487,15 @@
       
       
       
+      
+      // Substep 4-5 State (Properties of Equality)
+      lab4_5: {
+        activeTab: 'mode1',
+        activeProp: 1,
+        cVal: 3,
+        transIdx: 0,
+        trapActive: false
+      },
       // Substep 4-4 State (Identity vs Equation)
       lab4_4: {
         activeTab: 'mode1',
@@ -33053,6 +33062,678 @@ function drawMode3IdentityCoeffBuilderLab(two) {
 
     // --- End Substep 4-4 Implementation ---
 
+    
+    // --- Substep 4-5 Implementation ---
+// code_4_5.js: Substep [4-5] 3.4 5. 등식의 성질 (교과서 p.89)
+
+const PROPERTIES_DATA_4_5 = [
+  {
+    id: 1,
+    name: '성질 1: 덧셈',
+    formula: 'a = b 이면  a + c = b + c',
+    desc: '등식의 양변에 같은 수를 더하여도 등식은 성립한다.',
+    opSymbol: '+ c',
+    sampleEq: 'x - 3 = 5 ➔ (양변에 +3) ➔ x = 8',
+    color: '#3b82f6',
+    bg: '#eff6ff'
+  },
+  {
+    id: 2,
+    name: '성질 2: 뺄셈',
+    formula: 'a = b 이면  a - c = b - c',
+    desc: '등식의 양변에서 같은 수를 빼어도 등식은 성립한다.',
+    opSymbol: '- c',
+    sampleEq: 'x + 2 = 7 ➔ (양변에서 -2) ➔ x = 5',
+    color: '#6366f1',
+    bg: '#e0e7ff'
+  },
+  {
+    id: 3,
+    name: '성질 3: 곱셈',
+    formula: 'a = b 이면  ac = bc',
+    desc: '등식의 양변에 같은 수를 곱하여도 등식은 성립한다.',
+    opSymbol: '× c',
+    sampleEq: 'x/3 = 4 ➔ (양변에 ×3) ➔ x = 12',
+    color: '#d97706',
+    bg: '#fef3c7'
+  },
+  {
+    id: 4,
+    name: '성질 4: 나눗셈 (c ≠ 0)',
+    formula: 'a = b 이면  a/c = b/c  (단, c ≠ 0)',
+    desc: '등식의 양변을 0이 아닌 같은 수로 나누어도 등식은 성립한다.',
+    opSymbol: '÷ c',
+    sampleEq: '5x = 20 ➔ (양변을 ÷5) ➔ x = 4',
+    color: '#10b981',
+    bg: '#ecfdf5'
+  }
+];
+
+function renderToolbar4_5() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab4_5) {
+    state.lab4_5 = {
+      activeTab: 'mode1', // 'mode1' (양팔 저울 성질 시뮬레이터) | 'mode2' (등식 성질 변형기) | 'mode3' (0 나눗셈 트랩 랩)
+      activeProp: 1,      // 1: 덧셈, 2: 뺄셈, 3: 곱셈, 4: 나눗셈
+      cVal: 3,            // 연산에 적용할 c 값 (1~5)
+      transIdx: 0,        // 0~3 (문제 4의 4개 변형 예제)
+      trapActive: false
+    };
+  }
+
+  const curTab = state.lab4_5.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab4_5Tab('mode1')">
+        ⚖️ 1. 양팔 저울 성질 시뮬레이터 (p.89)
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab4_5Tab('mode2')">
+        🔍 2. 등식 성질 변형기
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab4_5Tab('mode3')">
+        ⚠️ 3. 0 나눗셈 트랩 탐구
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      ${curTab === 'mode1' ? `
+        <button class="icon-btn ${state.lab4_5.activeProp === 1 ? 'active' : ''}" onclick="setProp4_5(1)">➕ 성질 1 (더하기)</button>
+        <button class="icon-btn ${state.lab4_5.activeProp === 2 ? 'active' : ''}" onclick="setProp4_5(2)">➖ 성질 2 (빼기)</button>
+        <button class="icon-btn ${state.lab4_5.activeProp === 3 ? 'active' : ''}" onclick="setProp4_5(3)">✖️ 성질 3 (곱하기)</button>
+        <button class="icon-btn ${state.lab4_5.activeProp === 4 ? 'active' : ''}" onclick="setProp4_5(4)">➗ 성질 4 (나누기)</button>
+      ` : ''}
+      ${curTab === 'mode2' ? `
+        <button class="icon-btn" onclick="setTransIdx4_5(0)">⑴ a+3 = b+[ ]</button>
+        <button class="icon-btn" onclick="setTransIdx4_5(1)">⑵ x+2=7 ➔ x=5</button>
+        <button class="icon-btn" onclick="setTransIdx4_5(2)">⑶ x/3=4 ➔ x=12</button>
+        <button class="icon-btn" onclick="setTransIdx4_5(3)">⑷ 5x=20 ➔ x=4</button>
+      ` : ''}
+      <button class="icon-btn" onclick="resetLab4_5()" title="초기화">🔄 초기화</button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('4-5')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab4_5Tab(tabKey) {
+  if (!state.lab4_5) resetLab4_5();
+  state.lab4_5.activeTab = tabKey;
+  renderToolbar4_5();
+  drawStep4_5Canvas();
+}
+
+function resetLab4_5() {
+  state.lab4_5 = {
+    activeTab: 'mode1',
+    activeProp: 1,
+    cVal: 3,
+    transIdx: 0,
+    trapActive: false
+  };
+  renderToolbar4_5();
+  drawStep4_5Canvas();
+}
+
+function setProp4_5(propNum) {
+  if (!state.lab4_5) resetLab4_5();
+  state.lab4_5.activeProp = propNum;
+  renderToolbar4_5();
+  drawStep4_5Canvas();
+}
+
+function setTransIdx4_5(idx) {
+  if (!state.lab4_5) resetLab4_5();
+  state.lab4_5.transIdx = idx;
+  drawStep4_5Canvas();
+}
+
+function renderSubstep4_5() {
+  const panel = document.getElementById('form-box');
+  if (!panel) return;
+
+  panel.innerHTML = `
+    <div class="card-title" style="display:flex; align-items:center; gap:8px;">
+      <span class="badge" style="background:#4f46e5; color:#fff;">교과서 p.89</span>
+      <span style="font-size:1.05rem; font-weight:800; color:#1e1b4b;">5. 등식의 성질</span>
+    </div>
+
+    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-top:10px; font-size:0.86rem; line-height:1.55; color:#334155;">
+      <b>📖 [교과서 p.89 등식의 성질 및 문제 4]</b><br>
+      등식의 양변에 같은 수를 더하거나, 빼거나, 곱하거나, <b>0이 아닌 같은 수로 나누어도</b> 등식은 성립합니다.<br>
+      좌측 캔버스 <b>[⚖️ 양팔 저울 시뮬레이터]</b>를 조작하며 아래 문제에 답해 보세요.
+    </div>
+
+    <div style="margin-top:14px; display:flex; flex-direction:column; gap:12px;">
+      <!-- 문제 1 -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px;">
+        <div style="font-weight:700; color:#1e293b; font-size:0.87rem; margin-bottom:6px;">
+          (1) $a = b$ 일 때, $a + 3 = b + [\\quad ]$ 에서 빈칸에 들어갈 알맞은 수를 쓰시오.
+        </div>
+        <input type="text" id="ans-4-5-1" class="proof-input-text" placeholder="수 입력" style="width:100%;" />
+      </div>
+
+      <!-- 문제 2 -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px;">
+        <div style="font-weight:700; color:#1e293b; font-size:0.87rem; margin-bottom:6px;">
+          (2) 등식 $x + 2 = 7$ 의 양변에서 $[\\quad ]$를 빼면 $x = 5$가 된다. 빈칸에 들어갈 수를 쓰시오.
+        </div>
+        <input type="text" id="ans-4-5-2" class="proof-input-text" placeholder="수 입력" style="width:100%;" />
+      </div>
+
+      <!-- 문제 3 -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px;">
+        <div style="font-weight:700; color:#1e293b; font-size:0.87rem; margin-bottom:6px;">
+          (3) 등식 $\\frac{x}{3} = 4$ 의 양변에 $[\\quad ]$를 곱하면 $x = 12$가 된다. 빈칸에 들어갈 수를 쓰시오.
+        </div>
+        <input type="text" id="ans-4-5-3" class="proof-input-text" placeholder="수 입력" style="width:100%;" />
+      </div>
+
+      <!-- 문제 4 -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px;">
+        <div style="font-weight:700; color:#1e293b; font-size:0.87rem; margin-bottom:6px;">
+          (4) 등식 $5x = 20$ 의 양변을 $[\\quad ]$로 나누면 $x = 4$가 된다. 빈칸에 들어갈 수를 쓰시오.
+        </div>
+        <input type="text" id="ans-4-5-4" class="proof-input-text" placeholder="수 입력" style="width:100%;" />
+      </div>
+
+      <!-- 문제 5 -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px;">
+        <div style="font-weight:700; color:#1e293b; font-size:0.87rem; margin-bottom:6px;">
+          (5) 등식의 양변을 나눌 때, <b>어떤 수</b>로는 절대 나눌 수 없습니까?
+        </div>
+        <input type="text" id="ans-4-5-5" class="proof-input-text" placeholder="수 또는 용어 입력 (예: 0 또는 영)" style="width:100%;" />
+      </div>
+    </div>
+
+    <div style="margin-top:14px; display:flex; gap:8px;">
+      <button class="primary-btn" onclick="gradeStep4_5()" style="flex:1; height:38px; font-weight:700;">
+        정답 확인 및 채점
+      </button>
+      <button class="icon-btn" onclick="resetForm4_5()" style="height:38px; padding:0 12px;">
+        입력 초기화
+      </button>
+    </div>
+
+    <div id="grade-feedback-4-5" style="margin-top:12px;"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(panel, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ]
+    });
+  }
+}
+
+function resetForm4_5() {
+  for (let i = 1; i <= 5; i++) {
+    const el = document.getElementById(`ans-4-5-${i}`);
+    if (el) el.value = '';
+  }
+  const fb = document.getElementById('grade-feedback-4-5');
+  if (fb) fb.innerHTML = '';
+}
+
+function gradeStep4_5() {
+  const ans1 = (document.getElementById('ans-4-5-1')?.value || '').trim();
+  const ans2 = (document.getElementById('ans-4-5-2')?.value || '').trim();
+  const ans3 = (document.getElementById('ans-4-5-3')?.value || '').trim();
+  const ans4 = (document.getElementById('ans-4-5-4')?.value || '').trim();
+  const ans5 = (document.getElementById('ans-4-5-5')?.value || '').trim();
+
+  const isQ1Correct = (ans1 === '3');
+  const isQ2Correct = (ans2 === '2');
+  const isQ3Correct = (ans3 === '3');
+  const isQ4Correct = (ans4 === '5');
+  const isQ5Correct = (ans5 === '0' || ans5 === '영' || ans5 === '0 (영)' || ans5 === '숫자 0');
+
+  const fb = document.getElementById('grade-feedback-4-5');
+  if (!fb) return;
+
+  const totalScore = (isQ1Correct ? 15 : 0) + (isQ2Correct ? 20 : 0) + (isQ3Correct ? 20 : 0) + 
+                     (isQ4Correct ? 20 : 0) + (isQ5Correct ? 25 : 0);
+
+  if (totalScore === 100) {
+    fb.innerHTML = `
+      <div style="background:#ecfdf5; border:1px solid #10b981; border-radius:10px; padding:14px; color:#065f46;">
+        <div style="font-size:1.02rem; font-weight:800; display:flex; align-items:center; gap:6px;">
+          🎉 100점 만점! 등식의 4대 성질을 완벽히 이해하고 적용했습니다!
+        </div>
+        <div style="margin-top:6px; font-size:0.87rem; line-height:1.55;">
+          • (1)번: 양변에 같은 수 3을 더함 ➔ $a + 3 = b + 3$<br>
+          • (2)번: 양변에서 같은 수 2를 뺌 ➔ $x = 5$<br>
+          • (3)번: 양변에 같은 수 3을 곱함 ➔ $x = 12$<br>
+          • (4)번: 양변을 같은 수 5로 나눔 ➔ $x = 4$<br>
+          • (5)번: 나눗셈 성질에서는 반드시 <b>0이 아닌 수</b>로 나누어야 합니다.<br>
+          다음 서브스텝 <b>[4-6] 6. 등식의 성질을 이용한 방정식의 풀이 (p.90)</b>가 해금되었습니다!
+        </div>
+      </div>
+    `;
+
+    if (!state.unlockedSubSteps.includes('4-6')) {
+      state.unlockedSubSteps.push('4-6');
+    }
+    if (typeof updateSubstepPills === 'function') updateSubstepPills();
+    if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+      LMSIntegration.saveStudentProgress('4-5', {
+        score: 100,
+        completed: true,
+        answers: { ans1, ans2, ans3, ans4, ans5 }
+      }, 3);
+    }
+  } else {
+    let wrongNotes = [];
+    if (!isQ1Correct) wrongNotes.push('(1)번: 양변에 같은 수를 더해야 하므로 빈칸은 3입니다.');
+    if (!isQ2Correct) wrongNotes.push('(2)번: x + 2 = 7 에서 2를 빼야 x만 남으므로 빈칸은 2입니다.');
+    if (!isQ3Correct) wrongNotes.push('(3)번: x/3 = 4 에서 양변에 3을 곱해야 x = 12가 됩니다.');
+    if (!isQ4Correct) wrongNotes.push('(4)번: 5x = 20 에서 양변을 5로 나누어야 x = 4가 됩니다.');
+    if (!isQ5Correct) wrongNotes.push('(5)번: 수학에서 어떤 수도 "0"으로 나눌 수 없습니다.');
+
+    fb.innerHTML = `
+      <div style="background:#fef2f2; border:1px solid #ef4444; border-radius:10px; padding:12px; color:#991b1b;">
+        <div style="font-weight:800; font-size:0.92rem;">다시 확인해 보세요! (현재 점수: ${totalScore}점)</div>
+        <div style="margin-top:6px; font-size:0.84rem; line-height:1.5;">
+          ${wrongNotes.join('<br>')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ]
+    });
+  }
+}
+
+// --- Two.js 60fps 인터랙티브 캔버스 엔진 ---
+function drawStep4_5Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const two = new Two({
+    width: 680,
+    height: 440,
+    type: Two.Types.svg
+  }).appendTo(container);
+
+  if (!state.lab4_5) {
+    resetLab4_5();
+  }
+
+  const activeTab = state.lab4_5.activeTab;
+
+  if (activeTab === 'mode1') {
+    drawMode1BalanceScalePropertiesLab(two);
+  } else if (activeTab === 'mode2') {
+    drawMode2PropertyTransformerLab(two);
+  } else if (activeTab === 'mode3') {
+    drawMode3DivisionByZeroTrapLab(two);
+  }
+
+  // 안내 배너 (Vertical Budget 준수: Y=385, H=26, 바닥 안전 여백 42px >= 25px)
+  const bannerBg = two.makeRoundedRectangle(340, 385, 620, 26, 6);
+  bannerBg.fill = '#f8fafc';
+  bannerBg.stroke = '#cbd5e1';
+  bannerBg.linewidth = 1;
+
+  let tipMsg = '💡 등식의 양변에 같은 수를 더하거나 빼거나 곱하거나 0이 아닌 수로 나누어도 등식은 성립합니다.';
+  if (activeTab === 'mode1') {
+    tipMsg = '💡 양팔 저울의 양쪽에 똑같은 연산을 적용하면 저울은 언제나 완벽한 수평 평형을 유지합니다.';
+  } else if (activeTab === 'mode2') {
+    tipMsg = '💡 x만 남기기 위해 양변에 어떤 연산(덧셈, 뺄셈, 곱셈, 나눗셈)을 해야 할지 판단해 보세요.';
+  } else if (activeTab === 'mode3') {
+    tipMsg = '💡 수학에서 0으로 나누는 연산은 정의되지 않으므로, 나눗셈 성질에서는 [c ≠ 0] 조건이 필수입니다.';
+  }
+
+  const tipText = two.makeText(tipMsg, 340, 385, {
+    family: 'Pretendard, sans-serif',
+    size: 11,
+    weight: 600,
+    fill: '#475569',
+    alignment: 'center'
+  });
+
+  two.update();
+}
+
+// Mode 1: ⚖️ 양팔 저울 4대 등식 성질 시뮬레이터
+function drawMode1BalanceScalePropertiesLab(two) {
+  const title = two.makeText('⚖️ [양팔 저울 시뮬레이터] 등식의 4대 기본 성질 (p.89)', 340, 26, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 800,
+    fill: '#1e1b4b',
+    alignment: 'center'
+  });
+
+  const propNum = state.lab4_5.activeProp;
+  const prop = PROPERTIES_DATA_4_5[propNum - 1];
+
+  // 상단 성질 공식 카드 (Y = 60)
+  const fCard = two.makeRoundedRectangle(340, 60, 590, 42, 8);
+  fCard.fill = prop.bg;
+  fCard.stroke = prop.color;
+  fCard.linewidth = 1.5;
+
+  two.makeText(`[${prop.name}]  ${prop.formula}`, 340, 54, {
+    family: 'Pretendard, sans-serif',
+    size: 13,
+    weight: 900,
+    fill: prop.color,
+    alignment: 'center'
+  });
+
+  two.makeText(prop.desc, 340, 72, {
+    family: 'Pretendard, sans-serif',
+    size: 10.5,
+    weight: 600,
+    fill: '#334155',
+    alignment: 'center'
+  });
+
+  // 양팔 저울 렌더링
+  const fulcrumX = 340;
+  const fulcrumY = 230;
+
+  // 바닥 지면
+  const ground = two.makeLine(80, 280, 600, 280);
+  ground.stroke = '#94a3b8';
+  ground.linewidth = 3;
+
+  // 중심 기둥
+  const pole = two.makePath(fulcrumX, fulcrumY - 8, fulcrumX - 25, 280, fulcrumX + 25, 280, true);
+  pole.fill = '#475569';
+  pole.stroke = '#334155';
+  pole.linewidth = 2;
+
+  const pin = two.makeCircle(fulcrumX, fulcrumY - 8, 7);
+  pin.fill = '#ffffff';
+  pin.stroke = '#334155';
+  pin.linewidth = 2;
+
+  // 수평 보드 (양변에 같은 연산이 적용되므로 완벽 수평 0도)
+  const beamGroup = two.makeGroup();
+  const beam = two.makeRoundedRectangle(0, 0, 480, 14, 4);
+  beam.fill = '#f97316';
+  beam.stroke = '#ea580c';
+  beam.linewidth = 2;
+  beamGroup.add(beam);
+
+  // 좌측 매달린 저울 접시
+  const lRope1 = two.makeLine(-180, 0, -220, 45); lRope1.stroke = '#64748b'; lRope1.linewidth = 1.5;
+  const lRope2 = two.makeLine(-180, 0, -140, 45); lRope2.stroke = '#64748b'; lRope2.linewidth = 1.5;
+  const lPlate = two.makeRoundedRectangle(-180, 47, 95, 10, 3);
+  lPlate.fill = '#cbd5e1'; lPlate.stroke = '#94a3b8'; lPlate.linewidth = 1.5;
+  beamGroup.add(lRope1, lRope2, lPlate);
+
+  // 좌측 접시 위 물체 (a 추 + c 연산 블록)
+  const aBlock = two.makeRoundedRectangle(-195, 30, 42, 26, 4);
+  aBlock.fill = '#3b82f6';
+  const aText = two.makeText('a', -195, 31, { size: 13, weight: 900, fill: '#ffffff', alignment: 'center' });
+
+  const cBlockL = two.makeRoundedRectangle(-155, 30, 34, 26, 4);
+  cBlockL.fill = prop.color;
+  const cTextL = two.makeText(prop.opSymbol, -155, 31, { size: 11, weight: 800, fill: '#ffffff', alignment: 'center' });
+  beamGroup.add(aBlock, aText, cBlockL, cTextL);
+
+  // 우측 매달린 저울 접시
+  const rRope1 = two.makeLine(180, 0, 140, 45); rRope1.stroke = '#64748b'; rRope1.linewidth = 1.5;
+  const rRope2 = two.makeLine(180, 0, 220, 45); rRope2.stroke = '#64748b'; rRope2.linewidth = 1.5;
+  const rPlate = two.makeRoundedRectangle(180, 47, 95, 10, 3);
+  rPlate.fill = '#cbd5e1'; rPlate.stroke = '#94a3b8'; rPlate.linewidth = 1.5;
+  beamGroup.add(rRope1, rRope2, rPlate);
+
+  // 우측 접시 위 물체 (b 추 + c 연산 블록)
+  const bBlock = two.makeRoundedRectangle(165, 30, 42, 26, 4);
+  bBlock.fill = '#10b981';
+  const bText = two.makeText('b', 165, 31, { size: 13, weight: 900, fill: '#ffffff', alignment: 'center' });
+
+  const cBlockR = two.makeRoundedRectangle(205, 30, 34, 26, 4);
+  cBlockR.fill = prop.color;
+  const cTextR = two.makeText(prop.opSymbol, 205, 31, { size: 11, weight: 800, fill: '#ffffff', alignment: 'center' });
+  beamGroup.add(bBlock, bText, cBlockR, cTextR);
+
+  beamGroup.translation.set(fulcrumX, fulcrumY - 8);
+
+  // 평형 황금 등호
+  const goldEq = two.makeCircle(fulcrumX, fulcrumY - 45, 18);
+  goldEq.fill = '#f59e0b';
+  goldEq.stroke = '#d97706';
+  goldEq.linewidth = 2;
+  two.makeText('=', fulcrumX, fulcrumY - 44, { size: 22, weight: 900, fill: '#ffffff', alignment: 'center' });
+
+  // 하단 예제 및 해설 카드 (Y = 325)
+  const exCard = two.makeRoundedRectangle(340, 325, 590, 52, 8);
+  exCard.fill = '#ffffff';
+  exCard.stroke = '#cbd5e1';
+  exCard.linewidth = 1.5;
+
+  two.makeText(`📌 [실제 방정식 활용] ${prop.sampleEq}`, 340, 315, {
+    family: 'Pretendard, sans-serif',
+    size: 12.5,
+    weight: 800,
+    fill: '#1e293b',
+    alignment: 'center'
+  });
+
+  two.makeText('양변에 똑같이 같은 연산을 하였으므로 저울은 완벽한 수평(평형)을 유지합니다!', 340, 335, {
+    family: 'Pretendard, sans-serif',
+    size: 11,
+    weight: 600,
+    fill: '#059669',
+    alignment: 'center'
+  });
+}
+
+// Mode 2: 🔍 등식 성질 추론 변형기
+function drawMode2PropertyTransformerLab(two) {
+  const title = two.makeText('🔍 [등식 성질 변형기] 문제 4의 4가지 변형 과정 (p.89)', 340, 26, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 800,
+    fill: '#1e1b4b',
+    alignment: 'center'
+  });
+
+  const examples = [
+    {
+      title: '⑴ a = b 이면 a + 3 = b + [ 3 ]',
+      prop: '등식의 양변에 같은 수(3)를 더하여도 등식은 성립한다.',
+      step1: 'a = b',
+      op: '양변에 + 3',
+      step2: 'a + 3 = b + 3',
+      ans: '3',
+      color: '#3b82f6'
+    },
+    {
+      title: '⑵ x + 2 = 7 의 양변에서 [ 2 ]를 빼면 x = 5',
+      prop: '등식의 양변에서 같은 수(2)를 빼어도 등식은 성립한다.',
+      step1: 'x + 2 = 7',
+      op: '양변에서 - 2',
+      step2: '(x + 2) - 2 = 7 - 2  ➔  x = 5',
+      ans: '2',
+      color: '#6366f1'
+    },
+    {
+      title: '⑶ x / 3 = 4 의 양변에 [ 3 ]을 곱하면 x = 12',
+      prop: '등식의 양변에 같은 수(3)를 곱하여도 등식은 성립한다.',
+      step1: 'x / 3 = 4',
+      op: '양변에 × 3',
+      step2: '(x / 3) × 3 = 4 × 3  ➔  x = 12',
+      ans: '3',
+      color: '#d97706'
+    },
+    {
+      title: '⑷ 5x = 20 의 양변을 [ 5 ]로 나누면 x = 4',
+      prop: '등식의 양변을 0이 아닌 같은 수(5)로 나누어도 등식은 성립한다.',
+      step1: '5x = 20',
+      op: '양변을 ÷ 5',
+      step2: '(5x) ÷ 5 = 20 ÷ 5  ➔  x = 4',
+      ans: '5',
+      color: '#10b981'
+    }
+  ];
+
+  const ex = examples[state.lab4_5.transIdx];
+
+  // 상단 4개 탭 (Y = 54)
+  const tabW = 135;
+  const startX = 70;
+  examples.forEach((item, idx) => {
+    const isSel = (state.lab4_5.transIdx === idx);
+    const tx = startX + idx * 140 + tabW / 2;
+    const ty = 54;
+    const tBg = two.makeRoundedRectangle(tx, ty, tabW, 26, 6);
+    tBg.fill = isSel ? '#4f46e5' : '#f1f5f9';
+    tBg.stroke = isSel ? '#3730a3' : '#cbd5e1';
+    tBg.linewidth = isSel ? 2 : 1;
+
+    two.makeText(`예제 (${idx + 1})`, tx, ty + 1, {
+      family: 'Pretendard, sans-serif',
+      size: 11,
+      weight: isSel ? 800 : 600,
+      fill: isSel ? '#ffffff' : '#475569',
+      alignment: 'center'
+    });
+
+    if (tBg._renderer && tBg._renderer.elem) {
+      tBg._renderer.elem.style.cursor = 'pointer';
+      tBg._renderer.elem.onclick = () => setTransIdx4_5(idx);
+    }
+  });
+
+  // 메인 변형 카드 (Y = 195, H = 210)
+  const cardBg = two.makeRoundedRectangle(340, 205, 590, 215, 12);
+  cardBg.fill = '#ffffff';
+  cardBg.stroke = ex.color;
+  cardBg.linewidth = 2;
+
+  two.makeText(ex.title, 340, 125, {
+    family: 'Pretendard, sans-serif',
+    size: 16,
+    weight: 900,
+    fill: '#1e293b',
+    alignment: 'center'
+  });
+
+  // 단계 1 카드 (처음 식)
+  const b1 = two.makeRoundedRectangle(165, 185, 160, 65, 8);
+  b1.fill = '#eff6ff'; b1.stroke = '#3b82f6'; b1.linewidth = 1.5;
+  two.makeText('처음 등식', 165, 168, { size: 10, weight: 700, fill: '#1d4ed8', alignment: 'center' });
+  two.makeText(ex.step1, 165, 195, { size: 16, weight: 900, fill: '#1e3a8a', alignment: 'center' });
+
+  // 중간 연산 화살표
+  const arrow = two.makeLine(255, 185, 345, 185);
+  arrow.stroke = ex.color; arrow.linewidth = 2;
+  const head = two.makePath(340, 180, 350, 185, 340, 190, true);
+  head.fill = ex.color;
+  two.makeText(ex.op, 300, 170, { size: 11, weight: 800, fill: ex.color, alignment: 'center' });
+
+  // 단계 2 카드 (변형 후 식)
+  const b2 = two.makeRoundedRectangle(460, 185, 200, 65, 8);
+  b2.fill = '#ecfdf5'; b2.stroke = '#10b981'; b2.linewidth = 1.5;
+  two.makeText('변형된 등식', 460, 168, { size: 10, weight: 700, fill: '#047857', alignment: 'center' });
+  two.makeText(ex.step2, 460, 195, { size: 13.5, weight: 900, fill: '#065f46', alignment: 'center' });
+
+  // 하단 사용된 성질 설명
+  const descBox = two.makeRoundedRectangle(340, 265, 530, 42, 6);
+  descBox.fill = '#f8fafc'; descBox.stroke = '#e2e8f0';
+  two.makeText(`💡 적용된 성질: ${ex.prop}`, 340, 265, {
+    family: 'Pretendard, sans-serif',
+    size: 11.5,
+    weight: 700,
+    fill: '#334155',
+    alignment: 'center'
+  });
+}
+
+// Mode 3: ⚠️ 0으로 나눌 수 없다! 등식 성질 트랩 탐구 랩
+function drawMode3DivisionByZeroTrapLab(two) {
+  const title = two.makeText('⚠️ [등식 성질 트랩] 왜 0으로는 나눌 수 없을까? (p.89)', 340, 26, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 800,
+    fill: '#1e1b4b',
+    alignment: 'center'
+  });
+
+  // 메인 경고 패널 (Y = 195, H = 250)
+  const panelBg = two.makeRoundedRectangle(340, 205, 590, 245, 12);
+  panelBg.fill = '#fffbeb';
+  panelBg.stroke = '#f59e0b';
+  panelBg.linewidth = 2;
+
+  // 타이틀
+  two.makeText('🚨 등식 성질 4의 절대 원칙: "0이 아닌 같은 수로 나눈다!"', 340, 115, {
+    family: 'Pretendard, sans-serif',
+    size: 15,
+    weight: 900,
+    fill: '#92400e',
+    alignment: 'center'
+  });
+
+  // 거짓 증명 트랩 예시 박스
+  const trapBox = two.makeRoundedRectangle(340, 185, 530, 85, 8);
+  trapBox.fill = '#ffffff';
+  trapBox.stroke = '#fca5a5';
+  trapBox.linewidth = 1.5;
+
+  two.makeText('【 0으로 나누었을 때 일어나는 치명적 오류(모순) 】', 340, 160, {
+    size: 11.5,
+    weight: 800,
+    fill: '#dc2626',
+    alignment: 'center'
+  });
+
+  two.makeText('2 × 0 = 0 이고  3 × 0 = 0 이므로  ➔  2 × 0 = 3 × 0 (참인 등식)', 340, 182, {
+    size: 12,
+    weight: 700,
+    fill: '#1e293b',
+    alignment: 'center'
+  });
+
+  two.makeText('여기서 양변을 "0"으로 나눈다고 가정하면 ➔ 2 = 3 이라는 말도 안 되는 모순 발생!', 340, 205, {
+    size: 12,
+    weight: 900,
+    fill: '#b91c1c',
+    alignment: 'center'
+  });
+
+  // 하단 결론 배너 (Y = 275)
+  const resBox = two.makeRoundedRectangle(340, 275, 530, 50, 6);
+  resBox.fill = '#ecfdf5';
+  resBox.stroke = '#10b981';
+  resBox.linewidth = 1.5;
+
+  two.makeText('⭐ 결론: a = b 이면 a/c = b/c 가 성립하려면 반드시 [ c ≠ 0 ] 이어야 합니다!', 340, 268, {
+    size: 12,
+    weight: 900,
+    fill: '#065f46',
+    alignment: 'center'
+  });
+
+  two.makeText('ac = bc 일 때 c = 0 이면 a = b 가 아닐 수 있으므로 항상 c ≠ 0 조건을 확인하세요.', 340, 288, {
+    size: 11,
+    weight: 600,
+    fill: '#047857',
+    alignment: 'center'
+  });
+}
+
+    // --- End Substep 4-5 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -33213,6 +33894,9 @@ function drawMode3IdentityCoeffBuilderLab(two) {
       } else if (code === '4-4') {
         renderToolbar4_4();
         renderSubstep4_4();
+      } else if (code === '4-5') {
+        renderToolbar4_5();
+        renderSubstep4_5();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
