@@ -1066,7 +1066,7 @@
       '3-9': {
         code: '3-9', tab: 3,
         substepLabel: '9. 스스로 확인하기 4: 공병 보조금 정산 (p.83)',
-        missionText: '<b>[3-9] 9. 스스로 확인하기 4: 공병 보조금 정산 (p.83)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        missionText: '<b>[스스로 확인하기 4] 빈 병 보증금 환급액 일차식 계산 (교과서 p.83)</b><br>• <b>실생활 문장제:</b> 소형 빈 병 1개 100원, 대형 빈 병 1개 130원<br>• <b>총 환급액 식:</b> $100(2x+3) + 130(x-1) = 330x + 170\\text{ (원)}$<br>• <b>식의 값 계산:</b> $x=10$일 때 총 보증금 환급액 도출<br>좌측 캔버스에서 공병 환급 키오스크 정산기, 영수증 파이프라인, x값별 시뮬레이터를 조작해 보세요.',
         drawer: 'drawStep3_9Canvas'
       },
       '3-10': {
@@ -1479,6 +1479,14 @@
       
       
       
+      
+      // Substep 3-9 State (Self Check 4: Bottle Refund Word Problem)
+      lab3_9: {
+        activeTab: 'mode1',
+        xVal: 10,
+        stepIdx: 1,
+        isPassed: false
+      },
       // Substep 3-8 State (Self Check 3: Complex Nested Brackets)
       lab3_8: {
         activeTab: 'mode1',
@@ -26524,6 +26532,746 @@ function drawMode3MinusBracketDebugger(two, width, height) {
 
     // --- End Substep 3-8 Implementation ---
 
+    
+    // --- Substep 3-9 Implementation ---
+// code_3_9.js: Substep [3-9] 3.3 스스로 확인하기 4: 공병 보조금 환급액 일차식 계산 (교과서 p.83)
+
+function renderToolbar3_9() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab3_9) {
+    state.lab3_9 = {
+      activeTab: 'mode1', // 'mode1' (키오스크 정산) | 'mode2' (수식 분해) | 'mode3' (수량 시뮬레이터)
+      xVal: 10,           // 기본 미지수 x=10
+      stepIdx: 1,         // 1~4
+      isPassed: false
+    };
+  }
+
+  const curTab = state.lab3_9.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab3_9Tab('mode1')">
+        1. 🍾 공병 환급 키오스크 정산기
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab3_9Tab('mode2')">
+        2. 🧾 영수증 분배법칙 파이프라인
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab3_9Tab('mode3')">
+        3. 📊 x값별 환급금 시뮬레이터
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn" onclick="changeX3_9(-1)" title="x 1 감소">➖ x 감소</button>
+      <button class="icon-btn" onclick="changeX3_9(1)" title="x 1 증가">➕ x 증가</button>
+      <button class="icon-btn" onclick="resetLab3_9()" title="초기화">🔄 초기화</button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('3-9')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab3_9Tab(tabKey) {
+  if (!state.lab3_9) resetLab3_9();
+  state.lab3_9.activeTab = tabKey;
+  renderToolbar3_9();
+  drawStep3_9Canvas();
+}
+
+function resetLab3_9() {
+  state.lab3_9 = {
+    activeTab: 'mode1',
+    xVal: 10,
+    stepIdx: 1,
+    isPassed: false
+  };
+  renderToolbar3_9();
+  drawStep3_9Canvas();
+}
+
+function changeX3_9(delta) {
+  if (!state.lab3_9) resetLab3_9();
+  const nextX = state.lab3_9.xVal + delta;
+  if (nextX >= 2 && nextX <= 25) {
+    state.lab3_9.xVal = nextX;
+    renderToolbar3_9();
+    drawStep3_9Canvas();
+  }
+}
+
+function setXVal3_9(val) {
+  if (!state.lab3_9) resetLab3_9();
+  state.lab3_9.xVal = val;
+  renderToolbar3_9();
+  drawStep3_9Canvas();
+}
+
+function nextStep3_9() {
+  if (!state.lab3_9) resetLab3_9();
+  if (state.lab3_9.stepIdx >= 4) {
+    state.lab3_9.stepIdx = 1;
+  } else {
+    state.lab3_9.stepIdx++;
+  }
+  renderToolbar3_9();
+  drawStep3_9Canvas();
+}
+
+function renderSubstep3_9() {
+  const panel = document.getElementById('form-box');
+  if (!panel) return;
+
+  if (!state.lab3_9) {
+    state.lab3_9 = {
+      activeTab: 'mode1',
+      xVal: 10,
+      stepIdx: 1,
+      isPassed: false
+    };
+  }
+
+  panel.innerHTML = `
+    <div style="padding:16px; font-family:'Pretendard', sans-serif;">
+      <!-- 문제 브리핑 카드 -->
+      <div style="background:#eff6ff; border-left:4px solid #3b82f6; border-radius:8px; padding:12px 14px; margin-bottom:14px;">
+        <div style="font-size:0.95rem; font-weight:800; color:#1e40af; margin-bottom:4px;">
+          📖 [스스로 확인하기 4] 빈 병 보증금 환급액 일차식 계산 (교과서 p.83)
+        </div>
+        <div style="font-size:0.83rem; color:#334155; line-height:1.5;">
+          • <b>빈 병 보증금 기준:</b> 소형 빈 병 1개당 <b>100원</b>, 대형 빈 병 1개당 <b>130원</b><br>
+          • <b>반환 수량:</b> 민호가 소형 빈 병 $(2x + 3)$개와 대형 빈 병 $(x - 1)$개를 반환함.<br>
+          • <b>총 환급액:</b> $($소형 단가 $\\times$ 소형 개수$) + ($대형 단가 $\\times$ 대형 개수$)$
+        </div>
+      </div>
+
+      <!-- 문제 풀이 영역 -->
+      <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:14px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <div style="font-size:0.9rem; font-weight:700; color:#1e293b; margin-bottom:10px;">
+          ✏️ 다음 물음에 알맞은 식 또는 값을 구하시오.
+        </div>
+
+        <!-- ⑴ 문항 -->
+        <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px; margin-bottom:10px;">
+          <div style="margin-bottom:6px;">
+            <span style="font-weight:700; color:#1e293b; font-size:0.86rem;">
+              ⑴ 민호가 받을 수 있는 총 보증금을 $x$에 대한 일차식으로 나타내시오.
+            </span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.85rem; font-weight:600; color:#475569;">답:</span>
+            <input type="text" id="ans_3_9_1" class="proof-input-text" placeholder="답 입력 (예: ax+b)" style="flex:1; max-width:220px;" />
+            <span style="font-size:0.85rem; color:#64748b;">원</span>
+          </div>
+        </div>
+
+        <!-- ⑵ 문항 -->
+        <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px; margin-bottom:10px;">
+          <div style="margin-bottom:6px;">
+            <span style="font-weight:700; color:#1e293b; font-size:0.86rem;">
+              ⑵ $x = 10$일 때, 민호가 받은 보증금의 총액을 구하시오.
+            </span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.85rem; font-weight:600; color:#475569;">답:</span>
+            <input type="text" id="ans_3_9_2" class="proof-input-text" placeholder="값 입력 (예: 1200)" style="flex:1; max-width:220px;" />
+            <span style="font-size:0.85rem; color:#64748b;">원</span>
+          </div>
+        </div>
+
+        <!-- ⑶ 문항 -->
+        <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px;">
+          <div style="margin-bottom:6px;">
+            <span style="font-weight:700; color:#1e293b; font-size:0.86rem;">
+              ⑶ [발전] 소형 빈 병 $(3x - 2)$개, 대형 빈 병 $(2x + 4)$개를 반환할 때 총 보증금 식을 구하시오.
+            </span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.85rem; font-weight:600; color:#475569;">답:</span>
+            <input type="text" id="ans_3_9_3" class="proof-input-text" placeholder="답 입력 (예: ax+b)" style="flex:1; max-width:220px;" />
+            <span style="font-size:0.85rem; color:#64748b;">원</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 제출 및 액션 버튼 -->
+      <div style="display:flex; gap:8px; margin-bottom:12px;">
+        <button class="tool-btn" style="flex:1; height:42px; font-size:0.92rem; font-weight:700; background:#3b82f6; color:#ffffff;" onclick="gradeStep3_9()">
+          정답 확인 및 채점
+        </button>
+        <button class="icon-btn" style="height:42px; padding:0 14px;" onclick="resetForm3_9()">
+          다시 풀기
+        </button>
+      </div>
+
+      <!-- 결과 및 피드백 컨테이너 -->
+      <div id="result-box-3_9"></div>
+    </div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(panel, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function resetForm3_9() {
+  for (let i = 1; i <= 3; i++) {
+    const el = document.getElementById(`ans_3_9_${i}`);
+    if (el) el.value = '';
+  }
+  const rbox = document.getElementById('result-box-3_9');
+  if (rbox) rbox.innerHTML = '';
+}
+
+function gradeStep3_9() {
+  const rbox = document.getElementById('result-box-3_9');
+  if (!rbox) return;
+
+  const a1 = (document.getElementById('ans_3_9_1')?.value || '').trim().replace(/\s+/g, '').replace(/원$/, '').toLowerCase();
+  const a2 = (document.getElementById('ans_3_9_2')?.value || '').trim().replace(/\s+/g, '').replace(/원$/, '');
+  const a3 = (document.getElementById('ans_3_9_3')?.value || '').trim().replace(/\s+/g, '').replace(/원$/, '').toLowerCase();
+
+  const isOk1 = (a1 === '330x+170' || a1 === '170+330x');
+  const isOk2 = (a2 === '3470');
+  const isOk3 = (a3 === '560x+320' || a3 === '320+560x');
+
+  const allOk = isOk1 && isOk2 && isOk3;
+
+  if (allOk) {
+    if (!state.lab3_9) resetLab3_9();
+    state.lab3_9.isPassed = true;
+
+    if (window.LMSIntegration && window.LMSIntegration.saveStudentProgress) {
+      window.LMSIntegration.saveStudentProgress('3-9', { score: 100, passed: true }, 'unit3');
+    }
+
+    if (!state.unlockedSubSteps.includes('3-10')) {
+      state.unlockedSubSteps.push('3-10');
+    }
+    updateSubstepPills();
+
+    rbox.innerHTML = `
+      <div style="background:#ecfdf5; border:1px solid #10b981; border-radius:8px; padding:14px; margin-top:10px;">
+        <div style="font-weight:800; font-size:1rem; color:#065f46; margin-bottom:6px;">
+          🎉 100점 완벽 통과! 실생활 일차식 환급액 계산을 완벽하게 해결했습니다!
+        </div>
+        <div style="font-size:0.85rem; color:#047857; line-height:1.6;">
+          • <b>⑴ 총 보증금 식:</b> $100(2x + 3) + 130(x - 1) = 200x + 300 + 130x - 130 = \\mathbf{330x + 170\\text{ (원)}}$<br>
+          • <b>⑵ $x = 10$ 대입:</b> $330 \\times 10 + 170 = 3300 + 170 = \\mathbf{3470\\text{ (원)}}$<br>
+          • <b>⑶ 발전 문항:</b> $100(3x - 2) + 130(2x + 4) = 300x - 200 + 260x + 520 = \\mathbf{560x + 320\\text{ (원)}}$
+        </div>
+        <div style="margin-top:10px; font-weight:700; color:#047857;">
+          👉 다음 단계 [3-10] 스스로 확인하기 5: 어떤 일차식 역연산 회로 랩이 해금되었습니다!
+        </div>
+      </div>
+    `;
+  } else {
+    let wrongMsg = [];
+    if (!isOk1) wrongMsg.push('<b>⑴:</b> 소형 100(2x+3) = 200x+300, 대형 130(x-1) = 130x-130 의 합을 동류항 정리하세요.');
+    if (!isOk2) wrongMsg.push('<b>⑵:</b> 구한 식 330x+170 에 x=10 을 대입해 계산해 보세요.');
+    if (!isOk3) wrongMsg.push('<b>⑶:</b> 100(3x-2) + 130(2x+4) = 300x - 200 + 260x + 520 을 동류항으로 모아보세요.');
+
+    rbox.innerHTML = `
+      <div style="background:#fef2f2; border:1px solid #ef4444; border-radius:8px; padding:12px; margin-top:10px;">
+        <div style="font-weight:700; font-size:0.9rem; color:#991b1b; margin-bottom:4px;">
+          ⚠️ 다시 확인해 보세요.
+        </div>
+        <div style="font-size:0.82rem; color:#b91c1c; line-height:1.5;">
+          ${wrongMsg.join('<br>')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(rbox, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+// ==========================================
+// Two.js 60fps Interactive Canvas Engine for 3-9
+// ==========================================
+function drawStep3_9Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+
+  container.innerHTML = '';
+  const width = container.clientWidth || 620;
+  const height = 440;
+
+  const two = new Two({
+    width: width,
+    height: height,
+    type: Two.Types.svg
+  }).appendTo(container);
+
+  if (!state.lab3_9) {
+    state.lab3_9 = {
+      activeTab: 'mode1',
+      xVal: 10,
+      stepIdx: 1,
+      isPassed: false
+    };
+  }
+
+  const tab = state.lab3_9.activeTab;
+
+  // Background
+  const bg = two.makeRectangle(width / 2, height / 2, width, height);
+  bg.fill = '#f8fafc';
+  bg.noStroke();
+
+  if (tab === 'mode1') {
+    drawMode1BottleRefundKioskLab(two, width, height);
+  } else if (tab === 'mode2') {
+    drawMode2ReceiptBreakdownLab(two, width, height);
+  } else {
+    drawMode3RefundSimulatorLab(two, width, height);
+  }
+
+  two.update();
+}
+
+// ----------------------------------------------------
+// Mode 1: 🍾 공병 환급 키오스크 정산기
+// ----------------------------------------------------
+function drawMode1BottleRefundKioskLab(two, width, height) {
+  const x = state.lab3_9.xVal;
+  const smallCount = 2 * x + 3;
+  const largeCount = x - 1;
+  const smallAmount = smallCount * 100;
+  const largeAmount = largeCount * 130;
+  const totalAmount = smallAmount + largeAmount;
+
+  // Top Controller Bar (X value adjuster)
+  const ctrlBg = two.makeRoundedRectangle(width / 2, 30, width - 40, 36, 6);
+  ctrlBg.fill = '#ffffff';
+  ctrlBg.stroke = '#cbd5e1';
+  ctrlBg.linewidth = 1;
+
+  const cLabel = two.makeText(`가변 매개변수 x = ${x} (소형: ${smallCount}개, 대형: ${largeCount}개)`, width / 2 - 80, 31);
+  cLabel.size = 12;
+  cLabel.weight = 700;
+  cLabel.fill = '#1e293b';
+
+  // -5, -1, +1, +5 quick buttons
+  const deltas = [-5, -1, 1, 5];
+  for (let i = 0; i < 4; i++) {
+    const bx = width - 150 + i * 36;
+    const bRect = two.makeRoundedRectangle(bx, 30, 30, 22, 4);
+    bRect.fill = '#eff6ff';
+    bRect.stroke = '#3b82f6';
+    bRect.linewidth = 1;
+
+    const bTxt = two.makeText(deltas[i] > 0 ? `+${deltas[i]}` : `${deltas[i]}`, bx, 31);
+    bTxt.size = 10;
+    bTxt.weight = 700;
+    bTxt.fill = '#1d4ed8';
+
+    const bGrp = two.makeGroup(bRect, bTxt);
+    bGrp._renderer.elem.style.cursor = 'pointer';
+    bGrp._renderer.elem.onclick = (function(d) {
+      return function() {
+        changeX3_9(d);
+      };
+    })(deltas[i]);
+  }
+
+  // Left Area: 2 Bottles Showcase (Width 280, Y=70 to Y=355)
+  // Small Bottle Box
+  const sBox = two.makeRoundedRectangle(160, 140, 240, 115, 8);
+  sBox.fill = '#f0fdf4';
+  sBox.stroke = '#22c55e';
+  sBox.linewidth = 1.5;
+
+  // Small bottle visual icon
+  const sbNeck = two.makeRoundedRectangle(75, 115, 10, 20, 2);
+  sbNeck.fill = '#15803d';
+  sbNeck.noStroke();
+  const sbBody = two.makeRoundedRectangle(75, 150, 24, 45, 6);
+  sbBody.fill = '#16a34a';
+  sbBody.noStroke();
+  const sbLabel = two.makeRoundedRectangle(75, 150, 20, 20, 2);
+  sbLabel.fill = '#dcfce7';
+  sbLabel.noStroke();
+
+  const sbTitle = two.makeText('소형 빈 병 (1개 100원)', 175, 108);
+  sbTitle.size = 12;
+  sbTitle.weight = 800;
+  sbTitle.fill = '#15803d';
+
+  const sbCountTxt = two.makeText(`수량 식: (2x + 3) 개`, 175, 130);
+  sbCountTxt.size = 13;
+  sbCountTxt.weight = 700;
+  sbCountTxt.fill = '#166534';
+
+  const sbCalcTxt = two.makeText(`금액: 100(2x + 3) = 200x + 300원`, 175, 152);
+  sbCalcTxt.size = 11;
+  sbCalcTxt.weight = 600;
+  sbCalcTxt.fill = '#15803d';
+
+  const sbActualTxt = two.makeText(`(x=${x}일 때: ${smallCount}개 → ${smallAmount.toLocaleString()}원)`, 175, 172);
+  sbActualTxt.size = 10;
+  sbActualTxt.weight = 700;
+  sbActualTxt.fill = '#14532d';
+
+  // Large Bottle Box
+  const lBox = two.makeRoundedRectangle(160, 275, 240, 115, 8);
+  lBox.fill = '#fffbeb';
+  lBox.stroke = '#f59e0b';
+  lBox.linewidth = 1.5;
+
+  // Large bottle visual icon
+  const lbNeck = two.makeRoundedRectangle(75, 245, 14, 25, 2);
+  lbNeck.fill = '#b45309';
+  lbNeck.noStroke();
+  const lbBody = two.makeRoundedRectangle(75, 285, 32, 55, 6);
+  lbBody.fill = '#d97706';
+  lbBody.noStroke();
+  const lbLabel = two.makeRoundedRectangle(75, 285, 26, 26, 2);
+  lbLabel.fill = '#fef3c7';
+  lbLabel.noStroke();
+
+  const lbTitle = two.makeText('대형 빈 병 (1개 130원)', 175, 243);
+  lbTitle.size = 12;
+  lbTitle.weight = 800;
+  lbTitle.fill = '#b45309';
+
+  const lbCountTxt = two.makeText(`수량 식: (x - 1) 개`, 175, 265);
+  lbCountTxt.size = 13;
+  lbCountTxt.weight = 700;
+  lbCountTxt.fill = '#92400e';
+
+  const lbCalcTxt = two.makeText(`금액: 130(x - 1) = 130x - 130원`, 175, 287);
+  lbCalcTxt.size = 11;
+  lbCalcTxt.weight = 600;
+  lbCalcTxt.fill = '#b45309';
+
+  const lbActualTxt = two.makeText(`(x=${x}일 때: ${largeCount}개 → ${largeAmount.toLocaleString()}원)`, 175, 307);
+  lbActualTxt.size = 10;
+  lbActualTxt.weight = 700;
+  lbActualTxt.fill = '#78350f';
+
+  // Right Area: Digital Kiosk Receipt Card (Width 270, Y=70 to Y=355)
+  const rcW = 270;
+  const rcX = width - 155;
+  const rcBox = two.makeRoundedRectangle(rcX, 205, rcW, 250, 10);
+  rcBox.fill = '#ffffff';
+  rcBox.stroke = '#0ea5e9';
+  rcBox.linewidth = 2;
+
+  // Receipt Header
+  const rhBg = two.makeRoundedRectangle(rcX, 105, rcW, 46, 0);
+  rhBg.fill = '#0284c7';
+  rhBg.noStroke();
+
+  const rhTxt1 = two.makeText('마트 공병 환급 영수증', rcX, 97);
+  rhTxt1.size = 13;
+  rhTxt1.weight = 800;
+  rhTxt1.fill = '#ffffff';
+
+  const rhTxt2 = two.makeText('RECYCLING REFUND RECEIPT', rcX, 114);
+  rhTxt2.size = 9;
+  rhTxt2.weight = 600;
+  rhTxt2.fill = '#bae6fd';
+
+  // Receipt Content Lines
+  const rl1 = two.makeText(`소형 빈 병 (${smallCount}개):  ${smallAmount.toLocaleString()} 원`, rcX, 145);
+  rl1.size = 11;
+  rl1.weight = 600;
+  rl1.fill = '#334155';
+
+  const rl2 = two.makeText(`대형 빈 병 (${largeCount}개):  ${largeAmount.toLocaleString()} 원`, rcX, 168);
+  rl2.size = 11;
+  rl2.weight = 600;
+  rl2.fill = '#334155';
+
+  // Dotted divider
+  const divLine = two.makeLine(rcX - 110, 185, rcX + 110, 185);
+  divLine.stroke = '#cbd5e1';
+  divLine.linewidth = 1.5;
+
+  const rFormLabel = two.makeText('총 보증금 환급 일차식:', rcX, 205);
+  rFormLabel.size = 11;
+  rFormLabel.weight = 700;
+  rFormLabel.fill = '#64748b';
+
+  const rFormula = two.makeText('330x + 170 원', rcX, 230);
+  rFormula.size = 18;
+  rFormula.weight = 800;
+  rFormula.fill = '#0284c7';
+
+  // Final Cash Display
+  const cashBg = two.makeRoundedRectangle(rcX, 280, rcW - 30, 48, 6);
+  cashBg.fill = '#f0fdf4';
+  cashBg.stroke = '#16a34a';
+  cashBg.linewidth = 1.5;
+
+  const cT1 = two.makeText(`x = ${x} 일 때 환급액:`, rcX, 268);
+  cT1.size = 10;
+  cT1.weight = 600;
+  cT1.fill = '#15803d';
+
+  const cT2 = two.makeText(`${totalAmount.toLocaleString()} 원`, rcX, 292);
+  cT2.size = 20;
+  cT2.weight = 800;
+  cT2.fill = '#166534';
+
+  // Bottom Safety Banner (Y=385, H=26, Bottom margin 42px >= 25px)
+  const bannerY = 385;
+  const bannerBg = two.makeRoundedRectangle(width / 2, bannerY, width - 40, 26, 6);
+  bannerBg.fill = '#eff6ff';
+  bannerBg.stroke = '#bfdbfe';
+  bannerBg.linewidth = 1;
+
+  const bannerTxt = two.makeText('💡 상단의 x값 변경 버튼을 눌러 공병 수량과 환급금액이 어떻게 동적으로 변하는지 관찰해 보세요.', width / 2, bannerY + 1);
+  bannerTxt.size = 11;
+  bannerTxt.weight = 600;
+  bannerTxt.fill = '#1d4ed8';
+}
+
+// ----------------------------------------------------
+// Mode 2: 🧾 영수증 분배법칙 파이프라인
+// ----------------------------------------------------
+function drawMode2ReceiptBreakdownLab(two, width, height) {
+  // Title Header
+  const titleCard = two.makeRoundedRectangle(width / 2, 35, width - 40, 40, 8);
+  titleCard.fill = '#ffffff';
+  titleCard.stroke = '#cbd5e1';
+  titleCard.linewidth = 1;
+
+  const tTxt = two.makeText('🧾 총 보증금 식 세우기 & 동류항 정리 4단계 파이프라인', width / 2, 36);
+  tTxt.size = 13;
+  tTxt.weight = 800;
+  tTxt.fill = '#1e293b';
+
+  const PIPELINE_STEPS = [
+    {
+      title: 'STEP 1: 식 세우기 (단가 × 수량)',
+      expr: '100(2x + 3) + 130(x - 1)',
+      desc: '소형 100원에 (2x+3)개, 대형 130원에 (x-1)개를 곱하여 더합니다.',
+      badge: '원 식'
+    },
+    {
+      title: 'STEP 2: 분배법칙으로 괄호 풀기',
+      expr: '200x + 300 + 130x - 130',
+      desc: '100*2x=200x, 100*3=300, 130*x=130x, 130*(-1)=-130 으로 전개!',
+      badge: '분배법칙'
+    },
+    {
+      title: 'STEP 3: 동류항끼리 모으기',
+      expr: '(200x + 130x) + (300 - 130)',
+      desc: 'x항끼리(200x+130x), 상수항끼리(300-130) 교환·결합법칙으로 모읍니다.',
+      badge: '동류항 모음'
+    },
+    {
+      title: 'STEP 4: 최종 일차식 완성',
+      expr: '330x + 170 (원)',
+      desc: '계수를 계산하여 (200+130)x = 330x, 300-130 = +170 으로 완성합니다.',
+      badge: '계산 완료'
+    }
+  ];
+
+  const startY = 95;
+  const gapY = 66;
+
+  for (let s = 0; s < 4; s++) {
+    const sy = startY + s * gapY;
+    const item = PIPELINE_STEPS[s];
+    const isCur = (state.lab3_9.stepIdx === s + 1);
+
+    const card = two.makeRoundedRectangle(width / 2, sy, width - 40, 58, 8);
+    card.fill = isCur ? '#eff6ff' : '#ffffff';
+    card.stroke = isCur ? '#3b82f6' : '#cbd5e1';
+    card.linewidth = isCur ? 2 : 1;
+
+    // Badge
+    const badge = two.makeRoundedRectangle(65, sy, 70, 24, 12);
+    badge.fill = isCur ? '#2563eb' : '#e2e8f0';
+    badge.noStroke();
+
+    const bTxt = two.makeText(item.badge, 65, sy + 1);
+    bTxt.size = 10;
+    bTxt.weight = 800;
+    bTxt.fill = isCur ? '#ffffff' : '#475569';
+
+    // Expression
+    const eTxt = two.makeText(item.expr, 230, sy - 8);
+    eTxt.size = 15;
+    eTxt.weight = 800;
+    eTxt.fill = isCur ? '#1d4ed8' : '#1e293b';
+
+    // Desc
+    const dTxt = two.makeText(item.desc, width / 2 + 20, sy + 14);
+    dTxt.size = 11;
+    dTxt.weight = 500;
+    dTxt.fill = isCur ? '#2563eb' : '#64748b';
+
+    const grp = two.makeGroup(card, badge, bTxt, eTxt, dTxt);
+    grp._renderer.elem.style.cursor = 'pointer';
+    grp._renderer.elem.onclick = (function(st) {
+      return function() {
+        state.lab3_9.stepIdx = st;
+        renderToolbar3_9();
+        drawStep3_9Canvas();
+      };
+    })(s + 1);
+  }
+
+  // Next step button (Y=352)
+  const nBtn = two.makeRoundedRectangle(width / 2, 352, 130, 24, 6);
+  nBtn.fill = '#3b82f6';
+  nBtn.stroke = '#2563eb';
+  nBtn.linewidth = 1;
+
+  const nTxt = two.makeText(state.lab3_9.stepIdx === 4 ? '🔄 처음으로' : '다음 단계 ▶', width / 2, 353);
+  nTxt.size = 11;
+  nTxt.weight = 700;
+  nTxt.fill = '#ffffff';
+
+  const nGrp = two.makeGroup(nBtn, nTxt);
+  nGrp._renderer.elem.style.cursor = 'pointer';
+  nGrp._renderer.elem.onclick = function() {
+    nextStep3_9();
+  };
+
+  // Bottom Safety Banner
+  const bannerY = 385;
+  const bannerBg = two.makeRoundedRectangle(width / 2, bannerY, width - 40, 26, 6);
+  bannerBg.fill = '#eff6ff';
+  bannerBg.stroke = '#bfdbfe';
+  bannerBg.linewidth = 1;
+
+  const bannerTxt = two.makeText('💡 단계를 클릭하면 해당 수식 전개 과정이 하이라이트됩니다.', width / 2, bannerY + 1);
+  bannerTxt.size = 11;
+  bannerTxt.weight = 600;
+  bannerTxt.fill = '#1d4ed8';
+}
+
+// ----------------------------------------------------
+// Mode 3: 📊 x값별 환급금 시뮬레이터
+// ----------------------------------------------------
+function drawMode3RefundSimulatorLab(two, width, height) {
+  // Title Header
+  const titleCard = two.makeRoundedRectangle(width / 2, 35, width - 40, 40, 8);
+  titleCard.fill = '#ffffff';
+  titleCard.stroke = '#cbd5e1';
+  titleCard.linewidth = 1;
+
+  const tTxt = two.makeText('📊 x값 대입 시뮬레이터: 식의 값 330x + 170 비교 분석', width / 2, 36);
+  tTxt.size = 13;
+  tTxt.weight = 800;
+  tTxt.fill = '#1e293b';
+
+  // Table Card (Y=85 to Y=355)
+  const tblW = width - 40;
+  const tblBg = two.makeRoundedRectangle(width / 2, 220, tblW, 260, 10);
+  tblBg.fill = '#ffffff';
+  tblBg.stroke = '#e2e8f0';
+  tblBg.linewidth = 1.5;
+
+  // Table Header Row (Y=115)
+  const thBg = two.makeRoundedRectangle(width / 2, 115, tblW, 36, 0);
+  thBg.fill = '#f1f5f9';
+  thBg.noStroke();
+
+  const cols = [width / 2 - 200, width / 2 - 100, width / 2, width / 2 + 100, width / 2 + 200];
+  const ths = ['x의 값', '소형(2x+3)', '대형(x-1)', '총 병 수', '총 환급액(330x+170)'];
+  for (let c = 0; c < 5; c++) {
+    const t = two.makeText(ths[c], cols[c], 116);
+    t.size = 11;
+    t.weight = 700;
+    t.fill = '#334155';
+  }
+
+  // 4 Sample Rows: x=5, x=10(교과서), x=15, x=20
+  const sampleXs = [5, 10, 15, 20];
+  for (let r = 0; r < 4; r++) {
+    const sx = sampleXs[r];
+    const sC = 2 * sx + 3;
+    const lC = sx - 1;
+    const totC = sC + lC;
+    const totA = 330 * sx + 170;
+    const ry = 158 + r * 42;
+    const isTarget = (sx === 10);
+
+    const rBg = two.makeRoundedRectangle(width / 2, ry, tblW - 10, 36, 6);
+    rBg.fill = isTarget ? '#ecfdf5' : '#ffffff';
+    rBg.stroke = isTarget ? '#10b981' : '#f1f5f9';
+    rBg.linewidth = isTarget ? 2 : 1;
+
+    const v0 = two.makeText(isTarget ? `x = ${sx} (교과서)` : `x = ${sx}`, cols[0], ry + 1);
+    v0.size = 12;
+    v0.weight = isTarget ? 800 : 600;
+    v0.fill = isTarget ? '#047857' : '#1e293b';
+
+    const v1 = two.makeText(`${sC}개`, cols[1], ry + 1);
+    v1.size = 11;
+    v1.weight = 600;
+    v1.fill = '#475569';
+
+    const v2 = two.makeText(`${lC}개`, cols[2], ry + 1);
+    v2.size = 11;
+    v2.weight = 600;
+    v2.fill = '#475569';
+
+    const v3 = two.makeText(`${totC}개`, cols[3], ry + 1);
+    v3.size = 11;
+    v3.weight = 600;
+    v3.fill = '#475569';
+
+    const v4 = two.makeText(`${totA.toLocaleString()}원`, cols[4], ry + 1);
+    v4.size = 13;
+    v4.weight = 800;
+    v4.fill = isTarget ? '#047857' : '#2563eb';
+
+    const rGrp = two.makeGroup(rBg, v0, v1, v2, v3, v4);
+    rGrp._renderer.elem.style.cursor = 'pointer';
+    rGrp._renderer.elem.onclick = (function(val) {
+      return function() {
+        setXVal3_9(val);
+        setLab3_9Tab('mode1');
+      };
+    })(sx);
+  }
+
+  // Quick Action hint
+  const actT = two.makeText('👆 표의 행을 클릭하면 해당 x값의 키오스크 정산 랩으로 즉시 전환됩니다.', width / 2, 335);
+  actT.size = 11;
+  actT.weight = 700;
+  actT.fill = '#0284c7';
+
+  // Bottom Safety Banner
+  const bannerY = 385;
+  const bannerBg = two.makeRoundedRectangle(width / 2, bannerY, width - 40, 26, 6);
+  bannerBg.fill = '#eff6ff';
+  bannerBg.stroke = '#bfdbfe';
+  bannerBg.linewidth = 1;
+
+  const bannerTxt = two.makeText('💡 x=10일 때 총 환급액은 330×10 + 170 = 3,470원으로 계산됩니다.', width / 2, bannerY + 1);
+  bannerTxt.size = 11;
+  bannerTxt.weight = 600;
+  bannerTxt.fill = '#1d4ed8';
+}
+
+    // --- End Substep 3-9 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -26660,6 +27408,9 @@ function drawMode3MinusBracketDebugger(two, width, height) {
       } else if (code === '3-8') {
         renderToolbar3_8();
         renderSubstep3_8();
+      } else if (code === '3-9') {
+        renderToolbar3_9();
+        renderSubstep3_9();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
