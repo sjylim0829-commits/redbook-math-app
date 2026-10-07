@@ -1371,8 +1371,8 @@
       },
       '5-2': {
         code: '5-2', tab: 5,
-        substepLabel: '2. 일차방정식의 뜻 판별 (p.92)',
-        missionText: '<b>[5-2] 2. 일차방정식의 뜻 판별 (p.92)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '2. 개념 및 문제 2: 일차방정식의 뜻 판별 (p.92)',
+        missionText: '<b>[3.5 일차방정식의 풀이: 개념 및 문제 2] (교과서 p.92)</b><br>• <b>일차방정식의 정의</b>: 우변의 모든 항을 좌변으로 이항하여 정리했을 때 <b>$(x\\text{에 대한 일차식}) = 0$</b> ($ax+b=0, a \\neq 0$) 꼴로 나타내어지는 방정식을 $x$에 대한 일차방정식이라고 합니다.<br>• <b>함정 주의</b>: 등식에 $x^2$과 같은 이차항이 있어도 이항하여 소거되면 일차방정식이 될 수 있고, 양변에 일차항이 있어도 계수가 같아서 소거되면 일차방정식이 아닙니다!<br>• <b>탐구 미션</b>: 좌측 인터랙티브 판정 저울 랩을 조작하여 각 등식을 이항 정리해 보고, 교과서 문제 2의 세 등식 중 일차방정식을 모두 판별하세요.',
         drawer: 'drawStep5_2Canvas'
       },
       '5-3': {
@@ -38327,6 +38327,9 @@ function drawMode3PropertyRuleMatrixLab(two) {
       } else if (code === '5-1') {
         renderToolbar5_1();
         renderSubstep5_1Form();
+      } else if (code === '5-2') {
+        renderToolbar5_2();
+        renderSubstep5_2Form();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
@@ -41351,7 +41354,857 @@ function drawMode3PropertyRuleMatrixLab(two) {
     }
 
 
-    // Auto-init on page load
+// ========================================================
+// [5-2] 개념 및 문제 2: 일차방정식의 뜻 판별 (교과서 p.92)
+// ========================================================
+
+function resetLab5_2() {
+  state.lab5_2 = {
+    activeTab: 'mode1', // mode1: 판정 저울 랩, mode2: 문제 2 실전 검증 랩, mode3: 나만의 등식 판별기
+    mode1Preset: 0,     // 0: 5x-2=2x+3, 1: 3x-1=x+2, 2: x^2-4=x+1
+    mode1Transposed: false,
+    mode2Prob: 0,       // 0: ⑴ 2x=x-5, 1: ⑵ 3-x=x-2(x-3), 2: ⑶ x^2+1=2x+x^2
+    mode2Step: 0,       // 0: 원본, 1: 괄호풀기/이항, 2: 동류항 정리 및 판정
+    customPreset: 'A',  // 'A': 이차항 소거, 'B': 일차항 소거, 'C': 이차방정식
+    customA: 1, customB: 3, customC: 0,
+    customD: 1, customE: 0, customF: -5,
+    isPassed: state.completedSubSteps ? state.completedSubSteps.includes('5-2') : false
+  };
+}
+
+function setTab5_2(tab) {
+  if (!state.lab5_2) resetLab5_2();
+  state.lab5_2.activeTab = tab;
+  renderToolbar5_2();
+  drawStep5_2Canvas();
+}
+
+function setMode1Preset5_2(idx) {
+  if (!state.lab5_2) resetLab5_2();
+  state.lab5_2.mode1Preset = idx;
+  state.lab5_2.mode1Transposed = false;
+  drawStep5_2Canvas();
+}
+
+function toggleMode1Transpose5_2() {
+  if (!state.lab5_2) resetLab5_2();
+  state.lab5_2.mode1Transposed = !state.lab5_2.mode1Transposed;
+  drawStep5_2Canvas();
+}
+
+function setMode2Prob5_2(probIdx) {
+  if (!state.lab5_2) resetLab5_2();
+  state.lab5_2.mode2Prob = probIdx;
+  state.lab5_2.mode2Step = 0;
+  drawStep5_2Canvas();
+}
+
+function setMode2Step5_2(stepIdx) {
+  if (!state.lab5_2) resetLab5_2();
+  state.lab5_2.mode2Step = stepIdx;
+  drawStep5_2Canvas();
+}
+
+function setCustomPreset5_2(type) {
+  if (!state.lab5_2) resetLab5_2();
+  state.lab5_2.customPreset = type;
+  if (type === 'A') {
+    // x^2 + 3x = x^2 - 5 => 3x + 5 = 0
+    state.lab5_2.customA = 1; state.lab5_2.customB = 3; state.lab5_2.customC = 0;
+    state.lab5_2.customD = 1; state.lab5_2.customE = 0; state.lab5_2.customF = -5;
+  } else if (type === 'B') {
+    // 2x + 4 = 2x - 1 => 5 = 0
+    state.lab5_2.customA = 0; state.lab5_2.customB = 2; state.lab5_2.customC = 4;
+    state.lab5_2.customD = 0; state.lab5_2.customE = 2; state.lab5_2.customF = -1;
+  } else if (type === 'C') {
+    // 2x^2 + x = x^2 + 3 => x^2 + x - 3 = 0
+    state.lab5_2.customA = 2; state.lab5_2.customB = 1; state.lab5_2.customC = 0;
+    state.lab5_2.customD = 1; state.lab5_2.customE = 0; state.lab5_2.customF = 3;
+  }
+  drawStep5_2Canvas();
+}
+
+function renderToolbar5_2() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+  if (!state.lab5_2) resetLab5_2();
+  const cur = state.lab5_2.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:8px; width:100%; flex-wrap:wrap;">
+      <button class="icon-btn ${cur === 'mode1' ? 'active' : ''}" onclick="setTab5_2('mode1')">
+        🔍 1. 일차방정식 판정 저울 랩
+      </button>
+      <button class="icon-btn ${cur === 'mode2' ? 'active' : ''}" onclick="setTab5_2('mode2')">
+        ⚖️ 2. 문제 2 실전 이항 검증 랩
+      </button>
+      <button class="icon-btn ${cur === 'mode3' ? 'active' : ''}" onclick="setTab5_2('mode3')">
+        🎛️ 3. 나만의 등식 판별기 랩
+      </button>
+      <button class="icon-btn" onclick="resetLab5_2(); renderToolbar5_2(); drawStep5_2Canvas();" style="margin-left:auto;">
+        🔄 초기화
+      </button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:800;" onclick="passCurrentSubstepGeneric('5-2')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function renderSubstep5_2Form() {
+  const mTitle = document.getElementById('mission-title');
+  const mDesc = document.getElementById('mission-desc');
+
+  if (mTitle) mTitle.innerText = '🎯 오늘의 수학 탐구 미션';
+  if (mDesc) {
+    mDesc.innerHTML = `
+      <b>[3.5 일차방정식의 풀이: 개념 및 문제 2] (교과서 p.92)</b><br>
+      • <b>일차방정식의 정의</b>: 우변의 모든 항을 좌변으로 이항하여 정리했을 때 <b>$(x\\text{에 대한 일차식}) = 0$</b> ($ax+b=0, a \\neq 0$) 꼴로 나타내어지는 방정식을 $x$에 대한 일차방정식이라고 합니다.<br>
+      • <b>함정 주의</b>: 등식에 $x^2$과 같은 이차항이 있어도 이항하여 소거되면 일차방정식이 될 수 있고, 양변에 일차항이 있어도 계수가 같아서 소거되면 일차방정식이 아닙니다!<br>
+      • <b>탐구 미션</b>: 좌측 인터랙티브 판정 저울 랩을 조작하여 각 등식을 이항 정리해 보고, 교과서 문제 2의 세 등식 중 일차방정식을 모두 판별하세요.
+    `;
+    if (window.renderMathInElement) {
+      renderMathInElement(mDesc, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false }
+        ],
+        throwOnError: false
+      });
+    }
+  }
+
+  const cont = document.getElementById('substep-form-content');
+  if (!cont) return;
+
+  const isPassed = state.completedSubSteps && state.completedSubSteps.includes('5-2');
+
+  cont.innerHTML = `
+    <div class="card" style="padding:16px; border:1px solid #cbd5e1; border-radius:12px; background:#ffffff; box-shadow:0 1px 3px rgba(0,0,0,0.05); margin-bottom:14px;">
+      <!-- Dual Badge Header -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #f1f5f9; padding-bottom:8px;">
+        <span style="font-size:0.75rem; font-weight:800; background:#e0e7ff; color:#4338ca; padding:3px 8px; border-radius:6px;">
+          교과서 p.92 [3.5 일차방정식의 풀이]
+        </span>
+        <span style="font-size:0.78rem; font-weight:700; color:#64748b;">
+          개념 및 문제 2 (100점 만점)
+        </span>
+      </div>
+
+      <h4 style="font-size:0.95rem; font-weight:800; color:#1e293b; margin-bottom:12px; line-height:1.5;">
+        일차방정식의 뜻을 바르게 이해하고, 문제 2의 세 등식을 이항 정리하여 일차방정식인지 판별하시오.
+      </h4>
+
+      <!-- 1단계: 일차방정식의 뜻 -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-size:0.86rem; font-weight:800; color:#1e293b;">
+            1단계. 일차방정식의 정의
+          </span>
+          <span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">
+            배점 25%
+          </span>
+        </div>
+        <p style="font-size:0.82rem; color:#475569; line-height:1.5; margin-bottom:8px;">
+          우변의 모든 항을 좌변으로 이항하여 동류항을 정리하였을 때, <b>$(x\\text{에 대한 일차식}) = 0$</b> 꼴로 나타내어지는 방정식을 $x$에 대한 무엇이라고 합니까?
+        </p>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:0.82rem; font-weight:700; color:#334155;">수학 용어 =</span>
+          <input type="text" id="ans-5-2-q1" class="proof-input-text" placeholder="용어 입력" style="width:170px;" ${isPassed ? 'disabled value="일차방정식"' : ''}>
+        </div>
+      </div>
+
+      <!-- 2단계: 문제 2-(1) 판별 -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-size:0.86rem; font-weight:800; color:#1e293b;">
+            2단계. 문항 ⑴ $2x = x - 5$ 판별
+          </span>
+          <span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">
+            배점 25%
+          </span>
+        </div>
+        <p style="font-size:0.82rem; color:#475569; line-height:1.5; margin-bottom:8px;">
+          우변의 항 $x$와 $-5$를 좌변으로 이항하여 동류항을 정리한 식을 적고, 일차방정식 여부를 판별하세요.
+        </p>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.82rem; font-weight:700; color:#334155;">① 이항 정리한 식:</span>
+            <input type="text" id="ans-5-2-q2_1" class="proof-input-text" placeholder="식 입력 (예: x+5=0)" style="width:180px;" ${isPassed ? 'disabled value="x+5=0"' : ''}>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.82rem; font-weight:700; color:#334155;">② 일차방정식 여부:</span>
+            <input type="text" id="ans-5-2-q2_2" class="proof-input-text" placeholder="O 또는 X 입력" style="width:140px; text-transform:uppercase;" maxlength="2" ${isPassed ? 'disabled value="O"' : ''}>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3단계: 문제 2-(2) 판별 -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-size:0.86rem; font-weight:800; color:#1e293b;">
+            3단계. 문항 ⑵ $3 - x = x - 2(x - 3)$ 판별
+          </span>
+          <span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">
+            배점 25%
+          </span>
+        </div>
+        <p style="font-size:0.82rem; color:#475569; line-height:1.5; margin-bottom:8px;">
+          우변의 괄호를 풀면 $x - 2x + 6 = -x + 6$입니다. 좌변으로 이항하여 정리하면 $x$항이 소거되어 $-3=0$이 됩니다. 이 등식은 일차방정식입니까?
+        </p>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:0.82rem; font-weight:700; color:#334155;">일차방정식 여부 =</span>
+          <input type="text" id="ans-5-2-q3" class="proof-input-text" placeholder="O 또는 X 입력" style="width:140px; text-transform:uppercase;" maxlength="2" ${isPassed ? 'disabled value="X"' : ''}>
+        </div>
+      </div>
+
+      <!-- 4단계: 문제 2-(3) 판별 및 최종 선택 -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-size:0.86rem; font-weight:800; color:#1e293b;">
+            4단계. 문항 ⑶ $x^2 + 1 = 2x + x^2$ 및 문제 2 정답
+          </span>
+          <span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">
+            배점 25%
+          </span>
+        </div>
+        <p style="font-size:0.82rem; color:#475569; line-height:1.5; margin-bottom:8px;">
+          문항 ⑶은 양변의 $x^2$이 소거되어 $-2x+1=0$인 일차방정식이 됩니다. 따라서 교과서 문제 2의 세 등식 중 일차방정식을 모두 고른 번호를 적으세요.
+        </p>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:0.82rem; font-weight:700; color:#334155;">일차방정식 번호 =</span>
+          <input type="text" id="ans-5-2-q4" class="proof-input-text" placeholder="번호 입력 (예: 1, 3)" style="width:180px;" ${isPassed ? 'disabled value="1, 3"' : ''}>
+        </div>
+      </div>
+
+      <!-- Full Width Submit Button -->
+      <button id="btn-submit-5-2" onclick="gradeStep5_2()" style="width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px; background:linear-gradient(135deg, #4f46e5, #4338ca); color:#fff; border:none; cursor:pointer;">
+        개념 및 문제 2: 일차방정식 판별 확인 및 채점
+      </button>
+
+      <div id="feedback-5-2" style="display:${isPassed ? 'block' : 'none'}; margin-top:14px;">
+        ${isPassed ? getStep5_2SuccessHtml() : ''}
+      </div>
+    </div>
+  `;
+
+  if (window.renderMathInElement) {
+    renderMathInElement(cont, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+
+  // Draw canvas immediately on form render
+  drawStep5_2Canvas();
+}
+
+function getStep5_2SuccessHtml() {
+  return `
+    <div class="verified-answer-card">
+      <h4 style="color:#065f46; font-size:0.95rem; font-weight:800; margin-bottom:6px;">
+        🎉 100점 완벽합니다! (일차방정식의 뜻 및 문제 2 통과)
+      </h4>
+      <p style="font-size:0.84rem; color:#047857; line-height:1.55; margin:0;">
+        <b>[교과서 공식 풀이 (p.92)]</b><br>
+        • <b>일차방정식의 뜻</b>: 우변의 모든 항을 좌변으로 이항하여 정리하였을 때 $(x\\text{에 대한 일차식}) = 0$ 꼴이 되는 등식입니다.<br>
+        • <b>⑴ $2x = x - 5$</b>: 이항하여 정리하면 $x + 5 = 0$이므로 일차방정식입니다. (O)<br>
+        • <b>⑵ $3 - x = x - 2(x - 3)$</b>: 우변을 전개하면 $-x + 6$이고, 이항하여 정리하면 $x$항이 소거되어 $-3 = 0$이 되므로 일차방정식이 아닙니다. (X)<br>
+        • <b>⑶ $x^2 + 1 = 2x + x^2$</b>: 양변의 $x^2$이 소거되어 $-2x + 1 = 0$이 되므로 일차방정식입니다. (O)<br>
+        따라서 교과서 문제 2의 일차방정식은 <b>⑴, ⑶</b>입니다.
+      </p>
+      <div style="margin-top:10px; display:flex; gap:8px;">
+        <button class="icon-btn" style="background:#059669; color:#fff; font-weight:800; padding:6px 14px; border-radius:6px;" onclick="loadSubStep('5-3')">
+          다음 활동 [5-3] 이항을 이용한 일차방정식 풀이 도전 ▶
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+async function gradeStep5_2() {
+  const q1El = document.getElementById('ans-5-2-q1');
+  const q2_1El = document.getElementById('ans-5-2-q2_1');
+  const q2_2El = document.getElementById('ans-5-2-q2_2');
+  const q3El = document.getElementById('ans-5-2-q3');
+  const q4El = document.getElementById('ans-5-2-q4');
+  const fb = document.getElementById('feedback-5-2');
+
+  if (!q1El || !q2_1El || !q2_2El || !q3El || !q4El || !fb) return;
+
+  const q1 = q1El.value.trim().replace(/\s+/g, '');
+  const q2_1 = q2_1El.value.trim().toLowerCase().replace(/\s+/g, '');
+  const q2_2 = q2_2El.value.trim().toUpperCase().replace(/\s+/g, '');
+  const q3 = q3El.value.trim().toUpperCase().replace(/\s+/g, '');
+  const q4 = q4El.value.trim().replace(/\s+/g, '');
+
+  if (!q1 || !q2_1 || !q2_2 || !q3 || !q4) {
+    alert('모든 단계의 정답을 입력해 주세요.');
+    return;
+  }
+
+  // 1단계: 일차방정식
+  const isQ1 = (q1 === '일차방정식');
+
+  // 2단계: x+5=0, O
+  const validQ2_1 = ['x+5=0', 'x+5', '1x+5=0', '+x+5=0', '5+x=0'];
+  const isQ2_1 = validQ2_1.includes(q2_1);
+  const isQ2_2 = (q2_2 === 'O' || q2_2 === '0' || q2_2 === 'ㅇ' || q2_2 === 'TRUE');
+
+  // 3단계: X
+  const isQ3 = (q3 === 'X' || q3 === 'x' || q3 === 'FALSE');
+
+  // 4단계: 1, 3 or (1), (3) or ⑴, ⑶
+  const validQ4 = ['1,3', '1,3번', '⑴,⑶', '(1),(3)', '1,3', '1과3', '13', '1,3', '1번,3번'];
+  const isQ4 = validQ4.includes(q4) || (q4.includes('1') && q4.includes('3') && !q4.includes('2'));
+
+  if (isQ1 && isQ2_1 && isQ2_2 && isQ3 && isQ4) {
+    fb.style.display = 'block';
+    fb.innerHTML = getStep5_2SuccessHtml();
+    if (window.renderMathInElement) {
+      renderMathInElement(fb, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false }
+        ],
+        throwOnError: false
+      });
+    }
+
+    if (!state.completedSubSteps.includes('5-2')) {
+      state.completedSubSteps.push('5-2');
+    }
+    // Unlock next step 5-3
+    if (!state.unlockedSubSteps.includes('5-3')) {
+      state.unlockedSubSteps.push('5-3');
+    }
+
+    // Save to LMS Cloud DB
+    if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+      try {
+        await LMSIntegration.saveStudentProgress('5-2', { q1, q2_1, q2_2, q3, q4 }, 'u3');
+      } catch (e) {
+        console.warn('LMS save note:', e);
+      }
+    }
+
+    q1El.disabled = true;
+    q2_1El.disabled = true;
+    q2_2El.disabled = true;
+    q3El.disabled = true;
+    q4El.disabled = true;
+
+    if (state.lab5_2) {
+      state.lab5_2.isPassed = true;
+    }
+    drawStep5_2Canvas();
+  } else {
+    let errs = [];
+    if (!isQ1) errs.push('1단계 (일차방정식 용어)');
+    if (!isQ2_1) errs.push('2단계-① (이항 정리한 식: x+5=0)');
+    if (!isQ2_2) errs.push('2단계-② (일차방정식 판정: O)');
+    if (!isQ3) errs.push('3단계 (문항 ⑵ 판정: X)');
+    if (!isQ4) errs.push('4단계 (문제 2 최종 번호: 1, 3)');
+
+    fb.style.display = 'block';
+    fb.innerHTML = `
+      <div style="background:#fef2f2; border:1.5px solid #f87171; border-radius:10px; padding:12px 14px;">
+        <h4 style="color:#b91c1c; font-size:0.92rem; font-weight:800; margin-bottom:4px;">❌ 다시 확인해 보세요</h4>
+        <p style="font-size:0.84rem; color:#7f1d1d; line-height:1.5; margin:0;">
+          ${errs.join(', ')} 항목이 올바르지 않습니다.<br>
+          좌측 캔버스의 [일차방정식 판정 저울 랩] 및 [문제 2 실전 검증 랩]을 조작하여 동류항 정리 결과를 확인해 보세요.
+        </p>
+      </div>
+    `;
+  }
+}
+
+// ----------------------------------------------------
+// Two.js 60fps Interactive Canvas Engine for Step 5-2
+// ----------------------------------------------------
+function drawStep5_2Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const two = new Two({
+    width: 680,
+    height: 440,
+    type: Two.Types.svg
+  }).appendTo(container);
+
+  if (!state.lab5_2) resetLab5_2();
+  const lab = state.lab5_2;
+  const activeTab = lab.activeTab;
+
+  // Header Title & Mode
+  const titleBox = two.makeRoundedRectangle(340, 24, 650, 36, 8);
+  titleBox.fill = '#4f46e5';
+  titleBox.stroke = 'none';
+
+  let titleStr = '';
+  if (activeTab === 'mode1') titleStr = '🔍 1. 일차방정식 판정 저울 랩 (교과서 개념 및 비주얼)';
+  else if (activeTab === 'mode2') titleStr = '⚖️ 2. 문제 2 실전 이항 검증 랩 (교과서 p.92 문제 2)';
+  else titleStr = '🎛️ 3. 나만의 등식 일차방정식 판별기 랩';
+
+  const titleText = two.makeText(titleStr, 340, 24);
+  titleText.fill = '#ffffff';
+  titleText.size = 14;
+  titleText.weight = 800;
+
+  // Track clickable targets to bind after two.update()
+  const clickables = [];
+
+  if (activeTab === 'mode1') {
+    drawMode1_5_2(two, lab, clickables);
+  } else if (activeTab === 'mode2') {
+    drawMode2_5_2(two, lab, clickables);
+  } else {
+    drawMode3_5_2(two, lab, clickables);
+  }
+
+  // Bottom Safety Banner (Y=396px, H=32px, bottom safety margin = 440 - 412 = 28px >= 25px)
+  const bannerBg = two.makeRoundedRectangle(340, 396, 650, 32, 6);
+  bannerBg.fill = '#f8fafc';
+  bannerBg.stroke = '#cbd5e1';
+  bannerBg.linewidth = 1;
+
+  let guideMsg = '';
+  if (activeTab === 'mode1') {
+    guideMsg = '💡 [교과서 개념] 우변의 모든 항을 좌변으로 이항하여 정리했을 때 (일차식)=0 꼴이면 일차방정식!';
+  } else if (activeTab === 'mode2') {
+    guideMsg = '💡 [함정 주의] 이차항(x²)이 있어도 소거되면 일차방정식! 일차항이 있어도 소거되면 일차방정식 아님!';
+  } else {
+    guideMsg = '💡 [판정 기준] 최고차항의 계수가 0이 아닌 일차항(x)이 살아남아야 일차방정식입니다.';
+  }
+
+  const guideText = two.makeText(guideMsg, 340, 396);
+  guideText.fill = '#475569';
+  guideText.size = 11.5;
+  guideText.weight = 700;
+
+  // Crucial: Update two.js FIRST so DOM elements are created
+  two.update();
+
+  // Safely attach onclick and cursor pointer to rendered DOM elements
+  clickables.forEach(item => {
+    const bindEl = (obj) => {
+      if (obj && obj._renderer && obj._renderer.elem) {
+        obj._renderer.elem.style.cursor = 'pointer';
+        obj._renderer.elem.onclick = (e) => {
+          if (e && e.stopPropagation) e.stopPropagation();
+          item.fn();
+        };
+      }
+    };
+    bindEl(item.bg);
+    bindEl(item.txt);
+  });
+}
+
+// ----------------------------------------------------
+// Mode 1: 일차방정식 판정 저울 랩
+// ----------------------------------------------------
+function drawMode1_5_2(two, lab, clickables) {
+  const presets = [
+    { title: '예시 1: 5x - 2 = 2x + 3', origL: '5x - 2', origR: '2x + 3', transL: '5x - 2 - 2x - 3', res: '3x - 5 = 0', isLinear: true, reason: '일차식(3x-5) = 0 이므로 일차방정식' },
+    { title: '예시 2: 3x - 1 = x + 2', origL: '3x - 1', origR: 'x + 2', transL: '3x - 1 - x - 2', res: '2x - 3 = 0', isLinear: true, reason: '일차식(2x-3) = 0 이므로 일차방정식' },
+    { title: '예시 3: x² - 4 = x + 1', origL: 'x² - 4', origR: 'x + 1', transL: 'x² - 4 - x - 1', res: 'x² - x - 5 = 0', isLinear: false, reason: '최고차수가 2차(x²)이므로 일차방정식 아님' }
+  ];
+
+  const curPreset = presets[lab.mode1Preset];
+
+  // Preset Buttons (Y=64)
+  presets.forEach((p, idx) => {
+    const bx = 140 + idx * 200;
+    const btnBg = two.makeRoundedRectangle(bx, 64, 185, 30, 6);
+    btnBg.fill = (lab.mode1Preset === idx) ? '#4338ca' : '#ffffff';
+    btnBg.stroke = (lab.mode1Preset === idx) ? '#312e81' : '#cbd5e1';
+    btnBg.linewidth = (lab.mode1Preset === idx) ? 2 : 1;
+
+    const btnTxt = two.makeText(p.title, bx, 64);
+    btnTxt.fill = (lab.mode1Preset === idx) ? '#ffffff' : '#334155';
+    btnTxt.size = 11;
+    btnTxt.weight = 700;
+
+    clickables.push({ bg: btnBg, txt: btnTxt, fn: () => setMode1Preset5_2(idx) });
+  });
+
+  // Scale Balance Stage
+  // Left Plate Card (x: 170, y: 160, w: 260, h: 100)
+  const leftCard = two.makeRoundedRectangle(170, 160, 260, 100, 12);
+  leftCard.fill = '#f0fdf4';
+  leftCard.stroke = '#86efac';
+  leftCard.linewidth = 2;
+
+  const leftBadge = two.makeText('좌변 (Left Side)', 170, 125);
+  leftBadge.fill = '#15803d';
+  leftBadge.size = 11;
+  leftBadge.weight = 800;
+
+  const leftExpr = two.makeText(lab.mode1Transposed ? curPreset.transL : curPreset.origL, 170, 165);
+  leftExpr.fill = '#166534';
+  leftExpr.size = lab.mode1Transposed ? 18 : 22;
+  leftExpr.weight = 800;
+
+  // Center Equal Sign Portal (x: 340, y: 160)
+  const portalBg = two.makeRoundedRectangle(340, 160, 44, 100, 8);
+  portalBg.fill = '#eff6ff';
+  portalBg.stroke = '#3b82f6';
+  portalBg.linewidth = 2;
+
+  const portalSign = two.makeText('=', 340, 160);
+  portalSign.fill = '#1d4ed8';
+  portalSign.size = 32;
+  portalSign.weight = 800;
+
+  const portalLabel = two.makeText('등호', 340, 122);
+  portalLabel.fill = '#2563eb';
+  portalLabel.size = 10;
+  portalLabel.weight = 800;
+
+  // Right Plate Card (x: 510, y: 160, w: 260, h: 100)
+  const rightCard = two.makeRoundedRectangle(510, 160, 260, 100, 12);
+  rightCard.fill = lab.mode1Transposed ? '#f8fafc' : '#fef2f2';
+  rightCard.stroke = lab.mode1Transposed ? '#cbd5e1' : '#fca5a5';
+  rightCard.linewidth = 2;
+
+  const rightBadge = two.makeText('우변 (Right Side)', 510, 125);
+  rightBadge.fill = lab.mode1Transposed ? '#64748b' : '#b91c1c';
+  rightBadge.size = 11;
+  rightBadge.weight = 800;
+
+  const rightExpr = two.makeText(lab.mode1Transposed ? '0' : curPreset.origR, 510, 165);
+  rightExpr.fill = lab.mode1Transposed ? '#64748b' : '#991b1b';
+  rightExpr.size = 22;
+  rightExpr.weight = 800;
+
+  // Interactive Transpose Button (Y: 236)
+  const transBtnBg = two.makeRoundedRectangle(340, 236, 360, 36, 18);
+  transBtnBg.fill = lab.mode1Transposed ? '#e0e7ff' : '#4f46e5';
+  transBtnBg.stroke = lab.mode1Transposed ? '#818cf8' : '#3730a3';
+  transBtnBg.linewidth = 2;
+
+  const transBtnTxt = two.makeText(
+    lab.mode1Transposed ? '🔄 원본 등식으로 되돌리기' : '🚀 우변의 모든 항 좌변으로 이항 실행!',
+    340, 236
+  );
+  transBtnTxt.fill = lab.mode1Transposed ? '#3730a3' : '#ffffff';
+  transBtnTxt.size = 13;
+  transBtnTxt.weight = 800;
+
+  clickables.push({ bg: transBtnBg, txt: transBtnTxt, fn: toggleMode1Transpose5_2 });
+
+  // Result & Verdict Card (Y: 312)
+  const resultCard = two.makeRoundedRectangle(340, 312, 650, 92, 10);
+  resultCard.fill = lab.mode1Transposed ? (curPreset.isLinear ? '#f0fdf4' : '#fffbeb') : '#f8fafc';
+  resultCard.stroke = lab.mode1Transposed ? (curPreset.isLinear ? '#22c55e' : '#f59e0b') : '#e2e8f0';
+  resultCard.linewidth = 2;
+
+  if (lab.mode1Transposed) {
+    const verdictBadgeBg = two.makeRoundedRectangle(120, 288, 140, 26, 6);
+    verdictBadgeBg.fill = curPreset.isLinear ? '#15803d' : '#b45309';
+    verdictBadgeBg.stroke = 'none';
+
+    const verdictBadgeTxt = two.makeText(curPreset.isLinear ? '✅ 일차방정식 (O)' : '❌ 일차방정식 아님 (X)', 120, 288);
+    verdictBadgeTxt.fill = '#ffffff';
+    verdictBadgeTxt.size = 11;
+    verdictBadgeTxt.weight = 800;
+
+    const resFormula = two.makeText(`정리된 식: ${curPreset.res}`, 340, 288);
+    resFormula.fill = '#0f172a';
+    resFormula.size = 16;
+    resFormula.weight = 800;
+
+    const reasonTxt = two.makeText(`판정 이유: ${curPreset.reason}`, 340, 328);
+    reasonTxt.fill = curPreset.isLinear ? '#166534' : '#92400e';
+    reasonTxt.size = 12.5;
+    reasonTxt.weight = 700;
+  } else {
+    const guideP = two.makeText('👆 위의 [우변의 모든 항 좌변으로 이항 실행!] 버튼을 눌러보세요.', 340, 298);
+    guideP.fill = '#475569';
+    guideP.size = 13;
+    guideP.weight = 700;
+
+    const subP = two.makeText('우변의 모든 항이 부호를 바꾸어 좌변으로 건너오며 동류항끼리 계산됩니다.', 340, 324);
+    subP.fill = '#64748b';
+    subP.size = 11.5;
+    subP.weight = 600;
+  }
+}
+
+// ----------------------------------------------------
+// Mode 2: 교과서 문제 2 실전 이항 검증 랩
+// ----------------------------------------------------
+function drawMode2_5_2(two, lab, clickables) {
+  const problems = [
+    {
+      num: '⑴',
+      eq: '2x = x - 5',
+      steps: [
+        { label: '1단계: 원본 등식', text: '2x = x - 5', note: '우변의 항 x와 -5를 좌변으로 이항 준비' },
+        { label: '2단계: 이항 적용', text: '2x - x + 5 = 0', note: '등호를 건너며 x는 -x로, -5는 +5로 부호 반전' },
+        { label: '3단계: 동류항 정리', text: 'x + 5 = 0', isLinear: true, note: '좌변이 x에 대한 일차식(x+5)이므로 일차방정식!' }
+      ]
+    },
+    {
+      num: '⑵',
+      eq: '3 - x = x - 2(x - 3)',
+      steps: [
+        { label: '1단계: 원본 등식', text: '3 - x = x - 2(x - 3)', note: '우변의 괄호 -2(x - 3)을 분배법칙으로 먼저 전개' },
+        { label: '2단계: 괄호 전개 및 이항', text: '3 - x = -x + 6 ⟹ 3 - x + x - 6 = 0', note: '양변에 -x가 공통으로 있어 이항 시 x항이 소거됨' },
+        { label: '3단계: 동류항 정리', text: '-3 = 0', isLinear: false, note: 'x항이 완전히 사라져 일차식이 아니므로 일차방정식 아님!' }
+      ]
+    },
+    {
+      num: '⑶',
+      eq: 'x² + 1 = 2x + x²',
+      steps: [
+        { label: '1단계: 원본 등식', text: 'x² + 1 = 2x + x²', note: '등식에 이차항(x²)이 있지만 우변의 항을 좌변으로 이항' },
+        { label: '2단계: 이항 적용', text: 'x² - x² - 2x + 1 = 0', note: '양변의 x²이 상쇄되어 0이 됨 (이차항 소거)' },
+        { label: '3단계: 동류항 정리', text: '-2x + 1 = 0', isLinear: true, note: '이차항이 사라지고 일차식(-2x+1)만 남아 일차방정식!' }
+      ]
+    }
+  ];
+
+  const curProb = problems[lab.mode2Prob];
+  const curStep = curProb.steps[lab.mode2Step];
+
+  // Problem Select Tabs (Y=64)
+  problems.forEach((p, idx) => {
+    const bx = 130 + idx * 210;
+    const isSel = (lab.mode2Prob === idx);
+    const bg = two.makeRoundedRectangle(bx, 64, 195, 30, 6);
+    bg.fill = isSel ? '#4338ca' : '#ffffff';
+    bg.stroke = isSel ? '#312e81' : '#cbd5e1';
+    bg.linewidth = isSel ? 2 : 1;
+
+    const txt = two.makeText(`${p.num} ${p.eq}`, bx, 64);
+    txt.fill = isSel ? '#ffffff' : '#1e293b';
+    txt.size = 11.5;
+    txt.weight = 700;
+
+    clickables.push({ bg, txt, fn: () => setMode2Prob5_2(idx) });
+  });
+
+  // Step Progress Stepper (Y=114)
+  curProb.steps.forEach((s, idx) => {
+    const sx = 140 + idx * 200;
+    const isAct = (lab.mode2Step === idx);
+    const stepPill = two.makeRoundedRectangle(sx, 114, 180, 26, 13);
+    stepPill.fill = isAct ? '#dbeafe' : '#f1f5f9';
+    stepPill.stroke = isAct ? '#2563eb' : '#cbd5e1';
+    stepPill.linewidth = isAct ? 2 : 1;
+
+    const pillTxt = two.makeText(s.label, sx, 114);
+    pillTxt.fill = isAct ? '#1d4ed8' : '#64748b';
+    pillTxt.size = 10.5;
+    pillTxt.weight = isAct ? 800 : 600;
+
+    clickables.push({ bg: stepPill, txt: pillTxt, fn: () => setMode2Step5_2(idx) });
+  });
+
+  // Main Transformation Box (Y: 205)
+  const mainBox = two.makeRoundedRectangle(340, 205, 650, 110, 12);
+  mainBox.fill = '#f8fafc';
+  mainBox.stroke = '#cbd5e1';
+  mainBox.linewidth = 2;
+
+  const stepTitle = two.makeText(`[${curStep.label}]`, 340, 172);
+  stepTitle.fill = '#475569';
+  stepTitle.size = 12;
+  stepTitle.weight = 800;
+
+  const stepMath = two.makeText(curStep.text, 340, 210);
+  stepMath.fill = '#1e293b';
+  stepMath.size = 20;
+  stepMath.weight = 800;
+
+  const stepNote = two.makeText(curStep.note, 340, 245);
+  stepNote.fill = '#3b82f6';
+  stepNote.size = 12;
+  stepNote.weight = 700;
+
+  // Next Step / Advance Button (Y: 285)
+  const advBtnBg = two.makeRoundedRectangle(340, 285, 260, 32, 16);
+  advBtnBg.fill = '#4f46e5';
+  advBtnBg.stroke = '#3730a3';
+  advBtnBg.linewidth = 1.5;
+
+  const nextStepIdx = (lab.mode2Step + 1) % 3;
+  const advBtnTxt = two.makeText(
+    lab.mode2Step < 2 ? `다음 단계 ▶ (${curProb.steps[nextStepIdx].label})` : '🔄 1단계로 다시 보기',
+    340, 285
+  );
+  advBtnTxt.fill = '#ffffff';
+  advBtnTxt.size = 11.5;
+  advBtnTxt.weight = 800;
+
+  clickables.push({ bg: advBtnBg, txt: advBtnTxt, fn: () => setMode2Step5_2(nextStepIdx) });
+
+  // Final Verdict Card (Y: 345)
+  const verdictCard = two.makeRoundedRectangle(340, 345, 650, 52, 8);
+  const isFinalStep = (lab.mode2Step === 2);
+  const isLinear = curProb.steps[2].isLinear;
+
+  verdictCard.fill = isFinalStep ? (isLinear ? '#ecfdf5' : '#fef2f2') : '#f1f5f9';
+  verdictCard.stroke = isFinalStep ? (isLinear ? '#10b981' : '#ef4444') : '#cbd5e1';
+  verdictCard.linewidth = isFinalStep ? 2 : 1;
+
+  let verdictMsg = '';
+  if (isFinalStep) {
+    verdictMsg = isLinear
+      ? `🎉 최종 판정: ${curProb.num} ${curProb.eq} ⟹ 일차방정식 입니다! (O)`
+      : `⚠️ 최종 판정: ${curProb.num} ${curProb.eq} ⟹ 일차방정식이 아닙니다! (X)`;
+  } else {
+    verdictMsg = `3단계(동류항 정리)까지 진행하면 최종 일차방정식 여부를 판정할 수 있습니다.`;
+  }
+
+  const verdictTxt = two.makeText(verdictMsg, 340, 345);
+  verdictTxt.fill = isFinalStep ? (isLinear ? '#047857' : '#b91c1c') : '#64748b';
+  verdictTxt.size = 12.5;
+  verdictTxt.weight = 800;
+}
+
+// ----------------------------------------------------
+// Mode 3: 나만의 등식 판별기 랩
+// ----------------------------------------------------
+function drawMode3_5_2(two, lab, clickables) {
+  // Preset selector (Y=64)
+  const customPresets = [
+    { key: 'A', name: '프리셋 A: 이차항 소거 함정', desc: 'x² + 3x = x² - 5' },
+    { key: 'B', name: '프리셋 B: 일차항 소거 함정', desc: '2x + 4 = 2x - 1' },
+    { key: 'C', name: '프리셋 C: 이차방정식 모델', desc: '2x² + x = x² + 3' }
+  ];
+
+  customPresets.forEach((p, idx) => {
+    const bx = 130 + idx * 210;
+    const isAct = (lab.customPreset === p.key);
+    const bg = two.makeRoundedRectangle(bx, 64, 195, 30, 6);
+    bg.fill = isAct ? '#4338ca' : '#ffffff';
+    bg.stroke = isAct ? '#312e81' : '#cbd5e1';
+    bg.linewidth = isAct ? 2 : 1;
+
+    const txt = two.makeText(p.name, bx, 64);
+    txt.fill = isAct ? '#ffffff' : '#334155';
+    txt.size = 11;
+    txt.weight = 700;
+
+    clickables.push({ bg, txt, fn: () => setCustomPreset5_2(p.key) });
+  });
+
+  // Calculate net coefficients: (a-d)x^2 + (b-e)x + (c-f) = 0
+  const netA = lab.customA - lab.customD;
+  const netB = lab.customB - lab.customE;
+  const netC = lab.customC - lab.customF;
+
+  // Build left string & right string
+  function formatPoly(a, b, c) {
+    let parts = [];
+    if (a !== 0) parts.push(a === 1 ? 'x²' : a === -1 ? '-x²' : `${a}x²`);
+    if (b !== 0) {
+      if (parts.length > 0) {
+        parts.push(b > 0 ? `+ ${b === 1 ? 'x' : b + 'x'}` : `- ${Math.abs(b) === 1 ? 'x' : Math.abs(b) + 'x'}`);
+      } else {
+        parts.push(b === 1 ? 'x' : b === -1 ? '-x' : `${b}x`);
+      }
+    }
+    if (c !== 0) {
+      if (parts.length > 0) {
+        parts.push(c > 0 ? `+ ${c}` : `- ${Math.abs(c)}`);
+      } else {
+        parts.push(`${c}`);
+      }
+    }
+    return parts.length > 0 ? parts.join(' ') : '0';
+  }
+
+  const leftPoly = formatPoly(lab.customA, lab.customB, lab.customC);
+  const rightPoly = formatPoly(lab.customD, lab.customE, lab.customF);
+  const netPoly = formatPoly(netA, netB, netC) + ' = 0';
+
+  // State Cards
+  const leftBox = two.makeRoundedRectangle(180, 140, 260, 80, 10);
+  leftBox.fill = '#eff6ff';
+  leftBox.stroke = '#3b82f6';
+  leftBox.linewidth = 1.5;
+
+  const leftLbl = two.makeText('좌변 식', 180, 116);
+  leftLbl.fill = '#1d4ed8'; leftLbl.size = 11; leftLbl.weight = 800;
+
+  const leftTxt = two.makeText(leftPoly, 180, 148);
+  leftTxt.fill = '#1e293b'; leftTxt.size = 18; leftTxt.weight = 800;
+
+  const midSign = two.makeText('=', 340, 140);
+  midSign.fill = '#3b82f6'; midSign.size = 28; midSign.weight = 800;
+
+  const rightBox = two.makeRoundedRectangle(500, 140, 260, 80, 10);
+  rightBox.fill = '#fef2f2';
+  rightBox.stroke = '#f87171';
+  rightBox.linewidth = 1.5;
+
+  const rightLbl = two.makeText('우변 식', 500, 116);
+  rightLbl.fill = '#b91c1c'; rightLbl.size = 11; rightLbl.weight = 800;
+
+  const rightTxt = two.makeText(rightPoly, 500, 148);
+  rightTxt.fill = '#1e293b'; rightTxt.size = 18; rightTxt.weight = 800;
+
+  // Arrow & Transpose Info (Y: 205)
+  const arrowTxt = two.makeText('⬇ 우변을 좌변으로 모두 이항하여 동류항 계산 ⬇', 340, 205);
+  arrowTxt.fill = '#4f46e5';
+  arrowTxt.size = 12;
+  arrowTxt.weight = 800;
+
+  // Net Result Box (Y: 270)
+  const netBox = two.makeRoundedRectangle(340, 270, 650, 70, 10);
+  const isLinearEq = (netA === 0 && netB !== 0);
+  const isQuadratic = (netA !== 0);
+
+  netBox.fill = isLinearEq ? '#f0fdf4' : (isQuadratic ? '#fffbeb' : '#fef2f2');
+  netBox.stroke = isLinearEq ? '#22c55e' : (isQuadratic ? '#f59e0b' : '#ef4444');
+  netBox.linewidth = 2;
+
+  const netFormulaTxt = two.makeText(`정리된 식: ${netPoly}`, 340, 255);
+  netFormulaTxt.fill = '#0f172a';
+  netFormulaTxt.size = 18;
+  netFormulaTxt.weight = 800;
+
+  let verdictDetail = '';
+  if (isLinearEq) {
+    verdictDetail = `✅ [일차방정식 O] 최고차항이 1차(x)이고 계수(${netB}) ≠ 0 입니다.`;
+  } else if (isQuadratic) {
+    verdictDetail = `❌ [일차방정식 X] 최고차항이 2차(${netA}x²)이므로 이차방정식입니다.`;
+  } else {
+    verdictDetail = `❌ [일차방정식 X] x항이 소거되어 일차식이 존재하지 않습니다.`;
+  }
+
+  const netDetailTxt = two.makeText(verdictDetail, 340, 285);
+  netDetailTxt.fill = isLinearEq ? '#166534' : (isQuadratic ? '#b45309' : '#b91c1c');
+  netDetailTxt.size = 12.5;
+  netDetailTxt.weight = 800;
+
+  // Analysis Bar (Y: 340)
+  const infoBar = two.makeRoundedRectangle(340, 340, 650, 42, 6);
+  infoBar.fill = '#f8fafc';
+  infoBar.stroke = '#cbd5e1';
+  infoBar.linewidth = 1;
+
+  const infoTxt = two.makeText(
+    `x² 계수 차이: ${netA} | x 계수 차이: ${netB} | 상수항 차이: ${netC}  ⟹  (일차식)=0 꼴 판별 완료`,
+    340, 340
+  );
+  infoTxt.fill = '#334155';
+  infoTxt.size = 11.5;
+  infoTxt.weight = 700;
+}
+
+
+        // Auto-init on page load
     window.addEventListener('DOMContentLoaded', () => {
       populateSubstepDropdown();
       loadSubStep('0-1');
