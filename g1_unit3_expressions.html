@@ -1089,8 +1089,8 @@
       },
       '4-1': {
         code: '4-1', tab: 4,
-        substepLabel: '1. 생각열기: 시소 평형과 등식의 뜻 (p.85)',
-        missionText: '<b>[4-1] 1. 생각열기: 시소 평형과 등식의 뜻 (p.85)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '1. 생각 열기: 시소 평형과 등식의 뜻 (p.85)',
+        missionText: '<b>[생각 열기] 시소 평형과 등식의 뜻 (교과서 p.85)</b><br>• <b>시소의 평형:</b> 각각 $x\\text{ kg}$인 어린이 2명과 $30\\text{ kg}$ 어린이가 탄 시소가 평형을 이룹니다 ($2x = 30$).<br>• <b>등식의 뜻:</b> 등호($=$)를 사용하여 두 수나 식이 서로 같음을 나타낸 식.<br>• <b>좌변·우변·양변:</b> 등호의 왼쪽은 좌변, 오른쪽은 우변, 둘을 통틀어 양변!<br>좌측 캔버스에서 시소 평형 저울 랩과 등식 구조 스캐너를 조작해 보세요.',
         drawer: 'drawStep4_1Canvas'
       },
       '4-2': {
@@ -1483,6 +1483,24 @@
       
       
       
+      
+      // Substep 4-1 State (Seesaw Balance and Concept of Equation)
+      lab4_1: {
+        activeTab: 'mode1',
+        seesaw: {
+          xVal: 15,
+          leftCount: 2,
+          rightWeight: 30,
+          isBalanced: true
+        },
+        scanner: {
+          eqIndex: 0,
+          focusPart: 'all'
+        },
+        classifier: {
+          cardIndex: 0
+        }
+      },
       // Substep 3-12 State (Fun Math: Mind Reader Number Trick)
       lab3_12: {
         activeTab: 'mode1',
@@ -29522,6 +29540,1005 @@ function drawMode3MagicTrickBuilderLab(two, width, height) {
 
     // --- End Substep 3-12 Implementation ---
 
+    
+    // --- Substep 4-1 Implementation ---
+// code_4_1.js: Substep [4-1] 3.4 생각 열기: 시소의 평형, 등식과 좌변·우변·양변의 뜻 (교과서 p.85)
+
+const EQUATIONS_DATA_4_1 = [
+  { id: 1, expr: '2x = 30', lhs: '2x', op: '=', rhs: '30', title: '교과서 생각열기: 시소 평형 등식', desc: '어린이 2명의 몸무게(2x)와 30kg 어린이의 무게가 평형을 이룸' },
+  { id: 2, expr: '3x + 5 = 14', lhs: '3x + 5', op: '=', rhs: '14', title: '일차식과 수의 등식', desc: '미지수 x를 포함한 일차식(3x+5)과 수(14)가 등호(=)로 연결된 등식' },
+  { id: 3, expr: '5x - 2 = 2x + 7', lhs: '5x - 2', op: '=', rhs: '2x + 7', title: '양변에 미지수가 있는 등식', desc: '좌변(5x-2)과 우변(2x+7) 양쪽에 미지수 x가 있는 일차방정식' },
+  { id: 4, expr: '4 + 6 = 10', lhs: '4 + 6', op: '=', rhs: '10', title: '수의 덧셈으로 이루어진 등식', desc: '미지수가 없더라도 등호(=)를 사용하여 두 수의 값이 같음을 나타낸 참인 등식' }
+];
+
+const CLASSIFY_CARDS_4_1 = [
+  { id: 1, expr: '2x + 1 = 7', type: 'equation', typeLabel: '등식', symbol: '=', reason: '등호(=)가 있으므로 등식입니다.' },
+  { id: 2, expr: '3x - 5', type: 'expression', typeLabel: '식 (다항식)', symbol: '없음', reason: '등호(=)가 없으므로 등식이 아닌 식(다항식)입니다.' },
+  { id: 3, expr: 'x + 4 > 6', type: 'inequality', typeLabel: '부등식', symbol: '>', reason: '등호가 아닌 부등호(>)를 사용하였으므로 부등식입니다.' },
+  { id: 4, expr: '7 - 3 = 4', type: 'equation', typeLabel: '등식', symbol: '=', reason: '수가 등호(=)로 연결되어 같음을 나타내므로 등식입니다.' },
+  { id: 5, expr: '4x ≤ 12', type: 'inequality', typeLabel: '부등식', symbol: '≤', reason: '부등호(≤)를 사용하였으므로 부등식입니다.' },
+  { id: 6, expr: 'x² - 1', type: 'expression', typeLabel: '식 (다항식)', symbol: '없음', reason: '등호(=)가 없으므로 다항식입니다.' }
+];
+
+function renderToolbar4_1() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab4_1) {
+    state.lab4_1 = {
+      activeTab: 'mode1', // 'mode1' (시소 평형) | 'mode2' (등식 구조 스캐너) | 'mode3' (등식 판별기)
+      // Mode 1: 시소 평형 랩 상태
+      seesaw: {
+        xVal: 15,          // 10, 15, 20
+        leftCount: 2,      // 2명 (2x)
+        rightWeight: 30,   // 30 kg
+        isBalanced: true
+      },
+      // Mode 2: 등식 구조 스캐너
+      scanner: {
+        eqIndex: 0,
+        focusPart: 'all'   // 'lhs' | 'rhs' | 'both' | 'op' | 'all'
+      },
+      // Mode 3: 등식 판별기
+      classifier: {
+        cardIndex: 0
+      }
+    };
+  }
+
+  const curTab = state.lab4_1.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab4_1Tab('mode1')">
+        🎠 1. 시소 평형 랩 (p.85)
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab4_1Tab('mode2')">
+        ⚖️ 2. 등식 구조 스캐너 (좌변·우변·양변)
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab4_1Tab('mode3')">
+        📋 3. 등식 판별기
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      ${curTab === 'mode1' ? `
+        <button class="icon-btn" onclick="setSeesawX4_1(10)">x = 10kg</button>
+        <button class="icon-btn" style="background:#e0e7ff; font-weight:700; color:#3730a3;" onclick="setSeesawX4_1(15)">x = 15kg (평형)</button>
+        <button class="icon-btn" onclick="setSeesawX4_1(20)">x = 20kg</button>
+      ` : ''}
+      ${curTab === 'mode2' ? `
+        <button class="icon-btn" onclick="nextScannerEq4_1()">🔍 다음 등식</button>
+      ` : ''}
+      ${curTab === 'mode3' ? `
+        <button class="icon-btn" onclick="nextClassifyCard4_1()">👉 다음 수식</button>
+      ` : ''}
+      <button class="icon-btn" onclick="resetLab4_1()" title="초기화">🔄 초기화</button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('4-1')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab4_1Tab(tabKey) {
+  if (!state.lab4_1) resetLab4_1();
+  state.lab4_1.activeTab = tabKey;
+  renderToolbar4_1();
+  drawStep4_1Canvas();
+}
+
+function resetLab4_1() {
+  state.lab4_1 = {
+    activeTab: 'mode1',
+    seesaw: {
+      xVal: 15,
+      leftCount: 2,
+      rightWeight: 30,
+      isBalanced: true
+    },
+    scanner: {
+      eqIndex: 0,
+      focusPart: 'all'
+    },
+    classifier: {
+      cardIndex: 0
+    }
+  };
+  renderToolbar4_1();
+  drawStep4_1Canvas();
+}
+
+function setSeesawX4_1(val) {
+  if (!state.lab4_1) resetLab4_1();
+  state.lab4_1.seesaw.xVal = val;
+  state.lab4_1.seesaw.isBalanced = (state.lab4_1.seesaw.leftCount * val === state.lab4_1.seesaw.rightWeight);
+  renderToolbar4_1();
+  drawStep4_1Canvas();
+}
+
+function nextScannerEq4_1() {
+  if (!state.lab4_1) resetLab4_1();
+  state.lab4_1.scanner.eqIndex = (state.lab4_1.scanner.eqIndex + 1) % EQUATIONS_DATA_4_1.length;
+  state.lab4_1.scanner.focusPart = 'all';
+  drawStep4_1Canvas();
+}
+
+function setScannerFocus4_1(part) {
+  if (!state.lab4_1) resetLab4_1();
+  state.lab4_1.scanner.focusPart = part;
+  drawStep4_1Canvas();
+}
+
+function setScannerEq4_1(idx) {
+  if (!state.lab4_1) resetLab4_1();
+  state.lab4_1.scanner.eqIndex = idx;
+  state.lab4_1.scanner.focusPart = 'all';
+  drawStep4_1Canvas();
+}
+
+function nextClassifyCard4_1() {
+  if (!state.lab4_1) resetLab4_1();
+  state.lab4_1.classifier.cardIndex = (state.lab4_1.classifier.cardIndex + 1) % CLASSIFY_CARDS_4_1.length;
+  drawStep4_1Canvas();
+}
+
+function setClassifyCard4_1(idx) {
+  if (!state.lab4_1) resetLab4_1();
+  state.lab4_1.classifier.cardIndex = idx;
+  drawStep4_1Canvas();
+}
+
+function renderSubstep4_1() {
+  const panel = document.getElementById('form-box');
+  if (!panel) return;
+
+  panel.innerHTML = `
+    <div class="card-title" style="display:flex; align-items:center; gap:8px;">
+      <span class="badge" style="background:#4f46e5; color:#fff;">교과서 p.85</span>
+      <span style="font-size:1.05rem; font-weight:800; color:#1e1b4b;">1. 생각 열기: 시소 평형과 등식의 뜻</span>
+    </div>
+
+    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-top:10px; font-size:0.86rem; line-height:1.55; color:#334155;">
+      <b>📖 [교과서 생각 열기 지문 탐구]</b><br>
+      오른쪽 그림과 같이 몸무게가 각각 $x\\text{ kg}$인 어린이 2명과 몸무게가 $30\\text{ kg}$인 어린이가 양쪽에 나누어 탄 시소가 평형을 이루고 있다.<br>
+      좌측 캔버스 <b>[🎠 시소 평형 랩]</b> 및 <b>[⚖️ 등식 구조 스캐너]</b>를 탐구하며 다음 질문에 답해 보세요.
+    </div>
+
+    <div style="margin-top:14px; display:flex; flex-direction:column; gap:12px;">
+      <!-- 문제 1 -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px;">
+        <div style="font-weight:700; color:#1e293b; font-size:0.87rem; margin-bottom:6px;">
+          (1) 시소의 왼쪽에 탄 어린이 2명의 몸무게의 합을 문자를 사용한 식으로 나타내시오.
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="text" id="ans-4-1-1" class="proof-input-text" placeholder="식 입력 (예: 3x)" style="flex:1;" />
+          <span style="font-weight:700; color:#475569; font-size:0.9rem;">kg</span>
+        </div>
+      </div>
+
+      <!-- 문제 2 -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px;">
+        <div style="font-weight:700; color:#1e293b; font-size:0.87rem; margin-bottom:6px;">
+          (2) 시소가 평형을 이루고 있으므로 양쪽의 몸무게가 같음을 등호($=$)를 사용하여 식으로 나타내시오.
+        </div>
+        <input type="text" id="ans-4-1-2" class="proof-input-text" placeholder="등식 입력 (예: 2x+1=7)" style="width:100%;" />
+      </div>
+
+      <!-- 문제 3 -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px;">
+        <div style="font-weight:700; color:#1e293b; font-size:0.87rem; margin-bottom:6px;">
+          (3) 등식에서 등호($=$)의 <b>왼쪽 부분</b>을 가리키는 수학 용어를 쓰시오.
+        </div>
+        <input type="text" id="ans-4-1-3" class="proof-input-text" placeholder="용어 입력" style="width:100%;" />
+      </div>
+
+      <!-- 문제 4 -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px;">
+        <div style="font-weight:700; color:#1e293b; font-size:0.87rem; margin-bottom:6px;">
+          (4) 등식에서 등호($=$)의 <b>오른쪽 부분</b>을 가리키는 수학 용어를 쓰시오.
+        </div>
+        <input type="text" id="ans-4-1-4" class="proof-input-text" placeholder="용어 입력" style="width:100%;" />
+      </div>
+
+      <!-- 문제 5 -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px;">
+        <div style="font-weight:700; color:#1e293b; font-size:0.87rem; margin-bottom:6px;">
+          (5) 등식에서 좌변과 우변을 <b>통틀어</b> 부르는 수학 용어를 쓰시오.
+        </div>
+        <input type="text" id="ans-4-1-5" class="proof-input-text" placeholder="용어 입력" style="width:100%;" />
+      </div>
+
+      <!-- 문제 6 -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px;">
+        <div style="font-weight:700; color:#1e293b; font-size:0.87rem; margin-bottom:6px;">
+          (6) 다음 중 <b>등식</b>인 것을 모두 고르시오. (모두 선택)
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:0.86rem; color:#334155;">
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" id="cb-4-1-1" /> ① $2x + 1 = 9$
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" id="cb-4-1-2" /> ② $3x - 4$
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" id="cb-4-1-3" /> ③ $x + 5 \\le 10$
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" id="cb-4-1-4" /> ④ $7 - 3 = 4$
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:14px; display:flex; gap:8px;">
+      <button class="primary-btn" onclick="gradeStep4_1()" style="flex:1; height:38px; font-weight:700;">
+        정답 확인 및 채점
+      </button>
+      <button class="icon-btn" onclick="resetForm4_1()" style="height:38px; padding:0 12px;">
+        입력 초기화
+      </button>
+    </div>
+
+    <div id="grade-feedback-4-1" style="margin-top:12px;"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(panel, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ]
+    });
+  }
+}
+
+function resetForm4_1() {
+  for (let i = 1; i <= 5; i++) {
+    const el = document.getElementById(`ans-4-1-${i}`);
+    if (el) el.value = '';
+  }
+  for (let i = 1; i <= 4; i++) {
+    const cb = document.getElementById(`cb-4-1-${i}`);
+    if (cb) cb.checked = false;
+  }
+  const fb = document.getElementById('grade-feedback-4-1');
+  if (fb) fb.innerHTML = '';
+}
+
+function cleanExpr4_1(str) {
+  if (!str) return '';
+  return str.replace(/\s+/g, '').toLowerCase().replace(/\*/g, '');
+}
+
+function gradeStep4_1() {
+  const ans1 = cleanExpr4_1(document.getElementById('ans-4-1-1')?.value || '');
+  const ans2 = cleanExpr4_1(document.getElementById('ans-4-1-2')?.value || '');
+  const ans3 = (document.getElementById('ans-4-1-3')?.value || '').trim();
+  const ans4 = (document.getElementById('ans-4-1-4')?.value || '').trim();
+  const ans5 = (document.getElementById('ans-4-1-5')?.value || '').trim();
+
+  const cb1 = document.getElementById('cb-4-1-1')?.checked || false;
+  const cb2 = document.getElementById('cb-4-1-2')?.checked || false;
+  const cb3 = document.getElementById('cb-4-1-3')?.checked || false;
+  const cb4 = document.getElementById('cb-4-1-4')?.checked || false;
+
+  const isQ1Correct = (ans1 === '2x');
+  const isQ2Correct = (ans2 === '2x=30' || ans2 === '30=2x');
+  const isQ3Correct = (ans3 === '좌변');
+  const isQ4Correct = (ans4 === '우변');
+  const isQ5Correct = (ans5 === '양변');
+  const isQ6Correct = (cb1 === true && cb2 === false && cb3 === false && cb4 === true);
+
+  const fb = document.getElementById('grade-feedback-4-1');
+  if (!fb) return;
+
+  const totalScore = (isQ1Correct ? 20 : 0) + (isQ2Correct ? 20 : 0) + (isQ3Correct ? 15 : 0) + 
+                     (isQ4Correct ? 15 : 0) + (isQ5Correct ? 15 : 0) + (isQ6Correct ? 15 : 0);
+
+  if (totalScore === 100) {
+    fb.innerHTML = `
+      <div style="background:#ecfdf5; border:1px solid #10b981; border-radius:10px; padding:14px; color:#065f46;">
+        <div style="font-size:1.02rem; font-weight:800; display:flex; align-items:center; gap:6px;">
+          🎉 100점 만점! 완벽합니다!
+        </div>
+        <div style="margin-top:6px; font-size:0.87rem; line-height:1.55;">
+          • 어린이 2명의 몸무게 합: $2x\\text{ kg}$<br>
+          • 시소 평형 등식: $2x = 30$<br>
+          • 등호 왼쪽은 <b>좌변</b>, 오른쪽은 <b>우변</b>, 둘을 통틀어 <b>양변</b>!<br>
+          • ①, ④는 등호($=$)가 포함된 올바른 등식입니다.<br>
+          다음 서브스텝 <b>[4-2] 2. 문제 1: 문장을 등식으로 나타내기</b>가 해금되었습니다!
+        </div>
+      </div>
+    `;
+
+    if (!state.unlockedSubSteps.includes('4-2')) {
+      state.unlockedSubSteps.push('4-2');
+    }
+    if (typeof updateSubstepPills === 'function') updateSubstepPills();
+    if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+      LMSIntegration.saveStudentProgress('4-1', {
+        score: 100,
+        completed: true,
+        answers: { ans1, ans2, ans3, ans4, ans5, cb: [cb1, cb2, cb3, cb4] }
+      }, 3);
+    }
+  } else {
+    let wrongNotes = [];
+    if (!isQ1Correct) wrongNotes.push('(1)번: 어린이 2명의 몸무게는 $x + x = 2x$입니다.');
+    if (!isQ2Correct) wrongNotes.push('(2)번: 양쪽이 평형을 이루므로 $2x = 30$입니다.');
+    if (!isQ3Correct) wrongNotes.push('(3)번: 등호의 왼쪽은 "좌변"입니다.');
+    if (!isQ4Correct) wrongNotes.push('(4)번: 등호의 오른쪽은 "우변"입니다.');
+    if (!isQ5Correct) wrongNotes.push('(5)번: 좌변과 우변을 통틀어 "양변"이라고 합니다.');
+    if (!isQ6Correct) wrongNotes.push('(6)번: 등호($=$)가 들어있는 식은 ①번과 ④번입니다.');
+
+    fb.innerHTML = `
+      <div style="background:#fef2f2; border:1px solid #ef4444; border-radius:10px; padding:12px; color:#991b1b;">
+        <div style="font-weight:800; font-size:0.92rem;">다시 확인해 보세요! (현재 점수: ${totalScore}점)</div>
+        <div style="margin-top:6px; font-size:0.84rem; line-height:1.5;">
+          ${wrongNotes.join('<br>')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ]
+    });
+  }
+}
+
+// --- Two.js 60fps 인터랙티브 캔버스 엔진 ---
+function drawStep4_1Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const two = new Two({
+    width: 680,
+    height: 440,
+    type: Two.Types.svg
+  }).appendTo(container);
+
+  if (!state.lab4_1) {
+    resetLab4_1();
+  }
+
+  const activeTab = state.lab4_1.activeTab;
+
+  if (activeTab === 'mode1') {
+    drawMode1SeesawBalanceLab(two);
+  } else if (activeTab === 'mode2') {
+    drawMode2EquationScannerLab(two);
+  } else if (activeTab === 'mode3') {
+    drawMode3EquationClassifierLab(two);
+  }
+
+  // 안내 배너 (Vertical Budget 준수: Y=385, H=26, 바닥 안전 여백 42px >= 25px)
+  const bannerBg = two.makeRoundedRectangle(340, 385, 620, 26, 6);
+  bannerBg.fill = '#f8fafc';
+  bannerBg.stroke = '#cbd5e1';
+  bannerBg.linewidth = 1;
+
+  let tipMsg = '💡 등호(=)를 사용하여 두 수나 식이 서로 같음을 나타낸 식을 [등식]이라고 합니다.';
+  if (activeTab === 'mode1') {
+    tipMsg = '💡 양쪽 무게가 같아 시소가 평형을 이루는 상태를 등호(=)로 표현한 식이 바로 등식입니다!';
+  } else if (activeTab === 'mode2') {
+    tipMsg = '💡 등호의 왼쪽은 [좌변], 오른쪽은 [우변], 둘을 통틀어 [양변]이라고 부릅니다.';
+  } else if (activeTab === 'mode3') {
+    tipMsg = '💡 등호(=)가 포함되어 있어야 등식입니다. 부등호는 부등식, 등호가 없으면 다항식입니다.';
+  }
+
+  const tipText = two.makeText(tipMsg, 340, 385, {
+    family: 'Pretendard, sans-serif',
+    size: 11,
+    weight: 600,
+    fill: '#475569',
+    alignment: 'center'
+  });
+
+  two.update();
+}
+
+// Mode 1: 🎠 인터랙티브 시소 평형 저울 랩
+function drawMode1SeesawBalanceLab(two) {
+  // 상단 헤더
+  const title = two.makeText('🎠 [생각 열기] 시소 평형과 등식의 원리 랩 (교과서 p.85)', 340, 26, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 800,
+    fill: '#1e1b4b',
+    alignment: 'center'
+  });
+
+  const sub = two.makeText('왼쪽 어린이 2명 (각각 x kg) vs 오른쪽 어린이 (30 kg)의 시소 평형 상태', 340, 48, {
+    family: 'Pretendard, sans-serif',
+    size: 11,
+    weight: 600,
+    fill: '#64748b',
+    alignment: 'center'
+  });
+
+  const seesaw = state.lab4_1.seesaw;
+  const leftWeight = seesaw.leftCount * seesaw.xVal;
+  const rightWeight = seesaw.rightWeight;
+
+  // 기울기 각도 계산: 수평일 때 0도, 왼쪽이 무거우면 -8도, 오른쪽이 무거우면 +8도
+  let angle = 0;
+  if (leftWeight > rightWeight) {
+    angle = -0.14; // 왼쪽 하강 (시계 반대 방향)
+  } else if (leftWeight < rightWeight) {
+    angle = 0.14;  // 오른쪽 하강 (시계 방향)
+  }
+
+  const fulcrumX = 340;
+  const fulcrumY = 265;
+  const beamLength = 480;
+
+  // 바닥 지면
+  const ground = two.makeLine(60, 310, 620, 310);
+  ground.stroke = '#94a3b8';
+  ground.linewidth = 3;
+
+  // 지면 풀밭 장식
+  for (let gx = 80; gx <= 600; gx += 40) {
+    const tuft = two.makeLine(gx, 310, gx + 6, 303);
+    tuft.stroke = '#cbd5e1';
+    tuft.linewidth = 2;
+  }
+
+  // 중심 받침대 (Fulcrum Triangle)
+  const fulcrumPath = two.makePath(
+    fulcrumX, fulcrumY - 6,
+    fulcrumX - 35, 310,
+    fulcrumX + 35, 310,
+    true
+  );
+  fulcrumPath.fill = '#475569';
+  fulcrumPath.stroke = '#334155';
+  fulcrumPath.linewidth = 2;
+
+  // 회전 베어링 핀
+  const pin = two.makeCircle(fulcrumX, fulcrumY - 6, 8);
+  pin.fill = '#f8fafc';
+  pin.stroke = '#334155';
+  pin.linewidth = 2.5;
+
+  // 시소 보드 그룹 생성 (각도 회전 적용)
+  const seesawGroup = two.makeGroup();
+
+  // 시소 메인 보드 (Beam)
+  const beam = two.makeRoundedRectangle(0, 0, beamLength, 14, 5);
+  beam.fill = '#f97316';
+  beam.stroke = '#ea580c';
+  beam.linewidth = 2;
+  seesawGroup.add(beam);
+
+  // 중앙 안전 패드
+  const centerPad = two.makeRoundedRectangle(0, -5, 40, 10, 3);
+  centerPad.fill = '#fed7aa';
+  centerPad.stroke = '#f97316';
+  centerPad.linewidth = 1;
+  seesawGroup.add(centerPad);
+
+  // 좌측 손잡이
+  const leftHandle = two.makeLine(-190, -7, -190, -28);
+  leftHandle.stroke = '#94a3b8';
+  leftHandle.linewidth = 4;
+  const leftHandleBar = two.makeLine(-198, -28, -182, -28);
+  leftHandleBar.stroke = '#64748b';
+  leftHandleBar.linewidth = 4;
+  seesawGroup.add(leftHandle, leftHandleBar);
+
+  // 우측 손잡이
+  const rightHandle = two.makeLine(190, -7, 190, -28);
+  rightHandle.stroke = '#94a3b8';
+  rightHandle.linewidth = 4;
+  const rightHandleBar = two.makeLine(182, -28, 198, -28);
+  rightHandleBar.stroke = '#64748b';
+  rightHandleBar.linewidth = 4;
+  seesawGroup.add(rightHandle, rightHandleBar);
+
+  // 좌측 탑승 어린이 2명 (각각 x kg 블록)
+  const kid1Bg = two.makeRoundedRectangle(-190, -42, 46, 50, 8);
+  kid1Bg.fill = '#4f46e5';
+  kid1Bg.stroke = '#3730a3';
+  kid1Bg.linewidth = 2;
+  const kid1Head = two.makeCircle(-190, -78, 12);
+  kid1Head.fill = '#fcd34d';
+  kid1Head.stroke = '#d97706';
+  kid1Head.linewidth = 1.5;
+  const kid1Label = two.makeText('x kg', -190, -42, {
+    family: 'Pretendard, sans-serif',
+    size: 11,
+    weight: 800,
+    fill: '#ffffff',
+    alignment: 'center'
+  });
+  seesawGroup.add(kid1Bg, kid1Head, kid1Label);
+
+  const kid2Bg = two.makeRoundedRectangle(-135, -42, 46, 50, 8);
+  kid2Bg.fill = '#6366f1';
+  kid2Bg.stroke = '#4338ca';
+  kid2Bg.linewidth = 2;
+  const kid2Head = two.makeCircle(-135, -78, 12);
+  kid2Head.fill = '#fcd34d';
+  kid2Head.stroke = '#d97706';
+  kid2Head.linewidth = 1.5;
+  const kid2Label = two.makeText('x kg', -135, -42, {
+    family: 'Pretendard, sans-serif',
+    size: 11,
+    weight: 800,
+    fill: '#ffffff',
+    alignment: 'center'
+  });
+  seesawGroup.add(kid2Bg, kid2Head, kid2Label);
+
+  // 우측 탑승 어린이 1명 (30 kg)
+  const kidRightBg = two.makeRoundedRectangle(165, -46, 68, 58, 8);
+  kidRightBg.fill = '#10b981';
+  kidRightBg.stroke = '#047857';
+  kidRightBg.linewidth = 2;
+  const kidRightHead = two.makeCircle(165, -86, 14);
+  kidRightHead.fill = '#fcd34d';
+  kidRightHead.stroke = '#d97706';
+  kidRightHead.linewidth = 1.5;
+  const kidRightLabel = two.makeText('30 kg', 165, -46, {
+    family: 'Pretendard, sans-serif',
+    size: 13,
+    weight: 800,
+    fill: '#ffffff',
+    alignment: 'center'
+  });
+  seesawGroup.add(kidRightBg, kidRightHead, kidRightLabel);
+
+  // 시소 그룹 위치 및 각도 적용
+  seesawGroup.translation.set(fulcrumX, fulcrumY - 6);
+  seesawGroup.rotation = angle;
+
+  // 상단 상태 정보 카드
+  const statusBg = two.makeRoundedRectangle(340, 105, 520, 60, 10);
+  if (seesaw.isBalanced) {
+    statusBg.fill = '#ecfdf5';
+    statusBg.stroke = '#10b981';
+    statusBg.linewidth = 2;
+  } else {
+    statusBg.fill = '#fff7ed';
+    statusBg.stroke = '#f97316';
+    statusBg.linewidth = 1.5;
+  }
+
+  // 좌변 정보 박스
+  const leftInfo = two.makeText(`좌변: 2x = 2 × ${seesaw.xVal} = ${leftWeight} kg`, 200, 95, {
+    family: 'Pretendard, sans-serif',
+    size: 13,
+    weight: 700,
+    fill: '#3730a3',
+    alignment: 'center'
+  });
+
+  // 우변 정보 박스
+  const rightInfo = two.makeText(`우변: ${rightWeight} kg`, 480, 95, {
+    family: 'Pretendard, sans-serif',
+    size: 13,
+    weight: 700,
+    fill: '#047857',
+    alignment: 'center'
+  });
+
+  // 가운데 기호 (등호 or 부등호)
+  let opSymbol = '=';
+  let opColor = '#10b981';
+  let statusComment = '🎉 양변의 무게가 같아 평형(등식 2x = 30 성립!)';
+  if (leftWeight > rightWeight) {
+    opSymbol = '>';
+    opColor = '#dc2626';
+    statusComment = `좌변(${leftWeight}kg) > 우변(${rightWeight}kg) : 왼쪽으로 기울어짐 (평형 아님)`;
+  } else if (leftWeight < rightWeight) {
+    opSymbol = '<';
+    opColor = '#dc2626';
+    statusComment = `좌변(${leftWeight}kg) < 우변(${rightWeight}kg) : 오른쪽으로 기울어짐 (평형 아님)`;
+  }
+
+  const opCircle = two.makeCircle(340, 95, 16);
+  opCircle.fill = opColor;
+  const opText = two.makeText(opSymbol, 340, 96, {
+    family: 'Pretendard, sans-serif',
+    size: 16,
+    weight: 800,
+    fill: '#ffffff',
+    alignment: 'center'
+  });
+
+  const commentText = two.makeText(statusComment, 340, 122, {
+    family: 'Pretendard, sans-serif',
+    size: 12,
+    weight: 700,
+    fill: seesaw.isBalanced ? '#065f46' : '#9a3412',
+    alignment: 'center'
+  });
+
+  // 중심 받침대 위에 평형일 때 황금 등호 마크 출력
+  if (seesaw.isBalanced) {
+    const goldEqualBg = two.makeCircle(fulcrumX, fulcrumY - 45, 18);
+    goldEqualBg.fill = '#f59e0b';
+    goldEqualBg.stroke = '#d97706';
+    goldEqualBg.linewidth = 2;
+    const goldEqualText = two.makeText('=', fulcrumX, fulcrumY - 44, {
+      family: 'Pretendard, sans-serif',
+      size: 20,
+      weight: 900,
+      fill: '#ffffff',
+      alignment: 'center'
+    });
+  }
+
+  // 조작 힌트 버튼 바
+  const hintText = two.makeText('👆 상단 툴바에서 [x=10kg], [x=15kg], [x=20kg]를 눌러 시소의 균형을 관찰해 보세요!', 340, 345, {
+    family: 'Pretendard, sans-serif',
+    size: 11.5,
+    weight: 600,
+    fill: '#6366f1',
+    alignment: 'center'
+  });
+}
+
+// Mode 2: ⚖️ 등식 구조 스캐너: 좌변·우변·양변 분해기
+function drawMode2EquationScannerLab(two) {
+  // 상단 헤더
+  const title = two.makeText('⚖️ [등식 구조 스캐너] 좌변 · 우변 · 양변 완벽 분해 (p.85)', 340, 26, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 800,
+    fill: '#1e1b4b',
+    alignment: 'center'
+  });
+
+  const scanner = state.lab4_1.scanner;
+  const curEq = EQUATIONS_DATA_4_1[scanner.eqIndex];
+
+  // 4개 등식 선택 탭 바
+  const tabWidth = 140;
+  const tabStartX = 65;
+  EQUATIONS_DATA_4_1.forEach((eq, idx) => {
+    const isSelected = (scanner.eqIndex === idx);
+    const tx = tabStartX + idx * 145 + tabWidth / 2;
+    const ty = 60;
+    const tabBg = two.makeRoundedRectangle(tx, ty, tabWidth, 26, 6);
+    tabBg.fill = isSelected ? '#4f46e5' : '#f1f5f9';
+    tabBg.stroke = isSelected ? '#3730a3' : '#cbd5e1';
+    tabBg.linewidth = isSelected ? 2 : 1;
+
+    const tabLabel = two.makeText(eq.expr, tx, ty + 1, {
+      family: 'Pretendard, sans-serif',
+      size: 11.5,
+      weight: isSelected ? 800 : 600,
+      fill: isSelected ? '#ffffff' : '#475569',
+      alignment: 'center'
+    });
+
+    // 클릭 인터랙션
+    if (tabBg._renderer && tabBg._renderer.elem) {
+      tabBg._renderer.elem.style.cursor = 'pointer';
+      tabBg._renderer.elem.onclick = () => setScannerEq4_1(idx);
+    }
+  });
+
+  // 대형 등식 분해 패널 영역 (Y = 160)
+  const panelBg = two.makeRoundedRectangle(340, 165, 580, 140, 14);
+  panelBg.fill = '#ffffff';
+  panelBg.stroke = '#e2e8f0';
+  panelBg.linewidth = 2;
+
+  const focus = scanner.focusPart; // 'all' | 'lhs' | 'rhs' | 'op' | 'both'
+
+  // 1. 좌변 (Left-hand side) 박스
+  const isLhsFocus = (focus === 'lhs' || focus === 'both' || focus === 'all');
+  const lhsBox = two.makeRoundedRectangle(200, 155, 170, 70, 10);
+  lhsBox.fill = isLhsFocus ? '#eff6ff' : '#f8fafc';
+  lhsBox.stroke = (focus === 'lhs') ? '#2563eb' : '#93c5fd';
+  lhsBox.linewidth = (focus === 'lhs') ? 3 : 1.5;
+
+  const lhsTag = two.makeRoundedRectangle(200, 130, 80, 18, 4);
+  lhsTag.fill = '#3b82f6';
+  const lhsTagText = two.makeText('좌변 (LHS)', 200, 131, {
+    family: 'Pretendard, sans-serif',
+    size: 10,
+    weight: 800,
+    fill: '#ffffff',
+    alignment: 'center'
+  });
+
+  const lhsExpr = two.makeText(curEq.lhs, 200, 168, {
+    family: 'Pretendard, sans-serif',
+    size: 22,
+    weight: 800,
+    fill: '#1e3a8a',
+    alignment: 'center'
+  });
+
+  // 2. 등호 (=) 박스
+  const isOpFocus = (focus === 'op' || focus === 'all');
+  const opCircle = two.makeCircle(340, 155, 25);
+  opCircle.fill = isOpFocus ? '#fef3c7' : '#f8fafc';
+  opCircle.stroke = (focus === 'op') ? '#d97706' : '#f59e0b';
+  opCircle.linewidth = (focus === 'op') ? 3 : 2;
+
+  const opTag = two.makeRoundedRectangle(340, 116, 50, 16, 4);
+  opTag.fill = '#f59e0b';
+  const opTagText = two.makeText('등호', 340, 117, {
+    family: 'Pretendard, sans-serif',
+    size: 9.5,
+    weight: 800,
+    fill: '#ffffff',
+    alignment: 'center'
+  });
+
+  const opSign = two.makeText('=', 340, 156, {
+    family: 'Pretendard, sans-serif',
+    size: 26,
+    weight: 900,
+    fill: '#b45309',
+    alignment: 'center'
+  });
+
+  // 3. 우변 (Right-hand side) 박스
+  const isRhsFocus = (focus === 'rhs' || focus === 'both' || focus === 'all');
+  const rhsBox = two.makeRoundedRectangle(480, 155, 170, 70, 10);
+  rhsBox.fill = isRhsFocus ? '#fff7ed' : '#f8fafc';
+  rhsBox.stroke = (focus === 'rhs') ? '#ea580c' : '#fdba74';
+  rhsBox.linewidth = (focus === 'rhs') ? 3 : 1.5;
+
+  const rhsTag = two.makeRoundedRectangle(480, 130, 80, 18, 4);
+  rhsTag.fill = '#f97316';
+  const rhsTagText = two.makeText('우변 (RHS)', 480, 131, {
+    family: 'Pretendard, sans-serif',
+    size: 10,
+    weight: 800,
+    fill: '#ffffff',
+    alignment: 'center'
+  });
+
+  const rhsExpr = two.makeText(curEq.rhs, 480, 168, {
+    family: 'Pretendard, sans-serif',
+    size: 22,
+    weight: 800,
+    fill: '#7c2d12',
+    alignment: 'center'
+  });
+
+  // 4. 양변 (Both sides) 브래킷
+  const isBothFocus = (focus === 'both' || focus === 'all');
+  const bracketLine = two.makePath(
+    130, 202,
+    130, 214,
+    340, 214,
+    340, 222,
+    340, 214,
+    550, 214,
+    550, 202,
+    false
+  );
+  bracketLine.fill = 'transparent';
+  bracketLine.stroke = isBothFocus ? '#8b5cf6' : '#cbd5e1';
+  bracketLine.linewidth = isBothFocus ? 2.5 : 1.5;
+
+  const bothTag = two.makeRoundedRectangle(340, 226, 170, 20, 5);
+  bothTag.fill = isBothFocus ? '#7c3aed' : '#94a3b8';
+  const bothTagText = two.makeText('양변 (좌변과 우변을 통틀어)', 340, 227, {
+    family: 'Pretendard, sans-serif',
+    size: 10,
+    weight: 800,
+    fill: '#ffffff',
+    alignment: 'center'
+  });
+
+  // 하단 분해 포커스 버튼 4개 (Y = 270)
+  const buttons = [
+    { key: 'lhs', label: '👈 좌변 보기', color: '#2563eb' },
+    { key: 'rhs', label: '👉 우변 보기', color: '#ea580c' },
+    { key: 'op', label: '⚡ 등호 보기', color: '#d97706' },
+    { key: 'both', label: '✨ 양변 전체 보기', color: '#7c3aed' }
+  ];
+
+  buttons.forEach((btn, bidx) => {
+    const bx = 160 + bidx * 120;
+    const by = 265;
+    const isAct = (focus === btn.key);
+    const bBg = two.makeRoundedRectangle(bx, by, 105, 24, 6);
+    bBg.fill = isAct ? btn.color : '#f1f5f9';
+    bBg.stroke = isAct ? btn.color : '#cbd5e1';
+    bBg.linewidth = 1;
+
+    const bTxt = two.makeText(btn.label, bx, by + 1, {
+      family: 'Pretendard, sans-serif',
+      size: 10.5,
+      weight: isAct ? 800 : 600,
+      fill: isAct ? '#ffffff' : '#475569',
+      alignment: 'center'
+    });
+
+    if (bBg._renderer && bBg._renderer.elem) {
+      bBg._renderer.elem.style.cursor = 'pointer';
+      bBg._renderer.elem.onclick = () => setScannerFocus4_1(btn.key);
+    }
+  });
+
+  // 하단 해설 카드 (Y = 325)
+  const descBg = two.makeRoundedRectangle(340, 325, 580, 50, 8);
+  descBg.fill = '#f8fafc';
+  descBg.stroke = '#e2e8f0';
+  descBg.linewidth = 1;
+
+  let descTitle = `📌 [${curEq.title}] ${curEq.expr}`;
+  let descDetail = curEq.desc;
+  if (focus === 'lhs') {
+    descTitle = `👈 [좌변] 등호(=)의 왼쪽에 있는 식 또는 수입니다.`;
+    descDetail = `현재 등식에서 좌변은 [ ${curEq.lhs} ] 입니다.`;
+  } else if (focus === 'rhs') {
+    descTitle = `👉 [우변] 등호(=)의 오른쪽에 있는 식 또는 수입니다.`;
+    descDetail = `현재 등식에서 우변은 [ ${curEq.rhs} ] 입니다.`;
+  } else if (focus === 'op') {
+    descTitle = `⚡ [등호] 두 수나 식의 값이 서로 같음을 나타내는 기호 '=' 입니다.`;
+    descDetail = `등호가 있어야 비로소 '등식'이 완성됩니다.`;
+  } else if (focus === 'both') {
+    descTitle = `✨ [양변] 좌변과 우변을 통틀어 양변(Both Sides)이라고 부릅니다.`;
+    descDetail = `등식의 성질에서는 양변에 같은 수를 더하거나 빼도 등식이 성립합니다.`;
+  }
+
+  const dtText = two.makeText(descTitle, 340, 315, {
+    family: 'Pretendard, sans-serif',
+    size: 12,
+    weight: 700,
+    fill: '#1e293b',
+    alignment: 'center'
+  });
+
+  const ddText = two.makeText(descDetail, 340, 335, {
+    family: 'Pretendard, sans-serif',
+    size: 11,
+    weight: 600,
+    fill: '#64748b',
+    alignment: 'center'
+  });
+}
+
+// Mode 3: 📋 등식 vs 부등식 vs 다항식 선별기
+function drawMode3EquationClassifierLab(two) {
+  // 상단 헤더
+  const title = two.makeText('📋 [등식 판별기] 등식 vs 다항식 vs 부등식 선별 랩', 340, 26, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 800,
+    fill: '#1e1b4b',
+    alignment: 'center'
+  });
+
+  const classifier = state.lab4_1.classifier;
+  const selCard = CLASSIFY_CARDS_4_1[classifier.cardIndex];
+
+  // 6장 수식 카드 그리드 (2행 3열)
+  const cardW = 180;
+  const cardH = 50;
+  const startX = 145;
+  const startY = 80;
+
+  CLASSIFY_CARDS_4_1.forEach((card, idx) => {
+    const row = Math.floor(idx / 3);
+    const col = idx % 3;
+    const cx = startX + col * 195;
+    const cy = startY + row * 62;
+    const isSelected = (classifier.cardIndex === idx);
+
+    const cBg = two.makeRoundedRectangle(cx, cy, cardW, cardH, 8);
+    cBg.fill = isSelected ? '#eff6ff' : '#ffffff';
+    cBg.stroke = isSelected ? '#3b82f6' : '#cbd5e1';
+    cBg.linewidth = isSelected ? 2.5 : 1;
+
+    // 카드 번호 뱃지
+    const numBadge = two.makeCircle(cx - 72, cy, 10);
+    numBadge.fill = isSelected ? '#3b82f6' : '#e2e8f0';
+    const numText = two.makeText(String(idx + 1), cx - 72, cy + 1, {
+      family: 'Pretendard, sans-serif',
+      size: 9.5,
+      weight: 800,
+      fill: isSelected ? '#ffffff' : '#475569',
+      alignment: 'center'
+    });
+
+    // 수식 텍스트
+    const exprText = two.makeText(card.expr, cx - 10, cy, {
+      family: 'Pretendard, sans-serif',
+      size: 13,
+      weight: 700,
+      fill: '#1e293b',
+      alignment: 'center'
+    });
+
+    // 우측 분류 태그
+    let tagColor = '#10b981';
+    if (card.type === 'expression') tagColor = '#64748b';
+    if (card.type === 'inequality') tagColor = '#f59e0b';
+
+    const typeTag = two.makeRoundedRectangle(cx + 60, cy, 32, 18, 4);
+    typeTag.fill = tagColor;
+    const typeText = two.makeText(card.type === 'equation' ? '등식' : (card.type === 'inequality' ? '부등식' : '식'), cx + 60, cy + 1, {
+      family: 'Pretendard, sans-serif',
+      size: 8.5,
+      weight: 800,
+      fill: '#ffffff',
+      alignment: 'center'
+    });
+
+    if (cBg._renderer && cBg._renderer.elem) {
+      cBg._renderer.elem.style.cursor = 'pointer';
+      cBg._renderer.elem.onclick = () => setClassifyCard4_1(idx);
+    }
+  });
+
+  // 하단 정밀 돋보기 분석 카드 (Y = 250)
+  const detailBg = two.makeRoundedRectangle(340, 255, 580, 105, 12);
+  detailBg.fill = (selCard.type === 'equation') ? '#ecfdf5' : '#f8fafc';
+  detailBg.stroke = (selCard.type === 'equation') ? '#10b981' : '#cbd5e1';
+  detailBg.linewidth = 2;
+
+  // 선택된 수식 대형 표시
+  const dTitle = two.makeText(`선택된 수식:  ${selCard.expr}`, 340, 225, {
+    family: 'Pretendard, sans-serif',
+    size: 16,
+    weight: 800,
+    fill: '#1e293b',
+    alignment: 'center'
+  });
+
+  // 분석 항목
+  const signInfo = two.makeText(`• 포함된 기호: [ ${selCard.symbol} ]`, 220, 252, {
+    family: 'Pretendard, sans-serif',
+    size: 12.5,
+    weight: 700,
+    fill: '#334155',
+    alignment: 'center'
+  });
+
+  let verdictColor = '#10b981';
+  if (selCard.type === 'expression') verdictColor = '#64748b';
+  if (selCard.type === 'inequality') verdictColor = '#d97706';
+
+  const verdictBadge = two.makeRoundedRectangle(460, 252, 130, 24, 6);
+  verdictBadge.fill = verdictColor;
+  const verdictText = two.makeText(`판정: ${selCard.typeLabel}`, 460, 253, {
+    family: 'Pretendard, sans-serif',
+    size: 12,
+    weight: 800,
+    fill: '#ffffff',
+    alignment: 'center'
+  });
+
+  const reasonText = two.makeText(`💡 ${selCard.reason}`, 340, 285, {
+    family: 'Pretendard, sans-serif',
+    size: 12,
+    weight: 600,
+    fill: '#475569',
+    alignment: 'center'
+  });
+
+  // 힌트 안내
+  const hintText = two.makeText('👆 카드를 클릭하여 수식을 선택하고 등호(=) 포함 여부를 확인해 보세요!', 340, 340, {
+    family: 'Pretendard, sans-serif',
+    size: 11.5,
+    weight: 600,
+    fill: '#3b82f6',
+    alignment: 'center'
+  });
+}
+
+    // --- End Substep 4-1 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -29670,6 +30687,9 @@ function drawMode3MagicTrickBuilderLab(two, width, height) {
       } else if (code === '3-12') {
         renderToolbar3_12();
         renderSubstep3_12();
+      } else if (code === '4-1') {
+        renderToolbar4_1();
+        renderSubstep4_1();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
