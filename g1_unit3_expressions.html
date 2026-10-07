@@ -1047,8 +1047,8 @@
       },
       '3-6': {
         code: '3-6', tab: 3,
-        substepLabel: '6. 스스로 확인하기 1: 동류항 짝짓기 (p.83)',
-        missionText: '<b>[3-6] 6. 스스로 확인하기 1: 동류항 짝짓기 (p.83)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '6. 스스로 확인하기 1: 동류항끼리 짝짓기 (p.83)',
+        missionText: '<b>[스스로 확인하기 1 & 2] 동류항끼리 짝짓기 및 동류항 찾기 (교과서 p.83)</b><br>• <b>동류항의 뜻:</b> 문자가 같고 차수가 같은 항 (상수항끼리는 항상 동류항)<br>• <b>1번 문항:</b> 보기 6개 중 동류항끼리 올바르게 짝지어진 것을 모두 고르세요.<br>• <b>2번 문항:</b> 주어진 다항식에서 각 항의 동류항을 찾아 적어보세요.<br>좌측 캔버스에서 마그넷 매칭 랩, 레이더 스캐너, 6대 보기 갤러리를 조작해 보세요.',
         drawer: 'drawStep3_6Canvas'
       },
       '3-7': {
@@ -1476,6 +1476,26 @@
       
       
       
+      
+      // Substep 3-6 State (Self Check 1: Like Terms Matching)
+      lab3_6: {
+        activeTab: 'mode1',
+        cards: [
+          { id: 1, text: '2a', type: 'a', pairId: 2, matched: false },
+          { id: 2, text: '5a', type: 'a', pairId: 1, matched: false },
+          { id: 3, text: '-3x', type: 'x', pairId: 4, matched: false },
+          { id: 4, text: '4x', type: 'x', pairId: 3, matched: false },
+          { id: 5, text: '7', type: 'c', pairId: 6, matched: false },
+          { id: 6, text: '-2', type: 'c', pairId: 5, matched: false },
+          { id: 7, text: 'x²', type: 'trap1', pairId: null, matched: false },
+          { id: 8, text: '3y', type: 'trap2', pairId: null, matched: false }
+        ],
+        selectedCardId: null,
+        matchNotice: null,
+        radarTarget: 'a',
+        optIdx: 0,
+        isPassed: false
+      },
       // Substep 3-5 State (Fraction Linear Expressions Calculation)
       lab3_5: {
         activeTab: 'mode1',
@@ -24060,6 +24080,758 @@ function drawMode3Problem5Lab(two) {
 
     // --- End Substep 3-5 Implementation ---
 
+    
+    // --- Substep 3-6 Implementation ---
+// code_3_6.js: Substep [3-6] 3.3 스스로 확인하기 1: 동류항끼리 짝짓기 (교과서 p.83)
+
+function renderToolbar3_6() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab3_6) {
+    state.lab3_6 = {
+      activeTab: 'mode1', // 'mode1' (마그넷 매칭) | 'mode2' (동류항 레이더) | 'mode3' (6개 보기 판정)
+      cards: [
+        { id: 1, text: '2a', type: 'a', pairId: 2, matched: false },
+        { id: 2, text: '5a', type: 'a', pairId: 1, matched: false },
+        { id: 3, text: '-3x', type: 'x', pairId: 4, matched: false },
+        { id: 4, text: '4x', type: 'x', pairId: 3, matched: false },
+        { id: 5, text: '7', type: 'c', pairId: 6, matched: false },
+        { id: 6, text: '-2', type: 'c', pairId: 5, matched: false },
+        { id: 7, text: 'x²', type: 'trap1', pairId: null, matched: false },
+        { id: 8, text: '3y', type: 'trap2', pairId: null, matched: false }
+      ],
+      selectedCardId: null,
+      matchNotice: null,
+      radarTarget: 'a',   // 'a' | 'x2' | 'c'
+      optIdx: 0,
+      isPassed: false
+    };
+  }
+
+  const curTab = state.lab3_6.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab3_6Tab('mode1')">
+        1. 🧲 동류항 마그넷 매칭
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab3_6Tab('mode2')">
+        2. 📡 동류항 레이더 스캐너
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab3_6Tab('mode3')">
+        3. 📋 6대 보기 판정 갤러리
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn" onclick="resetCards3_6()" title="카드 재배치">🔄 카드 리셋</button>
+      <button class="icon-btn" onclick="resetLab3_6()" title="초기화">🔄 전체 초기화</button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('3-6')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab3_6Tab(tabKey) {
+  if (!state.lab3_6) resetLab3_6();
+  state.lab3_6.activeTab = tabKey;
+  renderToolbar3_6();
+  drawStep3_6Canvas();
+}
+
+function resetLab3_6() {
+  state.lab3_6 = {
+    activeTab: 'mode1',
+    cards: [
+      { id: 1, text: '2a', type: 'a', pairId: 2, matched: false },
+      { id: 2, text: '5a', type: 'a', pairId: 1, matched: false },
+      { id: 3, text: '-3x', type: 'x', pairId: 4, matched: false },
+      { id: 4, text: '4x', type: 'x', pairId: 3, matched: false },
+      { id: 5, text: '7', type: 'c', pairId: 6, matched: false },
+      { id: 6, text: '-2', type: 'c', pairId: 5, matched: false },
+      { id: 7, text: 'x²', type: 'trap1', pairId: null, matched: false },
+      { id: 8, text: '3y', type: 'trap2', pairId: null, matched: false }
+    ],
+    selectedCardId: null,
+    matchNotice: null,
+    radarTarget: 'a',
+    optIdx: 0,
+    isPassed: false
+  };
+  renderToolbar3_6();
+  drawStep3_6Canvas();
+}
+
+function resetCards3_6() {
+  if (!state.lab3_6) resetLab3_6();
+  state.lab3_6.cards.forEach(c => { c.matched = false; });
+  state.lab3_6.selectedCardId = null;
+  state.lab3_6.matchNotice = null;
+  drawStep3_6Canvas();
+}
+
+function selectCard3_6(cardId) {
+  if (!state.lab3_6) resetLab3_6();
+  const lab = state.lab3_6;
+  const card = lab.cards.find(c => c.id === cardId);
+  if (!card || card.matched) return;
+
+  if (lab.selectedCardId === null) {
+    lab.selectedCardId = cardId;
+    lab.matchNotice = `선택된 항: ${card.text} (동류항 카드를 클릭하여 짝지어 보세요)`;
+  } else if (lab.selectedCardId === cardId) {
+    lab.selectedCardId = null;
+    lab.matchNotice = null;
+  } else {
+    const first = lab.cards.find(c => c.id === lab.selectedCardId);
+    if (first && (first.pairId === card.id || (first.type === card.type && first.type !== 'trap1' && first.type !== 'trap2'))) {
+      first.matched = true;
+      card.matched = true;
+      lab.selectedCardId = null;
+      lab.matchNotice = `🎉 정답! [${first.text}] 와 [${card.text}] 는 문자와 차수가 같은 동류항입니다!`;
+    } else {
+      lab.matchNotice = `⚠️ [${first.text}] 와 [${card.text}] 는 동류항이 아닙니다! (문자나 차수를 확인하세요)`;
+      lab.selectedCardId = null;
+    }
+  }
+  drawStep3_6Canvas();
+}
+
+function setRadarTarget3_6(target) {
+  if (!state.lab3_6) resetLab3_6();
+  state.lab3_6.radarTarget = target;
+  drawStep3_6Canvas();
+}
+
+function setOptIdx3_6(idx) {
+  if (!state.lab3_6) resetLab3_6();
+  state.lab3_6.optIdx = idx;
+  drawStep3_6Canvas();
+}
+
+function renderSubstep3_6() {
+  const container = document.getElementById('substep-form-container');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="card" style="padding:16px; margin-bottom:12px; border-left:4px solid #4f46e5;">
+      <h4 style="margin:0 0 6px 0; font-size:1.02rem; color:#1e293b; display:flex; align-items:center; gap:6px;">
+        <span>🧲 [스스로 확인하기 1번] 동류항끼리 짝짓기 (교과서 p.83)</span>
+      </h4>
+      <p style="margin:0; font-size:0.87rem; color:#475569; line-height:1.5;">
+        <b>동류항의 뜻:</b> 문자와 차수가 각각 같은 항을 동류항이라 하고, 상수항은 모두 동류항입니다.
+      </p>
+    </div>
+
+    <!-- Question 1 -->
+    <div class="card" style="padding:14px; margin-bottom:12px;">
+      <div style="font-weight:700; font-size:0.92rem; color:#1e293b; margin-bottom:8px;">
+        1. 다음 보기 중 <span style="color:#059669;">동류항끼리 짝지어진 것</span>을 <b>모두</b> 고르시오.
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:0.88rem; color:#334155; margin-left:4px;">
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+          <input type="checkbox" id="substep3_6_chk1" value="1">
+          <span>① $2x$ 와 $2y$</span>
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+          <input type="checkbox" id="substep3_6_chk2" value="2">
+          <span>② $-3a$ 와 $5a$</span>
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+          <input type="checkbox" id="substep3_6_chk3" value="3">
+          <span>③ $x^2$ 과 $3x$</span>
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+          <input type="checkbox" id="substep3_6_chk4" value="4">
+          <span>④ $4$ 와 $-7$</span>
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+          <input type="checkbox" id="substep3_6_chk5" value="5">
+          <span>⑤ $a^2b$ 와 $ab^2$</span>
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+          <input type="checkbox" id="substep3_6_chk6" value="6">
+          <span>⑥ $-0.5b$ 와 $\\frac{1}{3}b$</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Question 2 -->
+    <div class="card" style="padding:14px; margin-bottom:14px;">
+      <div style="font-weight:700; font-size:0.92rem; color:#1e293b; margin-bottom:8px;">
+        2. 다항식 <span style="color:#4f46e5;">$4a - 3b + 2 - a + 5b - 7$</span> 에서 다음 항의 동류항을 각각 찾으시오.
+      </div>
+      
+      <div style="display:flex; flex-direction:column; gap:10px; margin-top:8px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:0.88rem; color:#64748b; width:130px;">⑴ $4a$ 의 동류항:</span>
+          <input type="text" id="substep3_6_ans1" class="proof-input-text"
+                 placeholder="항 입력 (예: -a)"
+                 style="width:140px; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.92rem;"
+                 onkeydown="if(event.key==='Enter') gradeStep3_6()">
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:0.88rem; color:#64748b; width:130px;">⑵ $-3b$ 의 동류항:</span>
+          <input type="text" id="substep3_6_ans2" class="proof-input-text"
+                 placeholder="항 입력 (예: 5b)"
+                 style="width:140px; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.92rem;"
+                 onkeydown="if(event.key==='Enter') gradeStep3_6()">
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:0.88rem; color:#64748b; width:130px;">⑶ $2$ 의 동류항:</span>
+          <input type="text" id="substep3_6_ans3" class="proof-input-text"
+                 placeholder="상수항 입력"
+                 style="width:140px; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.92rem;"
+                 onkeydown="if(event.key==='Enter') gradeStep3_6()">
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div style="display:flex; gap:10px; align-items:center; margin-bottom:14px;">
+      <button class="primary-btn" onclick="gradeStep3_6()" style="flex:1; padding:10px; font-weight:700; font-size:0.95rem;">
+        ✅ 정답 확인 및 채점
+      </button>
+      <button class="secondary-btn" onclick="resetForm3_6()" style="padding:10px 16px;">
+        🔄 다시 풀기
+      </button>
+    </div>
+
+    <div id="substep3_6_feedback"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function resetForm3_6() {
+  for (let i = 1; i <= 6; i++) {
+    const chk = document.getElementById(`substep3_6_chk${i}`);
+    if (chk) chk.checked = false;
+  }
+  const i1 = document.getElementById('substep3_6_ans1');
+  const i2 = document.getElementById('substep3_6_ans2');
+  const i3 = document.getElementById('substep3_6_ans3');
+  const fb = document.getElementById('substep3_6_feedback');
+
+  if (i1) i1.value = '';
+  if (i2) i2.value = '';
+  if (i3) i3.value = '';
+  if (fb) fb.innerHTML = '';
+}
+
+function gradeStep3_6() {
+  const c1 = document.getElementById('substep3_6_chk1');
+  const c2 = document.getElementById('substep3_6_chk2');
+  const c3 = document.getElementById('substep3_6_chk3');
+  const c4 = document.getElementById('substep3_6_chk4');
+  const c5 = document.getElementById('substep3_6_chk5');
+  const c6 = document.getElementById('substep3_6_chk6');
+
+  const i1 = document.getElementById('substep3_6_ans1');
+  const i2 = document.getElementById('substep3_6_ans2');
+  const i3 = document.getElementById('substep3_6_ans3');
+  const fb = document.getElementById('substep3_6_feedback');
+  if (!fb) return;
+
+  const chk1 = c1 ? c1.checked : false;
+  const chk2 = c2 ? c2.checked : false;
+  const chk3 = c3 ? c3.checked : false;
+  const chk4 = c4 ? c4.checked : false;
+  const chk5 = c5 ? c5.checked : false;
+  const chk6 = c6 ? c6.checked : false;
+
+  // Q1 정답: ②, ④, ⑥ 만 선택
+  const isQ1Correct = (!chk1 && chk2 && !chk3 && chk4 && !chk5 && chk6);
+
+  const raw1 = (i1 ? i1.value : '').replace(/\s+/g, '').toLowerCase();
+  const raw2 = (i2 ? i2.value : '').replace(/\s+/g, '').toLowerCase();
+  const raw3 = (i3 ? i3.value : '').replace(/\s+/g, '').toLowerCase();
+
+  const isAns1Correct = (raw1 === '-a' || raw1 === '-1a');
+  const isAns2Correct = (raw2 === '5b' || raw2 === '+5b');
+  const isAns3Correct = (raw3 === '-7');
+
+  if (isQ1Correct && isAns1Correct && isAns2Correct && isAns3Correct) {
+    if (state.lab3_6) state.lab3_6.isPassed = true;
+    fb.innerHTML = `
+      <div class="card" style="padding:16px; background:#f0fdf4; border:1px solid #86efac; border-radius:8px;">
+        <div style="font-weight:700; color:#15803d; font-size:1.02rem; margin-bottom:6px;">
+          🎉 100점 완벽 통과! 동류항 판별과 짝짓기를 완벽히 해결했습니다!
+        </div>
+        <div style="font-size:0.88rem; color:#166534; line-height:1.55;">
+          • <b>1번 동류항:</b> <b>②, ④, ⑥</b><br>
+          &nbsp;&nbsp;- ② $-3a$ 와 $5a$ (문자 $a$, 차수 1)<br>
+          &nbsp;&nbsp;- ④ $4$ 와 $-7$ (상수항끼리는 모두 동류항)<br>
+          &nbsp;&nbsp;- ⑥ $-0.5b$ 와 $\\frac{1}{3}b$ (문자 $b$, 차수 1)<br>
+          • <b>2번 다항식 동류항:</b><br>
+          &nbsp;&nbsp;- ⑴ $4a$ 의 동류항: <b>$-a$</b><br>
+          &nbsp;&nbsp;- ⑵ $-3b$ 의 동류항: <b>$5b$</b><br>
+          &nbsp;&nbsp;- ⑶ $2$ 의 동류항: <b>$-7$</b>
+        </div>
+      </div>
+    `;
+
+    if (!state.unlockedSubSteps.includes('3-7')) {
+      state.unlockedSubSteps.push('3-7');
+    }
+
+    if (window.LMSIntegration) {
+      window.LMSIntegration.saveStudentProgress('3-6', { score: 100, passed: true }, 'unit3');
+    }
+
+    drawStep3_6Canvas();
+  } else {
+    let errorMsg = [];
+    if (!isQ1Correct) errorMsg.push('1번: 문자와 차수가 모두 같아야 하며, 상수항끼리는 모두 동류항입니다. (②, ④, ⑥ 확인)');
+    if (!isAns1Correct) errorMsg.push('2-⑴: $4a$와 문자가 $a$로 같은 항은 $-a$입니다.');
+    if (!isAns2Correct) errorMsg.push('2-⑵: $-3b$와 문자가 $b$로 같은 항은 $5b$입니다.');
+    if (!isAns3Correct) errorMsg.push('2-⑶: $2$와 같은 상수항은 $-7$입니다.');
+
+    fb.innerHTML = `
+      <div class="card" style="padding:14px; background:#fef2f2; border:1px solid #fecaca; border-radius:8px;">
+        <div style="font-weight:700; color:#b91c1c; font-size:0.95rem; margin-bottom:4px;">
+          ⚠️ 다시 확인해 보세요!
+        </div>
+        <div style="font-size:0.86rem; color:#991b1b; line-height:1.5;">
+          ${errorMsg.join('<br>')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+// -------------------------------------------------------------
+// Two.js 60fps Canvas Implementation for Substep 3-6
+// -------------------------------------------------------------
+function drawStep3_6Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+
+  if (!state.twoInstance) {
+    state.twoInstance = new Two({
+      width: container.clientWidth || 560,
+      height: 440,
+      type: Two.Types.svg
+    }).appendTo(container);
+  }
+
+  const two = state.twoInstance;
+  two.clear();
+
+  if (!state.lab3_6) resetLab3_6();
+
+  const tab = state.lab3_6.activeTab;
+  if (tab === 'mode1') {
+    drawMode1MagnetMatchingLab(two);
+  } else if (tab === 'mode2') {
+    drawMode2RadarScanner(two);
+  } else if (tab === 'mode3') {
+    drawMode3OptionsGallery(two);
+  }
+
+  two.update();
+}
+
+// -------------------------------------------------------------
+// Mode 1: 동류항 마그넷 매칭 랩
+// -------------------------------------------------------------
+function drawMode1MagnetMatchingLab(two) {
+  const W = two.width;
+  const H = 440;
+  const lab = state.lab3_6;
+
+  // Background
+  const bg = two.makeRoundedRectangle(W / 2, H / 2, W - 20, H - 20, 10);
+  bg.fill = '#f8fafc';
+  bg.stroke = '#cbd5e1';
+  bg.linewidth = 1.5;
+
+  // Header Title
+  const headerBg = two.makeRoundedRectangle(W / 2, 34, W - 40, 36, 6);
+  headerBg.fill = '#eff6ff';
+  headerBg.stroke = '#bfdbfe';
+  headerBg.linewidth = 1;
+
+  const headerTxt = two.makeText('🧲 동류항 마그넷 매칭 랩: 두 카드를 클릭하여 짝을 연결하세요!', W / 2, 34);
+  headerTxt.fill = '#1e40af';
+  headerTxt.size = 13;
+  headerTxt.weight = 700;
+
+  // 8 Cards Layout (2 Rows of 4)
+  const cardW = 90;
+  const cardH = 50;
+  const row1 = lab.cards.slice(0, 4);
+  const row2 = lab.cards.slice(4, 8);
+
+  [row1, row2].forEach((row, rIdx) => {
+    const startX = W / 2 - ((row.length - 1) * 110) / 2;
+    const y = 110 + rIdx * 80;
+
+    row.forEach((c, cIdx) => {
+      const x = startX + cIdx * 110;
+      const grp = two.makeGroup();
+      const isSel = c.id === lab.selectedCardId;
+      const isMatched = c.matched;
+
+      const box = two.makeRoundedRectangle(x, y, cardW, cardH, 8);
+      if (isMatched) {
+        box.fill = '#dcfce7';
+        box.stroke = '#22c55e';
+        box.linewidth = 2;
+      } else if (isSel) {
+        box.fill = '#fef08a';
+        box.stroke = '#eab308';
+        box.linewidth = 3;
+      } else {
+        box.fill = '#ffffff';
+        box.stroke = '#cbd5e1';
+        box.linewidth = 1.5;
+      }
+
+      const txt = two.makeText(c.text, x, y);
+      txt.fill = isMatched ? '#15803d' : (isSel ? '#854d0e' : '#1e293b');
+      txt.size = 17;
+      txt.weight = 700;
+
+      grp.add(box, txt);
+
+      if (!isMatched) {
+        two.update();
+        if (grp._renderer && grp._renderer.elem) {
+          grp._renderer.elem.style.cursor = 'pointer';
+          grp._renderer.elem.onclick = () => selectCard3_6(c.id);
+        }
+      }
+    });
+  });
+
+  // Pairs Status Dashboard (Y=290)
+  const dashY = 290;
+  const dashW = W - 60;
+  const dashH = 75;
+  const dashBg = two.makeRoundedRectangle(W / 2, dashY, dashW, dashH, 8);
+  dashBg.fill = '#ffffff';
+  dashBg.stroke = '#e2e8f0';
+  dashBg.linewidth = 1;
+
+  // 3 pairs indicators
+  const pA = lab.cards.filter(c => c.type === 'a' && c.matched).length === 2;
+  const pX = lab.cards.filter(c => c.type === 'x' && c.matched).length === 2;
+  const pC = lab.cards.filter(c => c.type === 'c' && c.matched).length === 2;
+
+  drawPairBadge(two, W / 2 - 140, dashY, 'a의 동류항 (2a, 5a)', pA);
+  drawPairBadge(two, W / 2, dashY, 'x의 동류항 (-3x, 4x)', pX);
+  drawPairBadge(two, W / 2 + 140, dashY, '상수항 (7, -2)', pC);
+
+  // Status/Notice Banner (Y=350)
+  const noticeTxt = two.makeText(
+    lab.matchNotice || '👉 카드를 클릭하여 선택한 후, 동류항인 다른 카드를 클릭하세요.',
+    W / 2, 345
+  );
+  noticeTxt.fill = lab.matchNotice && lab.matchNotice.includes('⚠️') ? '#b91c1c' : '#4f46e5';
+  noticeTxt.size = 12;
+  noticeTxt.weight = 600;
+
+  // Bottom Safety Guide Banner (Strict Y=385, H=26)
+  const bannerY = 385;
+  const bannerBg = two.makeRoundedRectangle(W / 2, bannerY, W - 40, 26, 6);
+  bannerBg.fill = '#f1f5f9';
+  bannerBg.stroke = '#cbd5e1';
+  bannerBg.linewidth = 1;
+
+  const bannerTxt = two.makeText(
+    '💡 문자와 차수가 모두 같아야 동류항입니다. x²과 3y는 짝이 없는 함정 카드입니다!',
+    W / 2, bannerY
+  );
+  bannerTxt.fill = '#334155';
+  bannerTxt.size = 11.5;
+  bannerTxt.weight = 600;
+}
+
+function drawPairBadge(two, cx, cy, label, isOk) {
+  const box = two.makeRoundedRectangle(cx, cy, 120, 42, 6);
+  box.fill = isOk ? '#dcfce7' : '#f8fafc';
+  box.stroke = isOk ? '#16a34a' : '#cbd5e1';
+  box.linewidth = 1.5;
+
+  const t1 = two.makeText(isOk ? '✅ 연결 완료' : '⏳ 미연결', cx, cy - 9);
+  t1.fill = isOk ? '#15803d' : '#94a3b8';
+  t1.size = 10.5;
+  t1.weight = 700;
+
+  const t2 = two.makeText(label, cx, cy + 9);
+  t2.fill = isOk ? '#14532d' : '#475569';
+  t2.size = 10;
+  t2.weight = 600;
+}
+
+// -------------------------------------------------------------
+// Mode 2: 동류항 레이더 스캐너 랩
+// -------------------------------------------------------------
+function drawMode2RadarScanner(two) {
+  const W = two.width;
+  const H = 440;
+  const target = state.lab3_6.radarTarget;
+
+  // Background
+  const bg = two.makeRoundedRectangle(W / 2, H / 2, W - 20, H - 20, 10);
+  bg.fill = '#f8fafc';
+  bg.stroke = '#cbd5e1';
+  bg.linewidth = 1.5;
+
+  // Header Title
+  const headerBg = two.makeRoundedRectangle(W / 2, 34, W - 40, 36, 6);
+  headerBg.fill = '#f5f3ff';
+  headerBg.stroke = '#ddd6fe';
+  headerBg.linewidth = 1;
+
+  const headerTxt = two.makeText('📡 동류항 레이더 스캐너: 기준 항에 따른 동류항 탐색', W / 2, 34);
+  headerTxt.fill = '#6d28d9';
+  headerTxt.size = 13.5;
+  headerTxt.weight = 700;
+
+  // Target Selector Buttons (Y=78)
+  const targets = [
+    { key: 'a', label: '기준: -3a (일차항)', col: '#2563eb' },
+    { key: 'x2', label: '기준: x² (이차항)', col: '#7c3aed' },
+    { key: 'c', label: '기준: 4 (상수항)', col: '#d97706' }
+  ];
+
+  targets.forEach((t, idx) => {
+    const x = W / 2 - 150 + idx * 150;
+    const grp = two.makeGroup();
+    const isCur = t.key === target;
+
+    const box = two.makeRoundedRectangle(x, 78, 135, 30, 6);
+    box.fill = isCur ? '#ede9fe' : '#ffffff';
+    box.stroke = isCur ? '#8b5cf6' : '#cbd5e1';
+    box.linewidth = isCur ? 2 : 1;
+
+    const txt = two.makeText(t.label, x, 78);
+    txt.fill = isCur ? '#6d28d9' : '#475569';
+    txt.size = 11.5;
+    txt.weight = 700;
+
+    grp.add(box, txt);
+    two.update();
+    if (grp._renderer && grp._renderer.elem) {
+      grp._renderer.elem.style.cursor = 'pointer';
+      grp._renderer.elem.onclick = () => setRadarTarget3_6(t.key);
+    }
+  });
+
+  // Radar Scan Display Area (Y=230)
+  const stageY = 230;
+  const stageW = W - 60;
+  const stageH = 210;
+  const stageBg = two.makeRoundedRectangle(W / 2, stageY, stageW, stageH, 10);
+  stageBg.fill = '#ffffff';
+  stageBg.stroke = '#e2e8f0';
+  stageBg.linewidth = 1.5;
+
+  if (target === 'a') {
+    // 기준 -3a
+    const tTitle = two.makeText('기준 항 [-3a]의 레이더 탐색 결과', W / 2, stageY - 70);
+    tTitle.fill = '#1d4ed8'; tTitle.size = 15; tTitle.weight = 700;
+
+    drawRadarResultCard(two, W / 2 - 130, stageY + 5, '5a', '✅ 동류항', '문자 a, 차수 1 일치', true);
+    drawRadarResultCard(two, W / 2, stageY + 5, '2b', '❌ 불일치', '문자가 다름 (a ≠ b)', false);
+    drawRadarResultCard(two, W / 2 + 130, stageY + 5, '-3a²', '❌ 불일치', '차수가 다름 (1 ≠ 2)', false);
+
+  } else if (target === 'x2') {
+    // 기준 x²
+    const tTitle = two.makeText('기준 항 [x²]의 레이더 탐색 결과', W / 2, stageY - 70);
+    tTitle.fill = '#6d28d9'; tTitle.size = 15; tTitle.weight = 700;
+
+    drawRadarResultCard(two, W / 2 - 130, stageY + 5, '-4x²', '✅ 동류항', '문자 x, 차수 2 일치', true);
+    drawRadarResultCard(two, W / 2, stageY + 5, '3x', '❌ 불일치', '차수가 다름 (2 ≠ 1)', false);
+    drawRadarResultCard(two, W / 2 + 130, stageY + 5, 'x²y', '❌ 불일치', '문자가 다름 (x ≠ xy)', false);
+
+  } else {
+    // 기준 4
+    const tTitle = two.makeText('기준 항 [4]의 레이더 탐색 결과', W / 2, stageY - 70);
+    tTitle.fill = '#b45309'; tTitle.size = 15; tTitle.weight = 700;
+
+    drawRadarResultCard(two, W / 2 - 130, stageY + 5, '-7', '✅ 동류항', '상수항끼리 모두 동류항', true);
+    drawRadarResultCard(two, W / 2, stageY + 5, '0.5', '✅ 동류항', '상수항끼리 모두 동류항', true);
+    drawRadarResultCard(two, W / 2 + 130, stageY + 5, '4x', '❌ 불일치', '문자 x가 포함된 일차항', false);
+  }
+
+  // Bottom Safety Guide Banner (Strict Y=385, H=26)
+  const bannerY = 385;
+  const bannerBg = two.makeRoundedRectangle(W / 2, bannerY, W - 40, 26, 6);
+  bannerBg.fill = '#f1f5f9';
+  bannerBg.stroke = '#cbd5e1';
+  bannerBg.linewidth = 1;
+
+  const bannerTxt = two.makeText(
+    '💡 상단 기준 항을 바꾸며 문자와 차수 조건이 어떻게 대조되는지 확인해 보세요.',
+    W / 2, bannerY
+  );
+  bannerTxt.fill = '#334155';
+  bannerTxt.size = 11.5;
+  bannerTxt.weight = 600;
+}
+
+function drawRadarResultCard(two, cx, cy, termStr, statusStr, reasonStr, isOk) {
+  const box = two.makeRoundedRectangle(cx, cy, 115, 110, 8);
+  box.fill = isOk ? '#f0fdf4' : '#fef2f2';
+  box.stroke = isOk ? '#86efac' : '#fecaca';
+  box.linewidth = 1.5;
+
+  const tTerm = two.makeText(termStr, cx, cy - 30);
+  tTerm.fill = '#1e293b'; tTerm.size = 18; tTerm.weight = 700;
+
+  const tStat = two.makeText(statusStr, cx, cy - 3);
+  tStat.fill = isOk ? '#15803d' : '#b91c1c'; tStat.size = 12.5; tStat.weight = 700;
+
+  const tReas = two.makeText(reasonStr, cx, cy + 28);
+  tReas.fill = isOk ? '#166534' : '#991b1b'; tReas.size = 9.5; tReas.weight = 500;
+}
+
+// -------------------------------------------------------------
+// Mode 3: 6개 보기 판정 갤러리
+// -------------------------------------------------------------
+function drawMode3OptionsGallery(two) {
+  const W = two.width;
+  const H = 440;
+  const lab = state.lab3_6;
+  const optIdx = lab.optIdx;
+
+  // Background
+  const bg = two.makeRoundedRectangle(W / 2, H / 2, W - 20, H - 20, 10);
+  bg.fill = '#f8fafc';
+  bg.stroke = '#cbd5e1';
+  bg.linewidth = 1.5;
+
+  // Header Title
+  const headerBg = two.makeRoundedRectangle(W / 2, 34, W - 40, 36, 6);
+  headerBg.fill = '#ecfdf5';
+  headerBg.stroke = '#a7f3d0';
+  headerBg.linewidth = 1;
+
+  const headerTxt = two.makeText('📋 교과서 스스로 확인하기 1번 6대 보기 판정 갤러리', W / 2, 34);
+  headerTxt.fill = '#065f46';
+  headerTxt.size = 13.5;
+  headerTxt.weight = 700;
+
+  // 6 Option Pills (Y=78)
+  const tabW = (W - 75) / 6;
+  const opts = [
+    { label: '① 2x, 2y', isOk: false, t1: '2x', t2: '2y', reason: '문자가 서로 다름 (x ≠ y)' },
+    { label: '② -3a, 5a', isOk: true, t1: '-3a', t2: '5a', reason: '문자 a, 차수 1로 완벽 일치' },
+    { label: '③ x², 3x', isOk: false, t1: 'x²', t2: '3x', reason: '차수가 서로 다름 (2 ≠ 1)' },
+    { label: '④ 4, -7', isOk: true, t1: '4', t2: '-7', reason: '상수항끼리는 모두 동류항' },
+    { label: '⑤ a²b, ab²', isOk: false, t1: 'a²b', t2: 'ab²', reason: 'a와 b의 차수가 각각 다름' },
+    { label: '⑥ -0.5b, 1/3b', isOk: true, t1: '-0.5b', t2: '1/3 b', reason: '문자 b, 차수 1로 완벽 일치' }
+  ];
+
+  opts.forEach((o, idx) => {
+    const x = 20 + tabW / 2 + idx * (tabW + 7);
+    const grp = two.makeGroup();
+    const isCur = idx === optIdx;
+
+    const box = two.makeRoundedRectangle(x, 78, tabW, 30, 6);
+    box.fill = isCur ? (o.isOk ? '#dcfce7' : '#fee2e2') : '#ffffff';
+    box.stroke = isCur ? (o.isOk ? '#22c55e' : '#ef4444') : '#cbd5e1';
+    box.linewidth = isCur ? 2 : 1;
+
+    const txt = two.makeText(o.label, x, 78);
+    txt.fill = isCur ? (o.isOk ? '#14532d' : '#991b1b') : '#475569';
+    txt.size = 10.5;
+    txt.weight = 700;
+
+    grp.add(box, txt);
+    two.update();
+    if (grp._renderer && grp._renderer.elem) {
+      grp._renderer.elem.style.cursor = 'pointer';
+      grp._renderer.elem.onclick = () => setOptIdx3_6(idx);
+    }
+  });
+
+  // Main Display Card (Y=230)
+  const mainY = 230;
+  const mainW = W - 60;
+  const mainH = 210;
+  const curO = opts[optIdx];
+
+  const mainCard = two.makeRoundedRectangle(W / 2, mainY, mainW, mainH, 10);
+  mainCard.fill = '#ffffff';
+  mainCard.stroke = curO.isOk ? '#22c55e' : '#ef4444';
+  mainCard.linewidth = 2;
+
+  const tTitle = two.makeText(`보기 ${curO.label} 정밀 분석`, W / 2, mainY - 70);
+  tTitle.fill = curO.isOk ? '#15803d' : '#b91c1c';
+  tTitle.size = 15;
+  tTitle.weight = 700;
+
+  // Comparison Boxes
+  const b1 = two.makeRoundedRectangle(W / 2 - 100, mainY - 15, 110, 50, 8);
+  b1.fill = '#f8fafc'; b1.stroke = '#cbd5e1'; b1.linewidth = 1;
+  const txt1 = two.makeText(curO.t1, W / 2 - 100, mainY - 15);
+  txt1.fill = '#1e293b'; txt1.size = 18; txt1.weight = 700;
+
+  const vsTxt = two.makeText('vs', W / 2, mainY - 15);
+  vsTxt.fill = '#94a3b8'; vsTxt.size = 15; vsTxt.weight = 700;
+
+  const b2 = two.makeRoundedRectangle(W / 2 + 100, mainY - 15, 110, 50, 8);
+  b2.fill = '#f8fafc'; b2.stroke = '#cbd5e1'; b2.linewidth = 1;
+  const txt2 = two.makeText(curO.t2, W / 2 + 100, mainY - 15);
+  txt2.fill = '#1e293b'; txt2.size = 18; txt2.weight = 700;
+
+  // Verdict Banner
+  const vBox = two.makeRoundedRectangle(W / 2, mainY + 50, mainW - 40, 42, 6);
+  vBox.fill = curO.isOk ? '#f0fdf4' : '#fef2f2';
+  vBox.stroke = curO.isOk ? '#86efac' : '#fecaca';
+  vBox.linewidth = 1;
+
+  const verdictTxt = two.makeText(
+    `${curO.isOk ? '✅ 동류항이 맞습니다!' : '❌ 동류항이 아닙니다!'}  (이유: ${curO.reason})`,
+    W / 2, mainY + 50
+  );
+  verdictTxt.fill = curO.isOk ? '#14532d' : '#991b1b';
+  verdictTxt.size = 12.5;
+  verdictTxt.weight = 700;
+
+  // Bottom Safety Guide Banner (Strict Y=385, H=26)
+  const bannerY = 385;
+  const bannerBg = two.makeRoundedRectangle(W / 2, bannerY, W - 40, 26, 6);
+  bannerBg.fill = '#f1f5f9';
+  bannerBg.stroke = '#cbd5e1';
+  bannerBg.linewidth = 1;
+
+  const bannerTxt = two.makeText(
+    '💡 스스로 확인하기 1번의 정답은 ②, ④, ⑥ 세 개입니다!',
+    W / 2, bannerY
+  );
+  bannerTxt.fill = '#334155';
+  bannerTxt.size = 11.5;
+  bannerTxt.weight = 600;
+}
+
+    // --- End Substep 3-6 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -24187,6 +24959,9 @@ function drawMode3Problem5Lab(two) {
       } else if (code === '3-5') {
         renderToolbar3_5();
         renderSubstep3_5();
+      } else if (code === '3-6') {
+        renderToolbar3_6();
+        renderSubstep3_6();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
