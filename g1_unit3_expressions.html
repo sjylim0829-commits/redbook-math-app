@@ -1107,8 +1107,8 @@
       },
       '4-4': {
         code: '4-4', tab: 4,
-        substepLabel: '4. 항등식의 뜻과 성질 (p.87)',
-        missionText: '<b>[4-4] 4. 항등식의 뜻과 성질 (p.87)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        substepLabel: '4. 항등식의 뜻과 판별 (p.88)',
+        missionText: '<b>[항등식의 뜻과 판별] x에 어떤 값을 넣어도 항상 참인 등식 (교과서 p.88)</b><br>• <b>항등식:</b> 문자에 어떤 값을 대입해도 항상 참이 되는 등식.<br>• <b>판별법:</b> 좌변을 정리했을 때 우변과 완전히 같은 꼴($ax+b = ax+b$)이면 항등식.<br>좌측 캔버스에서 무한 대입 검증기, 양변 전개·계수 스캐너, 미정계수 빌더를 조작해 보세요.',
         drawer: 'drawStep4_4Canvas'
       },
       '4-5': {
@@ -1486,6 +1486,20 @@
       
       
       
+      
+      // Substep 4-4 State (Identity vs Equation)
+      lab4_4: {
+        activeTab: 'mode1',
+        testEq: 'identity',
+        testVal: 0,
+        cardIndex: 1,
+        builder: {
+          a: 3,
+          b: 5,
+          c: 3,
+          d: 5
+        }
+      },
       // Substep 4-3 State (Equations and Solutions)
       lab4_3: {
         activeTab: 'mode1',
@@ -32280,6 +32294,765 @@ function drawMode3EquationConceptScannerLab(two) {
 
     // --- End Substep 4-3 Implementation ---
 
+    
+    // --- Substep 4-4 Implementation ---
+// code_4_4.js: Substep [4-4] 3.4 4. 항등식의 뜻과 판별 (교과서 p.88)
+
+const IDENTITY_CARDS_4_4 = [
+  {
+    id: 1,
+    title: '문제 3 - ⑴',
+    expr: '2x - 3 = 5',
+    lhsRaw: '2x - 3',
+    lhsExpanded: '2x - 3',
+    rhs: '5',
+    isIdentity: false,
+    verdict: '방정식 (Equation)',
+    color: '#3b82f6',
+    reason: 'x = 4일 때만 참(2×4 - 3 = 5)이고, x = 1일 때는 거짓(2×1 - 3 = -1 ≠ 5)이므로 방정식입니다.'
+  },
+  {
+    id: 2,
+    title: '문제 3 - ⑵',
+    expr: '3(x - 2) = 3x - 6',
+    lhsRaw: '3(x - 2)',
+    lhsExpanded: '3x - 6',
+    rhs: '3x - 6',
+    isIdentity: true,
+    verdict: '항등식 (Identity)',
+    color: '#10b981',
+    reason: '좌변을 분배법칙으로 전개하면 3x - 6으로 우변과 완전히 같으므로 x에 어떤 값을 대입해도 항상 참인 항등식입니다.'
+  },
+  {
+    id: 3,
+    title: '문제 3 - ⑶',
+    expr: 'x + 4 = 4 + x',
+    lhsRaw: 'x + 4',
+    lhsExpanded: 'x + 4',
+    rhs: 'x + 4',
+    isIdentity: true,
+    verdict: '항등식 (Identity)',
+    color: '#10b981',
+    reason: '덧셈의 교환법칙에 의해 우변 4 + x 는 x + 4 와 같으므로 양변이 완전히 같은 모양인 항등식입니다.'
+  },
+  {
+    id: 4,
+    title: '문제 3 - ⑷',
+    expr: '5x - 1 = 3x + 1',
+    lhsRaw: '5x - 1',
+    lhsExpanded: '5x - 1',
+    rhs: '3x + 1',
+    isIdentity: false,
+    verdict: '방정식 (Equation)',
+    color: '#3b82f6',
+    reason: '좌변(5x - 1)과 우변(3x + 1)의 x 계수가 다르며, 오직 x = 1일 때만 참이 되므로 방정식입니다.'
+  }
+];
+
+function renderToolbar4_4() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab4_4) {
+    state.lab4_4 = {
+      activeTab: 'mode1', // 'mode1' (무한 대입 항등식 검증기) | 'mode2' (양변 전개 & 계수 비교기) | 'mode3' (미정계수 퍼즐)
+      testEq: 'identity', // 'identity' : 2(x+1)=2x+2 | 'equation' : 2x-3=5
+      testVal: 0,         // -2, -1, 0, 1, 2, 5
+      cardIndex: 1,       // 0~3 (IDENTITY_CARDS_4_4)
+      builder: {
+        a: 3,
+        b: 5,
+        c: 3,
+        d: 5
+      }
+    };
+  }
+
+  const curTab = state.lab4_4.activeTab;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab4_4Tab('mode1')">
+        🔍 1. 무한 대입 검증기 (p.88)
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab4_4Tab('mode2')">
+        ⚖️ 2. 양변 전개·계수 스캐너
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab4_4Tab('mode3')">
+        🧩 3. 미정계수 항등식 빌더
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      ${curTab === 'mode1' ? `
+        <button class="icon-btn ${state.lab4_4.testEq === 'identity' ? 'active' : ''}" onclick="setTestEq4_4('identity')">항등식: 2(x+1)=2x+2</button>
+        <button class="icon-btn ${state.lab4_4.testEq === 'equation' ? 'active' : ''}" onclick="setTestEq4_4('equation')">방정식: 2x-3=5</button>
+      ` : ''}
+      ${curTab === 'mode2' ? `
+        <button class="icon-btn" onclick="setIdentityCard4_4(0)">⑴ 2x-3=5</button>
+        <button class="icon-btn" onclick="setIdentityCard4_4(1)">⑵ 3(x-2)=3x-6</button>
+        <button class="icon-btn" onclick="setIdentityCard4_4(2)">⑶ x+4=4+x</button>
+        <button class="icon-btn" onclick="setIdentityCard4_4(3)">⑷ 5x-1=3x+1</button>
+      ` : ''}
+      <button class="icon-btn" onclick="resetLab4_4()" title="초기화">🔄 초기화</button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('4-4')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab4_4Tab(tabKey) {
+  if (!state.lab4_4) resetLab4_4();
+  state.lab4_4.activeTab = tabKey;
+  renderToolbar4_4();
+  drawStep4_4Canvas();
+}
+
+function resetLab4_4() {
+  state.lab4_4 = {
+    activeTab: 'mode1',
+    testEq: 'identity',
+    testVal: 0,
+    cardIndex: 1,
+    builder: {
+      a: 3,
+      b: 5,
+      c: 3,
+      d: 5
+    }
+  };
+  renderToolbar4_4();
+  drawStep4_4Canvas();
+}
+
+function setTestEq4_4(type) {
+  if (!state.lab4_4) resetLab4_4();
+  state.lab4_4.testEq = type;
+  renderToolbar4_4();
+  drawStep4_4Canvas();
+}
+
+function setTestVal4_4(val) {
+  if (!state.lab4_4) resetLab4_4();
+  state.lab4_4.testVal = val;
+  drawStep4_4Canvas();
+}
+
+function setIdentityCard4_4(idx) {
+  if (!state.lab4_4) resetLab4_4();
+  state.lab4_4.cardIndex = idx;
+  renderToolbar4_4();
+  drawStep4_4Canvas();
+}
+
+function setBuilderCoeff4_4(key, val) {
+  if (!state.lab4_4) resetLab4_4();
+  state.lab4_4.builder[key] = val;
+  drawStep4_4Canvas();
+}
+
+function renderSubstep4_4() {
+  const panel = document.getElementById('form-box');
+  if (!panel) return;
+
+  panel.innerHTML = `
+    <div class="card-title" style="display:flex; align-items:center; gap:8px;">
+      <span class="badge" style="background:#4f46e5; color:#fff;">교과서 p.88</span>
+      <span style="font-size:1.05rem; font-weight:800; color:#1e1b4b;">4. 항등식의 뜻과 판별</span>
+    </div>
+
+    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-top:10px; font-size:0.86rem; line-height:1.55; color:#334155;">
+      <b>📖 [교과서 p.88 핵심 개념 및 문제 3]</b><br>
+      문자에 어떤 값을 대입해도 항상 참이 되는 등식을 <b>항등식</b>이라고 합니다.<br>
+      좌변을 전개·정리했을 때 우변과 완전히 같은 꼴($ax + b = ax + b$)이면 항등식입니다.<br>
+      좌측 캔버스 <b>[🔍 무한 대입 검증기]</b> 및 <b>[⚖️ 계수 스캐너]</b>를 활용해 보세요.
+    </div>
+
+    <div style="margin-top:14px; display:flex; flex-direction:column; gap:12px;">
+      <!-- 문제 1 -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px;">
+        <div style="font-weight:700; color:#1e293b; font-size:0.87rem; margin-bottom:6px;">
+          (1) 문자에 어떤 값을 대입해도 <b>항상 참이 되는 등식</b>을 무엇이라고 합니까?
+        </div>
+        <input type="text" id="ans-4-4-1" class="proof-input-text" placeholder="용어 입력" style="width:100%;" />
+      </div>
+
+      <!-- 문제 2 (교과서 문제 3) -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px;">
+        <div style="font-weight:700; color:#1e293b; font-size:0.87rem; margin-bottom:6px;">
+          (2) 다음 보기 중 $x$에 대한 <b>항등식</b>인 것을 모두 고르시오. (모두 선택)
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:0.86rem; color:#334155;">
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" id="cb-4-4-1" /> ① $2x - 3 = 5$
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" id="cb-4-4-2" /> ② $3(x - 2) = 3x - 6$
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" id="cb-4-4-3" /> ③ $x + 4 = 4 + x$
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" id="cb-4-4-4" /> ④ $5x - 1 = 3x + 1$
+          </label>
+        </div>
+      </div>
+
+      <!-- 문제 3 (미정계수 1) -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px;">
+        <div style="font-weight:700; color:#1e293b; font-size:0.87rem; margin-bottom:6px;">
+          (3) 등식 $ax + 3 = 5x + b$ 가 $x$에 대한 항등식일 때, 상수 $a$와 $b$의 값을 구하시오.
+        </div>
+        <div style="display:flex; gap:10px;">
+          <div style="display:flex; align-items:center; gap:6px; flex:1;">
+            <span style="font-weight:700; color:#334155;">a =</span>
+            <input type="text" id="ans-4-4-3a" class="proof-input-text" placeholder="값 입력" style="flex:1;" />
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; flex:1;">
+            <span style="font-weight:700; color:#334155;">b =</span>
+            <input type="text" id="ans-4-4-3b" class="proof-input-text" placeholder="값 입력" style="flex:1;" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 문제 4 (미정계수 2) -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px;">
+        <div style="font-weight:700; color:#1e293b; font-size:0.87rem; margin-bottom:6px;">
+          (4) 등식 $4(x - 1) = ax + b$ 가 $x$에 대한 항등식일 때, 상수 $a$와 $b$의 값을 구하시오.
+        </div>
+        <div style="display:flex; gap:10px;">
+          <div style="display:flex; align-items:center; gap:6px; flex:1;">
+            <span style="font-weight:700; color:#334155;">a =</span>
+            <input type="text" id="ans-4-4-4a" class="proof-input-text" placeholder="값 입력" style="flex:1;" />
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; flex:1;">
+            <span style="font-weight:700; color:#334155;">b =</span>
+            <input type="text" id="ans-4-4-4b" class="proof-input-text" placeholder="값 입력" style="flex:1;" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:14px; display:flex; gap:8px;">
+      <button class="primary-btn" onclick="gradeStep4_4()" style="flex:1; height:38px; font-weight:700;">
+        정답 확인 및 채점
+      </button>
+      <button class="icon-btn" onclick="resetForm4_4()" style="height:38px; padding:0 12px;">
+        입력 초기화
+      </button>
+    </div>
+
+    <div id="grade-feedback-4-4" style="margin-top:12px;"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(panel, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ]
+    });
+  }
+}
+
+function resetForm4_4() {
+  const el1 = document.getElementById('ans-4-4-1');
+  if (el1) el1.value = '';
+
+  for (let i = 1; i <= 4; i++) {
+    const cb = document.getElementById(`cb-4-4-${i}`);
+    if (cb) cb.checked = false;
+  }
+
+  const el3a = document.getElementById('ans-4-4-3a'); if (el3a) el3a.value = '';
+  const el3b = document.getElementById('ans-4-4-3b'); if (el3b) el3b.value = '';
+  const el4a = document.getElementById('ans-4-4-4a'); if (el4a) el4a.value = '';
+  const el4b = document.getElementById('ans-4-4-4b'); if (el4b) el4b.value = '';
+
+  const fb = document.getElementById('grade-feedback-4-4');
+  if (fb) fb.innerHTML = '';
+}
+
+function gradeStep4_4() {
+  const ans1 = (document.getElementById('ans-4-4-1')?.value || '').trim();
+
+  const cb1 = document.getElementById('cb-4-4-1')?.checked || false;
+  const cb2 = document.getElementById('cb-4-4-2')?.checked || false;
+  const cb3 = document.getElementById('cb-4-4-3')?.checked || false;
+  const cb4 = document.getElementById('cb-4-4-4')?.checked || false;
+
+  const ans3a = (document.getElementById('ans-4-4-3a')?.value || '').trim();
+  const ans3b = (document.getElementById('ans-4-4-3b')?.value || '').trim();
+  const ans4a = (document.getElementById('ans-4-4-4a')?.value || '').trim();
+  const ans4b = (document.getElementById('ans-4-4-4b')?.value || '').trim();
+
+  const isQ1Correct = (ans1 === '항등식');
+  const isQ2Correct = (!cb1 && cb2 && cb3 && !cb4);
+  const isQ3Correct = (ans3a === '5' && ans3b === '3');
+  const isQ4Correct = (ans4a === '4' && (ans4b === '-4' || ans4b === '－4'));
+
+  const fb = document.getElementById('grade-feedback-4-4');
+  if (!fb) return;
+
+  const totalScore = (isQ1Correct ? 20 : 0) + (isQ2Correct ? 30 : 0) + (isQ3Correct ? 25 : 0) + (isQ4Correct ? 25 : 0);
+
+  if (totalScore === 100) {
+    fb.innerHTML = `
+      <div style="background:#ecfdf5; border:1px solid #10b981; border-radius:10px; padding:14px; color:#065f46;">
+        <div style="font-size:1.02rem; font-weight:800; display:flex; align-items:center; gap:6px;">
+          🎉 100점 만점! 항등식의 뜻과 성질을 완벽하게 마스터했습니다!
+        </div>
+        <div style="margin-top:6px; font-size:0.87rem; line-height:1.55;">
+          • (1) 문자에 어떤 값을 대입해도 항상 참인 등식: <b>항등식</b><br>
+          • (2) ② $3(x - 2) = 3x - 6$, ③ $x + 4 = 4 + x$ 는 양변이 완전히 일치하는 항등식!<br>
+          • (3) $ax + 3 = 5x + b \\implies a = 5, b = 3$<br>
+          • (4) $4(x - 1) = 4x - 4 = ax + b \\implies a = 4, b = -4$<br>
+          다음 서브스텝 <b>[4-5] 5. 등식의 성질 (p.89)</b>가 해금되었습니다!
+        </div>
+      </div>
+    `;
+
+    if (!state.unlockedSubSteps.includes('4-5')) {
+      state.unlockedSubSteps.push('4-5');
+    }
+    if (typeof updateSubstepPills === 'function') updateSubstepPills();
+    if (typeof LMSIntegration !== 'undefined' && LMSIntegration.saveStudentProgress) {
+      LMSIntegration.saveStudentProgress('4-4', {
+        score: 100,
+        completed: true,
+        answers: { ans1, cb: [cb1, cb2, cb3, cb4], ans3: { a: ans3a, b: ans3b }, ans4: { a: ans4a, b: ans4b } }
+      }, 3);
+    }
+  } else {
+    let wrongNotes = [];
+    if (!isQ1Correct) wrongNotes.push('(1)번: 문자에 어떤 값을 대입해도 항상 참인 등식은 "항등식"입니다.');
+    if (!isQ2Correct) wrongNotes.push('(2)번: 좌변과 우변이 완전히 같은 꼴인 등식은 ②번과 ③번입니다.');
+    if (!isQ3Correct) wrongNotes.push('(3)번: 동류항의 계수끼리 같아야 하므로 a = 5, b = 3 입니다.');
+    if (!isQ4Correct) wrongNotes.push('(4)번: 4(x - 1) = 4x - 4 이므로 a = 4, b = -4 입니다.');
+
+    fb.innerHTML = `
+      <div style="background:#fef2f2; border:1px solid #ef4444; border-radius:10px; padding:12px; color:#991b1b;">
+        <div style="font-weight:800; font-size:0.92rem;">다시 확인해 보세요! (현재 점수: ${totalScore}점)</div>
+        <div style="margin-top:6px; font-size:0.84rem; line-height:1.5;">
+          ${wrongNotes.join('<br>')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ]
+    });
+  }
+}
+
+// --- Two.js 60fps 인터랙티브 캔버스 엔진 ---
+function drawStep4_4Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const two = new Two({
+    width: 680,
+    height: 440,
+    type: Two.Types.svg
+  }).appendTo(container);
+
+  if (!state.lab4_4) {
+    resetLab4_4();
+  }
+
+  const activeTab = state.lab4_4.activeTab;
+
+  if (activeTab === 'mode1') {
+    drawMode1InfiniteSubstitutionLab(two);
+  } else if (activeTab === 'mode2') {
+    drawMode2IdentityScannerLab(two);
+  } else if (activeTab === 'mode3') {
+    drawMode3IdentityCoeffBuilderLab(two);
+  }
+
+  // 안내 배너 (Vertical Budget 준수: Y=385, H=26, 바닥 안전 여백 42px >= 25px)
+  const bannerBg = two.makeRoundedRectangle(340, 385, 620, 26, 6);
+  bannerBg.fill = '#f8fafc';
+  bannerBg.stroke = '#cbd5e1';
+  bannerBg.linewidth = 1;
+
+  let tipMsg = '💡 문자에 어떤 값을 대입해도 항상 참이 되는 등식을 [항등식]이라고 합니다.';
+  if (activeTab === 'mode1') {
+    tipMsg = '💡 x에 어떤 수를 넣어도 좌변과 우변이 완벽히 일치하는 등식(항등식)을 직접 검증해 보세요.';
+  } else if (activeTab === 'mode2') {
+    tipMsg = '💡 괄호를 풀고 식을 정리했을 때 좌변과 우변이 완전히 같은 꼴이면 항등식입니다.';
+  } else if (activeTab === 'mode3') {
+    tipMsg = '💡 ax + b = cx + d 가 항등식이 되려면 x의 계수(a=c)와 상수항(b=d)이 각각 같아야 합니다.';
+  }
+
+  const tipText = two.makeText(tipMsg, 340, 385, {
+    family: 'Pretendard, sans-serif',
+    size: 11,
+    weight: 600,
+    fill: '#475569',
+    alignment: 'center'
+  });
+
+  two.update();
+}
+
+// Mode 1: 🔍 무한 대입 항등식 검증기 랩
+function drawMode1InfiniteSubstitutionLab(two) {
+  const title = two.makeText('🔍 [무한 대입 검증기] 어떤 수를 대입해도 항상 참일까? (p.88)', 340, 26, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 800,
+    fill: '#1e1b4b',
+    alignment: 'center'
+  });
+
+  const testEq = state.lab4_4.testEq; // 'identity' or 'equation'
+  const x = state.lab4_4.testVal;
+
+  let eqName = '항등식:  2(x + 1) = 2x + 2';
+  let lhsVal = 2 * (x + 1);
+  let rhsVal = 2 * x + 2;
+  let lhsCalc = `2(${x} + 1) = 2 × ${x + 1} = ${lhsVal}`;
+  let rhsCalc = `2(${x}) + 2 = ${2 * x} + 2 = ${rhsVal}`;
+  let isAlwaysTrue = true;
+
+  if (testEq === 'equation') {
+    eqName = '일반 방정식:  2x - 3 = 5';
+    lhsVal = 2 * x - 3;
+    rhsVal = 5;
+    lhsCalc = `2(${x}) - 3 = ${2 * x - 3} = ${lhsVal}`;
+    rhsCalc = `5`;
+    isAlwaysTrue = (lhsVal === rhsVal);
+  }
+
+  // 상단 테스트 수치 선택 버튼들 (Y = 60)
+  two.makeText('x 대입 테스트:', 95, 60, { size: 11, weight: 800, fill: '#334155', alignment: 'center' });
+  const testVals = [-2, -1, 0, 1, 2, 4, 10];
+  testVals.forEach((val, vidx) => {
+    const vx = 175 + vidx * 65;
+    const isValSel = (x === val);
+    const vBg = two.makeRoundedRectangle(vx, 60, 52, 24, 6);
+    vBg.fill = isValSel ? '#2563eb' : '#ffffff';
+    vBg.stroke = isValSel ? '#1d4ed8' : '#cbd5e1';
+    vBg.linewidth = isValSel ? 2 : 1;
+
+    two.makeText(`x = ${val}`, vx, 61, {
+      size: 10.5,
+      weight: isValSel ? 800 : 600,
+      fill: isValSel ? '#ffffff' : '#475569',
+      alignment: 'center'
+    });
+
+    if (vBg._renderer && vBg._renderer.elem) {
+      vBg._renderer.elem.style.cursor = 'pointer';
+      vBg._renderer.elem.onclick = () => setTestVal4_4(val);
+    }
+  });
+
+  // 메인 등식 비교 패널 (Y = 180, H = 160)
+  const cardBg = two.makeRoundedRectangle(340, 185, 590, 170, 12);
+  cardBg.fill = (testEq === 'identity') ? '#f0fdf4' : '#f8fafc';
+  cardBg.stroke = (testEq === 'identity') ? '#10b981' : '#cbd5e1';
+  cardBg.linewidth = 2;
+
+  // 타이틀
+  two.makeText(eqName, 340, 125, {
+    family: 'Pretendard, sans-serif',
+    size: 16,
+    weight: 900,
+    fill: (testEq === 'identity') ? '#047857' : '#1e293b',
+    alignment: 'center'
+  });
+
+  // 좌변 박스 (X = 205)
+  const lhsBox = two.makeRoundedRectangle(205, 185, 210, 65, 8);
+  lhsBox.fill = '#eff6ff';
+  lhsBox.stroke = '#3b82f6';
+  lhsBox.linewidth = 2;
+  two.makeText('좌변 계산 결과', 205, 168, { size: 10, weight: 800, fill: '#1d4ed8', alignment: 'center' });
+  two.makeText(lhsCalc, 205, 192, { size: 12, weight: 800, fill: '#1e3a8a', alignment: 'center' });
+  two.makeText(`값: ${lhsVal}`, 205, 210, { size: 13, weight: 900, fill: '#1d4ed8', alignment: 'center' });
+
+  // 등호 또는 부등호 원 (X = 340)
+  const isMatch = (lhsVal === rhsVal);
+  const eqCircle = two.makeCircle(340, 185, 20);
+  eqCircle.fill = isMatch ? '#10b981' : '#ef4444';
+  two.makeText(isMatch ? '=' : '≠', 340, 186, { size: 20, weight: 900, fill: '#ffffff', alignment: 'center' });
+
+  // 우변 박스 (X = 475)
+  const rhsBox = two.makeRoundedRectangle(475, 185, 210, 65, 8);
+  rhsBox.fill = '#fff7ed';
+  rhsBox.stroke = '#ea580c';
+  rhsBox.linewidth = 2;
+  two.makeText('우변 계산 결과', 475, 168, { size: 10, weight: 800, fill: '#c2410c', alignment: 'center' });
+  two.makeText(rhsCalc, 475, 192, { size: 12, weight: 800, fill: '#7c2d12', alignment: 'center' });
+  two.makeText(`값: ${rhsVal}`, 475, 210, { size: 13, weight: 900, fill: '#ea580c', alignment: 'center' });
+
+  // 판정 결과 배너 (Y = 245)
+  let statusTxt = '🎉 x에 어떤 값을 넣어도 언제나 좌변 = 우변 ! ➔ [ 항등식 (Identity) ]';
+  let statusColor = '#065f46';
+  if (testEq === 'equation') {
+    if (isMatch) {
+      statusTxt = `⭐ x = ${x} 일 때만 참이 성립합니다! ➔ [ 방정식의 해: x = ${x} ]`;
+      statusColor = '#0369a1';
+    } else {
+      statusTxt = `❌ x = ${x} 일 때는 거짓입니다! (오직 x = 4일 때만 참인 방정식)`;
+      statusColor = '#b91c1c';
+    }
+  }
+
+  two.makeText(statusTxt, 340, 252, {
+    family: 'Pretendard, sans-serif',
+    size: 13,
+    weight: 900,
+    fill: statusColor,
+    alignment: 'center'
+  });
+
+  // 하단 개념 해설 박스 (Y = 325)
+  const descBg = two.makeRoundedRectangle(340, 325, 590, 50, 8);
+  descBg.fill = '#ffffff';
+  descBg.stroke = '#e2e8f0';
+  descBg.linewidth = 1;
+
+  two.makeText('💡 항등식은 x에 어떤 수를 넣어도 양변이 같지만, 방정식은 특정한 x의 값에서만 참이 됩니다.', 340, 325, {
+    family: 'Pretendard, sans-serif',
+    size: 12,
+    weight: 700,
+    fill: '#475569',
+    alignment: 'center'
+  });
+}
+
+// Mode 2: ⚖️ 양변 전개 & 동류항 계수 비교 스캐너
+function drawMode2IdentityScannerLab(two) {
+  const title = two.makeText('⚖️ [계수 스캐너] 식의 정리와 양변 일치 여부 판별 (p.88)', 340, 26, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 800,
+    fill: '#1e1b4b',
+    alignment: 'center'
+  });
+
+  const card = IDENTITY_CARDS_4_4[state.lab4_4.cardIndex];
+
+  // 상단 4개 문항 탭
+  const tabW = 135;
+  const startX = 70;
+  IDENTITY_CARDS_4_4.forEach((c, idx) => {
+    const isSel = (state.lab4_4.cardIndex === idx);
+    const tx = startX + idx * 140 + tabW / 2;
+    const ty = 54;
+    const tBg = two.makeRoundedRectangle(tx, ty, tabW, 26, 6);
+    tBg.fill = isSel ? '#4f46e5' : '#f1f5f9';
+    tBg.stroke = isSel ? '#3730a3' : '#cbd5e1';
+    tBg.linewidth = isSel ? 2 : 1;
+
+    two.makeText(c.expr, tx, ty + 1, {
+      family: 'Pretendard, sans-serif',
+      size: 11,
+      weight: isSel ? 800 : 600,
+      fill: isSel ? '#ffffff' : '#475569',
+      alignment: 'center'
+    });
+
+    if (tBg._renderer && tBg._renderer.elem) {
+      tBg._renderer.elem.style.cursor = 'pointer';
+      tBg._renderer.elem.onclick = () => setIdentityCard4_4(idx);
+    }
+  });
+
+  // 메인 분석 카드 (Y = 195, H = 210)
+  const cardBg = two.makeRoundedRectangle(340, 205, 590, 215, 12);
+  cardBg.fill = '#ffffff';
+  cardBg.stroke = card.isIdentity ? '#10b981' : '#3b82f6';
+  cardBg.linewidth = 2;
+
+  // 수식 타이틀
+  two.makeText(`[${card.title}]  ${card.expr}`, 340, 120, {
+    family: 'Pretendard, sans-serif',
+    size: 16,
+    weight: 900,
+    fill: '#1e293b',
+    alignment: 'center'
+  });
+
+  // 좌변 전개 파이프라인 (X = 205, Y = 180)
+  const lhsBox = two.makeRoundedRectangle(205, 185, 210, 75, 8);
+  lhsBox.fill = '#eff6ff';
+  lhsBox.stroke = '#3b82f6';
+  lhsBox.linewidth = 2;
+  two.makeText('좌변 정리 (동류항 계산)', 205, 165, { size: 10, weight: 800, fill: '#1d4ed8', alignment: 'center' });
+  two.makeText(card.lhsRaw, 205, 185, { size: 14, weight: 800, fill: '#3b82f6', alignment: 'center' });
+  two.makeText(`➔  ${card.lhsExpanded}`, 205, 205, { size: 15, weight: 900, fill: '#1e3a8a', alignment: 'center' });
+
+  // 우변 정리 박스 (X = 475, Y = 180)
+  const rhsBox = two.makeRoundedRectangle(475, 185, 210, 75, 8);
+  rhsBox.fill = '#fff7ed';
+  rhsBox.stroke = '#ea580c';
+  rhsBox.linewidth = 2;
+  two.makeText('우변 정리', 475, 165, { size: 10, weight: 800, fill: '#c2410c', alignment: 'center' });
+  two.makeText(card.rhs, 475, 185, { size: 14, weight: 800, fill: '#ea580c', alignment: 'center' });
+  two.makeText(`➔  ${card.rhs}`, 475, 205, { size: 15, weight: 900, fill: '#7c2d12', alignment: 'center' });
+
+  // 중앙 비교 표시 (X = 340)
+  const matchSign = card.isIdentity ? '==' : '≠';
+  two.makeText(matchSign, 340, 185, {
+    family: 'Pretendard, sans-serif',
+    size: 26,
+    weight: 900,
+    fill: card.isIdentity ? '#10b981' : '#64748b',
+    alignment: 'center'
+  });
+
+  // 최종 판정 배지 (Y = 250)
+  const verdictBg = two.makeRoundedRectangle(340, 245, 200, 28, 6);
+  verdictBg.fill = card.isIdentity ? '#10b981' : '#3b82f6';
+  two.makeText(`판정: ${card.verdict}`, 340, 246, {
+    family: 'Pretendard, sans-serif',
+    size: 13,
+    weight: 900,
+    fill: '#ffffff',
+    alignment: 'center'
+  });
+
+  // 판정 이유 해설 (Y = 285)
+  two.makeText(`💡 ${card.reason}`, 340, 288, {
+    family: 'Pretendard, sans-serif',
+    size: 11,
+    weight: 600,
+    fill: '#334155',
+    alignment: 'center'
+  });
+}
+
+// Mode 3: 🧩 미정계수 항등식 퍼즐 빌더
+function drawMode3IdentityCoeffBuilderLab(two) {
+  const title = two.makeText('🧩 [미정계수 빌더] ax + b = cx + d 가 항등식이 되는 조건', 340, 26, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 800,
+    fill: '#1e1b4b',
+    alignment: 'center'
+  });
+
+  const b = state.lab4_4.builder;
+  const isIdentity = (b.a === b.c && b.b === b.d);
+
+  // 상단 공식 설명
+  two.makeText('ax + b = cx + d 가 x에 대한 항등식이 되려면 ➔ a = c 이고 b = d 이어야 합니다.', 340, 56, {
+    family: 'Pretendard, sans-serif',
+    size: 12,
+    weight: 700,
+    fill: '#4338ca',
+    alignment: 'center'
+  });
+
+  // 좌변 카드 (X = 200, Y = 150)
+  const lhsBg = two.makeRoundedRectangle(200, 160, 230, 140, 10);
+  lhsBg.fill = '#eff6ff';
+  lhsBg.stroke = '#3b82f6';
+  lhsBg.linewidth = 2;
+
+  two.makeText('좌변: ax + b', 200, 110, { size: 12, weight: 800, fill: '#1d4ed8', alignment: 'center' });
+  two.makeText(`${b.a}x + ${b.b}`, 200, 140, { size: 24, weight: 900, fill: '#1e3a8a', alignment: 'center' });
+
+  two.makeText(`a 조절: ${b.a}`, 150, 185, { size: 11, weight: 700, fill: '#334155', alignment: 'center' });
+  two.makeText(`b 조절: ${b.b}`, 250, 185, { size: 11, weight: 700, fill: '#334155', alignment: 'center' });
+
+  // a, b 버튼들
+  [-1, 1].forEach((delta, didx) => {
+    const btnA = two.makeRoundedRectangle(135 + didx * 30, 210, 24, 20, 4);
+    btnA.fill = '#dbeafe'; btnA.stroke = '#3b82f6';
+    two.makeText(delta > 0 ? '+1' : '-1', 135 + didx * 30, 211, { size: 9, weight: 800, fill: '#1d4ed8', alignment: 'center' });
+    if (btnA._renderer && btnA._renderer.elem) {
+      btnA._renderer.elem.style.cursor = 'pointer';
+      btnA._renderer.elem.onclick = () => setBuilderCoeff4_4('a', b.a + delta);
+    }
+
+    const btnB = two.makeRoundedRectangle(235 + didx * 30, 210, 24, 20, 4);
+    btnB.fill = '#dbeafe'; btnB.stroke = '#3b82f6';
+    two.makeText(delta > 0 ? '+1' : '-1', 235 + didx * 30, 211, { size: 9, weight: 800, fill: '#1d4ed8', alignment: 'center' });
+    if (btnB._renderer && btnB._renderer.elem) {
+      btnB._renderer.elem.style.cursor = 'pointer';
+      btnB._renderer.elem.onclick = () => setBuilderCoeff4_4('b', b.b + delta);
+    }
+  });
+
+  // 우변 카드 (X = 480, Y = 150)
+  const rhsBg = two.makeRoundedRectangle(480, 160, 230, 140, 10);
+  rhsBg.fill = '#fff7ed';
+  rhsBg.stroke = '#ea580c';
+  rhsBg.linewidth = 2;
+
+  two.makeText('우변: cx + d', 480, 110, { size: 12, weight: 800, fill: '#c2410c', alignment: 'center' });
+  two.makeText(`${b.c}x + ${b.d}`, 480, 140, { size: 24, weight: 900, fill: '#7c2d12', alignment: 'center' });
+
+  two.makeText(`c 조절: ${b.c}`, 430, 185, { size: 11, weight: 700, fill: '#334155', alignment: 'center' });
+  two.makeText(`d 조절: ${b.d}`, 530, 185, { size: 11, weight: 700, fill: '#334155', alignment: 'center' });
+
+  // c, d 버튼들
+  [-1, 1].forEach((delta, didx) => {
+    const btnC = two.makeRoundedRectangle(415 + didx * 30, 210, 24, 20, 4);
+    btnC.fill = '#ffedd5'; btnC.stroke = '#ea580c';
+    two.makeText(delta > 0 ? '+1' : '-1', 415 + didx * 30, 211, { size: 9, weight: 800, fill: '#c2410c', alignment: 'center' });
+    if (btnC._renderer && btnC._renderer.elem) {
+      btnC._renderer.elem.style.cursor = 'pointer';
+      btnC._renderer.elem.onclick = () => setBuilderCoeff4_4('c', b.c + delta);
+    }
+
+    const btnD = two.makeRoundedRectangle(515 + didx * 30, 210, 24, 20, 4);
+    btnD.fill = '#ffedd5'; btnD.stroke = '#ea580c';
+    two.makeText(delta > 0 ? '+1' : '-1', 515 + didx * 30, 211, { size: 9, weight: 800, fill: '#c2410c', alignment: 'center' });
+    if (btnD._renderer && btnD._renderer.elem) {
+      btnD._renderer.elem.style.cursor = 'pointer';
+      btnD._renderer.elem.onclick = () => setBuilderCoeff4_4('d', b.d + delta);
+    }
+  });
+
+  // 가운데 기호
+  const centerSign = two.makeCircle(340, 160, 22);
+  centerSign.fill = isIdentity ? '#10b981' : '#f87171';
+  two.makeText(isIdentity ? '=' : '≠', 340, 161, { size: 22, weight: 900, fill: '#ffffff', alignment: 'center' });
+
+  // 하단 종합 상태 배너 (Y = 285)
+  const statusBg = two.makeRoundedRectangle(340, 285, 590, 52, 10);
+  statusBg.fill = isIdentity ? '#ecfdf5' : '#fef2f2';
+  statusBg.stroke = isIdentity ? '#10b981' : '#f87171';
+  statusBg.linewidth = 2;
+
+  let msg = `❌ a=${b.a}≠c=${b.c} 또는 b=${b.b}≠d=${b.d} 이므로 항등식이 아닙니다!`;
+  if (isIdentity) {
+    msg = `🎉 x의 계수(a = c = ${b.a})와 상수항(b = d = ${b.b})이 모두 같으므로 [ 항등식 성립! ]`;
+  }
+
+  two.makeText(msg, 340, 285, {
+    family: 'Pretendard, sans-serif',
+    size: 13,
+    weight: 900,
+    fill: isIdentity ? '#065f46' : '#991b1b',
+    alignment: 'center'
+  });
+
+  two.makeText('👆 버튼을 눌러 a, b, c, d 계수를 조절하여 항등식이 성립하는 조건을 찾아보세요!', 340, 345, {
+    family: 'Pretendard, sans-serif',
+    size: 11.5,
+    weight: 600,
+    fill: '#475569',
+    alignment: 'center'
+  });
+}
+
+    // --- End Substep 4-4 Implementation ---
+
     // Router for Substep
     function loadSubStep(code) {
       state.subStep = code;
@@ -32437,6 +33210,9 @@ function drawMode3EquationConceptScannerLab(two) {
       } else if (code === '4-3') {
         renderToolbar4_3();
         renderSubstep4_3();
+      } else if (code === '4-4') {
+        renderToolbar4_4();
+        renderSubstep4_4();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
