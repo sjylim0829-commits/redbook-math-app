@@ -1144,7 +1144,7 @@
       '4-10': {
         code: '4-10', tab: 4,
         substepLabel: '10. 스스로 확인하기 3: 등식의 성질 OX (p.90)',
-        missionText: '<b>[4-10] 10. 스스로 확인하기 3: 등식의 성질 OX (p.90)</b><br>• 교과서 지면에 기반한 탐구 랩을 통해 수학적 개념을 탐색합니다.<br>좌측 캔버스를 조작하며 아래 질문에 답해 보세요.',
+        missionText: '<b>[스스로 확인하기 3] 등식의 성질 참/거짓 판별 (교과서 p.90 3번)</b><br>• <b>문제:</b> $a=b$일 때, 다음 중에서 옳은 것은 ○표, 옳지 않은 것은 ×표를 써넣으시오.<br>• <b>문항:</b> ⑴ $a-3=b-3$, ⑵ $\\frac{a}{2}=\\frac{b}{3}$, ⑶ $6+a=6-b$, ⑷ $2a+5=2b+5$<br>좌측 캔버스에서 성질 엑스레이 랩, 양팔 저울 시뮬레이터, 성질 규칙 매트릭스를 조작해 보세요.',
         drawer: 'drawStep4_10Canvas'
       },
       '4-11': {
@@ -1492,6 +1492,13 @@
       
       
       
+      
+      // Substep 4-10 State (Equality Properties True/False)
+      lab4_10: {
+        activeTab: 'mode1',
+        selectedProp: 0,
+        simA: 6
+      },
       // Substep 4-9 State (Identity vs Equation Verifier)
       lab4_9: {
         activeTab: 'mode1',
@@ -36939,6 +36946,820 @@ function drawMode3MathematicalClassificationBoardLab(two) {
 
     // --- End Substep 4-9 Implementation ---
 
+    // --- Substep 4-10 Implementation ---
+// code_4_10.js: Substep [4-10] 3.4 10. 스스로 확인하기 3: 등식의 성질 OX (교과서 p.90 3번)
+
+const PROPERTIES_4_10 = [
+  {
+    id: 0,
+    numLabel: '⑴',
+    expr: 'a - 3 = b - 3',
+    isCorrect: true, // ○
+    answer: 'O',
+    appliedProp: '등식의 성질 2 (뺄셈)',
+    ruleText: 'a = b 이면 a - c = b - c (양변에서 같은 수 3을 뺀다)',
+    analysis: 'a = b 의 양변에서 같은 수 3을 뺀 것이므로 등식의 성질 2에 의해 항상 성립합니다.',
+    lhsOp: 'a - 3',
+    rhsOp: 'b - 3',
+    balanceTilt: 0 // rad (수평 평형)
+  },
+  {
+    id: 1,
+    numLabel: '⑵',
+    expr: 'a / 2 = b / 3',
+    isCorrect: false, // ×
+    answer: 'X',
+    appliedProp: '성질 위반 (서로 다른 수로 나눔)',
+    ruleText: '등식의 성질 4: 양변을 0이 아닌 같은 수로 나누어야 함 (c ≠ 0)',
+    analysis: '좌변은 2로 나누고 우변은 3으로 나눴습니다. 서로 다른 수로 나누었으므로 거짓입니다. (반례: a=b=6일 때 6/2=3 ≠ 6/3=2)',
+    lhsOp: 'a ÷ 2',
+    rhsOp: 'b ÷ 3',
+    balanceTilt: -0.15 // a=b>0 일 때 a/2 가 b/3 보다 큼 ➜ 좌측 하강
+  },
+  {
+    id: 2,
+    numLabel: '⑶',
+    expr: '6 + a = 6 - b',
+    isCorrect: false, // ×
+    answer: 'X',
+    appliedProp: '성질 위반 (좌변은 덧셈, 우변은 뺄셈)',
+    ruleText: '양변에 같은 연산을 해야 함 (6 + a = 6 + b 이어야 함)',
+    analysis: '좌변은 6에 a를 더하고 우변은 6에서 b를 뺐습니다. 서로 다른 연산을 하였으므로 거짓입니다. (반례: a=b=2일 때 6+2=8 ≠ 6-2=4)',
+    lhsOp: '6 + a',
+    rhsOp: '6 - b',
+    balanceTilt: -0.2 // 6+a 가 6-b 보다 큼 ➜ 좌측 하강
+  },
+  {
+    id: 3,
+    numLabel: '⑷',
+    expr: '2a + 5 = 2b + 5',
+    isCorrect: true, // ○
+    answer: 'O',
+    appliedProp: '등식의 성질 3 (곱셈) ➜ 성질 1 (덧셈)',
+    ruleText: 'a = b ➜ 2a = 2b (양변 ×2) ➜ 2a + 5 = 2b + 5 (양변 +5)',
+    analysis: '양변에 같은 수 2를 곱하여 2a = 2b 를 만든 후, 양변에 같은 수 5를 더하였으므로 등식의 성질에 의해 항상 성립합니다.',
+    lhsOp: '2a + 5',
+    rhsOp: '2b + 5',
+    balanceTilt: 0 // rad (수평 평형)
+  }
+];
+
+function renderToolbar4_10() {
+  const tb = document.getElementById('plane-toolbar');
+  if (!tb) return;
+
+  if (!state.lab4_10) {
+    state.lab4_10 = {
+      activeTab: 'mode1', // 'mode1' (엑스레이 랩) | 'mode2' (저울 시뮬레이터) | 'mode3' (규칙 매트릭스)
+      selectedProp: 0,    // 0: ⑴, 1: ⑵, 2: ⑶, 3: ⑷
+      simA: 6             // 저울 시뮬레이션용 a=b 기준값
+    };
+  }
+
+  const curTab = state.lab4_10.activeTab;
+  const selIdx = state.lab4_10.selectedProp;
+
+  tb.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:0.82rem; font-weight:700; color:#334155; margin-right:2px;">탐구 모델:</span>
+      <button class="tool-btn ${curTab === 'mode1' ? 'active' : ''}" onclick="setLab4_10Tab('mode1')">
+        🔍 1. 성질 엑스레이 랩
+      </button>
+      <button class="tool-btn ${curTab === 'mode2' ? 'active' : ''}" onclick="setLab4_10Tab('mode2')">
+        ⚖️ 2. 양팔 저울 시뮬레이터
+      </button>
+      <button class="tool-btn ${curTab === 'mode3' ? 'active' : ''}" onclick="setLab4_10Tab('mode3')">
+        📊 3. 성질 규칙 매트릭스
+      </button>
+      <div style="height:18px; width:1px; background:#cbd5e1; margin:0 2px;"></div>
+      <button class="icon-btn ${selIdx === 0 ? 'active' : ''}" onclick="setProp4_10(0)">⑴ a-3=b-3</button>
+      <button class="icon-btn ${selIdx === 1 ? 'active' : ''}" onclick="setProp4_10(1)">⑵ a/2=b/3</button>
+      <button class="icon-btn ${selIdx === 2 ? 'active' : ''}" onclick="setProp4_10(2)">⑶ 6+a=6-b</button>
+      <button class="icon-btn ${selIdx === 3 ? 'active' : ''}" onclick="setProp4_10(3)">⑷ 2a+5=2b+5</button>
+      <button class="icon-btn" onclick="resetLab4_10()" title="초기화">🔄 초기화</button>
+      ${state.isTeacherLoggedIn ? `
+        <button class="icon-btn" style="background:#fef08a; color:#854d0e; font-weight:700;" onclick="passCurrentSubstepGeneric('4-10')">
+          🔑 교사 즉시 패스
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function setLab4_10Tab(tabKey) {
+  if (!state.lab4_10) resetLab4_10();
+  state.lab4_10.activeTab = tabKey;
+  renderToolbar4_10();
+  drawStep4_10Canvas();
+}
+
+function resetLab4_10() {
+  state.lab4_10 = {
+    activeTab: 'mode1',
+    selectedProp: 0,
+    simA: 6
+  };
+  renderToolbar4_10();
+  drawStep4_10Canvas();
+}
+
+function setProp4_10(idx) {
+  if (!state.lab4_10) resetLab4_10();
+  state.lab4_10.selectedProp = idx;
+  renderToolbar4_10();
+  drawStep4_10Canvas();
+}
+
+function setSimA4_10(val) {
+  if (!state.lab4_10) resetLab4_10();
+  state.lab4_10.simA = val;
+  renderToolbar4_10();
+  drawStep4_10Canvas();
+}
+
+function renderSubstep4_10Form() {
+  const panel = document.getElementById('step-panel');
+  if (!panel) return;
+
+  panel.innerHTML = `
+    <div style="background:#f1f5f9; padding:12px 14px; border-radius:8px; border-left:4px solid #4f46e5; margin-bottom:12px;">
+      <div style="font-weight:800; font-size:0.95rem; color:#1e1b4b; display:flex; align-items:center; gap:6px;">
+        <span>📝</span> [스스로 확인하기 3] 등식의 성질 참/거짓 판별 (교과서 p.90 3번)
+      </div>
+      <div style="font-size:0.83rem; color:#475569; margin-top:4px; line-height:1.5;">
+        $a = b$ 일 때, 다음 중에서 옳은 것은 <b>○</b>표, 옳지 않은 것은 <b>×</b>표를 $(~)$ 안에 써넣으시오.
+      </div>
+    </div>
+
+    <!-- 4개 문항 입력 카드 -->
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <!-- (1) -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 14px; display:flex; align-items:center; justify-content:space-between;">
+        <div style="font-weight:700; font-size:0.88rem; color:#1e293b;">
+          <b>⑴</b> $a - 3 = b - 3$
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button type="button" class="icon-btn" onclick="setFormOx4_10(0, 'O')">○</button>
+          <button type="button" class="icon-btn" onclick="setFormOx4_10(0, 'X')">×</button>
+          <input type="text" id="ans-4-10-1" class="proof-input-text" placeholder="O 또는 X" style="width:75px; text-align:center;" autocomplete="off" />
+        </div>
+      </div>
+
+      <!-- (2) -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 14px; display:flex; align-items:center; justify-content:space-between;">
+        <div style="font-weight:700; font-size:0.88rem; color:#1e293b;">
+          <b>⑵</b> $\\frac{a}{2} = \\frac{b}{3}$
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button type="button" class="icon-btn" onclick="setFormOx4_10(1, 'O')">○</button>
+          <button type="button" class="icon-btn" onclick="setFormOx4_10(1, 'X')">×</button>
+          <input type="text" id="ans-4-10-2" class="proof-input-text" placeholder="O 또는 X" style="width:75px; text-align:center;" autocomplete="off" />
+        </div>
+      </div>
+
+      <!-- (3) -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 14px; display:flex; align-items:center; justify-content:space-between;">
+        <div style="font-weight:700; font-size:0.88rem; color:#1e293b;">
+          <b>⑶</b> $6 + a = 6 - b$
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button type="button" class="icon-btn" onclick="setFormOx4_10(2, 'O')">○</button>
+          <button type="button" class="icon-btn" onclick="setFormOx4_10(2, 'X')">×</button>
+          <input type="text" id="ans-4-10-3" class="proof-input-text" placeholder="O 또는 X" style="width:75px; text-align:center;" autocomplete="off" />
+        </div>
+      </div>
+
+      <!-- (4) -->
+      <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 14px; display:flex; align-items:center; justify-content:space-between;">
+        <div style="font-weight:700; font-size:0.88rem; color:#1e293b;">
+          <b>⑷</b> $2a + 5 = 2b + 5$
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button type="button" class="icon-btn" onclick="setFormOx4_10(3, 'O')">○</button>
+          <button type="button" class="icon-btn" onclick="setFormOx4_10(3, 'X')">×</button>
+          <input type="text" id="ans-4-10-4" class="proof-input-text" placeholder="O 또는 X" style="width:75px; text-align:center;" autocomplete="off" />
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:14px; display:flex; gap:8px;">
+      <button class="primary-btn" onclick="gradeStep4_10()" style="flex:1; height:38px; font-weight:700;">
+        정답 확인 및 채점
+      </button>
+      <button class="icon-btn" onclick="resetForm4_10()" style="height:38px; padding:0 12px;">
+        입력 초기화
+      </button>
+    </div>
+
+    <div id="grade-feedback-4-10" style="margin-top:12px;"></div>
+  `;
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(panel, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ]
+    });
+  }
+}
+
+function setFormOx4_10(idx, val) {
+  const inputEl = document.getElementById(`ans-4-10-${idx + 1}`);
+  if (inputEl) {
+    inputEl.value = val;
+  }
+}
+
+function resetForm4_10() {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById(`ans-4-10-${i}`);
+    if (el) el.value = '';
+  }
+  const fb = document.getElementById('grade-feedback-4-10');
+  if (fb) fb.innerHTML = '';
+}
+
+function cleanOx4_10(str) {
+  if (!str) return '';
+  const s = str.trim().toUpperCase();
+  if (s === 'O' || s === 'ㅇ' || s === '0' || s === '참' || s === 'TRUE' || s === '○') return 'O';
+  if (s === 'X' || s === 'ㅌ' || s === '거짓' || s === 'FALSE' || s === '×') return 'X';
+  return s;
+}
+
+function gradeStep4_10() {
+  const ans1 = cleanOx4_10(document.getElementById('ans-4-10-1')?.value || '');
+  const ans2 = cleanOx4_10(document.getElementById('ans-4-10-2')?.value || '');
+  const ans3 = cleanOx4_10(document.getElementById('ans-4-10-3')?.value || '');
+  const ans4 = cleanOx4_10(document.getElementById('ans-4-10-4')?.value || '');
+
+  const isQ1Correct = (ans1 === 'O');
+  const isQ2Correct = (ans2 === 'X');
+  const isQ3Correct = (ans3 === 'X');
+  const isQ4Correct = (ans4 === 'O');
+
+  const fb = document.getElementById('grade-feedback-4-10');
+  if (!fb) return;
+
+  const totalScore = (isQ1Correct ? 25 : 0) + (isQ2Correct ? 25 : 0) + (isQ3Correct ? 25 : 0) + (isQ4Correct ? 25 : 0);
+
+  if (totalScore === 100) {
+    fb.innerHTML = `
+      <div style="background:#ecfdf5; border:1px solid #10b981; border-radius:10px; padding:14px; color:#065f46;">
+        <div style="font-size:1.02rem; font-weight:800; display:flex; align-items:center; gap:6px;">
+          🎉 100점 만점! 등식의 성질을 완벽히 마스터했습니다!
+        </div>
+        <div style="margin-top:6px; font-size:0.87rem; line-height:1.6;">
+          • <b>정답 및 풀이 (교과서 p.90 / 정답 및 풀이 p.286):</b><br>
+          - <b>⑴ $a - 3 = b - 3$ ➜ ○:</b> 양변에서 같은 수 3을 뺀 것이므로 성립합니다. (등식의 성질 2)<br>
+          - <b>⑵ $\\frac{a}{2} = \\frac{b}{3}$ ➜ ×:</b> 좌변은 2로 나누고 우변은 3으로 나누었으므로 성립하지 않습니다. (서로 다른 수로 나눔)<br>
+          - <b>⑶ $6 + a = 6 - b$ ➜ ×:</b> 좌변은 6에 $a$를 더하고 우변은 6에서 $b$를 뺐으므로 성립하지 않습니다.<br>
+          - <b>⑷ $2a + 5 = 2b + 5$ ➜ ○:</b> 양변에 2를 곱한 후($2a=2b$) 5를 더했으므로 성립합니다. (등식의 성질 3, 1)<br>
+          다음 서브스텝 <b>[4-11] 스스로 확인하기 4: 등식의 성질 풀이 단계별 성질 (p.90)</b>이 해금되었습니다!
+        </div>
+      </div>
+    `;
+
+    if (!state.unlockedSubSteps.includes('4-11')) {
+      state.unlockedSubSteps.push('4-11');
+      renderSubstepPills();
+    }
+
+    if (window.LMSIntegration && LMSIntegration.saveStudentProgress) {
+      LMSIntegration.saveStudentProgress('4-10', {
+        score: 100,
+        completed: true,
+        answers: { ans1, ans2, ans3, ans4 }
+      }, 3);
+    }
+  } else {
+    let wrongNotes = [];
+    if (!isQ1Correct) wrongNotes.push('• ⑴: a = b의 양변에서 같은 수 3을 뺀 것이므로 옳은 식(○)입니다.');
+    if (!isQ2Correct) wrongNotes.push('• ⑵: 좌변은 2로, 우변은 3으로 서로 다른 수로 나누었으므로 옳지 않은 식(×)입니다.');
+    if (!isQ3Correct) wrongNotes.push('• ⑶: 좌변은 더하고 우변은 뺐으므로 옳지 않은 식(×)입니다.');
+    if (!isQ4Correct) wrongNotes.push('• ⑷: 양변에 2를 곱하고 5를 똑같이 더했으므로 옳은 식(○)입니다.');
+
+    fb.innerHTML = `
+      <div style="background:#fef2f2; border:1px solid #ef4444; border-radius:10px; padding:12px; color:#991b1b;">
+        <div style="font-weight:800; font-size:0.92rem;">다시 확인해 보세요! (현재 점수: ${totalScore}점)</div>
+        <div style="margin-top:6px; font-size:0.84rem; line-height:1.5;">
+          ${wrongNotes.join('<br>')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (window.renderMathInElement) {
+    window.renderMathInElement(fb, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ]
+    });
+  }
+}
+
+// --- Two.js 60fps 인터랙티브 캔버스 엔진 ---
+function drawStep4_10Canvas() {
+  const container = document.getElementById('two-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const two = new Two({
+    width: 680,
+    height: 440,
+    type: Two.Types.svg
+  }).appendTo(container);
+
+  if (!state.lab4_10) {
+    resetLab4_10();
+  }
+
+  const activeTab = state.lab4_10.activeTab;
+
+  if (activeTab === 'mode1') {
+    drawMode1PropertyXRayLab(two);
+  } else if (activeTab === 'mode2') {
+    drawMode2PropertyBalanceSimulatorLab(two);
+  } else if (activeTab === 'mode3') {
+    drawMode3PropertyRuleMatrixLab(two);
+  }
+
+  // 안내 배너 (Vertical Budget 준수: Y=385, H=26, 바닥 안전 여백 42px >= 25px)
+  const bannerBg = two.makeRoundedRectangle(340, 385, 620, 26, 6);
+  bannerBg.fill = '#f8fafc';
+  bannerBg.stroke = '#cbd5e1';
+  bannerBg.linewidth = 1;
+
+  let tipMsg = '💡 등식의 성질은 양변에 "똑같은 수"로 "똑같은 연산"을 해야만 성립합니다.';
+  if (activeTab === 'mode1') {
+    tipMsg = '💡 4개 문항을 선택하여 양변에 적용된 연산 과정을 엑스레이로 분석해 보세요.';
+  } else if (activeTab === 'mode2') {
+    tipMsg = '💡 a=b 기준값(6, 10 등)을 바꾸며 저울이 수평을 유지하는지 기울어지는지 관찰하세요.';
+  } else if (activeTab === 'mode3') {
+    tipMsg = '💡 등식의 4대 기본 성질(더하기, 빼기, 곱하기, 나누기)과의 일치 여부를 대조해 보세요.';
+  }
+
+  const tipText = two.makeText(tipMsg, 340, 385, {
+    family: 'Pretendard, sans-serif',
+    size: 11,
+    weight: 600,
+    fill: '#475569',
+    alignment: 'center'
+  });
+
+  two.update();
+}
+
+// Mode 1: 🔍 등식의 성질 엑스레이 랩
+function drawMode1PropertyXRayLab(two) {
+  const selIdx = state.lab4_10.selectedProp;
+  const item = PROPERTIES_4_10[selIdx];
+
+  const title = two.makeText('🔍 [성질 엑스레이 랩] a = b 양변의 단계별 연산 분석 (교과서 p.90 3번)', 340, 26, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 800,
+    fill: '#1e1b4b',
+    alignment: 'center'
+  });
+
+  // 상단 4개 문항 선택 탭 (Y=62, W=130, H=30)
+  PROPERTIES_4_10.forEach((it, idx) => {
+    const bx = 115 + idx * 150;
+    const by = 62;
+    const isCur = (idx === selIdx);
+
+    const btnBg = two.makeRoundedRectangle(bx, by, 134, 30, 8);
+    btnBg.fill = isCur ? '#4f46e5' : '#f1f5f9';
+    btnBg.stroke = isCur ? '#4338ca' : '#cbd5e1';
+    btnBg.linewidth = isCur ? 2 : 1;
+
+    two.makeText(`${it.numLabel} ${it.expr}`, bx, by, {
+      family: 'Pretendard, sans-serif',
+      size: 11.5,
+      weight: 700,
+      fill: isCur ? '#ffffff' : '#334155',
+      alignment: 'center'
+    });
+
+    two.update();
+    if (btnBg._renderer && btnBg._renderer.elem) {
+      const el = btnBg._renderer.elem;
+      el.style.cursor = 'pointer';
+      el.onclick = () => setProp4_10(idx);
+    }
+  });
+
+  // 출발 등식 카드 (Y=116, W=600, H=46)
+  const startCard = two.makeRoundedRectangle(340, 116, 600, 46, 8);
+  startCard.fill = '#f8fafc';
+  startCard.stroke = '#cbd5e1';
+  startCard.linewidth = 1.5;
+
+  two.makeText('【기본 전제】   a  =  b   (양변의 크기가 같음)', 340, 116, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 800,
+    fill: '#1e293b',
+    alignment: 'center'
+  });
+
+  // 좌변 연산 vs 우변 연산 듀얼 박스 (Y=210, H=100)
+  // 좌변 박스 (X=205, W=250)
+  const lBox = two.makeRoundedRectangle(205, 210, 250, 100, 10);
+  lBox.fill = '#eff6ff';
+  lBox.stroke = item.isCorrect ? '#10b981' : '#3b82f6';
+  lBox.linewidth = 2;
+
+  two.makeText('좌변(Left-hand side) 연산', 205, 175, {
+    family: 'Pretendard, sans-serif',
+    size: 12,
+    weight: 800,
+    fill: '#1d4ed8',
+    alignment: 'center'
+  });
+
+  two.makeText(`a ➜ ${item.lhsOp}`, 205, 210, {
+    family: 'Pretendard, sans-serif',
+    size: 15,
+    weight: 800,
+    fill: '#1e293b',
+    alignment: 'center'
+  });
+
+  two.makeText(`적용: ${item.lhsOp}`, 205, 240, {
+    family: 'Pretendard, sans-serif',
+    size: 11.5,
+    weight: 600,
+    fill: '#2563eb',
+    alignment: 'center'
+  });
+
+  // 우변 박스 (X=475, W=250)
+  const rBox = two.makeRoundedRectangle(475, 210, 250, 100, 10);
+  rBox.fill = '#faf5ff';
+  rBox.stroke = item.isCorrect ? '#10b981' : '#a855f7';
+  rBox.linewidth = 2;
+
+  two.makeText('우변(Right-hand side) 연산', 475, 175, {
+    family: 'Pretendard, sans-serif',
+    size: 12,
+    weight: 800,
+    fill: '#7e22ce',
+    alignment: 'center'
+  });
+
+  two.makeText(`b ➜ ${item.rhsOp}`, 475, 210, {
+    family: 'Pretendard, sans-serif',
+    size: 15,
+    weight: 800,
+    fill: '#1e293b',
+    alignment: 'center'
+  });
+
+  two.makeText(`적용: ${item.rhsOp}`, 475, 240, {
+    family: 'Pretendard, sans-serif',
+    size: 11.5,
+    weight: 600,
+    fill: '#7e22ce',
+    alignment: 'center'
+  });
+
+  // 중앙 연결 뱃지 (X=340, Y=210)
+  const midPin = two.makeCircle(340, 210, 22);
+  midPin.fill = item.isCorrect ? '#ecfdf5' : '#fef2f2';
+  midPin.stroke = item.isCorrect ? '#10b981' : '#ef4444';
+  midPin.linewidth = 2;
+
+  two.makeText(item.isCorrect ? '=' : '≠', 340, 210, {
+    family: 'Pretendard, sans-serif',
+    size: 20,
+    weight: 900,
+    fill: item.isCorrect ? '#059669' : '#dc2626',
+    alignment: 'center'
+  });
+
+  // 하단 최종 판정 배너 (Y=310, W=600, H=56)
+  const resBg = two.makeRoundedRectangle(340, 310, 600, 56, 8);
+  resBg.fill = item.isCorrect ? '#ecfdf5' : '#fef2f2';
+  resBg.stroke = item.isCorrect ? '#10b981' : '#ef4444';
+  resBg.linewidth = 1.5;
+
+  const resTitle = item.isCorrect
+    ? `✨ [옳은 식 ○] ${item.numLabel} ${item.expr} ➜ ${item.appliedProp}`
+    : `❌ [옳지 않은 식 ×] ${item.numLabel} ${item.expr} ➜ ${item.appliedProp}`;
+
+  two.makeText(resTitle, 340, 298, {
+    family: 'Pretendard, sans-serif',
+    size: 12.5,
+    weight: 800,
+    fill: item.isCorrect ? '#065f46' : '#991b1b',
+    alignment: 'center'
+  });
+
+  two.makeText(item.analysis, 340, 322, {
+    family: 'Pretendard, sans-serif',
+    size: 11,
+    weight: 600,
+    fill: item.isCorrect ? '#047857' : '#b91c1c',
+    alignment: 'center'
+  });
+}
+
+// Mode 2: ⚖️ 양팔 저울 물리 평형 시뮬레이터
+function drawMode2PropertyBalanceSimulatorLab(two) {
+  const selIdx = state.lab4_10.selectedProp;
+  const item = PROPERTIES_4_10[selIdx];
+  const simA = state.lab4_10.simA; // a=b 값 (기본 6)
+
+  const title = two.makeText('⚖️ [양팔 저울 시뮬레이터] a = b 수치 대입에 따른 저울 평형 검증 (교과서 p.90 3번)', 340, 26, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 800,
+    fill: '#1e1b4b',
+    alignment: 'center'
+  });
+
+  // 상단 문항 선택 탭 (Y=56)
+  PROPERTIES_4_10.forEach((it, idx) => {
+    const bx = 115 + idx * 150;
+    const by = 56;
+    const isCur = (idx === selIdx);
+
+    const btnBg = two.makeRoundedRectangle(bx, by, 134, 26, 6);
+    btnBg.fill = isCur ? '#4f46e5' : '#f1f5f9';
+    btnBg.stroke = isCur ? '#4338ca' : '#cbd5e1';
+    btnBg.linewidth = isCur ? 2 : 1;
+
+    two.makeText(`${it.numLabel} ${it.expr}`, bx, by, {
+      family: 'Pretendard, sans-serif',
+      size: 11,
+      weight: 700,
+      fill: isCur ? '#ffffff' : '#334155',
+      alignment: 'center'
+    });
+
+    two.update();
+    if (btnBg._renderer && btnBg._renderer.elem) {
+      const el = btnBg._renderer.elem;
+      el.style.cursor = 'pointer';
+      el.onclick = () => setProp4_10(idx);
+    }
+  });
+
+  // a=b 값 선택 바 (Y=92)
+  two.makeText('a = b 기준값 선택:', 160, 92, {
+    family: 'Pretendard, sans-serif',
+    size: 11.5,
+    weight: 700,
+    fill: '#334155',
+    alignment: 'center'
+  });
+
+  const aVals = [2, 6, 10, 12];
+  aVals.forEach((av, i) => {
+    const abx = 260 + i * 65;
+    const isCurA = (simA === av);
+
+    const abtn = two.makeRoundedRectangle(abx, 92, 54, 24, 6);
+    abtn.fill = isCurA ? '#059669' : '#ffffff';
+    abtn.stroke = isCurA ? '#047857' : '#cbd5e1';
+    abtn.linewidth = isCurA ? 2 : 1;
+
+    two.makeText(`a=${av}`, abx, 92, {
+      family: 'Pretendard, sans-serif',
+      size: 10.5,
+      weight: 700,
+      fill: isCurA ? '#ffffff' : '#475569',
+      alignment: 'center'
+    });
+
+    two.update();
+    if (abtn._renderer && abtn._renderer.elem) {
+      const el = abtn._renderer.elem;
+      el.style.cursor = 'pointer';
+      el.onclick = () => setSimA4_10(av);
+    }
+  });
+
+  // 실제 수치 계산
+  let lhsWeight = 0;
+  let rhsWeight = 0;
+
+  if (selIdx === 0) {
+    // a - 3 vs b - 3
+    lhsWeight = simA - 3;
+    rhsWeight = simA - 3;
+  } else if (selIdx === 1) {
+    // a / 2 vs b / 3
+    lhsWeight = simA / 2;
+    rhsWeight = simA / 3;
+  } else if (selIdx === 2) {
+    // 6 + a vs 6 - b
+    lhsWeight = 6 + simA;
+    rhsWeight = 6 - simA;
+  } else if (selIdx === 3) {
+    // 2a + 5 vs 2b + 5
+    lhsWeight = 2 * simA + 5;
+    rhsWeight = 2 * simA + 5;
+  }
+
+  // 저울 물리 파라미터 (Y=155 ~ 290)
+  const pivotX = 340;
+  const pivotY = 175;
+  const beamLength = 340;
+  const halfBeam = beamLength / 2;
+
+  const angle = item.balanceTilt;
+  const cosA = Math.cos(angle);
+  const sinA = Math.sin(angle);
+
+  const leftX = pivotX - halfBeam * cosA;
+  const leftY = pivotY - halfBeam * sinA;
+  const rightX = pivotX + halfBeam * cosA;
+  const rightY = pivotY + halfBeam * sinA;
+
+  // 저울 기둥 & 베이스
+  const base = two.makePolygon(pivotX, 285, 46, 3);
+  base.fill = '#64748b';
+  base.stroke = '#475569';
+  base.linewidth = 2;
+
+  const post = two.makeLine(pivotX, pivotY, pivotX, 285);
+  post.stroke = '#475569';
+  post.linewidth = 6;
+
+  // 회전하는 빔
+  const beam = two.makeLine(leftX, leftY, rightX, rightY);
+  beam.stroke = '#334155';
+  beam.linewidth = 8;
+  beam.cap = 'round';
+
+  // 중앙 피벗 핀
+  const pin = two.makeCircle(pivotX, pivotY, 8);
+  pin.fill = '#f59e0b';
+  pin.stroke = '#b45309';
+  pin.linewidth = 2;
+
+  // 접시 체인 & 접시 (Y=leftY + 68)
+  const panH = 68;
+  const leftPanX = leftX;
+  const leftPanY = leftY + panH;
+  const rightPanX = rightX;
+  const rightPanY = rightY + panH;
+
+  // 좌측 체인 & 팬
+  two.makeLine(leftX, leftY, leftPanX - 40, leftPanY).stroke = '#94a3b8';
+  two.makeLine(leftX, leftY, leftPanX + 40, leftPanY).stroke = '#94a3b8';
+  const leftPan = two.makeArcSegment(leftPanX, leftPanY, 0, 40, 0, Math.PI);
+  leftPan.fill = '#bfdbfe';
+  leftPan.stroke = '#2563eb';
+  leftPan.linewidth = 2;
+
+  // 우측 체인 & 팬
+  two.makeLine(rightX, rightY, rightPanX - 40, rightPanY).stroke = '#94a3b8';
+  two.makeLine(rightX, rightY, rightPanX + 40, rightPanY).stroke = '#94a3b8';
+  const rightPan = two.makeArcSegment(rightPanX, rightPanY, 0, 40, 0, Math.PI);
+  rightPan.fill = '#e9d5ff';
+  rightPan.stroke = '#9333ea';
+  rightPan.linewidth = 2;
+
+  // 접시 위 분동 라벨
+  const lBoxWeight = two.makeRoundedRectangle(leftPanX, leftPanY - 20, 96, 30, 6);
+  lBoxWeight.fill = item.isCorrect ? '#dcfce7' : '#fee2e2';
+  lBoxWeight.stroke = item.isCorrect ? '#16a34a' : '#ef4444';
+  lBoxWeight.linewidth = 1.5;
+
+  two.makeText(`좌: ${Number(lhsWeight.toFixed(2))}`, leftPanX, leftPanY - 20, {
+    family: 'Pretendard, sans-serif',
+    size: 11,
+    weight: 800,
+    fill: '#1e293b',
+    alignment: 'center'
+  });
+
+  const rBoxWeight = two.makeRoundedRectangle(rightPanX, rightPanY - 20, 96, 30, 6);
+  rBoxWeight.fill = item.isCorrect ? '#dcfce7' : '#fee2e2';
+  rBoxWeight.stroke = item.isCorrect ? '#16a34a' : '#ef4444';
+  rBoxWeight.linewidth = 1.5;
+
+  two.makeText(`우: ${Number(rhsWeight.toFixed(2))}`, rightPanX, rightPanY - 20, {
+    family: 'Pretendard, sans-serif',
+    size: 11,
+    weight: 800,
+    fill: '#1e293b',
+    alignment: 'center'
+  });
+
+  // 하단 판정 배너 (Y=338, W=600, H=36)
+  const actBg = two.makeRoundedRectangle(340, 338, 600, 36, 8);
+  actBg.fill = item.isCorrect ? '#ecfdf5' : '#fef2f2';
+  actBg.stroke = item.isCorrect ? '#10b981' : '#ef4444';
+  actBg.linewidth = 1.5;
+
+  const judgeMsg = item.isCorrect
+    ? `⚖️ [수평 평형 유지] 좌변(${Number(lhsWeight.toFixed(2))}) = 우변(${Number(rhsWeight.toFixed(2))}) ➜ a=b일 때 언제나 수평을 유지하므로 옳은 식(○)입니다.`
+    : `⚠️ [불균형 기울어짐] 좌변(${Number(lhsWeight.toFixed(2))}) ≠ 우변(${Number(rhsWeight.toFixed(2))}) ➜ 저울이 기울어지므로 옳지 않은 식(×)입니다.`;
+
+  two.makeText(judgeMsg, 340, 338, {
+    family: 'Pretendard, sans-serif',
+    size: 11.5,
+    weight: 800,
+    fill: item.isCorrect ? '#065f46' : '#991b1b',
+    alignment: 'center'
+  });
+}
+
+// Mode 3: 📊 성질 규칙 매트릭스
+function drawMode3PropertyRuleMatrixLab(two) {
+  const title = two.makeText('📊 [성질 규칙 매트릭스] 등식의 4대 기본 성질 대조표 (교과서 p.90 3번)', 340, 26, {
+    family: 'Pretendard, sans-serif',
+    size: 14,
+    weight: 800,
+    fill: '#1e1b4b',
+    alignment: 'center'
+  });
+
+  // 4개 문항 카드 행 (Y=60 ~ 310)
+  PROPERTIES_4_10.forEach((it, idx) => {
+    const cy = 75 + idx * 56;
+    const isOk = it.isCorrect;
+
+    const rowBg = two.makeRoundedRectangle(340, cy, 620, 48, 8);
+    rowBg.fill = isOk ? '#f0fdf4' : '#fff1f2';
+    rowBg.stroke = isOk ? '#86efac' : '#fecdd3';
+    rowBg.linewidth = 1.5;
+
+    // 번호
+    two.makeText(it.numLabel, 55, cy, {
+      family: 'Pretendard, sans-serif',
+      size: 13,
+      weight: 800,
+      fill: isOk ? '#166534' : '#9f1239',
+      alignment: 'center'
+    });
+
+    // 식
+    two.makeText(it.expr, 150, cy, {
+      family: 'Pretendard, sans-serif',
+      size: 13,
+      weight: 800,
+      fill: '#1e293b',
+      alignment: 'center'
+    });
+
+    // 적용 성질 요약
+    two.makeText(it.appliedProp, 340, cy, {
+      family: 'Pretendard, sans-serif',
+      size: 11,
+      weight: 700,
+      fill: '#475569',
+      alignment: 'center'
+    });
+
+    // 판정 뱃지
+    const oxBadge = two.makeRoundedRectangle(565, cy, 75, 26, 6);
+    oxBadge.fill = isOk ? '#22c55e' : '#f43f5e';
+
+    two.makeText(isOk ? '옳음 (○)' : '틀림 (×)', 565, cy, {
+      family: 'Pretendard, sans-serif',
+      size: 11,
+      weight: 800,
+      fill: '#ffffff',
+      alignment: 'center'
+    });
+
+    two.update();
+    if (rowBg._renderer && rowBg._renderer.elem) {
+      const el = rowBg._renderer.elem;
+      el.style.cursor = 'pointer';
+      el.onclick = () => {
+        setProp4_10(idx);
+        setLab4_10Tab('mode1');
+      };
+    }
+  });
+
+  // 하단 요약 카드 (Y=338, W=620, H=36)
+  const sumBg = two.makeRoundedRectangle(340, 338, 620, 36, 8);
+  sumBg.fill = '#ecfdf5';
+  sumBg.stroke = '#10b981';
+  sumBg.linewidth = 1.5;
+
+  two.makeText('✨ [결론] ⑴과 ⑷는 옳은 식(○)이고, ⑵와 ⑶은 옳지 않은 식(×)입니다!', 340, 338, {
+    family: 'Pretendard, sans-serif',
+    size: 12,
+    weight: 800,
+    fill: '#065f46',
+    alignment: 'center'
+  });
+}
+
+    // --- End Substep 4-10 Implementation ---
+
+
 
 
     // Router for Substep
@@ -37116,6 +37937,9 @@ function drawMode3MathematicalClassificationBoardLab(two) {
       } else if (code === '4-9') {
         renderToolbar4_9();
         renderSubstep4_9Form();
+      } else if (code === '4-10') {
+        renderToolbar4_10();
+        renderSubstep4_10Form();
       } else {
         renderGenericToolbar(code);
         renderGenericSubstep(code);
