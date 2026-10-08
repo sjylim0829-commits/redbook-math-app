@@ -210,13 +210,17 @@
               
               // Unit Matching Check
               let isMatch = false;
-              if (uId === 'u1') {
+              if (uId === 'u1' || uId === 'unit1') {
                 isMatch = title.includes('소인수분해') || title.includes('[중1-1') || title.includes('u1');
-              } else if (uId === 'u2') {
+              } else if (uId === 'u2' || uId === 'unit2') {
                 isMatch = title.includes('정수와 유리수') || title.includes('[중1-2') || title.includes('u2');
-              } else if (uId === 'u4') {
+              } else if (uId === 'u3' || uId === 'unit3') {
+                isMatch = title.includes('문자와 식') || title.includes('[중1-3') || title.includes('u3');
+              } else if (uId === 'u4' || uId === 'unit4') {
                 isMatch = title.includes('좌표평면') || title.includes('[중1-4') || title.includes('u4') ||
-                          (!title.includes('소인수분해') && !title.includes('정수와 유리수') && !title.includes('[중1-1') && !title.includes('[중1-2'));
+                          (!title.includes('소인수분해') && !title.includes('정수와 유리수') && !title.includes('문자와 식') && !title.includes('도형의 기초') && !title.includes('[중1-1') && !title.includes('[중1-2') && !title.includes('[중1-3') && !title.includes('[중1-5'));
+              } else if (uId === 'u5' || uId === 'unit5') {
+                isMatch = title.includes('도형의 기초') || title.includes('[중1-5') || title.includes('u5');
               }
 
               if (isMatch) {
@@ -287,8 +291,10 @@
 
       // 2. Unit Title Formatting
       let unitPrefix = '[중1-1 소인수분해]';
-      if (uId === 'u2') unitPrefix = '[중1-2 정수와 유리수]';
-      else if (uId === 'u4') unitPrefix = '[중1-4 좌표평면]';
+      if (uId === 'u2' || uId === 'unit2') unitPrefix = '[중1-2 정수와 유리수]';
+      else if (uId === 'u3' || uId === 'unit3') unitPrefix = '[중1-3 문자와 식]';
+      else if (uId === 'u4' || uId === 'unit4') unitPrefix = '[중1-4 좌표평면]';
+      else if (uId === 'u5' || uId === 'unit5') unitPrefix = '[중1-5 도형의 기초]';
 
       const activityTitle = data.activityTitle || `${unitPrefix} [단계: ${subStepCode || '0-1'}]`;
       const answerText = data.answerText || '';

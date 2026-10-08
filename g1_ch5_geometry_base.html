@@ -759,28 +759,25 @@
     <!-- 1. Login View -->
     <section id="view-login" class="view-panel active">
       <div class="login-card-container">
-        <div style="font-size:2.4rem; margin-bottom:12px;">📐</div>
-        <h2 style="font-size:1.35rem; font-weight:800; margin-bottom:6px; color:#1e293b;">영서중 스마트 수학</h2>
-        <p style="font-size:0.88rem; color:#64748b; margin-bottom:24px;">중1 수학: 5. 도형의 기초 디지털 교과서</p>
-        
-        <form onsubmit="handleLMSLogin(event)">
-          <div style="margin-bottom:14px; text-align:left;">
-            <label style="font-size:0.82rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">학번 (5자리)</label>
-            <input type="text" id="student-id-input" class="form-control" placeholder="LMS 가입 학번 5자리" value="10101" required>
+        <h2 style="font-size:1.35rem; margin-bottom:6px; color:#1e293b;">🏫 영서중 수학 LMS 학생 로그인</h2>
+        <p style="font-size:0.86rem; color:#64748b; margin-bottom:18px;">LMS 회원가입 DB의 학번과 비밀번호를 입력하고 이어서 학습하세요!</p>
+        <div id="login-error-notice" style="display:none; color:#dc2626; font-size:0.82rem; font-weight:700; margin-bottom:12px; background:#fef2f2; padding:8px 10px; border-radius:6px; border:1px solid #fca5a5;"></div>
+        <form id="lms-login-form" onsubmit="handleLMSLogin(event)">
+          <div class="form-group" style="margin-bottom:14px; text-align:left;">
+            <label for="student-id" style="font-size:0.82rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">학번 (예: 10101)</label>
+            <input type="text" id="student-id" class="form-control" placeholder="LMS 가입 학번 5자리" value="10101" required>
           </div>
-          <div style="margin-bottom:20px; text-align:left;">
-            <label style="font-size:0.82rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">비밀번호</label>
-            <input type="password" id="student-pw-input" class="form-control" placeholder="LMS 가입 비밀번호" required>
+          <div class="form-group" style="margin-bottom:18px; text-align:left;">
+            <label for="student-name" style="font-size:0.82rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">비밀번호</label>
+            <input type="password" id="student-name" class="form-control" placeholder="LMS 가입 비밀번호" required>
           </div>
-          <button type="submit" id="btn-start-exploration" class="btn btn-primary" style="width:100%; padding:12px; font-weight:800;">🔐 영서중 수학 LMS 학생 로그인</button>
+          <button id="btn-start-exploration" type="submit" class="btn btn-primary" style="margin-top: 8px; width:100%; font-size:1.05rem; padding:12px; font-weight:800; background:linear-gradient(135deg, #0284c7, #4f46e5);">🔐 영서중 수학 LMS 학생 로그인</button>
         </form>
 
-        <div style="margin-top:16px; border-top:1px solid #f1f5f9; padding-top:14px;">
-          <button type="button" onclick="openTeacherPassModal()" style="background:none; border:none; color:#6366f1; font-size:0.82rem; font-weight:700; cursor:pointer;">
-            🔑 교사 관리자 로그인
-          </button>
+        <div style="margin-top:14px; border-top:1px solid #e2e8f0; padding-top:12px; display:flex; flex-direction:column; gap:8px;">
+          <button type="button" class="btn" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; width:100%; font-weight:700;" onclick="openTestLoginModal()">🔑 교사 계정 접속</button>
+          <button type="button" class="btn" style="background:#eef2ff; color:#4338ca; border:1.5px solid #c7d2fe; width:100%; font-weight:800;" onclick="openTeacherDashboardModal()">📊 교사 5x5 실시간 모니터링 관제실</button>
         </div>
-        <div id="login-error-notice" style="display:none; margin-top:12px; padding:10px; background:#fef2f2; border:1px solid #fca5a5; border-radius:8px; color:#991b1b; font-size:0.82rem;"></div>
       </div>
     </section>
 
@@ -1229,6 +1226,14 @@
       );
     }
 
+    function openTestLoginModal() {
+      openSecurePasswordModal(
+        'teacher_login',
+        '교사 계정 접속',
+        '교사 전용 비밀번호를 입력해 주세요.'
+      );
+    }
+
     function handleSecurePasswordSubmit(e) {
       if (e && e.preventDefault) e.preventDefault();
       const inputEl = document.getElementById('secure-modal-input');
@@ -1283,8 +1288,8 @@
     // ==========================================
     async function handleLMSLogin(e) {
       if (e && e.preventDefault) e.preventDefault();
-      const stIdInput = document.getElementById('student-id-input');
-      const stPwInput = document.getElementById('student-pw-input');
+      const stIdInput = document.getElementById('student-id') || document.getElementById('student-id-input');
+      const stPwInput = document.getElementById('student-name') || document.getElementById('student-pw-input');
       const stId = stIdInput ? stIdInput.value.trim() : '';
       const pw = stPwInput ? stPwInput.value.trim() : '';
       const errNotice = document.getElementById('login-error-notice');
@@ -1336,7 +1341,8 @@
           const res = await window.LMSIntegration.loginStudent(stId, pw);
           if (res && res.success) {
             state.studentId = stId;
-            state.studentName = (res.student && res.student.name) ? res.student.name : `${stId} 학생`;
+            const uName = (res.user && res.user.name) ? res.user.name : ((res.student && res.student.name) ? res.student.name : `${stId} 학생`);
+            state.studentName = uName;
             
             const userInfo = document.getElementById('current-user-info');
             if (userInfo) userInfo.innerText = `👤 ${state.studentName} (${stId})`;
@@ -1344,9 +1350,18 @@
             switchView('activity');
 
             if (window.LMSIntegration.loadStudentProgress) {
-              const prog = await window.LMSIntegration.loadStudentProgress(stId, 'unit5');
-              if (prog && prog.completedSubSteps) {
-                state.completedSubSteps = prog.completedSubSteps;
+              const prog = await window.LMSIntegration.loadStudentProgress(stId, 'u5');
+              if (prog) {
+                if (prog.completedSteps && Array.isArray(prog.completedSteps)) {
+                  prog.completedSteps.forEach(s => {
+                    if (!state.completedSubSteps.includes(s)) state.completedSubSteps.push(s);
+                  });
+                }
+                if (prog.completedSubSteps && Array.isArray(prog.completedSubSteps)) {
+                  prog.completedSubSteps.forEach(s => {
+                    if (!state.completedSubSteps.includes(s)) state.completedSubSteps.push(s);
+                  });
+                }
               }
             }
 
