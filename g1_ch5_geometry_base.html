@@ -958,6 +958,12 @@
         substepLabel: '1-1. 생각열기: 점과 선의 자취 (p.136)',
         missionText: '<b>[5.1 점, 선, 면: 1-1. 생각열기: 점과 선의 자취] (교과서 p.136)</b><br>• 밤하늘 불꽃놀이의 불꽃(점)이 그리는 궤적과 붓(선)이 종이를 쓸고 지나갈 때 나타나는 도형의 형성을 탐구합니다.<br>• <b>기본 도형의 형성 원리:</b><br>&nbsp;&nbsp;1. <b>점의 자취:</b> 점이 연속하여 움직인 자리는 <b>선</b>이 됩니다.<br>&nbsp;&nbsp;2. <b>선의 자취:</b> 선이 연속하여 움직인 자리는 <b>면</b>이 됩니다.<br>&nbsp;&nbsp;3. <b>도형의 3대 기본 요소:</b> 모든 평면도형과 입체도형은 <b>점, 선, 면</b>으로 이루어져 있습니다.<br>• 좌측 캔버스 랩에서 점을 드래그하거나 애니메이션 버튼을 눌러 점과 선의 역동적인 자취를 직접 확인해 보세요!',
         drawer: 'drawStep1_1Canvas'
+      },
+      '1-2': {
+        code: '1-2', tab: 1,
+        substepLabel: '1-2. 개념: 교점과 교선 (p.137)',
+        missionText: '<b>[5.1 점, 선, 면: 1-2. 개념: 교점과 교선] (교과서 p.137)</b><br>• 선과 선, 선과 면, 면과 면이 만날 때 생기는 도형의 구성 요소를 이해하고, 입체도형에서 꼭짓점과 모서리가 각각 교점과 교선에 대응됨을 탐구합니다.<br>• <b>교점과 교선의 핵심 정의:</b><br>&nbsp;&nbsp;1. <b>교점:</b> 선과 선 또는 선과 면이 만나서 생기는 점 (입체도형에서의 <b>꼭짓점</b>)<br>&nbsp;&nbsp;2. <b>교선:</b> 면과 면이 만나서 생기는 선 (입체도형에서의 <b>모서리</b>, 직선 또는 곡선)<br>• 좌측 캔버스 랩에서 3대 인터랙티브 도판을 조작하며 삼각기둥의 교점과 교선을 직접 세어 보세요!',
+        drawer: 'drawStep1_2Canvas'
       }
     };
 
@@ -1115,6 +1121,10 @@
         renderToolbar1_1();
         renderSubstep1_1Form();
         drawStep1_1Canvas();
+      } else if (code === '1-2') {
+        renderToolbar1_2();
+        renderSubstep1_2Form();
+        drawStep1_2Canvas();
       } else {
         renderSubStepForm(code);
         const toolbar = document.getElementById('plane-toolbar');
@@ -4970,6 +4980,853 @@ function passStep0_2() {
       if (a3) a3.value = '점, 선, 면';
       gradeStep1_1();
     }
+
+    // ==========================================
+    // Substep [1-2] 5.1 점, 선, 면: 개념: 교점과 교선 (교과서 p.137)
+    // ==========================================
+    function resetLab1_2() {
+      state.lab1_2 = {
+        activeTab: 'mode1', // 'mode1' (교점), 'mode2' (교선), 'mode3' (삼각기둥 카운터)
+        // Mode 1: 선과 선의 교점 & 선과 면의 교점
+        line2Angle: 45, // 도
+        isDraggingLine2: false,
+        // Mode 2: 면과 면의 교선 (직선 & 곡선 토글)
+        curveMode: false,
+        // Mode 3: 삼각기둥 3D 카운터
+        discoveredVertices: [], // 꼭짓점 인덱스 (0~5)
+        discoveredEdges: [],    // 모서리 인덱스 (0~8)
+        showAllHighlights: false,
+        isPassed: false
+      };
+    }
+
+    function switchLab1_2Tab(tabName) {
+      if (!state.lab1_2) resetLab1_2();
+      state.lab1_2.activeTab = tabName;
+      renderToolbar1_2();
+      drawStep1_2Canvas();
+    }
+
+    function renderToolbar1_2() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      if (!state.lab1_2) resetLab1_2();
+      const cur = state.lab1_2.activeTab;
+
+      let subButtons = '';
+      if (cur === 'mode1') {
+        subButtons = '<button class="btn btn-outline" style="font-size:0.78rem; padding:4px 10px; background:#eff6ff; color:#1d4ed8; border-color:#93c5fd; font-weight:700;" onclick="rotateLab1_2Line()">🔄 직선 회전</button>' +
+                     '<button class="btn btn-outline" style="font-size:0.78rem; padding:4px 10px; color:#475569;" onclick="resetLab1_2()">초기화</button>';
+      } else if (cur === 'mode2') {
+        subButtons = '<button class="btn btn-outline" style="font-size:0.78rem; padding:4px 10px; background:#eff6ff; color:#1d4ed8; border-color:#93c5fd; font-weight:700;" onclick="toggleLab1_2Curve()">' +
+                     (state.lab1_2.curveMode ? '📐 평면과 평면 (직선 교선)' : '🌊 곡면과 평면 (곡선 교선)') + '</button>' +
+                     '<button class="btn btn-outline" style="font-size:0.78rem; padding:4px 10px; color:#475569;" onclick="resetLab1_2()">초기화</button>';
+      } else {
+        subButtons = '<button class="btn btn-outline" style="font-size:0.78rem; padding:4px 10px; background:#eff6ff; color:#1d4ed8; border-color:#93c5fd; font-weight:700;" onclick="highlightAllPrism1_2()">✨ 전체 교점·교선 표시</button>' +
+                     '<button class="btn btn-outline" style="font-size:0.78rem; padding:4px 10px; color:#475569;" onclick="resetPrismCounter1_2()">🔄 카운터 리셋</button>';
+      }
+
+      tb.innerHTML = '<div style="display:flex; align-items:center; gap:8px; width:100%; justify-content:space-between; flex-wrap:wrap;">' +
+        '<div style="display:flex; gap:6px;">' +
+          '<button class="btn ' + (cur === 'mode1' ? 'btn-primary' : 'btn-outline') + '" style="font-size:0.8rem; padding:5px 12px; font-weight:700;" onclick="switchLab1_2Tab(\'mode1\')">🔴 1. 교점 (선·선 / 선·면)</button>' +
+          '<button class="btn ' + (cur === 'mode2' ? 'btn-primary' : 'btn-outline') + '" style="font-size:0.8rem; padding:5px 12px; font-weight:700;" onclick="switchLab1_2Tab(\'mode2\')">➖ 2. 교선 (면·면)</button>' +
+          '<button class="btn ' + (cur === 'mode3' ? 'btn-primary' : 'btn-outline') + '" style="font-size:0.8rem; padding:5px 12px; font-weight:700;" onclick="switchLab1_2Tab(\'mode3\')">🧊 3. 삼각기둥 교점·교선 카운터</button>' +
+        '</div>' +
+        '<div style="display:flex; gap:6px;">' + subButtons + '</div>' +
+      '</div>';
+    }
+
+    function rotateLab1_2Line() {
+      if (!state.lab1_2) resetLab1_2();
+      state.lab1_2.line2Angle = (state.lab1_2.line2Angle + 30) % 360;
+      drawStep1_2Canvas();
+    }
+
+    function toggleLab1_2Curve() {
+      if (!state.lab1_2) resetLab1_2();
+      state.lab1_2.curveMode = !state.lab1_2.curveMode;
+      renderToolbar1_2();
+      drawStep1_2Canvas();
+    }
+
+    function highlightAllPrism1_2() {
+      if (!state.lab1_2) resetLab1_2();
+      state.lab1_2.discoveredVertices = [0, 1, 2, 3, 4, 5];
+      state.lab1_2.discoveredEdges = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+      state.lab1_2.showAllHighlights = true;
+      drawStep1_2Canvas();
+    }
+
+    function resetPrismCounter1_2() {
+      if (!state.lab1_2) resetLab1_2();
+      state.lab1_2.discoveredVertices = [];
+      state.lab1_2.discoveredEdges = [];
+      state.lab1_2.showAllHighlights = false;
+      drawStep1_2Canvas();
+    }
+
+    function renderSubstep1_2Form() {
+      const fb = document.getElementById('form-box');
+      if (!fb) return;
+
+      const teacherBtnHtml = state.isTeacherLoggedIn ? 
+        '<div style="margin-top:10px; text-align:right;"><button class="btn btn-outline" style="font-size:0.78rem; padding:4px 8px; color:#64748b;" onclick="passStep1_2()">🔑 교사 정답 자동완성</button></div>' : '';
+
+      fb.innerHTML = 
+        '<div class="card mission-card" style="border-left: 4px solid var(--primary-color); border-radius:12px; padding:14px; background:#ffffff;">' +
+          '<h3 style="color:#4f46e5; font-size:1.02rem; font-weight:800; margin-bottom:8px;">🎯 오늘의 수학 탐구 미션</h3>' +
+          '<p style="font-size:0.86rem; color:#334155; line-height:1.55; margin:0;">' +
+            '<b>[5.1 점, 선, 면: 1-2. 개념: 교점과 교선] (교과서 p.137)</b><br>' +
+            '• 선과 선, 선과 면, 면과 면이 만날 때 생기는 도형의 구성 요소를 이해하고, 입체도형에서 꼭짓점과 모서리가 각각 교점과 교선에 대응됨을 탐구합니다.<br>' +
+            '• <b>교점과 교선의 핵심 정의:</b><br>' +
+            '&nbsp;&nbsp;1. <b>교점:</b> 선과 선 또는 선과 면이 만나서 생기는 점 (입체도형에서의 <b>꼭짓점</b>)<br>' +
+            '&nbsp;&nbsp;2. <b>교선:</b> 면과 면이 만나서 생기는 선 (입체도형에서의 <b>모서리</b>, 직선 또는 곡선)<br>' +
+            '• 좌측 캔버스 랩에서 3대 인터랙티브 도판을 조작하며 삼각기둥의 교점과 교선을 직접 세어 보세요!' +
+          '</p>' +
+        '</div>' +
+        '<div class="card" style="border-radius:12px; padding:16px; background:#ffffff;">' +
+          '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid #f1f5f9;">' +
+            '<span style="font-size:0.8rem; font-weight:700; color:#4338ca; background:#e0e7ff; padding:3px 8px; border-radius:6px;">교과서 p.137 [5.1 점, 선, 면]</span>' +
+            '<span style="font-size:0.82rem; font-weight:800; color:#64748b;">개념: 교점과 교선 (100점 만점)</span>' +
+          '</div>' +
+          '<h4 style="font-size:0.96rem; font-weight:800; color:#1e293b; margin-bottom:12px; line-height:1.45;">' +
+            '📐 선과 면의 만남을 관찰하고, 아래 질문에 정확한 수학 용어와 개수를 입력해 보세요.' +
+          '</h4>' +
+          '<!-- 1단계 -->' +
+          '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+              '<span style="font-size:0.88rem; font-weight:800; color:#1e293b;">1단계. 선과 선, 선과 면의 만남</span>' +
+              '<span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">배점 30%</span>' +
+            '</div>' +
+            '<p style="font-size:0.84rem; color:#475569; margin:0 0 8px 0; line-height:1.45;">' +
+              '선과 선 또는 선과 면이 만나서 생기는 점의 수학적 명칭을 쓰시오. (입체도형에서의 꼭짓점)' +
+            '</p>' +
+            '<div style="display:flex; align-items:center; gap:8px;">' +
+              '<span style="font-size:0.88rem; font-weight:800; color:#334155;">[만나는 점의 명칭] =</span>' +
+              '<input type="text" id="ans1_2_1" class="proof-input-text" placeholder="용어 입력" style="background:#fef08a; border:2px solid #eab308; border-radius:8px; color:#854d0e; font-weight:800; width:130px; padding:6px 10px; text-align:center;">' +
+            '</div>' +
+          '</div>' +
+          '<!-- 2단계 -->' +
+          '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+              '<span style="font-size:0.88rem; font-weight:800; color:#1e293b;">2단계. 면과 면의 만남</span>' +
+              '<span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">배점 30%</span>' +
+            '</div>' +
+            '<p style="font-size:0.84rem; color:#475569; margin:0 0 8px 0; line-height:1.45;">' +
+              '면과 면이 만나서 생기는 선의 수학적 명칭을 쓰시오. (입체도형에서의 모서리, 직선 또는 곡선)' +
+            '</p>' +
+            '<div style="display:flex; align-items:center; gap:8px;">' +
+              '<span style="font-size:0.88rem; font-weight:800; color:#334155;">[만나는 선의 명칭] =</span>' +
+              '<input type="text" id="ans1_2_2" class="proof-input-text" placeholder="용어 입력" style="background:#fef08a; border:2px solid #eab308; border-radius:8px; color:#854d0e; font-weight:800; width:130px; padding:6px 10px; text-align:center;">' +
+            '</div>' +
+          '</div>' +
+          '<!-- 3단계 -->' +
+          '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:14px;">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+              '<span style="font-size:0.88rem; font-weight:800; color:#1e293b;">3단계. 삼각기둥의 교점과 교선의 개수</span>' +
+              '<span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">배점 40%</span>' +
+            '</div>' +
+            '<p style="font-size:0.84rem; color:#475569; margin:0 0 8px 0; line-height:1.45;">' +
+              '좌측 3번 랩의 삼각기둥에서 교점(꼭짓점)의 개수와 교선(모서리)의 개수를 각각 구하시오.' +
+            '</p>' +
+            '<div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">' +
+              '<div style="display:flex; align-items:center; gap:6px;">' +
+                '<span style="font-size:0.88rem; font-weight:800; color:#334155;">[교점의 개수] =</span>' +
+                '<input type="text" id="ans1_2_3a" class="proof-input-text" placeholder="수 입력" style="background:#fef08a; border:2px solid #eab308; border-radius:8px; color:#854d0e; font-weight:800; width:80px; padding:6px 10px; text-align:center;">' +
+                '<span style="font-size:0.85rem; font-weight:700; color:#475569;">개</span>' +
+              '</div>' +
+              '<div style="display:flex; align-items:center; gap:6px;">' +
+                '<span style="font-size:0.88rem; font-weight:800; color:#334155;">[교선의 개수] =</span>' +
+                '<input type="text" id="ans1_2_3b" class="proof-input-text" placeholder="수 입력" style="background:#fef08a; border:2px solid #eab308; border-radius:8px; color:#854d0e; font-weight:800; width:80px; padding:6px 10px; text-align:center;">' +
+                '<span style="font-size:0.85rem; font-weight:700; color:#475569;">개</span>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          '<button class="btn" style="background:linear-gradient(135deg, #4f46e5, #4338ca); width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:8px; color:#fff;" onclick="gradeStep1_2()">' +
+            '[개념: 교점과 교선] 확인 및 채점' +
+          '</button>' +
+          teacherBtnHtml +
+          '<div id="feedback-1-2" style="margin-top:14px; display:none;"></div>' +
+        '</div>';
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fb, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false }
+          ]
+        });
+      }
+    }
+
+    function drawStep1_2Canvas() {
+      const container = document.getElementById('two-container');
+      if (!container) return;
+      container.innerHTML = '';
+      if (!state.lab1_2) resetLab1_2();
+
+      const width = container.clientWidth || 560;
+      const height = 440;
+      const two = new Two({ width, height, autostart: true }).appendTo(container);
+
+      // 전체 배경
+      const bg = two.makeRoundedRectangle(width / 2, height / 2, width - 8, height - 8, 12);
+      bg.fill = '#f8fafc';
+      bg.stroke = '#cbd5e1';
+      bg.linewidth = 1;
+
+      // 은은한 모눈 그리드
+      for (let x = 30; x < width - 20; x += 30) {
+        const line = two.makeLine(x, 40, x, 360);
+        line.stroke = '#f1f5f9';
+        line.linewidth = 1;
+      }
+      for (let y = 50; y <= 350; y += 30) {
+        const line = two.makeLine(20, y, width - 20, y);
+        line.stroke = '#f1f5f9';
+        line.linewidth = 1;
+      }
+
+      const cur = state.lab1_2.activeTab;
+
+      if (cur === 'mode1') {
+        drawLab1_2Mode1(two, width, height);
+      } else if (cur === 'mode2') {
+        drawLab1_2Mode2(two, width, height);
+      } else {
+        drawLab1_2Mode3(two, width, height);
+      }
+
+      // 하단 안전 안내 배너 (H=440, Y=396, H=46, 0-오버랩 완벽 준수)
+      drawStep1_2BottomGuide(two, width, height, cur);
+
+      two.update();
+      setupStep1_2PointerEvents(two, container);
+    }
+
+    function drawLab1_2Mode1(two, width, height) {
+      // 상단 타이틀
+      const tHeader = two.makeText('🔴 [교점] 선과 선 또는 선과 면이 만나서 생기는 점', width / 2, 22);
+      tHeader.size = 14;
+      tHeader.weight = 800;
+      tHeader.fill = '#1e293b';
+
+      const halfW = width / 2;
+
+      // --- 좌측 패널: 선과 선의 교점 ---
+      const divLine = two.makeLine(halfW, 50, halfW, 350);
+      divLine.stroke = '#cbd5e1';
+      divLine.linewidth = 1.5;
+      divLine.dashes = [5, 4];
+
+      const tSub1 = two.makeText('(1) 선과 선이 만나는 교점', halfW / 2, 54);
+      tSub1.size = 12;
+      tSub1.weight = 800;
+      tSub1.fill = '#4338ca';
+
+      const cX1 = halfW / 2;
+      const cY1 = 190;
+      const lineLen = 100;
+
+      // 고정 직선 l (가로선)
+      const lineL = two.makeLine(cX1 - lineLen, cY1, cX1 + lineLen, cY1);
+      lineL.stroke = '#2563eb';
+      lineL.linewidth = 3.5;
+
+      const tL = two.makeText('직선 l', cX1 + lineLen + 15, cY1);
+      tL.size = 11;
+      tL.weight = 700;
+      tL.fill = '#1d4ed8';
+
+      // 회전 직선 m
+      const rad = (state.lab1_2.line2Angle || 45) * Math.PI / 180;
+      const dx = Math.cos(rad) * lineLen;
+      const dy = Math.sin(rad) * lineLen;
+      const lineM = two.makeLine(cX1 - dx, cY1 - dy, cX1 + dx, cY1 + dy);
+      lineM.stroke = '#059669';
+      lineM.linewidth = 3.5;
+
+      const tM = two.makeText('직선 m', cX1 + dx + 15, cY1 + dy);
+      tM.size = 11;
+      tM.weight = 700;
+      tM.fill = '#047857';
+
+      // 교점 P
+      const pOuter = two.makeCircle(cX1, cY1, 13);
+      pOuter.fill = 'rgba(239, 68, 68, 0.25)';
+      pOuter.stroke = '#ef4444';
+      pOuter.linewidth = 2;
+
+      const pCenter = two.makeCircle(cX1, cY1, 7);
+      pCenter.fill = '#ef4444';
+      pCenter.stroke = '#b91c1c';
+      pCenter.linewidth = 1.5;
+
+      const tP = two.makeText('교점 P', cX1, cY1 - 20);
+      tP.size = 12;
+      tP.weight = 800;
+      tP.fill = '#b91c1c';
+
+      const info1 = two.makeText('직선 l과 m이 한 점 P에서 만남', halfW / 2, 310);
+      info1.size = 11;
+      info1.weight = 700;
+      info1.fill = '#475569';
+
+      // --- 우측 패널: 선과 면의 교점 ---
+      const rCenter = halfW + halfW / 2;
+      const tSub2 = two.makeText('(2) 선과 면이 만나는 교점', rCenter, 54);
+      tSub2.size = 12;
+      tSub2.weight = 800;
+      tSub2.fill = '#4338ca';
+
+      // 2.5D 평면 P (평행사변형)
+      const pW = 140;
+      const pH = 70;
+      const skew = 40;
+      const plX = rCenter;
+      const plY = 200;
+
+      const planeAnchors = [
+        new Two.Anchor(plX - pW / 2 + skew, plY - pH / 2),
+        new Two.Anchor(plX + pW / 2 + skew, plY - pH / 2),
+        new Two.Anchor(plX + pW / 2 - skew, plY + pH / 2),
+        new Two.Anchor(plX - pW / 2 - skew, plY + pH / 2)
+      ];
+      const planeShape = two.makePath(planeAnchors, true);
+      planeShape.fill = 'rgba(219, 234, 254, 0.7)';
+      planeShape.stroke = '#3b82f6';
+      planeShape.linewidth = 2;
+
+      const tPlane = two.makeText('평면 P', plX + pW / 2 + 10, plY + pH / 2);
+      tPlane.size = 11;
+      tPlane.weight = 700;
+      tPlane.fill = '#1d4ed8';
+
+      // 관통선: 위쪽 실선 -> 평면 내부 점선 -> 관통 후 실선
+      const qX = plX;
+      const qY = plY;
+      // 위쪽 선
+      const lineAbove = two.makeLine(qX - 35, qY - 90, qX, qY);
+      lineAbove.stroke = '#9333ea';
+      lineAbove.linewidth = 3.5;
+
+      // 아래쪽 선 (관통 통과)
+      const lineBelow = two.makeLine(qX, qY, qX + 35, qY + 90);
+      lineBelow.stroke = '#9333ea';
+      lineBelow.linewidth = 3.5;
+
+      const tLineK = two.makeText('직선 k', qX - 35, qY - 100);
+      tLineK.size = 11;
+      tLineK.weight = 700;
+      tLineK.fill = '#7e22ce';
+
+      // 관통 교점 Q
+      const qOuter = two.makeCircle(qX, qY, 13);
+      qOuter.fill = 'rgba(239, 68, 68, 0.25)';
+      qOuter.stroke = '#ef4444';
+      qOuter.linewidth = 2;
+
+      const qCenter = two.makeCircle(qX, qY, 7);
+      qCenter.fill = '#ef4444';
+      qCenter.stroke = '#b91c1c';
+      qCenter.linewidth = 1.5;
+
+      const tQ = two.makeText('교점 Q', qX + 30, qY - 12);
+      tQ.size = 12;
+      tQ.weight = 800;
+      tQ.fill = '#b91c1c';
+
+      const info2 = two.makeText('직선 k가 평면 P를 뚫고 지나며 교점 Q 발생', rCenter, 310);
+      info2.size = 11;
+      info2.weight = 700;
+      info2.fill = '#475569';
+    }
+
+    function drawLab1_2Mode2(two, width, height) {
+      const isCurve = state.lab1_2.curveMode;
+      const tHeader = two.makeText(
+        isCurve ? '➖ [교선] 곡면과 평면이 만나서 생기는 곡선 교선' : '➖ [교선] 면과 면이 만나서 생기는 직선 교선',
+        width / 2, 22
+      );
+      tHeader.size = 14;
+      tHeader.weight = 800;
+      tHeader.fill = '#1e293b';
+
+      const cX = width / 2;
+      const cY = 190;
+
+      if (!isCurve) {
+        // 평면과 평면의 교선 (직선)
+        // 수평 평면 A
+        const p1W = 260;
+        const p1H = 90;
+        const p1Skew = 60;
+        const planeAAnchors = [
+          new Two.Anchor(cX - p1W / 2 + p1Skew, cY - p1H / 2),
+          new Two.Anchor(cX + p1W / 2 + p1Skew, cY - p1H / 2),
+          new Two.Anchor(cX + p1W / 2 - p1Skew, cY + p1H / 2),
+          new Two.Anchor(cX - p1W / 2 - p1Skew, cY + p1H / 2)
+        ];
+        const planeA = two.makePath(planeAAnchors, true);
+        planeA.fill = 'rgba(219, 234, 254, 0.65)';
+        planeA.stroke = '#3b82f6';
+        planeA.linewidth = 2;
+
+        const tPlA = two.makeText('평면 P (수평면)', cX + p1W / 2 + 15, cY + p1H / 2);
+        tPlA.size = 11;
+        tPlA.weight = 700;
+        tPlA.fill = '#1d4ed8';
+
+        // 수직/경사 평면 B
+        const p2W = 200;
+        const p2H = 140;
+        const planeBAnchors = [
+          new Two.Anchor(cX - 30, cY - p2H / 2 - 30),
+          new Two.Anchor(cX + 70, cY - p2H / 2 - 30),
+          new Two.Anchor(cX + 20, cY + p2H / 2 + 30),
+          new Two.Anchor(cX - 80, cY + p2H / 2 + 30)
+        ];
+        const planeB = two.makePath(planeBAnchors, true);
+        planeB.fill = 'rgba(254, 215, 170, 0.55)';
+        planeB.stroke = '#f97316';
+        planeB.linewidth = 2;
+
+        const tPlB = two.makeText('평면 Q (경사면)', cX + 70, cY - p2H / 2 - 40);
+        tPlB.size = 11;
+        tPlB.weight = 700;
+        tPlB.fill = '#c2410c';
+
+        // 교선 (Intersection Line l)
+        const intLine = two.makeLine(cX - 120, cY, cX + 120, cY);
+        intLine.stroke = '#dc2626';
+        intLine.linewidth = 5;
+        intLine.cap = 'round';
+
+        const tInt = two.makeText('교선 l (직선)', cX, cY - 16);
+        tInt.size = 13;
+        tInt.weight = 800;
+        tInt.fill = '#b91c1c';
+
+        // 상태 안내 배지
+        const badgeBox = two.makeRoundedRectangle(width / 2, 54, 380, 26, 6);
+        badgeBox.fill = '#eff6ff';
+        badgeBox.stroke = '#93c5fd';
+        badgeBox.linewidth = 1;
+
+        const badgeText = two.makeText('✨ 평면 P와 평면 Q가 만나 하나의 \'직선 교선 l\'이 형성됩니다.', width / 2, 55);
+        badgeText.size = 11;
+        badgeText.weight = 700;
+        badgeText.fill = '#1d4ed8';
+      } else {
+        // 원기둥 옆면(곡면)과 평면의 교선 (곡선)
+        const rX = 70;
+        const rY = 24;
+        const topY = 120;
+        const botY = 260;
+
+        // 원기둥 밑면 (타원)
+        const botEllipse = two.makeEllipse(cX, botY, rX, rY);
+        botEllipse.fill = '#e2e8f0';
+        botEllipse.stroke = '#64748b';
+        botEllipse.linewidth = 2;
+
+        // 원기둥 옆면 몸체
+        const bodyRect = two.makeRectangle(cX, (topY + botY) / 2, rX * 2, botY - topY);
+        bodyRect.fill = 'rgba(226, 232, 240, 0.45)';
+        bodyRect.stroke = 'transparent';
+
+        // 양 모서리 선
+        const leftEdge = two.makeLine(cX - rX, topY, cX - rX, botY);
+        leftEdge.stroke = '#64748b'; leftEdge.linewidth = 2;
+        const rightEdge = two.makeLine(cX + rX, topY, cX + rX, botY);
+        rightEdge.stroke = '#64748b'; rightEdge.linewidth = 2;
+
+        // 원기둥 윗면 (타원)
+        const topEllipse = two.makeEllipse(cX, topY, rX, rY);
+        topEllipse.fill = '#cbd5e1';
+        topEllipse.stroke = '#64748b';
+        topEllipse.linewidth = 2;
+
+        const tCyl = two.makeText('원기둥 옆면 (곡면)', cX + rX + 45, (topY + botY) / 2);
+        tCyl.size = 11;
+        tCyl.weight = 700;
+        tCyl.fill = '#475569';
+
+        // 절단 평면 (경사)
+        const cutPlaneAnchors = [
+          new Two.Anchor(cX - 120, 160),
+          new Two.Anchor(cX + 120, 200),
+          new Two.Anchor(cX + 80, 240),
+          new Two.Anchor(cX - 160, 200)
+        ];
+        const cutPlane = two.makePath(cutPlaneAnchors, true);
+        cutPlane.fill = 'rgba(254, 215, 170, 0.4)';
+        cutPlane.stroke = '#f97316';
+        cutPlane.linewidth = 1.5;
+
+        // 곡선 교선 (타원형 절단면 교선)
+        const curveInt = two.makeEllipse(cX, 190, rX, rY * 1.3);
+        curveInt.fill = 'rgba(239, 68, 68, 0.2)';
+        curveInt.stroke = '#dc2626';
+        curveInt.linewidth = 4.5;
+        curveInt.rotation = 12 * Math.PI / 180;
+
+        const tCurve = two.makeText('곡선 교선 (타원)', cX, 150);
+        tCurve.size = 13;
+        tCurve.weight = 800;
+        tCurve.fill = '#b91c1c';
+
+        // 상태 안내 배지
+        const badgeBox = two.makeRoundedRectangle(width / 2, 54, 400, 26, 6);
+        badgeBox.fill = '#fef2f2';
+        badgeBox.stroke = '#fca5a5';
+        badgeBox.linewidth = 1;
+
+        const badgeText = two.makeText('🌊 원기둥의 곡면과 평면이 만나 \'곡선 교선(타원)\'이 형성됩니다.', width / 2, 55);
+        badgeText.size = 11;
+        badgeText.weight = 700;
+        badgeText.fill = '#b91c1c';
+      }
+    }
+
+    function drawLab1_2Mode3(two, width, height) {
+      // 상단 타이틀
+      const tHeader = two.makeText('🧊 [입체도형 탐구] 삼각기둥의 꼭짓점(교점)과 모서리(교선) 터치 카운터', width / 2, 22);
+      tHeader.size = 14;
+      tHeader.weight = 800;
+      tHeader.fill = '#1e293b';
+
+      const discV = state.lab1_2.discoveredVertices || [];
+      const discE = state.lab1_2.discoveredEdges || [];
+
+      // 삼각기둥 꼭짓점 좌표 (2.5D 투영)
+      const cX = width / 2;
+      const topY = 115;
+      const botY = 255;
+
+      // 윗면 삼각형 (A, B, C)
+      const vTop = [
+        { id: 0, label: 'A', x: cX, y: topY },
+        { id: 1, label: 'B', x: cX - 90, y: topY + 55 },
+        { id: 2, label: 'C', x: cX + 80, y: topY + 45 }
+      ];
+
+      // 밑면 삼각형 (D, E, F)
+      const vBot = [
+        { id: 3, label: 'D', x: cX, y: botY },
+        { id: 4, label: 'E', x: cX - 90, y: botY + 55 },
+        { id: 5, label: 'F', x: cX + 80, y: botY + 45 }
+      ];
+
+      const allVertices = [...vTop, ...vBot];
+
+      // 9개 모서리 (교선) 정의: [v1, v2, id, label, isDashed]
+      const edges = [
+        // 윗면 모서리 3개
+        { id: 0, from: 0, to: 1, name: 'AB', dashed: false },
+        { id: 1, from: 1, to: 2, name: 'BC', dashed: false },
+        { id: 2, from: 2, to: 0, name: 'CA', dashed: false },
+        // 밑면 모서리 3개
+        { id: 3, from: 3, to: 4, name: 'DE', dashed: true },
+        { id: 4, from: 4, to: 5, name: 'EF', dashed: false },
+        { id: 5, from: 5, to: 3, name: 'FD', dashed: true },
+        // 옆면 기둥 모서리 3개
+        { id: 6, from: 0, to: 3, name: 'AD', dashed: true },
+        { id: 7, from: 1, to: 4, name: 'BE', dashed: false },
+        { id: 8, from: 2, to: 5, name: 'CF', dashed: false }
+      ];
+
+      // 삼각기둥 옆면 채색 (반투명)
+      // 앞쪽 옆면 (BE - CF)
+      const frontFaceAnchors = [
+        new Two.Anchor(vTop[1].x, vTop[1].y),
+        new Two.Anchor(vTop[2].x, vTop[2].y),
+        new Two.Anchor(vBot[2].x, vBot[2].y),
+        new Two.Anchor(vBot[1].x, vBot[1].y)
+      ];
+      const frontFace = two.makePath(frontFaceAnchors, true);
+      frontFace.fill = 'rgba(199, 210, 254, 0.45)';
+      frontFace.stroke = 'transparent';
+
+      // 윗면 채색
+      const topFaceAnchors = [
+        new Two.Anchor(vTop[0].x, vTop[0].y),
+        new Two.Anchor(vTop[1].x, vTop[1].y),
+        new Two.Anchor(vTop[2].x, vTop[2].y)
+      ];
+      const topFace = two.makePath(topFaceAnchors, true);
+      topFace.fill = 'rgba(165, 180, 252, 0.55)';
+      topFace.stroke = 'transparent';
+
+      // 모서리(교선) 렌더링
+      edges.forEach(e => {
+        const p1 = allVertices[e.from];
+        const p2 = allVertices[e.to];
+        const isDiscovered = discE.includes(e.id);
+
+        const edgeLine = two.makeLine(p1.x, p1.y, p2.x, p2.y);
+        if (isDiscovered) {
+          edgeLine.stroke = '#2563eb'; // 파란색 하이라이트
+          edgeLine.linewidth = 4.5;
+        } else {
+          edgeLine.stroke = e.dashed ? '#94a3b8' : '#64748b';
+          edgeLine.linewidth = 2;
+          if (e.dashed) edgeLine.dashes = [5, 4];
+        }
+      });
+
+      // 꼭짓점(교점) 렌더링
+      allVertices.forEach(v => {
+        const isDiscovered = discV.includes(v.id);
+
+        if (isDiscovered) {
+          const glow = two.makeCircle(v.x, v.y, 11);
+          glow.fill = 'rgba(239, 68, 68, 0.25)';
+          glow.stroke = '#ef4444';
+          glow.linewidth = 2;
+        }
+
+        const ptCircle = two.makeCircle(v.x, v.y, isDiscovered ? 7 : 5);
+        ptCircle.fill = isDiscovered ? '#ef4444' : '#ffffff';
+        ptCircle.stroke = isDiscovered ? '#b91c1c' : '#475569';
+        ptCircle.linewidth = 2;
+
+        const lbl = two.makeText(v.label, v.x + (v.x < cX ? -14 : 14), v.y + (v.y < 200 ? -12 : 12));
+        lbl.size = 11;
+        lbl.weight = 800;
+        lbl.fill = isDiscovered ? '#b91c1c' : '#334155';
+      });
+
+      // 상태 안내 및 카운터 바 (Y=54)
+      const badgeBox = two.makeRoundedRectangle(width / 2, 54, 460, 28, 6);
+      const isComplete = (discV.length === 6 && discE.length === 9);
+      badgeBox.fill = isComplete ? '#dcfce7' : '#eff6ff';
+      badgeBox.stroke = isComplete ? '#86efac' : '#93c5fd';
+      badgeBox.linewidth = 1;
+
+      const badgeStr = isComplete
+        ? '🎉 삼각기둥의 모든 교점(6개)과 교선(9개)을 완벽히 발견했습니다!'
+        : '🔴 교점(꼭짓점) 발견: ' + discV.length + ' / 6개  |  ➖ 교선(모서리) 발견: ' + discE.length + ' / 9개';
+
+      const badgeText = two.makeText(badgeStr, width / 2, 55);
+      badgeText.size = 11;
+      badgeText.weight = 800;
+      badgeText.fill = isComplete ? '#15803d' : '#1d4ed8';
+
+      // 안내 힌트
+      const tipText = two.makeText('👆 도형의 꼭짓점 원을 터치하면 교점이, 변을 터치하면 교선이 카운트됩니다.', width / 2, 335);
+      tipText.size = 10;
+      tipText.weight = 700;
+      tipText.fill = '#64748b';
+    }
+
+    function drawStep1_2BottomGuide(two, width, height, mode) {
+      const bannerY = 396;
+      const bannerH = 46;
+
+      const box = two.makeRoundedRectangle(width / 2, bannerY, width - 32, bannerH, 8);
+      box.fill = '#f1f5f9';
+      box.stroke = '#cbd5e1';
+      box.linewidth = 1;
+
+      let guideTitle = '';
+      let guideBody = '';
+
+      if (mode === 'mode1') {
+        guideTitle = '💡 [탐구 가이드 (교과서 p.137)] 교점(交點, Intersection Point)';
+        guideBody = '선과 선 또는 선과 면이 만나서 생기는 점을 교점이라 하며, 입체도형에서는 꼭짓점이 됩니다.';
+      } else if (mode === 'mode2') {
+        guideTitle = '💡 [탐구 가이드 (교과서 p.137)] 교선(交線, Intersection Line)';
+        guideBody = '면과 면이 만나서 생기는 선을 교선이라 하며, 평면끼리는 직선, 곡면이 포함되면 곡선이 됩니다.';
+      } else {
+        guideTitle = '💡 [탐구 가이드 (교과서 p.137)] 삼각기둥의 교점과 교선';
+        guideBody = '삼각기둥에서 교점(꼭짓점)의 개수는 위 3개 + 아래 3개 = 6개, 교선(모서리)의 개수는 3 + 3 + 3 = 9개입니다.';
+      }
+
+      const t1 = two.makeText(guideTitle, width / 2, bannerY - 10);
+      t1.size = 11;
+      t1.weight = 800;
+      t1.fill = '#1e293b';
+
+      const t2 = two.makeText(guideBody, width / 2, bannerY + 10);
+      t2.size = 10;
+      t2.fill = '#475569';
+    }
+
+    function setupStep1_2PointerEvents(two, container) {
+      const svg = container.querySelector('svg');
+      if (!svg) return;
+
+      svg.style.touchAction = 'none';
+
+      svg.onclick = (e) => {
+        if (!state.lab1_2) return;
+        const cur = state.lab1_2.activeTab;
+        if (cur !== 'mode3') return;
+
+        const rect = svg.getBoundingClientRect();
+        const clientX = e.clientX - rect.left;
+        const clientY = e.clientY - rect.top;
+
+        const width = rect.width;
+        const cX = width / 2;
+        const topY = 115;
+        const botY = 255;
+
+        const allVertices = [
+          { id: 0, x: cX, y: topY },
+          { id: 1, x: cX - 90, y: topY + 55 },
+          { id: 2, x: cX + 80, y: topY + 45 },
+          { id: 3, x: cX, y: botY },
+          { id: 4, x: cX - 90, y: botY + 55 },
+          { id: 5, x: cX + 80, y: botY + 45 }
+        ];
+
+        // 1. 꼭짓점 클릭 검사 (반경 16px)
+        let clickedV = null;
+        allVertices.forEach(v => {
+          const dist = Math.hypot(clientX - v.x, clientY - v.y);
+          if (dist <= 18) clickedV = v.id;
+        });
+
+        if (clickedV !== null) {
+          if (!state.lab1_2.discoveredVertices.includes(clickedV)) {
+            state.lab1_2.discoveredVertices.push(clickedV);
+          } else {
+            // 토글 해제 가능
+            state.lab1_2.discoveredVertices = state.lab1_2.discoveredVertices.filter(id => id !== clickedV);
+          }
+          drawStep1_2Canvas();
+          return;
+        }
+
+        // 2. 모서리 클릭 검사 (선분과의 거리 <= 12px)
+        const edges = [
+          { id: 0, from: 0, to: 1 }, { id: 1, from: 1, to: 2 }, { id: 2, from: 2, to: 0 },
+          { id: 3, from: 3, to: 4 }, { id: 4, from: 4, to: 5 }, { id: 5, from: 5, to: 3 },
+          { id: 6, from: 0, to: 3 }, { id: 7, from: 1, to: 4 }, { id: 8, from: 2, to: 5 }
+        ];
+
+        function distToSegment(px, py, x1, y1, x2, y2) {
+          const l2 = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
+          if (l2 === 0) return Math.hypot(px - x1, py - y1);
+          let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+          t = Math.max(0, Math.min(1, t));
+          return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
+        }
+
+        let clickedE = null;
+        edges.forEach(ed => {
+          const p1 = allVertices[ed.from];
+          const p2 = allVertices[ed.to];
+          const d = distToSegment(clientX, clientY, p1.x, p1.y, p2.x, p2.y);
+          if (d <= 14) clickedE = ed.id;
+        });
+
+        if (clickedE !== null) {
+          if (!state.lab1_2.discoveredEdges.includes(clickedE)) {
+            state.lab1_2.discoveredEdges.push(clickedE);
+          } else {
+            state.lab1_2.discoveredEdges = state.lab1_2.discoveredEdges.filter(id => id !== clickedE);
+          }
+          drawStep1_2Canvas();
+        }
+      };
+    }
+
+    function gradeStep1_2() {
+      const a1 = (document.getElementById('ans1_2_1')?.value || '').trim();
+      const a2 = (document.getElementById('ans1_2_2')?.value || '').trim();
+      const a3a = (document.getElementById('ans1_2_3a')?.value || '').trim();
+      const a3b = (document.getElementById('ans1_2_3b')?.value || '').trim();
+
+      // 1단계: 교점 (또는 꼭짓점)
+      const isA1 = (a1 === '교점' || a1 === '꼭짓점');
+      // 2단계: 교선 (또는 모서리)
+      const isA2 = (a2 === '교선' || a2 === '모서리');
+      // 3단계: 교점 6개, 교선 9개
+      const isA3a = (a3a === '6' || a3a === '6개');
+      const isA3b = (a3b === '9' || a3b === '9개');
+      const isA3 = (isA3a && isA3b);
+
+      let score = 0;
+      if (isA1) score += 30;
+      if (isA2) score += 30;
+      if (isA3) score += 40;
+
+      const fb = document.getElementById('feedback-1-2');
+      if (!fb) return;
+      fb.style.display = 'block';
+
+      if (score === 100) {
+        if (!state.completedSubSteps.includes('1-2')) {
+          state.completedSubSteps.push('1-2');
+        }
+        // 다음 서브스텝 [1-3] 해금
+        window.unlockSubStep('1-3');
+
+        if (window.LMSIntegration && window.LMSIntegration.saveStudentProgress) {
+          window.LMSIntegration.saveStudentProgress('1-2', {
+            score: 100,
+            answers: { a1, a2, a3a, a3b },
+            completed: true
+          }, 'u5');
+        }
+
+        if (state.lab1_2) state.lab1_2.isPassed = true;
+        populateSubstepDropdown();
+
+        fb.innerHTML = 
+          '<div class="card verified-answer-card" style="background:#f0fdf4; border:2px solid #059669; border-radius:12px; padding:14px;">' +
+            '<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">' +
+              '<span style="font-size:1.3rem;">🎉</span>' +
+              '<span style="font-size:1.02rem; font-weight:800; color:#15803d;">100점 만점! 교점과 교선의 개념을 완벽하게 마스터했습니다!</span>' +
+            '</div>' +
+            '<p style="font-size:0.86rem; color:#166534; line-height:1.55; margin-bottom:8px;">' +
+              '<b>교과서 공식 개념 정리 (p.137):</b><br>' +
+              '• <b>1단계:</b> 선과 선 또는 선과 면이 만나서 생기는 점은 <b>교점</b>입니다. 입체도형에서는 꼭짓점이 교점이 됩니다.<br>' +
+              '• <b>2단계:</b> 면과 면이 만나서 생기는 선은 <b>교선</b>입니다. 교선은 직선일 수도 있고 곡선일 수도 있으며, 다면체에서는 모서리가 교선이 됩니다.<br>' +
+              '• <b>3단계:</b> 삼각기둥에서 교점(꼭짓점)의 개수는 위 3개 + 아래 3개 = <b>6개</b>이고, 교선(모서리)의 개수는 위 3개 + 아래 3개 + 기둥 3개 = <b>9개</b>입니다.' +
+            '</p>' +
+            '<div style="font-size:0.85rem; color:#15803d; font-weight:800; padding:8px 10px; background:#dcfce7; border-radius:6px;">' +
+              '🚀 다음 활동 해금! <b>[1-3. 문제 1: 오각기둥의 교점과 교선 (교과서 p.137)]</b>이 전격 해금되었습니다!' +
+            '</div>' +
+          '</div>';
+
+        if (window.renderMathInElement) {
+          renderMathInElement(fb, {
+            delimiters: [
+              { left: '$$', right: '$$', display: true },
+              { left: '$', right: '$', display: false }
+            ]
+          });
+        }
+      } else {
+        fb.innerHTML = 
+          '<div style="background:#fef2f2; border:2px solid #dc2626; border-radius:12px; padding:14px;">' +
+            '<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">' +
+              '<span style="font-size:1.3rem;">⚠️</span>' +
+              '<span style="font-size:1.02rem; font-weight:800; color:#b91c1c;">현재 평가 점수: ' + score + '점 / 100점</span>' +
+            '</div>' +
+            '<p style="font-size:0.85rem; color:#991b1b; line-height:1.45; margin:0;">' +
+              '좌측 캔버스 랩(1. 교점, 2. 교선, 3. 삼각기둥 카운터)을 직접 조작해 보며 교점과 교선의 정의 및 개수를 다시 확인해 보세요!' +
+            '</p>' +
+          '</div>';
+      }
+    }
+
+    function passStep1_2() {
+      const a1 = document.getElementById('ans1_2_1');
+      const a2 = document.getElementById('ans1_2_2');
+      const a3a = document.getElementById('ans1_2_3a');
+      const a3b = document.getElementById('ans1_2_3b');
+      if (a1) a1.value = '교점';
+      if (a2) a2.value = '교선';
+      if (a3a) a3a.value = '6';
+      if (a3b) a3b.value = '9';
+      gradeStep1_2();
+    }
+
 
 
     window.addEventListener('load', () => {
