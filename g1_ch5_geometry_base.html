@@ -952,6 +952,12 @@
         substepLabel: '0-4. 되짚어보기 3: 합동인 도형 (p.136)',
         missionText: '<b>[0. 준비학습: 0-4. 되짚어보기 3] 합동인 도형 (교과서 p.136)</b><br>• 초등학교에서 배운 합동의 정의와 대응점, 대응변, 대응각의 성질을 복습하고, 60fps 드래그 포개기 랩을 통해 도형의 합동을 직관적으로 체득합니다.<br>• <b>합동의 핵심 성질:</b><br>&nbsp;&nbsp;1. <b>합동:</b> 모양과 크기가 같아서 포개었을 때 완전히 겹쳐지는 두 도형을 서로 합동이라고 합니다.<br>&nbsp;&nbsp;2. <b>대응변과 대응각:</b> 서로 합동인 두 도형에서 각각의 대응변의 길이는 서로 같고, 각각의 대응각의 크기는 서로 같습니다.<br>• 좌측 캔버스에서 파란색 사각형을 드래그하여 보라색 사각형 위에 완전히 포개어 보세요!',
         drawer: 'drawStep0_4Canvas'
+      },
+      '1-1': {
+        code: '1-1', tab: 1,
+        substepLabel: '1-1. 생각열기: 점과 선의 자취 (p.136)',
+        missionText: '<b>[5.1 점, 선, 면: 1-1. 생각열기: 점과 선의 자취] (교과서 p.136)</b><br>• 밤하늘 불꽃놀이의 불꽃(점)이 그리는 궤적과 붓(선)이 종이를 쓸고 지나갈 때 나타나는 도형의 형성을 탐구합니다.<br>• <b>기본 도형의 형성 원리:</b><br>&nbsp;&nbsp;1. <b>점의 자취:</b> 점이 연속하여 움직인 자리는 <b>선</b>이 됩니다.<br>&nbsp;&nbsp;2. <b>선의 자취:</b> 선이 연속하여 움직인 자리는 <b>면</b>이 됩니다.<br>&nbsp;&nbsp;3. <b>도형의 3대 기본 요소:</b> 모든 평면도형과 입체도형은 <b>점, 선, 면</b>으로 이루어져 있습니다.<br>• 좌측 캔버스 랩에서 점을 드래그하거나 애니메이션 버튼을 눌러 점과 선의 역동적인 자취를 직접 확인해 보세요!',
+        drawer: 'drawStep1_1Canvas'
       }
     };
 
@@ -1105,6 +1111,10 @@
         renderToolbar0_4();
         renderSubstep0_4Form();
         drawStep0_4Canvas();
+      } else if (code === '1-1') {
+        renderToolbar1_1();
+        renderSubstep1_1Form();
+        drawStep1_1Canvas();
       } else {
         renderSubStepForm(code);
         const toolbar = document.getElementById('plane-toolbar');
@@ -4194,6 +4204,773 @@ function passStep0_2() {
       if (a3) a3.value = '합동';
       gradeStep0_4();
     }
+
+    // ==========================================
+    // Substep [1-1] 5.1 점, 선, 면: 생각열기: 점과 선의 자취 (교과서 p.136)
+    // ==========================================
+    function resetLab1_1() {
+      if (state.lab1_1 && state.lab1_1.animTimer) {
+        cancelAnimationFrame(state.lab1_1.animTimer);
+      }
+      state.lab1_1 = {
+        activeTab: 'mode1', // 'mode1' (점 -> 선), 'mode2' (선 -> 면), 'mode3' (면 -> 입체)
+        // Mode 1: 점의 자취
+        pointP: { x: 120, y: 200 },
+        pointTrail: [{ x: 120, y: 200 }],
+        isDraggingP: false,
+        isAnimRunningP: false,
+        // Mode 2: 선의 자취
+        lineY: 100,
+        sweepDist: 0,
+        isDraggingLine: false,
+        isAnimRunningLine: false,
+        // Mode 3: 면의 자취 (2.5D 입체 확장)
+        extrudeHeight: 0,
+        isDraggingExtrude: false,
+        isAnimRunningExtrude: false,
+        isPassed: false,
+        animTimer: null
+      };
+    }
+
+    function switchLab1_1Tab(tabName) {
+      if (!state.lab1_1) resetLab1_1();
+      if (state.lab1_1.animTimer) {
+        cancelAnimationFrame(state.lab1_1.animTimer);
+        state.lab1_1.animTimer = null;
+      }
+      state.lab1_1.isAnimRunningP = false;
+      state.lab1_1.isAnimRunningLine = false;
+      state.lab1_1.isAnimRunningExtrude = false;
+      state.lab1_1.activeTab = tabName;
+      renderToolbar1_1();
+      drawStep1_1Canvas();
+    }
+
+    function renderToolbar1_1() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      if (!state.lab1_1) resetLab1_1();
+      const cur = state.lab1_1.activeTab;
+
+      let subButtons = '';
+      if (cur === 'mode1') {
+        subButtons = '<button class="btn btn-outline" style="font-size:0.78rem; padding:4px 10px; background:#eff6ff; color:#1d4ed8; border-color:#93c5fd; font-weight:700;" onclick="runLab1_1PointAnim()">▶ 불꽃 자취 발사</button>' +
+                     '<button class="btn btn-outline" style="font-size:0.78rem; padding:4px 10px; color:#475569;" onclick="clearLab1_1Trail()">🔄 궤적 지우기</button>';
+      } else if (cur === 'mode2') {
+        subButtons = '<button class="btn btn-outline" style="font-size:0.78rem; padding:4px 10px; background:#eff6ff; color:#1d4ed8; border-color:#93c5fd; font-weight:700;" onclick="runLab1_1LineSweepAnim()">▶ 롤러 스위핑</button>' +
+                     '<button class="btn btn-outline" style="font-size:0.78rem; padding:4px 10px; color:#475569;" onclick="resetLab1_1Line()">🔄 초기화</button>';
+      } else {
+        subButtons = '<button class="btn btn-outline" style="font-size:0.78rem; padding:4px 10px; background:#eff6ff; color:#1d4ed8; border-color:#93c5fd; font-weight:700;" onclick="runLab1_1ExtrudeAnim()">▶ 입체 쌓기</button>' +
+                     '<button class="btn btn-outline" style="font-size:0.78rem; padding:4px 10px; color:#475569;" onclick="resetLab1_1Extrude()">🔄 초기화</button>';
+      }
+
+      tb.innerHTML = '<div style="display:flex; align-items:center; gap:8px; width:100%; justify-content:space-between; flex-wrap:wrap;">' +
+        '<div style="display:flex; gap:6px;">' +
+          '<button class="btn ' + (cur === 'mode1' ? 'btn-primary' : 'btn-outline') + '" style="font-size:0.8rem; padding:5px 12px; font-weight:700;" onclick="switchLab1_1Tab(\'mode1\')">✍️ 1. 점의 이동 (선)</button>' +
+          '<button class="btn ' + (cur === 'mode2' ? 'btn-primary' : 'btn-outline') + '" style="font-size:0.8rem; padding:5px 12px; font-weight:700;" onclick="switchLab1_1Tab(\'mode2\')">📜 2. 선의 이동 (면)</button>' +
+          '<button class="btn ' + (cur === 'mode3' ? 'btn-primary' : 'btn-outline') + '" style="font-size:0.8rem; padding:5px 12px; font-weight:700;" onclick="switchLab1_1Tab(\'mode3\')">🧊 3. 면의 이동 (입체)</button>' +
+        '</div>' +
+        '<div style="display:flex; gap:6px;">' + subButtons + '</div>' +
+      '</div>';
+    }
+
+    function clearLab1_1Trail() {
+      if (!state.lab1_1) resetLab1_1();
+      state.lab1_1.pointTrail = [{ x: state.lab1_1.pointP.x, y: state.lab1_1.pointP.y }];
+      drawStep1_1Canvas();
+    }
+
+    function runLab1_1PointAnim() {
+      if (!state.lab1_1) resetLab1_1();
+      if (state.lab1_1.isAnimRunningP) return;
+      state.lab1_1.isAnimRunningP = true;
+      state.lab1_1.pointTrail = [];
+      const startX = 80;
+      const endX = 480;
+      let t = 0;
+
+      function step() {
+        t += 0.015;
+        if (t > 1) t = 1;
+        const curX = startX + (endX - startX) * t;
+        const curY = 200 - Math.sin(t * Math.PI) * 110 + Math.sin(t * Math.PI * 3) * 20;
+        state.lab1_1.pointP = { x: curX, y: curY };
+        state.lab1_1.pointTrail.push({ x: curX, y: curY });
+        drawStep1_1Canvas();
+
+        if (t < 1) {
+          state.lab1_1.animTimer = requestAnimationFrame(step);
+        } else {
+          state.lab1_1.isAnimRunningP = false;
+          state.lab1_1.animTimer = null;
+        }
+      }
+      state.lab1_1.animTimer = requestAnimationFrame(step);
+    }
+
+    function resetLab1_1Line() {
+      if (!state.lab1_1) resetLab1_1();
+      state.lab1_1.sweepDist = 0;
+      drawStep1_1Canvas();
+    }
+
+    function runLab1_1LineSweepAnim() {
+      if (!state.lab1_1) resetLab1_1();
+      if (state.lab1_1.isAnimRunningLine) return;
+      state.lab1_1.isAnimRunningLine = true;
+      let d = 0;
+
+      function step() {
+        d += 3.5;
+        if (d > 180) d = 180;
+        state.lab1_1.sweepDist = d;
+        drawStep1_1Canvas();
+
+        if (d < 180) {
+          state.lab1_1.animTimer = requestAnimationFrame(step);
+        } else {
+          state.lab1_1.isAnimRunningLine = false;
+          state.lab1_1.animTimer = null;
+        }
+      }
+      state.lab1_1.animTimer = requestAnimationFrame(step);
+    }
+
+    function resetLab1_1Extrude() {
+      if (!state.lab1_1) resetLab1_1();
+      state.lab1_1.extrudeHeight = 0;
+      drawStep1_1Canvas();
+    }
+
+    function runLab1_1ExtrudeAnim() {
+      if (!state.lab1_1) resetLab1_1();
+      if (state.lab1_1.isAnimRunningExtrude) return;
+      state.lab1_1.isAnimRunningExtrude = true;
+      let h = 0;
+
+      function step() {
+        h += 2.5;
+        if (h > 140) h = 140;
+        state.lab1_1.extrudeHeight = h;
+        drawStep1_1Canvas();
+
+        if (h < 140) {
+          state.lab1_1.animTimer = requestAnimationFrame(step);
+        } else {
+          state.lab1_1.isAnimRunningExtrude = false;
+          state.lab1_1.animTimer = null;
+        }
+      }
+      state.lab1_1.animTimer = requestAnimationFrame(step);
+    }
+
+    function renderSubstep1_1Form() {
+      const fb = document.getElementById('form-box');
+      if (!fb) return;
+
+      const teacherBtnHtml = state.isTeacherLoggedIn ? 
+        '<div style="margin-top:10px; text-align:right;"><button class="btn btn-outline" style="font-size:0.78rem; padding:4px 8px; color:#64748b;" onclick="passStep1_1()">🔑 교사 정답 자동완성</button></div>' : '';
+
+      fb.innerHTML = 
+        '<div class="card mission-card" style="border-left: 4px solid var(--primary-color); border-radius:12px; padding:14px; background:#ffffff;">' +
+          '<h3 style="color:#4f46e5; font-size:1.02rem; font-weight:800; margin-bottom:8px;">🎯 오늘의 수학 탐구 미션</h3>' +
+          '<p style="font-size:0.86rem; color:#334155; line-height:1.55; margin:0;">' +
+            '<b>[5.1 점, 선, 면: 1-1. 생각열기: 점과 선의 자취] (교과서 p.136)</b><br>' +
+            '• 밤하늘에 쏘아 올린 불꽃놀이의 불꽃(점)이 그리는 궤적과, 페인트 롤러(선)가 종이를 쓸고 지나갈 때 나타나는 도형의 형성을 탐구합니다.<br>' +
+            '• <b>기본 도형의 형성 원리:</b><br>' +
+            '&nbsp;&nbsp;1. <b>점의 자취:</b> 점이 연속하여 움직인 자리는 <b>선</b>이 됩니다.<br>' +
+            '&nbsp;&nbsp;2. <b>선의 자취:</b> 선이 연속하여 움직인 자리는 <b>면</b>이 됩니다.<br>' +
+            '&nbsp;&nbsp;3. <b>도형의 3대 기본 요소:</b> 모든 평면도형과 입체도형은 <b>점, 선, 면</b>으로 이루어져 있습니다.<br>' +
+            '• 좌측 캔버스에서 점을 드래그하거나 애니메이션 버튼을 눌러 점과 선의 역동적인 자취를 직접 확인해 보세요!' +
+          '</p>' +
+        '</div>' +
+        '<div class="card" style="border-radius:12px; padding:16px; background:#ffffff;">' +
+          '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid #f1f5f9;">' +
+            '<span style="font-size:0.8rem; font-weight:700; color:#4338ca; background:#e0e7ff; padding:3px 8px; border-radius:6px;">교과서 p.136 [5.1 점, 선, 면]</span>' +
+            '<span style="font-size:0.82rem; font-weight:800; color:#64748b;">생각열기: 점과 선의 자취 (100점 만점)</span>' +
+          '</div>' +
+          '<h4 style="font-size:0.96rem; font-weight:800; color:#1e293b; margin-bottom:12px; line-height:1.45;">' +
+            '🎆 불꽃놀이와 페인트 롤러의 움직임을 관찰하고, 도형을 이루는 기본 요소의 관계를 추론해 보세요.' +
+          '</h4>' +
+          '<!-- 1단계 -->' +
+          '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+              '<span style="font-size:0.88rem; font-weight:800; color:#1e293b;">1단계. 점이 움직인 자리</span>' +
+              '<span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">배점 30%</span>' +
+            '</div>' +
+            '<p style="font-size:0.84rem; color:#475569; margin:0 0 8px 0; line-height:1.45;">' +
+              '밤하늘 불꽃놀이의 불꽃(하나의 점)이 연속하여 움직인 자리는 무엇이 되는지 쓰시오.' +
+            '</p>' +
+            '<div style="display:flex; align-items:center; gap:8px;">' +
+              '<span style="font-size:0.88rem; font-weight:800; color:#334155;">[점이 움직인 자리] =</span>' +
+              '<input type="text" id="ans1_1_1" class="proof-input-text" placeholder="도형 요소 입력" style="background:#fef08a; border:2px solid #eab308; border-radius:8px; color:#854d0e; font-weight:800; width:130px; padding:6px 10px; text-align:center;">' +
+            '</div>' +
+          '</div>' +
+          '<!-- 2단계 -->' +
+          '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+              '<span style="font-size:0.88rem; font-weight:800; color:#1e293b;">2단계. 선이 움직인 자리</span>' +
+              '<span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">배점 30%</span>' +
+            '</div>' +
+            '<p style="font-size:0.84rem; color:#475569; margin:0 0 8px 0; line-height:1.45;">' +
+              '페인트 롤러의 모서리(하나의 선)가 종이 위를 지나가며 연속하여 움직인 자리는 무엇이 되는지 쓰시오.' +
+            '</p>' +
+            '<div style="display:flex; align-items:center; gap:8px;">' +
+              '<span style="font-size:0.88rem; font-weight:800; color:#334155;">[선이 움직인 자리] =</span>' +
+              '<input type="text" id="ans1_1_2" class="proof-input-text" placeholder="도형 요소 입력" style="background:#fef08a; border:2px solid #eab308; border-radius:8px; color:#854d0e; font-weight:800; width:130px; padding:6px 10px; text-align:center;">' +
+            '</div>' +
+          '</div>' +
+          '<!-- 3단계 -->' +
+          '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:14px;">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+              '<span style="font-size:0.88rem; font-weight:800; color:#1e293b;">3단계. 도형의 3대 기본 요소</span>' +
+              '<span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">배점 40%</span>' +
+            '</div>' +
+            '<p style="font-size:0.84rem; color:#475569; margin:0 0 8px 0; line-height:1.45;">' +
+              '모든 평면도형과 입체도형을 이루는 가장 기본이 되는 <b>3가지 기본 요소</b>를 쉼표(,)로 구분하여 모두 쓰시오.' +
+            '</p>' +
+            '<div style="display:flex; align-items:center; gap:8px;">' +
+              '<span style="font-size:0.88rem; font-weight:800; color:#334155;">[도형의 3대 요소] =</span>' +
+              '<input type="text" id="ans1_1_3" class="proof-input-text" placeholder="3가지 요소 입력" style="background:#fef08a; border:2px solid #eab308; border-radius:8px; color:#854d0e; font-weight:800; width:150px; padding:6px 10px; text-align:center;">' +
+            '</div>' +
+          '</div>' +
+          '<button class="btn" style="background:linear-gradient(135deg, #4f46e5, #4338ca); width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:8px; color:#fff;" onclick="gradeStep1_1()">' +
+            '[생각열기: 점과 선의 자취] 확인 및 채점' +
+          '</button>' +
+          teacherBtnHtml +
+          '<div id="feedback-1-1" style="margin-top:14px; display:none;"></div>' +
+        '</div>';
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fb, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false }
+          ]
+        });
+      }
+    }
+
+    function drawStep1_1Canvas() {
+      const container = document.getElementById('two-container');
+      if (!container) return;
+      container.innerHTML = '';
+      if (!state.lab1_1) resetLab1_1();
+
+      const width = container.clientWidth || 560;
+      const height = 440;
+      const two = new Two({ width, height, autostart: true }).appendTo(container);
+
+      // 전체 배경
+      const bg = two.makeRoundedRectangle(width / 2, height / 2, width - 8, height - 8, 12);
+      bg.fill = '#f8fafc';
+      bg.stroke = '#cbd5e1';
+      bg.linewidth = 1;
+
+      // 은은한 모눈 그리드
+      const gridGroup = two.makeGroup();
+      for (let x = 30; x < width - 20; x += 30) {
+        const line = two.makeLine(x, 40, x, 360);
+        line.stroke = '#e2e8f0';
+        line.linewidth = 1;
+        gridGroup.add(line);
+      }
+      for (let y = 50; y <= 350; y += 30) {
+        const line = two.makeLine(20, y, width - 20, y);
+        line.stroke = '#e2e8f0';
+        line.linewidth = 1;
+        gridGroup.add(line);
+      }
+
+      const cur = state.lab1_1.activeTab;
+
+      if (cur === 'mode1') {
+        drawLab1_1Mode1(two, width, height);
+      } else if (cur === 'mode2') {
+        drawLab1_1Mode2(two, width, height);
+      } else {
+        drawLab1_1Mode3(two, width, height);
+      }
+
+      // 하단 안전 안내 배너 (H=440, Y=396, H=46, 0-오버랩 완벽 준수)
+      drawStep1_1BottomGuide(two, width, height, cur);
+
+      two.update();
+      setupStep1_1PointerEvents(two, container);
+    }
+
+    function drawLab1_1Mode1(two, width, height) {
+      // 상단 타이틀
+      const tHeader = two.makeText('✍️ [점의 자취] 점이 연속하여 움직이면 선(Line)이 됩니다', width / 2, 22);
+      tHeader.size = 14;
+      tHeader.weight = 800;
+      tHeader.fill = '#1e293b';
+
+      const p = state.lab1_1.pointP;
+      const trail = state.lab1_1.pointTrail || [];
+
+      // 궤적 (Trail) 렌더링
+      if (trail.length > 1) {
+        for (let i = 0; i < trail.length - 1; i++) {
+          const p1 = trail[i];
+          const p2 = trail[i + 1];
+          const segment = two.makeLine(p1.x, p1.y, p2.x, p2.y);
+          segment.stroke = '#4f46e5';
+          segment.linewidth = 5;
+          segment.cap = 'round';
+        }
+      }
+
+      // 궤적 위의 작은 점들 (스파크 효과)
+      if (trail.length > 5) {
+        const stepSize = Math.max(1, Math.floor(trail.length / 25));
+        for (let i = 0; i < trail.length; i += stepSize) {
+          const pt = trail[i];
+          const spark = two.makeCircle(pt.x, pt.y, 2.5);
+          spark.fill = '#818cf8';
+          spark.noStroke();
+        }
+      }
+
+      // 점 P
+      const pOuter = two.makeCircle(p.x, p.y, 14);
+      pOuter.fill = 'rgba(239, 68, 68, 0.2)';
+      pOuter.stroke = '#ef4444';
+      pOuter.linewidth = 1.5;
+
+      const pCircle = two.makeCircle(p.x, p.y, 9);
+      pCircle.fill = '#ef4444';
+      pCircle.stroke = '#b91c1c';
+      pCircle.linewidth = 2;
+
+      const pLabel = two.makeText('P', p.x, p.y - 20);
+      pLabel.size = 13;
+      pLabel.weight = 800;
+      pLabel.fill = '#b91c1c';
+
+      // 상태 안내 배지 (Y=54)
+      const badgeBox = two.makeRoundedRectangle(width / 2, 54, 380, 26, 6);
+      badgeBox.fill = '#eff6ff';
+      badgeBox.stroke = '#93c5fd';
+      badgeBox.linewidth = 1;
+
+      const badgeStr = trail.length <= 1 
+        ? '🔴 빨간 점 P를 드래그하거나 상단의 [▶ 불꽃 자취 발사]를 눌러보세요!'
+        : '✨ 점 P가 이동한 자취: ' + trail.length + '개의 점이 모여 하나의 \'선(Line)\' 형성!';
+      const badgeText = two.makeText(badgeStr, width / 2, 55);
+      badgeText.size = 11;
+      badgeText.weight = 700;
+      badgeText.fill = '#1d4ed8';
+    }
+
+    function drawLab1_1Mode2(two, width, height) {
+      // 상단 타이틀
+      const tHeader = two.makeText('📜 [선의 자취] 선이 연속하여 움직이면 면(Surface)이 됩니다', width / 2, 22);
+      tHeader.size = 14;
+      tHeader.weight = 800;
+      tHeader.fill = '#1e293b';
+
+      const startY = state.lab1_1.lineY || 100;
+      const sweep = state.lab1_1.sweepDist || 0;
+      const leftX = width * 0.22;
+      const rightX = width * 0.78;
+      const curY = startY + sweep;
+
+      // 쓸고 지나간 면 (면적)
+      if (sweep > 0) {
+        const surface = two.makeRectangle((leftX + rightX) / 2, startY + sweep / 2, rightX - leftX, sweep);
+        surface.fill = 'rgba(99, 102, 241, 0.22)';
+        surface.stroke = '#6366f1';
+        surface.linewidth = 2;
+
+        // 면 내부 빗금 패턴 효과
+        for (let y = startY + 15; y < curY; y += 18) {
+          const hatch = two.makeLine(leftX + 4, y, rightX - 4, y);
+          hatch.stroke = 'rgba(99, 102, 241, 0.35)';
+          hatch.linewidth = 1;
+        }
+
+        // 면 라벨
+        const surfLabel = two.makeText('면 (Surface)', (leftX + rightX) / 2, startY + sweep / 2);
+        surfLabel.size = 14;
+        surfLabel.weight = 800;
+        surfLabel.fill = '#4338ca';
+      }
+
+      // 시작 기준선 (점선)
+      const baseLine = two.makeLine(leftX, startY, rightX, startY);
+      baseLine.stroke = '#94a3b8';
+      baseLine.linewidth = 2;
+      baseLine.dashes = [6, 4];
+
+      const tStart = two.makeText('시작 선분', leftX - 35, startY);
+      tStart.size = 10;
+      tStart.weight = 700;
+      tStart.fill = '#64748b';
+
+      // 현재 이동 중인 선분 (굵은 롤러/바)
+      const curLine = two.makeLine(leftX, curY, rightX, curY);
+      curLine.stroke = '#2563eb';
+      curLine.linewidth = 7;
+      curLine.cap = 'round';
+
+      // 롤러 핸들 / 꼭짓점
+      const endA = two.makeCircle(leftX, curY, 7);
+      endA.fill = '#3b82f6'; endA.stroke = '#1d4ed8'; endA.linewidth = 2;
+      const endB = two.makeCircle(rightX, curY, 7);
+      endB.fill = '#3b82f6'; endB.stroke = '#1d4ed8'; endB.linewidth = 2;
+
+      const tA = two.makeText('A', leftX - 14, curY);
+      tA.size = 12; tA.weight = 800; tA.fill = '#1d4ed8';
+      const tB = two.makeText('B', rightX + 14, curY);
+      tB.size = 12; tB.weight = 800; tB.fill = '#1d4ed8';
+
+      // 드래그 안내 화살표
+      const centerLineX = (leftX + rightX) / 2;
+      const dragBadge = two.makeRoundedRectangle(centerLineX, curY + 22, 110, 20, 6);
+      dragBadge.fill = '#1e293b';
+      dragBadge.noStroke();
+
+      const dragText = two.makeText('↕ 선분 드래그', centerLineX, curY + 23);
+      dragText.size = 10;
+      dragText.weight = 700;
+      dragText.fill = '#ffffff';
+
+      // 상태 안내 배지 (Y=54)
+      const badgeBox = two.makeRoundedRectangle(width / 2, 54, 400, 26, 6);
+      badgeBox.fill = '#eff6ff';
+      badgeBox.stroke = '#93c5fd';
+      badgeBox.linewidth = 1;
+
+      const badgeStr = sweep <= 0
+        ? '↕ 파란색 선분을 아래로 드래그하거나 [▶ 롤러 스위핑]을 눌러보세요!'
+        : '✨ 선분 AB가 이동한 거리: ' + Math.round(sweep) + 'px → 2차원 \'면(Surface)\' 형성!';
+      const badgeText = two.makeText(badgeStr, width / 2, 55);
+      badgeText.size = 11;
+      badgeText.weight = 700;
+      badgeText.fill = '#1d4ed8';
+    }
+
+    function drawLab1_1Mode3(two, width, height) {
+      // 상단 타이틀
+      const tHeader = two.makeText('🧊 [면의 자취] 면이 연속하여 움직이면 입체(Solid)가 됩니다', width / 2, 22);
+      tHeader.size = 14;
+      tHeader.weight = 800;
+      tHeader.fill = '#1e293b';
+
+      const h = state.lab1_1.extrudeHeight || 0;
+      const baseCenterX = width / 2;
+      const baseCenterY = 280;
+
+      // 2.5D 아이소메트릭 사각기둥 꼭짓점 계산
+      const w = 180;
+      const dX = 70;
+      const dY = 40;
+
+      const B1 = { x: baseCenterX - w / 2, y: baseCenterY };
+      const B2 = { x: baseCenterX + w / 2, y: baseCenterY };
+      const B3 = { x: baseCenterX + w / 2 + dX, y: baseCenterY - dY };
+      const B4 = { x: baseCenterX - w / 2 + dX, y: baseCenterY - dY };
+
+      const T1 = { x: B1.x, y: B1.y - h };
+      const T2 = { x: B2.x, y: B2.y - h };
+      const T3 = { x: B3.x, y: B3.y - h };
+      const T4 = { x: B4.x, y: B4.y - h };
+
+      // 밑면 그리기 (h=0일 때 평면)
+      const bottomAnchors = [
+        new Two.Anchor(B1.x, B1.y),
+        new Two.Anchor(B2.x, B2.y),
+        new Two.Anchor(B3.x, B3.y),
+        new Two.Anchor(B4.x, B4.y)
+      ];
+      const bottomFace = two.makePath(bottomAnchors, true);
+      bottomFace.fill = h === 0 ? 'rgba(168, 85, 247, 0.45)' : 'rgba(148, 163, 184, 0.2)';
+      bottomFace.stroke = '#9333ea';
+      bottomFace.linewidth = 2;
+
+      if (h > 0) {
+        // 옆면 1: 앞면 (B1 - B2 - T2 - T1)
+        const frontAnchors = [
+          new Two.Anchor(B1.x, B1.y),
+          new Two.Anchor(B2.x, B2.y),
+          new Two.Anchor(T2.x, T2.y),
+          new Two.Anchor(T1.x, T1.y)
+        ];
+        const frontFace = two.makePath(frontAnchors, true);
+        frontFace.fill = 'rgba(147, 51, 234, 0.35)';
+        frontFace.stroke = '#7e22ce';
+        frontFace.linewidth = 2;
+
+        // 옆면 2: 우측면 (B2 - B3 - T3 - T2)
+        const rightAnchors = [
+          new Two.Anchor(B2.x, B2.y),
+          new Two.Anchor(B3.x, B3.y),
+          new Two.Anchor(T3.x, T3.y),
+          new Two.Anchor(T2.x, T2.y)
+        ];
+        const rightFace = two.makePath(rightAnchors, true);
+        rightFace.fill = 'rgba(126, 34, 206, 0.45)';
+        rightFace.stroke = '#6b21a8';
+        rightFace.linewidth = 2;
+
+        // 윗면 (T1 - T2 - T3 - T4)
+        const topAnchors = [
+          new Two.Anchor(T1.x, T1.y),
+          new Two.Anchor(T2.x, T2.y),
+          new Two.Anchor(T3.x, T3.y),
+          new Two.Anchor(T4.x, T4.y)
+        ];
+        const topFace = two.makePath(topAnchors, true);
+        topFace.fill = 'rgba(192, 132, 252, 0.6)';
+        topFace.stroke = '#9333ea';
+        topFace.linewidth = 2.5;
+
+        // 윗면 라벨
+        const tTop = two.makeText('면의 이동 → 윗면', (T1.x + T3.x) / 2, (T1.y + T3.y) / 2);
+        tTop.size = 11;
+        tTop.weight = 800;
+        tTop.fill = '#581c87';
+
+        // 입체 내부 텍스트
+        const tCenter = two.makeText('3차원 입체도형 (Solid)', (B1.x + B2.x) / 2, baseCenterY - h / 2);
+        tCenter.size = 13;
+        tCenter.weight = 800;
+        tCenter.fill = '#ffffff';
+      } else {
+        const tBottom = two.makeText('2차원 면 (Surface)', (B1.x + B3.x) / 2, (B1.y + B3.y) / 2);
+        tBottom.size = 13;
+        tBottom.weight = 800;
+        tBottom.fill = '#6b21a8';
+      }
+
+      // 조작 핸들 (윗면 중앙 화살표)
+      const handleY = baseCenterY - h - 18;
+      const handleBox = two.makeRoundedRectangle((T1.x + T3.x) / 2, handleY, 110, 22, 6);
+      handleBox.fill = '#4f46e5';
+      handleBox.noStroke();
+
+      const handleText = two.makeText('↕ 높이 드래그', (T1.x + T3.x) / 2, handleY + 1);
+      handleText.size = 10;
+      handleText.weight = 700;
+      handleText.fill = '#ffffff';
+
+      // 상태 안내 배지 (Y=54)
+      const badgeBox = two.makeRoundedRectangle(width / 2, 54, 400, 26, 6);
+      badgeBox.fill = '#eff6ff';
+      badgeBox.stroke = '#93c5fd';
+      badgeBox.linewidth = 1;
+
+      const badgeStr = h <= 0
+        ? '↕ 보라색 핸들을 위로 드래그하거나 [▶ 입체 쌓기]를 눌러보세요!'
+        : '✨ 면이 위로 확장된 높이: ' + Math.round(h) + 'px → 3차원 \'입체도형\' 형성!';
+      const badgeText = two.makeText(badgeStr, width / 2, 55);
+      badgeText.size = 11;
+      badgeText.weight = 700;
+      badgeText.fill = '#1d4ed8';
+    }
+
+    function drawStep1_1BottomGuide(two, width, height, mode) {
+      const bannerY = 396;
+      const bannerH = 46;
+
+      const box = two.makeRoundedRectangle(width / 2, bannerY, width - 32, bannerH, 8);
+      box.fill = '#f1f5f9';
+      box.stroke = '#cbd5e1';
+      box.linewidth = 1;
+
+      let guideTitle = '';
+      let guideBody = '';
+
+      if (mode === 'mode1') {
+        guideTitle = '💡 [탐구 가이드 (교과서 p.136)] 점의 자취 → 선';
+        guideBody = '점이 연속하여 움직인 자리는 직선 또는 곡선(선)이 되며, 선은 무수히 많은 점들로 이루어져 있습니다.';
+      } else if (mode === 'mode2') {
+        guideTitle = '💡 [탐구 가이드 (교과서 p.136)] 선의 자취 → 면';
+        guideBody = '선이 연속하여 움직인 자리는 평면 또는 곡면(면)이 되며, 면은 무수히 많은 선들로 이루어져 있습니다.';
+      } else {
+        guideTitle = '💡 [탐구 가이드 (교과서 p.136)] 면의 자취 → 입체';
+        guideBody = '면이 연속하여 움직이거나 공간에서 쌓이면 3차원 입체도형이 되며, 입체는 면으로 둘러싸여 있습니다.';
+      }
+
+      const t1 = two.makeText(guideTitle, width / 2, bannerY - 10);
+      t1.size = 11;
+      t1.weight = 800;
+      t1.fill = '#1e293b';
+
+      const t2 = two.makeText(guideBody, width / 2, bannerY + 10);
+      t2.size = 10;
+      t2.fill = '#475569';
+    }
+
+    function setupStep1_1PointerEvents(two, container) {
+      const svg = container.querySelector('svg');
+      if (!svg) return;
+
+      svg.style.touchAction = 'none';
+
+      svg.onpointerdown = (e) => {
+        const rect = svg.getBoundingClientRect();
+        const clientX = e.clientX - rect.left;
+        const clientY = e.clientY - rect.top;
+        const cur = state.lab1_1.activeTab;
+
+        if (cur === 'mode1') {
+          const p = state.lab1_1.pointP;
+          const dist = Math.hypot(clientX - p.x, clientY - p.y);
+          if (dist < 30) {
+            state.lab1_1.isDraggingP = true;
+            svg.setPointerCapture(e.pointerId);
+          }
+        } else if (cur === 'mode2') {
+          const curY = (state.lab1_1.lineY || 100) + (state.lab1_1.sweepDist || 0);
+          if (Math.abs(clientY - curY) < 35) {
+            state.lab1_1.isDraggingLine = true;
+            state.lab1_1.dragStartY = clientY;
+            state.lab1_1.initialSweep = state.lab1_1.sweepDist || 0;
+            svg.setPointerCapture(e.pointerId);
+          }
+        } else if (cur === 'mode3') {
+          const baseCenterY = 280;
+          const h = state.lab1_1.extrudeHeight || 0;
+          const curTopY = baseCenterY - h;
+          if (Math.abs(clientY - curTopY) < 40) {
+            state.lab1_1.isDraggingExtrude = true;
+            state.lab1_1.dragStartY = clientY;
+            state.lab1_1.initialH = h;
+            svg.setPointerCapture(e.pointerId);
+          }
+        }
+      };
+
+      svg.onpointermove = (e) => {
+        const rect = svg.getBoundingClientRect();
+        const clientX = e.clientX - rect.left;
+        const clientY = e.clientY - rect.top;
+        const cur = state.lab1_1.activeTab;
+
+        if (cur === 'mode1' && state.lab1_1.isDraggingP) {
+          const clampedX = Math.max(40, Math.min(rect.width - 40, clientX));
+          const clampedY = Math.max(80, Math.min(340, clientY));
+          state.lab1_1.pointP = { x: clampedX, y: clampedY };
+          state.lab1_1.pointTrail.push({ x: clampedX, y: clampedY });
+          drawStep1_1Canvas();
+        } else if (cur === 'mode2' && state.lab1_1.isDraggingLine) {
+          const deltaY = clientY - state.lab1_1.dragStartY;
+          let newSweep = (state.lab1_1.initialSweep || 0) + deltaY;
+          newSweep = Math.max(0, Math.min(220, newSweep));
+          state.lab1_1.sweepDist = newSweep;
+          drawStep1_1Canvas();
+        } else if (cur === 'mode3' && state.lab1_1.isDraggingExtrude) {
+          const deltaY = state.lab1_1.dragStartY - clientY;
+          let newH = (state.lab1_1.initialH || 0) + deltaY;
+          newH = Math.max(0, Math.min(160, newH));
+          state.lab1_1.extrudeHeight = newH;
+          drawStep1_1Canvas();
+        }
+      };
+
+      svg.onpointerup = (e) => {
+        state.lab1_1.isDraggingP = false;
+        state.lab1_1.isDraggingLine = false;
+        state.lab1_1.isDraggingExtrude = false;
+        try {
+          if (svg.hasPointerCapture(e.pointerId)) {
+            svg.releasePointerCapture(e.pointerId);
+          }
+        } catch (err) {}
+      };
+    }
+
+    function gradeStep1_1() {
+      const a1 = (document.getElementById('ans1_1_1')?.value || '').trim();
+      const a2 = (document.getElementById('ans1_1_2')?.value || '').trim();
+      const a3 = (document.getElementById('ans1_1_3')?.value || '').trim();
+
+      // 1단계: 선, 직선, 곡선 허용
+      const isA1 = (a1 === '선' || a1 === '직선' || a1 === '곡선');
+      // 2단계: 면, 평면, 곡면 허용
+      const isA2 = (a2 === '면' || a2 === '평면' || a2 === '곡면');
+      // 3단계: 점, 선, 면 (쉼표나 공백 등 유연 처리)
+      const normA3 = a3.replace(/\s+/g, '').replace(/,/g, '');
+      const isA3 = (normA3.includes('점') && normA3.includes('선') && normA3.includes('면') && normA3.length === 3);
+
+      let score = 0;
+      if (isA1) score += 30;
+      if (isA2) score += 30;
+      if (isA3) score += 40;
+
+      const fb = document.getElementById('feedback-1-1');
+      if (!fb) return;
+      fb.style.display = 'block';
+
+      if (score === 100) {
+        if (!state.completedSubSteps.includes('1-1')) {
+          state.completedSubSteps.push('1-1');
+        }
+        window.unlockSubStep('1-2');
+
+        if (window.LMSIntegration && window.LMSIntegration.saveStudentProgress) {
+          window.LMSIntegration.saveStudentProgress('1-1', {
+            score: 100,
+            answers: { a1, a2, a3 },
+            completed: true
+          }, 'u5');
+        }
+
+        if (state.lab1_1) state.lab1_1.isPassed = true;
+        populateSubstepDropdown();
+
+        fb.innerHTML = 
+          '<div class="card verified-answer-card" style="background:#f0fdf4; border:2px solid #059669; border-radius:12px; padding:14px;">' +
+            '<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">' +
+              '<span style="font-size:1.3rem;">🎉</span>' +
+              '<span style="font-size:1.02rem; font-weight:800; color:#15803d;">100점 만점! 점과 선의 자취를 완벽히 이해했습니다!</span>' +
+            '</div>' +
+            '<p style="font-size:0.86rem; color:#166534; line-height:1.55; margin-bottom:8px;">' +
+              '<b>교과서 공식 개념 정리 (p.136):</b><br>' +
+              '• <b>1단계:</b> 점이 연속하여 움직인 자리는 <b>선</b>이 됩니다.<br>' +
+              '• <b>2단계:</b> 선이 연속하여 움직인 자리는 <b>면</b>이 됩니다.<br>' +
+              '• <b>3단계:</b> 모든 평면도형과 입체도형은 <b>점, 선, 면</b>으로 이루어져 있으며, 이를 도형의 기본 요소라고 합니다.' +
+            '</p>' +
+            '<div style="font-size:0.85rem; color:#15803d; font-weight:800; padding:8px 10px; background:#dcfce7; border-radius:6px;">' +
+              '🚀 다음 활동 해금! <b>[1-2. 교점과 교선 (교과서 p.137)]</b>이 전격 해금되었습니다!' +
+            '</div>' +
+          '</div>';
+
+        if (window.renderMathInElement) {
+          renderMathInElement(fb, {
+            delimiters: [
+              { left: '$$', right: '$$', display: true },
+              { left: '$', right: '$', display: false }
+            ]
+          });
+        }
+      } else {
+        fb.innerHTML = 
+          '<div style="background:#fef2f2; border:2px solid #dc2626; border-radius:12px; padding:14px;">' +
+            '<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">' +
+              '<span style="font-size:1.3rem;">⚠️</span>' +
+              '<span style="font-size:1.02rem; font-weight:800; color:#b91c1c;">현재 평가 점수: ' + score + '점 / 100점</span>' +
+            '</div>' +
+            '<p style="font-size:0.85rem; color:#991b1b; line-height:1.45; margin:0;">' +
+              '좌측 캔버스 랩(1. 점의 이동, 2. 선의 이동)을 직접 조작해 보며 점과 선이 연속하여 지나간 자리가 무엇이 되는지 다시 생각해 보세요!' +
+            '</p>' +
+          '</div>';
+      }
+    }
+
+    function passStep1_1() {
+      const a1 = document.getElementById('ans1_1_1');
+      const a2 = document.getElementById('ans1_1_2');
+      const a3 = document.getElementById('ans1_1_3');
+      if (a1) a1.value = '선';
+      if (a2) a2.value = '면';
+      if (a3) a3.value = '점, 선, 면';
+      gradeStep1_1();
+    }
+
 
     window.addEventListener('load', () => {
       populateSubstepDropdown();
