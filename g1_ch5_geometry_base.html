@@ -964,6 +964,12 @@
         substepLabel: '1-2. 개념: 교점과 교선 (p.137)',
         missionText: '<b>[5.1 점, 선, 면: 1-2. 개념: 교점과 교선] (교과서 p.137)</b><br>• 선과 선, 선과 면, 면과 면이 만날 때 생기는 도형의 구성 요소를 이해하고, 입체도형에서 꼭짓점과 모서리가 각각 교점과 교선에 대응됨을 탐구합니다.<br>• <b>교점과 교선의 핵심 정의:</b><br>&nbsp;&nbsp;1. <b>교점:</b> 선과 선 또는 선과 면이 만나서 생기는 점 (입체도형에서의 <b>꼭짓점</b>)<br>&nbsp;&nbsp;2. <b>교선:</b> 면과 면이 만나서 생기는 선 (입체도형에서의 <b>모서리</b>, 직선 또는 곡선)<br>• 좌측 캔버스 랩에서 3대 인터랙티브 도판을 조작하며 삼각기둥의 교점과 교선을 직접 세어 보세요!',
         drawer: 'drawStep1_2Canvas'
+      },
+      '1-3': {
+        code: '1-3', tab: 1,
+        substepLabel: '1-3. 문제 1: 오각기둥의 교점과 교선 (p.137)',
+        missionText: '<b>[5.1 점, 선, 면: 1-3. 문제 1: 오각기둥의 교점과 교선] (교과서 p.137)</b><br>• 오각기둥의 입체 구조를 관찰하여 교점(꼭짓점), 교선(모서리), 면의 개수를 구하고, $n$각기둥의 일반적인 기하학적 성질을 탐색합니다.<br>• <b>핵심 공식:</b><br>&nbsp;&nbsp;1. <b>오각기둥의 교점:</b> 윗면 5개 + 밑면 5개 = <b>10개</b> ($2n$)<br>&nbsp;&nbsp;2. <b>오각기둥의 교선:</b> 윗면 5개 + 밑면 5개 + 옆면 5개 = <b>15개</b> ($3n$)<br>&nbsp;&nbsp;3. <b>오각기둥의 면:</b> 밑면 2개 + 옆면 5개 = <b>7개</b> ($n+2$)<br>• 좌측 캔버스에서 오각기둥의 꼭짓점과 모서리를 직접 터치하여 개수를 세어 보세요!',
+        drawer: 'drawStep1_3Canvas'
       }
     };
 
@@ -1125,6 +1131,10 @@
         renderToolbar1_2();
         renderSubstep1_2Form();
         drawStep1_2Canvas();
+      } else if (code === '1-3') {
+        renderToolbar1_3();
+        renderSubstep1_3Form();
+        drawStep1_3Canvas();
       } else {
         renderSubStepForm(code);
         const toolbar = document.getElementById('plane-toolbar');
@@ -5826,6 +5836,643 @@ function passStep0_2() {
       if (a3b) a3b.value = '9';
       gradeStep1_2();
     }
+
+    // ==========================================
+    // Substep [1-3] 5.1 점, 선, 면: 문제 1: 오각기둥의 교점과 교선 (교과서 p.137)
+    // ==========================================
+    function resetLab1_3() {
+      state.lab1_3 = {
+        activeTab: 'mode1', // 'mode1' (교점 꼭짓점 10개), 'mode2' (교선 모서리 15개), 'mode3' (n각기둥 공식)
+        discoveredVertices: [], // 0~9
+        discoveredEdges: [],    // 0~14
+        nPrism: 5,              // Mode 3 n값 (3, 4, 5, 6)
+        isPassed: false
+      };
+    }
+
+    function switchLab1_3Tab(tabName) {
+      if (!state.lab1_3) resetLab1_3();
+      state.lab1_3.activeTab = tabName;
+      renderToolbar1_3();
+      drawStep1_3Canvas();
+    }
+
+    function renderToolbar1_3() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      if (!state.lab1_3) resetLab1_3();
+      const cur = state.lab1_3.activeTab;
+
+      let subButtons = '';
+      if (cur === 'mode1') {
+        subButtons = '<button class="btn btn-outline" style="font-size:0.78rem; padding:4px 10px; background:#eff6ff; color:#1d4ed8; border-color:#93c5fd; font-weight:700;" onclick="highlightAllVertices1_3()">✨ 전체 교점(10개) 표시</button>' +
+                     '<button class="btn btn-outline" style="font-size:0.78rem; padding:4px 10px; color:#475569;" onclick="resetVertices1_3()">🔄 초기화</button>';
+      } else if (cur === 'mode2') {
+        subButtons = '<button class="btn btn-outline" style="font-size:0.78rem; padding:4px 10px; background:#eff6ff; color:#1d4ed8; border-color:#93c5fd; font-weight:700;" onclick="highlightAllEdges1_3()">✨ 전체 교선(15개) 표시</button>' +
+                     '<button class="btn btn-outline" style="font-size:0.78rem; padding:4px 10px; color:#475569;" onclick="resetEdges1_3()">🔄 초기화</button>';
+      } else {
+        const n = state.lab1_3.nPrism || 5;
+        subButtons = '<button class="btn ' + (n === 3 ? 'btn-primary' : 'btn-outline') + '" style="font-size:0.75rem; padding:3px 8px;" onclick="setNPrism1_3(3)">삼각기둥</button>' +
+                     '<button class="btn ' + (n === 4 ? 'btn-primary' : 'btn-outline') + '" style="font-size:0.75rem; padding:3px 8px;" onclick="setNPrism1_3(4)">사각기둥</button>' +
+                     '<button class="btn ' + (n === 5 ? 'btn-primary' : 'btn-outline') + '" style="font-size:0.75rem; padding:3px 8px;" onclick="setNPrism1_3(5)">오각기둥</button>' +
+                     '<button class="btn ' + (n === 6 ? 'btn-primary' : 'btn-outline') + '" style="font-size:0.75rem; padding:3px 8px;" onclick="setNPrism1_3(6)">육각기둥</button>';
+      }
+
+      tb.innerHTML = '<div style="display:flex; align-items:center; gap:8px; width:100%; justify-content:space-between; flex-wrap:wrap;">' +
+        '<div style="display:flex; gap:6px;">' +
+          '<button class="btn ' + (cur === 'mode1' ? 'btn-primary' : 'btn-outline') + '" style="font-size:0.8rem; padding:5px 12px; font-weight:700;" onclick="switchLab1_3Tab(\'mode1\')">🔷 1. 교점(꼭짓점 10개)</button>' +
+          '<button class="btn ' + (cur === 'mode2' ? 'btn-primary' : 'btn-outline') + '" style="font-size:0.8rem; padding:5px 12px; font-weight:700;" onclick="switchLab1_3Tab(\'mode2\')">📏 2. 교선(모서리 15개)</button>' +
+          '<button class="btn ' + (cur === 'mode3' ? 'btn-primary' : 'btn-outline') + '" style="font-size:0.8rem; padding:5px 12px; font-weight:700;" onclick="switchLab1_3Tab(\'mode3\')">📐 3. n각기둥 공식 랩</button>' +
+        '</div>' +
+        '<div style="display:flex; gap:6px;">' + subButtons + '</div>' +
+      '</div>';
+    }
+
+    function highlightAllVertices1_3() {
+      if (!state.lab1_3) resetLab1_3();
+      state.lab1_3.discoveredVertices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+      drawStep1_3Canvas();
+    }
+
+    function resetVertices1_3() {
+      if (!state.lab1_3) resetLab1_3();
+      state.lab1_3.discoveredVertices = [];
+      drawStep1_3Canvas();
+    }
+
+    function highlightAllEdges1_3() {
+      if (!state.lab1_3) resetLab1_3();
+      state.lab1_3.discoveredEdges = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
+      drawStep1_3Canvas();
+    }
+
+    function resetEdges1_3() {
+      if (!state.lab1_3) resetLab1_3();
+      state.lab1_3.discoveredEdges = [];
+      drawStep1_3Canvas();
+    }
+
+    function setNPrism1_3(n) {
+      if (!state.lab1_3) resetLab1_3();
+      state.lab1_3.nPrism = n;
+      renderToolbar1_3();
+      drawStep1_3Canvas();
+    }
+
+    function renderSubstep1_3Form() {
+      const fb = document.getElementById('form-box');
+      if (!fb) return;
+
+      const teacherBtnHtml = state.isTeacherLoggedIn ? 
+        '<div style="margin-top:10px; text-align:right;"><button class="btn btn-outline" style="font-size:0.78rem; padding:4px 8px; color:#64748b;" onclick="passStep1_3()">🔑 교사 정답 자동완성</button></div>' : '';
+
+      fb.innerHTML = 
+        '<div class="card mission-card" style="border-left: 4px solid var(--primary-color); border-radius:12px; padding:14px; background:#ffffff;">' +
+          '<h3 style="color:#4f46e5; font-size:1.02rem; font-weight:800; margin-bottom:8px;">🎯 오늘의 수학 탐구 미션</h3>' +
+          '<p style="font-size:0.86rem; color:#334155; line-height:1.55; margin:0;">' +
+            '<b>[5.1 점, 선, 면: 1-3. 문제 1: 오각기둥의 교점과 교선] (교과서 p.137)</b><br>' +
+            '• 오각기둥의 입체 구조를 관찰하여 교점(꼭짓점), 교선(모서리), 면의 개수를 구하고, $n$각기둥의 일반적인 기하학적 성질을 탐색합니다.<br>' +
+            '• <b>핵심 공식:</b><br>' +
+            '&nbsp;&nbsp;1. <b>오각기둥의 교점:</b> 윗면 5개 + 밑면 5개 = <b>10개</b> ($2n$)<br>' +
+            '&nbsp;&nbsp;2. <b>오각기둥의 교선:</b> 윗면 5개 + 밑면 5개 + 옆면 5개 = <b>15개</b> ($3n$)<br>' +
+            '&nbsp;&nbsp;3. <b>오각기둥의 면:</b> 밑면 2개 + 옆면 5개 = <b>7개</b> ($n+2$)<br>' +
+            '• 좌측 캔버스에서 오각기둥의 꼭짓점과 모서리를 직접 터치하여 개수를 세어 보세요!' +
+          '</p>' +
+        '</div>' +
+        '<div class="card" style="border-radius:12px; padding:16px; background:#ffffff;">' +
+          '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid #f1f5f9;">' +
+            '<span style="font-size:0.8rem; font-weight:700; color:#4338ca; background:#e0e7ff; padding:3px 8px; border-radius:6px;">교과서 p.137 [5.1 점, 선, 면]</span>' +
+            '<span style="font-size:0.82rem; font-weight:800; color:#64748b;">문제 1: 오각기둥의 교점과 교선 (100점 만점)</span>' +
+          '</div>' +
+          '<h4 style="font-size:0.96rem; font-weight:800; color:#1e293b; margin-bottom:12px; line-height:1.45;">' +
+            '🔷 오각기둥을 관찰하고, 입체도형을 이루는 교점, 교선, 면의 개수를 각각 구하시오.' +
+          '</h4>' +
+          '<!-- 1단계 -->' +
+          '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+              '<span style="font-size:0.88rem; font-weight:800; color:#1e293b;">1단계. 오각기둥의 교점의 개수</span>' +
+              '<span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">배점 30%</span>' +
+            '</div>' +
+            '<p style="font-size:0.84rem; color:#475569; margin:0 0 8px 0; line-height:1.45;">' +
+              '[교과서 문제 1-(1)] 오각기둥에서 교점(꼭짓점)의 개수는 몇 개인지 구하시오. (숫자만 입력)' +
+            '</p>' +
+            '<div style="display:flex; align-items:center; gap:8px;">' +
+              '<span style="font-size:0.88rem; font-weight:800; color:#334155;">[교점의 개수] =</span>' +
+              '<input type="text" id="ans1_3_1" class="proof-input-text" placeholder="수 입력" style="background:#fef08a; border:2px solid #eab308; border-radius:8px; color:#854d0e; font-weight:800; width:100px; padding:6px 10px; text-align:center;">' +
+              '<span style="font-size:0.85rem; font-weight:700; color:#475569;">개</span>' +
+            '</div>' +
+          '</div>' +
+          '<!-- 2단계 -->' +
+          '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+              '<span style="font-size:0.88rem; font-weight:800; color:#1e293b;">2단계. 오각기둥의 교선의 개수</span>' +
+              '<span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">배점 30%</span>' +
+            '</div>' +
+            '<p style="font-size:0.84rem; color:#475569; margin:0 0 8px 0; line-height:1.45;">' +
+              '[교과서 문제 1-(2)] 오각기둥에서 교선(모서리)의 개수는 몇 개인지 구하시오. (숫자만 입력)' +
+            '</p>' +
+            '<div style="display:flex; align-items:center; gap:8px;">' +
+              '<span style="font-size:0.88rem; font-weight:800; color:#334155;">[교선의 개수] =</span>' +
+              '<input type="text" id="ans1_3_2" class="proof-input-text" placeholder="수 입력" style="background:#fef08a; border:2px solid #eab308; border-radius:8px; color:#854d0e; font-weight:800; width:100px; padding:6px 10px; text-align:center;">' +
+              '<span style="font-size:0.85rem; font-weight:700; color:#475569;">개</span>' +
+            '</div>' +
+          '</div>' +
+          '<!-- 3단계 -->' +
+          '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:14px;">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+              '<span style="font-size:0.88rem; font-weight:800; color:#1e293b;">3단계. 오각기둥의 면의 개수</span>' +
+              '<span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">배점 40%</span>' +
+            '</div>' +
+            '<p style="font-size:0.84rem; color:#475569; margin:0 0 8px 0; line-height:1.45;">' +
+              '오각기둥에서 면의 개수는 총 몇 개인지 구하시오. (밑면 2개 + 옆면 5개)' +
+            '</p>' +
+            '<div style="display:flex; align-items:center; gap:8px;">' +
+              '<span style="font-size:0.88rem; font-weight:800; color:#334155;">[면의 개수] =</span>' +
+              '<input type="text" id="ans1_3_3" class="proof-input-text" placeholder="수 입력" style="background:#fef08a; border:2px solid #eab308; border-radius:8px; color:#854d0e; font-weight:800; width:100px; padding:6px 10px; text-align:center;">' +
+              '<span style="font-size:0.85rem; font-weight:700; color:#475569;">개</span>' +
+            '</div>' +
+          '</div>' +
+          '<button class="btn" style="background:linear-gradient(135deg, #4f46e5, #4338ca); width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:8px; color:#fff;" onclick="gradeStep1_3()">' +
+            '[문제 1: 오각기둥의 교점과 교선] 확인 및 채점' +
+          '</button>' +
+          teacherBtnHtml +
+          '<div id="feedback-1-3" style="margin-top:14px; display:none;"></div>' +
+        '</div>';
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fb, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false }
+          ]
+        });
+      }
+    }
+
+    // 오각기둥 꼭짓점 및 모서리 데이터 생성 함수
+    function getPentagonalPrismData(width) {
+      const cX = width / 2;
+      const topY = 115;
+      const botY = 255;
+
+      // 윗면 오각형 5개 꼭짓점 (A, B, C, D, E)
+      const vTop = [
+        { id: 0, label: 'A', x: cX, y: topY - 32 },
+        { id: 1, label: 'B', x: cX + 85, y: topY - 5 },
+        { id: 2, label: 'C', x: cX + 55, y: topY + 45 },
+        { id: 3, label: 'D', x: cX - 55, y: topY + 45 },
+        { id: 4, label: 'E', x: cX - 85, y: topY - 5 }
+      ];
+
+      // 밑면 오각형 5개 꼭짓점 (F, G, H, I, J)
+      const vBot = [
+        { id: 5, label: 'F', x: cX, y: botY - 32 },
+        { id: 6, label: 'G', x: cX + 85, y: botY - 5 },
+        { id: 7, label: 'H', x: cX + 55, y: botY + 45 },
+        { id: 8, label: 'I', x: cX - 55, y: botY + 45 },
+        { id: 9, label: 'J', x: cX - 85, y: botY - 5 }
+      ];
+
+      const vertices = [...vTop, ...vBot];
+
+      // 15개 모서리
+      // 윗면 5개
+      const edges = [
+        { id: 0, from: 0, to: 1, dashed: false },
+        { id: 1, from: 1, to: 2, dashed: false },
+        { id: 2, from: 2, to: 3, dashed: false },
+        { id: 3, from: 3, to: 4, dashed: false },
+        { id: 4, from: 4, to: 0, dashed: false },
+        // 밑면 5개 (뒤쪽 0번 방향(F)과 연결되는 FG, JF는 안쪽 점선)
+        { id: 5, from: 5, to: 6, dashed: true },
+        { id: 6, from: 6, to: 7, dashed: false },
+        { id: 7, from: 7, to: 8, dashed: false },
+        { id: 8, from: 8, to: 9, dashed: false },
+        { id: 9, from: 9, to: 5, dashed: true },
+        // 기둥 모서리 5개 (AF는 안쪽 점선)
+        { id: 10, from: 0, to: 5, dashed: true },
+        { id: 11, from: 1, to: 6, dashed: false },
+        { id: 12, from: 2, to: 7, dashed: false },
+        { id: 13, from: 3, to: 8, dashed: false },
+        { id: 14, from: 4, to: 9, dashed: false }
+      ];
+
+      return { vertices, edges };
+    }
+
+    function drawStep1_3Canvas() {
+      const container = document.getElementById('two-container');
+      if (!container) return;
+      container.innerHTML = '';
+      if (!state.lab1_3) resetLab1_3();
+
+      const width = container.clientWidth || 560;
+      const height = 440;
+      const two = new Two({ width, height, autostart: true }).appendTo(container);
+
+      // 전체 배경
+      const bg = two.makeRoundedRectangle(width / 2, height / 2, width - 8, height - 8, 12);
+      bg.fill = '#f8fafc';
+      bg.stroke = '#cbd5e1';
+      bg.linewidth = 1;
+
+      // 모눈 그리드
+      for (let x = 30; x < width - 20; x += 30) {
+        const line = two.makeLine(x, 40, x, 360);
+        line.stroke = '#f1f5f9';
+        line.linewidth = 1;
+      }
+      for (let y = 50; y <= 350; y += 30) {
+        const line = two.makeLine(20, y, width - 20, y);
+        line.stroke = '#f1f5f9';
+        line.linewidth = 1;
+      }
+
+      const cur = state.lab1_3.activeTab;
+
+      if (cur === 'mode1' || cur === 'mode2') {
+        drawLab1_3Prism(two, width, height, cur);
+      } else {
+        drawLab1_3Formula(two, width, height);
+      }
+
+      // 하단 안전 안내 배너 (H=440, Y=396, H=46, 0-오버랩 완벽 준수)
+      drawStep1_3BottomGuide(two, width, height, cur);
+
+      two.update();
+      setupStep1_3PointerEvents(two, container);
+    }
+
+    function drawLab1_3Prism(two, width, height, mode) {
+      const isVertexMode = (mode === 'mode1');
+      const tHeader = two.makeText(
+        isVertexMode 
+          ? '🔷 [교점 카운터] 오각기둥의 꼭짓점(교점) 10개를 터치하여 세어 보세요!' 
+          : '📏 [교선 카운터] 오각기둥의 모서리(교선) 15개를 터치하여 세어 보세요!',
+        width / 2, 22
+      );
+      tHeader.size = 14;
+      tHeader.weight = 800;
+      tHeader.fill = '#1e293b';
+
+      const { vertices, edges } = getPentagonalPrismData(width);
+      const discV = state.lab1_3.discoveredVertices || [];
+      const discE = state.lab1_3.discoveredEdges || [];
+
+      // 오각기둥 앞면 채색 (반투명 보라색)
+      const frontFaces = [
+        [vertices[3], vertices[2], vertices[7], vertices[8]],
+        [vertices[2], vertices[1], vertices[6], vertices[7]],
+        [vertices[4], vertices[3], vertices[8], vertices[9]]
+      ];
+
+      frontFaces.forEach(f => {
+        const anchors = f.map(p => new Two.Anchor(p.x, p.y));
+        const face = two.makePath(anchors, true);
+        face.fill = 'rgba(199, 210, 254, 0.35)';
+        face.stroke = 'transparent';
+      });
+
+      // 윗면 오각형 채색
+      const topAnchors = [0, 1, 2, 3, 4].map(idx => new Two.Anchor(vertices[idx].x, vertices[idx].y));
+      const topFace = two.makePath(topAnchors, true);
+      topFace.fill = 'rgba(165, 180, 252, 0.45)';
+      topFace.stroke = 'transparent';
+
+      // 모서리 렌더링
+      edges.forEach(e => {
+        const p1 = vertices[e.from];
+        const p2 = vertices[e.to];
+        const isDiscovered = discE.includes(e.id);
+
+        const edgeLine = two.makeLine(p1.x, p1.y, p2.x, p2.y);
+        if (isDiscovered) {
+          edgeLine.stroke = '#2563eb'; // 파란색 하이라이트
+          edgeLine.linewidth = 4.5;
+        } else {
+          edgeLine.stroke = e.dashed ? '#94a3b8' : '#64748b';
+          edgeLine.linewidth = 2;
+          if (e.dashed) edgeLine.dashes = [5, 4];
+        }
+      });
+
+      // 꼭짓점 렌더링
+      vertices.forEach(v => {
+        const isDiscovered = discV.includes(v.id);
+
+        if (isDiscovered) {
+          const glow = two.makeCircle(v.x, v.y, 11);
+          glow.fill = 'rgba(239, 68, 68, 0.25)';
+          glow.stroke = '#ef4444';
+          glow.linewidth = 2;
+        }
+
+        const ptCircle = two.makeCircle(v.x, v.y, isDiscovered ? 7 : (isVertexMode ? 6 : 4));
+        ptCircle.fill = isDiscovered ? '#ef4444' : '#ffffff';
+        ptCircle.stroke = isDiscovered ? '#b91c1c' : '#475569';
+        ptCircle.linewidth = 2;
+
+        const lbl = two.makeText(v.label, v.x + (v.x < width / 2 ? -14 : 14), v.y + (v.y < 185 ? -12 : 12));
+        lbl.size = 11;
+        lbl.weight = 800;
+        lbl.fill = isDiscovered ? '#b91c1c' : '#334155';
+      });
+
+      // 상태 안내 및 카운터 바 (Y=54)
+      const badgeBox = two.makeRoundedRectangle(width / 2, 54, 460, 28, 6);
+      let isComplete = false;
+      let badgeStr = '';
+
+      if (isVertexMode) {
+        isComplete = (discV.length === 10);
+        badgeStr = isComplete 
+          ? '🎉 오각기둥의 모든 교점(꼭짓점) 10개를 완벽히 발견했습니다!'
+          : '🔴 교점(꼭짓점) 발견: ' + discV.length + ' / 10개 (윗면 5개 + 밑면 5개)';
+      } else {
+        isComplete = (discE.length === 15);
+        badgeStr = isComplete 
+          ? '🎉 오각기둥의 모든 교선(모서리) 15개를 완벽히 발견했습니다!'
+          : '📏 교선(모서리) 발견: ' + discE.length + ' / 15개 (윗면 5개 + 밑면 5개 + 기둥 5개)';
+      }
+
+      badgeBox.fill = isComplete ? '#dcfce7' : '#eff6ff';
+      badgeBox.stroke = isComplete ? '#86efac' : '#93c5fd';
+      badgeBox.linewidth = 1;
+
+      const badgeText = two.makeText(badgeStr, width / 2, 55);
+      badgeText.size = 11;
+      badgeText.weight = 800;
+      badgeText.fill = isComplete ? '#15803d' : '#1d4ed8';
+
+      // 조작 팁
+      const tipText = two.makeText(
+        isVertexMode ? '👆 꼭짓점 원을 터치하면 교점이 카운트됩니다.' : '👆 선분을 터치하면 교선이 카운트됩니다.',
+        width / 2, 335
+      );
+      tipText.size = 10;
+      tipText.weight = 700;
+      tipText.fill = '#64748b';
+    }
+
+    function drawLab1_3Formula(two, width, height) {
+      const n = state.lab1_3.nPrism || 5;
+      const prismNames = { 3: '삼각기둥', 4: '사각기둥', 5: '오각기둥', 6: '육각기둥' };
+      const name = prismNames[n] || (n + '각기둥');
+
+      const tHeader = two.makeText('📐 [기하학적 공식] n각기둥의 교점, 교선, 면의 관계 탐구', width / 2, 22);
+      tHeader.size = 14;
+      tHeader.weight = 800;
+      tHeader.fill = '#1e293b';
+
+      // 상단 배지 (Y=54)
+      const badgeBox = two.makeRoundedRectangle(width / 2, 54, 460, 28, 6);
+      badgeBox.fill = '#eff6ff';
+      badgeBox.stroke = '#93c5fd';
+      badgeBox.linewidth = 1;
+
+      const badgeText = two.makeText('현재 선택: ' + name + ' (밑면의 변의 수 n = ' + n + ')', width / 2, 55);
+      badgeText.size = 12;
+      badgeText.weight = 800;
+      badgeText.fill = '#1d4ed8';
+
+      // 3개 공식 카드 렌더링 (Y=120 ~ 290)
+      const cardW = width * 0.88;
+      const startY = 115;
+      const stepH = 65;
+
+      const formulas = [
+        {
+          title: '1. 교점(꼭짓점)의 개수 = 2 × n = 2n 개',
+          calc: name + ': 2 × ' + n + ' = ' + (2 * n) + '개 (윗면 ' + n + '개 + 밑면 ' + n + '개)',
+          color: '#ef4444',
+          bg: '#fef2f2',
+          border: '#fca5a5'
+        },
+        {
+          title: '2. 교선(모서리)의 개수 = 3 × n = 3n 개',
+          calc: name + ': 3 × ' + n + ' = ' + (3 * n) + '개 (윗면 ' + n + '개 + 밑면 ' + n + '개 + 옆면 ' + n + '개)',
+          color: '#2563eb',
+          bg: '#eff6ff',
+          border: '#bfdbfe'
+        },
+        {
+          title: '3. 면의 개수 = n + 2 개',
+          calc: name + ': ' + n + ' + 2 = ' + (n + 2) + '개 (밑면 2개 + 옆면 ' + n + '개)',
+          color: '#059669',
+          bg: '#f0fdf4',
+          border: '#a7f3d0'
+        }
+      ];
+
+      formulas.forEach((item, idx) => {
+        const y = startY + idx * stepH;
+        const box = two.makeRoundedRectangle(width / 2, y, cardW, 52, 8);
+        box.fill = item.bg;
+        box.stroke = item.border;
+        box.linewidth = 1.5;
+
+        const tTitle = two.makeText(item.title, width / 2, y - 10);
+        tTitle.size = 12;
+        tTitle.weight = 800;
+        tTitle.fill = item.color;
+
+        const tCalc = two.makeText(item.calc, width / 2, y + 12);
+        tCalc.size = 11;
+        tCalc.weight = 700;
+        tCalc.fill = '#334155';
+      });
+
+      const tipText = two.makeText('💡 n각기둥의 밑면이 변할 때마다 교점, 교선, 면의 개수가 규칙적으로 증가합니다.', width / 2, 335);
+      tipText.size = 11;
+      tipText.weight = 700;
+      tipText.fill = '#64748b';
+    }
+
+    function drawStep1_3BottomGuide(two, width, height, mode) {
+      const bannerY = 396;
+      const bannerH = 46;
+
+      const box = two.makeRoundedRectangle(width / 2, bannerY, width - 32, bannerH, 8);
+      box.fill = '#f1f5f9';
+      box.stroke = '#cbd5e1';
+      box.linewidth = 1;
+
+      let guideTitle = '';
+      let guideBody = '';
+
+      if (mode === 'mode1') {
+        guideTitle = '💡 [탐구 가이드 (교과서 p.137)] 오각기둥의 교점(꼭짓점)';
+        guideBody = '오각기둥의 교점은 꼭짓점과 같으며, 윗면 5개 + 밑면 5개 = 총 10개입니다.';
+      } else if (mode === 'mode2') {
+        guideTitle = '💡 [탐구 가이드 (교과서 p.137)] 오각기둥의 교선(모서리)';
+        guideBody = '오각기둥의 교선은 모서리와 같으며, 윗면 5개 + 밑면 5개 + 옆면 5개 = 총 15개입니다.';
+      } else {
+        guideTitle = '💡 [탐구 가이드 (교과서 p.137)] n각기둥의 공식화';
+        guideBody = 'n각기둥에서 교점의 개수는 2n개, 교선의 개수는 3n개, 면의 개수는 (n+2)개입니다.';
+      }
+
+      const t1 = two.makeText(guideTitle, width / 2, bannerY - 10);
+      t1.size = 11;
+      t1.weight = 800;
+      t1.fill = '#1e293b';
+
+      const t2 = two.makeText(guideBody, width / 2, bannerY + 10);
+      t2.size = 10;
+      t2.fill = '#475569';
+    }
+
+    function setupStep1_3PointerEvents(two, container) {
+      const svg = container.querySelector('svg');
+      if (!svg) return;
+
+      svg.style.touchAction = 'none';
+
+      svg.onclick = (e) => {
+        if (!state.lab1_3) return;
+        const cur = state.lab1_3.activeTab;
+        if (cur !== 'mode1' && cur !== 'mode2') return;
+
+        const rect = svg.getBoundingClientRect();
+        const clientX = e.clientX - rect.left;
+        const clientY = e.clientY - rect.top;
+
+        const { vertices, edges } = getPentagonalPrismData(rect.width);
+
+        if (cur === 'mode1') {
+          // 꼭짓점 클릭 검사
+          let clickedV = null;
+          vertices.forEach(v => {
+            const dist = Math.hypot(clientX - v.x, clientY - v.y);
+            if (dist <= 18) clickedV = v.id;
+          });
+
+          if (clickedV !== null) {
+            if (!state.lab1_3.discoveredVertices.includes(clickedV)) {
+              state.lab1_3.discoveredVertices.push(clickedV);
+            } else {
+              state.lab1_3.discoveredVertices = state.lab1_3.discoveredVertices.filter(id => id !== clickedV);
+            }
+            drawStep1_3Canvas();
+          }
+        } else {
+          // 모서리 클릭 검사
+          function distToSegment(px, py, x1, y1, x2, y2) {
+            const l2 = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
+            if (l2 === 0) return Math.hypot(px - x1, py - y1);
+            let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
+          }
+
+          let clickedE = null;
+          edges.forEach(ed => {
+            const p1 = vertices[ed.from];
+            const p2 = vertices[ed.to];
+            const d = distToSegment(clientX, clientY, p1.x, p1.y, p2.x, p2.y);
+            if (d <= 14) clickedE = ed.id;
+          });
+
+          if (clickedE !== null) {
+            if (!state.lab1_3.discoveredEdges.includes(clickedE)) {
+              state.lab1_3.discoveredEdges.push(clickedE);
+            } else {
+              state.lab1_3.discoveredEdges = state.lab1_3.discoveredEdges.filter(id => id !== clickedE);
+            }
+            drawStep1_3Canvas();
+          }
+        }
+      };
+    }
+
+    function gradeStep1_3() {
+      const a1 = (document.getElementById('ans1_3_1')?.value || '').trim();
+      const a2 = (document.getElementById('ans1_3_2')?.value || '').trim();
+      const a3 = (document.getElementById('ans1_3_3')?.value || '').trim();
+
+      // 1단계: 교점(꼭짓점) 10개
+      const isA1 = (a1 === '10' || a1 === '10개');
+      // 2단계: 교선(모서리) 15개
+      const isA2 = (a2 === '15' || a2 === '15개');
+      // 3단계: 면 7개
+      const isA3 = (a3 === '7' || a3 === '7개');
+
+      let score = 0;
+      if (isA1) score += 30;
+      if (isA2) score += 30;
+      if (isA3) score += 40;
+
+      const fb = document.getElementById('feedback-1-3');
+      if (!fb) return;
+      fb.style.display = 'block';
+
+      if (score === 100) {
+        if (!state.completedSubSteps.includes('1-3')) {
+          state.completedSubSteps.push('1-3');
+        }
+        // 다음 서브스텝 [1-4] 해금
+        window.unlockSubStep('1-4');
+
+        if (window.LMSIntegration && window.LMSIntegration.saveStudentProgress) {
+          window.LMSIntegration.saveStudentProgress('1-3', {
+            score: 100,
+            answers: { a1, a2, a3 },
+            completed: true
+          }, 'u5');
+        }
+
+        if (state.lab1_3) state.lab1_3.isPassed = true;
+        populateSubstepDropdown();
+
+        fb.innerHTML = 
+          '<div class="card verified-answer-card" style="background:#f0fdf4; border:2px solid #059669; border-radius:12px; padding:14px;">' +
+            '<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">' +
+              '<span style="font-size:1.3rem;">🎉</span>' +
+              '<span style="font-size:1.02rem; font-weight:800; color:#15803d;">100점 만점! 오각기둥의 교점, 교선, 면을 완벽히 마스터했습니다!</span>' +
+            '</div>' +
+            '<p style="font-size:0.86rem; color:#166534; line-height:1.55; margin-bottom:8px;">' +
+              '<b>교과서 공식 풀이 및 개념 정리 (p.137 문제 1):</b><br>' +
+              '• <b>1단계:</b> 오각기둥의 교점은 꼭짓점과 같으므로 위 5개, 아래 5개로 총 $5 \\times 2 = \\mathbf{10}$개입니다.<br>' +
+              '• <b>2단계:</b> 오각기둥의 교선은 모서리와 같으므로 위 5개, 아래 5개, 기둥 5개로 총 $5 \\times 3 = \\mathbf{15}$개입니다.<br>' +
+              '• <b>3단계:</b> 오각기둥의 면은 밑면 2개, 옆면 5개로 총 $2 + 5 = \\mathbf{7}$개입니다.<br>' +
+              '• <b>일반화 공식 ($n$각기둥):</b> 교점 $2n$개, 교선 $3n$개, 면 $(n+2)$개입니다.' +
+            '</p>' +
+            '<div style="font-size:0.85rem; color:#15803d; font-weight:800; padding:8px 10px; background:#dcfce7; border-radius:6px;">' +
+              '🚀 다음 활동 해금! <b>[1-4. 개념: 직선의 결정조건 (교과서 p.138)]</b>이 전격 해금되었습니다!' +
+            '</div>' +
+          '</div>';
+
+        if (window.renderMathInElement) {
+          renderMathInElement(fb, {
+            delimiters: [
+              { left: '$$', right: '$$', display: true },
+              { left: '$', right: '$', display: false }
+            ]
+          });
+        }
+      } else {
+        fb.innerHTML = 
+          '<div style="background:#fef2f2; border:2px solid #dc2626; border-radius:12px; padding:14px;">' +
+            '<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">' +
+              '<span style="font-size:1.3rem;">⚠️</span>' +
+              '<span style="font-size:1.02rem; font-weight:800; color:#b91c1c;">현재 평가 점수: ' + score + '점 / 100점</span>' +
+            '</div>' +
+            '<p style="font-size:0.85rem; color:#991b1b; line-height:1.45; margin:0;">' +
+              '좌측 캔버스 랩(1. 교점 카운터, 2. 교선 카운터, 3. n각기둥 공식 랩)을 직접 조작해 보며 오각기둥의 꼭짓점과 모서리를 다시 세어 보세요!' +
+            '</p>' +
+          '</div>';
+      }
+    }
+
+    function passStep1_3() {
+      const a1 = document.getElementById('ans1_3_1');
+      const a2 = document.getElementById('ans1_3_2');
+      const a3 = document.getElementById('ans1_3_3');
+      if (a1) a1.value = '10';
+      if (a2) a2.value = '15';
+      if (a3) a3.value = '7';
+      gradeStep1_3();
+    }
+
 
 
 
