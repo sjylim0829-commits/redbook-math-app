@@ -970,6 +970,12 @@
         substepLabel: '1-3. 문제 1: 오각기둥의 교점과 교선 (p.137)',
         missionText: '<b>[5.1 점, 선, 면: 1-3. 문제 1: 오각기둥의 교점과 교선] (교과서 p.137)</b><br>• 오각기둥의 입체 구조를 관찰하여 교점(꼭짓점), 교선(모서리), 면의 개수를 구하고, $n$각기둥의 일반적인 기하학적 성질을 탐색합니다.<br>• <b>핵심 공식:</b><br>&nbsp;&nbsp;1. <b>오각기둥의 교점:</b> 윗면 5개 + 밑면 5개 = <b>10개</b> ($2n$)<br>&nbsp;&nbsp;2. <b>오각기둥의 교선:</b> 윗면 5개 + 밑면 5개 + 옆면 5개 = <b>15개</b> ($3n$)<br>&nbsp;&nbsp;3. <b>오각기둥의 면:</b> 밑면 2개 + 옆면 5개 = <b>7개</b> ($n+2$)<br>• 좌측 캔버스에서 오각기둥의 꼭짓점과 모서리를 직접 터치하여 개수를 세어 보세요!',
         drawer: 'drawStep1_3Canvas'
+      },
+      '1-4': {
+        code: '1-4', tab: 1,
+        substepLabel: '1-4. 개념: 직선의 결정조건 (p.138)',
+        missionText: '<b>[5.1 점, 선, 면: 1-4. 개념: 직선의 결정조건] (교과서 p.138)</b><br>• 한 점을 지나는 직선의 개수와 두 점을 지나는 직선의 개수를 비교하고, 두 점이 직선을 유일하게 결정하는 기하학적 기본 성질을 탐색합니다.<br>• <b>직선의 결정조건 핵심 개념:</b><br>&nbsp;&nbsp;1. <b>한 점을 지나는 직선:</b> 한 점을 지나는 직선은 <b>무수히 많다</b>.<br>&nbsp;&nbsp;2. <b>서로 다른 두 점을 지나는 직선:</b> 서로 다른 두 점을 지나는 직선은 <b>오직 하나</b>뿐이다.<br>&nbsp;&nbsp;3. <b>직선의 결정조건:</b> 서로 다른 두 점이 주어지면 직선이 하나로 정해지는 기하학적 성질입니다.<br>• 좌측 캔버스에서 점을 드래그하거나 직선을 추가하며 직선의 결정조건을 확인해 보세요!',
+        drawer: 'drawStep1_4Canvas'
       }
     };
 
@@ -1135,6 +1141,10 @@
         renderToolbar1_3();
         renderSubstep1_3Form();
         drawStep1_3Canvas();
+      } else if (code === '1-4') {
+        renderToolbar1_4();
+        renderSubstep1_4Form();
+        drawStep1_4Canvas();
       } else {
         renderSubStepForm(code);
         const toolbar = document.getElementById('plane-toolbar');
@@ -6472,6 +6482,683 @@ function passStep0_2() {
       if (a3) a3.value = '7';
       gradeStep1_3();
     }
+
+    // ==========================================
+    // Substep [1-4] 5.1 점, 선, 면: 개념: 직선의 결정조건 (교과서 p.138)
+    // ==========================================
+    function resetLab1_4() {
+      state.lab1_4 = {
+        activeTab: 'mode1', // 'mode1' (한 점 무수히 많음), 'mode2' (두 점 오직 하나 드래그), 'mode3' (비교 판정)
+        // Mode 1: 한 점 지나는 직선 각도들
+        angles: [0, 30, 60, 90],
+        // Mode 2: 두 점 좌표 및 드래그
+        pointA: { x: 150, y: 240 },
+        pointB: { x: 410, y: 150 },
+        draggingPoint: null, // 'A' or 'B'
+        // Mode 3: 점 개수 선택 (1, 2, 3)
+        caseMode: 2,
+        isPassed: false
+      };
+    }
+
+    function switchLab1_4Tab(tabName) {
+      if (!state.lab1_4) resetLab1_4();
+      state.lab1_4.activeTab = tabName;
+      renderToolbar1_4();
+      drawStep1_4Canvas();
+    }
+
+    function renderToolbar1_4() {
+      const tb = document.getElementById('plane-toolbar');
+      if (!tb) return;
+      if (!state.lab1_4) resetLab1_4();
+      const cur = state.lab1_4.activeTab;
+
+      let subButtons = '';
+      if (cur === 'mode1') {
+        subButtons = '<button class="btn btn-outline" style="font-size:0.78rem; padding:4px 10px; background:#eff6ff; color:#1d4ed8; border-color:#93c5fd; font-weight:700;" onclick="addLab1_4Line()">➕ 직선 추가</button>' +
+                     '<button class="btn btn-outline" style="font-size:0.78rem; padding:4px 10px; background:#f0fdf4; color:#15803d; border-color:#86efac; font-weight:700;" onclick="spreadLab1_4Lines()">✨ 12방향 펼치기</button>' +
+                     '<button class="btn btn-outline" style="font-size:0.78rem; padding:4px 10px; color:#475569;" onclick="resetLab1_4Lines()">🔄 초기화</button>';
+      } else if (cur === 'mode2') {
+        subButtons = '<button class="btn btn-outline" style="font-size:0.78rem; padding:4px 10px; background:#eff6ff; color:#1d4ed8; border-color:#93c5fd; font-weight:700;" onclick="randomizeLab1_4Points()">🎲 점 A, B 무작위 배치</button>' +
+                     '<button class="btn btn-outline" style="font-size:0.78rem; padding:4px 10px; color:#475569;" onclick="resetLab1_4Points()">🔄 위치 리셋</button>';
+      } else {
+        const c = state.lab1_4.caseMode || 2;
+        subButtons = '<button class="btn ' + (c === 1 ? 'btn-primary' : 'btn-outline') + '" style="font-size:0.75rem; padding:3px 8px;" onclick="setLab1_4Case(1)">1개 점 (무수히 많음)</button>' +
+                     '<button class="btn ' + (c === 2 ? 'btn-primary' : 'btn-outline') + '" style="font-size:0.75rem; padding:3px 8px;" onclick="setLab1_4Case(2)">2개 점 (오직 1개 결정)</button>' +
+                     '<button class="btn ' + (c === 3 ? 'btn-primary' : 'btn-outline') + '" style="font-size:0.75rem; padding:3px 8px;" onclick="setLab1_4Case(3)">3개 점 (삼각형 형성)</button>';
+      }
+
+      tb.innerHTML = '<div style="display:flex; align-items:center; gap:8px; width:100%; justify-content:space-between; flex-wrap:wrap;">' +
+        '<div style="display:flex; gap:6px;">' +
+          '<button class="btn ' + (cur === 'mode1' ? 'btn-primary' : 'btn-outline') + '" style="font-size:0.8rem; padding:5px 12px; font-weight:700;" onclick="switchLab1_4Tab(\'mode1\')">📍 1. 한 점을 지나는 직선</button>' +
+          '<button class="btn ' + (cur === 'mode2' ? 'btn-primary' : 'btn-outline') + '" style="font-size:0.8rem; padding:5px 12px; font-weight:700;" onclick="switchLab1_4Tab(\'mode2\')">📏 2. 두 점을 지나는 직선</button>' +
+          '<button class="btn ' + (cur === 'mode3' ? 'btn-primary' : 'btn-outline') + '" style="font-size:0.8rem; padding:5px 12px; font-weight:700;" onclick="switchLab1_4Tab(\'mode3\')">🎯 3. 결정조건 판정 랩</button>' +
+        '</div>' +
+        '<div style="display:flex; gap:6px;">' + subButtons + '</div>' +
+      '</div>';
+    }
+
+    function addLab1_4Line() {
+      if (!state.lab1_4) resetLab1_4();
+      const last = state.lab1_4.angles[state.lab1_4.angles.length - 1] || 0;
+      const nextAngle = (last + 15) % 180;
+      if (!state.lab1_4.angles.includes(nextAngle)) {
+        state.lab1_4.angles.push(nextAngle);
+      } else {
+        state.lab1_4.angles.push((nextAngle + 7) % 180);
+      }
+      drawStep1_4Canvas();
+    }
+
+    function spreadLab1_4Lines() {
+      if (!state.lab1_4) resetLab1_4();
+      state.lab1_4.angles = [0, 15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165];
+      drawStep1_4Canvas();
+    }
+
+    function resetLab1_4Lines() {
+      if (!state.lab1_4) resetLab1_4();
+      state.lab1_4.angles = [0, 30, 60, 90];
+      drawStep1_4Canvas();
+    }
+
+    function randomizeLab1_4Points() {
+      if (!state.lab1_4) resetLab1_4();
+      const container = document.getElementById('two-container');
+      const w = container ? (container.clientWidth || 560) : 560;
+      state.lab1_4.pointA = {
+        x: Math.round(90 + Math.random() * (w * 0.35)),
+        y: Math.round(110 + Math.random() * 200)
+      };
+      state.lab1_4.pointB = {
+        x: Math.round(w * 0.55 + Math.random() * (w * 0.35)),
+        y: Math.round(110 + Math.random() * 200)
+      };
+      drawStep1_4Canvas();
+    }
+
+    function resetLab1_4Points() {
+      if (!state.lab1_4) resetLab1_4();
+      state.lab1_4.pointA = { x: 150, y: 240 };
+      state.lab1_4.pointB = { x: 410, y: 150 };
+      drawStep1_4Canvas();
+    }
+
+    function setLab1_4Case(c) {
+      if (!state.lab1_4) resetLab1_4();
+      state.lab1_4.caseMode = c;
+      renderToolbar1_4();
+      drawStep1_4Canvas();
+    }
+
+    function renderSubstep1_4Form() {
+      const fb = document.getElementById('form-box');
+      if (!fb) return;
+
+      const teacherBtnHtml = state.isTeacherLoggedIn ? 
+        '<div style="margin-top:10px; text-align:right;"><button class="btn btn-outline" style="font-size:0.78rem; padding:4px 8px; color:#64748b;" onclick="passStep1_4()">🔑 교사 정답 자동완성</button></div>' : '';
+
+      fb.innerHTML = 
+        '<div class="card mission-card" style="border-left: 4px solid var(--primary-color); border-radius:12px; padding:14px; background:#ffffff;">' +
+          '<h3 style="color:#4f46e5; font-size:1.02rem; font-weight:800; margin-bottom:8px;">🎯 오늘의 수학 탐구 미션</h3>' +
+          '<p style="font-size:0.86rem; color:#334155; line-height:1.55; margin:0;">' +
+            '<b>[5.1 점, 선, 면: 1-4. 개념: 직선의 결정조건] (교과서 p.138)</b><br>' +
+            '• 한 점을 지나는 직선의 개수와 두 점을 지나는 직선의 개수를 비교하고, 두 점이 직선을 유일하게 결정하는 기하학적 기본 성질을 탐구합니다.<br>' +
+            '• <b>직선의 결정조건 핵심 개념:</b><br>' +
+            '&nbsp;&nbsp;1. <b>한 점을 지나는 직선:</b> 한 점을 지나는 직선은 <b>무수히 많다</b>.<br>' +
+            '&nbsp;&nbsp;2. <b>서로 다른 두 점을 지나는 직선:</b> 서로 다른 두 점을 지나는 직선은 <b>오직 하나</b>뿐이다.<br>' +
+            '&nbsp;&nbsp;3. <b>직선의 결정조건:</b> 서로 다른 두 점이 주어지면 직선이 하나로 정해지는 기하학적 성질입니다.<br>' +
+            '• 좌측 캔버스에서 점을 드래그하거나 직선을 추가하며 직선의 결정조건을 확인해 보세요!' +
+          '</p>' +
+        '</div>' +
+        '<div class="card" style="border-radius:12px; padding:16px; background:#ffffff;">' +
+          '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid #f1f5f9;">' +
+            '<span style="font-size:0.8rem; font-weight:700; color:#4338ca; background:#e0e7ff; padding:3px 8px; border-radius:6px;">교과서 p.138 [5.1 점, 선, 면]</span>' +
+            '<span style="font-size:0.82rem; font-weight:800; color:#64748b;">개념: 직선의 결정조건 (100점 만점)</span>' +
+          '</div>' +
+          '<h4 style="font-size:0.96rem; font-weight:800; color:#1e293b; margin-bottom:12px; line-height:1.45;">' +
+            '📏 점과 직선의 관계를 관찰하고, 아래 질문에 정확한 답과 수학적 명칭을 입력해 보세요.' +
+          '</h4>' +
+          '<!-- 1단계 -->' +
+          '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+              '<span style="font-size:0.88rem; font-weight:800; color:#1e293b;">1단계. 한 점을 지나는 직선의 수</span>' +
+              '<span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">배점 30%</span>' +
+            '</div>' +
+            '<p style="font-size:0.84rem; color:#475569; margin:0 0 8px 0; line-height:1.45;">' +
+              '평면 위의 한 점 $A$를 지나는 직선은 몇 개 그을 수 있는지 쓰시오.' +
+            '</p>' +
+            '<div style="display:flex; align-items:center; gap:8px;">' +
+              '<span style="font-size:0.88rem; font-weight:800; color:#334155;">[한 점을 지나는 직선] =</span>' +
+              '<input type="text" id="ans1_4_1" class="proof-input-text" placeholder="개수 또는 표현 입력" style="background:#fef08a; border:2px solid #eab308; border-radius:8px; color:#854d0e; font-weight:800; width:140px; padding:6px 10px; text-align:center;">' +
+            '</div>' +
+          '</div>' +
+          '<!-- 2단계 -->' +
+          '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:12px;">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+              '<span style="font-size:0.88rem; font-weight:800; color:#1e293b;">2단계. 서로 다른 두 점을 지나는 직선의 수</span>' +
+              '<span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">배점 30%</span>' +
+            '</div>' +
+            '<p style="font-size:0.84rem; color:#475569; margin:0 0 8px 0; line-height:1.45;">' +
+              '서로 다른 두 점 $A, B$를 동시에 지나는 직선은 몇 개 그을 수 있는지 숫자로 쓰시오.' +
+            '</p>' +
+            '<div style="display:flex; align-items:center; gap:8px;">' +
+              '<span style="font-size:0.88rem; font-weight:800; color:#334155;">[두 점을 지나는 직선] =</span>' +
+              '<input type="text" id="ans1_4_2" class="proof-input-text" placeholder="수 입력" style="background:#fef08a; border:2px solid #eab308; border-radius:8px; color:#854d0e; font-weight:800; width:90px; padding:6px 10px; text-align:center;">' +
+              '<span style="font-size:0.85rem; font-weight:700; color:#475569;">개</span>' +
+            '</div>' +
+          '</div>' +
+          '<!-- 3단계 -->' +
+          '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:14px;">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+              '<span style="font-size:0.88rem; font-weight:800; color:#1e293b;">3단계. 기하학적 성질의 명칭</span>' +
+              '<span style="background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; padding:2px 6px; border-radius:4px;">배점 40%</span>' +
+            '</div>' +
+            '<p style="font-size:0.84rem; color:#475569; margin:0 0 8px 0; line-height:1.45;">' +
+              '서로 다른 두 점이 주어지면 그 두 점을 지나는 직선은 오직 하나로 정해진다는 기하학적 성질의 명칭을 쓰시오. (여섯 글자 또는 띄어쓰기)' +
+            '</p>' +
+            '<div style="display:flex; align-items:center; gap:8px;">' +
+              '<span style="font-size:0.88rem; font-weight:800; color:#334155;">[성질 명칭] =</span>' +
+              '<input type="text" id="ans1_4_3" class="proof-input-text" placeholder="성질 명칭 입력" style="background:#fef08a; border:2px solid #eab308; border-radius:8px; color:#854d0e; font-weight:800; width:150px; padding:6px 10px; text-align:center;">' +
+            '</div>' +
+          '</div>' +
+          '<button class="btn" style="background:linear-gradient(135deg, #4f46e5, #4338ca); width:100%; padding:12px; font-weight:800; font-size:0.95rem; border-radius:8px; color:#fff;" onclick="gradeStep1_4()">' +
+            '[개념: 직선의 결정조건] 확인 및 채점' +
+          '</button>' +
+          teacherBtnHtml +
+          '<div id="feedback-1-4" style="margin-top:14px; display:none;"></div>' +
+        '</div>';
+
+      if (window.renderMathInElement) {
+        renderMathInElement(fb, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false }
+          ]
+        });
+      }
+    }
+
+    function drawStep1_4Canvas() {
+      const container = document.getElementById('two-container');
+      if (!container) return;
+      container.innerHTML = '';
+      if (!state.lab1_4) resetLab1_4();
+
+      const width = container.clientWidth || 560;
+      const height = 440;
+      const two = new Two({ width, height, autostart: true }).appendTo(container);
+
+      // 전체 배경
+      const bg = two.makeRoundedRectangle(width / 2, height / 2, width - 8, height - 8, 12);
+      bg.fill = '#f8fafc';
+      bg.stroke = '#cbd5e1';
+      bg.linewidth = 1;
+
+      // 모눈 그리드
+      for (let x = 30; x < width - 20; x += 30) {
+        const line = two.makeLine(x, 40, x, 360);
+        line.stroke = '#f1f5f9';
+        line.linewidth = 1;
+      }
+      for (let y = 50; y <= 350; y += 30) {
+        const line = two.makeLine(20, y, width - 20, y);
+        line.stroke = '#f1f5f9';
+        line.linewidth = 1;
+      }
+
+      const cur = state.lab1_4.activeTab;
+
+      if (cur === 'mode1') {
+        drawLab1_4Mode1(two, width, height);
+      } else if (cur === 'mode2') {
+        drawLab1_4Mode2(two, width, height);
+      } else {
+        drawLab1_4Mode3(two, width, height);
+      }
+
+      // 하단 안전 안내 배너 (H=440, Y=396, H=46, 0-오버랩 완벽 준수)
+      drawStep1_4BottomGuide(two, width, height, cur);
+
+      two.update();
+      setupStep1_4PointerEvents(two, container);
+    }
+
+    function drawLab1_4Mode1(two, width, height) {
+      const tHeader = two.makeText('📍 [한 점] 한 점을 지나는 직선은 무수히 많습니다', width / 2, 22);
+      tHeader.size = 14;
+      tHeader.weight = 800;
+      tHeader.fill = '#1e293b';
+
+      const cX = width / 2;
+      const cY = 195;
+      const lineLen = 190;
+      const angles = state.lab1_4.angles || [0, 30, 60, 90];
+
+      const colors = ['#2563eb', '#059669', '#d97706', '#9333ea', '#dc2626', '#0284c7', '#0d9488', '#ea580c', '#4f46e5', '#16a34a'];
+
+      // 점 A를 지나는 여러 직선 렌더링
+      angles.forEach((deg, idx) => {
+        const rad = deg * Math.PI / 180;
+        const dx = Math.cos(rad) * lineLen;
+        const dy = Math.sin(rad) * lineLen;
+        const col = colors[idx % colors.length];
+
+        const line = two.makeLine(cX - dx, cY - dy, cX + dx, cY + dy);
+        line.stroke = col;
+        line.linewidth = 2.5;
+
+        // 양 끝 화살촉 느낌 작은 원
+        const e1 = two.makeCircle(cX - dx, cY - dy, 3.5);
+        e1.fill = col; e1.noStroke();
+        const e2 = two.makeCircle(cX + dx, cY + dy, 3.5);
+        e2.fill = col; e2.noStroke();
+      });
+
+      // 중심 점 A
+      const aGlow = two.makeCircle(cX, cY, 14);
+      aGlow.fill = 'rgba(239, 68, 68, 0.25)';
+      aGlow.stroke = '#ef4444';
+      aGlow.linewidth = 2;
+
+      const aDot = two.makeCircle(cX, cY, 8);
+      aDot.fill = '#ef4444';
+      aDot.stroke = '#b91c1c';
+      aDot.linewidth = 2;
+
+      const tA = two.makeText('점 A', cX, cY - 22);
+      tA.size = 13;
+      tA.weight = 800;
+      tA.fill = '#b91c1c';
+
+      // 상태 안내 배지 (Y=54)
+      const badgeBox = two.makeRoundedRectangle(width / 2, 54, 450, 28, 6);
+      badgeBox.fill = '#eff6ff';
+      badgeBox.stroke = '#93c5fd';
+      badgeBox.linewidth = 1;
+
+      const badgeText = two.makeText(
+        '✨ 점 A를 지나는 직선: ' + angles.length + '개 생성됨 (각도 무한 → \'무수히 많다\'!)',
+        width / 2, 55
+      );
+      badgeText.size = 11;
+      badgeText.weight = 800;
+      badgeText.fill = '#1d4ed8';
+
+      // 조작 팁
+      const tipText = two.makeText('👆 상단의 [➕ 직선 추가]나 [✨ 12방향 펼치기]를 눌러보세요.', width / 2, 335);
+      tipText.size = 11;
+      tipText.weight = 700;
+      tipText.fill = '#64748b';
+    }
+
+    function drawLab1_4Mode2(two, width, height) {
+      const tHeader = two.makeText('📏 [두 점] 서로 다른 두 점을 지나는 직선은 오직 하나뿐입니다', width / 2, 22);
+      tHeader.size = 14;
+      tHeader.weight = 800;
+      tHeader.fill = '#1e293b';
+
+      const pA = state.lab1_4.pointA || { x: 150, y: 240 };
+      const pB = state.lab1_4.pointB || { x: 410, y: 150 };
+
+      // 두 점을 지나는 유일한 무한 직선 연장 계산
+      const dx = pB.x - pA.x;
+      const dy = pB.y - pA.y;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist > 1) {
+        const uX = dx / dist;
+        const uY = dy / dist;
+        const ext = 300; // 충분히 캔버스 밖으로 연장
+
+        const line = two.makeLine(pA.x - uX * ext, pA.y - uY * ext, pB.x + uX * ext, pB.y + uY * ext);
+        line.stroke = '#2563eb';
+        line.linewidth = 4.5;
+        line.cap = 'round';
+
+        // 직선 명칭 라벨
+        const midX = (pA.x + pB.x) / 2;
+        const midY = (pA.y + pB.y) / 2;
+        const tLine = two.makeText('직선 AB (유일하게 결정됨)', midX, midY - 20);
+        tLine.size = 12;
+        tLine.weight = 800;
+        tLine.fill = '#1d4ed8';
+      }
+
+      // 점 A 렌더링
+      const aGlow = two.makeCircle(pA.x, pA.y, 14);
+      aGlow.fill = 'rgba(37, 99, 235, 0.25)';
+      aGlow.stroke = '#2563eb';
+      aGlow.linewidth = 2;
+
+      const aDot = two.makeCircle(pA.x, pA.y, 8);
+      aDot.fill = '#3b82f6';
+      aDot.stroke = '#1d4ed8';
+      aDot.linewidth = 2;
+
+      const tA = two.makeText('A', pA.x, pA.y - 22);
+      tA.size = 13;
+      tA.weight = 800;
+      tA.fill = '#1d4ed8';
+
+      // 점 B 렌더링
+      const bGlow = two.makeCircle(pB.x, pB.y, 14);
+      bGlow.fill = 'rgba(239, 68, 68, 0.25)';
+      bGlow.stroke = '#ef4444';
+      bGlow.linewidth = 2;
+
+      const bDot = two.makeCircle(pB.x, pB.y, 8);
+      bDot.fill = '#ef4444';
+      bDot.stroke = '#b91c1c';
+      bDot.linewidth = 2;
+
+      const tB = two.makeText('B', pB.x, pB.y - 22);
+      tB.size = 13;
+      tB.weight = 800;
+      tB.fill = '#b91c1c';
+
+      // 상태 안내 배지 (Y=54)
+      const badgeBox = two.makeRoundedRectangle(width / 2, 54, 460, 28, 6);
+      badgeBox.fill = '#eff6ff';
+      badgeBox.stroke = '#93c5fd';
+      badgeBox.linewidth = 1;
+
+      const badgeText = two.makeText(
+        '✨ 두 점 A, B를 지나는 직선은 오직 하나(1개)뿐입니다!',
+        width / 2, 55
+      );
+      badgeText.size = 12;
+      badgeText.weight = 800;
+      badgeText.fill = '#1d4ed8';
+
+      // 조작 팁
+      const tipText = two.makeText('👆 점 A나 점 B를 마우스/터치로 자유롭게 드래그해 보세요. (실시간 60fps 추적)', width / 2, 335);
+      tipText.size = 11;
+      tipText.weight = 700;
+      tipText.fill = '#64748b';
+    }
+
+    function drawLab1_4Mode3(two, width, height) {
+      const c = state.lab1_4.caseMode || 2;
+      const tHeader = two.makeText('🎯 [결정조건 판정 랩] 점의 개수에 따른 직선의 결정 여부 비교', width / 2, 22);
+      tHeader.size = 14;
+      tHeader.weight = 800;
+      tHeader.fill = '#1e293b';
+
+      const cX = width / 2;
+      const cY = 190;
+
+      if (c === 1) {
+        // 1개 점 케이스
+        for (let i = 0; i < 8; i++) {
+          const rad = (i * 22.5) * Math.PI / 180;
+          const dx = Math.cos(rad) * 150;
+          const dy = Math.sin(rad) * 150;
+          const line = two.makeLine(cX - dx, cY - dy, cX + dx, cY + dy);
+          line.stroke = '#94a3b8';
+          line.linewidth = 2;
+          line.dashes = [5, 4];
+        }
+
+        const p = two.makeCircle(cX, cY, 9);
+        p.fill = '#ef4444'; p.stroke = '#b91c1c'; p.linewidth = 2;
+        const tp = two.makeText('점 A', cX, cY - 20);
+        tp.size = 12; tp.weight = 800; tp.fill = '#b91c1c';
+
+        // 배지
+        const b = two.makeRoundedRectangle(width / 2, 54, 460, 28, 6);
+        b.fill = '#fef2f2'; b.stroke = '#fca5a5'; b.linewidth = 1;
+        const tb = two.makeText('❌ [점 1개] 직선이 무수히 많아 하나로 정해지지 않음 (결정 안 됨)', width / 2, 55);
+        tb.size = 12; tb.weight = 800; tb.fill = '#b91c1c';
+
+      } else if (c === 2) {
+        // 2개 점 케이스 (결정조건 충족)
+        const p1 = { x: cX - 120, y: cY + 30 };
+        const p2 = { x: cX + 120, y: cY - 30 };
+
+        const ext = 180;
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const dist = Math.hypot(dx, dy);
+        const ux = dx / dist;
+        const uy = dy / dist;
+
+        const line = two.makeLine(p1.x - ux * ext, p1.y - uy * ext, p2.x + ux * ext, p2.y + uy * ext);
+        line.stroke = '#2563eb';
+        line.linewidth = 5;
+
+        // 점 A, B
+        const d1 = two.makeCircle(p1.x, p1.y, 8);
+        d1.fill = '#3b82f6'; d1.stroke = '#1d4ed8'; d1.linewidth = 2;
+        const t1 = two.makeText('점 A', p1.x, p1.y - 18);
+        t1.size = 12; t1.weight = 800; t1.fill = '#1d4ed8';
+
+        const d2 = two.makeCircle(p2.x, p2.y, 8);
+        d2.fill = '#ef4444'; d2.stroke = '#b91c1c'; d2.linewidth = 2;
+        const t2 = two.makeText('점 B', p2.x, p2.y - 18);
+        t2.size = 12; t2.weight = 800; t2.fill = '#b91c1c';
+
+        // 배지
+        const b = two.makeRoundedRectangle(width / 2, 54, 460, 28, 6);
+        b.fill = '#dcfce7'; b.stroke = '#86efac'; b.linewidth = 1;
+        const tb = two.makeText('✅ [서로 다른 두 점] 직선이 오직 하나로 유일하게 정해짐! (직선의 결정조건)', width / 2, 55);
+        tb.size = 12; tb.weight = 800; tb.fill = '#15803d';
+
+      } else {
+        // 3개 점 케이스 (삼각형)
+        const p1 = { x: cX, y: cY - 70 };
+        const p2 = { x: cX - 110, y: cY + 50 };
+        const p3 = { x: cX + 110, y: cY + 50 };
+
+        const tri = two.makePolygon(cX, cY - 10, 80, 3);
+        tri.fill = 'rgba(238, 242, 255, 0.6)';
+        tri.stroke = '#6366f1';
+        tri.linewidth = 2.5;
+
+        [ { p: p1, l: 'A' }, { p: p2, l: 'B' }, { p: p3, l: 'C' } ].forEach(pt => {
+          const c = two.makeCircle(pt.p.x, pt.p.y, 7);
+          c.fill = '#4f46e5'; c.stroke = '#312e81'; c.linewidth = 2;
+          const t = two.makeText('점 ' + pt.l, pt.p.x, pt.p.y + (pt.p.y < cY ? -16 : 18));
+          t.size = 11; t.weight = 800; t.fill = '#312e81';
+        });
+
+        // 배지
+        const b = two.makeRoundedRectangle(width / 2, 54, 460, 28, 6);
+        b.fill = '#eff6ff'; b.stroke = '#93c5fd'; b.linewidth = 1;
+        const tb = two.makeText('🔺 [일직선 상에 없는 세 점] 하나의 직선으로 지날 수 없으며, 삼각형을 이룹니다.', width / 2, 55);
+        tb.size = 11; tb.weight = 800; tb.fill = '#1d4ed8';
+      }
+
+      const tipText = two.makeText('💡 직선을 단 하나로 결정짓기 위해 가장 필요충분한 조건은 \'서로 다른 두 점\'입니다.', width / 2, 335);
+      tipText.size = 11;
+      tipText.weight = 700;
+      tipText.fill = '#64748b';
+    }
+
+    function drawStep1_4BottomGuide(two, width, height, mode) {
+      const bannerY = 396;
+      const bannerH = 46;
+
+      const box = two.makeRoundedRectangle(width / 2, bannerY, width - 32, bannerH, 8);
+      box.fill = '#f1f5f9';
+      box.stroke = '#cbd5e1';
+      box.linewidth = 1;
+
+      let guideTitle = '';
+      let guideBody = '';
+
+      if (mode === 'mode1') {
+        guideTitle = '💡 [탐구 가이드 (교과서 p.138)] 한 점을 지나는 직선';
+        guideBody = '한 점을 지나는 직선은 각도와 방향에 따라 무수히 많이 그을 수 있습니다.';
+      } else if (mode === 'mode2') {
+        guideTitle = '💡 [탐구 가이드 (교과서 p.138)] 두 점을 지나는 직선';
+        guideBody = '서로 다른 두 점이 주어지면 두 점을 동시에 지나는 직선은 오직 하나뿐입니다.';
+      } else {
+        guideTitle = '💡 [탐구 가이드 (교과서 p.138)] 직선의 결정조건';
+        guideBody = '서로 다른 두 점이 주어지면 직선이 하나로 정해지는 기하학적 성질을 \'직선의 결정조건\'이라 합니다.';
+      }
+
+      const t1 = two.makeText(guideTitle, width / 2, bannerY - 10);
+      t1.size = 11;
+      t1.weight = 800;
+      t1.fill = '#1e293b';
+
+      const t2 = two.makeText(guideBody, width / 2, bannerY + 10);
+      t2.size = 10;
+      t2.fill = '#475569';
+    }
+
+    function setupStep1_4PointerEvents(two, container) {
+      const svg = container.querySelector('svg');
+      if (!svg) return;
+
+      svg.style.touchAction = 'none';
+
+      svg.onpointerdown = (e) => {
+        if (!state.lab1_4) return;
+        if (state.lab1_4.activeTab !== 'mode2') return;
+
+        const rect = svg.getBoundingClientRect();
+        const clientX = e.clientX - rect.left;
+        const clientY = e.clientY - rect.top;
+
+        const pA = state.lab1_4.pointA;
+        const pB = state.lab1_4.pointB;
+
+        const distA = Math.hypot(clientX - pA.x, clientY - pA.y);
+        const distB = Math.hypot(clientX - pB.x, clientY - pB.y);
+
+        if (distA <= 28) {
+          state.lab1_4.draggingPoint = 'A';
+          svg.setPointerCapture(e.pointerId);
+        } else if (distB <= 28) {
+          state.lab1_4.draggingPoint = 'B';
+          svg.setPointerCapture(e.pointerId);
+        }
+      };
+
+      svg.onpointermove = (e) => {
+        if (!state.lab1_4 || !state.lab1_4.draggingPoint) return;
+
+        const rect = svg.getBoundingClientRect();
+        const clientX = e.clientX - rect.left;
+        const clientY = e.clientY - rect.top;
+
+        const clampedX = Math.max(50, Math.min(rect.width - 50, clientX));
+        const clampedY = Math.max(90, Math.min(330, clientY));
+
+        if (state.lab1_4.draggingPoint === 'A') {
+          state.lab1_4.pointA = { x: clampedX, y: clampedY };
+        } else if (state.lab1_4.draggingPoint === 'B') {
+          state.lab1_4.pointB = { x: clampedX, y: clampedY };
+        }
+        drawStep1_4Canvas();
+      };
+
+      svg.onpointerup = (e) => {
+        if (state.lab1_4) state.lab1_4.draggingPoint = null;
+        try {
+          if (svg.hasPointerCapture(e.pointerId)) {
+            svg.releasePointerCapture(e.pointerId);
+          }
+        } catch (err) {}
+      };
+    }
+
+    function gradeStep1_4() {
+      const a1 = (document.getElementById('ans1_4_1')?.value || '').trim();
+      const a2 = (document.getElementById('ans1_4_2')?.value || '').trim();
+      const a3 = (document.getElementById('ans1_4_3')?.value || '').trim();
+
+      // 1단계: 무수히 많다, 무수히많다, 무한, 무한히 많다 등
+      const normA1 = a1.replace(/\s+/g, '');
+      const isA1 = (normA1.includes('무수히') || normA1.includes('무한'));
+
+      // 2단계: 1, 1개, 하나, 오직 하나, 오직1개 등
+      const normA2 = a2.replace(/\s+/g, '');
+      const isA2 = (normA2 === '1' || normA2 === '1개' || normA2 === '하나' || normA2 === '오직하나' || normA2 === '오직1개');
+
+      // 3단계: 직선의 결정조건, 직선의 결정 조건
+      const normA3 = a3.replace(/\s+/g, '');
+      const isA3 = (normA3 === '직선의결정조건' || normA3 === '직선결정조건' || normA3 === '결정조건');
+
+      let score = 0;
+      if (isA1) score += 30;
+      if (isA2) score += 30;
+      if (isA3) score += 40;
+
+      const fb = document.getElementById('feedback-1-4');
+      if (!fb) return;
+      fb.style.display = 'block';
+
+      if (score === 100) {
+        if (!state.completedSubSteps.includes('1-4')) {
+          state.completedSubSteps.push('1-4');
+        }
+        // 다음 서브스텝 [1-5] 해금
+        window.unlockSubStep('1-5');
+
+        if (window.LMSIntegration && window.LMSIntegration.saveStudentProgress) {
+          window.LMSIntegration.saveStudentProgress('1-4', {
+            score: 100,
+            answers: { a1, a2, a3 },
+            completed: true
+          }, 'u5');
+        }
+
+        if (state.lab1_4) state.lab1_4.isPassed = true;
+        populateSubstepDropdown();
+
+        fb.innerHTML = 
+          '<div class="card verified-answer-card" style="background:#f0fdf4; border:2px solid #059669; border-radius:12px; padding:14px;">' +
+            '<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">' +
+              '<span style="font-size:1.3rem;">🎉</span>' +
+              '<span style="font-size:1.02rem; font-weight:800; color:#15803d;">100점 만점! 직선의 결정조건을 완벽하게 이해했습니다!</span>' +
+            '</div>' +
+            '<p style="font-size:0.86rem; color:#166534; line-height:1.55; margin-bottom:8px;">' +
+              '<b>교과서 공식 풀이 및 개념 정리 (p.138):</b><br>' +
+              '• <b>1단계:</b> 한 점을 지나는 직선은 각도와 방향에 따라 <b>무수히 많다</b>입니다.<br>' +
+              '• <b>2단계:</b> 서로 다른 두 점을 동시에 지나는 직선은 <b>오직 하나</b>(1개)뿐입니다.<br>' +
+              '• <b>3단계:</b> 서로 다른 두 점이 주어지면 두 점을 지나는 직선이 유일하게 정해지는 성질을 <b>직선의 결정조건</b>이라고 합니다.' +
+            '</p>' +
+            '<div style="font-size:0.85rem; color:#15803d; font-weight:800; padding:8px 10px; background:#dcfce7; border-radius:6px;">' +
+              '🚀 다음 활동 해금! <b>[1-5. 개념: 직선, 반직선, 선분의 기호 (교과서 p.138)]</b>이 전격 해금되었습니다!' +
+            '</div>' +
+          '</div>';
+
+        if (window.renderMathInElement) {
+          renderMathInElement(fb, {
+            delimiters: [
+              { left: '$$', right: '$$', display: true },
+              { left: '$', right: '$', display: false }
+            ]
+          });
+        }
+      } else {
+        fb.innerHTML = 
+          '<div style="background:#fef2f2; border:2px solid #dc2626; border-radius:12px; padding:14px;">' +
+            '<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">' +
+              '<span style="font-size:1.3rem;">⚠️</span>' +
+              '<span style="font-size:1.02rem; font-weight:800; color:#b91c1c;">현재 평가 점수: ' + score + '점 / 100점</span>' +
+            '</div>' +
+            '<p style="font-size:0.85rem; color:#991b1b; line-height:1.45; margin:0;">' +
+              '좌측 캔버스 랩(1. 한 점을 지나는 직선, 2. 두 점을 지나는 직선)을 직접 조작해 보며 직선의 개수와 결정조건을 다시 확인해 보세요!' +
+            '</p>' +
+          '</div>';
+      }
+    }
+
+    function passStep1_4() {
+      const a1 = document.getElementById('ans1_4_1');
+      const a2 = document.getElementById('ans1_4_2');
+      const a3 = document.getElementById('ans1_4_3');
+      if (a1) a1.value = '무수히 많다';
+      if (a2) a2.value = '1';
+      if (a3) a3.value = '직선의 결정조건';
+      gradeStep1_4();
+    }
+
 
 
 
